@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sprint Status"
+  short_description: "Fast sprint status check for game-studio projects"
+  default_prompt: "Use $sprint-status to run the Sprint Status game-studio workflow."

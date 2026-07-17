@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onboard"
+  short_description: "Generates a contextual onboarding document for a new..."
+  default_prompt: "Use $onboard to run the Onboard game-studio workflow."

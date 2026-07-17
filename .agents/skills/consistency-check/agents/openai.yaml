@@ -1,0 +1,4 @@
+interface:
+  display_name: "Consistency Check"
+  short_description: "Scan all GDDs against the entity registry to detect..."
+  default_prompt: "Use $consistency-check to run the Consistency Check game-studio workflow."

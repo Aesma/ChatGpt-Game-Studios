@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design System"
+  short_description: "Guided, section-by-section GDD authoring for a single game..."
+  default_prompt: "Use $design-system to run the Design System game-studio workflow."

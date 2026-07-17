@@ -1,0 +1,4 @@
+interface:
+  display_name: "Setup Engine"
+  short_description: "Configure the project's game engine and version"
+  default_prompt: "Use $setup-engine to run the Setup Engine game-studio workflow."

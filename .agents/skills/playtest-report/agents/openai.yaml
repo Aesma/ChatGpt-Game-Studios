@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playtest Report"
+  short_description: "Generates a structured playtest report template or analyzes..."
+  default_prompt: "Use $playtest-report to run the Playtest Report game-studio workflow."

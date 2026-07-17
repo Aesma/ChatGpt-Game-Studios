@@ -1,0 +1,72 @@
+---
+name: skill-test
+description: "Validate Codex skills for structural compliance, UI metadata, migration residue, behavioral specifications, and catalog coverage. Use for one skill or the complete project skill set."
+---
+
+# Skill Test
+
+## Invocation and execution
+
+Invoke this workflow as `$skill-test`.
+
+Arguments: `static [skill-name | all] | spec [skill-name] | category [skill-name | all] | audit`.
+
+Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+
+Use `CGS Skill Testing Framework/catalog.yaml`, `CGS Skill Testing Framework/quality-rubric.md`, and the registered spec paths as the testing authority. Do not guess spec paths.
+
+## Phase 1: Parse the mode
+
+- `static [name]`: run structural checks for one `.agents/skills/[name]/` package.
+- `static all`: run structural checks for every `.agents/skills/*/SKILL.md` package.
+- `spec [name]`: evaluate the skill against its registered behavioral spec.
+- `category [name|all]`: evaluate the matching category rubric.
+- `audit`: report skill and Codex-agent coverage, missing specs, and stale test dates.
+
+If the mode is missing or invalid, show these forms and stop without writing.
+
+## Phase 2: Static validation
+
+Run the installed `skill-creator/scripts/quick_validate.py` against each selected skill folder when available. Then apply all seven project checks:
+
+1. **Frontmatter**: `SKILL.md` has exactly `name` and `description`; both are non-empty. Any additional key is a failure.
+2. **Identity**: folder name equals `name`, uses lowercase letters, digits, and hyphens, and is at most 64 characters.
+3. **Instructions**: the body contains actionable workflow instructions and no unresolved placeholders or migration notes.
+4. **UI metadata**: `agents/openai.yaml` has quoted `display_name`, a specific 25–64 character `short_description`, and a `default_prompt` containing the exact `$[name]` invocation.
+5. **Codex compatibility**: fail on legacy-platform-only paths, fields, product names, or tool names; fail on a project skill invoked as `/name` instead of `$name`.
+6. **Collaboration boundary**: a writing workflow states the single changeset approval policy; a read-only workflow explicitly says it does not modify files.
+7. **Handoff and links**: referenced project skills use `$name`, linked project paths exist or are explicitly described as future outputs, and the workflow ends with a clear result or next action.
+
+Classify each check as `PASS`, `WARN`, or `FAIL`, cite the exact file and line for every issue, and aggregate results without hiding partial failures.
+
+## Phase 3: Behavioral spec validation
+
+1. Locate the skill at `.agents/skills/[name]/SKILL.md`.
+2. Read its entry from `CGS Skill Testing Framework/catalog.yaml`.
+3. Read the registered spec completely.
+4. Evaluate each fixture, expected behavior, and assertion against the written workflow.
+5. Mark assertions `PASS`, `PARTIAL`, or `FAIL` and explain non-passing results with direct evidence.
+6. Check that all file writes are collected into one changeset approval before the first write.
+
+If the skill, catalog entry, or spec is missing, report the missing artifact and stop that case without inventing it.
+
+## Phase 4: Category validation
+
+Read the skill's `category` from the catalog and the matching section of `CGS Skill Testing Framework/quality-rubric.md`. Evaluate every category metric independently. For `category all`, continue after individual failures and provide a complete summary.
+
+## Phase 5: Audit coverage
+
+Compare:
+
+- `.agents/skills/*/SKILL.md`
+- `.codex/agents/**` role definitions
+- skill and agent entries in `CGS Skill Testing Framework/catalog.yaml`
+- registered spec files
+
+Report unregistered skills, missing or orphaned specs, missing UI metadata, and stale test dates. Treat `$studio-status` like every other project skill.
+
+## Phase 6: Present and optionally save results
+
+Present the complete result first. If the user wants persisted results, include the result file and all catalog date/result updates in one changeset preview and obtain the single approval before writing. Write only inside the approved boundary, then report the exact files changed.
+
+Verdict: `COMPLIANT`, `WARNINGS`, or `NON-COMPLIANT`.

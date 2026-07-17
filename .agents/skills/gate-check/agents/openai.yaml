@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gate Check"
+  short_description: "Validate readiness to advance between development phases"
+  default_prompt: "Use $gate-check to run the Gate Check game-studio workflow."

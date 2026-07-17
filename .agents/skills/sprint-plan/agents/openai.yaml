@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sprint Plan"
+  short_description: "Generates a new sprint plan or updates an existing one based..."
+  default_prompt: "Use $sprint-plan to run the Sprint Plan game-studio workflow."

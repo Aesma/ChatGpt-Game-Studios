@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Narrative"
+  short_description: "Orchestrate the narrative team: coordinates..."
+  default_prompt: "Use $team-narrative to run the Team Narrative game-studio workflow."

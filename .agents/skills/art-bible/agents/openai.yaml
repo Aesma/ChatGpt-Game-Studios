@@ -1,0 +1,4 @@
+interface:
+  display_name: "Art Bible"
+  short_description: "Guided, section-by-section Art Bible authoring"
+  default_prompt: "Use $art-bible to run the Art Bible game-studio workflow."

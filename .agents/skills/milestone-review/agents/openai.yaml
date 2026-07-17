@@ -1,0 +1,4 @@
+interface:
+  display_name: "Milestone Review"
+  short_description: "Generates a comprehensive milestone progress review including..."
+  default_prompt: "Use $milestone-review to run the Milestone Review game-studio workflow."

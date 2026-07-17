@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quick Design"
+  short_description: "Lightweight design spec for small changes — tuning..."
+  default_prompt: "Use $quick-design to run the Quick Design game-studio workflow."

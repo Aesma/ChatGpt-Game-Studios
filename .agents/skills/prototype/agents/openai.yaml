@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prototype"
+  short_description: "Concept prototype — validate the core idea is worth designing..."
+  default_prompt: "Use $prototype to run the Prototype game-studio workflow."

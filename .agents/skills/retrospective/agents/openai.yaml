@@ -1,0 +1,4 @@
+interface:
+  display_name: "Retrospective"
+  short_description: "Generates a sprint or milestone retrospective by analyzing..."
+  default_prompt: "Use $retrospective to run the Retrospective game-studio workflow."

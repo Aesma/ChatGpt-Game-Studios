@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patch Notes"
+  short_description: "Generate player-facing patch notes from git history, sprint..."
+  default_prompt: "Use $patch-notes to run the Patch Notes game-studio workflow."

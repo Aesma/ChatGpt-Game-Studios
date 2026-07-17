@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Stage Detect"
+  short_description: "Automatically analyze project state, detect stage, identify..."
+  default_prompt: "Use $project-stage-detect to run the Project Stage Detect game-studio workflow."

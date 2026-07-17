@@ -1,0 +1,4 @@
+interface:
+  display_name: "Asset Audit"
+  short_description: "Audits game assets for compliance with naming conventions..."
+  default_prompt: "Use $asset-audit to run the Asset Audit game-studio workflow."

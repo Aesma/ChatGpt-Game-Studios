@@ -1,0 +1,4 @@
+interface:
+  display_name: "Studio Status"
+  short_description: "Report the current game-production stage and active Epic..."
+  default_prompt: "Use $studio-status to report the current production stage and active focus."

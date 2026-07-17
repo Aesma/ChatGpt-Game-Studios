@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Audio"
+  short_description: "Orchestrate audio team: audio-director + sound-designer +..."
+  default_prompt: "Use $team-audio to run the Team Audio game-studio workflow."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reverse Document"
+  short_description: "Generate design or architecture documents from existing..."
+  default_prompt: "Use $reverse-document to run the Reverse Document game-studio workflow."

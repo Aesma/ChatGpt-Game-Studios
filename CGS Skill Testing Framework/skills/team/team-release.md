@@ -1,0 +1,57 @@
+# Skill Test Spec: $team-release
+
+## Skill Summary
+
+Orchestrates the release team through a 7-phase pipeline from release candidate to
+deployment and post-release monitoring. Coordinates release-manager, qa-lead,
+devops-engineer, producer, security-engineer (optional, required for online/
+multiplayer), network-programmer (optional, required for multiplayer),
+analytics-engineer, and community-manager. Phase 3 agents run in parallel. Ends
+with a go/no-go decision; deployment (Phase 6) is skipped if the producer calls
+NO-GO. Closes with a post-release monitoring plan.
+
+---
+
+## Static Assertions (Structural)
+
+- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
+- [ ] Has ≥2 phase headings
+- [ ] Contains verdict keywords: COMPLETE, BLOCKED
+- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+4. Proceeds as if `$team-release v1.1.0` was the input
+
+**Expected behavior (variant B):**
+1. Phase 1: No argument provided; reads available state files — no version discoverable
+2. Uses user-input request: "What version number should be released? (e.g., v1.0.0)"
+3. Waits for user input before proceeding
+
+**Assertions:**
+- [ ] Skill does NOT default to a hardcoded version string when no argument is provided
+- [ ] Skill reads `production/session-state/active.md` and milestone files before asking (variant A)
+- [ ] Inferred version is confirmed with the user via user-input request before proceeding (variant A)
+- [ ] When no version is discoverable, user-input request is used — skill does not guess (variant B)
+- [ ] Skill does NOT error out when milestone files are absent — it falls back to asking (variant B)
+
+---
+
+## Protocol Compliance
+
+- [ ] `user-input request` used at each phase transition gate (post-Phase 1, post-Phase 2, post-Phase 3/4 if issues, post-Phase 5 go/no-go)
+- [ ] Phase 3 agents are always issued as parallel Codex subagent delegations — qa-lead and devops-engineer are never sequential
+- [ ] security-engineer is conditionally spawned based on game features — never silently skipped when features are present
+- [ ] File Write Protocol: orchestrator never calls file edits directly — all writes are delegated to sub-agents or sub-skills
+- [ ] Phase 6 Deployment is strictly conditional on a GO verdict from Phase 5 — never auto-triggered
+- [ ] Error recovery: any BLOCKED agent is surfaced immediately before continuing to dependent phases
+- [ ] Partial reports are always produced if any phase fails or the pipeline is halted (Case 2)
+- [ ] Verdict: COMPLETE only when deployment completes; BLOCKED when go/no-go is NO or a hard blocker is unresolved
+- [ ] Next steps always include 48-hour post-release monitoring, `$retrospective` recommendation, and `production/stage.txt` update to `Live`
+
+---
+
+## Coverage Notes
+
+- Phase 7 post-release actions (release report, milestone tracking, community publishing, dashboard monitoring) are validated implicitly by Case 1. No separate edge case is required as Phase 7 is non-gated and does not have a blocking failure mode.
+- The "devops-engineer build fails" path is not separately tested — it would surface as a BLOCKED result in Phase 3 and follow the standard error recovery protocol (surface → assess → user-input request options). This is validated structurally by the Static Assertions error recovery check.
+- The parallel Phase 4 path (localization + performance + analytics simultaneously with Phase 3) is a documented option in the skill ("can run in parallel with Phase 3 if resources available"). Case 4 tests Phase 4 as a sequential gate; the parallel variant is left to the skill's implementation judgment.
+- The `network-programmer` sign-off path for multiplayer is validated as part of Case 3 rather than a separate case, as it follows the same parallel-spawn pattern as security-engineer.
+- The "override NO-GO with documented rationale" path in Case 2 is referenced but not exhaustively tested — it is an escape hatch that the skill must support, and its existence is validated by the user-input request options assertion in Case 2.

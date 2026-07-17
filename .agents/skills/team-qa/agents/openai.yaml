@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Qa"
+  short_description: "Orchestrate the QA team through a full testing cycle"
+  default_prompt: "Use $team-qa to run the Team QA game-studio workflow."

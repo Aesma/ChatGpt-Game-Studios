@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review All Gdds"
+  short_description: "Holistic cross-GDD consistency and game design review"
+  default_prompt: "Use $review-all-gdds to run the Review All Gdds game-studio workflow."

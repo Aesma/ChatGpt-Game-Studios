@@ -1,0 +1,4 @@
+interface:
+  display_name: "Soak Test"
+  short_description: "Generate a soak test protocol for extended play sessions"
+  default_prompt: "Use $soak-test to run the Soak Test game-studio workflow."

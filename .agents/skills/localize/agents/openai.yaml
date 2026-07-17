@@ -1,0 +1,4 @@
+interface:
+  display_name: "Localize"
+  short_description: "Full localization pipeline: scan for hardcoded strings..."
+  default_prompt: "Use $localize to run the Localize game-studio workflow."

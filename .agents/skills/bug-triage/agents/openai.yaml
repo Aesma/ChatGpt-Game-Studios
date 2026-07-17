@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bug Triage"
+  short_description: "Read all open bugs in production/qa/bugs/, re-evaluate..."
+  default_prompt: "Use $bug-triage to run the Bug Triage game-studio workflow."

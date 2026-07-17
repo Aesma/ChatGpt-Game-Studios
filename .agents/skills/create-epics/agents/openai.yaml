@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Epics"
+  short_description: "Translate approved GDDs + architecture into epics — one epic..."
+  default_prompt: "Use $create-epics to run the Create Epics game-studio workflow."

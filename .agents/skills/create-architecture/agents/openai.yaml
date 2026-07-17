@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Architecture"
+  short_description: "Guided, section-by-section authoring of the master..."
+  default_prompt: "Use $create-architecture to run the Create Architecture game-studio workflow."

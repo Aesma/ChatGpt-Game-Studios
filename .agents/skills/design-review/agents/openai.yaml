@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Review"
+  short_description: "Reviews a game design document for completeness, internal..."
+  default_prompt: "Use $design-review to run the Design Review game-studio workflow."

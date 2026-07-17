@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team UI"
+  short_description: "Orchestrate the UI team through the full UX pipeline: from UX..."
+  default_prompt: "Use $team-ui to run the Team UI game-studio workflow."

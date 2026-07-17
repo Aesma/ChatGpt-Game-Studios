@@ -1,0 +1,4 @@
+interface:
+  display_name: "Perf Profile"
+  short_description: "Structured performance profiling workflow"
+  default_prompt: "Use $perf-profile to run the Perf Profile game-studio workflow."

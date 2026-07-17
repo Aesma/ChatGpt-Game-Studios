@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Polish"
+  short_description: "Orchestrate the polish team: coordinates performance-analyst..."
+  default_prompt: "Use $team-polish to run the Team Polish game-studio workflow."

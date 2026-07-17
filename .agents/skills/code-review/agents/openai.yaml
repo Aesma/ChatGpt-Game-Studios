@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Review"
+  short_description: "Performs an architectural and quality code review on a..."
+  default_prompt: "Use $code-review to run the Code Review game-studio workflow."

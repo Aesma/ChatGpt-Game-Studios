@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Setup"
+  short_description: "Scaffold the test framework and CI/CD pipeline for the..."
+  default_prompt: "Use $test-setup to run the Test Setup game-studio workflow."

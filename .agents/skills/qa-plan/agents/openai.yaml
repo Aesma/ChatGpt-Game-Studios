@@ -1,0 +1,4 @@
+interface:
+  display_name: "Qa Plan"
+  short_description: "Generate a QA test plan for a sprint or feature"
+  default_prompt: "Use $qa-plan to run the QA Plan game-studio workflow."

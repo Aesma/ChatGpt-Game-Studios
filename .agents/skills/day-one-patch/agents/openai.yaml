@@ -1,0 +1,4 @@
+interface:
+  display_name: "Day One Patch"
+  short_description: "Prepare a day-one patch for a game launch"
+  default_prompt: "Use $day-one-patch to run the Day One Patch game-studio workflow."

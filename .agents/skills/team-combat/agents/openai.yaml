@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Combat"
+  short_description: "Orchestrate the combat team: coordinates game-designer..."
+  default_prompt: "Use $team-combat to run the Team Combat game-studio workflow."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scope Check"
+  short_description: "Analyze a feature or sprint for scope creep by comparing..."
+  default_prompt: "Use $scope-check to run the Scope Check game-studio workflow."

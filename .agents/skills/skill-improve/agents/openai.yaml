@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Improve"
+  short_description: "Improve a Codex skill with a..."
+  default_prompt: "Use $skill-improve to run the Skill Improve game-studio workflow."

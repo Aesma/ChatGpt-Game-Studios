@@ -1,0 +1,4 @@
+interface:
+  display_name: "Team Level"
+  short_description: "Orchestrate level design team: level-designer +..."
+  default_prompt: "Use $team-level to run the Team Level game-studio workflow."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Helpers"
+  short_description: "Generate engine-specific test helper libraries for the..."
+  default_prompt: "Use $test-helpers to run the Test Helpers game-studio workflow."

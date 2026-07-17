@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Stories"
+  short_description: "Break a single epic into implementable story files"
+  default_prompt: "Use $create-stories to run the Create Stories game-studio workflow."

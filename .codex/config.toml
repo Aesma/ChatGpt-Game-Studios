@@ -1,0 +1,38 @@
+# Project-scoped Codex runtime configuration. It is loaded only when this
+# repository is trusted. Runtime model and reasoning settings are intentionally
+# inherited from the parent/user session and are not pinned here.
+
+approval_policy = "on-request"
+default_permissions = "project-edit"
+
+[features]
+hooks = true
+
+[agents]
+max_threads = 6
+max_depth = 2
+interrupt_message = true
+
+[permissions.project-edit.filesystem]
+":minimal" = "read"
+glob_scan_max_depth = 6
+
+[permissions.project-edit.filesystem.":workspace_roots"]
+"." = "write"
+"**/.env*" = "deny"
+
+[tui]
+# Native terminal notifications replace the legacy Notification command hook.
+# The desktop app has its own Settings > Notifications controls.
+notifications = true
+notification_method = "auto"
+notification_condition = "unfocused"
+
+# Native footer items replace the legacy command-driven status line. Codex has
+# no project-local footer field for the custom production-stage/breadcrumb
+# calculation; session-state guidance and lifecycle hooks preserve that context.
+status_line = ["context-remaining", "git-branch", "current-dir"]
+
+# Do not add a top-level `notify` command here: Codex deliberately ignores that
+# key in project-local config. External notifier commands belong only in the
+# user's trusted ~/.codex/config.toml; this repository ships none.

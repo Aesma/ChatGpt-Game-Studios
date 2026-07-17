@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Test"
+  short_description: "Validate Codex skills for structural compliance, UI metadata..."
+  default_prompt: "Use $skill-test to run the Skill Test game-studio workflow."

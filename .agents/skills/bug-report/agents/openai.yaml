@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bug Report"
+  short_description: "Creates a structured bug report from a description, or..."
+  default_prompt: "Use $bug-report to run the Bug Report game-studio workflow."

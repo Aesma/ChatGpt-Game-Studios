@@ -1,0 +1,4 @@
+interface:
+  display_name: "Estimate"
+  short_description: "Estimates task effort by analyzing complexity, dependencies..."
+  default_prompt: "Use $estimate to run the Estimate game-studio workflow."

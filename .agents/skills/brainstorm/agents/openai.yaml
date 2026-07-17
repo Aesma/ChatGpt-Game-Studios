@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brainstorm"
+  short_description: "Guided game concept ideation — from zero idea to a structured..."
+  default_prompt: "Use $brainstorm to run the Brainstorm game-studio workflow."

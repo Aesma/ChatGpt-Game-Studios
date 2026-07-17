@@ -1,0 +1,4 @@
+interface:
+  display_name: "Content Audit"
+  short_description: "Audit GDD-specified content counts against implemented content"
+  default_prompt: "Use $content-audit to run the Content Audit game-studio workflow."

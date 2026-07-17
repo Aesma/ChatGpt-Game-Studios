@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Audit"
+  short_description: "Audit the game for security vulnerabilities: save tampering..."
+  default_prompt: "Use $security-audit to run the Security Audit game-studio workflow."

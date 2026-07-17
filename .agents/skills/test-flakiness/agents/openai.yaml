@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Flakiness"
+  short_description: "Detect non-deterministic (flaky) tests by reading CI run logs..."
+  default_prompt: "Use $test-flakiness to run the Test Flakiness game-studio workflow."

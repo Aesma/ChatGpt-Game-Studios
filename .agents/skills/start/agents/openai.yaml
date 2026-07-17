@@ -1,0 +1,4 @@
+interface:
+  display_name: "Start"
+  short_description: "First-time onboarding — asks where you are, then guides you..."
+  default_prompt: "Use $start to run the Start game-studio workflow."

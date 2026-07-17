@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adopt"
+  short_description: "Brownfield onboarding — audits existing project artifacts for..."
+  default_prompt: "Use $adopt to run the Adopt game-studio workflow."

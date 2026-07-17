@@ -1,0 +1,4 @@
+interface:
+  display_name: "Regression Suite"
+  short_description: "Map test coverage to GDD critical paths, identify fixed bugs..."
+  default_prompt: "Use $regression-suite to run the Regression Suite game-studio workflow."

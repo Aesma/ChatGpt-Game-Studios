@@ -1,0 +1,4 @@
+* text=auto
+
+# Codex hook scripts must use LF line endings for Bash portability.
+*.sh text eol=lf

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Evidence Review"
+  short_description: "Quality review of test files and manual evidence documents"
+  default_prompt: "Use $test-evidence-review to run the Test Evidence Review game-studio workflow."

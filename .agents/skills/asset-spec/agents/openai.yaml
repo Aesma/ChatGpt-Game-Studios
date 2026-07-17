@@ -1,0 +1,4 @@
+interface:
+  display_name: "Asset Spec"
+  short_description: "Generate per-asset visual specifications and AI generation..."
+  default_prompt: "Use $asset-spec to run the Asset Spec game-studio workflow."

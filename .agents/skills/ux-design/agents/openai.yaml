@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ux Design"
+  short_description: "Guided, section-by-section UX spec authoring for a screen..."
+  default_prompt: "Use $ux-design to run the Ux Design game-studio workflow."

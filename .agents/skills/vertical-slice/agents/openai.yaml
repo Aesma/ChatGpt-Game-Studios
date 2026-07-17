@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vertical Slice"
+  short_description: "Pre-Production validation — build a production-quality..."
+  default_prompt: "Use $vertical-slice to run the Vertical Slice game-studio workflow."
