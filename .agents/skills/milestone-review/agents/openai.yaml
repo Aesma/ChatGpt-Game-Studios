@@ -1,4 +1,4 @@
 interface:
   display_name: "Milestone Review"
-  short_description: "Generates a comprehensive milestone progress review including..."
-  default_prompt: "Use $milestone-review to run the Milestone Review game-studio workflow."
+  short_description: "Review milestone readiness with explicit unknowns"
+  default_prompt: "Use $milestone-review to review one stable milestone ID from verified progress, bug, test, performance, and risk evidence without treating accepted risk as objective readiness."

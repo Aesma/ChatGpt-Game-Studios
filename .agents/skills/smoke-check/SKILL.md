@@ -1,418 +1,225 @@
 ---
 name: smoke-check
-description: "Run the critical path smoke test gate before QA hand-off. Executes the automated test suite, verifies core functionality, and produces a PASS/FAIL report. Run after a sprint's stories are implemented and before manual QA begins. A failed smoke check means the build is not ready for QA."
+description: "Runs a build-bound smoke gate from current QA-plan mappings, structured runner receipts, and explicit manual evidence; only a complete formal PASS authorizes QA hand-off."
 ---
 
-## Invocation and execution
+## Invocation and safety contract
 
-Invoke this workflow as `$smoke-check`.
+Invoke one of these supported forms:
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+~~~text
+$smoke-check sprint --candidate {candidate-manifest-path} --qa-plan {qa-plan-path} --run-id {run-id} [--platform pc|console|mobile|all] [--ci-receipt {path}]
+$smoke-check quick --candidate {candidate-manifest-path} --qa-plan {qa-plan-path} --run-id {run-id} --checks {stable-id[,stable-id...]} [--platform pc|console|mobile|all] [--ci-receipt {path}]
+~~~
 
-Arguments: `[sprint | quick | --platform pc|console|mobile|all]`. Treat bracketed values as optional unless the workflow says otherwise.
+The default mode is sprint. Reject unknown positional arguments, unknown flags, duplicate flags, unsupported platform values, a missing flag value, a quick invocation without --checks, or any mode other than sprint or quick. Do not interpret an affected-system name as a mode. A caller such as day-one-patch must translate its scope into stable QA-plan check IDs and use quick --checks.
 
+An explicit bounded user request authorizes its in-scope execution and writes. Otherwise, before the first file change, present one complete changeset and obtain one explicit approval. Do not re-prompt per file. A declined report write does not change the observed test outcome; report Persistence: DECLINED and retain the result in conversation.
 
-# Smoke Check
+This workflow never invokes a director gate and never edits source code, tests, the candidate manifest, the QA plan, session state, or another workflow artifact.
 
-This skill is the gate between "implementation done" and "ready for QA
-hand-off". It runs the automated test suite, checks for test coverage gaps,
-batch-verifies critical paths with the developer, and produces a PASS/FAIL
-report.
+## Canonical artifacts and identity
 
-The rule is simple: **a build that fails smoke check does not go to QA.**
-Handing a broken build to QA wastes their time and demoralises the team.
+Use this immutable evidence root:
 
-**Output:** `production/qa/smoke-[date].md`
+~~~text
+production/qa/evidence/smoke/{candidate-id}/{run-id}/
+  automated-receipt.json
+  automated.log  (only when runner or CI log bytes exist)
+  manual-evidence.md
+  report.md
+~~~
 
----
+A run ID is a stable slug or UUID, not a date alone. Reject path separators, dot segments, and any existing run directory. A retry always uses a new run ID. Never choose evidence by modification time and never overwrite a prior receipt.
 
-## Parse Arguments
+The only hand-off-eligible artifact is the exact report.md path supplied to a consumer together with the expected candidate ID and candidate-manifest SHA-256. Files in legacy locations, incomplete directories, quick-mode reports, and newest-file guesses are not gate evidence.
 
-Arguments can be combined: `$smoke-check sprint --platform console`
+## Phase 1: Validate exact candidate and QA-plan inputs
 
-**Base mode** (first argument, default: `sprint`):
-- `sprint` — full smoke check against the current sprint's stories
-- `quick` — skip coverage scan (Phase 3) and Batch 3; use for rapid re-checks
+Resolve literal paths and real paths before use. Reject missing files, directories, symlinks escaping the project root, and unreadable or malformed inputs. Read raw bytes once and format every digest exactly as sha256:<64 lowercase hexadecimal characters>.
 
-**Platform flag** (`--platform`, default: none):
-- `--platform pc` — add PC-specific checks (keyboard, mouse, windowed mode)
-- `--platform console` — add console-specific checks (gamepad, TV safe zones,
-  platform certification requirements)
-- `--platform mobile` — add mobile-specific checks (touch, portrait/landscape,
-  battery/thermal behaviour)
-- `--platform all` — add all platform variants; output per-platform verdict table
+### Candidate manifest
 
-If `--platform` is provided, Phase 4 adds platform-specific batches and
-Phase 5 outputs a per-platform verdict table in addition to the overall verdict.
+Require the supplied candidate manifest to contain:
 
----
+- manifest_version and Artifact Type: build-candidate;
+- candidate_id, build_id, build artifact path, and build artifact SHA-256;
+- source_commit;
+- engine name and exact engine/runner-compatible version;
+- platform/configuration target matrix;
+- created_at in ISO-8601;
+- test_manifest_path and test_manifest_sha256;
+- qa_plan_path and qa_plan_sha256.
 
-## Phase 1: Detect Test Setup
+The --qa-plan path must equal qa_plan_path after normalization, and its raw-byte digest must equal qa_plan_sha256. Verify the candidate build artifact bytes against their digest. If the build is remote, require a verifiable build receipt that binds the same candidate ID, build ID, artifact hash, source commit, platform/configuration, issuer, job ID, and timestamp. Missing or mismatched candidate evidence is INVALID_RECEIPT.
 
-Before running anything, understand the environment:
+### QA-plan manifest and effective state
 
-1. **Test framework check**: verify `tests/` directory exists.
-   If it does not: "No test directory found at `tests/`. Run `$test-setup`
-   to scaffold the testing infrastructure, or create the directory manually
-   if tests live elsewhere." Then stop.
+Consume the exact staged qa-plan contract, not a most-recent plan:
 
-2. **CI check**: check whether `.github/workflows/` contains a workflow file
-   referencing tests. Note in the report whether CI is configured.
+1. Require Plan State at Generation: CURRENT, manifest_version: 1, hash_algorithm: sha256, the mandatory Sources table, Story Requirement Bindings, Test Summary, and Smoke Test Scope.
+2. Re-read every loaded source path recorded in the plan and hash its current raw bytes.
+3. Require every current source digest and availability to match the plan. Any mismatch, disappearance, unreadable source, or invalid digest makes the effective state STALE.
+4. Reject PARTIAL, STALE, missing stable AC IDs, duplicate IDs, and test/check IDs that do not map one-to-one to a stable AC ID.
+5. For sprint mode, select every stable ID in Smoke Test Scope. For quick mode, require each --checks ID to exist in that scope and preserve the explicit subset.
+6. Compute scope_sha256 from the ordered selected stable IDs, their stable AC bindings, and their plan rows.
 
-3. **Engine detection**: read `.codex/docs/technical-preferences.md` and
-   extract the `Engine:` value. Store this for test command selection in
-   Phase 2.
+A non-CURRENT QA plan, a plan hash mismatch, or an invalid scope is a blocking currentness error. Do not execute tests or collect manual evidence against it.
 
-4. **Smoke test list**: check whether `production/qa/smoke-tests.md` or
-   `tests/smoke/` exists. If a smoke test list is found, load it for use in
-   Phase 4. If neither exists, smoke tests will be drawn from the current QA
-   plan (Phase 4 fallback).
+### Test execution manifest
 
-5. **QA plan check**: find files matching `production/qa/qa-plan-*.md` and take the most
-   recently modified file. If found, note the path — it will be used in
-   Phase 3 and Phase 4. If not found, note: "No QA plan found. Run
-   `$qa-plan sprint` before smoke-checking for best results."
+Read the exact test manifest path from the candidate manifest and verify its raw-byte digest. It must define:
 
-Report findings before proceeding: "Environment: [engine]. Test directory:
-[found / not found]. CI configured: [yes / no]. QA plan: [path / not found]."
+- manifest version, candidate-compatible engine and runner versions;
+- an argv array for each stable automated test ID, with no shell command string;
+- a project-root-contained working directory;
+- environment-variable allowlist with secret values excluded from reports;
+- timeout and output-byte cap;
+- exit-code and structured-result parser rules;
+- cleanup behavior that terminates the runner process tree on timeout;
+- canonical log and receipt fields;
+- trusted CI issuer/job allowlist and receipt-signature or verification rules when CI substitution is permitted.
 
----
+Do not synthesize engine commands, fall back to arbitrary runners, use shell redirection, or select historical XML/JSON/log files by modification time. A missing or invalid execution manifest yields Verdict: INCOMPLETE and Handoff Eligible: NO.
 
-## Phase 2: Run Automated Tests
+## Phase 2: Produce build-bound automated evidence
 
-Attempt to run the test suite through the configured shell. Select the command based on the engine
-detected in Phase 1:
+Run only the argv entries allowed by the verified test execution manifest, from its verified working directory. Apply the declared timeout and output cap. Capture stdout/stderr without shell interpolation, redact declared sensitive values, terminate the full process tree on timeout, and hash the exact persisted log bytes.
 
-**Godot 4:**
-```bash
-godot --headless --script tests/gdunit4_runner.gd 2>&1
-```
-If the GDUnit4 runner script does not exist at that path, try:
-```bash
-godot --headless -s addons/gdunit4/GdUnitRunner.gd 2>&1
-```
-If neither path exists, note: "GDUnit4 runner not found — confirm the runner
-path for your test framework."
+The structured automated receipt must contain:
 
-**Unity:**
-Unity tests require the editor and cannot be run headlessly via shell in most
-environments. List `test-results/` read-only, sort entries by modification time,
-and inspect the five newest artifacts.
-If test result files exist (XML or JSON), read the most recent one and parse
-PASS/FAIL counts. If no artifacts exist: "Unity tests must be run from the
-editor or CI pipeline. Please confirm test status manually before proceeding."
+- Artifact Type: automated-test-receipt and schema version;
+- candidate ID, build ID, build artifact hash, source commit;
+- platform/configuration;
+- test-manifest path and hash;
+- QA-plan path and hash, scope hash, and stable test IDs;
+- runner name/version, exact argv array, working directory;
+- start/end timestamps, observer or CI issuer, exit code;
+- total/pass/fail counts and per-test stable ID/status;
+- log path, log SHA-256, truncation flag, parser version, and receipt status.
 
-**Unreal Engine:**
-List `Saved/Logs/` read-only, filter names containing `test` or `automation`,
-sort by modification time, and inspect the five newest matching logs.
-If no matching log found: "UE automation tests must be run via the Session
-Frontend or CI pipeline. Please confirm test status manually."
-
-**Unknown engine / not configured:**
-"Engine not configured in `.codex/docs/technical-preferences.md`. Run
-`$setup-engine` to specify the engine, then re-run `$smoke-check`."
-
-**If the test runner is not available in this environment** (engine binary not
-on PATH, runner script not found, etc.), report clearly:
-
-"Automated tests could not be executed — engine binary not found on PATH.
-Status will be recorded as NOT RUN. Confirm test results from your local IDE
-or CI pipeline. Unconfirmed NOT RUN is treated as PASS WITH WARNINGS, not
-FAIL — the developer must manually confirm results."
-
-Do not treat NOT RUN as an automatic FAIL. Record it as a warning. The
-developer's manual confirmation in Phase 4 can resolve it.
-
-Parse runner output and extract:
-- Total tests run
-- Passing count
-- Failing count
-- Names of any failing tests (up to 10; if more, note the count)
-- Any crash or error output from the runner itself
-
----
-
-## Phase 3: Check Test Coverage
-
-Draw the story list from, in priority order:
-1. The QA plan found in Phase 1 (its Test Summary table lists expected test
-   file paths per story)
-2. The current sprint plan from `production/sprints/` (most recently modified
-   file)
-3. If the `quick` argument was passed, skip this phase entirely and note:
-   "Coverage scan skipped — run `$smoke-check sprint` for full coverage
-   analysis."
-
-For each story in scope:
-
-1. Extract the system slug from the story's file path
-   (e.g., `production/epics/combat/story-001.md` → `combat`)
-2. Find files matching `tests/unit/[system]/` and `tests/integration/[system]/` for files
-   whose name contains the story slug or a closely related term
-3. Check the story file itself for a `Test file:` header field or a
-   "Test Evidence" section
-
-Assign a coverage status to each story:
+Use these automated statuses:
 
 | Status | Meaning |
-|--------|---------|
-| **COVERED** | A test file was found matching this story's system and scope |
-| **MANUAL** | Story type is Visual/Feel or UI; a test evidence document was found |
-| **MISSING** | Logic or Integration story with no matching test file |
-| **EXPECTED** | Config/Data story — no test file required; spot-check is sufficient |
-| **UNKNOWN** | Story file missing or unreadable |
-
-MISSING entries are advisory gaps. They do not cause a FAIL verdict but must
-appear prominently in the report and must be resolved before `$story-done` can
-fully close those stories.
-
----
-
-## Phase 4: Run Manual Smoke Checks
-
-Draw the smoke test checklist from, in priority order:
-1. The QA plan's "Smoke Test Scope" section (if QA plan was found in Phase 1)
-2. `production/qa/smoke-tests.md` (if it exists)
-3. `tests/smoke/` directory contents (if it exists)
-4. The standard fallback list below (used only when none of the above exist)
-
-Tailor batches 2 and 3 to the actual systems identified from the sprint or QA
-plan. Replace bracketed placeholders with real mechanic names from the current
-sprint's stories.
-
-Ask the user directly to batch-verify. Keep to at most 3 calls.
-
-**Batch 1 — Core stability (always run):**
-```
-question: "Core stability — select any items that FAILED (leave all unselected if everything passed):"
-allow multiple selections
-options:
-  - "Game does not launch or crashes before reaching the main menu"
-  - "New game / session fails to start"
-  - "Main menu does not respond to inputs"
-  - "Crash or hang observed during basic navigation"
-```
-
-For any selected item, ask the user to briefly describe what failed before generating the report.
-
-**Batch 2 — Sprint changes and regression (always run):**
-```
-question: "Sprint changes and regression — select any items that FAILED (leave all unselected if everything passed):"
-allow multiple selections
-options:
-  - "[Primary mechanic this sprint] — FAILED"
-  - "[Second notable change this sprint, if any] — FAILED"
-  - "Regression in a previous sprint's feature — FAILED"
-  - "Other unexpected breakage observed — FAILED"
-```
-
-For any selected item, ask the user to briefly describe what broke before generating the report.
-
-**Batch 3 — Data integrity and performance (run unless `quick` argument):**
-```
-question: "Data integrity and performance — select any items that FAILED or were skipped (leave all unselected if everything passed):"
-allow multiple selections
-options:
-  - "Save / load — FAILED (data loss or corruption observed)"
-  - "Save / load — N/A (save system not yet implemented)"
-  - "Frame rate drops or hitches observed — FAILED"
-  - "Performance not checked this session"
-```
-
-For any FAILED item selected, ask the user to describe what broke before generating the report.
-
-Record each response verbatim for the Phase 5 report.
-
-**Platform Batches** *(run only if `--platform` argument was provided)*:
-
-**PC platform** (`--platform pc` or `--platform all`):
-```
-question: "PC Platform — select any items that FAILED (leave all unselected if everything passed):"
-allow multiple selections
-options:
-  - "Keyboard controls — FAILED (describe issue after)"
-  - "Mouse input or cursor visibility — FAILED (describe issue after)"
-  - "Windowed / fullscreen mode — FAILED (describe issue after)"
-  - "Resolution change — FAILED (describe issue after)"
-```
-
-For any selected item, ask the user to briefly describe what failed before generating the report.
-
-**Console platform** (`--platform console` or `--platform all`):
-```
-question: "Console Platform — select any items that FAILED (leave all unselected if everything passed):"
-allow multiple selections
-options:
-  - "Gamepad input — FAILED (describe issue after)"
-  - "UI outside TV safe zone / text clipped — FAILED (describe what is clipped after)"
-  - "Keyboard/mouse fallback shown to gamepad user — FAILED (describe after)"
-  - "Cold start (no prior save) — FAILED (describe issue after)"
-```
+|---|---|
+| PASS | Valid receipt, zero required test failures, complete untruncated parse |
+| FAIL | Valid receipt with one or more required test failures |
+| NOT_RUN | Required command did not execute |
+| TIMEOUT | Deadline expired and process tree was terminated |
+| INFRA_ERROR | Runner crashed, could not start, or returned infrastructure failure |
+| INVALID_RECEIPT | Build binding, hashes, counts, IDs, log, or parse is missing/inconsistent |
 
-For any selected item, ask the user to briefly describe what failed before generating the report.
+Only PASS and FAIL are conclusive test outcomes. NOT_RUN, TIMEOUT, INFRA_ERROR, INVALID_RECEIPT, a parse error, and a truncated log are incomplete evidence and can never be treated as a pass.
 
-**Mobile platform** (`--platform mobile` or `--platform all`):
-```
-question: "Mobile Platform — select any items that FAILED (leave all unselected if everything passed):"
-allow multiple selections
-options:
-  - "Touch controls — FAILED (describe issue after)"
-  - "Orientation change (portrait ↔ landscape) — FAILED (describe what breaks after)"
-  - "Background / foreground transition (home button) — FAILED (describe issue after)"
-  - "Performance / thermal throttling on target device — FAILED (describe after)"
-```
+### External CI substitution
 
-For any selected item, ask the user to briefly describe what failed before generating the report.
+A --ci-receipt may replace local execution only when it is verifiable and binds the exact candidate ID, build ID/hash, source commit, platform/configuration, test-manifest hash, QA-plan hash, scope hash, stable test IDs, runner/version, argv, start/end, issuer/job ID, exit code, complete log hash, parser version, and per-test results. Re-hash every local receipt/log artifact and reject stale or mismatched fields. An unavailable remote artifact, untrusted issuer, truncated log, or non-verifiable job is INVALID_RECEIPT, not PASS.
 
----
+## Phase 3: Collect explicit manual and platform evidence
 
-## Phase 5: Generate Report
+Build the required manual rows from the selected stable QA-plan IDs and their Setup, Verify, Pass condition, evidence path, and sign-off owner. Add applicable data-integrity, performance, and platform rows declared by the current QA plan or candidate target matrix. Do not infer coverage from filenames.
 
-Assemble the full smoke check report:
+Collect rows in no more than three conversational batches, but require an explicit result for every row. Each row must contain:
 
-````markdown
-## Smoke Check Report
-**Date**: [date]
-**Sprint**: [sprint name / number, or "Not identified"]
-**Engine**: [engine]
-**QA Plan**: [path, or "Not found — run $qa-plan first"]
-**Argument**: [sprint | quick | blank]
+- stable check ID and stable AC ID;
+- exactly one status: PASS, FAIL, NOT RUN, or N-A;
+- candidate ID, build ID/hash, source commit;
+- platform/configuration, device model, OS/runtime, and input method where applicable;
+- observer ID/role and ISO-8601 observation timestamp;
+- executed setup/method, observed value, and evidence path/hash;
+- failure description for FAIL;
+- applicability rule and reason for N-A.
 
----
+An empty answer, an unselected item, an unsupported multi-select control, missing observer/build/platform/time binding, missing evidence, or ambiguous prose becomes UNKNOWN. Never convert silence into PASS. NOT RUN and UNKNOWN are incomplete. N-A is acceptable only when the QA plan or candidate matrix marks the row optional for that configuration and a reason is recorded.
 
-### Automated Tests
+Keep sensitive or irrelevant free text out of the report. Preview a redacted observation summary and retain a bounded evidence reference/hash rather than copying unlimited raw text.
 
-**Status**: [PASS ([N] tests, [N] passing) | FAIL ([N] failures) |
-NOT RUN ([reason])]
+Every required platform row is independent. Do not average platforms. Any platform FAIL contributes to overall FAIL; any required platform NOT RUN or UNKNOWN contributes to INCOMPLETE. Any explicit save corruption, data loss, critical performance failure, or other required manual FAIL contributes to overall FAIL regardless of which batch contained it.
 
-[If FAIL, list failing tests:]
-- `[test name]` — [brief failure description from runner output]
+## Phase 4: Verify coverage and calculate one verdict
 
-[If NOT RUN:]
-"Manual confirmation required: did tests pass in your local IDE or CI? This
-will determine whether the automated test row contributes to a FAIL verdict."
+For each selected stable ID, require exactly one applicable conclusive receipt:
 
----
+- automated IDs require a build-bound automated PASS or FAIL row;
+- manual IDs require an explicit build-bound PASS, FAIL, or valid N-A row;
+- combined methods require both declared components;
+- every evidence path must exist and its raw bytes must match its recorded hash.
 
-### Test Coverage
+Missing IDs, duplicate/conflicting rows, missing high-risk coverage, UNKNOWN, NOT RUN, invalid N-A, stale evidence, hash mismatch, or an unverified receipt are incomplete evidence.
 
-| Story | Type | Test File | Coverage Status |
-|-------|------|-----------|----------------|
-| [title] | Logic | `tests/unit/[system]/[slug]_test.[ext]` | COVERED |
-| [title] | Visual/Feel | `tests/evidence/[slug]-screenshots.md` | MANUAL |
-| [title] | Logic | — | MISSING ⚠ |
-| [title] | Config/Data | — | EXPECTED |
+Apply this exhaustive, mutually exclusive first-match table:
 
-**Summary**: [N] covered, [N] manual, [N] missing, [N] expected.
+| Precedence | Condition | Verdict | Handoff Eligible |
+|---|---|---|---|
+| 1 | Any conclusive automated FAIL or any required manual/data/performance/platform FAIL | FAIL | NO |
+| 2 | Any currentness error, missing/invalid evidence, automated status other than PASS/FAIL, UNKNOWN, NOT RUN, coverage gap, invalid N-A, unresolved warning, parser error, or truncated log | INCOMPLETE | NO |
+| 3 | Mode is quick and every selected targeted row is current and conclusively PASS or valid N-A | TARGETED CHECK PASSED | NO |
+| 4 | Mode is sprint, every required row is current and conclusively PASS or valid N-A, and the warning set is empty | PASS | YES |
 
----
+FAIL takes precedence when failures and incomplete evidence coexist, while the report also lists the incomplete rows. There is no PASS WITH WARNINGS hand-off state. Any unresolved warning maps to INCOMPLETE. Thus zero-warning and nonzero-warning cases always have one defined result. The table's YES is provisional until Phase 5 verifies persistence; a declined or failed write retains the calculated verdict but changes the returned Handoff Eligible field to NO.
 
-### Manual Smoke Checks
+Quick mode is targeted evidence only. It skips nothing within its selected stable IDs, but it never proves full sprint coverage and can never authorize QA or release hand-off.
 
-- [x] Game launches without crash — PASS
-- [x] New game starts — PASS
-- [x] [Core mechanic] — PASS
-- [ ] [Other check] — FAIL: [user's description]
-- [x] Save / load — PASS
-- [-] Performance — not checked this session
+## Phase 5: Generate the immutable smoke receipt
 
----
+Generate report.md with these machine-readable fields:
 
-### Missing Test Evidence
+~~~text
+Artifact Type: smoke-check-receipt
+Schema Version: 1
+Receipt ID: {run-id}
+Receipt State: COMPLETE | INCOMPLETE | FAILED
+Candidate Manifest Path: {path}
+Candidate Manifest SHA-256: sha256:{digest}
+Candidate ID: {candidate-id}
+Build ID: {build-id}
+Build Artifact SHA-256: sha256:{digest}
+Source Commit: {commit}
+Platform Configuration: {matrix}
+QA Plan Path: {path}
+QA Plan SHA-256: sha256:{digest}
+QA Plan Effective State: CURRENT | PARTIAL | STALE
+Test Manifest Path: {path}
+Test Manifest SHA-256: sha256:{digest}
+Scope SHA-256: sha256:{digest}
+Mode: sprint | quick
+Verdict: PASS | FAIL | INCOMPLETE | TARGETED CHECK PASSED
+Handoff Eligible: YES | NO
+Started At: {ISO-8601}
+Ended At: {ISO-8601}
+~~~
 
-Stories that must have test evidence before they can be marked COMPLETE via
-`$story-done`:
+Then include:
 
-- **[story title]** (`[path]`) — Logic story has no test file.
-  Expected location: `tests/unit/[system]/[story-slug]_test.[ext]`
+1. candidate, QA-plan, test-manifest, and scope validation;
+2. automated receipt summary with stable test IDs, exit code, parser state, log hash, and failures;
+3. one row per manual/platform check with all provenance and evidence hashes;
+4. stable AC-to-test/check coverage matrix;
+5. failures, incomplete rows, and warnings in separate lists;
+6. the exact verdict-table row applied;
+7. immutable artifact paths and hashes;
+8. persistence result.
 
-[If none:] "All Logic and Integration stories have test coverage."
+Receipt State is FAILED for verdict FAIL, INCOMPLETE for verdict INCOMPLETE, and COMPLETE for PASS or TARGETED CHECK PASSED. COMPLETE does not imply hand-off eligibility; quick remains Handoff Eligible: NO.
 
----
+Present the complete candidate receipt and proposed operations before writing. If authorized, stage every owned artifact, verify internal references and hashes, then publish the run directory all-or-none. Re-read every file and compare with the approved bytes. If any write or verification fails, Persistence: FAILED and Handoff Eligible: NO; never claim the report was written.
 
-### Platform-Specific Results *(only if `--platform` was provided)*
+A report write is optional evidence persistence. The observed verdict must still be returned if persistence is declined or fails, but the returned Handoff Eligible value becomes NO and no consumer may use a non-persisted receipt. If candidate identity is not valid enough to form the canonical path, do not create a run directory and report Persistence: NOT_ATTEMPTED.
 
-| Platform | Checks Run | Passed | Failed | Platform Verdict |
-|----------|-----------|--------|--------|-----------------|
-| PC | [N] | [N] | [N] | PASS / FAIL |
-| Console | [N] | [N] | [N] | PASS / FAIL |
-| Mobile | [N] | [N] | [N] | PASS / FAIL |
+## Phase 6: Deliver the gate result
 
-**Platform notes**: [any platform-specific observations not captured in pass/fail]
+Always return:
 
-Any platform with one or more FAIL checks contributes to the overall FAIL verdict.
+- exact candidate manifest path/hash and candidate/build identity;
+- exact QA-plan path/hash and computed effective state;
+- exact smoke receipt path/hash when verified persisted;
+- mode, scope stable IDs/hash, automated status, and manual/platform row counts;
+- Persistence: WRITTEN, DECLINED, FAILED, or NOT_ATTEMPTED;
+- one verdict from the table;
+- Handoff Eligible: YES or NO.
 
----
+Only a verified persisted sprint-mode receipt with Verdict: PASS, Handoff Eligible: YES, exact candidate-manifest match, exact build binding, and currently revalidated QA Plan Effective State: CURRENT may be handed to QA. All other results explicitly say BLOCKED FOR HANDOFF. Do not say that a build is ready when evidence is missing, stale, quick, unpersisted, unknown, or warning-bearing.
 
-### Verdict: [PASS | PASS WITH WARNINGS | FAIL]
+Downstream consumers must receive the exact receipt path plus expected candidate ID and candidate-manifest hash. They must re-hash the candidate manifest, QA plan and all captured QA-plan sources, test manifest, automated log, manual evidence, and report. Any mismatch makes the receipt STALE and blocks hand-off. Consumers must never select the most recently modified smoke report.
 
-[Verdict rules — first matching rule wins:]
-
-**FAIL** if ANY of:
-- Automated test suite ran and reported one or more test failures
-- Any Batch 1 (core stability) check returned FAIL
-- Any Batch 2 (primary sprint mechanic or regression check) returned FAIL
-
-**PASS WITH WARNINGS** if ALL of:
-- Automated tests PASS or NOT RUN (developer has not yet confirmed)
-- All Batch 1 and Batch 2 smoke checks PASS
-- One or more Logic/Integration stories have MISSING test evidence
-
-**PASS** if ALL of:
-- Automated tests PASS
-- All smoke checks in all batches PASS or N/A
-- No MISSING test evidence entries
-````
-
----
-
-## Phase 6: Write and Gate
-
-Present the full report in conversation, then add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write only after the single changeset approval, without re-prompting within its boundary.
-
-After writing, deliver the gate verdict:
-
-**If verdict is FAIL:**
-
-"The smoke check failed. Do not hand off to QA until these failures are
-resolved:
-
-[List each failing automated test or smoke check with a one-line description]
-
-Fix the failures and run `$smoke-check` again to re-gate before QA hand-off."
-
-**If verdict is PASS WITH WARNINGS:**
-
-"Smoke check passed with warnings. The build is ready for manual QA.
-
-Advisory items to resolve before running `$story-done` on affected stories:
-[list MISSING test evidence entries]
-
-QA hand-off: share `production/qa/qa-plan-[sprint].md` with the qa-tester
-agent to begin manual verification."
-
-**If verdict is PASS:**
-
-"Smoke check passed cleanly. The build is ready for manual QA.
-
-QA hand-off: share `production/qa/qa-plan-[sprint].md` with the qa-tester
-agent to begin manual verification."
-
----
-
-## Collaborative Protocol
-
-- **Never treat NOT RUN as automatic FAIL** — record it as NOT RUN and let
-  the developer confirm status manually. Unconfirmed NOT RUN contributes to
-  PASS WITH WARNINGS, not FAIL.
-- **Never auto-fix failures** — report them and state what must be resolved.
-  Do not attempt to edit source code or test files.
-- **PASS WITH WARNINGS does not block QA hand-off** — it records advisory
-  gaps for `$story-done` to follow up on.
-- **`quick` argument** skips Phase 3 (coverage scan) and Phase 4 Batch 3.
-  Use it for rapid re-checks after fixing a specific failure.
-- Ask the user directly for all manual smoke check verification.
-- **Never write the report without asking** — Phase 6 requires explicit
-  approval before any file is created.
+Recommend correcting reported failures or missing evidence and running a new run ID. Never auto-fix code or tests and never auto-invoke a downstream workflow.

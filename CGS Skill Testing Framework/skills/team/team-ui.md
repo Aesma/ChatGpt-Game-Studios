@@ -1,201 +1,295 @@
-# Skill Test Spec: $team-ui
+# Skill Spec: $team-ui
+
+> **Category**: team
+> **Priority**: medium
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-Orchestrates the UI team through the full UX pipeline for a single UI feature.
-Coordinates ux-designer, ui-programmer, art-director, the engine UI specialist,
-and accessibility-specialist through five structured phases: Context Gathering +
-UX Spec (Phase 1a/1b) → UX Review Gate (Phase 1c) → Visual Design (Phase 2) →
-Implementation (Phase 3) → Review in parallel (Phase 4) → Polish (Phase 5).
-Uses `user-input request` at each phase transition. Delegates all file writes to
-sub-agents and sub-skills (`$ux-design`, `ui-programmer`). Produces a summary report
-with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
-`$team-polish`.
+$team-ui consumes one exact UI feature request manifest, authors and independently reviews a hash-bound UX spec, then plans a separately authorized implementation with one writer. Reviewers are read-only and bounded. Verdict: COMPLETE is legal only when the post-fix final build/source hash has complete UX, art, accessibility, engine, input, layout, localization, text-scaling, colorblind, motion, cleanup, and main-thread evidence.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings (Phase 1a through Phase 5 are all present)
-- [ ] Contains verdict keywords: COMPLETE, BLOCKED
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff at the end (references `$ux-review`, `$code-review`, `$team-polish`)
-- [ ] Error Recovery Protocol section is present with all four recovery steps
-- [ ] Uses `user-input request` at phase transitions for user approval before proceeding
-- [ ] Phase 4 is explicitly marked as parallel (ux-designer, art-director, accessibility-specialist)
-- [ ] UX Review Gate (Phase 1c) is defined as a blocking gate — skill must not proceed to Phase 2 without APPROVED verdict
-- [ ] Team Composition lists all five roles (ux-designer, ui-programmer, art-director, engine UI specialist, accessibility-specialist)
-- [ ] References the interaction pattern library (`design/ux/interaction-patterns.md`) — ui-programmer must use existing patterns
-- [ ] Phase 1a reads `design/accessibility-requirements.md` before design begins
+- [ ] YAML frontmatter contains only name and a non-empty description; name is team-ui
+- [ ] No-argument validation occurs before project reads or delegation
+- [ ] UX-review uses the staged read-only record schema, stable UXF IDs, exact target hash, and persisted recorder envelope
+- [ ] NEEDS REVISION/accepted risk cannot authorize production implementation or COMPLETE
+- [ ] UX revisions and implementation fixes are each capped at two rounds
+- [ ] Every artifact path has one writer and reviewers are read-only
+- [ ] ui-programmer cannot modify the global interaction-pattern library
+- [ ] Design-support and implementation each require a precise later authorization boundary
+- [ ] Implementation manifest lists exact paths, operations, base hashes, writer, evidence paths, and non-writes
+- [ ] Review concurrency, task/phase deadlines, one retry, PARTIAL behavior, checkpoints, and resume revalidation are explicit
+- [ ] Post-fix reviews bind the final build/source-set hash and stale every prior review
+- [ ] COMPLETE requires zero open blockers and the full build-bound evidence matrix
+- [ ] Skill/spec both acknowledge project writes and exact mutation allowlists
+- [ ] The final phase emits one state-driven next action without invoking another workflow
+
+---
+
+## Director Gate Checks
+
+- **Full mode**: optional director consultations may run, but their output is advisory and cannot replace mandatory evidence.
+- **Lean mode**: optional consultations are skipped; all mandatory independent reviews remain.
+- **Solo mode**: no independent quorum exists, so design/prototype work may proceed but production COMPLETE is impossible.
+- **Mandatory reviews**: UX conformance, art consistency, accessibility, and engine/QA evidence cannot be skipped by mode.
 
 ---
 
 ## Test Cases
 
-### Case 1: Happy Path — Full pipeline from UX spec through polish succeeds
+### Case 1: Happy path — approved spec to verified final build
 
-**Fixture:**
-- `design/gdd/game-concept.md` exists with platform targets and intended audience
-- `design/player-journey.md` exists
-- `design/ux/interaction-patterns.md` exists with relevant patterns
-- `design/accessibility-requirements.md` exists with committed tier (e.g., Enhanced)
-- Engine UI specialist configured in `.codex/docs/technical-preferences.md`
+**Fixture**:
+- Valid feature manifest, context/hash budget, configured engine, applicable AGENTS chain, interaction library, accessibility targets, and exact owners.
+- UX review returns current-hash APPROVED with zero blockers.
+- Visual/asset/engine artifacts and precise implementation manifest are separately authorized.
+- One writer implements only listed paths.
+- All final evidence streams pass on the same post-fix build/source hash.
 
-**Input:** `$team-ui inventory screen`
+**Expected behavior**:
+1. Design, review, support-artifact, implementation, build, and final-review checkpoints are persisted.
+2. Every mutation stays inside the active manifest.
+3. Final result is Pipeline Result: IMPLEMENTATION_VERIFIED and Verdict: COMPLETE.
 
-**Expected behavior:**
-1. Phase 1a — orchestrator reads game-concept.md, player-journey.md, relevant GDD UI sections, interaction-patterns.md, accessibility-requirements.md; summarizes a brief for the ux-designer
-2. Phase 1b — `$ux-design inventory-screen` invoked (or ux-designer spawned directly); produces `design/ux/inventory-screen.md` using `ux-spec.md` template; `user-input request` confirms spec before review
-3. Phase 1c — `$ux-review design/ux/inventory-screen.md` invoked; returns APPROVED; gate passed, proceed to Phase 2
-4. Phase 2 — art-director spawned; reviews full UX spec (not only wireframes); applies visual treatment; verifies color contrast; produces visual design spec with asset manifest; `user-input request` confirms before Phase 3
-5. Phase 3 — engine UI specialist spawned first (read from technical-preferences.md); produces implementation notes for ui-programmer; ui-programmer spawned with UX spec + visual spec + engine notes; implementation produced; interaction-patterns.md updated if new patterns introduced
-6. Phase 4 — ux-designer, art-director, accessibility-specialist spawned in parallel; all three return results before Phase 5
-7. Phase 5 — review feedback addressed; animations verified skippable; UI sounds confirmed through audio event system; interaction-patterns.md final check; verdict: COMPLETE
-8. Summary report: UX spec APPROVED, visual design COMPLETE, implementation COMPLETE, accessibility COMPLIANT, all input methods supported, pattern library updated, verdict: COMPLETE
+**Assertions**:
+- [ ] UX approval envelope embeds the unmodified read-only review record and revalidates target SHA-256
+- [ ] ui-programmer never writes design artifacts or the global pattern library
+- [ ] All mandatory review outputs bind the final build/source hash
+- [ ] Final result reports exact artifact/evidence/checkpoint hashes
 
-**Assertions:**
-- [ ] Phase 1a reads all five sources before briefing ux-designer
-- [ ] UX Review Gate checked before Phase 2 — Phase 2 does NOT begin until APPROVED
-- [ ] Art-director in Phase 2 reviews full spec, not just wireframe images
-- [ ] Engine UI specialist spawned before ui-programmer in Phase 3
-- [ ] Phase 4 agents launched simultaneously (ux-designer, art-director, accessibility-specialist)
-- [ ] All file writes delegated to sub-agents and sub-skills
-- [ ] Verdict COMPLETE in final summary report
-- [ ] Next steps include `$ux-review`, `$code-review`, `$team-polish`
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 2: UX Review Gate — Spec fails review; skill halts before implementation
+### Case 2: NEEDS REVISION cannot be overridden into production
 
-**Fixture:**
-- `design/ux/inventory-screen.md` produced by Phase 1b
-- `$ux-review` returns verdict NEEDS REVISION with specific concerns flagged (e.g., gamepad navigation flow incomplete, contrast ratio below minimum)
+**Fixture**:
+- UX review returns NEEDS REVISION with gamepad and contrast blockers.
+- User records accepted risk.
 
-**Input:** `$team-ui inventory screen`
+**Expected behavior**:
+1. Original review verdict and approval_status remain unchanged.
+2. Pipeline Result is ACCEPTED_RISK_SPEC_NOT_APPROVED.
+3. Only a separately authorized nonproduction prototype/backlog proposal is legal.
+4. Visual production work, implementation writer, and COMPLETE do not run.
 
-**Expected behavior:**
-1. Phase 1a + 1b complete — UX spec produced
-2. Phase 1c — `$ux-review design/ux/inventory-screen.md` returns NEEDS REVISION
-3. Skill does NOT advance to Phase 2
-4. `user-input request` presented with the specific flagged concerns and options:
-   - (a) Return to ux-designer to address the issues and re-review
-   - (b) Accept the risk and proceed to Phase 2 anyway (conscious decision)
-5. If user chooses (a): ux-designer revises spec, `$ux-review` re-run; loop continues until APPROVED or user overrides
-6. If user chooses (b): skill proceeds with an explicit NEEDS REVISION note in the final report
-7. Skill does NOT silently proceed past the gate
+**Assertions**:
+- [ ] No implementation manifest is generated
+- [ ] Accepted risk lists stable open finding IDs and target hash
+- [ ] No approved/implementation-ready wording appears
 
-**Assertions:**
-- [ ] Phase 2 does NOT begin while UX review verdict is NEEDS REVISION
-- [ ] `user-input request` presents the specific flagged concerns before offering options
-- [ ] User must make a conscious choice to override — skill does not assume override
-- [ ] If user accepts risk, NEEDS REVISION concern is documented in the final report
-- [ ] Revision-and-re-review loop is offered (not just a one-shot failure)
-- [ ] Skill does NOT discard the produced UX spec on review failure
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 3: No Argument — Usage guidance shown
+### Case 3: UX convergence stops after two revisions
 
-**Fixture:**
-- Any project state
+**Fixture**:
+- The same stable UXF navigation blocker remains after revision rounds 1 and 2.
 
-**Input:** `$team-ui` (no argument)
+**Expected behavior**:
+1. Author remains the only spec writer; reviewer remains independent/read-only.
+2. Each round maps the same finding ID to exact diffs and performs regression scan.
+3. Automatic loop stops after round 2 with BLOCKED/USER DECISION.
 
-**Expected behavior:**
-1. Skill detects no argument provided
-2. Outputs usage message explaining the required argument (UI feature description)
-3. Provides an example invocation: `$team-ui [UI feature description]`
-4. Skill exits without spawning any subagents or reading any project files
+**Assertions**:
+- [ ] No third automatic revision occurs
+- [ ] Legal options are narrow/redefine, stop, or accepted-risk nonproduction path
+- [ ] The stale prior hashes cannot be reused
 
-**Assertions:**
-- [ ] Skill does NOT spawn any subagents when no argument is given
-- [ ] Usage message includes the argument format documented in the skill body
-- [ ] At least one example of a valid invocation is shown
-- [ ] No UX spec files or GDDs read before failing
-- [ ] Verdict is NOT shown (pipeline never starts)
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 4: Accessibility Parallel Review — Phase 4 runs three streams simultaneously
+### Case 4: Programmer global-pattern mutation is refused
 
-**Fixture:**
-- `design/ux/inventory-screen.md` exists (APPROVED)
-- Visual design spec complete
-- Implementation complete
-- `design/accessibility-requirements.md` committed tier: Enhanced
+**Fixture**:
+- Implementation introduces a new interaction and attempts to edit design/ux/interaction-patterns.md.
 
-**Input:** `$team-ui inventory screen` (resuming from Phase 3 complete)
+**Expected behavior**:
+1. New behavior is represented as stable feature-local UXP proposal owned by ux-author.
+2. Mutation guard detects/refuses programmer write to the global library.
+3. Cross-screen behavior blocks until the external library/ADR owner acts.
 
-**Expected behavior:**
-1. Phase 4 begins after implementation is confirmed complete
-2. Three Codex subagent delegations issued simultaneously: ux-designer, art-director, accessibility-specialist
-3. Each stream operates independently:
-   - ux-designer: verifies implementation matches wireframes, tests keyboard-only and gamepad-only navigation, checks accessibility features function
-   - art-director: verifies visual consistency with art bible at minimum and maximum supported resolutions
-   - accessibility-specialist: audits against the Enhanced accessibility tier in `design/accessibility-requirements.md`; any violation flagged as a blocker
-4. Skill waits for all three results before proceeding to Phase 5
-5. `user-input request` presents all three review results before Phase 5 begins
+**Assertions**:
+- [ ] Programmer source allowlist excludes the global library
+- [ ] Proposal is not labelled globally approved
+- [ ] User work is not silently reverted
 
-**Assertions:**
-- [ ] All three Codex subagent delegations issued before any result is awaited (parallel, not sequential)
-- [ ] Phase 5 does NOT begin until all three Phase 4 agents have returned
-- [ ] Accessibility-specialist explicitly reads `design/accessibility-requirements.md` for the committed tier
-- [ ] Accessibility violations flagged as BLOCKING (not merely advisory)
-- [ ] `user-input request` shows all three review streams' results together before Phase 5 approval
-- [ ] No Phase 4 agent's output is used as input for another Phase 4 agent
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 5: Missing Interaction Pattern Library — Skill notes the gap rather than inventing patterns
+### Case 5: Post-polish change invalidates old reviews
 
-**Fixture:**
-- `design/ux/interaction-patterns.md` does NOT exist
-- All other required files present
+**Fixture**:
+- Initial implementation build B1 receives blocking findings.
+- Unique writer fixes them and produces build B2.
 
-**Input:** `$team-ui settings menu`
+**Expected behavior**:
+1. All B1 reviews become stale.
+2. Previously failed checks plus the full regression matrix run against B2.
+3. COMPLETE is possible only if every required B2 stream/evidence row is complete and blockers are zero.
 
-**Expected behavior:**
-1. Phase 1a — orchestrator attempts to read `design/ux/interaction-patterns.md`; file not found
-2. Skill surfaces the gap: "interaction-patterns.md does not exist — no existing patterns to reuse"
-3. `user-input request` presented with options:
-   - (a) Run `$ux-design patterns` first to establish the pattern library, then continue
-   - (b) Proceed without the pattern library — ux-designer will document new patterns as they are created
-4. Skill does NOT invent or assume patterns from other sources
-5. If user chooses (b): ui-programmer is explicitly instructed to treat all patterns created as new and to add each to a new `design/ux/interaction-patterns.md` at completion
-6. Final report notes that interaction-patterns.md was created (or is still absent if user skipped)
+**Assertions**:
+- [ ] B1 approval cannot be attached to B2
+- [ ] Stable UIF finding transitions are preserved
+- [ ] New fix paths require a new implementation authorization
 
-**Assertions:**
-- [ ] Skill does NOT silently ignore the missing pattern library
-- [ ] Skill does NOT invent patterns by guessing from the feature name or GDD alone
-- [ ] `user-input request` offers a "create pattern library first" option (referencing `$ux-design patterns`)
-- [ ] If user proceeds without the library, ui-programmer is told to treat all patterns as new
-- [ ] Final report documents pattern library status (created / absent / updated)
-- [ ] Skill does NOT fail entirely — the gap is noted and user is given a choice
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 6: Design authorization cannot pre-authorize unknown implementation
+
+**Fixture**:
+- UX candidate exists but visual, engine, and implementation paths are not yet planned.
+
+**Expected behavior**:
+1. Initial authorization contains only exact UX/review/checkpoint paths and bounded revision rules.
+2. Visual/engine candidate bytes are planned before their authorization.
+3. Precise implementation manifest is presented and authorized separately.
+
+**Assertions**:
+- [ ] No broad all-pipeline changeset is requested
+- [ ] Nested roles do not independently re-prompt per file
+- [ ] Every implementation operation has exact path/base hash/writer/non-writes
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 7: No argument exits before reads
+
+**Fixture**:
+- Any project state.
+
+**Expected behavior**:
+1. Invocation without --manifest shows exact usage.
+2. No project file is read, no agent is spawned, no checkpoint is written, and no verdict is issued.
+
+**Assertions**:
+- [ ] Validation precedes review-mode/context resolution
+- [ ] No side effect occurs
+- [ ] Usage names the required manifest
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 8: Missing engine blocks production, not design
+
+**Fixture**:
+- Valid design context but Engine Status: UNCONFIGURED.
+
+**Expected behavior**:
+1. UX author/review may reach SPEC_APPROVED.
+2. No ui-programmer or production implementation begins.
+3. Result identifies engine configuration/plan as the single next action.
+
+**Assertions**:
+- [ ] No generic engine hierarchy is invented
+- [ ] Prototype, if separately authorized, is explicitly nonproduction
+- [ ] COMPLETE is impossible
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 9: Bounded parallel review timeout yields PARTIAL and resumable checkpoint
+
+**Fixture**:
+- Four required review streams; concurrency cap is 3.
+- One stream times out twice while others complete.
+
+**Expected behavior**:
+1. At most three agents run concurrently and no child delegation occurs.
+2. One same-hash narrowed retry is attempted.
+3. Timeout produces PARTIAL; quorum is not fabricated.
+4. Checkpoint records completed streams, timeout, hashes, deadline, and next legal retry.
+
+**Assertions**:
+- [ ] Missing reviewer is never treated as approval
+- [ ] Resume re-hashes all inputs and invalidates stale results
+- [ ] No dependent COMPLETE occurs
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 10: Final evidence matrix enforces nested UI rules
+
+**Fixture**:
+- Implementation passes basic navigation but lacks one committed text-scale/reflow row and main-thread profile.
+
+**Expected behavior**:
+1. Missing rows are blocking UNKNOWN/NOT RUN evidence.
+2. Result is NEEDS_REVISION or PARTIAL, never COMPLETE.
+3. Exact owners and evidence paths are reported.
+
+**Assertions**:
+- [ ] Keyboard/gamepad/target inputs, resolutions/aspects, locales, text scales, colorblind modes, reduced motion, lifecycle, and main-thread checks are enumerated
+- [ ] File existence or reviewer prose cannot replace build-bound receipts
+- [ ] src/ui/AGENTS constraints are represented
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 11: Review-mode cannot weaken mandatory quorum
+
+**Fixture**:
+- Mode is lean or solo.
+
+**Expected behavior**:
+1. Lean skips optional director consultations but keeps four mandatory review streams.
+2. Solo records that independent quorum is unavailable and cannot return production COMPLETE.
+
+**Assertions**:
+- [ ] Art/accessibility/engine/UX checks are not silently skipped
+- [ ] Optional consultation output never counts as gate evidence
+- [ ] Mode is resolved once and checkpointed
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 12: Side-effect contract matches implementation
+
+**Fixture**:
+- Design and implementation writes are requested.
+
+**Expected behavior**:
+1. The spec declares controlled writes rather than read-only behavior.
+2. Each phase's complete mutation allowlist is previewed and authorized at its proper boundary.
+3. Non-owned paths remain byte-identical.
+
+**Assertions**:
+- [ ] No statement claims the orchestrator pipeline is read-only
+- [ ] Review tasks are read-only while named writer tasks perform writes
+- [ ] Write/read-back and outside-path mutation checks are reported
+
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
 ## Protocol Compliance
 
-- [ ] `user-input request` used at each phase transition — user approves before pipeline advances
-- [ ] UX Review Gate (Phase 1c) is blocking — Phase 2 cannot begin without APPROVED or explicit user override
-- [ ] All file writes delegated to sub-agents and sub-skills — orchestrator does not call Write or Edit directly
-- [ ] Phase 4 agents launched in parallel per skill spec
-- [ ] Error Recovery Protocol followed: surface → assess → offer options → partial report
-- [ ] Partial report always produced even when agents are BLOCKED
-- [ ] Verdict is one of COMPLETE / BLOCKED
-- [ ] Next steps present at end: `$ux-review`, `$code-review`, `$team-polish`
+- [ ] Explicit bounded requests authorize only operations already enumerated at that boundary
+- [ ] Newly discovered implementation scope requires the separate precise manifest approval
+- [ ] Stable finding IDs and current hashes govern every revision/review
+- [ ] Unique writer ownership remains unchanged through fixes
+- [ ] Timeouts/errors/missing quorum are PARTIAL/BLOCKED, never skipped
+- [ ] Checkpoints are immutable, hash-bound, and resumable
+- [ ] Accepted risk cannot create approval or production COMPLETE
+- [ ] Global UX source, ADRs, game-state owners, and unrelated paths are non-writes
+- [ ] Final COMPLETE is bound to the post-fix build/source-set and conclusive evidence
 
 ---
 
 ## Coverage Notes
 
-- The HUD-specific path (`$ux-design hud` + `hud-design.md` template + visual budget check in Phase 5)
-  is not separately tested here; it shares the same phase structure but uses different templates.
-- The "Update in place" path for interaction-patterns.md (new pattern added during implementation)
-  is exercised implicitly in Case 1 Step 5 — a dedicated fixture with a known new pattern would
-  strengthen coverage.
-- Engine UI specialist unavailable (no engine configured) — skill spec states "skip if no engine
-  configured"; this path is asserted in Case 1 but not given a dedicated fixture.
-- The NEEDS REVISION acceptance-risk override (Case 2 option b) requires the override to be
-  explicitly documented in the report; this is asserted but not further tested for downstream effects.
+This is a behavioral specification, not an executed test result. Runtime fixtures should cover manifest/path/symlink validation, context budgets, nested AGENTS precedence, create/revise base hashes, ux-review record persistence envelope, two-round UX and implementation loops, pattern proposals, missing engine/ADR/library, all authorization boundaries, parallel scheduling/timeouts/retry, checkpoint interruption/resume, outside-path mutation detection, final evidence matrices, and proof that reviewers and non-owned artifacts remain byte-identical.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Bug Triage"
-  short_description: "Read all open bugs in production/qa/bugs/, re-evaluate..."
-  default_prompt: "Use $bug-triage to run the Bug Triage game-studio workflow."
+  short_description: "Read-only bug snapshot and disposition proposals"
+  default_prompt: "Use $bug-triage to inspect production/qa/bugs/, validate the full open-backlog snapshot, and return evidence-backed proposals without changing bug or sprint records."

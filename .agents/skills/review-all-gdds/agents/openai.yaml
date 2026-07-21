@@ -1,4 +1,4 @@
 interface:
-  display_name: "Review All Gdds"
-  short_description: "Holistic cross-GDD consistency and game design review"
-  default_prompt: "Use $review-all-gdds to run the Review All Gdds game-studio workflow."
+  display_name: "Review All GDDs"
+  short_description: "Hash-bound, report-only cross-GDD review"
+  default_prompt: "Use $review-all-gdds to review the current approved GDD manifest in full mode. Return exactly PASS, CONCERNS, FAIL, or PARTIAL; keep design-theory observations advisory unless they violate an explicit approved invariant, and write only a new immutable report if I explicitly authorize its exact path."

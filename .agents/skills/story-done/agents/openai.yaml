@@ -1,4 +1,4 @@
 interface:
   display_name: "Story Done"
-  short_description: "End-of-story completion review"
-  default_prompt: "Use $story-done to run the Story Done game-studio workflow."
+  short_description: "Fail-closed, hash-bound story completion gate"
+  default_prompt: "Use $story-done to verify every required acceptance criterion with current automated or build-bound manual evidence before closing the story."

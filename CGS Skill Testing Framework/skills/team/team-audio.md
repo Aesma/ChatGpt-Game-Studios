@@ -2,209 +2,386 @@
 
 ## Skill Summary
 
-Orchestrates the audio team through a four-step pipeline: audio direction
-(audio-director) → sound design + accessibility review in parallel (sound-designer
-+ accessibility-specialist) → technical implementation + engine validation in
-parallel (technical-artist + primary engine specialist) → code integration
-(gameplay-programmer). Reads relevant GDDs, the sound bible (if present), and
-existing audio asset lists before spawning agents. Compiles all outputs into an
-audio design document saved to `design/gdd/audio-[feature].md`. Uses
-`user-input request` at each step transition. Verdict is COMPLETE when the audio
-design document is produced. Skips the engine specialist spawn gracefully when no
-engine is configured.
+`$team-audio` creates or revises one authoritative audio specification at
+`design/audio/audio-[artifact-id].md`. Audio, sound, accessibility, technical,
+engine, QA, and review agents are bounded read-only proposal producers. Every
+proposal has one destination; exactly one transaction writer may write the
+specification and recovery checkpoint.
+
+The workflow never implements code, tests, middleware, or assets. A current
+raw-hash-bound independent review and final user acceptance are required for
+`SPEC COMPLETE`. Missing engine validation may yield `SPEC COMPLETE — ENGINE
+VALIDATION DEFERRED`, which is explicitly not implementation-ready.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 step/phase headings
-- [ ] Contains verdict keywords: COMPLETE, BLOCKED
-- [ ] Contains "File Write Protocol" section
-- [ ] File writes are delegated to sub-agents — orchestrator does not write files directly
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Has a next-step handoff at the end (references `$dev-story`, `$asset-audit`)
-- [ ] Error Recovery Protocol section is present
-- [ ] `user-input request` is used at step transitions before proceeding
-- [ ] Step 2 explicitly spawns sound-designer and accessibility-specialist in parallel
-- [ ] Step 3 explicitly spawns technical-artist and engine specialist in parallel (when engine is configured)
-- [ ] Skill reads `design/gdd/sound-bible.md` during context gathering if it exists
-- [ ] Output document is saved to `design/gdd/audio-[feature].md`
+- [ ] YAML frontmatter contains only `name` and non-empty `description`; `name`
+      matches the skill directory
+- [ ] Has at least two numbered phase headings
+- [ ] Declares SPEC COMPLETE, ENGINE VALIDATION DEFERRED, PARTIAL, ACCEPTED RISK,
+      and BLOCKED outcomes
+- [ ] Canonical specification path is only
+      `design/audio/audio-[artifact-id].md`
+- [ ] No positive path spawns gameplay-programmer or writes/reviews code or tests
+- [ ] Implementation requires approved spec hash, current engine validation,
+      Accepted ADRs, a ready story, and separate `$dev-story` authorization
+- [ ] All specialists/reviewers are read-only and exactly one transaction writer
+      owns the exact spec/checkpoint paths
+- [ ] Proposal schema includes stable ID, evidence/source hashes, one destination,
+      decision, owner, acceptance, dependencies, and status
+- [ ] Verbatim/all-output aggregation is forbidden
+- [ ] Approval is bound to exact paths, operations, owner, hashes, scope, and a
+      deterministic plan hash
+- [ ] Concurrency, deadline, retry/follow-up, timeout, PARTIAL, rollback,
+      checkpoint, and raw-hash resume rules are bounded
+- [ ] Critical audio-only gameplay information is a non-waivable blocker
+- [ ] QA/playback proposals are PLANNED and never represented as executed evidence
+- [ ] Metadata says spec-only/no implementation and matches the canonical boundary
+- [ ] A next-step handoff never directly invokes implementation
+
+---
+
+## Director Gate Checks
+
+No implementation or generic director gate runs. The independent audio-spec
+review is a read-only, current-hash-bound profile. The author and transaction
+writer cannot review their own artifact.
 
 ---
 
 ## Test Cases
 
-### Case 1: Happy Path — All steps complete, audio design document saved
+### Case 1: Happy path — reviewed audio specification reaches SPEC COMPLETE
 
 **Fixture:**
-- GDD for the target feature exists at `design/gdd/combat.md`
-- Sound bible exists at `design/gdd/sound-bible.md`
-- Existing audio assets are listed in `assets/audio/`
-- Engine is configured in `.codex/docs/technical-preferences.md`
-- No accessibility gaps exist in the planned audio event list
+- Input is `combat`
+- Matching feature GDD, sound bible, accessibility requirements, technical
+  preferences, engine reference, and first-hop dependencies fit the context
+  budget
+- Specification and checkpoint targets are absent
+- All required proposal agents complete within their deadlines
+- Accessibility returns zero BLOCKING findings
+- Engine specialist validates destination-tagged technical proposals
+- User resolves genuine product choices
+- Exact two-path plan P1 is approved
+- One writer writes the approved bytes and verifies raw hash H1
+- Fresh independent audio review returns zero BLOCKING findings against H1
+- qa-tester returns a PLANNED matrix bound to H1
+- User accepts the H1 evidence packet
 
 **Input:** `$team-audio combat`
 
 **Expected behavior:**
-1. Context gathering: orchestrator reads `design/gdd/combat.md`, `design/gdd/sound-bible.md`, and `assets/audio/` asset list before spawning any agent
-2. Step 1: audio-director is spawned; defines sonic identity, emotional tone, adaptive music direction, mix targets, and adaptive audio rules for combat
-3. `user-input request` presents audio direction; user approves before Step 2 begins
-4. Step 2: sound-designer and accessibility-specialist are spawned in parallel; sound-designer produces SFX specifications, audio event list with trigger conditions, and mixing groups; accessibility-specialist identifies critical gameplay audio events and specifies visual fallback and subtitle requirements
-5. `user-input request` presents SFX spec and accessibility requirements; user approves before Step 3 begins
-6. Step 3: technical-artist and primary engine specialist are spawned in parallel; technical-artist designs bus structure, middleware integration, memory budgets, and streaming strategy; engine specialist validates that the integration approach is idiomatic for the configured engine
-7. `user-input request` presents technical plan; user approves before Step 4 begins
-8. Step 4: gameplay-programmer is spawned; wires up audio events to gameplay triggers, implements adaptive music, sets up occlusion zones, writes unit tests for audio event triggers
-9. Orchestrator compiles all outputs into a single audio design document
-10. Subagent asks "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
-11. Summary output lists: audio event count, estimated asset count, implementation tasks, and any open questions
-12. Verdict: COMPLETE
+1. Builds and hashes a bounded context manifest
+2. Collects only structured read-only proposals
+3. Routes every proposal to exactly one destination
+4. Reduces only AUDIO SPEC material into the draft
+5. Previews and obtains one exact plan-hash authorization
+6. Uses one writer for the exact spec/checkpoint paths
+7. Runs independent review and planned-QA generation against H1
+8. Records final acceptance and matching checkpoint state
+9. Returns `SPEC COMPLETE`
 
 **Assertions:**
-- [ ] Sound bible is read during context gathering (before Step 1) when it exists
-- [ ] audio-director is spawned before sound-designer or accessibility-specialist
-- [ ] `user-input request` appears after Step 1 output and before Step 2 launch
-- [ ] sound-designer and accessibility-specialist Codex subagent delegations are issued simultaneously in Step 2
-- [ ] technical-artist and engine specialist Codex subagent delegations are issued simultaneously in Step 3
-- [ ] gameplay-programmer is not launched until Step 3 `user-input request` is approved
-- [ ] Audio design document is written to `design/gdd/audio-combat.md` (not another path)
-- [ ] Summary includes audio event count and estimated asset count
-- [ ] No files are written by the orchestrator directly
-- [ ] Verdict is COMPLETE after document delivery
+- [ ] Only `design/audio/audio-combat.md` and the authorized checkpoint may change
+- [ ] `design/gdd/audio-combat.md` is neither read as authority nor written
+- [ ] No code, test, ADR, budget, QA-plan, import-setting, or asset path changes
+- [ ] Reviewer differs from author/writer
+- [ ] Review, QA-plan proposal, user acceptance, and checkpoint all name H1
+- [ ] Routine phase transitions do not request approval
 
 ---
 
-### Case 2: Accessibility Gap — Critical gameplay audio event has no visual fallback
+### Case 2: TAD-001 — specification freezes before any implementation
 
 **Fixture:**
-- GDD for the target feature exists
-- Step 1 and Step 2 are in progress
-- sound-designer's audio event list includes "EnemyNearbyAlert" — a spatial audio cue that warns the player an enemy is approaching from off-screen
-- accessibility-specialist reviews the event list and finds "EnemyNearbyAlert" has no visual fallback (no on-screen indicator, no subtitle, no controller rumble specified)
-
-**Input:** `$team-audio stealth` (Step 2 scenario)
+- Product proposals are still being discussed and no specification hash is
+  approved
+- A proposal suggests an audio manager, event wiring, and adaptive-music tests
+- A delegation spy records roles and write attempts
 
 **Expected behavior:**
-1. Steps 1–2 proceed; accessibility-specialist and sound-designer are spawned in parallel
-2. accessibility-specialist returns its review with a BLOCKING concern: "`EnemyNearbyAlert` is a critical gameplay audio event (warns player of off-screen threat) with no visual fallback — hearing-impaired players cannot detect this threat. This is a BLOCKING accessibility gap."
-3. Orchestrator surfaces the concern immediately in conversation before presenting `user-input request`
-4. `user-input request` presents the accessibility concern as a BLOCKING issue with options:
-   - Add a visual indicator for EnemyNearbyAlert (e.g., directional arrow on HUD) and continue
-   - Add controller haptic feedback as the fallback and continue
-   - Stop here and resolve all accessibility gaps before proceeding to Step 3
-5. Step 3 (technical-artist + engine specialist) is not launched until the user resolves or explicitly accepts the gap
-6. The accessibility gap is included in the final audio design document under "Open Accessibility Issues" if unresolved
+1. Routes implementation suggestions to BACKLOG / STORY
+2. Does not spawn gameplay-programmer
+3. Writes no source or test file
+4. Does not invoke `$dev-story`
+5. States the independent future prerequisites: accepted current spec hash,
+   current engine validation, Accepted ADR, ready story with testable criteria
 
 **Assertions:**
-- [ ] Accessibility gap is labeled BLOCKING (not advisory) in the report
-- [ ] The specific event name ("EnemyNearbyAlert") and the nature of the gap are stated
-- [ ] `user-input request` surfaces the gap before Step 3 is launched
-- [ ] At least one resolution option is offered (add visual fallback, add haptic fallback)
-- [ ] Step 3 is not launched while the gap is unresolved without explicit user authorization
-- [ ] If the gap is carried forward unresolved, it is documented in the audio design doc as an open issue
+- [ ] Gameplay-programmer spawn count is zero
+- [ ] `src/` and `tests/` hashes remain unchanged
+- [ ] Discussion approval cannot substitute for approved specification hash
+- [ ] Final compilation cannot retroactively authorize code
+- [ ] SPEC COMPLETE means specification only, not implementation or QA completion
 
 ---
 
-### Case 3: No Argument — Usage guidance or design doc inference
+### Case 3: TAD-002 — exact authorization cannot cover unknown outputs
+
+**Fixture:**
+- Read-only proposals are complete
+- Plan P1 names exact spec/checkpoint paths, one writer, create operations,
+  ABSENT baselines, context/draft hashes, destination ledger, and write conditions
+- User approves P1
+
+Run these variants:
+
+| Variant | Event | Expected |
+|---|---|---|
+| 3a | writer requests an implementation file | stop; P1 does not cover it |
+| 3b | writer requests an ADR, QA plan, budget, or asset path | stop; P1 does not cover it |
+| 3c | target operation changes create → revise | invalidate P1 |
+| 3d | writer identity changes | invalidate P1 |
+| 3e | source/target hash changes before write | cancel P1 with zero mutation |
+| 3f | unchanged P1 writes both exact paths | no per-file re-prompt |
+
+**Assertions:**
+- [ ] No wildcard, directory, related-file, or TBD authorization is valid
+- [ ] Path/owner/operation/material-scope expansion requires a complete new plan
+- [ ] Approval is deterministic-plan-hash-bound
+- [ ] Compare-and-swap uses current raw hashes
+- [ ] Implementation files never enter the design changeset
+
+---
+
+### Case 4: TAD-003 — proposal agents cannot race the single writer
+
+**Fixture:**
+- Sound designer, accessibility specialist, technical artist, and engine
+  specialist run in bounded parallel batches
+- Two proposal agents attempt to edit the specification
+- The named writer has not yet received authorization
+
+**Expected behavior:**
+1. Rejects both write attempts
+2. Accepts only schema-valid read-only proposals
+3. Resolves duplicate/conflicting proposal IDs before reduction
+4. Allows only the approved transaction writer to write after P1 approval
+
+**Assertions:**
+- [ ] Parallel agents have zero write ownership
+- [ ] Exactly one writer owns both exact targets
+- [ ] Author and reviewer cannot silently become writers
+- [ ] Overlapping ownership stops and escalates; last-writer-wins is forbidden
+- [ ] The orchestrator does not broaden ownership during recovery
+
+---
+
+### Case 5: TAD-004 — technical, QA, asset, and backlog outputs stay separate
+
+**Fixture:**
+- Agents return:
+  - sonic rules/event contracts/adaptive behavior → AUDIO SPEC
+  - detailed production asset instructions → AUDIO ASSET BRIEF
+  - Wwise/FMOD/native choice, bus graph, engine nodes → TECHNICAL ADR / SPEC
+  - voice/memory/CPU/streaming limits → PERFORMANCE BUDGET
+  - trigger/playback test matrix → QA PLAN
+  - manager/event wiring tasks → BACKLOG / STORY
+  - review discussion → REVIEW ONLY
+
+**Expected behavior:**
+1. Records every proposal ID once with exactly one destination
+2. Passes only AUDIO SPEC constraints to the reducer
+3. References external proposal IDs without copying their content
+4. Writes none of the external destinations
+
+**Assertions:**
+- [ ] Final spec contains no middleware selection, concrete bus graph, engine
+      classes, performance table, code paths, unit tests, QA results, or asset
+      production instructions
+- [ ] No `combine all team outputs` or verbatim merge remains
+- [ ] External destination owners and acceptance conditions are preserved
+- [ ] Technical conflicts remain open for the technical owner; reducer does not guess
+- [ ] Audio spec remains authority only for player-facing audio behavior
+
+---
+
+### Case 6: Critical accessibility gap is non-waivable
+
+**Fixture:**
+- `EnemyNearbyAlert` communicates an off-screen threat only through spatial audio
+- Reviewer creates `AXA-stealth-001` as BLOCKING
+
+Run these variants:
+
+| Variant | User response | Expected |
+|---|---|---|
+| 6a | asks to document and proceed | refuse; remain BLOCKED |
+| 6b | selects a visual or haptic equivalent | one bounded author revision and one verification review |
+| 6c | same blocker remains on second observation | BLOCKED; no third loop |
+| 6d | accepts a non-blocking sensitivity risk | structured risk record; ACCEPTED RISK / NOT APPROVED |
+
+**Assertions:**
+- [ ] Event ID, evidence, requirement, owner, and closure condition are explicit
+- [ ] No skip or generic user authorization bypasses BLOCKING
+- [ ] Stable finding ID survives revision/re-review
+- [ ] Implementation and SPEC COMPLETE are impossible while it remains open
+- [ ] Accepted risk includes owner/deadline/approved_by/approved_at
+
+---
+
+### Case 7: Bounded concurrency, timeout, partial state, and checkpoint
+
+Run these variants:
+
+| Variant | Event | Expected |
+|---|---|---|
+| 7a | required agent reaches 10-minute deadline | TIMED OUT; PARTIAL, not COMPLETE |
+| 7b | one narrowed follow-up also fails | no further retry/replacement |
+| 7c | spec write partially succeeds and byte restoration is unsafe | preserve actual bytes, persist PARTIAL checkpoint |
+| 7d | all changed bytes restore and baseline hashes match | rollback may be reported |
+| 7e | checkpoint write fails | print RECOVERY CHECKPOINT NOT PERSISTED and deny safe resume |
+| 7f | resume hashes match | reuse only matching input/output-hash results |
+| 7g | resume hash differs | stop/revalidate; do not duplicate writes or delegation |
+
+**Assertions:**
+- [ ] At most three agents are live
+- [ ] Every agent has an ISO deadline
+- [ ] PARTIAL report preserves completed proposal IDs and explicit gaps
+- [ ] Checkpoint includes plan/context/source/baseline/current/draft hashes,
+      decisions, findings, agent states/deadlines, engine state, write sets, and
+      safe resume point
+- [ ] Partial artifacts are never implementation-ready
+
+---
+
+### Case 8: Engine not configured yields explicit deferred completion
+
+**Fixture:**
+- Technical preferences show no configured engine
+- All engine-neutral product/specification checks pass
+- User accepts the current reviewed spec hash H1
+
+**Expected behavior:**
+1. Does not spawn any engine specialist
+2. Does not guess middleware or engine component patterns
+3. Records the configuration source hash and exact revalidation trigger
+4. May return `SPEC COMPLETE — ENGINE VALIDATION DEFERRED`
+5. Does not hand off to implementation
+
+**Assertions:**
+- [ ] technical-artist remains read-only and engine-neutral
+- [ ] Deferred state is visible in spec, checkpoint, and report
+- [ ] Selecting/configuring an engine makes prior technical validation stale
+- [ ] Deferred completion is distinct from SPEC COMPLETE
+- [ ] `$dev-story` remains forbidden until current engine validation exists
+
+---
+
+### Case 9: QA and playback evidence are never fabricated
+
+**Fixture:**
+- qa-tester proposes six validation cases
+- No implementation, audio asset, build, or listening session exists
+
+**Expected behavior:**
+1. Reports cases as PLANNED
+2. Reports `QA NOT RUN` and `PLAYBACK NOT RUN`
+3. Writes no QA plan
+4. Claims no pass, coverage, playback quality, mix approval, or accessibility
+   playback result
+
+**Assertions:**
+- [ ] Agent prose is not execution evidence
+- [ ] Filenames, unplayed waveforms, or missing logs do not count as playback
+- [ ] Executed evidence would require spec/build/asset hashes, protocol,
+      environment/device/settings, timestamps/duration, result/observer, and raw
+      evidence hash
+- [ ] No command, session, PASS, timestamp, or hash is invented
+- [ ] QA proposal is bound to the current spec hash and becomes stale on change
+
+---
+
+### Case 10: Missing or invalid artifact ID fails before reads
 
 **Fixture:**
 - Any project state
 
-**Input:** `$team-audio` (no argument)
+Run empty input, path traversal, drive prefix, control-character, and ambiguous
+slug variants.
 
 **Expected behavior:**
-1. Skill detects no argument is provided
-2. Outputs usage guidance: e.g., "Usage: `$team-audio [feature or area]` — specify the feature or area to design audio for (e.g., `combat`, `main menu`, `forest biome`, `boss encounter`)"
-3. Skill exits without spawning any agents
+1. Prints required argument and safe examples
+2. Stops before project-file reads or delegation
+3. Performs no write and emits no verdict
 
 **Assertions:**
-- [ ] Skill does NOT spawn any agents when no argument is provided
-- [ ] Usage message includes the correct invocation format with argument examples
-- [ ] Skill does NOT attempt to infer a feature from existing design docs without user direction
-- [ ] No `user-input request` is used — output is direct guidance
+- [ ] No agent is spawned
+- [ ] No GDD, asset, target, or checkpoint is read
+- [ ] Invalid ID cannot escape `design/audio/`
+- [ ] Existing spec cannot be overwritten under create mode
 
 ---
 
-### Case 4: Missing Sound Bible — Skill notes the gap and proceeds without it
+### Case 11: Context loading and references remain bounded
 
 **Fixture:**
-- GDD for the target feature exists at `design/gdd/main-menu.md`
-- `design/gdd/sound-bible.md` does NOT exist
-- Engine is configured; other context files are present
-
-**Input:** `$team-audio main menu`
+- More than 20 relevant candidates or 250 KiB exist
+- Asset lists contain cyclic references
+- The sound bible is absent
 
 **Expected behavior:**
-1. Context gathering: orchestrator reads `design/gdd/main-menu.md` and checks for `design/gdd/sound-bible.md`
-2. Sound bible is not found; orchestrator notes the gap in conversation: "Note: `design/gdd/sound-bible.md` not found — audio direction will proceed without a project-wide sonic identity reference. Consider creating a sound bible if this is an ongoing project."
-3. Pipeline proceeds normally through all four steps without the sound bible as input
-4. audio-director in Step 1 is informed that no sound bible exists and must establish sonic identity from the feature GDD alone
-5. The missing sound bible is mentioned in the final summary as a recommended next step
+1. Stops after one explicit reference hop
+2. Surfaces a prioritization choice instead of silent truncation
+3. Records exact loaded/omitted paths and raw hashes
+4. Tells audio-director the sound bible is absent instead of inventing it
+5. Keeps full asset-tree content out of agent prompts
 
 **Assertions:**
-- [ ] Orchestrator checks for the sound bible during context gathering (before Step 1)
-- [ ] Missing sound bible is noted explicitly in conversation — not silently ignored
-- [ ] Pipeline does NOT halt due to the missing sound bible
-- [ ] audio-director is notified that no sound bible exists in its prompt context
-- [ ] Summary or Next Steps section recommends creating a sound bible
-- [ ] Verdict is still COMPLETE if all other steps succeed
+- [ ] Context manifest is deterministic and hashable
+- [ ] Cycles do not recurse
+- [ ] Missing sound bible is a reported dependency/recommendation
+- [ ] Agent prompts contain only relevant excerpts and structured predecessors
 
 ---
 
-### Case 5: Engine Not Configured — Engine specialist step skipped gracefully
+### Case 12: Review and acceptance are current-hash-bound
 
 **Fixture:**
-- Engine is NOT configured in `.codex/docs/technical-preferences.md` (shows `[TO BE CONFIGURED]`)
-- GDD for the target feature exists
-- Sound bible may or may not exist
-
-**Input:** `$team-audio boss encounter`
+- Audio reviewer approved H1
+- Specification later changes and now hashes to H2
 
 **Expected behavior:**
-1. Context gathering: orchestrator reads `.codex/docs/technical-preferences.md` and detects no engine is configured
-2. Steps 1–2 proceed normally (audio-director, sound-designer, accessibility-specialist)
-3. Step 3: technical-artist is spawned normally; engine specialist spawn is SKIPPED
-4. Orchestrator notes in conversation: "Engine specialist not spawned — no engine configured in technical-preferences.md. Engine integration validation will be deferred until an engine is selected."
-5. Step 4: gameplay-programmer proceeds with a note that engine-specific audio integration patterns could not be validated
-6. The engine specialist gap is included in the audio design document under "Deferred Validation"
-7. Verdict: COMPLETE (skip is graceful, not a blocker)
+1. Marks H1 review, QA proposal, and acceptance stale
+2. Requires a new plan for a material revision and fresh evidence on H2
+3. Does not retain SPEC COMPLETE for H2
+4. Does not authorize implementation
 
 **Assertions:**
-- [ ] Engine specialist is NOT spawned when no engine is configured
-- [ ] Skill does NOT error out due to the missing engine configuration
-- [ ] The skip is explicitly noted in conversation — not silently omitted
-- [ ] technical-artist is still spawned in Step 3 (skip applies only to the engine specialist)
-- [ ] gameplay-programmer proceeds in Step 4 with the deferred validation noted
-- [ ] Deferred engine validation is recorded in the audio design document
-- [ ] Verdict is COMPLETE (engine not configured is a known graceful case)
+- [ ] Author/writer cannot self-review
+- [ ] Reviewer writes no file
+- [ ] One verification re-review is the maximum after a blocker revision
+- [ ] Checkpoint COMPLETE state must name current hash and acceptance
+- [ ] Filename existence or prior prose approval cannot substitute for hashes
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Context gathering (GDDs, sound bible, asset list) runs before any agent is spawned
-- [ ] `user-input request` is used after every step output before the next step launches
-- [ ] Parallel spawning: Step 2 (sound-designer + accessibility-specialist) and Step 3 (technical-artist + engine specialist) issue all Codex subagent delegations before waiting for results
-- [ ] No files are written by the orchestrator directly — all writes are delegated to sub-agents
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] BLOCKED status from any agent is surfaced immediately — not silently skipped
-- [ ] A partial report is always produced when some agents complete and others block
-- [ ] Audio design document path follows the pattern `design/gdd/audio-[feature].md`
-- [ ] Verdict is exactly COMPLETE or BLOCKED — no other verdict values used
-- [ ] Next Steps handoff references `$dev-story` and `$asset-audit`
+- [ ] Product decisions and one exact write authorization are the only routine
+      user gates
+- [ ] All proposal/review agents are read-only
+- [ ] Exactly one writer owns specification and checkpoint
+- [ ] Parallel batches respect three-agent and 10-minute limits
+- [ ] Destination routing precedes reduction
+- [ ] BLOCKING accessibility/review findings cannot be waived
+- [ ] PARTIAL/timeout/recovery state is reconstructable
+- [ ] Review, QA proposal, and user acceptance bind to current raw hash
+- [ ] QA/playback execution is never fabricated
+- [ ] No implementation, test, ADR, budget, QA plan, or audio asset is written
+- [ ] Canonical path is `design/audio/audio-[artifact-id].md` only
+- [ ] Verdict is one of the five declared outcomes
 
 ---
 
 ## Coverage Notes
 
-- The "Retry with narrower scope" and "Skip this agent" resolution paths from the Error
-  Recovery Protocol are not separately tested — they follow the same `user-input request`
-  + partial-report pattern validated in Cases 2 and 5.
-- Step 4 (gameplay-programmer) happy-path behavior is validated implicitly by Case 1.
-  Failure modes for this step follow the standard Error Recovery Protocol.
-- The accessibility-specialist's subtitle and caption requirements (beyond visual fallbacks)
-  are validated implicitly by Case 1. Case 2 focuses on the more severe case where a
-  critical gameplay event has no fallback at all.
-- Engine specialist validation logic (idiomatic integration, version-specific changes) is
-  tested only for the configured and unconfigured states. The specific content of the
-  engine specialist's output is out of scope for this behavioral spec.
+The shared workflow guide and catalog remain unchanged because they are outside
+this remediation boundary. Catalog last-test fields remain empty: these are
+static candidate checks, not executed workflow results.
+
+Future rollout must align the workflow guide and implementation/story consumers
+with the canonical audio-spec path and approved raw-hash prerequisite.

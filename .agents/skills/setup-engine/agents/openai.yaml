@@ -1,4 +1,4 @@
 interface:
   display_name: "Setup Engine"
-  short_description: "Configure the project's game engine and version"
-  default_prompt: "Use $setup-engine to run the Setup Engine game-studio workflow."
+  short_description: "Verify real engine identity before configuration or upgrade"
+  default_prompt: "Use $setup-engine with a bounded manifest to separate official-source research, product selection, installation, real executable verification, and strictly authorized project configuration or upgrade."

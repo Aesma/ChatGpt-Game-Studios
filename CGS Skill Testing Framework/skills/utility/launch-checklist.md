@@ -2,136 +2,289 @@
 
 ## Skill Summary
 
-`$launch-checklist` generates and evaluates a complete launch readiness checklist
-covering: legal compliance (EULA, privacy policy, ESRB/PEGI ratings), platform
-certification status, store page completeness (screenshots, description, metadata),
-build validation (version tag, reproducible build), analytics and crash reporting
-configuration, and first-run experience verification.
+`$launch-checklist` evaluates one explicit launch-candidate manifest. Every check has
+a stable ID, HARD/ADVISORY class, applicability rule, evidence contract, owner, and
+hash. Local/build evidence must bind the exact candidate; external facts require a
+verifiable provider receipt; human facts require an authorized owner attestation.
 
-The skill produces a checklist report written to `production/launch/launch-checklist-[date].md`
-after a "May I apply the proposed changeset?"
-5. Report written on approval; verdict is LAUNCH READY
-
-**Assertions:**
-- [ ] All checklist categories are checked (legal, platform, store, build, analytics, UX)
-- [ ] All items appear in the report with PASS markers
-- [ ] Verdict is LAUNCH READY
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+The deterministic vocabulary is `LAUNCH_READY`, `LAUNCH_BLOCKED`, `CONCERNS`,
+`UNDETERMINED`, and `ERROR`. The skill never records the final launch decision and
+has no director gate.
 
 ---
 
-### Case 2: Platform Certification Not Submitted — LAUNCH BLOCKED
+## Static Assertions
+
+- [ ] YAML frontmatter contains only `name` and a non-empty `description`; name matches the skill directory
+- [ ] Has at least two phase headings
+- [ ] Requires one explicit launch manifest and exact release/candidate/build/artifact/source/platform identity
+- [ ] Never selects launch evidence, releases, milestones, or prior reports by modification time
+- [ ] Defines stable check IDs, HARD/ADVISORY gate classes, evidence types, owners, applicability, hashes, and load counters
+- [ ] External facts default to UNKNOWN/MANUAL_REQUIRED until a provider receipt verifies
+- [ ] Human facts require a hash-bound authorized owner attestation and cannot be model-signed
+- [ ] Missing, stale, unavailable, or manual-required HARD evidence deterministically yields LAUNCH_BLOCKED
+- [ ] Any incomplete/advisory concern prevents LAUNCH_READY
+- [ ] Dry-run is zero-write, zero-sign-off, watermarked SIMULATION, and returns UNDETERMINED plus a projection
+- [ ] Consumes only canonical hash-valid staged smoke/regression/soak/playtest/test-evidence artifacts
+- [ ] Requires a recovery rehearsal receipt with RTO/RPO or hotfix objective and measured outcome
+- [ ] Uses an immutable assessment path and never overwrites history
+- [ ] Keeps objective readiness separate from Launch Decision: NOT_RECORDED
+- [ ] No director gate or downstream workflow is invoked
+
+---
+
+## Case 1: Missing launch manifest fails closed
 
 **Fixture:**
-- All other checklist items pass
-- Platform certification section: "not submitted" (no submission record found)
 
-**Input:** `$launch-checklist`
+- The supplied path is absent, a directory, malformed, or outside the project root
+
+**Input:** `$launch-checklist assess --manifest production/releases/r1/launch-manifest.yaml --assessment-id launch-r1-a`
 
 **Expected behavior:**
-1. Skill checks all items
-2. Platform certification check fails: no submission record
-3. Skill reports: "LAUNCH BLOCKED — Platform certification not submitted"
-4. Specific platform(s) missing certification are named
-5. Verdict is LAUNCH BLOCKED
+
+- `Workflow Status: ERROR`
+- `Readiness Verdict: ERROR`
+- `Launch Decision: NOT_RECORDED`
+- No evidence scan, gate, or file write occurs
 
 **Assertions:**
-- [ ] Verdict is LAUNCH BLOCKED (not CONCERNS)
-- [ ] Platform certification is identified as the blocking item
-- [ ] Missing platform names are specified
-- [ ] All other passing items are still shown in the report
+
+- [ ] No newest-release fallback occurs
+- [ ] No LAUNCH_READY or CONCERNS verdict appears
+- [ ] The failed path/check is named
 
 ---
 
-### Case 3: Manual Check Required — CONCERNS Verdict
+## Case 2: Candidate identity mismatch cannot produce readiness
 
 **Fixture:**
-- All critical checklist items pass
-- First-run experience item: "MANUAL CHECK NEEDED — human must play the first 5
-  minutes and verify tutorial completion flow"
-- Store screenshots item: "MANUAL CHECK NEEDED — art team must verify screenshot
-  quality matches current build"
 
-**Input:** `$launch-checklist`
+- Launch manifest declares candidate C-17/build B-17/hash H17
+- Candidate manifest or a test receipt declares another build/hash/commit
 
 **Expected behavior:**
-1. Skill checks all items
-2. 2 items are flagged as requiring human verification
-3. Skill reports: "CONCERNS — 2 items require manual verification before launch"
-4. Both items are listed with instructions for what to manually verify
-5. Verdict is CONCERNS (not LAUNCH BLOCKED, since these are advisory)
+
+- Mismatch is identified with declared and observed values.
+- `Workflow Status: ERROR`, `Readiness Verdict: ERROR`.
+- No report is persisted.
 
 **Assertions:**
-- [ ] Verdict is CONCERNS (not LAUNCH READY or LAUNCH BLOCKED)
-- [ ] Both manual check items are listed with verification instructions
-- [ ] Skill does not auto-block on MANUAL CHECK items
+
+- [ ] Version/date similarity cannot replace exact hashes
+- [ ] Every build-bound source must use the same candidate identity
 
 ---
 
-### Case 4: Previous Checklist Exists — Delta Comparison
+## Case 3: Missing external and human evidence blocks HARD checks
 
 **Fixture:**
-- `production/launch/launch-checklist-2026-03-25.md` exists with previous results:
-  - 2 items were BLOCKED (platform cert, crash reporting)
-  - 1 item had a MANUAL CHECK
-- New checklist: platform cert is now PASS, crash reporting is now PASS,
-  manual check still open; 1 new item flagged (EULA last updated date)
 
-**Input:** `$launch-checklist`
+- Platform certification, privacy publication, age rating, production server, and
+  legal approval are applicable HARD checks
+- Local files or prose claims exist, but no valid provider receipts or owner
+  attestations do
 
 **Expected behavior:**
-1. Skill finds the previous checklist and loads it for comparison
-2. Skill produces the new checklist and compares:
-   - Newly resolved: "Platform cert — was BLOCKED, now PASS"
-   - Newly resolved: "Crash reporting — was BLOCKED, now PASS"
-   - Still open: manual check (unchanged)
-   - New issue: EULA last updated date (not in previous checklist)
-3. Delta is shown prominently in the report
-4. Verdict is CONCERNS (manual check + new EULA question)
+
+- Each row is `Check Status: UNKNOWN`, `Evidence Status: MANUAL_REQUIRED`.
+- `Readiness Verdict: LAUNCH_BLOCKED`.
+- The skill names the required issuer/owner and receipt schema.
 
 **Assertions:**
-- [ ] Delta section shows newly resolved items
-- [ ] Delta section shows new issues (not present in previous checklist)
-- [ ] Still-open items from the previous checklist are noted as persistent
-- [ ] Verdict reflects the current state (not the previous state)
+
+- [ ] Local policy/store/media files do not become proof of publication or approval
+- [ ] The model never creates or signs an attestation
+- [ ] Necessary UNKNOWN items cannot become CONCERNS or LAUNCH_READY
 
 ---
 
-### Case 5: Director Gate Check — No gate; launch-checklist is an audit utility
+## Case 4: Advisory manual items produce CONCERNS, not READY
 
 **Fixture:**
-- All checklist dependencies present
 
-**Input:** `$launch-checklist`
+- Every HARD check has current verified PASS/N-A evidence
+- Screenshot visual quality and community briefing are ADVISORY and lack attestations
 
 **Expected behavior:**
-1. Skill runs the full checklist and writes the report
-2. No director agents are spawned
-3. No gate IDs appear in output
+
+- Advisory rows are UNKNOWN/MANUAL_REQUIRED.
+- `Readiness Verdict: CONCERNS`.
+- Launch decision remains NOT_RECORDED.
 
 **Assertions:**
-- [ ] No director gate is invoked
-- [ ] No gate skip messages appear
-- [ ] Verdict is LAUNCH READY, LAUNCH BLOCKED, or CONCERNS — no gate verdict
+
+- [ ] Advisory unknown prevents LAUNCH_READY
+- [ ] It does not become a HARD blocker unless manifest policy says HARD
+- [ ] Exact owner/evidence next step is shown
 
 ---
+
+## Case 5: Complete current staged QA evidence can contribute PASS
+
+**Fixture:**
+
+- Smoke report is persisted sprint mode, PASS, Handoff Eligible YES, and exact
+  candidate/QA-plan/test-manifest/log/evidence hashes verify
+- Regression selection is current VERIFIED COVERAGE with a matching build-bound pass
+  receipt and current test-source/sensitivity hashes
+- Soak result is canonical COMPLETED, Gate Eligible YES, EXECUTED, readiness PASS,
+  and required objective dimensions PASS for the exact profile/build
+- Playtest result is canonical COMPLETED/Gate Eligible YES with matching build and
+  verified manifest/raw/ledger/report hashes
+- Test-evidence review is persisted COMPLETE/ADEQUATE/PASS/FULL/Closure Eligible YES
+
+**Expected behavior:**
+
+- Applicable QA check rows are PASS.
+- No protocol, plan, selection-only file, quick smoke, or conversation result is
+  accepted as completed execution evidence.
+
+**Assertions:**
+
+- [ ] Exact staged producer paths/statuses and transitive hashes are revalidated
+- [ ] Every artifact matches the launch candidate
+- [ ] Soak duration follows risk-profile rationale, not a universal fixed duration
+
+---
+
+## Case 6: Stale or partial QA evidence blocks readiness
+
+**Variants:**
+
+- Smoke is from the prior build or quick mode
+- Regression selection changed after its execution receipt
+- Soak is INCOMPLETE/INCONCLUSIVE or Gate Eligible NO
+- Playtest is IN_PROGRESS or its raw hash changed
+- Test-evidence review is conversation-only, UNKNOWN, targeted-only, or nonpersisted
+
+**Expected behavior:**
+
+- Affected HARD rows are STALE, UNKNOWN, or UNAVAILABLE.
+- `Evidence Coverage: PARTIAL` when applicable.
+- `Readiness Verdict: LAUNCH_BLOCKED`.
+
+**Assertions:**
+
+- [ ] No old result is promoted by date or filename
+- [ ] Selection/protocol existence alone cannot pass
+- [ ] Partial evidence cannot yield LAUNCH_READY
+
+---
+
+## Case 7: Failed rollback rehearsal is deterministically blocking
+
+**Fixture:**
+
+- Current recovery rehearsal receipt binds the candidate and production-equivalent
+  environment
+- Measured recovery exceeds declared RTO or data loss exceeds RPO
+- All other checks pass
+
+**Expected behavior:**
+
+- Recovery check is HARD FAIL.
+- `Readiness Verdict: LAUNCH_BLOCKED`.
+- Logs, measured target, owner, and receipt hash are shown.
+
+**Assertions:**
+
+- [ ] A runbook document cannot override the failed rehearsal
+- [ ] User optimism cannot relabel the evidence
+- [ ] Retest requires a new immutable receipt
+
+---
+
+## Case 8: New build invalidates old attestations and receipts
+
+**Fixture:**
+
+- A prior assessment and owner attestations were valid for candidate C-16
+- Current manifest is C-17 with changed build/artifact hash
+- Previous path/hash is explicitly supplied for delta comparison
+
+**Expected behavior:**
+
+- Old build-bound rows become STALE.
+- Delta is shown by stable check ID.
+- Current verdict ignores prior PASS labels and follows current evidence.
+
+**Assertions:**
+
+- [ ] Typed sign-off names cannot carry across build change
+- [ ] Previous assessment is never selected by mtime
+- [ ] Current unresolved HARD rows block launch
+
+---
+
+## Case 9: Dry-run creates no verdict artifact or signatures
+
+**Fixture:**
+
+- Valid launch manifest and mixed current evidence
+
+**Input:** `$launch-checklist dry-run --manifest production/releases/r1/launch-manifest.yaml --assessment-id sim-r1`
+
+**Expected behavior:**
+
+- Output begins/ends with the SIMULATION watermark.
+- `Readiness Verdict: UNDETERMINED` plus labeled `Simulation Projection`.
+- `Persistence: SIMULATION`, null report path/hash.
+- No writes, attestations, signatures, submissions, or external actions occur.
+
+**Assertions:**
+
+- [ ] Projection is not presented as actual LAUNCH_READY/BLOCKED/CONCERNS verdict
+- [ ] Dry-run cannot be consumed as durable evidence
+- [ ] Launch Decision remains NOT_RECORDED
+
+---
+
+## Case 10: Fully verified candidate may be LAUNCH_READY
+
+**Fixture:**
+
+- Launch/candidate/build identities and all required sources verify
+- Every applicable HARD and ADVISORY check is PASS or valid N-A
+- External receipts, owner attestations, QA producers, operational rehearsals, and
+  freshness rules are all current
+- No load failures, unknowns, stale data, unavailable sources, or unresolved warnings
+- Exact immutable report write/read-back succeeds
+
+**Expected behavior:**
+
+- `Workflow Status: COMPLETE`
+- `Evidence Coverage: COMPLETE`
+- `Readiness Verdict: LAUNCH_READY`
+- `Persistence: VERIFIED`
+- `Launch Decision: NOT_RECORDED`
+
+**Assertions:**
+
+- [ ] Report contains evidence snapshot and every transitive hash
+- [ ] LAUNCH_READY is described as evidence readiness, not launch authorization
+- [ ] No downstream gate/team/release action is invoked
+
+---
+
+## Director Gate Checks
+
+None. `$launch-checklist` is a read-only readiness evaluator with an optional
+immutable report.
 
 ## Protocol Compliance
 
-- [ ] Checks all required categories (legal, platform, store, build, analytics, UX)
-- [ ] LAUNCH BLOCKED for hard failures (uncompleted certifications, missing legal docs)
-- [ ] CONCERNS for advisory items requiring manual verification
-- [ ] Compares against previous checklist when one exists
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Verdict is LAUNCH READY, LAUNCH BLOCKED, or CONCERNS
-
----
+- [ ] Exact bounded authorization covers only the optional report
+- [ ] Input hashes are revalidated immediately before persistence
+- [ ] Persistence failure does not change observed readiness but prevents durable use
+- [ ] External/manual facts never pass without verified evidence
+- [ ] Verdict algorithm is applied after all stable rows and load counters exist
+- [ ] Catalog and workflow guide are not modified by this workflow
 
 ## Coverage Notes
 
-- Region-specific compliance (GDPR data handling, COPPA for under-13 audiences)
-  is checked but the specific requirements are not enumerated in test assertions.
-- The store page completeness check (screenshots, description) relies on the
-  presence of files in `production/store/`; it cannot verify visual quality.
-- Build reproducibility check validates the presence of a version tag and build
-  configuration but does not execute the build process.
+The cases close the three P0 failures: fabricated external/manual PASS, undefined
+verdict aggregation, and missing release-candidate identity. They also encode current
+staged smoke, regression, soak, playtest, and test-evidence producer contracts,
+partial/stale handling, immutable sign-offs, recovery rehearsal, dry-run isolation,
+and separation of readiness from the final launch decision.

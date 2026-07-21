@@ -2,175 +2,239 @@
 
 ## Skill Summary
 
-`$ux-review` validates an existing UX spec or HUD design document against
-accessibility and interaction standards. It checks for required sections
-(User Flows, Interaction States, Wireframe Description, Accessibility Notes),
-completeness of interaction state definitions (hover, focus, disabled, error),
-accessibility compliance (keyboard navigation, color contrast notes, screen
-reader considerations), and consistency with the art bible or design system
-if those documents exist.
+$ux-review is a read-only, profile-aware reviewer for the three artifact types
+authored by $ux-design: screen/flow UX specs, HUD designs, and interaction
+pattern libraries. It loads the current author sources, versions them with a
+SHA-256 hash, routes from document identity rather than filename, calculates a
+deterministic verdict, and returns a target-hash-bound structured record.
 
-The skill is read-only — it produces no file writes. Verdicts: APPROVED
-(all checks pass), NEEDS REVISION (fixable issues found), or MAJOR REVISION
-NEEDED (structural or accessibility failures). No director gates apply —
-`$ux-review` IS the review gate for UX specs.
+Quality verdicts are APPROVED, NEEDS REVISION, or MAJOR REVISION NEEDED.
+Routing or schema failures return ERROR / MIGRATION REQUIRED with no quality
+verdict. Accepted risk remains NOT_APPROVED and cannot satisfy a hard gate.
+
+The skill never writes project files. Its returned record says
+gate_evidence_status: NOT_PERSISTED; persistence belongs to a separate,
+explicitly authorized recorder.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: APPROVED, NEEDS REVISION, MAJOR REVISION NEEDED
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff (e.g., back to `$ux-design` for revision, or proceed to implementation)
+- [ ] YAML frontmatter contains only name and a non-empty description; name
+      matches the skill directory
+- [ ] Reads both .agents/skills/ux-design/SKILL.md and
+      .agents/skills/ux-design/references/continued-workflow.md
+- [ ] Defines matching profiles for ux-spec, hud-design, and
+      interaction-pattern-library
+- [ ] Defines ERROR / MIGRATION REQUIRED separately from all quality verdicts
+- [ ] Defines an exact severity-to-verdict algorithm
+- [ ] Defines ux-review-record-v1 with target SHA-256, author-schema hash,
+      findings, verdict, approval status, and persistence status
+- [ ] Remains read-only
+- [ ] Contains no statement that a conversation-only APPROVED verdict is
+      implementation-ready or directly authorizes a visual/implementation handoff
 
 ---
 
 ## Director Gate Checks
 
-None. `$ux-review` is itself the review gate for UX specs. No additional director
-gates are invoked within this skill.
+None. $ux-review performs the UX review. It does not invoke another director
+gate and does not claim its conversation-only output is persisted gate evidence.
 
 ---
 
 ## Test Cases
 
-### Case 1: Happy Path — Complete UX spec with all required sections, APPROVED
+### Case 1: Current screen/flow author profile routes and passes
 
-**Fixture:**
-- `design/ux/hud.md` exists with all required sections populated:
-  - User Flows: complete player flow diagrams
-  - Interaction States: normal, hover, focus, disabled, error all defined
-  - Wireframe Description: layout described
-  - Accessibility Notes: keyboard nav, contrast ratios, screen reader notes
+Fixture: A populated design/ux/inventory.md created from the current $ux-design
+UX Spec skeleton. It contains the exact Template: UX Spec marker, every required
+top-level/nested section, and every stated author minimum.
 
-**Input:** `$ux-review hud`
+Input: $ux-review design/ux/inventory.md
 
-**Expected behavior:**
-1. Skill reads `design/ux/hud.md`
-2. Skill checks all 4 required sections — all present and non-empty
-3. Skill checks interaction states — all 5 states defined
-4. Skill checks accessibility notes — keyboard, contrast, and screen reader covered
-5. Skill outputs: checklist of all passed checks
-6. Verdict is APPROVED
+Assertions:
 
-**Assertions:**
-- [ ] All 4 required sections are checked
-- [ ] All 5 interaction states are verified present
-- [ ] Verdict is APPROVED
-- [ ] No files are written
+- [ ] Routes to artifact_type: ux-spec from routing_basis: template-marker
+- [ ] schema_version starts with ux-design-author-sha256:
+- [ ] Checks the author skeleton, not the obsolete User Flows / Interaction
+      States / Accessibility Notes schema
+- [ ] Returns APPROVED when all author-required checks pass
+- [ ] Returns a COMPLETE ux-review-record-v1 with the exact target SHA-256
+- [ ] Keeps gate_evidence_status: NOT_PERSISTED and does not authorize handoff
+- [ ] Makes no file writes
 
 ---
 
-### Case 2: Missing Accessibility Section — NEEDS REVISION
+### Case 2: Current HUD profile does not require reviewer-only sections
 
-**Fixture:**
-- `design/ux/hud.md` exists but the Accessibility Notes section is empty
-- All other sections are fully populated
+Fixture: A complete current $ux-design HUD artifact with the Template: HUD
+Design marker and populated HUD Philosophy, Information Architecture, Layout
+Zones, HUD Elements, Dynamic Behaviors, Platform & Input Variants,
+Accessibility, and Open Questions sections. It intentionally has no HUD States,
+Visual Budget, Tuning Knobs, or Feedback & Notification sections.
 
-**Input:** `$ux-review hud`
+Input: $ux-review hud
 
-**Expected behavior:**
-1. Skill reads the file and checks all sections
-2. Accessibility Notes section is empty — check fails
-3. Skill outputs: "NEEDS REVISION — Accessibility Notes section is empty"
-4. Skill lists specific items to add: keyboard navigation, color contrast ratios,
-   screen reader labels
-5. Verdict is NEEDS REVISION
-6. Handoff suggests returning to `$ux-design hud` to fill in the section
+Assertions:
 
-**Assertions:**
-- [ ] NEEDS REVISION verdict is returned (not APPROVED or MAJOR REVISION NEEDED)
-- [ ] Specific missing content items are listed
-- [ ] Handoff points back to `$ux-design hud` for revision
-- [ ] No files are written
+- [ ] The alias selects the path but the document marker selects hud-design
+- [ ] The four reviewer-only sections above are not required
+- [ ] The artifact can receive APPROVED when all current author requirements pass
+- [ ] The record is hash-bound and gate_evidence_status is NOT_PERSISTED
 
 ---
 
-### Case 3: Interaction States Incomplete — NEEDS REVISION
+### Case 3: Current interaction-pattern profile routes independently
 
-**Fixture:**
-- `design/ux/settings-menu.md` exists
-- Interaction States section only defines: normal and hover
-- Missing: focus, disabled, error states
+Fixture: A complete current $ux-design interaction pattern library with the
+exact Interaction Pattern Library marker, current top-level sections, and all
+author-defined fields for every pattern.
 
-**Input:** `$ux-review settings-menu`
+Input: $ux-review patterns
 
-**Expected behavior:**
-1. Skill reads the file and checks interaction states
-2. Only 2 of 5 required states are defined
-3. Skill reports: "NEEDS REVISION — Interaction states incomplete: missing focus, disabled, error"
-4. Verdict is NEEDS REVISION with specific missing states named
+Assertions:
 
-**Assertions:**
-- [ ] NEEDS REVISION verdict returned
-- [ ] All 3 missing states are named explicitly in the output
-- [ ] Skill does not return MAJOR REVISION NEEDED for a fixable gap
-- [ ] Handoff suggests returning to `$ux-design settings-menu`
+- [ ] Routes to interaction-pattern-library
+- [ ] Requires the current author profile rather than a fixed widget list
+- [ ] Can return APPROVED without Animation Standards or Sound Standards tables
 
 ---
 
-### Case 4: File Not Found — Error with remediation
+### Case 4: Explicit schema mismatch is not a quality verdict
 
-**Fixture:**
-- `design/ux/inventory-screen.md` does not exist
+Fixture: A UX spec declares Artifact Type: ux-spec and an unsupported explicit
+Schema Version.
 
-**Input:** `$ux-review inventory-screen`
+Input: $ux-review design/ux/inventory.md
 
-**Expected behavior:**
-1. Skill attempts to read `design/ux/inventory-screen.md` — file not found
-2. Skill outputs: "UX spec not found: design/ux/inventory-screen.md"
-3. Skill suggests running `$ux-design inventory-screen` to create the spec first
-4. No review is performed; no verdict is issued
+Assertions:
 
-**Assertions:**
-- [ ] Error message names the missing file with full path
-- [ ] `$ux-design inventory-screen` is suggested as the remediation
-- [ ] No review checklist is produced
-- [ ] No verdict is issued (error state, not APPROVED/NEEDS REVISION)
+- [ ] Returns ERROR / MIGRATION REQUIRED
+- [ ] Reports the unsupported and current schema versions
+- [ ] Record has review_status: ERROR, verdict: null, and
+      approval_status: NOT_APPROVED
+- [ ] No profile checklist or quality verdict is issued
 
 ---
 
-### Case 5: Director Gate Check — No gate; ux-review is itself the review
+### Case 5: Filename is fallback evidence only
 
-**Fixture:**
-- Valid UX spec file
+Fixture: design/ux/hud.md has neither explicit artifact metadata nor a
+recognized Template marker.
 
-**Input:** `$ux-review hud`
+Input: $ux-review design/ux/hud.md
 
-**Expected behavior:**
-1. Skill performs the review and issues a verdict
-2. No additional director agents are spawned
-3. No gate IDs appear in output
+Assertions:
 
-**Assertions:**
-- [ ] No director gate is invoked
-- [ ] No gate skip messages appear
-- [ ] Verdict is APPROVED, NEEDS REVISION, or MAJOR REVISION NEEDED — no gate verdict
+- [ ] Does not automatically apply the HUD profile from the filename
+- [ ] Proposes the inferred type and asks for confirmation
+- [ ] Issues no verdict before confirmation
+- [ ] After confirmation, records user-confirmed-filename-fallback
+
+---
+
+### Case 6: Conflicting identity and report exclusion
+
+Fixtures:
+
+- design/ux/hud.md declares Template: UX Spec
+- design/ux/reports/hud-review.md declares a review record
+- design/ux/notes.md has no recognized identity
+
+Inputs: $ux-review hud and $ux-review all
+
+Assertions:
+
+- [ ] The hud alias conflict returns ERROR / MIGRATION REQUIRED with no verdict
+- [ ] all excludes the review record with reason review-report
+- [ ] all excludes the notes file with reason unknown-artifact-type
+- [ ] Neither excluded file receives a UX checklist or verdict
+
+---
+
+### Case 7: Deterministic severity-to-verdict mapping
+
+Fixtures: Four otherwise schema-compatible artifacts: no required failures; one
+failed non-foundation requirement; one absent profile foundation section; and
+one required check left unevaluated.
+
+Assertions:
+
+- [ ] No required failures returns APPROVED
+- [ ] A BLOCKING finding returns NEEDS REVISION
+- [ ] A MAJOR finding returns MAJOR REVISION NEEDED
+- [ ] An unevaluated required check returns ERROR with verdict: null
+- [ ] Findings use stable UXF-<profile>-<check-key> IDs and cite target sections
+
+---
+
+### Case 8: Hash binding and staleness
+
+Fixture: Review a valid artifact, capture target_sha256, then change one byte in
+the target.
+
+Assertions:
+
+- [ ] The record contains the exact reviewed hash
+- [ ] The changed target no longer matches target_sha256
+- [ ] The stale_when rule invalidates the old record
+- [ ] Gate consumers are instructed to reject the stale record
+- [ ] Bytes changing during review cause ERROR with no verdict
+
+---
+
+### Case 9: Accepted risk never becomes approval
+
+Fixture: A review returns NEEDS REVISION with open blocking finding IDs, and the
+user chooses to proceed.
+
+Assertions:
+
+- [ ] Original verdict remains NEEDS REVISION
+- [ ] Decision status is ACCEPTED_RISK
+- [ ] approval_status remains NOT_APPROVED
+- [ ] gate_evidence_eligible is false
+- [ ] Output never calls the artifact approved or implementation-ready
+
+---
+
+### Case 10: File not found
+
+Fixture: design/ux/inventory-screen.md does not exist.
+
+Input: $ux-review design/ux/inventory-screen.md
+
+Assertions:
+
+- [ ] Error names the missing path
+- [ ] Suggests $ux-design inventory-screen
+- [ ] No checklist and no quality verdict are issued
+- [ ] No file is written
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Checks all 4 required sections (User Flows, Interaction States, Wireframe,
-     Accessibility Notes)
-- [ ] Checks all 5 interaction states (normal, hover, focus, disabled, error)
-- [ ] Checks accessibility coverage (keyboard nav, contrast, screen reader)
-- [ ] Does not write any files
-- [ ] Issues specific, actionable feedback when verdict is not APPROVED
-- [ ] Ends with next-step handoff to `$ux-design` for revision or implementation
+- [ ] Uses the matching current $ux-design author profile for all three types
+- [ ] Never routes solely from a path without confirmation
+- [ ] Never reviews reports or unknown document types
+- [ ] Schema mismatch produces ERROR / MIGRATION REQUIRED, not a quality verdict
+- [ ] Every complete result is target-hash-bound
+- [ ] Verdict follows the documented algorithm exactly
+- [ ] Accepted risk remains NOT_APPROVED
+- [ ] No files are written
+- [ ] Revision handoff points to the matching $ux-design mode; implementation
+      handoff requires separately persisted, current-hash evidence and is never
+      authorized by this conversation-only reviewer
 
 ---
 
 ## Coverage Notes
 
-- MAJOR REVISION NEEDED is triggered when structural sections are entirely
-  absent (not just empty) or when fundamental interaction flows are missing
-  entirely; not tested with a separate fixture here.
-- Art bible / design system consistency check (color palette alignment) is
-  mentioned as a capability but not separately fixture-tested.
-- The case where an existing spec was written for a now-renamed screen is
-  not tested; the skill would review the file by path regardless of the name.
+- Persistent recording and gate consumption are external integration concerns;
+  this spec verifies that $ux-review returns a persistable record and never
+  falsely labels it persisted.
+- Bounded all execution, missing dependency/partial semantics, prior-finding
+  convergence, and generated schema fixtures remain follow-up coverage outside
+  this P0 remediation.

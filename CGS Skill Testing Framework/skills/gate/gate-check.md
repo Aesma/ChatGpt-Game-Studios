@@ -2,113 +2,211 @@
 
 ## Skill Summary
 
-`$gate-check` validates whether the project is ready to advance to the next
-development phase. It checks for required artifacts, runs quality checks, asks
-the user about unverifiable items, and produces a PASS/CONCERNS/FAIL verdict.
-On PASS with user confirmation, it writes the new stage name to
-`production/stage.txt`. It governs all 6 phase transitions and is the most
-critical gate-keeping skill in the pipeline.
+`$gate-check` is a read-only assessment of one exact adjacent phase transition. It
+validates the authoritative current stage, checks artifacts and quality, requires
+hash-bound evidence for blocking prior-result checks, and emits a strict
+PASS/CONCERNS/FAIL verdict plus an immutable gate record. It never writes
+`production/stage.txt`. Accepted risk is a separate advance request and never changes
+the gate verdict.
 
 ---
 
 ## Static Assertions (Structural)
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings (numbered Phase N or ## sections)
-- [ ] Contains verdict keywords: PASS, CONCERNS, FAIL
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-
-**Assertions:**
-- [ ] Skill verifies `design/gdd/game-concept.md` through repository inspection before marking it checked
-- [ ] Output includes a "Required Artifacts" section with check status per item
-- [ ] Output includes a "Quality Checks" section with check status per item
-- [ ] Output includes a "Verdict" line with one of PASS / CONCERNS / FAIL
-- [ ] Skill asks about unverifiable quality items (e.g., "Has this been reviewed?") rather than assuming PASS
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-5. Skill waits for user input before finalizing verdict
-
-**Assertions:**
-- [ ] Items that cannot be auto-verified are marked `[?] MANUAL CHECK NEEDED` rather than assumed PASS
-- [ ] Skill uses a question to the user for at least one unverifiable quality item
-- [ ] Skill does not mark unverifiable items as PASS by default
+- [ ] YAML frontmatter contains only required `name` and non-empty `description`
+- [ ] Declares all six exact transition IDs and rejects phase-name shorthand
+- [ ] Reads and validates `production/stage.txt` before artifact checks
+- [ ] Defines PASS, CONCERNS, FAIL, and the non-verdict invocation result ERROR
+- [ ] Requires `cgs.review-evidence/v1` for every blocking check based on a prior result
+- [ ] Classifies missing bindings as UNBOUND and hash mismatches as STALE; both force FAIL
+- [ ] Emits `cgs.gate-record/v1` with `stage_mutated: false`
+- [ ] Defines `PROCEED_WITH_ACCEPTED_RISK` only in a separate `cgs.advance-request/v1`
+- [ ] Contains no instruction that writes, creates, or updates `production/stage.txt`
+- [ ] Solo mode skips directors without skipping deterministic quality or evidence checks
 
 ---
 
----
+## Case 1: Six Valid Adjacent Transitions
 
-### Case 5: Director Gate — lean vs full vs solo mode
+Run this case once for every row:
 
-**Fixture:**
-- `production/session-state/review-mode.txt` exists (or equivalent state file)
-- All required artifacts for the target gate are present
-- `design/gdd/game-concept.md` exists
+| Input | stage.txt | Candidate next stage |
+|---|---|---|
+| `$gate-check concept-to-systems-design` | `Concept` | `Systems Design` |
+| `$gate-check systems-design-to-technical-setup` | `Systems Design` | `Technical Setup` |
+| `$gate-check technical-setup-to-pre-production` | `Technical Setup` | `Pre-Production` |
+| `$gate-check pre-production-to-production` | `Pre-Production` | `Production` |
+| `$gate-check production-to-polish` | `Production` | `Polish` |
+| `$gate-check polish-to-release` | `Polish` | `Release` |
 
-**Case 5a — full mode:**
-- `review-mode.txt` contains `full`
-
-**Input:** `$gate-check systems-design` (with full mode active)
+**Fixture:** All blocking checks pass. Every blocking prior-result check has a complete
+`cgs.review-evidence/v1` record whose artifact paths and SHA-256 values match current
+bytes. Capture a repository snapshot and stage-file hash before invocation.
 
 **Expected behavior:**
-1. Skill reads review mode — determines `full`
-2. Skill spawns all 4 PHASE-GATE director prompts in parallel:
-   - CD-PHASE-GATE (creative-director)
-   - TD-PHASE-GATE (technical-director)
-   - PR-PHASE-GATE (producer)
-   - AD-PHASE-GATE (art-director)
-3. If one director returns CONCERNS → overall gate verdict is at minimum CONCERNS
-4. All 4 verdicts are collected before producing final output
 
-**Assertions (5a):**
-- [ ] Skill reads review-mode before deciding which directors to spawn
-- [ ] All 4 PHASE-GATE director prompts are spawned (not just 1 or 2)
-- [ ] Directors are spawned in parallel (simultaneous, not sequential)
-- [ ] A CONCERNS verdict from any one director propagates to overall verdict
-- [ ] Verdict is NOT auto-PASS if any director returns CONCERNS or REJECT
-
-**Case 5b — solo mode:**
-- `review-mode.txt` contains `solo`
-
-**Input:** `$gate-check systems-design` (with solo mode active)
-
-**Expected behavior:**
-1. Skill reads review mode — determines `solo`
-2. Each director is noted as skipped: "[CD-PHASE-GATE] skipped — Solo mode"
-3. Gate verdict is derived from artifact/quality checks only
-4. No director gates spawn
-
-**Assertions (5b):**
-- [ ] No director gates are spawned in solo mode
-- [ ] Each skipped gate is explicitly noted in output: "[GATE-ID] skipped — Solo mode"
-- [ ] Verdict is based on artifact and quality checks only
-
-**Note on Case 3 correction:**
-The Case 3 assertions previously stated "Skill does not ask the user which gate to check
-if current stage is determinable." This is correct. However, the skill DOES use
-user-input request to confirm the auto-detected transition before running full checks —
-this is a confirmation step, not a gate selection. Assertions for Case 3 should not
-treat this confirmation as a failure.
+1. The exact ID maps to the listed current and candidate stages.
+2. Current stage is verified before any artifact check.
+3. Every evidence hash is recomputed and matches.
+4. Verdict is PASS and gate record disposition is ELIGIBLE.
+5. Gate record says `stage_mutated: false`.
+6. Repository snapshot and `stage.txt` bytes are unchanged.
 
 ---
+
+## Case 2: Transition and State Validation Errors
+
+Test each input independently:
+
+- `$gate-check production` (phase-name shorthand)
+- `$gate-check concept-to-production` (non-adjacent/unknown ID)
+- `$gate-check production-to-polish` with `stage.txt = Pre-Production`
+- Any transition with missing, empty, or unknown `stage.txt`
+- No transition argument with `stage.txt = Release`
+
+**Assertions:**
+
+- [ ] Result is ERROR, not PASS/CONCERNS/FAIL
+- [ ] Artifact checks and director panel do not run
+- [ ] No gate record or advance request is emitted
+- [ ] No project file changes
+
+---
+
+## Case 3: Hash-Bound Evidence
+
+### 3a — Current evidence
+
+Provide all required fields, a complete artifact-set manifest, and matching SHA-256
+values. The producer verdict satisfies the checklist threshold.
+
+- [ ] Evidence may satisfy the blocking check
+- [ ] Gate output cites evidence record ID and current artifact hashes
+
+### 3b — Stale evidence
+
+Modify one reviewed artifact after the evidence record is produced.
+
+- [ ] Recomputed hash mismatch is STALE
+- [ ] Blocking check fails and overall verdict is FAIL
+- [ ] Skill does not fall back to another historical glob or structural completeness
+
+### 3c — Unbound evidence
+
+Provide a historical report/verdict but omit its evidence record or one required field.
+
+- [ ] Result is UNBOUND
+- [ ] Blocking check fails and overall verdict is FAIL
+- [ ] Document-internal sign-off and user recollection are not substitutes
+
+---
+
+## Case 4: Accepted Risk Preserves the Strict Verdict
+
+**Fixture:** At least one blocking finding makes the verdict FAIL. The user explicitly
+requests continuation and accepts every named risk.
+
+**Assertions:**
+
+- [ ] Gate record remains immutable with verdict FAIL and disposition NOT_ELIGIBLE
+- [ ] Skill emits a separate `cgs.advance-request/v1`
+- [ ] Request contains transition ID, gate record ID, operator, timestamp, accepted
+      finding IDs, and evidence record IDs
+- [ ] Requested disposition is `PROCEED_WITH_ACCEPTED_RISK`
+- [ ] Neither output relabels the assessment as PASS
+- [ ] `production/stage.txt` and transition history are not modified
+
+---
+
+## Case 5: Director Modes Do Not Bypass P0 Rules
+
+### 5a — lean/full
+
+- [ ] All four PHASE-GATE directors run in parallel
+- [ ] NOT READY makes the strict verdict at least FAIL
+- [ ] Explicit risk acceptance does not change that FAIL
+
+### 5b — solo
+
+- [ ] No director gates spawn
+- [ ] Artifact, deterministic quality, evidence-binding, and stale checks still run
+- [ ] Solo does not convert STALE or UNBOUND evidence into PASS
+
+---
+
+## Case 6: Mutation Guard
+
+Run once with PASS and once with FAIL followed by accepted risk. Compare repository tree,
+file hashes, and `stage.txt` metadata before and after.
+
+- [ ] No file is created, edited, renamed, or deleted
+- [ ] PASS produces only conversational output
+- [ ] Accepted risk produces only conversational output
+- [ ] Any attempted stage mutation fails the spec
+
+---
+
+## Case 7: Canonical Playtest-Session Counting
+
+- [ ] Counts only distinct `production/playtests/<session-id>/report.md` results
+- [ ] Requires COMPLETED, Gate Eligible YES, build/times/tester, and matching evidence hashes
+- [ ] Templates, protocols, raw logs, reviews, ingest-only sessions, duplicates,
+      legacy paths, and hash-mismatched reports count as zero
+- [ ] A director review never increments the session count
+
+## Case 8: Regression Selection Plus Build Receipt
+
+- [ ] Selection manifest alone never passes the regression gate
+- [ ] Revalidates QA/source/test/sensitivity hashes and active stable IDs
+- [ ] Requires a runner receipt bound to the exact selection hash and target build
+- [ ] Missing, stale, awaiting-run, indeterminate, quarantined-unverified, or any
+      non-pass required test blocks the check
+
+## Case 9: Release Collector Does Not Self-Approve
+
+- [ ] Accepts only `Gate Decision: NOT EVALUATED` from release-checklist
+- [ ] Re-hashes the exact release/policy/candidate/build/item evidence set
+- [ ] Any unresolved hard item forces FAIL; advisory-only unresolved items force CONCERNS
+- [ ] File existence, checkbox state, or merely running a checklist never passes
+- [ ] Team-QA evidence passes only with current persisted COMPLETE + APPROVED +
+      Gate Eligible YES for the exact candidate/build; conditions do not pass
+- [ ] Localization requires current manifest/freeze/source/keyset/translation/
+      font/UI/build receipts per locale; QA-plan-ready or MT drafts never pass
+
+## Case 10: Runtime Performance Evidence Only
+
+- [ ] Accepts only a persisted/read-back `performance-runtime-report-v1` bound to
+      the exact versioned `performance-budget-v1`, source/build, platform/hardware,
+      scenario, inputs, normalized data, and complete required matrix
+- [ ] Requires `evidence_kind: RUNTIME_MEASUREMENT`, `gate_evidence_eligible: true`,
+      `performance_targets_met: true`, and overall `WITHIN BUDGET`
+- [ ] Recent files, prose budgets, static analysis, capture plans, conversation-only
+      output, accepted risk, partial coverage, stale hashes, `CONCERNS`, and
+      `OVER BUDGET` never pass
+
+## Case 11: Current Persisted Vertical-Slice PROCEED
+
+- [ ] Requires an explicitly supplied `vertical-slice-evaluation-report` schema 1
+      and externally supplied report hash, then revalidates the complete referenced
+      candidate/source/build/scope/evidence/playtest/velocity/decision graph
+- [ ] PASS requires COMPLETE, evidence/product/final `PROCEED`, CURRENT,
+      `Gate Eligible: YES`, `Persistence: VERIFIED`, and no later mutation
+- [ ] A directory or report filename, skipped slice, PARTIAL, INCONCLUSIVE, PIVOT,
+      KILL, BLOCKED, stale/unpersisted/advisory result, director concern, or hash
+      mismatch never satisfies the transition
 
 ## Protocol Compliance
 
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Presents the full checklist and complete stage-file changeset before requesting authorization when the task has not already granted it
-- [ ] Ends with a "Follow-Up Actions" section listing next steps per verdict
-- [ ] Never advances the stage without explicit user confirmation
-- [ ] Never auto-creates `production/stage.txt` if it doesn't exist without asking
+- [ ] Gate verdict is a strict calculation; user authority is represented separately
+- [ ] Every accepted blocking prior-result conclusion is bound to exact current bytes
+- [ ] Invalid or mismatched transitions cannot reach gate evaluation
+- [ ] Only an independent, explicitly authorized stage-advancement workflow may mutate
+      stage state; this skill stops after its records and next-step prompt
 
 ---
 
 ## Coverage Notes
 
-- The Production → Polish and Polish → Release gates are not covered here
-  because they require complex multi-artifact setups (sprint plans, playtest
-  data, QA sign-off); these are deferred to dedicated follow-up specs.
-- The "CONCERNS" verdict path (minor gaps, not blocking) is not explicitly
-  tested here; it falls between Case 1 and Case 2 and follows the same pattern.
-- The Vertical Slice validation block (Pre-Production → Production gate) is not
-  covered because it requires a playable build context that cannot be expressed
-  as a document fixture.
+This P0 specification covers transition identity, current-stage validation, stale and
+unbound evidence, strict accepted-risk semantics, and read-only mutation guards. It does
+not claim execution results; catalog result fields remain unchanged until tests run.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Release"
-  short_description: "Orchestrate the release team: coordinates release-manager..."
-  default_prompt: "Use $team-release to run the Team Release game-studio workflow."
+  short_description: "Gate and deploy one exact release safely"
+  default_prompt: "Use $team-release with an exact orchestration manifest and action mode to verify gates, request separately scoped deployment authority, and track immutable receipts through stabilization."

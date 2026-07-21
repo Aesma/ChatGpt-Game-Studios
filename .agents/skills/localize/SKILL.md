@@ -1,447 +1,482 @@
 ---
 name: localize
-description: "Full localization pipeline: scan for hardcoded strings, extract and manage string tables, validate translations, generate translator briefings, run cultural/sensitivity review, manage VO localization, test RTL/platform requirements, enforce string freeze, and report coverage."
+description: "Runs an owner-separated, hash-bound localization catalog and evidence workflow without treating templates, static checks, or QA plans as completed translation or release proof."
 ---
 
-## Invocation and execution
+# Localize
 
-Invoke this workflow as `$localize`.
+## Invocation
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+Invoke one explicit subcommand:
 
-Arguments: `[scan|extract|validate|status|brief|cultural-review|vo-pipeline|rtl-check|freeze|qa]`. Treat bracketed values as optional unless the workflow says otherwise.
+`$localize scan`  
+`$localize extract`  
+`$localize validate <locale|--all>`  
+`$localize status`  
+`$localize brief <locale>`  
+`$localize cultural-review <locale-or-region>`  
+`$localize vo-pipeline <scan|script|validate|integrate> <locale>`  
+`$localize rtl-check <locale>`  
+`$localize freeze <call|lift|status>`  
+`$localize qa-plan <locale...>`  
+`$localize qa <locale...>`  
+`$localize evidence-review <evidence-manifest-path>`
 
-Delegate substantive work to the `localization-lead` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+`qa` is a compatibility alias for `qa-plan`. It creates a plan only and can never
+return a locale QA pass.
 
+If no subcommand or an invalid combination is provided, return usage and stop before
+delegating, reading project files, or writing. Do not infer a locale, table path,
+source language, build, reviewer, or approval.
 
-# Localization Pipeline
+## Non-negotiable contract
 
-Localization is not just translation — it is the full process of making a game
-feel native in every language and region. Poor localization breaks immersion,
-confuses players, and blocks platform certification. This skill covers the
-complete pipeline from string extraction through cultural review, VO recording,
-RTL layout testing, and localization QA sign-off.
+1. **Owner separation** — Source authors own source meaning and application content;
+   the catalog recorder owns key/schema synchronization; a named human
+   translator/vendor owns target-locale values; a locale-qualified reviewer owns
+   language review; cultural, legal, ratings, and platform decisions remain with the
+   corresponding human authority; QA testers own runtime execution receipts. No role
+   may use another role's authority.
+2. **No self-certification** — The localization lead coordinates the pipeline and may
+   record catalog diffs or review evidence, but does not write actual translations,
+   impersonate a native reviewer, or close its own cultural/legal/platform candidate.
+   The translator for a locale revision cannot approve that same revision as its sole
+   language reviewer.
+3. **No placeholder completion** — An empty value, source-language copy, generated
+   skeleton, machine-translation draft, unchecked non-empty value, or file existence
+   is not a completed translation. Use `UNTRANSLATED`, `SOURCE_COPY_CANDIDATE`,
+   `MT_DRAFT`, `TRANSLATED_UNREVIEWED`, `REVIEWED`, or `STALE` per key/revision.
+4. **QA plan is not QA execution** — `qa` and `qa-plan` return only
+   `QA PLAN READY`. They never return `PASS`, `PASS WITH CONDITIONS`, a ship decision,
+   or test evidence. Runtime execution and evidence review are separate activities.
+5. **Freeze is hash-bound** — `ACTIVE` freezes one schema version, source locale,
+   source-table byte hash, keyset hash, and per-key hashes. While active, catalog
+   mutation is rejected by default. A warning or appended list is not permission to
+   change the source table.
+6. **Human high-impact decisions** — Automated cultural review produces
+   `REVIEW CANDIDATE` findings only. It cannot decide market suitability, disputed
+   territory treatment, legal/regulatory compliance, age/content rating, platform
+   certification, or locale shipping approval.
+7. **Evidence is immutable and scoped** — Any runtime or review claim is bound to
+   exact locale, build ID and build SHA-256, platform/configuration, source freeze
+   snapshot/hash, source-table hash, target-translation hash, and relevant
+   font/package/asset hashes. A mismatch or missing hash makes evidence `STALE` or
+   `PARTIAL`, never successful.
+8. **Authorization is exact** — Read-only modes require no changeset prompt. Before a
+   write, list exact normalized repository-relative paths, operation, unique writer,
+   and preimage SHA-256 or `ABSENT`. Existing bounded authorization applies only when
+   it covers that manifest. It does not authorize new paths, source-content changes,
+   translations, human sign-off, external vendor communication, release state, or
+   another subcommand.
+9. **Evidence honesty** — Never invent or infer a translation, reviewer identity,
+   human attestation, policy/legal conclusion, file hash, build, test run, screenshot,
+   vendor receipt, or write result. Use `UNKNOWN`, `UNAVAILABLE`, `NOT RUN`,
+   `UNVERIFIED`, `PARTIAL`, or `null`.
+10. **No generic completion** — Catalog synchronization, static validation, QA
+    planning, and evidence review have distinct verdicts. Never output
+    `LOCALIZATION COMPLETE` or bare `COMPLETE`.
 
-**Modes:**
-- `scan` — Find hardcoded strings and localization anti-patterns (read-only)
-- `extract` — Extract strings and generate translation-ready tables
-- `validate` — Check translations for completeness, placeholders, and length
-- `status` — Coverage matrix across all locales
-- `brief` — Generate translator context briefing document for an external team
-- `cultural-review` — Flag culturally sensitive content, symbols, colours, idioms
-- `vo-pipeline` — Manage voice-over localization: scripts, recording specs, integration
-- `rtl-check` — Validate RTL language layout, mirroring, and font support
-- `freeze` — Enforce string freeze; lock source strings before translation begins
-- `qa` — Run the full localization QA cycle before release
+## Authority and artifact matrix
 
-If no subcommand is provided, output usage and stop. Verdict: **FAIL** — missing required subcommand.
+| Domain | Decision owner | Unique writer | May not do |
+|---|---|---|---|
+| source meaning in code/narrative/UI | source content owner | assigned developer/writer | claim target-locale quality |
+| canonical source string table and schema | localization lead acting as catalog recorder | catalog recorder | change source meaning or target translation values |
+| target-locale translation revision | named translator/vendor | that translation owner | approve its own revision as sole reviewer |
+| locale language-quality review | locale-qualified human reviewer | review recorder only | silently edit translation or claim legal/platform authority |
+| cultural suitability | local cultural consultant | review recorder only | make legal, rating, or market-release decisions |
+| legal/regulatory or territory decision | named legal/compliance owner | governance recorder | delegate final decision to the model |
+| platform/rating decision | named platform/rating owner | governance recorder | infer certification from static content |
+| runtime localization QA | named QA tester | evidence recorder | claim translation authority |
+| evidence integrity review | localization lead or QA evidence reviewer | optional evidence-report recorder | manufacture missing execution or sign-off |
 
----
+An artifact has one writer per authorized transaction. Proposal agents are read-only.
+When the localization-lead role is unavailable, the primary agent may perform its
+catalog/coordination duties but must label the fallback and still cannot act as
+translator, native reviewer, legal owner, platform owner, or QA tester.
 
-## Phase 2A: Scan Mode
+## Canonical localization manifest
 
-Search `src/` for hardcoded user-facing strings:
+All table-aware modes read
+`assets/data/strings/localization-manifest.yaml`. It declares:
 
-- String literals in UI code not wrapped in a localization function (`tr()`, `Tr()`, `NSLocalizedString`, `GetText`, etc.)
-- Concatenated strings that should be parameterized
-- Strings with positional placeholders (`%s`, `%d`) instead of named ones (`{playerName}`)
-- Format strings that mix locale-sensitive data (numbers, dates, currencies) without locale-aware formatting
-
-Search for localization anti-patterns:
-
-- Date/time formatting not using locale-aware functions
-- Number formatting without locale awareness (`1,000` vs `1.000`)
-- Text embedded in images or textures (flag asset files in `assets/`)
-- Strings that assume left-to-right text direction (positional layout, string assembly order)
-- Gender/plurality assumptions baked into string logic (must use plural forms or gender tokens)
-- Hardcoded punctuation (e.g. `"You won!"` — exclamation styles vary by locale)
-
-Report all findings with file paths and line numbers. This mode is read-only — no files are written.
-
----
-
-## Phase 2B: Extract Mode
-
-- Scan all source files for localized string references
-- Compare against the existing string table in `assets/data/strings/`
-- Generate new entries for strings not yet keyed
-- Suggest key names following the convention: `[category].[subcategory].[description]`
-  - Example: `ui.hud.health_label`, `dialogue.npc.merchant.greeting`, `menu.main.play_button`
-- Each new entry must include a `context` field — a translator comment explaining:
-  - Where it appears (which screen, which scene)
-  - Maximum character length
-  - Any placeholder meaning (`{playerName}` = the player's chosen display name)
-  - Gender/plurality context if applicable
-
-Output a diff of new strings to add to the string table.
-
-Present the diff to the user. Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write only the diff (new entries), not a full replacement. Verdict: **COMPLETE** — strings extracted and written.
-
----
-
-## Phase 2C: Validate Mode
-
-Read all string table files in `assets/data/strings/`. For each locale, check:
-
-- **Completeness** — key exists in source (en) but no translation for this locale
-- **Placeholder mismatches** — source has `{name}` but translation omits it or adds extras
-- **String length violations** — translation exceeds the character limit recorded in the source `context` field
-- **Plural form count** — locale requires N plural forms; translation provides fewer
-- **Orphaned keys** — translation exists but nothing in `src/` references the key
-- **Stale translations** — source string changed after translation was written (flag for re-translation)
-- **Encoding** — non-ASCII characters present and font atlas supports them (flag if uncertain)
-
-Report validation results grouped by locale and severity. This mode is read-only — no files are written.
-
----
-
-## Phase 2D: Status Mode
-
-- Count total localizable strings in the source table
-- Per locale: count translated, untranslated, stale (source changed since translation)
-- Generate a coverage matrix:
-
-```markdown
-## Localization Status
-Generated: [Date]
-String freeze: [Active / Not yet called / Lifted]
-
-| Locale | Total | Translated | Missing | Stale | Coverage |
-|--------|-------|-----------|---------|-------|----------|
-| en (source) | [N] | [N] | 0 | 0 | 100% |
-| [locale] | [N] | [N] | [N] | [N] | [X]% |
-
-### Issues
-- [N] hardcoded strings found in source code (run $localize scan)
-- [N] strings exceeding character limits
-- [N] placeholder mismatches
-- [N] orphaned keys
-- [N] strings added after freeze was called (freeze violations)
+```yaml
+schema_version: <integer>
+source_locale: <BCP-47 locale>
+source_table:
+  path: <repository-relative path>
+  format: json | csv | po
+  schema_version: <integer>
+target_locales:
+  <BCP-47 locale>:
+    path: <repository-relative path>
+    translation_owner_id: <stable human/vendor ID or null>
+    reviewer_owner_id: <distinct stable reviewer ID or null>
+fallback_chain: []
 ```
 
-This mode is read-only — no files are written.
+Normalize and validate every locale and path before reading. Paths must be
+repository-relative, inside the workspace, unambiguous, and consistent with the
+manifest. Unknown formats or schema versions are `BLOCKED — UNSUPPORTED SCHEMA`.
+Malformed JSON/CSV/PO reports file, line/record, and parser detail and causes zero
+writes.
 
----
+`scan` may run without the manifest because it examines source only. Every other
+table-aware mode requires the manifest. Do not default the source locale to English
+and do not search alternate directories as a fallback.
 
-## Phase 2E: Brief Mode
+For each successful load, record raw-byte SHA-256 for the manifest and every input.
+Compute:
 
-Generate a translator context briefing document. This document is sent to the
-external translation team or localisation vendor alongside the string table export.
+- `source_table_sha256` from exact source-table bytes;
+- `keyset_sha256` from canonical sorted key IDs;
+- per-key SHA-256 from canonical key ID, source value, context, placeholder schema,
+  plural metadata, and source revision;
+- `translation_sha256` from the exact target-locale file bytes.
 
-Read:
-- `design/gdd/` — extract game genre, tone, setting, character names
-- `assets/data/strings/strings-en.json` — the source string table
-- Any existing lore or narrative documents in `design/narrative/`
+Do not claim a hash for an unreadable or absent file.
 
-Generate `production/localization/translator-brief-[locale]-[date].md`:
+## Subcommand side-effect and verdict table
 
-```markdown
-# Translator Brief — [Game Name] — [Locale]
+| Subcommand | Side effect | Allowed verdicts |
+|---|---|---|
+| `scan` | read-only | `SCAN COMPLETE`, `SCAN PARTIAL`, `BLOCKED` |
+| `extract` | may write only canonical source table through catalog recorder | `CATALOG DIFF READY`, `CATALOG UPDATED — TRANSLATIONS STALE`, `BLOCKED` |
+| `validate` | read-only | `STATIC VALIDATION CLEAN`, `GAPS FOUND`, `PARTIAL`, `BLOCKED` |
+| `status` | read-only | `STATUS READY`, `PARTIAL`, `BLOCKED` |
+| `brief` | may write exact translator-brief path | `BRIEF READY`, `BLOCKED` |
+| `cultural-review` | read-only unless an exact candidate-report path is authorized | `REVIEW CANDIDATES READY`, `NO CANDIDATES OBSERVED`, `PARTIAL` |
+| `vo-pipeline scan/validate/integrate` | read-only | `VO STATIC REPORT READY`, `PARTIAL`, `BLOCKED` |
+| `vo-pipeline script` | may write exact script paths | `VO SCRIPT DRAFT READY`, `BLOCKED` |
+| `rtl-check` | read-only | `RTL STATIC CANDIDATES READY`, `PARTIAL` |
+| `freeze call/lift` | may write only freeze record | `FREEZE ACTIVE`, `FREEZE LIFTED FOR CHANGE`, `BLOCKED` |
+| `freeze status` | read-only | `FREEZE STATUS READY`, `BLOCKED` |
+| `qa` / `qa-plan` | read-only unless exact plan-report paths are authorized | `QA PLAN READY`, `PARTIAL PLAN`, `BLOCKED` |
+| `evidence-review` | read-only unless exact evidence-report paths are authorized | `QA EVIDENCE VERIFIED`, `QA EVIDENCE REJECTED`, `PARTIAL EVIDENCE`, `BLOCKED` |
 
-## Game Overview
-[2-3 paragraph summary of the game, genre, tone, and audience]
+No verdict in this table means release approval.
 
-## Tone and Voice
-- **Overall tone**: [e.g., "Darkly comic, not slapstick — think Terry Pratchett, not Looney Tunes"]
-- **Player address**: [e.g., "Second person, informal. Never formal 'vous' — always 'tu' for French"]
-- **Profanity policy**: [e.g., "Mild — PG-13 equivalent. Match intensity to source, do not soften or escalate"]
-- **Humour**: [e.g., "Wordplay exists — if a pun cannot translate, invent an equivalent local joke; do not translate literally"]
+## Phase 0: Validate request, inputs, and authorization boundary
 
-## Character Glossary
-| Name | Role | Personality | Notes |
-|------|------|-------------|-------|
-| [Name] | [Role] | [Personality] | [Do not translate / transliterate as X] |
+1. Parse exactly one subcommand and its required locale(s) or manifest path.
+2. Canonicalize target locale tags without changing the manifest's identity mapping.
+   Reject traversal, duplicate aliases, malformed tags, ambiguous files, directories,
+   and paths outside the repository.
+3. Load the localization manifest for table-aware modes, validate schema, and record
+   its raw hash.
+4. Load every required input completely. Record path, role, owner, raw-byte hash,
+   parser result, and byte count.
+5. If any required input is missing, unreadable, malformed, over a declared context
+   budget, or inconsistent, return `PARTIAL` or `BLOCKED` and make no write.
+6. For a mutating subcommand, build the complete write manifest before the first
+   mutation. Obtain one authorization unless the current bounded request already
+   covers exactly those paths and intended operations.
+7. Before every authorized write, recheck all preimage hashes. After a successful
+   write, report the actual raw-byte postimage hash. On mismatch, stop without
+   overwriting.
 
-## World Glossary
-| Term | Meaning | Notes |
-|------|---------|-------|
-| [Term] | [What it means] | [Keep in English / translate as X] |
+File authorization never supplies a missing domain decision or owner attestation.
 
-## Do Not Translate List
-The following must appear verbatim in all locales:
-- [Game name]
-- [UI terms that match in-engine labels]
-- [Brand or trademark names]
+## Phase 1: Scan source — read-only
 
-## Placeholder Reference
-| Placeholder | What it represents | Example |
-|-------------|-------------------|---------|
-| `{playerName}` | Player's chosen display name | "Shadowblade" |
-| `{count}` | Integer quantity | "3" |
+`scan` searches explicit project source roots for hardcoded player-facing strings,
+unsafe concatenation, positional placeholders, locale-insensitive dates/numbers/
+currency, embedded image text, LTR assumptions, and plural/gender assumptions.
 
-## Character Limits
-Tight UI fields with hard limits are marked in the string table `context` field.
-Where no limit is stated, target ±30% of the English length as a guideline.
+Return file, line, observed code, rule, confidence, and source-file hash. Findings are
+static candidates; they do not prove runtime rendering failure. Do not edit source,
+source tables, or translation files.
 
-## Contact
-Direct questions to: [placeholder for user/team contact]
-Delivery format: JSON, same schema as strings-en.json
+## Phase 2: Extract and synchronize the source catalog
+
+`extract` separates semantic source ownership from mechanical catalog recording:
+
+1. Read localized references and their source-file hashes.
+2. Strictly parse the canonical source table declared by the manifest.
+3. Produce a deterministic diff of new, changed, and orphan candidates. Every new key
+   includes context, source location, placeholders, plural metadata, and source owner.
+4. Never invent source copy, change narrative/UI meaning, auto-translate, or edit a
+   target-locale file.
+5. Check the freeze record and its snapshot hashes before proposing any mutation.
+6. Present the catalog diff, exact affected-key hash set, preimage hash, owner, and
+   intended post-state.
+7. Only the catalog recorder may apply an authorized source-table diff.
+
+If freeze is `ACTIVE`, source-table bytes and key hashes must match the snapshot.
+Reject every new or changed key with `BLOCKED — ACTIVE FREEZE`. Do not mutate and then
+append a warning.
+
+If an authorized catalog mutation succeeds, compute the new table/key hashes and mark:
+
+- all evidence manifests bound to the old source-table hash as `STALE`; and
+- every affected target-locale key as requiring translation or re-review.
+
+Return `CATALOG UPDATED — TRANSLATIONS STALE`, not localization completion.
+
+## Phase 3: Static translation validation and status
+
+`validate` strictly parses the source table and each requested translation file.
+Validate:
+
+- missing or empty values;
+- placeholder name/type/count parity;
+- plural/select branches required by the locale;
+- encoding and declared locale identity;
+- source-revision and per-key source-hash bindings;
+- orphaned target keys;
+- `MT_DRAFT` or generated text markers;
+- source-identical values lacking an explicit proper-noun/do-not-translate
+  attestation;
+- reviewer identity and reviewed translation hash, when claimed.
+
+Character counts, source scanning, font file presence, or translation file existence
+are static signals only. They cannot prove UI fit, glyph rendering, shaping, bidi,
+line breaking, contextual naturalness, VO sync, or platform behavior.
+
+Per key, use only:
+
+- `UNTRANSLATED` — absent/empty/template value;
+- `SOURCE_COPY_CANDIDATE` — equals source without a valid exemption;
+- `MT_DRAFT` — machine/generated draft;
+- `TRANSLATED_UNREVIEWED` — populated but no matching locale-review receipt;
+- `REVIEWED` — distinct locale reviewer approved the exact translation hash;
+- `STALE` — source/freeze/translation revision no longer matches.
+
+`STATIC VALIDATION CLEAN` means only that parsers and static invariants passed. It is
+not locale QA, runtime verification, cultural/legal approval, or release readiness.
+
+`status` reports separate counts for populated, untranslated, stale,
+translated-unreviewed, reviewed, and runtime-evidence-verified entries. Never combine
+these into a single misleading “localized” percentage. An empty template or populated
+unreviewed file cannot produce a completed-locale state.
+
+This workflow may generate a proposed empty locale skeleton as a catalog transfer
+artifact only when an exact path and `UNTRANSLATED TEMPLATE` status are authorized.
+It never fills target values. Once delivered, only the named translation owner may
+write target-locale values.
+
+## Phase 4: Translator brief
+
+`brief <locale>` requires a valid target locale and bounded explicit context: game
+concept, tone, audience, glossary, source table, and directly linked narrative
+sources. Record all hashes and stop with `PARTIAL` if required context is omitted.
+
+The brief states the source snapshot, locale, schema, keyset hash, placeholder rules,
+character-limit intent, glossary, do-not-translate attestations, delivery format, and
+translation owner. Placeholder contacts remain `UNKNOWN` until a human supplies
+them. The brief is not a translation and does not grant vendor communication or file
+delivery permission.
+
+Only the catalog/coordination recorder may write the exact authorized brief path.
+
+## Phase 5: Cultural, regulatory, and platform review candidates
+
+`cultural-review` may delegate read-only analysis to localization-lead, but its output
+is a candidate register, not a market or compliance decision.
+
+Each candidate records:
+
+```yaml
+id: L10N-CAND-<NNN>
+locale_or_region: <exact scope>
+category: culture | representation | territory | religion | legal | rating | platform
+observed_content:
+  path: <path>
+  sha256: <hash>
+  location: <line/key/asset>
+risk_hypothesis: <why a human review may be needed>
+required_owner: local-cultural-consultant | legal-compliance-owner | platform-rating-owner
+status: NEEDS_HUMAN_REVIEW | RESOLVED | NOT_APPLICABLE
+decision_receipt: <path-and-hash-or-null>
 ```
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+The model may prioritize review but does not declare content legally compliant,
+certified, market-suitable, prohibited, or safe to ship. A candidate closes only when
+the required human owner supplies identity, role/authority, exact locale/region,
+content/source hashes, decision, rationale, UTC timestamp, and any expiry or
+jurisdiction limit. A locale language reviewer cannot substitute for legal/platform
+authority.
 
----
+When authoritative current law, rating, platform, or territory evidence is absent,
+return `NEEDS_HUMAN_REVIEW` or `UNKNOWN`. Do not fabricate rules from memory.
 
-## Phase 2F: Cultural Review Mode
+## Phase 6: VO and RTL static analysis
 
-Spawn `localization-lead` through Codex subagent delegation. Ask them to audit the following for cultural sensitivity across the target locales (read from `assets/data/strings/` and `assets/`):
+`vo-pipeline` always requires an explicit locale and bounded paths.
 
-### Content Areas to Review
+- `scan` identifies dialogue keys and candidate audio mappings.
+- `script` produces recording-script drafts only; it does not synthesize, record,
+  approve, or integrate audio.
+- `validate` checks file/key/name/hash presence statically.
+- `integrate` checks static references and file existence only.
 
-**Symbols and gestures**
-- Thumbs up, OK hand, peace sign — meanings vary by region
-- Religious or spiritual symbols in art, UI, or audio
-- National flags, map representations, disputed territories
+Audio presence does not prove language accuracy, actor approval, pronunciation,
+timing, lip sync, loudness, or in-build playback. Those require tester/studio receipts
+bound to locale, build, source/translation hashes, audio asset hash, and test cases.
 
-**Colours**
-- White (mourning in some Asian cultures), green (political associations in some regions), red (luck vs danger)
-- Alert/warning colours that conflict with cultural associations
+`rtl-check` produces static candidates for layout flags, string assembly, font assets,
+and directional icons. It never labels runtime layout `PASS` or a static finding as a
+final blocker. Actual fit, shaping, bidi, mirroring, glyph coverage, and mixed-script
+behavior require build-bound screenshots/video/logs and locale-qualified review in
+`evidence-review`.
 
-**Numbers**
-- 4 (death in Japanese/Chinese), 13, 666 — flag use in UI (room numbers, item counts, prices)
+## Phase 7: Hash-bound freeze state machine
 
-**Humour and idioms**
-- Idioms that translate as offensive in other locales
-- Toilet/bodily humour that is inappropriate in some markets (notably Japan, Germany, Middle East)
-- Dark humour around topics that are culturally sensitive in specific regions
+The freeze record is `production/localization/freeze-status.yaml` with:
 
-**Violence and content ratings**
-- Content that would require ratings changes in DE (Germany), AU (Australia), CN (China), or AE (UAE)
-- Blood colour, gore level, drug references — flag all for region-specific asset variants if needed
-
-**Names and representations**
-- Character names that are offensive, profane, or carry negative meaning in target locales
-- Stereotyped representation of nationalities, religions, or ethnic groups
-
-Present findings as a table:
-
-| Finding | Locale(s) Affected | Severity | Recommended Action |
-|---------|--------------------|----------|--------------------|
-| [Description] | [Locale] | [BLOCKING / ADVISORY / NOTE] | [Change / Flag for review / Accept] |
-
-BLOCKING = must fix before shipping that locale. ADVISORY = recommend change. NOTE = informational only.
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
----
-
-## Phase 2G: VO Pipeline Mode
-
-Manage the voice-over localization process. Determine the sub-task from the argument:
-
-- `vo-pipeline scan` — identify all dialogue lines that require VO recording
-- `vo-pipeline script` — generate recording scripts with director notes
-- `vo-pipeline validate` — check that all recorded VO files are present and correctly named
-- `vo-pipeline integrate` — verify VO files are correctly referenced in code/assets
-
-### VO Pipeline: Scan
-
-Read `assets/data/strings/` and `design/narrative/`. Identify:
-- All dialogue lines (keys matching `dialogue.*`) with source text
-- Lines already recorded (audio file exists in `assets/audio/vo/`)
-- Lines not yet recorded
-
-Output a recording manifest:
-
-```
-## VO Recording Manifest — [Date]
-
-| Key | Character | Source Line | Status |
-|-----|-----------|-------------|--------|
-| dialogue.npc.merchant.greeting | Merchant | "Welcome, traveller." | Recorded |
-| dialogue.npc.merchant.haggle | Merchant | "That's my final offer." | Needs recording |
+```yaml
+schema_version: 1
+state: UNFROZEN | ACTIVE | LIFTED_FOR_CHANGE
+snapshot_id: <stable-id>
+source_locale: <manifest source locale>
+source_table_path: <exact path>
+source_table_sha256: <raw-byte hash>
+catalog_schema_version: <integer>
+key_count: <integer>
+keyset_sha256: <canonical sorted key hash>
+key_hashes:
+  <key>: <canonical per-key hash>
+called_at_utc: <timestamp>
+called_by:
+  owner_id: <stable identity>
+  authority: <source-freeze authority>
+active_change_request: <id-or-null>
+history: []
 ```
 
-### VO Pipeline: Script
+### Freeze call
 
-Generate a recording script document for each character, grouped by scene. Include:
+Require a completely parsed source table and a stable, explicitly supplied approver
+identity/authority. `Called by: user` or an inferred session identity is invalid.
+Record the manifest/table/schema/key hashes and write the authorized record through
+the freeze recorder. Re-read it and report its actual postwrite hash before returning
+`FREEZE ACTIVE`.
 
-- Character name and brief personality note
-- Full dialogue line with pronunciation guide for unusual proper nouns
-- Emotion/direction note for each line (`[Warm, welcoming]`, `[Annoyed, clipped]`)
-- Any lines that are responses in a conversation (provide context: "Player just said X")
+If the current source bytes or per-key hashes later differ from the `ACTIVE` snapshot,
+return `FREEZE VIOLATION / BLOCKED`. Do not update the snapshot automatically.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+### Freeze lift
 
-### VO Pipeline: Validate
+A lift requires an authorized change request:
 
-Find files matching `assets/audio/vo/[locale]/` for all `.wav`/`.ogg` files. Cross-reference against the VO manifest. Report:
-- Missing files (line in script, no audio file)
-- Extra files (audio file exists, no matching string key)
-- Naming convention violations
-
-### VO Pipeline: Integrate
-
-Search `src/` for VO audio references. Verify each referenced path exists in `assets/audio/vo/[locale]/`. Report broken references.
-
----
-
-## Phase 2H: RTL Check Mode
-
-Right-to-left languages (Arabic, Hebrew, Persian, Urdu) require layout mirroring beyond
-just translating text. This mode validates the implementation.
-
-Read `.codex/docs/technical-preferences.md` to determine the engine. Then check:
-
-**Layout mirroring**
-- Is RTL layout enabled in the engine? (Godot: `Control.layout_direction`, Unity: `RTL Support` package, Unreal: text direction flags)
-- Are all UI containers set to auto-mirror, or are positions hardcoded?
-- Do progress bars, health bars, and directional indicators mirror correctly?
-
-**Text rendering**
-- Are fonts loaded that support Arabic/Hebrew character sets?
-- Is Arabic text rendered with correct ligatures (connected script)?
-- Are numbers displayed as Eastern Arabic numerals where required?
-
-**String assembly**
-- Are there any string concatenations that assume left-to-right reading order?
-- Do `{placeholder}` positions in sentences work correctly when sentence structure is reversed?
-
-**Asset review**
-- Are there UI icons with directional arrows or asymmetric designs that need mirrored variants?
-- Do any text-in-image assets exist that require RTL versions?
-
-Content search patterns to check:
-- Engine-specific RTL flags in scene/prefab files
-- Any `HBoxContainer`, `LinearLayout`, `HorizontalBox` nodes — verify layout_direction settings
-- String concatenation with `+` near dialogue or UI code
-
-Report findings. Flag BLOCKING issues (content unreadable without fix) vs ADVISORY (cosmetic improvements).
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
----
-
-## Phase 2I: Freeze Mode
-
-String freeze locks the source (English) string table so that translations can proceed
-without the source changing under the translators.
-
-### freeze call
-
-Check current freeze status in `production/localization/freeze-status.md` (if it exists).
-
-If already frozen:
-> "String freeze is currently ACTIVE (called [date]). [N] strings have been added or modified since freeze. These are freeze violations — they require re-translation or an approved freeze lift."
-
-If not frozen, present the pre-freeze checklist:
-
-```
-Pre-Freeze Checklist
-[ ] All planned UI screens are implemented
-[ ] All dialogue lines are final (no further narrative revisions planned)
-[ ] All system strings (error messages, tutorial text) are complete
-[ ] $localize scan shows zero hardcoded strings
-[ ] $localize validate shows no placeholder mismatches in source (en)
-[ ] Marketing strings (store description, achievements) are final
+```yaml
+id: L10N-CR-<NNN>
+owner_id: <stable source owner>
+authority: <role/reference>
+reason: <specific reason>
+affected_keys:
+  - key: <key>
+    frozen_hash: <hash>
+intended_change_hash: <hash-or-null>
+retranslation_locales: []
+vendor_notification_receipts:
+  - locale: <locale>
+    path: <receipt>
+    sha256: <receipt-hash>
+approved_at_utc: <timestamp>
 ```
 
-Ask the user directly:
-- Prompt: "Are all items above confirmed? Calling string freeze locks the source table."
-- Options: `[A] Yes — call string freeze now` / `[B] No — I still have strings to add`
+Missing owner, affected-key hashes, retranslation scope, or required vendor receipt
+blocks the lift. An authorized lift changes state to `LIFTED_FOR_CHANGE`; it does not
+mutate the source table. After the catalog change, call freeze again to create a new
+snapshot. The old snapshot and history remain immutable.
 
-If [A]: Write `production/localization/freeze-status.md`:
+## Phase 8: QA planning only
 
-```markdown
-# String Freeze Status
+`qa` and `qa-plan` create a per-locale execution plan. Split locales explicitly and
+cap one plan at eight target locales; larger sets require separate batches. A missing
+locale input is an error.
 
-**Status**: ACTIVE
-**Called**: [date]
-**Called by**: [user]
-**Total strings at freeze**: [N]
+For every locale, the plan records:
 
-## Post-Freeze Changes
-[Any strings added or modified after freeze are listed here automatically by $localize extract]
+- plan ID and plan document hash when written;
+- exact locale and translation owner/reviewer IDs;
+- intended build ID/hash/platform/configuration, or `UNKNOWN / NOT BUILT`;
+- manifest, freeze snapshot, source table, keyset, translation, font/package, VO, and
+  relevant asset hashes, using `null` when unavailable;
+- test cases for functional strings, UI overflow, pseudolocalization, placeholders,
+  plural/date/number/currency, input/IME, RTL/shaping where relevant, contextual
+  language review, cultural candidates, VO/subtitle timing, accessibility,
+  localization, and platform-specific text;
+- required tester identity, evidence types, and expected results.
+
+A plan may identify blockers or missing inputs, but it never executes a build, takes a
+screenshot, reviews a translation as a native speaker, or returns `PASS`. Its only
+successful verdict is `QA PLAN READY`. When any locale plan is incomplete, return
+`PARTIAL PLAN` with per-locale gaps; do not fill them with guesses.
+
+## Phase 9: Independent execution receipts and evidence review
+
+QA execution happens outside `qa-plan` under a named QA tester and, for language
+quality, a distinct locale-qualified reviewer. This workflow may review supplied
+receipts through `evidence-review`; it does not manufacture or retroactively complete
+them.
+
+A runtime receipt contains:
+
+```yaml
+receipt_id: <stable-id>
+test_case_id: <plan-case-id>
+locale: <exact BCP-47 locale>
+build_id: <build-id>
+build_sha256: <build-hash>
+platform: <platform-and-configuration>
+manifest_sha256: <localization-manifest-hash>
+freeze_snapshot_id: <snapshot-id>
+freeze_record_sha256: <freeze-hash>
+source_table_sha256: <source-hash>
+keyset_sha256: <keyset-hash>
+translation_path: <exact path>
+translation_sha256: <translation-hash>
+font_package_sha256: <hash-or-null>
+vo_asset_set_sha256: <hash-or-null>
+tester:
+  owner_id: <stable identity>
+  role: <QA role>
+started_at_utc: <timestamp>
+finished_at_utc: <timestamp>
+actual_result: <observed result>
+outcome: PASS | FAIL | BLOCKED | NOT_RUN
+evidence:
+  - path: <screenshot-video-log-path>
+    sha256: <raw-byte-hash>
 ```
 
-### freeze lift
+`evidence-review` verifies every receipt against one immutable evidence manifest and
+recomputes all readable hashes. It also requires:
 
-If argument includes `lift`: update `freeze-status.md` Status to `LIFTED`, record the reason and date. Warn: "Lifting the freeze requires re-translation of all modified strings. Notify the translation team."
+- a locale-qualified reviewer receipt for the exact translation hash;
+- resolution receipts from the required human owner for every in-scope cultural,
+  legal, rating, or platform candidate;
+- complete required test-case coverage for the exact locale/build/platform;
+- no `NOT_RUN`, `BLOCKED`, stale, unreadable, or mismatched required receipt.
 
-### freeze check (auto-integrated into extract)
+Per locale, return only:
 
-When `extract` mode finds new or modified strings and `freeze-status.md` shows Status: ACTIVE — append the new keys to `## Post-Freeze Changes` and warn:
-> "⚠️ String freeze is active. [N] new/modified strings have been added. These are freeze violations. Notify your localization vendor before proceeding."
+- `QA EVIDENCE VERIFIED` — all required receipts and owner decisions match;
+- `QA EVIDENCE REJECTED` — at least one supplied receipt fails validation or records a
+  failed test;
+- `PARTIAL EVIDENCE` — required evidence is absent, unreadable, not run, blocked, or
+  stale.
 
----
+`QA EVIDENCE VERIFIED` confirms receipt integrity and coverage for that immutable
+locale/build/source snapshot. It is not a release, legal, platform, or market
+approval. Never convert it to `PASS` merely for compatibility with another skill.
 
-## Phase 2J: QA Mode
+## Phase 10: Output and next action
 
-Localization QA is a dedicated pass that runs after translations are delivered but
-before any locale ships. This is not the same as `/validate` (which checks completeness)
-— this is a structured playthrough-based quality check.
+Return:
 
-Spawn `localization-lead` through Codex subagent delegation with:
-- The target locale(s) to QA
-- The list of all screens/flows in the game (from `design/gdd/` or `$content-audit` output)
-- The current `$localize validate` report
-- The cultural review report (if it exists)
+1. subcommand, operation status, mutation status, and exact scope;
+2. source locale and requested target locales;
+3. manifest/schema/freeze/source/keyset/translation/build hashes that actually exist;
+4. input load counters, parse errors, stale reasons, and omitted evidence;
+5. owner identities and missing-owner gaps;
+6. exact writes with preimage/postimage hashes, or `READ_ONLY_NO_CHANGES`;
+7. the subcommand-specific verdict from the contract table;
+8. one next action that resolves the current gap.
 
-Ask the localization-lead to produce a QA plan covering:
-
-1. **Functional string check** — every string displays in-game without truncation, placeholder errors, or encoding corruption
-2. **UI overflow check** — translated strings that exceed UI bounds (even if within character limits, some languages expand)
-3. **Contextual accuracy** — a sample of 10% of strings reviewed in-game for translation accuracy and natural phrasing
-4. **Cultural review items** — verify all BLOCKING items from the cultural review are resolved
-5. **VO sync check** — if VO exists, verify lip sync or subtitle timing is acceptable after translation
-6. **Platform cert requirements** — check platform-specific localization requirements (age ratings text, legal notices, ESRB/PEGI/CERO text)
-
-Output a QA verdict per locale:
-
-```
-## Localization QA Verdict — [Locale]
-
-**Status**: PASS / PASS WITH CONDITIONS / FAIL
-**Reviewed by**: localization-lead
-**Date**: [date]
-
-### Findings
-| ID | Area | Description | Severity | Status |
-|----|------|-------------|----------|--------|
-| LOC-001 | UI Overflow | "Settings" button text overflows on [Screen] | BLOCKING | Open |
-| LOC-002 | Translation | [Key] translation is literal — sounds unnatural | ADVISORY | Open |
-
-### Conditions (if PASS WITH CONDITIONS)
-- [Condition 1 — must resolve before ship]
-
-### Sign-Off
-[ ] All BLOCKING findings resolved
-[ ] Producer approves shipping [Locale]
-```
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-**Gate integration**: The Polish → Release gate requires a PASS or PASS WITH CONDITIONS verdict for every locale being shipped. A FAIL blocks release for that locale only — other locales may still proceed if their QA passes.
-
----
-
-## Phase 3: Rules and Next Steps
-
-### Rules
-- English (en) is always the source locale
-- Every string table entry must include a `context` field with translator notes, character limits, and placeholder meaning
-- Never modify translation files directly — generate diffs for review
-- Character limits must be defined per-UI-element and enforced in validate mode
-- String freeze must be called before sending strings to translators — never translate a moving target
-- RTL support must be designed in from the start — retrofitting RTL layout is expensive
-- Cultural review is required for any locale where the game will be sold commercially
-- VO scripts must include director notes — raw dialogue lines produce flat recordings
-
-### Recommended Workflow
-
-```
-$localize scan            → find hardcoded strings
-$localize extract         → build string table
-$localize freeze          → lock source before sending to translators
-$localize brief           → generate translator briefing document
-[Send to translators]
-$localize validate        → check returned translations
-$localize cultural-review → flag culturally sensitive content
-$localize rtl-check       → if shipping Arabic / Hebrew / Persian
-$localize vo-pipeline     → if shipping dubbed VO
-$localize qa              → full localization QA pass
-```
-
-After `qa` returns PASS for all shipping locales, include the QA report path when running `$gate-check release`.
+Never auto-run another localization mode, contact a vendor, alter a translation,
+close a human review candidate, update a release gate, or invoke deployment. Any
+downstream gate must consume an immutable evidence manifest and independently verify
+locale, build, source, translation, freeze, receipt hashes, freshness, and coverage.

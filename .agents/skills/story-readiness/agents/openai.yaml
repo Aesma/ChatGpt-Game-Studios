@@ -1,4 +1,4 @@
 interface:
   display_name: "Story Readiness"
-  short_description: "Validate that a story file is implementation-ready"
-  default_prompt: "Use $story-readiness to run the Story Readiness game-studio workflow."
+  short_description: "Fail-closed validation for implementation-ready stories"
+  default_prompt: "Use $story-readiness to validate traceability, manifest snapshot, and QA readiness before implementation."

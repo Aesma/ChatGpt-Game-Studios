@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Audio"
-  short_description: "Orchestrate audio team: audio-director + sound-designer +..."
-  default_prompt: "Use $team-audio to run the Team Audio game-studio workflow."
+  short_description: "Create one reviewed audio spec; no code, tests, or assets"
+  default_prompt: "Use $team-audio with one artifact ID to coordinate read-only audio specialists and approve one hash-bound design/audio/audio-[artifact-id].md specification; do not implement code, tests, or assets."

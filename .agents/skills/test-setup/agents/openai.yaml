@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Setup"
-  short_description: "Scaffold the test framework and CI/CD pipeline for the..."
-  default_prompt: "Use $test-setup to run the Test Setup game-studio workflow."
+  short_description: "Scaffold and verify engine tests and CI receipts"
+  default_prompt: "Use $test-setup to audit or scaffold the test framework, then verify discovery, pass/fail exit sensitivity, and build-bound CI evidence before calling setup complete."

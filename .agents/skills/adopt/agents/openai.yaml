@@ -1,4 +1,4 @@
 interface:
   display_name: "Adopt"
-  short_description: "Brownfield onboarding — audits existing project artifacts for..."
-  default_prompt: "Use $adopt to run the Adopt game-studio workflow."
+  short_description: "Audit formats; write only an approved immutable migration report"
+  default_prompt: "Use $adopt to run a bounded brownfield format audit with versioned rules and stable findings; never modify audited artifacts or claim runtime compatibility."

@@ -1,284 +1,368 @@
 ---
 name: qa-plan
-description: "Generate a QA test plan for a sprint or feature. Reads GDDs and story files, classifies stories by test type (Logic/Integration/Visual/UI), and produces a structured test plan covering automated tests required, manual test cases, smoke test scope, and playtest sign-off requirements. Run before sprint begins or when starting a major feature."
+description: "Generate a version-bound QA plan for a sprint, feature, or story. Reads stories and their GDD/ADR sources, maps stable acceptance-criterion IDs to stable test IDs, and writes one independent plan without editing stories or session state."
 ---
 
 ## Invocation and execution
 
 Invoke this workflow as `$qa-plan`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+Before the first file change, present the complete proposed changeset, listing
+every file and intended modification, and obtain one explicit approval. After
+approval, make all changes within that boundary continuously without asking
+again file by file. If the scope expands materially, stop, present the revised
+changeset, and obtain one new approval.
 
-Arguments: `[sprint | feature: system-name | story: path]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[sprint | feature: system-name | story: path]`. Treat bracketed
+values as optional unless the workflow says otherwise.
 
-Delegate substantive work to the `qa-lead` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
-
+Delegate substantive planning work to the `qa-lead` Codex subagent role when it
+is available. If that role is unavailable, follow the same responsibilities in
+the current agent.
 
 # QA Plan
 
-This skill generates a structured QA plan for a sprint, feature, or individual
-story. It reads all in-scope story files and their referenced GDDs, classifies
-each story by test type, and produces a plan that tells developers exactly what
-to automate, what to verify manually, what the smoke test scope is, and when
-to bring in a playtester.
+This skill generates a structured, version-bound QA plan for a sprint, feature,
+or individual story. It tells developers what to automate, what to verify
+manually, what belongs in the smoke scope, and when playtest evidence is
+required.
 
-Run this before a sprint begins so the team knows upfront what testing work
-is required. A test plan written after implementation is a post-mortem, not a
-plan.
+Run this before implementation begins. A plan produced from incomplete inputs
+may still be saved as a planning artifact, but it is `PARTIAL` and cannot satisfy
+a downstream quality gate. A plan whose captured source bytes later change is
+effectively `STALE` and cannot satisfy a gate until regenerated.
 
-**Output:** `production/qa/qa-plan-[sprint-slug]-[date].md`
+**Owned output:** `production/qa/qa-plan-[scope-slug]-[date].md`
+
+## Artifact ownership and write boundary
+
+`$qa-plan` owns only the independent QA plan file named above.
+
+- Story files, GDDs, ADRs, registries, sprint files, and architecture manifests
+  are read-only inputs.
+- Never add, replace, or back-fill a story's `## QA Test Cases` section. The
+  story-owning workflow is responsible for merging plan IDs or links into a
+  story.
+- Never create or modify `production/session-state/active.md`, a checkpoint,
+  sprint status, or any other state file.
+- Never perform an unlisted or silent write. If a requested write is outside the
+  owned output, explain the ownership boundary and leave that file unchanged.
+- A plan may reference stable story, AC, and test IDs; the reference does not
+  transfer ownership of the story to this workflow.
+
+The complete changeset preview for this workflow therefore contains exactly one
+candidate artifact: the QA plan path. If no plan write is approved, the
+changeset is empty.
 
 ---
 
-## Phase 1: Parse Scope
-
-**Argument:** the provided arguments (blank = ask the user directly)
+## Phase 1: Parse and resolve scope
 
 Determine scope from the argument:
 
-- **`sprint`** — read the most recent file in `production/sprints/`, extract
-  every story file path referenced. If `production/sprint-status.yaml` exists,
-  use it as the primary story list and fall back to the sprint plan for story
-  metadata.
-- **`feature: [system-name]`** — find files matching `production/epics/*/story-*.md`, filter
-  to stories whose file path or title contains the system name. Also check the
-  epic index file (`EPIC.md`) in that system's directory.
-- **`story: [path]`** — validate that the path exists and load that single file.
-- **No argument** — ask the user directly:
-  - "What is the scope for this QA plan?"
-  - Options: "Current sprint", "Specific feature (enter system name)",
-    "Specific story (enter path)", "Full epic"
+- **`sprint`** — read the most recent file in `production/sprints/`. If
+  `production/sprint-status.yaml` exists, use it as the primary story list and
+  use the sprint plan for metadata. Record both source paths when both are read.
+- **`feature: [system-name]`** — find files matching
+  `production/epics/*/story-*.md`, filter to stories whose path or title contains
+  the system name, and read the matching epic index file when present.
+- **`story: [path]`** — validate and select exactly that story path.
+- **No argument** — ask the user which supported scope to use: current sprint,
+  a specific feature, or a specific story.
 
-After resolving scope, report: "Building QA plan for [N] stories in [scope]."
+Normalize the resolved name to a filesystem-safe `scope-slug` for the output
+path. Preserve the human-readable scope name separately. Report:
+`Building QA plan for [N] referenced stories in [scope].`
 
-If a story file path is referenced but the file does not exist, note it as
-MISSING and continue with the remaining stories. Do not fail the entire plan
-for one missing file.
+Keep every referenced story path in the scope manifest. A missing or unreadable
+story is not discarded: record its source status and make the plan `PARTIAL`.
 
 ---
 
-## Phase 2: Load Inputs
+## Phase 2: Load versioned inputs
 
-For each in-scope story file, read the full file and extract:
+### 2.1 Hash raw source bytes
 
-- **Story title** and story ID (from filename or header)
-- **Story Type** field (if present in the file header — e.g., `Type: Logic`)
-- **Acceptance criteria** — the complete numbered/bulleted list
-- **Implementation files** — listed under "Files to Create / Modify" or similar
-- **Engine notes** — any engine API warnings or version-specific notes
-- **GDD reference** — the GDD path(s) cited
-- **ADR reference** — the ADR(s) cited
-- **Estimate** — hours or story points if present
-- **Dependencies** — other stories this one depends on
+For every source, read the raw file bytes once, compute SHA-256 over those exact
+bytes, and parse content from the same bytes. Format every digest as
+`sha256:<64 lowercase hexadecimal characters>`. Never hash normalized text,
+copied excerpts, a user-supplied digest, or reconstructed content.
 
-After reading stories, load supporting context once (not per story):
+Record each source as `loaded`, `missing`, `unreadable`, or `invalid`. Capture:
 
-- `design/gdd/systems-index.md` — to understand system priorities and which
-  GDDs are approved
-- For each unique GDD referenced across all stories: read the
-  **Acceptance Criteria**, **Formulas**, and **Edge Cases** sections. Do not load
-  the full GDD text. These three sections contain the testable requirements, the math
-  to verify, and the boundary conditions that tests must cover. If an Edge Cases
-  section is absent from the GDD, note it per GDD: "No Edge Cases section found — edge
-  case coverage will be inferred from acceptance criteria only."
-- `docs/architecture/control-manifest.md` — scan for forbidden patterns that
-  automated tests should guard against (if the file exists)
+- every in-scope story file, in full;
+- every GDD referenced by an in-scope story, in full for hashing, even when only
+  Acceptance Criteria, Formulas, and Edge Cases are used to build tests;
+- every ADR referenced by an in-scope story, in full for hashing, even when only
+  selected sections are used;
+- the scope-defining sprint/status/epic file;
+- `design/gdd/systems-index.md` and
+  `docs/architecture/control-manifest.md` when present.
 
-If no GDD is referenced in a story, note it as a gap but do not block the plan.
-The story will be classified using acceptance criteria alone.
+The manifest must contain a source record for every story/GDD/ADR path expected
+by scope, including a non-loaded status when no digest can be computed. Missing,
+unreadable, invalid, or ambiguously referenced story/GDD/ADR input makes the plan
+`PARTIAL`; never invent a digest or silently omit the path.
+
+### 2.2 Extract story requirements
+
+For each loaded story extract:
+
+- story title, stable story number/ID, epic slug, and declared `Type:`;
+- every acceptance criterion and its exact stable AC ID;
+- implementation/evidence paths, engine notes, estimate, and dependencies;
+- every referenced GDD and ADR path;
+- any existing QA specification ID already associated with an AC.
+
+Stable story acceptance criteria use the create-stories contract, for example
+`AC-S001-01`. An AC ID belongs to the story owner. This skill must preserve it
+exactly and must never add, guess, renumber, recycle, or write one into a story.
+
+For each story:
+
+1. Require every acceptance criterion to have one unique stable AC ID.
+2. Reject duplicate AC IDs within the scope.
+3. Record missing, malformed, duplicate, or ambiguous IDs as coverage gaps.
+4. Make the plan `PARTIAL` when any in-scope criterion lacks an unambiguous
+   stable AC ID. Include the criterion text and story path in the gap report.
+
+### 2.3 Load bounded supporting context
+
+From loaded GDDs use the Acceptance Criteria, Formulas, and Edge Cases sections.
+If Edge Cases is absent, record that edge-case coverage is inferred from the
+GDD acceptance criteria and story ACs. Use the control manifest only for
+applicable test guardrails. Do not turn a source excerpt into a substitute for
+the full-file source hash.
 
 ---
 
-## Phase 3: Classify Each Story
+## Phase 3: Classify test methods and assign stable test IDs
 
-For each story, assign a Story Type:
+Preserve a story's declared type. If no valid type is declared, infer a proposed
+type for planning, label it `inferred`, add a gap, and make the plan `PARTIAL`.
 
-- **If the story already has a `Type:` field in its header**: accept it as-is. Do NOT re-classify or validate against the criteria below — the Type was set by lead-programmer at story creation and is authoritative. Record it as-is.
-- **If the `Type:` field is missing**: infer the type from the acceptance criteria using the table below, and note in the report that the type was inferred (not declared). Flag this as a gap — the story should have its Type declared explicitly before implementation begins.
-
-| Story Type | Classification Indicators |
+| Story Type | Typical method |
 |---|---|
-| **Logic** | Acceptance criteria reference calculations, formulas, numerical thresholds, state transitions, AI decisions, data validation, buff/debuff stacking, economy transactions, or any testable computation |
-| **Integration** | Criteria involve two or more systems interacting, signals or events propagating across system boundaries, save/load round-trips, network sync, or persistence |
-| **Visual/Feel** | Criteria reference animation behaviour, VFX, shader output, "feels responsive", perceived timing, screen shake, particle effects, audio sync, or visual feedback quality |
-| **UI** | Criteria reference menus, HUD elements, buttons, screens, dialogue boxes, inventory panels, tooltips, or any player-facing interface element |
-| **Config/Data** | Changes are limited to balance tuning values, data files, or configuration — no new code logic is involved |
+| **Logic** | Unit tests for formulas, rules, state transitions, and boundaries |
+| **Integration** | Integration tests for cross-system events, persistence, or round-trips |
+| **Visual/Feel** | Reproducible manual check, capture, benchmark, and named sign-off |
+| **UI** | Interaction/accessibility automation where feasible plus observable walkthrough checks |
+| **Config/Data** | Schema/data validation and an observable smoke check |
 
-**Mixed stories** (e.g., a story that adds both a formula and a UI display):
-assign the primary type based on which acceptance criteria carry the highest
-implementation risk, and note the secondary type. Mixed Logic+Integration or
-Visual+UI combinations are the most common.
+Treat each AC independently. A story may use more than one test method; never
+drop secondary coverage merely to force one primary classification.
 
-After classifying all stories, produce a classification summary table in
-conversation before proceeding to Phase 4. This gives the user visibility into
-how tests will be allocated.
+Assign exactly one stable plan item ID per stable AC ID:
+
+- Logic/Integration automated test:
+  `TC-[epic-slug]-S[story-number]-AC[criterion-number]`
+- Visual/Feel or UI manual check:
+  `MC-[epic-slug]-S[story-number]-AC[criterion-number]`
+- Config/Data smoke/data check:
+  `SC-[epic-slug]-S[story-number]-AC[criterion-number]`
+
+The story number and criterion number must come from the stable AC ID. If the
+story already contains a valid plan item ID for that same AC, preserve it. IDs
+must remain stable when criterion wording or order changes and must never be
+recycled for a different AC. Duplicate IDs or a mismatch between an ID and its
+AC are gaps that make the plan `PARTIAL`.
+
+Each plan item records: story path, stable AC ID, stable test/check ID, method,
+test/evidence path, Given/When/Then or Setup/Verify/Pass condition, edge cases,
+and required sign-off. Do not invent unsupported requirements; record an input
+gap instead.
+
+Show the classification and AC-to-test mapping table before the write preview.
 
 ---
 
-## Phase 4: Generate Test Plan
+## Phase 4: Generate the plan
 
-Assemble the full QA plan document. Use this structure:
+Generate a complete document with this structure:
 
-````markdown
-# QA Plan: [Sprint/Feature Name]
-**Date**: [date]
+```markdown
+# QA Plan: [scope name]
+
+**Generated**: [ISO-8601 timestamp]
 **Generated by**: $qa-plan
-**Scope**: [N stories across [N systems]]
-**Engine**: [engine name from .codex/docs/technical-preferences.md, or "Not configured"]
-**Sprint File**: [path to sprint plan if applicable]
+**Scope**: [scope]
+**Engine**: [engine or Not configured]
+**Plan State at Generation**: [CURRENT | PARTIAL]
 
----
+## Plan Manifest
+
+`manifest_version: 1`
+`hash_algorithm: sha256`
+
+### Sources
+
+| Role | Path | Status | SHA-256 |
+|---|---|---|---|
+| story | [path] | loaded | sha256:[digest] |
+| gdd | [path] | loaded | sha256:[digest] |
+| adr | [path] | loaded | sha256:[digest] |
+
+### Story Requirement Bindings
+
+| Story ID | Story Path | Story Hash | GDD Paths + Hashes | ADR Paths + Hashes | Stable AC IDs | Coverage |
+|---|---|---|---|---|---|---|
+| [stable ID] | [path] | sha256:[digest] | [path + digest] | [path + digest] | [IDs] | complete/gaps |
+
+### Plan State Rules
+
+- CURRENT: every required story/GDD/ADR loaded and every AC has one stable test/check ID.
+- PARTIAL: a required source/hash/AC binding is missing, invalid, or ambiguous.
+- STALE: any current source bytes no longer match the captured hash, or a captured source disappears.
+
+## Coverage Gaps
+
+- [None, or exact story/source/AC gap and owning workflow]
 
 ## Test Summary
 
-| Story | Type | Automated Test Required | Manual Verification Required |
-|-------|------|------------------------|------------------------------|
-| [story title] | Logic | Unit test — `tests/unit/[system]/` | None |
-| [story title] | Integration | Integration test — `tests/integration/[system]/` | Smoke check |
-| [story title] | Visual/Feel | None (not automatable) | Screenshot + lead sign-off |
-| [story title] | UI | Interaction walkthrough | Manual step-through |
-| [story title] | Config/Data | Data validation test | Spot-check in-game values |
-
----
+| Story | Stable AC ID | Stable Test/Check ID | Method | Automated | Manual |
+|---|---|---|---|---|---|
 
 ## Automated Tests Required
 
-### [Story Title] — [Type]
-**Test file path**: `tests/[unit|integration]/[system]/[story-slug]_test.[ext]`
-**What to test**:
-- [Specific formula or rule from the GDD Formulas section]
-- [Each named state transition or decision branch]
-- [Each side effect that should or should not occur]
-
-**Edge cases to cover**:
-- Zero/minimum input values (e.g., 0 damage, empty inventory)
-- Maximum/boundary input values (e.g., max level, stat cap)
-- Invalid or null input (e.g., missing target, dead entity)
-- [Any edge case explicitly called out in the GDD Edge Cases section]
-
-**Estimated test count**: ~[N] unit tests
-
-[If no GDD formula reference was found for this story, note:]
-*No formula found in referenced GDD — test cases must be derived from acceptance
-criteria directly. Review the GDD Formulas section before writing tests.*
-
----
+### [Test ID] — [Story title] / [AC ID]
+**Test file path**: [path]
+- Given: [precondition]
+- When: [action]
+- Then: [observable assertion]
+- Edge cases: [boundaries/failures]
 
 ## Manual QA Checklist
 
-### [Story Title] — [Type]
-**Verification method**: [Screenshot + designer sign-off | Playtest session |
-Manual step-through | Comparison against reference footage]
-**Who must sign off**: [designer / lead-programmer / qa-lead / art-lead]
-**Evidence to capture**: [screenshot of X | video clip of Y | written playtest
-notes | side-by-side comparison]
-
-Checklist:
-- [ ] [Specific observable condition — concrete and falsifiable]
-- [ ] [Another condition]
-- [ ] [Every acceptance criterion translated into a manual check item]
-
-*If any criterion uses subjective language ("feels", "looks", "seems"), it must
-be supplemented with a specific benchmark or a playtest protocol note.*
-
----
+### [Check ID] — [Story title] / [AC ID]
+**Evidence path**: [path]
+**Sign-off owner**: [role]
+- Setup: [reproducible setup]
+- Verify: [observable behavior]
+- Pass condition: [unambiguous result]
 
 ## Smoke Test Scope
 
-Critical paths to verify before any QA hand-off for this sprint:
-
-1. Game launches to main menu without crash
-2. New game / new session can be started
-3. [Primary mechanic introduced or changed this sprint]
-4. [Any system with a regression risk from this sprint's changes]
-5. Save / load cycle completes without data loss (if save system exists)
-6. Performance is within budget on target hardware (no new frame spikes)
-
-*Smoke tests are verified by the developer via `$smoke-check`. Reference this
-list when running that skill.*
-
----
+1. [Critical path with stable test/check IDs]
 
 ## Playtest Requirements
 
-| Story | Playtest Goal | Min Sessions | Target Player Type |
-|-------|--------------|--------------|-------------------|
-| [story] | [What question must the session answer?] | [N] | [new player / experienced] |
+Playtest evidence must use the canonical completed-result contract:
+`production/playtests/<session-id>/report.md`. A plan item may name that path as
+its expected evidence, but a template, protocol, raw log, review, ingest-only
+session, legacy path, or report without `Status: COMPLETED`, `Gate Eligible:
+YES`, and matching source hashes cannot satisfy the item or count as a session.
 
-**Sign-off requirement**: Playtest notes must be written to
-`production/session-logs/playtest-[sprint]-[story-slug].md` and reviewed by
-the [designer / qa-lead] before the story can be marked COMPLETE.
+| Stable Check ID | Story | Goal | Evidence Path | Sign-off Owner |
+|---|---|---|---|---|
 
-If no stories require playtest validation: *No playtest sessions required for
-this sprint.*
+## Definition of Done
+
+- [ ] Effective plan state is CURRENT after source revalidation.
+- [ ] Every stable AC ID has passing automated or approved manual evidence.
+- [ ] Required smoke checks pass.
+- [ ] Required evidence exists at the named canonical path.
+```
+
+The source table and story binding table are mandatory. `PARTIAL` plans retain
+all known records and gaps; they must not disguise an absent hash as current.
+
+### Effective-state revalidation contract
+
+Before this plan is reused, imported into a story, or consumed by
+`$smoke-check`, `$story-done`, `$regression-suite`, or another gate:
+
+1. Read every captured source path and hash its current raw bytes.
+2. Compare current digests and source availability with the manifest.
+3. Treat any mismatch, disappearance, or newly unreadable source as `STALE`,
+   regardless of the stored `Plan State at Generation` label.
+4. Reject `PARTIAL` and `STALE` as gate evidence. Regenerate the plan from
+   current sources.
+5. Preserve stable AC and test/check IDs when regenerating; update hashes and
+   requirement text from current sources.
+
+This computed effective state avoids mutating the plan merely to mark it stale.
 
 ---
 
-## Definition of Done — This Sprint
+## Phase 5: Preview, authorize, write, and verify
 
-A story is DONE when ALL of the following are true:
+### 5.1 Preview one complete changeset
 
-- [ ] All acceptance criteria verified — via automated test result OR documented
-      manual evidence (screenshot, video, or playtest notes with sign-off)
-- [ ] Test file exists at the specified path for all Logic and Integration stories
-- [ ] Manual evidence document exists for all Visual/Feel and UI stories
-- [ ] Smoke check passes (run `$smoke-check sprint` before QA hand-off)
-- [ ] No regressions introduced
-- [ ] Code reviewed (via `$code-review` or documented peer review)
-- [ ] Story file updated to `Status: Complete` (via `$story-done`)
-````
+Show the complete generated plan or an inspectable full artifact/diff. Then show:
 
-When generating content, use the actual story titles, GDD formula text, and
-acceptance criteria extracted in Phase 2. Do not use placeholder text — every
-test entry should reflect the real requirements of these specific stories.
+```text
+Proposed changeset
+- CREATE or UPDATE production/qa/qa-plan-[scope-slug]-[date].md
+
+Explicit non-writes
+- all in-scope story files
+- production/session-state/active.md
+- all GDD, ADR, sprint, registry, and architecture files
+```
+
+If the target already exists, read and record its raw-byte SHA-256 for the
+preview and describe the operation as `UPDATE`; do not describe it as a new
+file. Ask once whether to apply this exact one-file changeset.
+
+There is no story-backfill or session-state option. If the user asks for one,
+explain that the story/checkpoint owner must perform it and do not include it in
+this changeset.
+
+### 5.2 Apply only the selected operation
+
+If approved, immediately before writing:
+
+- re-hash every loaded story/GDD/ADR and abort if any digest changed since plan
+  generation;
+- for an update, re-hash the target and abort if it differs from the previewed
+  target hash;
+- write only the plan file, exactly as previewed.
+
+If an existing target is already byte-for-byte identical to the approved
+content, do not rewrite it; verify it and report `unchanged`. Otherwise, after
+writing, read the plan back as raw bytes and verify byte-for-byte equality with
+the approved content. Compute and report the plan's SHA-256 in either case.
+
+Do not create a checkpoint and do not append to session state after the write.
+
+### 5.3 Report an operation ledger
+
+Report each proposed operation independently:
+
+| Operation | Artifact | Result | SHA-256 / Evidence |
+|---|---|---|---|
+| write-qa-plan | [path] | written / unchanged / declined / failed | [verified digest or reason] |
+
+Use `written` only after the read-back verification succeeds. Never report a
+path as written, created, updated, registered, or checkpointed when that action
+was unselected, declined, aborted, or failed. Never synthesize success for a
+legacy backfill-only request.
+
+Final verdicts:
+
+- **Verdict: COMPLETE** — the approved plan was verified `written` or verified
+  `unchanged`, and its effective state at result time is `CURRENT`.
+- **Verdict: PARTIAL** — the approved plan was verified written but has declared
+  source or AC/test binding gaps; it is not gate evidence.
+- **Verdict: BLOCKED** — approval was declined, a source/target changed before
+  write, the write/read-back failed, or no valid owned operation was selected.
+
+Only after a verified write may the response say:
+`QA plan written to [path] (sha256:[digest]).`
+For a verified no-op, say instead:
+`QA plan already current at [path] (sha256:[digest]); no write performed.`
 
 ---
 
-## Phase 5: Write Output
+## Collaborative protocol
 
-Show the complete plan in conversation (or a summary if the plan is very long),
-then ask the user both questions together:
-
-```
-question: "Ready to write the QA plan. Choose output options:"
-allow multiple selections
-options:
-  - "Write QA plan to production/qa/qa-plan-[sprint-slug]-[date].md"
-  - "Also back-fill test case specs into each story file's ## QA Test Cases section (Recommended — enables $dev-story and $code-review traceability)"
-```
-
-If "Write QA plan" is selected: write the plan file exactly as generated — do not truncate.
-
-If "Also back-fill story files" is selected: for each Logic and Integration story in scope, edit the story file at its path. Find the `## QA Test Cases` section and replace its content with the test case specs generated in Phase 4 for that story. If a story has no `## QA Test Cases` section, append it before `## Test Evidence`. For Visual/Feel and UI stories, write the manual verification steps instead of test specs.
-
-After writing:
-
-"QA plan written to `production/qa/qa-plan-[sprint-slug]-[date].md`.
-
-Next steps:
-- Share this plan with the team before sprint implementation begins
-- Once all sprint stories are implemented, run `$smoke-check sprint` to gate QA hand-off — not yet, only after implementation is complete
-- For Logic/Integration stories, create the test files at the listed paths
-  before marking stories done — `$story-done` checks for them"
-
-Silently append to `production/session-state/active.md` (create the file if it does not exist):
-
-```
-<!-- QA-PLAN: [date] | System: [system/sprint identifier] | Plan written: production/qa/qa-plan-[identifier]-[date].md -->
-```
-
----
-
-## Collaborative Protocol
-
-- **Never write the plan without asking** — Phase 5 requires explicit approval.
-- **Classify conservatively**: when a story is ambiguous between Logic and
-  Integration, classify it as Integration — it requires both unit and
-  integration tests.
-- **Do not invent test cases** beyond what acceptance criteria and GDD formulas
-  support. If a formula is absent from the GDD, flag it rather than guessing.
-- **Playtest requirements are advisory**: the user decides whether a playtest
-  is warranted for borderline Visual/Feel stories. Flag the case; do not mandate.
-- Ask the user directly for scope selection when no argument is provided.
-  Keep all other phases non-interactive — present findings, then ask once to
-  approve the write.
+- Ask for scope only when it was not supplied, then use one complete changeset
+  authorization before the first write.
+- Keep source gaps visible; do not guess hashes, AC IDs, test IDs, formulas, or
+  acceptance criteria.
+- Keep story and checkpoint ownership explicit. Offer a handoff to the owning
+  workflow, but never perform that write from `$qa-plan`.
+- A user's acceptance of a risk does not make a `PARTIAL` or `STALE` plan
+  current and does not authorize downstream implementation.
+- Stop after the verified plan result and context-aware next steps.

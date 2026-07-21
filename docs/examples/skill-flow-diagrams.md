@@ -71,7 +71,7 @@ PHASE 5: PRODUCTION (repeating sprint loop)
   $scope-check ────────────────────────────────────────────────► scope creep detected / clear
   $content-audit ──────────────────────────────────────────────► GDD content gaps identified
   $bug-report ─────────────────────────────────────────────────► production/qa/bugs/bug-NNN.md
-  $bug-triage ─────────────────────────────────────────────────► bugs re-prioritized + assigned
+  $bug-triage ─────────────────────────────────────────────────► read-only triage proposals (recorder applies decisions)
 
   [Team skills for feature areas — spawn when working a full feature]
   $team-combat / $team-narrative / $team-ui / $team-level / $team-audio
@@ -294,7 +294,7 @@ $team-qa ───────────────────────�
 
 [Ongoing — bug management]
 $bug-report ────────────────────────────────────────────────────► production/qa/bugs/bug-NNN.md
-$bug-triage ────────────────────────────────────────────────────► open bugs re-prioritized + assigned
+$bug-triage ────────────────────────────────────────────────────► read-only triage proposals (recorder applies decisions)
 
 [Meta — harness validation]
 $skill-test [lint|spec|catalog] ────────────────────────────────► skill file structural + behavioral check

@@ -1,4 +1,4 @@
 interface:
   display_name: "Tech Debt"
-  short_description: "Track, categorize, and prioritize technical debt across the..."
-  default_prompt: "Use $tech-debt to run the Tech Debt game-studio workflow."
+  short_description: "Idempotent debt scans, advisory ranking, and append-only history"
+  default_prompt: "Use $tech-debt in scan, add, prioritize, or report mode. Treat scan hits as candidates, deduplicate with stable fingerprints, keep prioritization advisory, and mutate the append-only register only after an exact authorized CAS preview."

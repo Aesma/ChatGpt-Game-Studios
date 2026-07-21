@@ -86,7 +86,7 @@ Ask yourself: "What department would handle this in a real studio?"
 | `$brainstorm` | Guided game concept ideation from scratch |
 | `$map-systems` | Decompose concept into systems, map dependencies, guide per-system GDDs |
 | `$design-system` | Guided, section-by-section GDD authoring for a single game system |
-| `$quick-design` | Lightweight spec for small changes — tuning, tweaks, minor additions |
+| `$quick-design` | Versioned proposal for structurally low-risk bounded changes; separate review/application is required before it becomes authoritative |
 | `$review-all-gdds` | Cross-GDD consistency and game design theory review |
 | `$propagate-design-change` | Find ADRs and stories affected by a GDD change |
 | `$art-bible` | Guided, section-by-section Art Bible authoring — creates visual identity spec before asset production |
@@ -105,14 +105,14 @@ Ask yourself: "What department would handle this in a real studio?"
 | `$studio-status` | Read-only stage, active-work breadcrumb, and recovery summary |
 | `$story-readiness` | Validate a story is implementation-ready before pickup |
 | `$story-done` | End-of-story completion review — verifies acceptance criteria |
-| `$estimate` | Produces structured effort estimates |
+| `$estimate` | Produces read-only relative or calibrated evidence through an explicit profile |
 | `$design-review` | Reviews a design document |
 | `$code-review` | Reviews code for quality and architecture |
 | `$balance-check` | Analyzes game balance data |
 | `$asset-audit` | Audits assets for compliance |
 | `$content-audit` | GDD-specified content vs. implemented — find gaps |
-| `$scope-check` | Detect scope creep against plan |
-| `$perf-profile` | Performance profiling and bottleneck ID |
+| `$scope-check` | Compare explicit immutable scope artifacts without making product decisions |
+| `$perf-profile` | Prepare captures or analyze exact runtime exports; static output is never gate evidence |
 | `$tech-debt` | Scan, track, and prioritize tech debt |
 | `$gate-check` | Validate phase readiness (PASS/CONCERNS/FAIL) |
 | `$consistency-check` | Scan all GDDs for cross-document inconsistencies (conflicting stats, names, rules) |
@@ -125,12 +125,12 @@ Ask yourself: "What department would handle this in a real studio?"
 | `$onboard` | Generates onboarding docs for a role |
 | `$release-checklist` | Validates pre-release checklist |
 | `$launch-checklist` | Complete launch readiness validation |
-| `$changelog` | Generates changelog from git history |
-| `$patch-notes` | Generate player-facing patch notes |
+| `$changelog` | Generates a local changelog entry from an explicit Git range and exact request manifest |
+| `$patch-notes` | Create a local player-facing draft only from an approved candidate and verified production deployment receipt |
 | `$hotfix` | Emergency fix with audit trail |
 | `$day-one-patch` | Prepare a focused day-one patch for known issues discovered after gold master |
 | `$prototype` | Concept prototype — validate the core idea before committing to detailed GDDs (Phase 1) |
-| `$vertical-slice` | Production-quality end-to-end build — validate full game loop (Phase 4) |
+| `$vertical-slice` | Plan and independently evaluate a hash-bound vertical-slice candidate in separate tasks (Phase 4) |
 | `$localize` | Localization scan, extract, validate |
 | `$team-combat` | Orchestrate full combat team pipeline |
 | `$team-narrative` | Orchestrate full narrative team pipeline |
@@ -140,10 +140,10 @@ Ask yourself: "What department would handle this in a real studio?"
 | `$team-audio` | Orchestrate full audio team pipeline |
 | `$team-level` | Orchestrate full level creation pipeline |
 | `$team-live-ops` | Orchestrate live-ops team for seasons, events, and post-launch content |
-| `$team-qa` | Orchestrate full QA team cycle — test plan, test cases, smoke check, sign-off |
+| `$team-qa` | Review one exact build candidate; only persisted COMPLETE + APPROVED + Gate Eligible YES can hand off |
 | `$qa-plan` | Generate a QA test plan for a sprint or feature |
-| `$bug-triage` | Re-prioritize open bugs, assign to sprints, surface systemic trends |
-| `$smoke-check` | Run critical path smoke test gate before QA hand-off (PASS/FAIL) |
+| `$bug-triage` | Read-only evidence triage: propose priority/scheduling and surface trends; a separate recorder commits assignments |
+| `$smoke-check` | Build-bound smoke gate; NOT_RUN/UNKNOWN/quick/warnings are blocked for QA hand-off |
 | `$soak-test` | Generate a soak test protocol for extended play sessions |
 | `$regression-suite` | Map coverage to GDD critical paths, flag gaps, maintain regression suite |
 | `$test-setup` | Scaffold test framework + CI pipeline for the project's engine (run once) |

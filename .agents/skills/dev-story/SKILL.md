@@ -1,330 +1,470 @@
 ---
 name: dev-story
-description: "Read a story file and implement it. Loads the full context (story, GDD requirement, ADR guidelines, control manifest), routes to the right programmer agent for the system and engine, implements the code and test, and confirms each acceptance criterion. The core implementation skill — run after $story-readiness, before $code-review and $story-done."
+description: "Implement one story through a provenance-preserving, dependency-safe, explicitly authorized file transaction. Requires current traceability or a structured accepted-risk exception, fixes every write path and owner before approval, writes implementation plus tests, records deterministic evidence, and hands the story to code review and story-done."
 ---
 
 ## Invocation and execution
 
-Invoke this workflow as `$dev-story`.
+Invoke this workflow as `$dev-story [story-path]`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+Treat the story path as optional only for story selection. This workflow never
+treats a story as ready merely because its header says `Status: Ready`.
 
-Arguments: `[story-path]`. Treat bracketed values as optional unless the workflow says otherwise.
-
+Before the first file mutation, present one complete changeset preview containing
+every normal and recovery-only target path, its unique write owner, intended
+operation, precondition hash, and acceptance-criterion coverage. Obtain one
+explicit approval for that exact plan. Approval is bound to the plan hash. Any
+new path, owner change, or materially different operation invalidates the
+approval and requires a revised preview.
 
 # Dev Story
 
-This skill bridges planning and code. It reads a story file in full, assembles
-all the context a programmer needs, routes to the correct specialist agent, and
-drives implementation to completion — including writing the test.
+This skill implements one bounded story. It does not close a story:
 
-**The loop for every story:**
-```
-$qa-plan sprint           ← define test requirements before sprint begins
-$story-readiness [path]   ← validate before starting
-$dev-story [path]         ← implement it  (this skill)
-$code-review [files]      ← review it
-$story-done [path]        ← verify and close it
+```text
+$story-readiness [story-path] -> $dev-story [story-path]
+  -> $code-review [implementation files] -> $story-done [story-path]
 ```
 
-**After all sprint stories are done:** run `$team-qa sprint` to execute the full QA cycle and get a sign-off verdict before advancing the project stage.
+The only successful lifecycle transition made here is `Ready -> In Progress ->
+In Review`. `Complete` and `Done` belong exclusively to `$story-done`.
 
-**Output:** Source code + test file in the project's `src/` and `tests/` directories.
+**Outputs:**
 
----
-
-## Phase 1: Find the Story
-
-**If a path is provided**: read that file directly.
-
-**If no argument**: check `production/session-state/active.md` for the active
-story. If found, confirm: "Continuing work on [story title] — is that correct?"
-If not found, ask: "Which story are we implementing?" Then search
-`production/epics/**/*.md` and list stories with Status: Ready.
+- the approved implementation and test/evidence files;
+- synchronized story and sprint-tracker status;
+- test evidence containing command, exit code, timestamp, and log hash;
+- a recovery checkpoint when the transaction cannot complete cleanly; and
+- a handoff to `$code-review` and `$story-done`.
 
 ---
 
-## Phase 2: Load Full Context
+## Phase 1: Resolve and freeze the input story
 
-**Before loading any context, verify required files exist.** Extract the ADR path from the story's `ADR Governing Implementation` field, then check:
+### 1.1 Select the story
 
-| File | Path | If missing |
-|------|------|------------|
-| TR registry | `docs/architecture/tr-registry.yaml` | **STOP** — "TR registry not found at `docs/architecture/tr-registry.yaml`. Run `$architecture-review` to bootstrap the registry from your GDDs and ADRs." |
-| Governing ADR | path from story's ADR field | **STOP** — "ADR file [path] not found. Run `$architecture-decision` to create it, or correct the filename in the story's ADR field." |
-| Control manifest | `docs/architecture/control-manifest.md` | **WARN and continue** — "Control manifest not found — layer rules cannot be checked. Run `$create-control-manifest`." |
+- When a path is provided, resolve and read exactly that file.
+- With no path, read `production/session-state/active.md`. If it names an
+  active story, ask: "Continuing work on [story title] — is that correct?"
+- If there is no active story, ask which story to implement and list only story
+  files under `production/epics/**/*.md` whose recorded status is Ready or In
+  Progress. Exclude `EPIC.md`.
 
-If the TR registry or governing ADR is missing, set the story status to **BLOCKED** in the session state and do not spawn any programmer agent.
+Read the selected story in full before any delegation or mutation. Record its raw
+SHA-256 hash as `story_baseline_hash`.
 
-Read all of the following simultaneously — these are independent reads. Do not start implementation until all context is loaded:
+### 1.2 Load authoritative context
 
-### The story file
-Extract and hold:
-- **Story title, ID, layer, type** (Logic / Integration / Visual/Feel / UI / Config/Data)
-- **TR-ID** — the GDD requirement identifier
-- **Governing ADR** reference
-- **Manifest Version** embedded in story header
-- **Acceptance Criteria** — every checkbox item, verbatim
-- **Implementation Notes** — the ADR guidance section in the story
-- **Out of Scope** boundaries
-- **Test Evidence** — the required test file path
-- **Dependencies** — what must be DONE before this story
+Before implementation planning, load and hash the raw bytes of every input:
 
-### The TR registry
-Read `docs/architecture/tr-registry.yaml`. Look up the story's TR-ID.
-Read the current `requirement` text — this is the source of truth for what the
-GDD requires now. Do not rely on any inline text in the story file (may be stale).
+1. the selected story;
+2. `docs/architecture/tr-registry.yaml`;
+3. every governing ADR referenced by the story;
+4. `docs/architecture/control-manifest.md`;
+5. `.codex/docs/technical-preferences.md`;
+6. the current sprint plan and `production/sprint-status.yaml`, when present;
+7. every dependency story; and
+8. every additional GDD, UX, asset, schema, or configuration source explicitly
+   referenced by the story.
 
-### The governing ADR
-Read `docs/architecture/[adr-file].md`. Extract:
-- The full Decision section
-- The Implementation Guidelines section (this is what the programmer follows)
-- The Engine Compatibility section (post-cutoff APIs, known risks)
-- The ADR Dependencies section
+For each input retain `path`, `sha256:<64 lowercase hex>`, and the sections
+or fields used. Hash raw bytes, not normalized or copied text. Missing,
+unreadable, or structurally invalid required context is BLOCKED.
 
-### The control manifest
-Read `docs/architecture/control-manifest.md`. Extract the rules for this story's layer:
-- Required patterns
-- Forbidden patterns
-- Performance guardrails
+Extract from the story:
 
-Check: does the story's embedded Manifest Version match the current manifest header date?
-If they differ, ask the user directly before proceeding:
-- Prompt: "Story was written against manifest v[story-date]. Current manifest is v[current-date]. New rules may apply. How do you want to proceed?"
-- Options:
-  - `[A] Update story manifest version and implement with current rules (Recommended)`
-  - `[B] Implement with old rules — I accept the risk of non-compliance`
-  - `[C] Stop here — I want to review the manifest diff first`
+- ID, title, Status, Layer, Type, estimate, and scope boundaries;
+- exact active TR-ID values and the named GDD requirement;
+- governing ADR paths;
+- Manifest Version and Manifest Hash;
+- the `docs/architecture/control-manifest.md` entry in `## Source Snapshot`;
+- every acceptance criterion verbatim;
+- implementation notes and forbidden work;
+- exact test/evidence path;
+- dependency records; and
+- any existing implementation or dependency waiver.
 
-If [A]: edit the story file's `Manifest Version:` field to the current manifest date before spawning the programmer. Then read the manifest carefully for new rules.
-If [B]: edit the story file's `Manifest Version:` field to the current manifest date AND add a `Manifest-Note: Proceeded with old manifest rules on [date] — non-compliance risk accepted.` line to the story header. Read the manifest for new rules anyway. Note the decision in the Phase 6 summary under "Deviations". `$story-done` will include the Manifest-Note in its deviations section without re-checking staleness.
-If [C]: stop. Do not spawn any agent. Let the user review and re-run `$dev-story`.
+### 1.3 Fail-closed readiness preflight
 
-### Dependency validation
+Do not trust a prior prose claim that a story is ready. Re-evaluate the
+implementation-blocking contract used by `$story-readiness`:
 
-After extracting the **Dependencies** list from the story file, validate each:
+- the TR registry must load and parse;
+- every production story must contain an exact registered TR-ID with
+  `status: active`;
+- every governing ADR must exist and have `Status: Accepted`;
+- acceptance criteria, scope, story type, and test evidence must be explicit;
+- unresolved design or architecture questions block implementation;
+- the current control manifest must have a parseable Manifest Version;
+- the story header version, header hash, and Source Snapshot manifest hash must
+  all bind to the current raw manifest bytes; and
+- dependencies must pass Phase 2 below.
 
-1. Find files matching `production/epics/**/*.md` to find each dependency story file.
-2. Read its `Status:` field.
-3. If any dependency has Status other than `Complete` or `Done`:
-   - Ask the user directly:
-     - Prompt: "Story '[current story]' depends on '[dependency title]' which is currently [status], not Complete. How do you want to proceed?"
-     - Options:
-       - `[A] Proceed anyway — I accept the dependency risk`
-       - `[B] Stop — I'll complete the dependency first`
-       - `[C] The dependency is done but status wasn't updated — mark it Complete and continue`
-   - If [B]: set story status to **BLOCKED** in session state and stop. Do not spawn any programmer agent.
-   - If [C]: add the dependency-status edit to the complete changeset preview and continue only after that changeset is authorized.
-   - If [A]: note in Phase 6 summary under "Deviations": "Implemented with incomplete dependency: [dependency title] — [status]."
+A prior `NEEDS WORK` or `BLOCKED` result remains non-ready. The only
+exception handled by this skill is the structured manifest accepted-risk branch
+in section 1.4, and it never relabels the readiness result as READY. No waiver
+can bypass a missing/invalid registry, inactive TR-ID, Proposed/missing ADR,
+unresolved architecture decision, ambiguous required behavior, or hard
+dependency.
 
-If a dependency file cannot be found: warn "Dependency story not found: [path]. Verify the path or create the story file."
+If an acceptance criterion is subjective for a non-Visual/Feel story, stop and
+ask the user for a concrete testable restatement. The clarified text and its
+story-file edit must appear in the exact changeset plan before implementation.
+
+### 1.4 Manifest provenance and stale-story choices
+
+Compute `current_hash` from the current raw bytes of
+`docs/architecture/control-manifest.md`. Read the story's captured
+`Manifest Hash` and Source Snapshot entry as `implemented_against_hash`. Treat this immutable captured value as the story's
+`source_manifest_hash`; do not repurpose `current_hash` as source provenance.
+
+The manifest binding passes only when all three story values match the current
+manifest: exact version, header hash, and Source Snapshot hash. A matching date
+alone never passes.
+
+When the binding is stale, missing, or inconsistent, report the captured and
+current values and offer exactly these paths:
+
+- **Stop** — make no mutation and end BLOCKED.
+- **Rebase** — make no mutation in `$dev-story`; route the story to its owning
+  authoring/update workflow to refresh the version, header hash, Source Snapshot,
+  and affected requirements, then require a new final `$story-readiness`
+  verdict before rerunning `$dev-story`.
+- **Structured accepted risk** — available only when the current manifest is
+  readable/valid, the story has a well-formed captured header hash, the Source
+  Snapshot contains the same captured hash, and every non-manifest readiness
+  check passes. Require an explicit user decision and add the following exact
+  record to the planned story edit:
+
+```yaml
+implementation_waiver:
+  waiver_id: MW-[stable-id]
+  kind: manifest-staleness
+  implemented_against_hash: sha256:[captured 64-hex hash]
+  current_hash: sha256:[current 64-hex hash]
+  accepted_by: user
+  accepted_at: [ISO-8601 timestamp]
+  provenance_status: ACCEPTED-RISK
+```
+
+A manifest waiver is invalid unless `waiver_id`,
+`implemented_against_hash`, and `current_hash` are exact and internally
+consistent. Free text, a Manifest-Note, or a generic "proceed anyway" response
+is not a waiver.
+
+On the accepted-risk path:
+
+- never change the story's captured Manifest Version, Manifest Hash, or Source
+  Snapshot entry;
+- never claim the captured hash is current;
+- keep the manifest/readiness result `STALE / ACCEPTED-RISK` in every preview,
+  checkpoint, status projection, and summary;
+- implement against the captured hash named by
+  `implemented_against_hash`; and
+- if the current manifest hash changes again before the first mutation, invalidate
+  the waiver and restart this section.
 
 ---
 
-### Engine reference
-Read `.codex/docs/technical-preferences.md`:
-- `Engine:` value — determines which programmer agents to use
-- Naming conventions (class names, file names, signal/event names)
-- Performance budgets (frame budget, memory ceiling)
-- Forbidden patterns
+## Phase 2: Validate dependencies
 
-### Mark Story In Progress
+Parse every dependency as a stable story ID plus a resolvable path. A dependency
+is hard by default. It is soft only when the story record explicitly contains
+`soft_dependency: true`.
 
-Silently update two things before spawning any agent:
+For each dependency, resolve its file and observed status from the file itself.
+Use this matrix:
 
-1. **`production/sprint-status.yaml`** (if it exists): find the entry matching this story's file path and set `status: in_progress`. Update the top-level `updated` field to today's date. If the file does not exist, skip silently.
+| Dependency | Complete/Done | Ready/In Progress | Draft/Blocked | Missing/unreadable |
+|---|---:|---:|---:|---:|
+| Hard or type omitted | PASS | BLOCKED | BLOCKED | BLOCKED |
+| Explicit soft, no valid waiver | PASS | BLOCKED | BLOCKED | BLOCKED |
+| Explicit soft with valid waiver | PASS | ACCEPTED-RISK | ACCEPTED-RISK | ACCEPTED-RISK |
 
-2. **The story file itself**: edit the `Last Updated:` field in the story header to today's date (format: `YYYY-MM-DD`). If the field does not exist in the story header, add it after the `Status:` line. This enables sprint-status staleness detection for this story.
+A soft-dependency waiver must be a structured story record containing all of:
+
+```yaml
+dependency_waiver:
+  waiver_id: DW-[stable-id]
+  dependency_id: [stable story ID]
+  observed_status: [exact status or MISSING]
+  accepted_by: user
+  accepted_at: [ISO-8601 timestamp]
+  reason: [specific bounded risk]
+```
+
+The waiver must match the dependency ID and the freshly observed status. Any
+mismatch, status change, missing field, or free-text override is BLOCKED. A user
+may approve adding a valid waiver only as part of the complete changeset preview.
+
+Never offer to mark a dependency Complete, never edit a dependency story, and
+never allow a waiver for a hard dependency. When blocked, identify the exact
+dependency ID, path, observed status, and required resolution, leave all files
+unchanged, and stop before planning implementation.
 
 ---
 
-## Phase 3: Route to the Right Programmer
+## Phase 3: Build the exact file and ownership plan
 
-Based on the story's **Layer**, **Type**, and **system name**, determine which
-specialist to spawn through Codex subagent delegation.
+Planning is read-only. No tracker, story, source, test, waiver, session-state, or
+checkpoint file may change in this phase.
 
-**Config/Data stories — skip agent spawning entirely:**
-If the story's Type is `Config/Data`, no programmer agent or engine specialist is needed. Jump directly to Phase 4 (Config/Data note). The implementation is a data file edit — no routing table evaluation, no engine specialist.
+### 3.1 Select one implementation writer
 
-### Primary agent routing table
+Select exactly one primary implementation writer for all business artifacts:
 
-| Story context | Primary agent |
+| Story context | Primary implementation writer |
 |---|---|
-| Foundation layer — any type | `engine-programmer` |
-| Any layer — Type: UI | `ui-programmer` |
-| Any layer — Type: Visual/Feel | `gameplay-programmer` (implements) |
-| Core or Feature — gameplay mechanics | `gameplay-programmer` |
-| Core or Feature — AI behaviour, pathfinding | `ai-programmer` |
-| Core or Feature — networking, replication | `network-programmer` |
-| Config/Data — no code | No agent needed (see Phase 4 Config note) |
+| Foundation or engine/core infrastructure | `engine-programmer` |
+| UI | `ui-programmer` |
+| AI or pathfinding | `ai-programmer` |
+| Networking/replication | `network-programmer` |
+| Gameplay, Visual/Feel, or Config/Data | `gameplay-programmer` |
 
-### Engine specialist — always spawn as secondary for code stories
+If the named role is unavailable, the current agent may perform the same role,
+but the plan must still name one writer. Config/Data is not an inline exception.
 
-Read the `Engine Specialists` section of `.codex/docs/technical-preferences.md`
-to get the configured primary specialist. Spawn them alongside the primary agent
-when the story involves engine-specific APIs, patterns, or the ADR has HIGH
-engine risk.
+When engine-specific review is needed, consult at most one configured engine
+specialist during planning. The engine specialist is read-only and returns
+findings to the primary writer; it owns no files.
 
-| Engine | Specialist agents available |
-|--------|----------------------------|
-| Godot 4 | `godot-specialist`, `godot-gdscript-specialist`, `godot-shader-specialist` |
-| Unity | `unity-specialist`, `unity-ui-specialist`, `unity-shader-specialist` |
-| Unreal Engine | `unreal-specialist`, `ue-gas-specialist`, `ue-blueprint-specialist`, `ue-umg-specialist`, `ue-replication-specialist` |
+The status recorder is the sole writer for:
 
-**When engine risk is HIGH** (from the ADR or VERSION.md): always spawn the engine
-specialist, even for non-engine-facing stories. High risk means the ADR records
-assumptions about post-cutoff engine APIs that need expert verification.
+- the selected story;
+- `production/sprint-status.yaml`, when it exists;
+- `production/session-state/active.md`; and
+- `production/session-state/dev-story-[story-id].yaml`, a failure-only recovery
+  checkpoint.
+
+No path may have more than one write owner.
+
+### 3.2 Produce a closed plan
+
+Ask the primary writer for a read-only implementation plan. It must name every
+file it will create or modify; directory names, globs, "related files", and
+to-be-determined paths are not accepted. The declared test/evidence path must be
+included.
+
+Build one plan table with:
+
+- exact path;
+- create or modify;
+- unique owner;
+- intended semantic change;
+- acceptance criteria covered;
+- baseline SHA-256 or `ABSENT`;
+- applicable source-context hashes;
+- normal, success-only, or failure-only write condition; and
+- test command(s) that validate the file.
+
+Also include every status/waiver/session/checkpoint file owned by the status
+recorder. Capture a baseline raw hash for every existing target and an
+`ABSENT` precondition for every planned new file.
+
+Reject the plan when:
+
+- any acceptance criterion has no implementation or evidence mapping;
+- a target path or owner is unresolved;
+- two agents would write the same path;
+- a required test/evidence path is absent;
+- the writer cannot stay inside Out of Scope;
+- a required architectural decision is not covered by an Accepted ADR; or
+- the exact test command cannot be determined.
+
+An uncovered architecture choice is BLOCKED and must be routed to the ADR owner.
+It is never approved as an implementation detail inside this skill.
+
+### 3.3 Preview and authorize once
+
+Present:
+
+1. readiness/provenance state, including both manifest hashes;
+2. dependency matrix and all accepted-risk records;
+3. the complete file/owner plan;
+4. exact test commands;
+5. lifecycle transitions;
+6. rollback/checkpoint behavior; and
+7. a deterministic SHA-256 of the canonical plan, `plan_hash`.
+
+Ask once: "Approve implementation plan `[plan_hash]` and this complete
+changeset?"
+
+Approval covers only that plan. Before approval there are no writes. After
+approval, do not re-prompt per file. If any path, owner, operation, acceptance
+mapping, or required command changes, stop, rebuild the plan with fresh baseline
+hashes, and request approval for the new plan hash.
 
 ---
 
-## Phase 4: Implement
+## Phase 4: Execute the authorized transaction
 
-Spawn the chosen programmer agent(s) through Codex subagent delegation with the full context package:
+### 4.1 Compare-and-swap preflight
 
-Brief the agent with file paths and targeted reading instructions — do not serialize document content into the delegation prompt. The agent reads what it needs directly:
+Immediately before the first mutation, rehash every input and target. All must
+match the source and baseline hashes in the approved plan. Re-resolve dependency
+statuses and recompute the current manifest hash.
 
-1. **Story file**: `[story-path]` — read in full
-2. **GDD requirement**: look up TR-ID `[TR-XXX-NNN]` in `docs/architecture/tr-registry.yaml` — use the `requirement` field as source of truth
-3. **ADR**: `docs/architecture/[adr-file].md` — read the **Decision** and **Implementation Guidelines** sections only
-4. **Control manifest**: `docs/architecture/control-manifest.md` — read rules for the **[layer]** layer only
-5. **Engine preferences**: `.codex/docs/technical-preferences.md` — read naming conventions and performance budgets
-6. **Test file path**: `[path from story's Test Evidence section]` — this file must be created as part of implementation
-7. **Test requirement** (Logic and Integration stories only): The test file MUST be created at `[path from the story's Test Evidence section]`. Write the test alongside the implementation — do not defer it. The story cannot be closed via `$story-done` without this file present. Each acceptance criterion must have at least one test function covering it. Test file naming: `[system]_[feature]_test.[ext]`. Function naming: `test_[scenario]_[expected_outcome]`. No random seeds, no time-dependent assertions, no external I/O.
-8. **Explicit instruction**: implement this story following the ADR guidelines, respect the manifest rules, stay within the story's Out of Scope boundaries. Write clean, doc-commented public APIs.
+If anything changed, make no mutation. Report the changed path and restart
+validation/planning. Never apply an approved plan to changed inputs.
 
-The agent should:
-- Create or modify files in `src/` following the ADR guidelines
-- Respect all Required and Forbidden patterns from the control manifest
-- Stay within the story's Out of Scope boundaries (do not touch unrelated files)
-- Write clean, doc-commented public APIs
+When a sprint tracker exists, validate its `sprint_id`, `active_sprint_id`,
+`plan_revision`, `story_set_hash`, and `updated_at` using the exact
+`$sprint-status` contract before mutation. Capture its raw-byte preimage hash.
+An invalid or conflicting tracker blocks the transaction; never repair it by
+guessing. Preserve `sprint_id`, `active_sprint_id`, and `plan_revision` during
+lifecycle updates.
 
-### Config/Data stories (no agent needed)
+### 4.2 Start and synchronize
 
-For Type: Config/Data stories, no programmer agent is required. The implementation
-is editing a data file. Read the story's acceptance criteria and make the specified
-changes to the data file directly. Note which values were changed and what they
-changed from/to.
+Start the primary writer with the approved plan and source-hash package. Require
+an acknowledgement that it can write exactly its owned paths. A failure to start
+or acknowledge occurs before status mutation and leaves story/tracker unchanged.
 
-### Visual/Feel stories
+After acknowledgement and immediately before the first business-artifact write,
+the status recorder prepares synchronized replacements for the story and existing
+sprint tracker, changing both projections from Ready to In Progress. Apply them
+with compare-and-swap semantics. If both cannot be applied, restore the applied
+side from its captured bytes. If safe restoration is impossible, write the
+approved failure checkpoint and stop; never continue with divergent statuses.
+The tracker replacement must recompute `story_set_hash` from every current story
+using sorted `ID<TAB>path<TAB>raw-byte-hash` records and set a timezone-qualified
+`updated_at`; it must not change `plan_revision`.
 
-Spawn `gameplay-programmer` to implement the code/animation calls. Note that
-Visual/Feel acceptance criteria cannot be auto-verified — the "does it feel right?"
-check happens in `$story-done` via manual confirmation.
+### 4.3 Implement only the plan
+
+The primary writer may create or modify only its owned, approved paths. It must:
+
+- follow the Accepted ADR and captured control rules;
+- preserve Out of Scope boundaries;
+- implement every mapped criterion;
+- write the planned automated test or evidence file in the same transaction; and
+- report actual paths and post-write hashes.
+
+An engine reviewer may inspect planned files and return findings but may not
+write. Any discovered need for an unplanned file stops the transaction. Do not
+silently expand scope.
+
+### 4.4 Run and record deterministic tests
+
+Run every approved command. For each command record:
+
+- exact command;
+- working directory;
+- start/end timestamps in ISO-8601;
+- exit code;
+- SHA-256 of the raw captured log; and
+- pass/fail/blocked result.
+
+Tests that were not run, returned a nonzero exit code, or lack a log hash are not
+passing evidence. Logic and Integration stories require their planned automated
+tests. Visual/Feel and UI stories require the planned manual-evidence artifact;
+Config/Data requires its planned smoke check. Do not ask the user to run blocking
+tests later as a substitute.
+
+### 4.5 Commit the status projection
+
+Only when all planned writes exist, ownership matches, target hashes are known,
+and every blocking test passes may the status recorder compare-and-swap both the
+story and existing sprint tracker to In Review. The story update also records:
+
+- plan hash;
+- exact implementation and evidence paths with post-write hashes;
+- test command evidence;
+- source-context hashes;
+- manifest provenance state and waiver IDs; and
+- dependency waiver IDs.
+
+Because the story bytes change, recompute the tracker `story_set_hash` from the
+complete current story set and update `updated_at` in the same compare-and-swap.
+Re-read both projections and verify the hash/identity contract before success.
+
+Update `production/session-state/active.md` within the same approved status
+recording step. Never set Complete or Done.
+
+Treat the authorized work as one logical transaction: either every approved
+business artifact and synchronized status projection reaches the success state,
+or the workflow emits the explicit partial/failure state below.
+
+### 4.6 Failure and partial-write recovery
+
+If the writer fails before any business-artifact mutation, restore both status
+projections to their captured pre-transaction bytes and report FAILED.
+
+If any business artifact was created or modified, do not describe the transaction
+as rolled back unless every affected path was restored byte-for-byte and verified
+against its baseline hash. Otherwise:
+
+1. keep story and tracker synchronized at In Progress;
+2. write the pre-authorized failure checkpoint at
+   `production/session-state/dev-story-[story-id].yaml`;
+3. record plan hash, source hashes, baseline and current target hashes, planned
+   and actual write sets, owner, completed criteria, test evidence, error, and
+   the exact safe resume point; and
+4. return PARTIAL or BLOCKED.
+
+The retained tracker must still carry the current story-set hash and
+timezone-qualified `updated_at`. The checkpoint records expected/current tracker
+hashes and the unchanged `plan_revision`. A checkpoint never substitutes for an
+invalid tracker.
+
+A failure checkpoint is evidence, not permission to expand the plan. Resume only
+after revalidating its hashes. Never move a partial or failed transaction to In
+Review.
 
 ---
 
-## Phase 5: Test Evidence Requirements
+## Phase 5: Report and hand off
 
-The test requirement was included in the Phase 4 programmer agent brief (item 7). This phase summarizes what evidence each story type requires — used when collecting the Phase 6 summary.
+Use one of `IMPLEMENTED`, `PARTIAL`, `BLOCKED`, or `FAILED`.
 
-| Story Type | Required Evidence | Notes |
-|---|---|---|
-| **Logic** | Automated unit test at path from story's Test Evidence section | BLOCKING — included in Phase 4 agent brief |
-| **Integration** | Integration test OR documented playtest record | BLOCKING — included in Phase 4 agent brief |
-| **Visual/Feel** | Evidence doc at `production/qa/evidence/[slug]-evidence.md` | ADVISORY — note in Phase 6 summary |
-| **UI** | Manual walkthrough doc or interaction test | ADVISORY — note in Phase 6 summary |
-| **Config/Data** | None — smoke check serves as evidence | N/A |
+```markdown
+## Dev Story: [story ID] — [IMPLEMENTED/PARTIAL/BLOCKED/FAILED]
 
-For Visual/Feel and UI stories, include in the Phase 6 summary: "Manual evidence required at `production/qa/evidence/[slug]-evidence.md` before this story can be fully closed."
+Plan: sha256:[plan hash]
+Story status: [In Review/In Progress/unchanged]
+Tracker status: [in_review/in_progress/not present/unchanged]
+Manifest provenance: [CURRENT or STALE / ACCEPTED-RISK]
+Implemented against: sha256:[hash]
+Current manifest: sha256:[hash]
 
----
+### Files and owners
+- [path] — [owner] — [created/modified] — sha256:[post-write hash]
 
-## Phase 6: Collect and Summarise
+### Acceptance criteria
+- [criterion] — [implemented/tested/deferred/blocked] — [evidence]
 
-After the programmer agent(s) complete, collect:
+### Test evidence
+- [command] — exit [code] — log sha256:[hash] — [PASS/FAIL/BLOCKED]
 
-- Files created or modified (with paths)
-- Test file created (path and number of test functions written)
-- Any deviations from the story's Out of Scope boundary (flag these)
-- Any questions or blockers the agent surfaced
-- Any engine-specific risks the specialist flagged
+### Waivers
+- [waiver ID and exact bounded effect, or None]
 
-Present a concise implementation summary:
-
+### Recovery
+- [checkpoint path and resume point, or None]
 ```
-## Implementation Complete: [Story Title]
 
-**Files changed**:
-- `src/[path]` — created / modified ([brief description])
-- `tests/[path]` — test file ([N] test functions)
+For `IMPLEMENTED`, hand off:
 
-**Acceptance criteria covered**:
-- [x] [criterion] — implemented in [file:function]
-- [x] [criterion] — covered by test [test_name]
-- [ ] [criterion] — DEFERRED: requires playtest (Visual/Feel)
-
-**Deviations from scope**: [None] or [list files touched outside story boundary]
-**Engine risks flagged**: [None] or [specialist finding]
-**Blockers**: [None] or [describe]
-
-**Before running `$story-done`:** run your test suite locally and confirm the tests you wrote pass. `$story-done` will re-run them automatically, but a failing test discovered there means returning to implementation context.
-
-Ready for: `$code-review [file1] [file2]` then `$story-done [story-path]`
+```text
+Ready for $code-review [exact implementation and test/evidence paths].
+After review, run $story-done [story-path]. Only $story-done may mark it Complete.
 ```
+
+For every other result, give only the remediation or safe resume action. Do not
+recommend review or closure.
 
 ---
 
-## Phase 7: Update Session State
+## Non-negotiable rules
 
-Silently append to `production/session-state/active.md`:
-
-```
-## Session Extract — $dev-story [date]
-- Story: [story-path] — [story title]
-- Files changed: [comma-separated list]
-- Test written: [path, or "None — Visual/Feel/Config story"]
-- Blockers: [None, or description]
-- Next: $code-review [files] then $story-done [story-path]
-```
-
-Create `active.md` if it does not exist. Confirm: "Session state updated."
-
----
-
-## Error Recovery Protocol
-
-If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors, or cannot complete:
-
-1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
-2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
-3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
-   - Retry with narrower scope
-   - Stop here and resolve the blocker first
-4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
-
-Common blockers:
-- Input file missing (story not found, GDD absent) → redirect to the skill that creates it
-- ADR status is Proposed → do not implement; run `$architecture-decision` first
-- Scope too large → split into two stories via `$create-stories`
-- Conflicting instructions between ADR and story → surface the conflict, do not guess
-- Manifest version mismatch → show diff to user, ask whether to proceed with old rules or update story first
-
-## Collaborative Protocol
-
-- **File writes are delegated** — all source code, test files, and evidence docs are written by sub-agents spawned through Codex subagent delegation. The orchestrator combines every delegated write into the single changeset preview. This orchestrator does not write files directly.
-- **Load before implementing** — do not start coding until all context is loaded
-  (story, TR-ID, ADR, manifest, engine prefs). Incomplete context produces code
-  that drifts from design.
-- **The ADR is the law** — implementation must follow the ADR's Implementation
-  Guidelines. If the guidelines conflict with what seems "better," flag it in the
-  summary rather than silently deviating.
-- **Stay in scope** — the Out of Scope section is a contract. If implementing
-  the story requires touching an out-of-scope file, stop and surface it:
-  "Implementing [criterion] requires modifying [file], which is out of scope.
-  Shall I proceed or create a separate story?"
-- **Test is not optional for Logic/Integration** — do not mark implementation
-  complete without the test file existing
-- **Visual/Feel criteria are deferred, not skipped** — mark them as DEFERRED
-  in the summary; they will be manually verified in `$story-done`
-- **Ask before large structural decisions** — if the story requires an
-  architectural pattern not covered by the ADR, surface it before implementing:
-  "The ADR doesn't specify how to handle [case]. My plan is [X]. Proceed?"
-
----
-
-## Recommended Next Steps
-
-- Run `$code-review [file1] [file2]` to review the implementation before closing the story
-- Run `$story-done [story-path]` to verify acceptance criteria and mark the story complete
-- After all sprint stories are done: run `$team-qa sprint` for the full QA cycle before advancing the project stage
+- Never overwrite captured manifest provenance to make a stale story look
+  current.
+- Never treat a waiver as READY.
+- Never bypass a hard, missing, Draft, Blocked, or incomplete dependency.
+- Never edit a dependency's status.
+- Never mutate any file before the exact plan is approved.
+- Never allow overlapping write ownership.
+- Never accept a changed input under an old plan hash.
+- Never report unexecuted or failing tests as passing.
+- Never set a story to Complete or Done.
+- Never hide partial writes; restore them byte-for-byte or checkpoint them.

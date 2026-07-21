@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Live Ops"
-  short_description: "Orchestrate the live-ops team for post-launch content..."
-  default_prompt: "Use $team-live-ops to run the Team Live Ops game-studio workflow."
+  short_description: "Plan live ops with ethics and ownership gates"
+  default_prompt: "Use $team-live-ops to create an ethics-reviewed live-ops plan; do not implement, publish, or deploy content."

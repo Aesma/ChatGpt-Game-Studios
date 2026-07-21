@@ -1,357 +1,205 @@
 ---
 name: asset-spec
-description: "Generate per-asset visual specifications and AI generation prompts from GDDs, level docs, or character profiles. Produces structured spec files and updates the master asset manifest. Run after art bible and GDD/level design are approved, before production begins."
+description: Generate traceable per-asset visual specifications and AI prompts, then publish each specification together with its master-manifest entries as one collision-safe transaction. Use for production asset briefs; incomplete validation is always marked non-production.
 ---
 
-## Invocation and execution
+# Asset Spec
 
-Invoke this workflow as `$asset-spec`.
+Create implementation-ready asset specifications without allowing an orphan specification, a dangling manifest entry, a duplicate asset ID, or an incompletely validated artifact to appear production-ready.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+This workflow specifies assets. It does not generate image/audio/model files, invoke another project skill, or claim approval from any role.
 
-Arguments: `[system:<name> | level:<name> | character:<name>] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+## Invocation
 
+`$asset-spec <target>`
 
-If no argument is provided, check whether `design/assets/entity-inventory.md` exists:
-- If it exists: read it, find the first entity or screen with status "Needed" but no spec file yet, and ask the user directly:
-  - Prompt: "The next unspecced item is **[name]**. Generate specs for it?"
-  - Options: `[A] Yes — spec [name]` / `[B] Pick a different item` / `[C] Stop here`
-- If no entity inventory: check `design/assets/asset-manifest.md`. If manifest exists, same flow above but reading from manifest.
-- If neither exists: **start the Entity & Screen Inventory flow** (Phase 0b below) rather than failing.
+`<target>` is an exact entity, system, level, screen, or approved content scope.
 
----
+When no target is supplied:
 
-## Phase 0b: Entity & Screen Inventory (runs when no arguments and no existing inventory)
+1. Read an existing entity inventory and asset manifest, if available.
+2. Present a read-only target selection or usage guidance.
+3. Do not create an inventory, specification, manifest, or placeholder.
 
-This flow produces `design/assets/entity-inventory.md` — the master list of everything
-the game needs visually. Run once before asset spec work begins.
+## Non-negotiable invariants
 
-### Step 1 — Gather from docs
-Read all available source material in parallel:
-- `design/gdd/systems-index.md` — extract every system listed
-- All GDDs in `design/gdd/` — extract: Visual/Audio Requirements sections, UI elements mentioned, VFX events, any named entities (characters, enemies, buildings, items)
-- `design/art/art-bible.md` — extract: any named visual categories, asset type expectations
-- `design/narrative/` — scan for any character or world entity documents if they exist (optional — not required)
+1. **Atomic publication:** the target specification and `design/assets/asset-manifest.md` are one changeset. A run may publish both or neither. Never expose a specification without its manifest rows, or manifest rows without their specification.
+2. **No false readiness:** any missing, failed, timed-out, skipped, stale, or contradictory required validation forces `BLOCKED_NOT_FOR_PRODUCTION`. User acceptance of risk cannot convert that state to production-ready.
+3. **Collision-safe IDs:** `ASSET-NNN` IDs are provisional until a compare-and-swap commit against the current manifest succeeds. A changed manifest requires reallocation, rerendering, a new preview, and fresh authorization.
+4. **No silent inference:** every inferred asset or requirement is visibly labelled `inferred` and must be confirmed by the user. Unconfirmed inferences cannot be production-ready.
+5. **No unilateral overwrite:** an existing specification may be updated only when its exact path and replacement are shown in the transaction preview.
 
-### Step 2 — Build proposed inventory
-Organize everything found into categories:
+## Status contract
 
-```
-Characters / Protagonists
-Enemies / Creatures
-Buildings / Structures
-Environment / Terrain
-Items / Props
-VFX / Particles
-UI Screens (list each screen by name)
-HUD Elements
-Audio (SFX, music — descriptions only, no generation prompts)
-Other
-```
+Every specification and each of its manifest rows carries the same status and transaction ID.
 
-For each item, note the source doc it was found in.
+| Status | Meaning | Downstream use |
+|---|---|---|
+| `DRAFT` | Proposal has not completed authorization and commit | No production use |
+| `BLOCKED_NOT_FOR_PRODUCTION` | One or more required validations or confirmations are not current and passing | Planning only; asset generation, outsourcing, import, and production handoff must reject it |
+| `READY_FOR_PRODUCTION` | All required validations pass on the exact proposed content, all inferred items are confirmed, the user authorized the exact transaction, and commit verification succeeded | Production handoff allowed |
 
-### Step 3 — Present and collaborate
-Present the full proposed inventory to the user in conversation. Then ask the user directly:
-- Prompt: "I found **[N] visual entities and [N] UI screens** across your GDDs and art bible. Review the list — what's missing, what's not needed?"
-- Options:
-  - `[A] Looks good — save this inventory`
-  - `[B] Add items I'll describe`
-  - `[C] Remove items that don't apply`
-  - `[D] Both add and remove — let me edit`
+Never use `COMPLETE`, `APPROVED`, or similar wording as a substitute for `READY_FOR_PRODUCTION`.
 
-If [B] or [D]: ask the user to describe additional items. Accept brief descriptions ("a medieval keep, used as a level background") or detailed ones — either works. Work through them collaboratively until the user is satisfied.
+## Required inputs and provenance
 
-If [C] or [D]: ask which items to remove and why. Remove them from the list.
+Read only the sources needed for the target:
 
-### Step 4 — Write inventory
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+- approved art direction or art bible;
+- target GDD, UX, level, character, narrative, or architecture sources;
+- engine and asset-pipeline constraints;
+- the current `design/assets/asset-manifest.md`;
+- the existing target specification, if updating one.
 
-Write the file:
+For every source, record:
 
-```markdown
-# Visual Entity & Screen Inventory
+- normalized project-relative path;
+- content hash captured at draft time;
+- requirement locator such as heading, entity key, or line anchor;
+- whether each requirement is `explicit` or `inferred`;
+- confidence and user confirmation for inferred requirements.
 
-> Generated: [date]
-> Sources: [list of source docs read]
+A missing authoritative source is a blocker, not permission to invent production-ready detail. Proposed placeholders may appear only under `BLOCKED_NOT_FOR_PRODUCTION` and must be listed as blockers.
 
-## Entities
+## Workflow
 
-| # | Name | Type | Description | Source | Status |
-|---|------|------|-------------|--------|--------|
-| 1 | [name] | Character / Enemy / Building / Environment / Item / Other | [brief description] | [source doc] | Needed |
+### 1. Fix the transaction boundary
 
-## UI Screens
+Resolve and display the two final paths before drafting:
 
-| # | Screen Name | Description | Source | Status |
-|---|-------------|-------------|--------|--------|
-| 1 | Main Menu | [description] | [source] | Needed |
+- `design/assets/specs/<target-slug>-assets.md`
+- `design/assets/asset-manifest.md`
 
-## HUD Elements
+Reject absolute paths, parent traversal, paths outside the project, or a target slug that normalizes ambiguously. Detect whether the specification path is new or an explicit update. Capture the current content hash of each existing final file, or `ABSENT`.
 
-| # | Element | Description | Source | Status |
-|---|---------|-------------|--------|--------|
+Do not write final files during discovery, inventory, drafting, review, or preview.
 
-## Audio
+### 2. Build and confirm the asset inventory
 
-| # | Name | Type (SFX / Music / Ambient) | Description | Source | Status |
-|---|------|------------------------------|-------------|--------|--------|
-```
+Extract explicit assets first. Present inferred assets separately with their source, rationale, and confidence. Ask the user to confirm, exclude, or revise each inferred item before it can become production-ready.
 
-After writing, tell the user:
-> "Entity inventory saved. Next steps:
-> - Run `$ux-design [screen name]` for each UI screen in the inventory
-> - Run `$asset-spec entity:[name]` to spec each visual entity
-> - Or run `$asset-spec` again to work through the inventory one item at a time"
+For each included asset, define:
 
----
+- stable asset key and provisional ID;
+- asset type and intended use;
+- visual description, silhouette, material, palette, scale, and variants as applicable;
+- dimensions, format, color space, transparency, compression, polygon/texture/bone budgets, and platform constraints as applicable;
+- naming convention and destination path;
+- dependencies and required companion assets;
+- acceptance checks;
+- generation prompt plus negative constraints where useful;
+- provenance records.
 
-## Phase 0: Parse Arguments
+Do not generate binary assets.
 
-Extract:
-- **Target type**: `system`, `level`, or `character`
-- **Target name**: the name after the colon (normalize to kebab-case)
-- **Review mode**: `--review [full|lean|solo]` if present
+### 3. Validate the exact proposal
 
-**Mode behavior:**
-- `full` (default): spawn both `art-director` and `technical-artist` in parallel
-- `lean`: spawn `art-director` only — faster, skips technical constraint pass
-- `solo`: no agent spawning — main session writes specs from art bible rules alone. Use for simple asset categories or when speed matters more than depth.
+Required production validations are:
 
----
+- **Art validation:** consistency with the approved art direction, readable silhouette, palette/material rules, and target presentation.
+- **Technical validation:** engine compatibility, import settings, budgets, formats, naming, dependency completeness, and target-platform constraints.
+- **Source validation:** all cited hashes are current, all required sources exist, and all inferred requirements are confirmed.
+- **Integrity validation:** manifest references, specification references, asset keys, IDs, statuses, and transaction metadata agree.
 
-## Phase 1: Gather Context
+In full mode, request art and technical reviews of the exact rendered proposal. Reviewers advise; they do not approve or publish. Apply one consolidated revision round, then rerun every affected check.
 
-Read all source material **before** asking the user anything.
+Lean or solo mode may prepare a planning artifact, but it is `BLOCKED_NOT_FOR_PRODUCTION` unless current evidence independently satisfies every required validation.
 
-### Required reads:
-- **Art bible**: Read `design/art/art-bible.md` — fail if missing:
-  > "No art bible found. Run `$art-bible` first — asset specs are anchored to the art bible's visual rules and asset standards."
-  Extract: Visual Identity Statement, Color System (semantic colors), Shape Language, Asset Standards (Section 8 — dimensions, formats, polycount budgets, texture resolution tiers).
+Record each validation as `PASS`, `BLOCKED`, or `NOT_RUN`, with reviewer/evidence, content hash, and timestamp. A failure, timeout, unavailable reviewer, stale hash, unresolved conflict, missing dependency, placeholder, or `NOT_RUN` yields `BLOCKED_NOT_FOR_PRODUCTION`.
 
-- **Technical preferences**: Read `.codex/docs/technical-preferences.md` — extract performance budgets and naming conventions.
+### 4. Reserve collision-safe IDs
 
-### Source doc reads (by target type):
-- **system**: Read `design/gdd/[target-name].md`. Extract the **Visual/Audio Requirements** section. If it doesn't exist or reads `[To be designed]`:
-  > "The Visual/Audio section of `design/gdd/[target-name].md` is empty. Either run `$design-system [target-name]` to complete the GDD, or describe the visual needs manually."
-  Ask the user directly: `[A] Describe needs manually` / `[B] Stop — complete the GDD first`
-- **level**: Read `design/levels/[target-name].md`. Extract art requirements, asset list, VFX needs, and the art-director's production concept specs from Step 4.
-- **character** or **entity**: Read `design/narrative/characters/[target-name].md` or search `design/narrative/` and `design/assets/entity-inventory.md` for a matching entry. Extract visual description, role, and any specified distinguishing features.
-  - **If no source doc exists**: do not fail. Instead, ask the user directly:
-    - Prompt: "No profile found for **[name]**. Describe it briefly — a sentence or two is enough."
-    - Options: `[A] Describe it now` / `[B] Skip this entity` / `[C] Stop here`
-    - If [A]: the user's description becomes the source. Brief answers produce concise specs; detailed answers produce detailed specs. Accept whatever level of detail the user provides and work from it.
+Preserve the project format `ASSET-NNN` without trusting a stale `max + 1` calculation.
 
-### Optional reads:
-- **Existing manifest**: Read `design/assets/asset-manifest.md` if it exists — extract already-specced assets for this target to avoid duplicates.
-- **Related specs**: Find files matching `design/assets/specs/*.md` — scan for assets that could be shared (e.g., a common UI element specced for one system might apply here too).
+1. Read the current manifest and all referenced specification IDs needed to detect duplicates.
+2. If existing duplicate IDs or malformed ownership are found, stop before publication and report the corruption.
+3. Record the manifest base hash.
+4. Allocate the next contiguous IDs only as provisional reservations inside this transaction.
+5. Render both candidate files with the same transaction ID, status, and asset mappings.
+6. Immediately before commit, compare the current manifest and target-spec hashes with their recorded base hashes.
+7. If either changed, publish nothing. Re-read, recheck duplicates, reallocate IDs if necessary, rerender both candidates, issue a new transaction ID, show a new preview, and obtain fresh authorization. Never silently change an authorized ID.
+8. The commit primitive must fail when its compare condition is no longer true.
 
-### Present context summary:
-> **Asset Spec: [Target Type] — [Target Name]**
-> - Source doc: [path] — [N] asset types identified
-> - Art bible: found — Asset Standards at Section 8
-> - Existing specs for this target: [N already specced / none]
-> - Shared assets found in other specs: [list or "none"]
+### 5. Preview one exact changeset
 
----
+Show a single transaction preview containing:
 
-## Phase 2: Asset Identification
+- transaction ID;
+- both exact final paths;
+- operation for each path: `CREATE` or `UPDATE`;
+- base hash or `ABSENT`;
+- proposed content hash;
+- every reserved asset ID and asset key;
+- synchronized status;
+- blockers and missing validations;
+- concise diffs or complete proposed content sufficient for informed review.
 
-From the source doc, extract every asset type mentioned — explicit and implied.
+Ask once for authorization of this exact two-file changeset. If the user declines either file, publish neither. Any content, ID, path, status, blocker, or base-hash change invalidates the authorization and requires a new preview.
 
-**For systems**: look for VFX events, sprite references, UI elements, audio triggers, particle effects, icon needs, and any "visual feedback" language.
+### 6. Commit atomically
 
-**For levels**: look for unique environment props, atmospheric VFX, lighting setups, ambient audio, skybox/background, and any area-specific materials.
+After authorization:
 
-**For characters**: look for sprite sheets (idle, walk, attack, death), portrait/avatar, VFX attached to abilities, UI representation (icon, health bar skin).
+1. Revalidate source hashes, dependency evidence, manifest/spec base hashes, ID uniqueness, status equality, cross-references, and proposed hashes.
+2. Prepare both complete candidate files in isolated temporary siblings that are not visible as final project artifacts.
+3. Validate the prepared pair as a unit.
+4. Use an atomic changeset facility with rollback: publish both final files, or restore both exact pre-commit states on any error.
+5. If the environment cannot guarantee all-or-none publication and rollback for these two paths, do not modify either final path. Return a blocked proposal instead.
+6. Never handle a failure by leaving one final file committed and promising to repair the other later.
 
-Group assets into categories:
-- **Sprite / 2D Art** — character sprites, UI icons, tile sheets
-- **VFX / Particles** — hit effects, ambient particles, screen effects
-- **Environment** — props, tiles, backgrounds, skyboxes
-- **UI** — HUD elements, menu art, fonts (if custom)
-- **Audio** — SFX, music tracks, ambient loops *(note: audio specs are descriptions only — no generation prompts)*
-- **3D Assets** — meshes, materials (if applicable per engine)
+For a new specification, an unexpected file at the target path is a compare failure. For an update, a hash mismatch is a compare failure. Do not overwrite it.
 
-Present the full identified list to the user. Ask the user directly:
-- Prompt: "I identified [N] assets across [N] categories for **[target]**. Review before speccing:"
-- Show the grouped list in conversation text first
-- Options: `[A] Proceed — spec all of these` / `[B] Remove some assets` / `[C] Add assets I didn't catch` / `[D] Adjust categories`
+### 7. Verify the committed pair
 
-Do NOT proceed to Phase 3 without user confirmation of the asset list.
+Re-read both final files and require:
 
----
+- hashes equal the authorized proposed hashes;
+- both contain the same transaction ID and status;
+- every new/updated manifest row resolves to the target specification;
+- every specified asset has exactly one matching manifest row;
+- all IDs are globally unique;
+- `READY_FOR_PRODUCTION` appears only when every required validation is current and `PASS`;
+- no temporary or recovery artifact is presented as a final deliverable.
 
-## Phase 3: Spec Generation
+If verification fails, invoke transaction rollback. If rollback cannot be proven, report the exact inconsistent paths as a critical incident and do not claim completion.
 
-Spawn specialist agents based on review mode. **Issue all subagent delegations simultaneously — do not wait for one before starting the next.**
+## Required document fields
 
-### Full mode — spawn in parallel:
+The specification must include:
 
-**`art-director`** through Codex subagent delegation:
-- Provide: full asset list from Phase 2, art bible Visual Identity Statement, Color System, Shape Language, the source doc's visual requirements, and any reference games/art mentioned in the art bible Section 9
-- Ask: "For each asset in this list, produce: (1) a 2–3 sentence visual description anchored to the art bible's shape language and color system — be specific enough that two different artists would produce consistent results; (2) a generation prompt ready for use with AI image tools (Midjourney/Stable Diffusion style — include style keywords, composition, color palette anchors, negative prompts); (3) which art bible rules directly govern this asset (cite by section). For audio assets, describe the sonic character instead of a generation prompt."
+- target and transaction ID;
+- status and `production_eligible: true|false`;
+- source provenance table with hashes and locators;
+- validation matrix;
+- blocker list;
+- asset table mapping stable keys to IDs;
+- detailed per-asset requirements and acceptance checks;
+- prompts and negative constraints;
+- dependency and destination mapping;
+- change history.
 
-**`technical-artist`** through Codex subagent delegation:
-- Provide: full asset list, art bible Asset Standards (Section 8), technical-preferences.md performance budgets, engine name and version
-- Ask: "For each asset in this list, specify: (1) exact dimensions or polycount (match the art bible Asset Standards tiers — do not invent new sizes); (2) file format and export settings; (3) naming convention (from technical-preferences.md); (4) any engine-specific constraints this asset type must respect; (5) LOD requirements if applicable. Flag any asset type where the art bible's preferred standard conflicts with the engine's constraints."
+The manifest entries must include at least:
 
-### Lean mode — spawn art-director only (skip technical-artist).
+- asset ID;
+- stable asset key;
+- target;
+- specification path;
+- asset type;
+- status;
+- transaction ID;
+- dependency state.
 
-### Solo mode — skip both. Derive specs from art bible rules alone, noting that technical constraints were not validated.
+## Completion report
 
-**Collect both responses before Phase 4.** If any conflict exists between art-director and technical-artist (e.g., art-director specifies 4K textures but technical-artist flags the engine budget requires 512px), surface it explicitly — do NOT silently resolve.
+Report:
 
----
+- `COMMITTED_READY` only after verified atomic commit with `READY_FOR_PRODUCTION`;
+- `COMMITTED_BLOCKED` only after a verified atomic commit whose two files both say `BLOCKED_NOT_FOR_PRODUCTION`;
+- `NOT_COMMITTED` when authorization was declined, compare failed, atomicity was unavailable, preparation failed, or rollback restored the original pair;
+- the two final paths and verified hashes when committed;
+- reserved IDs;
+- validation evidence and blockers;
+- whether production handoff is allowed;
+- any concurrency retry and the superseded transaction ID.
 
-## Phase 4: Compile and Review
-
-Combine the agent outputs into a draft spec per asset. Present all specs in conversation text using this format:
-
-```
-## ASSET-[NNN] — [Asset Name]
-
-| Field | Value |
-|-------|-------|
-| Category | [Sprite / VFX / Environment / UI / Audio / 3D] |
-| Dimensions | [e.g. 256×256px, 4-frame sprite sheet] |
-| Format | [PNG / SVG / WAV / etc.] |
-| Naming | [e.g. vfx_frost_hit_01.png] |
-| Polycount | [if 3D — e.g. <800 tris] |
-| Texture Res | [e.g. 512px — matches Art Bible §8 Tier 2] |
-
-**Visual Description:**
-[2–3 sentences. Specific enough for two artists to produce consistent results.]
-
-**Art Bible Anchors:**
-- §3 Shape Language: [relevant rule applied]
-- §4 Color System: [color role — e.g. "uses Threat Blue per semantic color rules"]
-
-**Generation Prompt:**
-[Ready-to-use prompt. Include: style keywords, composition notes, color palette anchors, lighting direction, negative prompts.]
-
-**Status:** Needed
-```
-
-After presenting all specs, ask the user directly:
-- Prompt: "Asset specs for **[target]** — [N] assets. Review complete?"
-- Options: `[A] Approve all — write to file` / `[B] Revise a specific asset` / `[C] Regenerate with different direction`
-
-If [B]: ask which asset and what to change. Revise inline and re-present. Do NOT re-spawn agents for minor text revisions — only re-spawn if the visual direction itself needs to change.
-
-If [C]: ask what direction to change. Re-spawn the relevant agent with the updated brief.
-
----
-
-## Phase 5: Write Spec File
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write the file with:
-
-```markdown
-# Asset Specs — [Target Type]: [Target Name]
-
-> **Source**: [path to source GDD/level/character doc]
-> **Art Bible**: design/art/art-bible.md
-> **Generated**: [date]
-> **Status**: [N] assets specced / [N] approved / [N] in production / [N] done
-
-[all asset specs in ASSET-NNN format]
-```
-
-Then update `design/assets/asset-manifest.md`. If it doesn't exist, create it:
-
-```markdown
-# Asset Manifest
-
-> Last updated: [date]
-
-## Progress Summary
-
-| Total | Needed | In Progress | Done | Approved |
-|-------|--------|-------------|------|----------|
-| [N] | [N] | [N] | [N] | [N] |
-
-## Assets by Context
-
-### [Target Type]: [Target Name]
-| Asset ID | Name | Category | Status | Spec File |
-|----------|------|----------|--------|-----------|
-| ASSET-001 | [name] | [category] | Needed | design/assets/specs/[target]-assets.md |
-```
-
-If the manifest already exists, append the new context block and update the Progress Summary counts.
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
----
-
-## Phase 6: Close
-
-Ask the user directly:
-- Prompt: "Asset specs complete for **[target]**. What's next?"
-- Options:
-  - `[A] Spec another system — $asset-spec system:[next-system]`
-  - `[B] Spec a level — $asset-spec level:[level-name]`
-  - `[C] Spec a character — $asset-spec character:[character-name]`
-  - `[D] Run $asset-audit — validate delivered assets against specs`
-  - `[E] Stop here`
-
----
-
-## Asset ID Assignment
-
-Asset IDs are assigned sequentially across the entire project — not per-context. Read the manifest before assigning IDs to find the current highest number:
-
-```
-Search `design/assets/asset-manifest.md` for `ASSET-`.
-```
-
-Start new assets from `ASSET-[highest + 1]`. This ensures IDs are stable and unique across the whole project.
-
-If no manifest exists yet, start from `ASSET-001`.
-
----
-
-## Shared Asset Protocol
-
-Before speccing an asset, check if an equivalent already exists in another context's spec:
-
-- Common UI elements (health bars, score displays) are often shared across systems
-- Generic environment props may appear in multiple levels
-- Character VFX (hit sparks, death effects) may reuse a base spec with color variants
-
-If a match is found: reference the existing ASSET-ID rather than creating a duplicate. Note the shared usage in the manifest's referenced-by column.
-
-> "ASSET-012 (Generic Hit Spark) already specced for Combat system. Reusing for Tower Defense — adding tower-defense to referenced-by."
-
----
-
-## Error Recovery Protocol
-
-If any spawned agent returns BLOCKED or cannot complete:
-
-1. Surface immediately: "[AgentName]: BLOCKED — [reason]"
-2. In `lean` mode or if `technical-artist` blocks: proceed with art-director output only — note that technical constraints were not validated
-3. In `solo` mode or if `art-director` blocks: derive descriptions from art bible rules — flag as "Art director not consulted — verify against art bible before production"
-4. Always produce a partial spec — never discard work because one agent blocked
-
----
-
-## Collaborative Protocol
-
-Every phase follows: **Identify → Confirm → Generate → Review → Approve → Write**
-
-- Never spec assets without first confirming the asset list with the user
-- Always anchor specs to the art bible — a spec that contradicts the art bible is wrong
-- Surface all agent disagreements — do not silently pick one
-- Write the spec file only after explicit approval
-- Update the manifest immediately after writing the spec
-
----
-
-## Recommended Next Steps
-
-- Run `$asset-spec [next-context]` to continue speccing remaining systems, levels, or characters
-- Run `$asset-audit` to validate delivered assets against the written specs and identify gaps or mismatches
+Never claim success from a draft, preview, single-file write, unverified pair, or partial validation.

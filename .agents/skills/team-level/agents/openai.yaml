@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Level"
-  short_description: "Orchestrate level design team: level-designer +..."
-  default_prompt: "Use $team-level to run the Team Level game-studio workflow."
+  short_description: "Build one reviewed, hash-bound level spec with a single writer"
+  default_prompt: "Use $team-level with one level ID to coordinate read-only specialists, route outputs by destination, and approve a level design only after accessibility and independent level review."

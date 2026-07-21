@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Flakiness"
-  short_description: "Detect non-deterministic (flaky) tests by reading CI run logs..."
-  default_prompt: "Use $test-flakiness to run the Test Flakiness game-studio workflow."
+  short_description: "Analyze homogeneous run sets; quarantine stays external"
+  default_prompt: "Use $test-flakiness to analyze an identity-bound run-set manifest without modifying tests, CI, or the regression selection manifest."

@@ -2,178 +2,358 @@
 
 ## Skill Summary
 
-Orchestrates the full level design team for a single level or area. Coordinates
-narrative-director, world-builder, level-designer, systems-designer, art-director,
-accessibility-specialist, and qa-tester through five sequential steps with one
-parallel phase (Step 4). Compiles all team outputs into a single level design
-document saved to `design/levels/[level-name].md`. It uses user input for genuine
-design choices or blockers, not routine step transitions. The full output file set is
-authorized once as a bounded changeset, then writes are delegated to subagents. Produces a summary report
-with verdict COMPLETE / BLOCKED and handoffs to `$design-review`, `$dev-story`,
-`$qa-plan`.
+`$team-level` designs or revises exactly one level. It coordinates bounded,
+read-only domain specialists, routes every proposal to one destination, and
+permits one transaction writer to write only the level source and its recovery
+checkpoint. BLOCKING accessibility findings are non-waivable. An independent,
+read-only, hash-bound `level-review` profile—not `$design-review`—must approve
+the current level file before a COMPLETE verdict or implementation handoff.
+
+The workflow may return `COMPLETE — DESIGN APPROVED`, `PARTIAL — NOT
+APPROVED`, `ACCEPTED RISK / NOT APPROVED`, or `BLOCKED — PRODUCT DECISION
+REQUIRED`. A file existing does not establish approval.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase/step headings (Step 1 through Step 5 are all present)
-- [ ] Contains verdict keywords: COMPLETE, BLOCKED
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-8. Summary report: area overview, encounter count, estimated asset list, narrative beats, cross-team dependencies, verdict: COMPLETE
-9. Next steps listed: `$design-review design/levels/forest-dungeon.md`, `$dev-story`, `$qa-plan`
-
-**Assertions:**
-- [ ] All five sources read during context gathering before any agent is spawned
-- [ ] narrative-director and world-builder both spawned in Step 1 (may be sequential or parallel — both must complete before Step 2)
-- [ ] Routine phase transitions proceed without repeated approval; user input is reserved for consequential choices or blockers
-- [ ] Step 4 agents (art-director, accessibility-specialist) launched simultaneously
-- [ ] All file writes delegated to sub-agents — orchestrator does not write directly
-- [ ] Level doc saved to `design/levels/forest-dungeon.md` (slugified from argument)
-- [ ] Verdict COMPLETE in final summary report
-- [ ] Next steps include `$design-review`, `$dev-story`, `$qa-plan`
-- [ ] Summary report includes: area overview, encounter count, estimated asset list, narrative beats
+- [ ] YAML frontmatter contains only `name` and a non-empty `description`;
+      `name` matches the skill directory
+- [ ] Has at least two numbered phase headings
+- [ ] Contains the four exact workflow verdicts
+- [ ] Explicitly forbids `$design-review` for level documents
+- [ ] Defines a read-only level-review profile covering critical path, softlock,
+      pacing, adjacency, navigation, accessibility, and encounter contracts
+- [ ] BLOCKING accessibility findings have no waive/acknowledge-and-proceed path
+- [ ] Initial finding IDs remain stable through at most one verification
+      re-review; no recursive review/rewrite loop exists
+- [ ] Every proposal has exactly one destination and verbatim aggregation is
+      forbidden
+- [ ] All specialists and reviewers are read-only; one transaction writer owns
+      the exact level and checkpoint paths
+- [ ] Approval is bound to exact paths, operations, owner, hashes, scope, and a
+      deterministic plan hash
+- [ ] Concurrency and agent deadlines are bounded
+- [ ] Partial writes, timeouts, checkpoint fields, raw-hash resume checks, and
+      rollback proof are explicit
+- [ ] QA output is labeled planned; unexecuted tests or missing hashes are never
+      reported as passing evidence
+- [ ] Implementation is forbidden until the current level hash is independently
+      reviewed and DESIGN APPROVED
+- [ ] Metadata describes the single reviewed/hash-bound level-spec boundary
 
 ---
 
-### Case 2: Blocked Agent (world-builder) — Partial report produced with gap noted
+## Director Gate Checks
+
+No system-GDD director gate is invoked. Level review is an independent,
+read-only document-type profile inside this workflow. The author/transaction
+writer cannot act as reviewer.
+
+---
+
+## Test Cases
+
+### Case 1: Happy path — one destination-routed level reaches DESIGN APPROVED
 
 **Fixture:**
-- `design/gdd/game-concept.md` exists
-- World-building docs for the forest region do NOT exist
-- world-builder agent returns BLOCKED: "No world-building docs found for the forest region — cannot provide lore context"
+- Input is `forest-dungeon`
+- Game concept, pillars, art bible, accessibility requirements, relevant system
+  GDD, and direct adjacency sources fit within the context budget
+- The target level source and checkpoint are absent
+- Narrative, world, art, layout, systems, and accessibility agents complete
+  within their deadlines
+- Accessibility returns zero BLOCKING findings
+- User resolves all genuine product choices
+- The exact two-path write plan is approved
+- The transaction writer writes the approved draft and verifies its raw hash
+- A fresh independent reviewer returns zero BLOCKING findings against that hash
+- qa-tester returns a planned QA-case set bound to the same hash
 
-**Input:** `$team-level forest dungeon`
+**Input:** `$team-level forest-dungeon`
 
 **Expected behavior:**
-1. Context gathering completes; missing world-building docs noted
-2. Step 1 — narrative-director completes successfully; world-builder spawned and returns BLOCKED
-3. Error Recovery Protocol triggered: "world-builder: BLOCKED — no world-building docs for forest region"
-4. `user-input request` presented with options:
-   - (a) Skip world-builder and note the lore gap in the level doc
-   - (b) Retry with narrower scope (world-builder focuses only on what can be inferred from game-concept.md)
-   - (c) Stop here and create world-building docs first
-5. If user chooses (a): pipeline continues with Steps 2–5 using narrative-director context only; level doc compiled with a clearly marked gap section: "World-building context: NOT PROVIDED — see open dependency"
-6. Final report produced: partial outputs documented, world-builder section marked BLOCKED, overall verdict: BLOCKED
+1. Builds and hashes a bounded context manifest
+2. Runs only read-only specialists with at most three live agents
+3. Routes every proposal to exactly one destination
+4. Reduces only LEVEL SOURCE material into the draft
+5. Previews and obtains one hash-bound write authorization
+6. Uses one transaction writer for the exact level/checkpoint paths
+7. Runs independent level-review against the verified current hash
+8. Labels QA cases PLANNED and records no fabricated execution evidence
+9. Requests final design acceptance as a product decision
+10. Returns `COMPLETE — DESIGN APPROVED`
 
 **Assertions:**
-- [ ] BLOCKED surface message appears immediately when world-builder fails — before Step 2 begins without user input
-- [ ] `user-input request` offers at minimum three options (skip / retry / stop)
-- [ ] Partial report produced — narrative-director's completed work is not discarded
-- [ ] Level doc (if compiled) contains an explicit gap notation for the missing world-building context
-- [ ] Overall verdict is BLOCKED (not COMPLETE) when world-builder remains unresolved
-- [ ] Skill does NOT silently fabricate lore content to fill the gap
+- [ ] Normal artifact set contains only
+      `design/levels/forest-dungeon.md`
+- [ ] Checkpoint is
+      `production/session-state/team-level-forest-dungeon.yaml`
+- [ ] Writer and reviewer are different agents
+- [ ] Level-review and QA evidence bind to the final raw level hash
+- [ ] No code, assets, tests, lore file, art brief, system GDD, or QA file is
+      written
+- [ ] No routine phase-transition approval is requested
 
 ---
 
-### Case 3: No Argument — Usage guidance shown
+### Case 2: TLD-001 — level docs never enter the system-GDD reviewer
+
+**Fixture:**
+- A valid level file is written and hashes to H1
+- A tool spy records every workflow invocation and agent prompt
+
+**Expected behavior:**
+1. Runs the inline level-review profile with H1
+2. Checks critical path, sequence breaks/softlocks, pacing, adjacency,
+   navigation, accessibility, and encounter contracts
+3. Keeps the reviewer read-only and independent from the writer
+4. Does not invoke `$design-review` or apply system-GDD section requirements
+
+**Assertions:**
+- [ ] Invocation count for `$design-review` is zero
+- [ ] Missing Formulas/Tuning/Economy sections are not level-review defects
+- [ ] Review evidence names H1 and exact level sections
+- [ ] A hash change makes H1 review evidence stale
+- [ ] No reviewer writes the level source
+
+---
+
+### Case 3: TLD-002 — accessibility blockers cannot be acknowledged away
+
+**Fixture:**
+- Accessibility review returns `AX-forest-dungeon-001` as BLOCKING because the
+  critical path distinguishes toxic water only by color
+
+Run two variants:
+
+| Variant | User choice | Expected |
+|---|---|---|
+| 3a | asks to document and continue | refuse continuation; remain BLOCKED |
+| 3b | authorizes a bounded redesign | run one separate author revision and one verification re-review |
+
+**Assertions:**
+- [ ] No acknowledge/proceed option is offered for a BLOCKING finding
+- [ ] QA planning, design approval, and implementation handoff do not occur
+      while AX-forest-dungeon-001 is OPEN
+- [ ] If the user stops, verdict is
+      `BLOCKED — PRODUCT DECISION REQUIRED`
+- [ ] Non-blocking accepted risk requires finding ID, bounded risk, owner,
+      deadline, approved_by, and approved_at
+- [ ] Any accepted-risk branch ends
+      `ACCEPTED RISK / NOT APPROVED`, never COMPLETE
+
+---
+
+### Case 4: TLD-003 — review/revision converges or stops
+
+**Fixture:**
+- Initial review creates `AX-forest-dungeon-001`
+- User approves an exact revision brief
+- A separate author task changes only the approved scope
+- Verification re-review observes the same blocker still open
+
+**Expected behavior:**
+1. Preserves the original finding ID and first-review evidence
+2. Re-review checks only that ID plus regressions caused by the diff
+3. Stops after the second observation
+4. Returns `BLOCKED — PRODUCT DECISION REQUIRED`
+5. Starts no third author or reviewer task
+
+**Assertions:**
+- [ ] Stable finding IDs are not regenerated per round
+- [ ] Each author/reviewer task gets one bounded pass
+- [ ] At most one verification re-review occurs
+- [ ] New unrelated subjective scope cannot enter during verification
+- [ ] No recursive review → rewrite → review loop exists
+
+---
+
+### Case 5: TLD-004 — destination routing prevents document contamination
+
+**Fixture:**
+- Agents return:
+  - dialogue and faction history → NARRATIVE / LORE
+  - asset inventory, palette, and VFX list → ART BRIEF
+  - loot formula and enemy tuning → SYSTEM GDD
+  - test cases → QA PLAN
+  - critical path, landmark function, and encounter interface IDs → LEVEL SOURCE
+  - review discussion → REVIEW ONLY
+
+**Expected behavior:**
+1. Records each proposal ID once in the routing ledger
+2. Passes only LEVEL SOURCE fields to the reducer
+3. Uses references for external destinations
+4. Produces separate report handoffs without writing those destinations
+
+**Assertions:**
+- [ ] Level source contains no dialogue/lore prose, production asset list,
+      system formula/tuning table, QA cases, or review transcript
+- [ ] No `all outputs verbatim` instruction exists
+- [ ] Duplicate facts are referenced, not pasted
+- [ ] External destination files remain unchanged
+- [ ] The level file remains the authority only for level rules
+
+---
+
+### Case 6: TLD-005 — mutation guard, unique writer, and fixed authorization
+
+**Fixture:**
+- All proposals are ready
+- Exact plan P1 names the level path, checkpoint path, one transaction writer,
+  create operations, ABSENT baselines, context/draft hashes, and write conditions
+- User approves P1
+
+Run these variants:
+
+| Variant | Event | Expected |
+|---|---|---|
+| 6a | an expert attempts to write | reject the write; expert remains read-only |
+| 6b | writer requests an art-brief path | stop; P1 does not authorize it |
+| 6c | owner changes | invalidate P1 and require a complete new plan |
+| 6d | target/source hash changes before mutation | cancel P1 with zero writes |
+| 6e | unchanged P1 writes both exact targets | no per-file re-prompt |
+
+**Assertions:**
+- [ ] One and only one transaction writer owns both paths
+- [ ] Every normal/recovery path is exact before approval
+- [ ] Authorization does not expand by implication
+- [ ] Unlisted narrative, art, system, QA, backlog, implementation, test, and
+      asset paths cannot be written
+- [ ] Compare-and-swap preflight uses raw SHA-256 hashes
+
+---
+
+### Case 7: Bounded concurrency, timeout, partial write, and checkpoint resume
+
+Run these variants:
+
+| Variant | Event | Expected |
+|---|---|---|
+| 7a | one required expert reaches its deadline | mark TIMED OUT; return PARTIAL, not COMPLETE |
+| 7b | writer changes the level file and then fails; byte restoration is unsafe | preserve actual state, write PARTIAL checkpoint if possible, do not claim rollback |
+| 7c | every changed byte is restored and hashes equal baselines | rollback may be reported |
+| 7d | resume hashes match checkpoint | reuse only completed results whose input/output hashes match |
+| 7e | resume hash differs | stop and revalidate; do not duplicate spawn or write |
+
+**Assertions:**
+- [ ] At most three agents are live
+- [ ] At most one narrowed follow-up occurs before each deadline
+- [ ] No indefinite wait or replacement loop occurs
+- [ ] Checkpoint contains plan/context/source/baseline/current hashes, decisions,
+      findings, agent states/deadlines, review round, write sets, and safe resume
+- [ ] PARTIAL artifacts are never DESIGN APPROVED
+
+---
+
+### Case 8: Tests and evidence are never fabricated
+
+**Fixture:**
+- qa-tester proposes five cases but executes none
+- Independent review completed successfully
+
+**Expected behavior:**
+1. Reports the five cases as PLANNED
+2. Does not claim PASS, executed coverage, or playtest completion
+3. Requires a real timestamp, exit/result, and raw log/evidence hash before
+   labeling future evidence executed
+
+**Assertions:**
+- [ ] Agent prose alone is not test evidence
+- [ ] Missing/timeout QA proposal prevents COMPLETE
+- [ ] `$qa-plan` is a separate handoff and no QA file is written here
+- [ ] No invented command, exit code, timestamp, or hash appears
+
+---
+
+### Case 9: Design approval and implementation are hash-gated
+
+**Fixture:**
+- Level-review approved file hash H1
+- The level file is later changed and now hashes to H2
+
+**Expected behavior:**
+1. Marks H1 review and QA proposal stale
+2. Does not retain DESIGN APPROVED for H2
+3. Requires fresh independent evidence bound to H2
+4. Does not invoke `$dev-story`, an implementation agent, or asset production
+
+**Assertions:**
+- [ ] A filename or prior approval cannot substitute for current hash evidence
+- [ ] COMPLETE requires zero open blockers and matching checkpoint/evidence hash
+- [ ] Implementation stories must capture the approved hash and pass their own
+      readiness gate before a separate dev-story run
+- [ ] Every non-COMPLETE verdict recommends only resolution/resume work
+
+---
+
+### Case 10: Missing or invalid target fails before project reads
 
 **Fixture:**
 - Any project state
 
-**Input:** `$team-level` (no argument)
+Run empty input, path traversal, drive prefix, control character, and ambiguous
+slug variants.
 
 **Expected behavior:**
-1. Skill detects no argument provided
-2. Outputs usage message explaining the required argument (level name or area to design)
-3. Provides example invocations: `$team-level tutorial`, `$team-level forest dungeon`, `$team-level final boss arena`
-4. Skill exits without reading any project files or spawning any subagents
+1. Prints the required argument and safe examples
+2. Stops before project-file reads or delegation
+3. Performs no write and emits no verdict
 
 **Assertions:**
-- [ ] Skill does NOT spawn any subagents when no argument is given
-- [ ] Usage message includes the argument format documented in the skill body
-- [ ] At least one example of a valid invocation is shown
-- [ ] No GDD or level files read before failing
-- [ ] Verdict is NOT shown (pipeline never starts)
+- [ ] No subagent is spawned
+- [ ] No GDD, level, or session-state file is read
+- [ ] Existing target is never overwritten under create mode
+- [ ] Invalid IDs cannot escape `design/levels/`
 
 ---
 
-### Case 4: Accessibility Review Gate — Blocking concern surfaces before sign-off
+### Case 11: Context and adjacency traversal remain bounded
 
 **Fixture:**
-- Steps 1–3 complete successfully
-- `design/accessibility-requirements.md` committed tier: Enhanced
-- accessibility-specialist (Step 4, parallel) flags a BLOCKING concern: the critical path through the forest dungeon requires players to distinguish between two environmental hazards (toxic pools vs. shallow water) using color alone — no shape, icon, or audio cue differentiates them
-
-**Input:** `$team-level forest dungeon`
+- More than 20 candidate sources exist
+- Two adjacent levels reference each other
+- One authored neighbor disagrees on interface direction
 
 **Expected behavior:**
-1. Steps 1–3 complete; Step 4 parallel phase begins
-2. accessibility-specialist returns: BLOCKING concern — "Critical path hazard distinction relies on color only (toxic pools vs. shallow water). Shape, icon, or audio cue required per Enhanced accessibility tier."
-3. art-director returns Step 4 output (complete)
-4. Skill presents both Step 4 results via `user-input request` — BLOCKING concern highlighted prominently
-5. `user-input request` offers:
-   - (a) Return to level-designer + art-director to redesign hazard visual/audio language before Step 5
-   - (b) Document as a known accessibility gap and proceed to Step 5 with the concern logged
-6. Skill does NOT silently proceed past the BLOCKING concern
-7. If user chooses (a): level-designer and art-director revision spawned; re-run Step 4 accessibility check
-8. Final report includes BLOCKING concern and its resolution status regardless of user choice
+1. Stops at one adjacency hop and records the cycle
+2. Surfaces the context-budget choice instead of silently truncating
+3. Classifies the neighbor `INTERFACE CONFLICT`
+4. Does not auto-run another team-level workflow or invent the neighbor
 
 **Assertions:**
-- [ ] BLOCKING accessibility concern is not treated as advisory — it is surfaced as a blocker
-- [ ] `user-input request` presents the specific concern text (not just "accessibility issue found")
-- [ ] Step 5 (qa-tester) does NOT begin without user acknowledging the BLOCKING concern
-- [ ] Revision path offered: level-designer + art-director can be sent back before proceeding
-- [ ] Final report includes the accessibility concern and its resolution status
-- [ ] art-director's completed output is NOT discarded when accessibility-specialist blocks
-
----
-
-### Case 5: Circular Level Reference — Adjacent area dependency flagged
-
-**Fixture:**
-- Steps 1–3 in progress
-- level-designer (Step 2) produces a layout that specifies entry/exit points connecting to "the crystal caves" (an adjacent area)
-- `design/levels/crystal-caves.md` does NOT exist — the crystal caves area has not been designed yet
-
-**Input:** `$team-level forest dungeon`
-
-**Expected behavior:**
-1. Step 2 — level-designer produces layout including: "West exit connects to crystal-caves entry point A"
-2. Orchestrator (or level-designer subagent) checks `design/levels/` for `crystal-caves.md`; file not found
-3. Dependency gap surfaced: "Level references crystal-caves as an adjacent area but `design/levels/crystal-caves.md` does not exist"
-4. `user-input request` presented with options:
-   - (a) Proceed with a placeholder reference — note the dependency in the level doc as UNRESOLVED
-   - (b) Pause and run `$team-level crystal caves` first to establish that area
-5. Skill does NOT invent crystal caves content to satisfy the reference
-6. If user chooses (a): level doc compiled with the west exit marked "→ crystal-caves (UNRESOLVED — area not yet designed)"; flagged in the open dependencies section of the summary report
-7. Final report includes open cross-level dependencies section
-
-**Assertions:**
-- [ ] Skill detects the missing adjacent area by checking `design/levels/` — does not assume it will be created later
-- [ ] Skill does NOT fabricate crystal caves content (lore, layout, connections) to resolve the reference
-- [ ] `user-input request` offers a "design crystal caves first" option referencing `$team-level`
-- [ ] If user proceeds with placeholder, level doc explicitly marks the west exit as UNRESOLVED
-- [ ] Summary report includes an open cross-level dependencies section listing unresolved references
-- [ ] Circular or forward references do not cause the skill to loop or crash
+- [ ] Maximum manifest is 20 files and 250 KiB unless the user explicitly
+      narrows the selection
+- [ ] Cycles do not recurse or crash
+- [ ] File existence alone is not AUTHORED compatibility
+- [ ] Interface conflict blocks approval until resolved
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Uses one bounded changeset authorization for the complete output set; does not re-prompt at each phase transition
-- [ ] All file writes delegated to sub-agents through Codex subagent delegation — orchestrator does not call Write or Edit directly
-- [ ] Error Recovery Protocol followed: surface → assess → offer options → partial report
-- [ ] Step 4 agents (art-director, accessibility-specialist) launched in parallel per skill spec
-- [ ] Partial report always produced even when agents are BLOCKED
-- [ ] Accessibility BLOCKING concerns surface before sign-off and require explicit user acknowledgment
-- [ ] Verdict is one of COMPLETE / BLOCKED
-- [ ] Next steps present at end: `$design-review`, `$dev-story`, `$qa-plan`
+- [ ] User input is reserved for product decisions, accepted risk, final design
+      acceptance, and exact write authorization
+- [ ] Routine transitions do not re-prompt
+- [ ] All expert/reviewer tasks are read-only
+- [ ] Exactly one writer owns the two pre-approved paths
+- [ ] All parallel batches respect the three-agent cap and deadlines
+- [ ] BLOCKING findings are non-waivable
+- [ ] Destination routing precedes reduction
+- [ ] Level-review evidence is independent, read-only, and current-hash-bound
+- [ ] Partial/timeout state is reconstructable from the checkpoint
+- [ ] No test, review, hash, or completion evidence is fabricated
+- [ ] No implementation begins before DESIGN APPROVED
+- [ ] Verdict is one of the four declared states
 
 ---
 
 ## Coverage Notes
 
-- narrative-director and world-builder in Step 1 may be sequential or parallel — the skill spec
-  spawns both but does not mandate simultaneous launch; coverage of parallel Step 1 would require
-  an explicit timing assertion fixture.
-- The "Retry with narrower scope" option in the blocked world-builder case (Case 2) — the
-  retry behavior itself is not tested in depth; its full path is analogous to the blocked agent
-  pattern covered in Case 2 and in other team-* specs.
-- systems-designer (Step 3) block scenarios are not separately tested; the same Error Recovery
-  Protocol applies and the pattern is validated by Case 2.
-- Step 4 parallel ordering (art-director completing before or after accessibility-specialist)
-  does not affect outcomes — both must return before Step 5 regardless of order.
-- The level doc slug convention (argument → filename) is implicitly tested by Case 1
-  (`forest dungeon` → `forest-dungeon.md`); multi-word slugification edge cases (special
-  characters, very long names) are not covered.
+The catalog entry remains unchanged because shared catalog mutation is outside
+this remediation boundary. No last-test fields are populated: these are static
+candidate checks, not executed workflow results.
+
+The inline level-review profile is intentionally specified here because there is
+no separately authorized `level-review` skill in this changeset. Creating a
+shared skill/profile and aligning other team workflows remain rollout tasks.

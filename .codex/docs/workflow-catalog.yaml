@@ -130,8 +130,8 @@ phases:
         command: $architecture-review
         required: true
         artifact:
-          glob: "docs/architecture/architecture-review-*.md"
-        description: "Validate completeness, dependency ordering, engine compatibility"
+          note: "Read-only hash-bound PASS/BLOCKED/PARTIAL evidence; an optional immutable report is valid only at the exact user-authorized path and for the current target manifest hash"
+        description: "Validate explicit architecture/ADR traceability and current test-run evidence without modifying truth sources"
 
       - id: control-manifest
         name: "Control Manifest"
@@ -221,25 +221,25 @@ phases:
         required: false
         artifact:
           note: "Check tests/ directory for engine-specific test framework scaffold"
-        description: "Scaffold the test framework and CI pipeline once before the first sprint. Leads to $test-helpers for fixture generation, $qa-plan per epic, and $smoke-check per sprint."
+        description: "Scaffold the test framework and CI pipeline once before the first sprint. Leads to $test-helpers, a supported $qa-plan scope, and build-bound $smoke-check evidence."
 
       - id: sprint-plan
         name: "First Sprint Plan"
-        command: $sprint-plan
+        command: $sprint-plan new
         required: true
         artifact:
           glob: "production/sprints/sprint-*.md"
           min_count: 1
-        description: "Plan the first sprint with prioritized stories from epics"
+        description: "Atomically plan the first sprint from existing exact-hash stories whose final readiness verdict is READY"
 
       - id: vertical-slice
         name: "Vertical Slice"
-        command: $vertical-slice
-        required: false
+        command: $vertical-slice plan --run-id <slice-run-id> --hypothesis-id <VS-H-stable-id> --attempt <01|02> --prerequisites <exact-manifest-path>
+        required: true
         artifact:
-          glob: "prototypes/*/REPORT.md"
+          glob: "production/validation/vertical-slices/*/attempt-*/*/reports/*.md"
           min_count: 1
-        description: "Build and playtest a vertical slice — a complete end-to-end pass through the core loop. Recommended before committing epics and stories to production. Skipping is a valid solo dev call but increases risk of late-stage design pivots. If built, must be played and documented before advancing."
+        description: "Plan and independently evaluate a bounded two-attempt vertical-slice hypothesis. Production advancement requires an exact current persisted PROCEED report bound to the full candidate, build, session, scope, velocity, and decision graph."
 
   production:
     label: "Production"
@@ -259,7 +259,7 @@ phases:
         name: "Story Readiness Check"
         command: $story-readiness
         required: false
-        description: "Validate a story is implementation-ready before a developer picks it up"
+        description: "Validate current story/control/QA provenance and emit a final READY, NEEDS WORK, or BLOCKED verdict"
 
       - id: implement
         name: "Implement Stories"
@@ -282,21 +282,21 @@ phases:
         command: $story-done
         required: true
         repeatable: true
-        description: "Verify all acceptance criteria, check GDD/ADR deviations, close the story"
+        description: "Close only after every required AC has current hash-bound quality and execution evidence; static adequacy alone cannot close"
 
       - id: qa-plan
         name: "QA Plan"
         command: $qa-plan
         required: false
         repeatable: true
-        description: "Generate a QA test plan per epic or sprint. Run $qa-plan [epic-slug]. Produces test cases for $smoke-check, $regression-suite, and $test-evidence-review."
+        description: "Generate a version-bound QA plan with $qa-plan sprint, $qa-plan feature: <system-name>, or $qa-plan story: <path>; PARTIAL/STALE plans cannot satisfy downstream gates."
 
       - id: bug-report
         name: "Bug Report / Triage"
         command: $bug-report
         required: false
         repeatable: true
-        description: "Log and prioritize bugs found during implementation. $bug-report creates a structured report; $bug-triage prioritizes the open backlog."
+        description: "$bug-report creates one canonical bug record; $bug-triage returns read-only priority/scheduling/risk proposals and a separate recorder commits decisions."
 
       - id: retrospective
         name: "Sprint Retrospective"
@@ -313,7 +313,7 @@ phases:
 
       - id: scope-check
         name: "Scope Check"
-        command: $scope-check
+        command: $scope-check compare --baseline <approved-scope-path> --current <current-scope-path>
         required: false
         repeatable: true
         artifact:
@@ -336,7 +336,7 @@ phases:
         name: "Performance Profile"
         command: $perf-profile
         required: false
-        description: "Profile and optimize CPU/GPU/memory bottlenecks"
+        description: "Prepare a capture or analyze exact runtime exports; only a current build-bound performance-runtime-report-v1 can serve as gate evidence"
 
       - id: balance-check
         name: "Balance Check"
@@ -352,18 +352,18 @@ phases:
 
       - id: playtest-polish
         name: "Playtest Sessions (×3)"
-        command: $playtest-report
+        command: $playtest-report finalize <session-id>
         required: true
         artifact:
-          glob: "production/playtests/*.md"
+          glob: "production/playtests/*/report.md"
           min_count: 3
-        description: "Cover: new player experience, mid-game systems, difficulty curve"
+        description: "Count only distinct canonical COMPLETED, Gate Eligible reports with current manifest/raw/observation hashes; cover new player, mid-game, and difficulty curve"
 
       - id: team-polish
         name: "Polish Team Pass"
-        command: $team-polish
+        command: $team-polish assess --manifest <polish-target-manifest-path> --assessment-id <id> --persist
         required: true
-        description: "Coordinated polish pass across performance, audio, visual, and UX"
+        description: "Assess one hash-bound target; implementation and final-candidate verification are separate explicitly authorized modes"
 
   release:
     label: "Release"
@@ -374,17 +374,17 @@ phases:
         name: "Release Checklist"
         command: $release-checklist
         required: true
-        description: "Pre-release validation across all departments: code, content, store, legal"
+        description: "Collect and normalize candidate-bound release evidence; emits Gate Decision NOT EVALUATED for $gate-check to decide"
 
       - id: patch-notes
         name: "Patch Notes"
-        command: $patch-notes
+        command: $patch-notes <release-id> [--style brief|detailed|full]
         required: false
         description: "Generate player-facing patch notes from git history and sprint data"
 
       - id: changelog
         name: "Changelog"
-        command: $changelog
+        command: $changelog --manifest <changelog-request-path>
         required: false
         description: "Auto-generate internal changelog from commits, sprints, and design docs"
 
@@ -392,4 +392,4 @@ phases:
         name: "Launch Checklist"
         command: $launch-checklist
         required: true
-        description: "Final launch readiness — last gate before shipping to players"
+        description: "Evaluate one exact launch-candidate manifest; external/manual claims remain UNKNOWN until verified receipts or authorized attestations exist"

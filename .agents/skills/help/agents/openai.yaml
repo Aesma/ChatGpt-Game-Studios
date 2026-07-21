@@ -1,4 +1,4 @@
 interface:
   display_name: "Help"
-  short_description: "Analyzes what is done and the users query and offers advice..."
-  default_prompt: "Use $help to run the Help game-studio workflow."
+  short_description: "Evidence-backed next steps from a current stage packet"
+  default_prompt: "Use $help to recommend one safe next action from a complete current project_stage_detection/v2 packet. Treat the detector as diagnostic only, require current PASS receipts for gated completion, and never infer a stage, write files, or auto-run the recommendation."

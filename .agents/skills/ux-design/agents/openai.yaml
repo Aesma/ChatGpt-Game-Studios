@@ -1,4 +1,4 @@
 interface:
-  display_name: "Ux Design"
-  short_description: "Guided, section-by-section UX spec authoring for a screen..."
-  default_prompt: "Use $ux-design to run the Ux Design game-studio workflow."
+  display_name: "UX Design"
+  short_description: "Author versioned screen, HUD, and pattern UX artifacts"
+  default_prompt: "Use $ux-design with a bounded request manifest to author one versioned UX artifact, preserve stable screen and section identities, separate product decisions from one exact write authorization, and stop at hash-bound READY_FOR_REVIEW."

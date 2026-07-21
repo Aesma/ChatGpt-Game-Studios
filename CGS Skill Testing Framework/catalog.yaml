@@ -420,7 +420,7 @@ skills:
     last_spec_result: ""
     last_category: ""
     last_category_result: ""
-    priority: low
+    priority: critical
     category: authoring
 
   - name: code-review

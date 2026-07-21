@@ -127,7 +127,7 @@ production/           # Sprint plans, milestones, releases
   milestones/
   releases/
   epics/              # Epic and story files (from $create-epics + $create-stories)
-  playtests/          # Playtest reports
+  playtests/          # Canonical playtest sessions: <session-id>/report.md
   session-state/      # Ephemeral session state (gitignored)
   session-logs/       # Session audit trail (gitignored)
 ```
@@ -563,7 +563,7 @@ Vertical Slice that proves the core loop is fun.
 ### Phase 4 Pipeline
 
 ```
-$ux-design  -->  $vertical-slice  -->  $create-epics  -->  $create-stories  -->  $sprint-plan
+$ux-design  -->  $vertical-slice plan/evaluate/status  -->  $create-epics  -->  $create-stories  -->  $sprint-plan
     |                   |                   |                   |                       |
     v                   v                   v                   v                       v
   UX specs       Production-quality   Epic files in       Story files in          First sprint with
@@ -629,8 +629,13 @@ Produces APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED verdict.
 The vertical slice is the production-quality proof that you can build the full
 game loop end-to-end before committing to full Production.
 
+Plan and evaluate in separate tasks; implementation/build/playtest evidence belongs
+to separately authorized owners:
+
 ```
-$vertical-slice
+$vertical-slice plan --run-id <id> --hypothesis-id <VS-H-id> --attempt <01|02> --prerequisites <exact-manifest>
+$vertical-slice evaluate --run-id <id> --plan <exact-plan> --evidence <exact-evidence-manifest> --evaluation-id <id> --persist
+$vertical-slice status <exact-report> --expect-report <sha256:...>
 ```
 
 **What it proves:** Does a player, starting from nothing, experience the core
@@ -648,10 +653,11 @@ you can build it properly. They answer different questions. If you skipped the
 concept prototype, now is a reasonable time to run one first before investing
 in the full slice.
 
-**Verdict:** The vertical slice produces a PROCEED / PIVOT / KILL verdict.
-- **PROCEED** → move to Step 4.3 (epics and stories)
-- **PIVOT** → revise affected GDDs with `$design-system [mechanic]`, then re-run `$vertical-slice`
-- **KILL** → return to `$brainstorm` with what you learned
+**Verdict:** An independent evaluator derives the evidence verdict; directors can
+add creative concerns but cannot upgrade evidence. Only a separately recorded user
+product decision can make the final decision. Downstream work may consume PROCEED
+only from an exact current persisted report whose complete candidate/source/build/
+scope/evidence/playtest/velocity graph revalidates.
 
 ### Step 4.3: Create Epics and Stories From Design Artifacts
 
@@ -686,7 +692,7 @@ of Done. Verdict: READY / NEEDS WORK / BLOCKED.
 ### Step 4.5: Effort Estimation
 
 ```
-$estimate production/epics/combat/story-combat-damage-calc.md
+$estimate story --input production/epics/combat/story-combat-damage-calc.md
 ```
 
 Provides effort estimates with risk assessment.
@@ -706,15 +712,20 @@ $sprint-plan new
 
 ### Step 4.7: Vertical Slice (Hard Gate)
 
-Before advancing to Production, you must build and playtest a Vertical Slice:
+Before advancing to Production, build and validate a Vertical Slice when that
+scope is selected:
 
 - One complete end-to-end core loop, playable from start to finish
 - Representative quality (not placeholder everything)
-- Played unguided in at least 3 sessions
-- Playtest report written (`$playtest-report`)
+- Played unguided in the required distinct sessions
+- Each counted session has a canonical completed result at
+  `production/playtests/<session-id>/report.md`
 
-This is a **hard gate** -- `$gate-check` will auto-FAIL if a human has not
-played the build unguided.
+`$gate-check` is authoritative for the transition verdict. It accepts only an
+explicitly supplied, externally hash-bound `vertical-slice-evaluation-report`
+whose workflow/evidence/product/final states are COMPLETE/PROCEED, whose persistence
+and currentness verify, and whose full referenced graph still matches. Session or
+file existence alone never passes.
 
 ### Phase 4 Gate
 
@@ -729,7 +740,12 @@ $gate-check pre-production
 - At least 1 prototype with README
 - Story files exist in `production/epics/[epic-slug]/`
 - At least 1 sprint plan exists
-- At least 1 playtest report exists (Vertical Slice played in 3+ sessions)
+- Every required Vertical Slice session has a distinct stable session ID and a
+  valid canonical completed report; templates, protocols, raw logs, reviews,
+  ingest-only sessions, legacy paths, and hash-invalid reports count as zero
+- Exact current persisted Vertical Slice evaluation report is gate eligible and
+  binds the current source/tree, candidate, build, plan, scope, session set,
+  velocity ledger, decision matrix, and report bytes
 
 ---
 
@@ -756,7 +772,7 @@ $sprint-plan new  -->  $story-readiness  -->  implement  -->  $story-done
        |  (repeat per story until sprint complete)
        v
   $sprint-status  (quick 30-line snapshot anytime)
-  $scope-check    (if scope is growing)
+  $scope-check compare --baseline <approved-scope> --current <current-scope>
   $retrospective  (at sprint end)
 ```
 
@@ -822,7 +838,7 @@ Quick 30-line snapshot reading from `production/sprint-status.yaml`.
 If scope is growing:
 
 ```
-$scope-check production/sprints/sprint-03.md
+$scope-check compare --baseline <approved-scope-path> --current production/sprints/sprint-03.md
 ```
 
 This compares current scope against the original plan and flags scope increase,
@@ -906,7 +922,8 @@ $gate-check production
 **Requirements to pass:**
 
 - All MVP stories complete
-- Playtesting: 3 sessions covering new player, mid-game, and difficulty curve
+- Playtesting: 3 distinct canonical completed sessions covering new player,
+  mid-game, and difficulty curve
 - Fun hypothesis validated
 - No confusion loops in playtest data
 
@@ -922,7 +939,7 @@ performance, balance, accessibility, audio, visual polish, and playtesting.
 ### Phase 6 Pipeline
 
 ```
-$perf-profile  -->  $balance-check  -->  $asset-audit  -->  $playtest-report (x3)
+$perf-profile  -->  $balance-check  -->  $asset-audit  -->  $playtest-report finalize (x3)
        |                  |                    |                    |
        v                  v                    v                    v
   Profile CPU/GPU    Analyze formulas     Verify naming,      Cover: new player,
@@ -968,11 +985,20 @@ all assets.
 
 ### Step 6.4: Playtesting (Required: 3 Sessions)
 
+For each session, create or reuse a protocol, ingest immutable evidence, then
+finalize the stable session ID:
+
 ```
-$playtest-report
+$playtest-report template <protocol-id>
+$playtest-report ingest <notes-path> --session-id <session-id>
+$playtest-report finalize <session-id>
 ```
 
-Generates structured playtest reports. Three sessions are required, covering:
+Only `production/playtests/<session-id>/report.md` with `Status: COMPLETED`,
+`Gate Eligible: YES`, complete build/session/tester fields, and matching raw and
+observation hashes counts. Director reviews are separate derived artifacts and
+never create another session. Three distinct completed sessions are required,
+covering:
 - New player experience
 - Mid-game systems
 - Difficulty curve
@@ -1020,7 +1046,8 @@ $gate-check polish
 
 **Requirements to pass:**
 
-- At least 3 playtest reports exist
+- At least 3 distinct canonical completed playtest-session reports pass current
+  hash/provenance validation
 - Coordinated polish pass completed (`$team-polish`)
 - No blocking performance issues
 - Accessibility tier requirements met
@@ -1039,20 +1066,21 @@ Your game is polished, tested, and ready. Now you ship it.
 $release-checklist  -->  $launch-checklist  -->  $team-release
         |                       |                      |
         v                       v                      v
-  Pre-release             Full cross-department    Coordinate:
-  validation across       validation (Go/No-Go     build, QA sign-off,
-  code, content,          per department)           deployment, launch
-  store, legal
+  Candidate-bound         Hash-bound launch       Coordinate bounded
+  evidence collector      assessment; no           staging/production/
+  (no gate verdict)       publishing authority     communication phases
                     Also: $changelog, $patch-notes, $hotfix
 ```
 
 ### Step 7.1: Release Checklist
 
 ```
-$release-checklist v1.0.0
+$release-checklist --manifest production/releases/<release-id>/release-candidate.yaml
 ```
 
-Generates a comprehensive pre-release checklist covering:
+Collects and normalizes current candidate-bound evidence into stable
+`PASS/FAIL/UNKNOWN/authorized N/A` items. It always emits `Gate Decision: NOT
+EVALUATED`; `$gate-check` owns the phase verdict. Coverage includes:
 - Build verification (all platforms compile and run)
 - Certification requirements (platform-specific)
 - Store metadata (descriptions, screenshots, trailers)
@@ -1063,10 +1091,12 @@ Generates a comprehensive pre-release checklist covering:
 ### Step 7.2: Launch Readiness (Full Validation)
 
 ```
-$launch-checklist
+$launch-checklist assess --manifest production/releases/<release-id>/launch-candidate.yaml --assessment-id <id> --persist
 ```
 
-Complete cross-department validation:
+Complete cross-department, build/hash-bound assessment. External or manual facts
+remain UNKNOWN until a verifiable receipt or authorized owner attestation exists;
+the workflow does not publish or make the final launch decision:
 
 | Department | What Is Checked |
 |-----------|---------------|
@@ -1089,14 +1119,14 @@ Each item gets a **Go / No-Go** status. All must be Go to ship.
 ### Step 7.3: Generate Player-Facing Content
 
 ```
-$patch-notes v1.0.0
+$patch-notes <release-id> [--style brief|detailed|full]
 ```
 
 Generates player-friendly patch notes from git history and sprint data.
 Translates developer language into player language.
 
 ```
-$changelog v1.0.0
+$changelog --manifest production/releases/<release-id>/changelog-request.yaml
 ```
 
 Generates an internal changelog (more technical, for the team).
@@ -1104,15 +1134,18 @@ Generates an internal changelog (more technical, for the team).
 ### Step 7.4: Coordinate the Release
 
 ```
-$team-release
+$team-release prepare --manifest production/releases/<release-id>/release-orchestration.yaml --run-id <id> --persist
 ```
 
-Coordinates release-manager, QA, and DevOps through:
+Prepares a hash-bound coordination run. Staging, production promotion, and
+communication are separate invocations with separate explicit authorizations;
+one invocation never cascades across them. It coordinates release-manager, QA,
+and DevOps through:
 1. Pre-release validation
 2. Build management
 3. Final QA sign-off
 4. Deployment preparation
-5. Go/No-Go decision
+5. Evidence-bound Go/No-Go input and post-deploy stabilization
 
 ### Step 7.5: Ship
 
@@ -1129,7 +1162,7 @@ git push origin main --tags
 **Hotfix workflow** for critical production bugs:
 
 ```
-$hotfix "Players losing save data when inventory exceeds 99 items"
+$hotfix plan "Players losing save data when inventory exceeds 99 items"
 ```
 
 Bypasses normal sprint processes with a full audit trail:
@@ -1448,7 +1481,7 @@ conflicts go to `producer`.
 | `$brainstorm` | Collaborative ideation with MDA analysis | 1 |
 | `$map-systems` | Decompose concept into systems index | 1-2 |
 | `$design-system` | Guided section-by-section GDD authoring | 2 |
-| `$quick-design` | Lightweight spec for small changes | 2+ |
+| `$quick-design` | Versioned proposal for structurally low-risk bounded changes; separate application required | 2+ |
 | `$review-all-gdds` | Cross-GDD consistency and design theory review | 2 |
 | `$propagate-design-change` | Find ADRs/stories affected by GDD changes | 5 |
 
@@ -1479,7 +1512,7 @@ conflicts go to `producer`.
 | `$sprint-status` | Quick 30-line sprint snapshot | 5 |
 | `$story-readiness` | Validate story is implementation-ready | 4-5 |
 | `$story-done` | 8-phase story completion review | 5 |
-| `$estimate` | Effort estimation with risk assessment | 4-5 |
+| `$estimate` | Read-only relative or calibrated evidence via explicit story/sprint/freeform profile | 4-5 |
 
 #### Reviews and Analysis (13)
 
@@ -1492,8 +1525,8 @@ conflicts go to `producer`.
 | `$asset-spec` | Per-asset visual specs and AI generation prompts | 5-6 |
 | `$content-audit` | GDD-specified content vs. implemented | 5 |
 | `$consistency-check` | Cross-GDD entity and formula inconsistency scan | 2+ |
-| `$scope-check` | Scope creep detection | 5 |
-| `$perf-profile` | Performance profiling workflow | 6 |
+| `$scope-check` | Compare explicit immutable baseline/current scope by stable IDs; product decisions remain external | 5 |
+| `$perf-profile` | Capture preparation or runtime-export analysis; only persisted build-bound runtime reports are gate eligible | 6 |
 | `$tech-debt` | Tech debt scanning and prioritization | 6 |
 | `$gate-check` | Formal phase gate with PASS/CONCERNS/FAIL | All transitions |
 | `$reverse-document` | Generate design docs from existing code | Any |
@@ -1520,18 +1553,18 @@ conflicts go to `producer`.
 | `$milestone-review` | Milestone progress and go/no-go | 5 |
 | `$retrospective` | Sprint retrospective analysis | 5 |
 | `$bug-report` | Structured bug report creation | 5+ |
-| `$bug-triage` | Re-evaluate open bugs for priority, severity, and owner | 5+ |
-| `$playtest-report` | Structured playtest session report | 4-6 |
+| `$bug-triage` | Read-only evidence triage with proposed priority/scheduling/risk dispositions; a separate recorder commits decisions | 5+ |
+| `$playtest-report` | Create protocols, ingest immutable evidence, and finalize canonical completed session reports | 4-6 |
 | `$onboard` | Onboard a new team member | Any |
 
 #### Release (6)
 
 | Command | Purpose | Phase |
 |---------|---------|-------|
-| `$release-checklist` | Pre-release validation | 7 |
-| `$launch-checklist` | Full cross-department launch readiness | 7 |
-| `$changelog` | Auto-generate internal changelog | 7 |
-| `$patch-notes` | Player-facing patch notes | 7 |
+| `$release-checklist` | Candidate-bound evidence collector; gate decision is not evaluated | 7 |
+| `$launch-checklist` | Hash-bound launch assessment with verified external receipts | 7 |
+| `$changelog` | Generate a range-bound local changelog entry from an exact request manifest; never implies deployment/publication | 7 |
+| `$patch-notes` | Local player-facing draft from exact approved candidate plus verified production deployment receipt; never publishes | 7 |
 | `$hotfix` | Emergency fix workflow | 7+ |
 | `$day-one-patch` | Scoped patch for issues found after gold master | 7+ |
 
@@ -1554,9 +1587,9 @@ conflicts go to `producer`.
 | `$team-level` | Level: layout through dressed encounters | 5 |
 | `$team-audio` | Audio: direction through implemented events | 5-6 |
 | `$team-polish` | Coordinated polish: perf + art + audio + QA | 6 |
-| `$team-release` | Release coordination: build + QA + deployment | 7 |
+| `$team-release` | Hash-bound release coordination with separate staging, production, publication, and stabilization authorizations | 7 |
 | `$team-live-ops` | Live-ops planning: seasonal events, battle pass, retention | 7+ |
-| `$team-qa` | Full QA cycle: strategy, execution, coverage, sign-off | 6-7 |
+| `$team-qa` | Exact-candidate QA cycle; only persisted COMPLETE + APPROVED + Gate Eligible YES hands off | 6-7 |
 
 ---
 
@@ -1592,10 +1625,10 @@ conflicts go to `producer`.
 ### Workflow 3: "I need to add a complex feature mid-production"
 
 ```
-1. $design-system or $quick-design (depending on scope)
+1. `$design-system` for authoritative system design, or `$quick-design` only for a structurally low-risk proposal that will be independently reviewed and applied
 2. $design-review to validate
 3. $propagate-design-change if modifying existing GDDs
-4. $estimate for effort and risk
+4. `$estimate story --input <story-path>` for relative/calibrated evidence; it does not choose scope, staffing, budget, or schedule
 5. $team-combat, $team-narrative, $team-ui, etc. (appropriate team skill)
 6. $story-done when complete
 7. $balance-check if it affects game balance
@@ -1604,7 +1637,7 @@ conflicts go to `producer`.
 ### Workflow 4: "Something broke in production"
 
 ```
-1. $hotfix "description of the issue"
+1. `$hotfix plan "description of the issue"`
 2. Fix is implemented on hotfix branch
 3. $code-review the fix
 4. Run tests
@@ -1628,7 +1661,7 @@ conflicts go to `producer`.
 ```
 1. $retrospective (review last sprint)
 2. $sprint-plan new (create next sprint)
-3. $scope-check (ensure scope is manageable)
+3. `$scope-check compare --baseline <approved-scope> --current <current-scope>`
 4. $story-readiness per story before pickup
 5. Implement stories
 6. $story-done per completed story
@@ -1644,9 +1677,9 @@ conflicts go to `producer`.
 4. $release-checklist v1.0.0
 5. $launch-checklist (full cross-department validation)
 6. $team-release (coordinate the release)
-7. $patch-notes and $changelog
+7. `$changelog --manifest <exact-request>` and `$patch-notes <release-id> [--style brief|detailed|full]`; each remains local and evidence-bound until separate publication
 8. Ship!
-9. $hotfix if anything breaks post-launch
+9. `$hotfix plan <BUG-ID|description>` if anything breaks post-launch; later mutation commands require their own exact authorization
 10. Post-mortem after launch stabilizes
 ```
 
@@ -1694,7 +1727,7 @@ conflicts go to `producer`.
 9. **Prototype risky mechanics first.** A day of prototyping can save a week
    of production on a mechanic that does not work.
 
-10. **Keep your sprint plans honest.** Use `$scope-check` regularly. Scope
+10. **Keep your sprint plans honest.** Use `$scope-check compare --baseline <approved-scope> --current <current-scope>` regularly. Scope
     creep is the number one killer of indie games.
 
 11. **Document decisions with ADRs.** Future-you will thank present-you for

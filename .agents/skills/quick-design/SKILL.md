@@ -1,290 +1,380 @@
 ---
 name: quick-design
-description: "Lightweight design spec for small changes — tuning adjustments, minor mechanics, balance tweaks. Skips full GDD authoring when a system GDD already exists or the change is too small to warrant one. Produces a Quick Design Spec that embeds directly into story files."
+description: "Create an immutable, low-structural-risk design-change proposal against one exact GDD hash; authoritative application, independent review, lifecycle recording, and implementation authorization remain separate."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$quick-design`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[brief description of the change]`. Treat bracketed values as optional unless the workflow says otherwise.
-
 
 # Quick Design
 
-This is the **lightweight design path** for changes that don't need a full GDD.
-Full GDD authoring via `$design-system` is the heavyweight path. Use this skill
-for work under approximately 4 hours of implementation — tuning adjustments,
-minor behavioral tweaks, small additions to existing systems, or standalone
-features too small to warrant a full document.
+`quick-design` is the lightweight authoring path for a small, structurally
+low-risk change to an existing design. It creates one proposal. It never edits an
+authoritative GDD, data file, registry, index, story, review, lifecycle record, or
+implementation.
 
-**Output:** `design/quick-specs/[name]-[date].md`
+A quick proposal is rationale and requested delta, not a source of truth.
+Production work consumes the updated authoritative GDD only after separate
+application, independent current-hash review, and lifecycle recording.
 
-**When to run:** Anytime a change is too small for `$design-system` but too
-meaningful to implement without a written rationale.
+## Invocation and modes
 
----
+Use one explicit mode:
 
-## 1. Classify the Change
+```text
+$quick-design propose "<change>" --change-id <QD-stable-id> --version <vNNN> --target <exact-gdd-path> [--expect-base <sha256:...>] [--supersedes <exact-proposal-path>] [--experiment-only <exact-prototype-scope>]
+$quick-design status <exact-proposal-path> [--record <exact-lifecycle-record-path>]
+```
 
-First, read the argument and determine which category this change falls into:
+`propose` is the only writing mode. `status` is read-only. Reject missing or
+ambiguous mode, change ID, version, or target. Do not infer "the most relevant"
+GDD, use filename similarity, select the latest file, or use modification time.
 
-- **Tuning** — changing numbers or balance values in an existing system with no
-  behavioral change (most minimal path). Example: "increase jump height from 5
-  to 6 units", "reduce enemy patrol speed by 10%".
-- **Tweak** — a small behavioral change to an existing system that introduces no
-  new states, branches, or systems. Example: "make dash invincible on frame 1",
-  "allow combo to cancel into roll".
-- **Addition** — adding a small mechanic to an existing system that may introduce
-  1-2 new states or interactions. Example: "add a parry window to the block
-  mechanic", "add a charge variant to the basic attack".
-- **New Small System** — a standalone feature small enough that it has no
-  existing GDD and is under approximately one week of implementation work.
-  Example: "achievement popup system", "simple day/night visual cycle".
+`change-id` must match `QD-[a-z0-9][a-z0-9-]{2,63}`. `version` must match
+`v[0-9]{3}`. The canonical path is:
 
-If the change does NOT fit these categories — it introduces a new system with
-significant cross-system dependencies, requires more than one week of
-implementation, or fundamentally alters an existing system's core rules — stop
-and redirect to `$design-system` instead.
+`design/quick-specs/<change-id>/<version>/proposal.md`
 
-If there is no argument, ask the user to describe the change (plain text prompt), then classify it using the criteria above.
+A later proposal is a new immutable version. It must use a new version ID, bind
+the current target bytes, and name the exact predecessor path and SHA-256 in
+`Supersedes`. Never update or overwrite an existing proposal.
 
-Present the inferred classification by asking the user directly:
-- Prompt: "I've classified this as **[inferred type]** — [brief reason]. Is that correct?"
-- Options:
-  - `[A] Yes — [inferred type] is correct`
-  - `[B] Tuning — changing numbers or balance values only`
-  - `[C] Tweak — small behavioral change to an existing system`
-  - `[D] Addition — adding a small mechanic to an existing system`
-  - `[E] New Small System — standalone feature, under one week of work`
-  - `[F] This is too large — redirect me to $design-system`
+## Roles and authority boundary
 
-If [F]: stop. Verdict: **REDIRECTED** — use `$design-system` for this change.
-Otherwise: proceed with the selected type.
+Keep these responsibilities separate:
 
----
+1. **Proposal author** — this `quick-design propose` task gathers the product
+   decision and may create only `proposal.md`.
+2. **Application author** — a later, separately authorized design-authoring task
+   applies selected deltas to the authoritative GDD. Use the staged
+   `design-system revise-section` contract for each affected section.
+3. **Independent reviewer** — a fresh task runs staged `design-review` on the
+   complete updated GDD. It edits nothing and its verdict is bound to the exact
+   reviewed GDD hash.
+4. **Lifecycle recorder** — another owner-authorized task validates the proposal,
+   application, current GDD, independent review, and expected record pre-state,
+   then may create an APPLIED or SUPERSEDED lifecycle record.
 
-## 2. Context Scan
+The reviewer task ID must differ from the proposal-author and application-author
+task IDs. The recorder task ID must differ from all author and reviewer task IDs.
+A subagent in the authoring task, the author in another role, a user chat approval,
+or a solo/advisory review does not satisfy independence.
 
-Before drafting anything, read the relevant context:
+An explicit bounded request to create the proposal authorizes only the proposed
+`proposal.md` path after its product content is approved. It does not authorize a
+GDD/data/index/story/record edit, formal review, or implementation. If the user
+asks to apply or implement during this invocation, stop after the proposal
+handoff. Keep the proposal operation's axes unchanged and report a separate
+`Downstream Action: BLOCKED — SEPARATE APPLICATION AND REVIEW REQUIRED`.
 
-- Search `design/gdd/` for the GDD most relevant to this change. Read the
-  sections that this change would affect.
-- Check whether `design/gdd/systems-index.md` exists. If it does, read it to
-  understand where this system sits in the dependency graph and what tier it
-  belongs to. If it does not exist, note "No systems index found — skipping
-  dependency tier check." and continue.
-- Check `design/quick-specs/` for any prior quick specs that touched this
-  system — avoid contradicting them.
-- If this is a Tuning change, also check `assets/data/` for the data file that
-  holds the relevant values.
+## Status axes
 
-Report what was found: "Found GDD at [path]. Relevant section: [section name].
-No conflicting quick specs found." (or note any conflicts found.)
+Always report these independently:
 
----
+- `Workflow Status`: `COMPLETE`, `BLOCKED`, `REDIRECTED`, `PARTIAL`, or
+  `ERROR`.
+- `Proposal Status`: `DRAFT`, `PROPOSED`, `APPLIED`, `SUPERSEDED`, or
+  `NOT_CREATED`.
+- `Currentness`: `CURRENT`, `STALE`, `INVALID`, or `NOT_APPLICABLE`.
+- `Implementation Eligible`: `YES` or `NO`.
+- `Persistence`: `NOT_REQUESTED`, `DECLINED`, `VERIFIED`, or `FAILED`.
+- `Verdict`: `PROPOSAL_CREATED`, `DRAFT_ONLY`, `STATUS_REPORTED`,
+  `REDIRECTED`, `BLOCKED`, or `ERROR`.
 
-## 3. Draft the Quick Design Spec
+`Workflow Status: COMPLETE` means the requested authoring or status operation
+finished. It never means the design is approved or implementation-ready.
+`Implementation Eligible: YES` is possible only in read-only `status` mode after
+the full APPLIED-currentness rule below. The `propose` result is always NO.
 
-Use the appropriate spec format for the change category.
+## Phase 1: Resolve the exact authoritative base
 
-### For Tuning changes
+For production changes, require one exact existing system-GDD path under
+`design/gdd/`. Reject a directory, glob, multiple matches, `systems-index.md`,
+review artifact, quick proposal, story, or data file as the authoritative target.
+Read applicable `AGENTS.md` guidance and the target's raw bytes. Compute lowercase
+`sha256:<64 hex>` and record it as `Base GDD SHA-256`.
 
-Produce a single table:
+If `--expect-base` is supplied, it must equal the computed hash. A mismatch
+returns:
+
+```text
+Workflow Status: ERROR
+Proposal Status: NOT_CREATED
+Currentness: STALE
+Implementation Eligible: NO
+Persistence: NOT_REQUESTED
+Verdict: ERROR
+Reason: STALE BASE — REBASE REQUIRED
+```
+
+Read the target's stable artifact/system ID, Status, and exact affected section
+headings. Compute a SHA-256 for each affected section's raw heading-bound range.
+Duplicate or ambiguous headings, unreadable bytes, missing stable identity, or an
+unresolved target section returns BLOCKED and writes nothing.
+
+Read the exact current systems index and other authoritative dependency records
+needed to prove ownership. Record their paths and SHA-256 hashes. If required
+ownership/dependency evidence is missing, ambiguous, or contradictory, return
+`BLOCKED — RISK EVIDENCE REQUIRED`. Do not interpret missing evidence as low risk.
+
+Do not scan old quick specs as authority. When revising the same proposal, require
+`--supersedes` and validate that exact predecessor's path, artifact type, change
+ID, version, hash, and target identity. An invalid/stale predecessor blocks a new
+version.
+
+For an explicitly requested `--experiment-only` proposal, require an exact path or
+stable ID under `prototypes/` and set `Target Use: EXPERIMENT_ONLY`. It may never
+target production code, data, a production story, or a production GDD mutation,
+and it can never become APPLIED or implementation-eligible.
+
+## Phase 2: Run the structural risk gate
+
+Do not estimate hours or days to decide eligibility. Effort may be recorded as
+non-gating planning context only.
+
+For every row below, record `YES`, `NO`, or `UNKNOWN` plus an exact evidence path,
+section/ID, and source hash:
+
+| Risk fact | Gate result |
+|---|---|
+| Adds a system or subsystem, or requires a new systems-index row | YES redirects |
+| Adds a state, changes state ownership, or changes lifecycle ownership | YES redirects |
+| Adds or changes a cross-system input/output, timing, ordering, or ownership contract | YES redirects |
+| Adds or changes a player-facing core rule, pillar, MDA relationship, or progression/economy rule | YES redirects |
+| Changes formula semantics rather than a documented value within its allowed range | YES redirects |
+| Changes persistence, save compatibility, networking, security, accessibility policy, or platform contract | YES redirects |
+| Requires multiple authoritative owners or conflicts with another current GDD | YES redirects |
+| Places a tuning value outside its documented current range | YES redirects |
+| Lacks evidence needed to answer any row | UNKNOWN blocks |
+
+The product owner may change the proposed design so the facts change, but cannot
+override a true fact by selecting a lower-risk label. Re-run the checklist against
+the revised proposal and the same current source bytes.
+
+If any row is YES, stop before drafting or writing:
+
+```text
+Workflow Status: REDIRECTED
+Proposal Status: NOT_CREATED
+Currentness: NOT_APPLICABLE
+Implementation Eligible: NO
+Persistence: NOT_REQUESTED
+Verdict: REDIRECTED
+Next owner: $design-system
+```
+
+If any row is UNKNOWN, use `BLOCKED / NOT_CREATED / Implementation Eligible: NO`
+and name the missing evidence. Only all-NO evidence can enter the quick path.
+
+## Phase 3: Assign the review profile
+
+Choose the profile from facts, not preference or effort:
+
+- `QD-TUNING` — changes only documented designer-controlled numeric defaults
+  within their current allowed ranges; formula meaning, behavior, states, and
+  interfaces are unchanged. Required independent review depth: `lean` or `full`.
+- `QD-LOCAL` — clarifies or adjusts a bounded rule within one existing system and
+  existing ownership/interface surfaces, while every Phase 2 risk fact remains
+  NO. Required independent review depth: `full`.
+- `EXPERIMENT_ONLY` — temporary prototype hypothesis with no production handoff.
+  Formal approval and APPLIED status are not available.
+
+`New Small System` is not a quick profile. A new system redirects regardless of
+predicted implementation effort. A tuning value outside the current GDD range
+also redirects; the range must first change through full authoring and review.
+
+Show the completed risk table, evidence hashes, inferred profile, and required
+review depth. Ask the user to decide whether to proceed with that fact-based
+profile, revise the product change, or redirect. A label choice cannot alter the
+evidence-derived gate result.
+
+## Phase 4: Make the product decision
+
+Follow `Question -> Options -> Decision -> Draft -> Approval` for every unresolved
+product choice. Present two to four meaningful options with tradeoffs. The user,
+not the author or reviewer, selects the rule/value and rationale.
+
+Use only current authoritative design evidence. Route implementation selections,
+engine APIs, class/module names, storage schemas, test procedures, and technical
+architecture to named downstream owners; do not place them in the design delta.
+
+For `QD-TUNING`, require the exact current knob name, default, range, unit,
+affected observable behavior, proposed in-range value, and rationale. For
+`QD-LOCAL`, require exact base rule locators, the requested product-level delta,
+unchanged invariants, observable outcomes, and the owner of each affected
+artifact. Acceptance conditions must be measurable; "feels right" alone becomes a
+named playtest hypothesis with metric, observation method, and decision threshold.
+
+## Phase 5: Draft one immutable proposal
+
+Use this exact header:
 
 ```markdown
-# Quick Design Spec: [Title]
+# Quick Design Change Proposal: <title>
 
-**Type**: Tuning
-**System**: [System name]
-**GDD Reference**: `design/gdd/[filename].md` — Tuning Knobs section
-**Date**: [today]
-
-## Change
-
-| Parameter | Old Value | New Value | Rationale |
-|-----------|-----------|-----------|-----------|
-| [param]   | [old]     | [new]     | [why]     |
-
-## Tuning Knob Mapping
-
-Maps to GDD Tuning Knob: [knob name and its documented range].
-New value is [within / at the edge of / outside] the documented range.
-[If outside: explain why the range should be extended.]
-
-## Acceptance Criteria
-
-- [ ] [Parameter] reads [new value] from `assets/data/[file]`
-- [ ] Behavior difference is observable in [specific context]
-- [ ] No regression in [related behavior]
+Artifact Type: quick-design-change-proposal
+Schema Version: 1
+Change ID: <QD-stable-id>
+Version: <vNNN>
+Status: PROPOSED
+Target Use: PRODUCTION_CHANGE | EXPERIMENT_ONLY
+Prototype Scope: <exact prototypes path or stable ID | NOT_APPLICABLE>
+Risk Profile: QD-TUNING | QD-LOCAL | EXPERIMENT_ONLY
+Required Review Depth: lean | full | NOT_APPLICABLE
+Proposal Author Task ID: <task-id>
+Created At UTC: <RFC3339>
+Target GDD Path: <exact path | NOT_APPLICABLE>
+Target GDD Artifact/System ID: <stable ID | NOT_APPLICABLE>
+Base GDD SHA-256: <sha256:... | NOT_APPLICABLE>
+Systems Index Path/SHA-256: <exact path and hash | NOT_APPLICABLE>
+Supersedes Path/SHA-256: <exact path and hash | NONE>
+Currentness at Creation: CURRENT
+Implementation Eligible: NO
 ```
 
-### For Tweak and Addition changes
+Then include exactly these level-two sections:
 
-```markdown
-# Quick Design Spec: [Title]
+1. `## Product Decision` — selected rule/value, rationale, authoritative owner,
+   and explicit non-goals.
+2. `## Base Snapshot` — ordered target section IDs/headings and hashes, short
+   locators, source paths/hashes, and current authoritative statements. Quote only
+   the minimum needed to identify the delta.
+3. `## Structural Risk Evidence` — every Phase 2 row, YES/NO/UNKNOWN, evidence
+   locator/hash, and derived profile.
+4. `## Proposed Delta` — stable delta IDs, target section, product-level before/
+   after meaning, unchanged invariants, and affected artifact owners. State:
+   "This proposal does not replace the authoritative GDD."
+5. `## Observable Acceptance Conditions` — stable AC/hypothesis IDs, observable
+   conditions, metrics/thresholds where applicable, and validation owner.
+6. `## Apply, Review, and Record Handoff` — base hash, ordered application
+   targets, required `design-system revise-section` handoffs, required independent
+   review depth, lifecycle-record requirements, and explicit implementation
+   block.
+7. `## Boundaries` — exact owned write plus GDD/data/index/story/review/record/
+   implementation non-writes.
 
-**Type**: [Tweak / Addition]
-**System**: [System name]
-**GDD Reference**: `design/gdd/[filename].md`
-**Date**: [today]
+Do not include a `GDD Update Required? No` escape hatch. A production delta is
+only a proposal until the authoritative GDD is updated and independently approved.
+Do not tell a programmer to implement from the proposal.
 
-## Change Summary
+## Phase 6: Approve and persist the proposal only
 
-[1-2 sentences describing what changes and why.]
+Show the full draft. Ask the user to approve the proposal content, revise it, or
+redirect. Content approval means the draft expresses the product decision; it is
+not formal design review or implementation approval.
 
-## Motivation
+Before the first write, present one bounded changeset:
 
-[Why is this change needed? What player experience problem does it solve?
-Reference the relevant MDA aesthetic or player feedback if applicable.]
-
-## Design Delta
-
-Current GDD says (quoting `design/gdd/[filename].md`, [section]):
-
-> [exact quote of the relevant rule or description]
-
-This spec changes that to:
-
-[New rule or description, written with the same precision as a GDD Detailed
-Rules section. A programmer should be able to implement from this text alone.]
-
-## New Rules / Values
-
-[Full unambiguous statement of the replacement content. If this introduces
-new states, list them. If it introduces new parameters, define their ranges.]
-
-## Affected Systems
-
-| System | Impact | Action Required |
-|--------|--------|-----------------|
-| [system] | [how it is affected] | [update GDD / update data file / no action] |
-
-## Acceptance Criteria
-
-- [ ] [Specific, testable criterion 1]
-- [ ] [Specific, testable criterion 2]
-- [ ] [Specific, testable criterion 3]
-- [ ] No regression: [the original behavior this must not break]
-
-## GDD Update Required?
-
-[Yes / No]
-[When required: which file, which section, and what the update should say.]
+```text
+CREATE design/quick-specs/<change-id>/<version>/proposal.md
+NON-WRITES design/gdd/**, assets/data/**, design/gdd/systems-index.md,
+           production/**, src/**, tests/**, review artifacts,
+           lifecycle records, session state
 ```
 
-### For New Small System changes
+Use an already explicit bounded authorization when it covers this exact CREATE;
+otherwise obtain one authorization. Do not re-prompt per section. Immediately
+before writing, re-read and re-hash the target GDD, every affected section, the
+systems index, dependency evidence, and predecessor proposal. Any change returns
+`ERROR — STALE BASE — REBASE REQUIRED` and writes nothing.
 
-Use a trimmed GDD structure. Include only the sections that are directly
-necessary — skip Player Fantasy, full Formulas, and Edge Cases unless the
-system specifically requires them.
+Reject an existing canonical proposal path. Return `ERROR — PATH EXISTS; CHOOSE A
+NEW VERSION` without modifying it. Never offer in-place update.
 
-```markdown
-# Quick Design Spec: [Title]
+Write the one proposal atomically, re-read its bytes, verify the schema, source
+hashes, status, and expected content, then report its SHA-256. A declined write
+returns `COMPLETE / DRAFT / DRAFT_ONLY / Persistence: DECLINED`. A failed or
+unverified write returns `ERROR / NOT_CREATED / ERROR / Persistence: FAILED`.
+Only verified persistence returns:
 
-**Type**: New Small System
-**Scope**: [1-2 sentence description of what this system does and doesn't do]
-**Date**: [today]
-**Estimated Implementation**: [hours]
-
-## Overview
-
-[One paragraph a new team member could understand. What does this system do,
-when does it activate, and what does it produce?]
-
-## Core Rules
-
-[Unambiguous rules for the system. Use numbered lists for sequential behavior
-and bullet lists for conditions. Be precise enough that a programmer can
-implement without asking questions.]
-
-## Tuning Knobs
-
-| Knob | Default | Range | Category | Rationale |
-|------|---------|-------|----------|-----------|
-| [name] | [value] | [min–max] | [feel/curve/gate] | [why this default] |
-
-All values must live in `assets/data/[appropriate-file].json`, not hardcoded.
-
-## Acceptance Criteria
-
-- [ ] [Functional criterion: does the right thing]
-- [ ] [Functional criterion: handles the edge case]
-- [ ] [Experiential criterion: feels right — what a playtest validates]
-- [ ] [Regression criterion: does not break adjacent system]
-
-## Systems Index
-
-This system is not currently in `design/gdd/systems-index.md`.
-[If it should be added: suggest which layer and priority tier.]
-[If it is too small to track: state "This system is below systems-index
-tracking threshold — quick spec is sufficient."]
+```text
+Workflow Status: COMPLETE
+Proposal Status: PROPOSED
+Currentness: CURRENT
+Implementation Eligible: NO
+Persistence: VERIFIED
+Verdict: PROPOSAL_CREATED
 ```
 
----
+## Phase 7: Separate application, review, and recording handoff
 
-## 4. Approval and Filing
+After verified proposal creation, stop with these independent next actions:
 
-Present the draft to the user in full. Then ask the user directly:
-- Prompt: "Here's the Quick Design Spec draft. How do you want to proceed?"
-- Options:
-  - `[A] Approve — write it as shown`
-  - `[B] Revise — I'll describe what to change`
-  - `[C] This grew too large — redirect to $design-system instead`
+1. **Application:** in a separate task, the design author reads the exact proposal
+   and revalidates its hash and Base GDD SHA-256. For each accepted delta, run
+   `design-system revise-section` with its own exact changeset authorization.
+   The application author writes only the authoritative GDD/checkpoint allowed by
+   that workflow and produces an immutable application receipt containing
+   proposal path/hash, pre/post GDD hashes, applied delta IDs, task ID, and
+   timestamp.
+2. **Review:** after the final GDD edit, a fresh independent task runs
+   `design-review <exact-gdd-path> --depth <required-depth>`. `QD-TUNING` accepts
+   formal `lean` or `full` approval; `QD-LOCAL` requires formal `full` approval.
+   `solo` is advisory and never sufficient. The report must be immutable,
+   independently attributable, and bound to the exact post-application GDD hash.
+3. **Record:** a separate recorder re-hashes every input and expected record
+   pre-state, then may append a lifecycle record. This skill does not perform that
+   write.
 
-If [B]: collect the requested changes, revise the draft, and re-present this structured prompt.
-If [C]: stop. Verdict: **REDIRECTED** — use `$design-system` for this change.
+An APPLIED lifecycle record uses a fresh exact path under:
 
-If [A]: add the quick-spec file to the complete changeset preview and obtain the one changeset authorization before writing.
+`design/quick-specs/<change-id>/<version>/records/<record-id>.md`
 
-Use today's date in the filename. The title should be a kebab-case description
-of the change (e.g., `jump-height-tuning-2026-03-10`,
-`parry-window-addition-2026-03-10`).
+It must contain artifact type `quick-design-lifecycle-record`, schema version 1,
+`Status: APPLIED`, proposal path/hash, application receipt path/hash and task ID,
+updated GDD path/hash, independent review receipt path/hash, verdict `APPROVED`,
+review depth and independence, reviewer task ID, recorder task ID, exact previous
+record path/hash or NONE, timestamp, and `Implementation Eligible: YES`.
 
-If a GDD update is required, show its exact old and new text before authorization and include both the quick spec and GDD edit in the same complete changeset preview. Once that changeset is authorized, create `design/quick-specs/` if needed and apply both files without another prompt. Do not
-make GDD edits outside the approved changeset.
+A SUPERSEDED record uses the same binding fields, `Status: SUPERSEDED`, successor
+proposal path/hash, recorder task ID, and `Implementation Eligible: NO`. Lifecycle
+records are append-only. Select one by explicit path and hash, never mtime.
+Conflicting records, reused task identities, missing hashes, or an unexpected
+pre-state are invalid and authorize nothing.
 
----
+Only the recorder may create lifecycle records. The proposal author, application
+author, and reviewer must not self-record APPLIED or SUPERSEDED.
 
-## 5. Handoff
+## Phase 8: Read-only status and implementation eligibility
 
-After writing the file, output:
+`status` reads the exact proposal and optional exact lifecycle record. It never
+searches for a newer version or record. Re-hash all referenced artifacts.
 
-```
-Quick Design Spec written to: design/quick-specs/[filename].md
-Type: [Tuning / Tweak / Addition / New Small System]
-System: [system name]
-GDD update: [Required — pending approval / Applied / Not required]
+Without a lifecycle record, return `Proposal Status: PROPOSED`,
+`Currentness: CURRENT` only if the target still equals Base GDD SHA-256, and
+`Implementation Eligible: NO`.
 
-Next step: This spec is ready for `$story-readiness` validation before
-implementation. Reference this spec in the story's GDD Reference field.
-```
+For a supplied APPLIED record, `Implementation Eligible: YES` requires all of:
 
-### Pipeline Notes
+- proposal path/hash and change/version identity match;
+- record schema, append-only predecessor binding, and role/task independence are
+  valid;
+- application receipt is valid and binds the proposal to exact pre/post GDD
+  hashes and applied delta IDs;
+- the current GDD raw-byte SHA-256 equals the applied post-GDD hash;
+- the independent review receipt is immutable, formal, `APPROVED`, at or above
+  the profile's required depth, and targets that same current GDD path/hash;
+- no SUPERSEDED record is supplied for this proposal;
+- all referenced paths and hashes revalidate now.
 
-Verdict: **COMPLETE** — quick design spec written and ready for implementation.
+If any check fails, preserve the recorded lifecycle status but report
+`Currentness: STALE` or `INVALID` and `Implementation Eligible: NO`. Never repair
+or rewrite evidence in status mode.
 
-Quick Design Specs **bypass** `$design-review` and `$review-all-gdds` by
-design. They are for small, low-risk, well-scoped changes where the cost of
-the full review pipeline exceeds the risk of the change itself.
+For a valid SUPERSEDED record, return `Proposal Status: SUPERSEDED`,
+`Currentness: CURRENT`, and `Implementation Eligible: NO` with the exact successor
+path/hash.
 
-Redirect to the full pipeline if any of the following are true:
-- The change adds a new system that belongs in the systems index
-- The change significantly alters cross-system behavior or a system's
-  contracts with other systems
-- The change introduces new player-facing mechanics that affect the
-  game's MDA aesthetic balance
-- Implementation is likely to exceed one week of work
+A production story may cite the proposal as rationale, but its authoritative GDD
+reference must identify the updated GDD path/hash and the exact current APPLIED
+record path/hash. Story readiness or development must reject PROPOSED,
+SUPERSEDED, stale, invalid, experiment-only, advisory-reviewed, or unrecorded
+quick designs. Even APPLIED status does not authorize this skill to start
+implementation; a separate current story-readiness decision is still required.
 
-In those cases: "This change has grown beyond quick-spec scope. I recommend
-using `$design-system` to author a full GDD for this."
+## Final response contract
 
----
+Every invocation reports exact inspected/created paths and hashes, risk profile,
+all status axes, non-writes, and a precise next owner.
 
-## Recommended Next Steps
-
-- Run `$story-readiness [story-path]` to validate the story before implementation begins — reference this spec in the story's GDD Reference field
-- Run `$dev-story [story-path]` to implement once the story passes readiness checks
-- If the change is larger than expected, run `$design-system [system-name]` to author a full GDD instead
+Never end a newly created proposal with "ready for implementation." Use
+"proposal created; separate authoritative application, independent review, and
+recording required." Recommend `story-readiness` only after read-only status has
+verified APPLIED and CURRENT; never chain into `dev-story`.

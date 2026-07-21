@@ -1,4 +1,4 @@
 interface:
   display_name: "Project Stage Detect"
-  short_description: "Automatically analyze project state, detect stage, identify..."
-  default_prompt: "Use $project-stage-detect to run the Project Stage Detect game-studio workflow."
+  short_description: "Read-only stage evidence; no count heuristics or percentages"
+  default_prompt: "Use $project-stage-detect to validate versioned stage authority and gate evidence against current hashes, reporting UNKNOWN on missing or conflicting provenance."

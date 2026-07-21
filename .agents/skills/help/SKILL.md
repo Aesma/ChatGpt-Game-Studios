@@ -1,235 +1,208 @@
 ---
 name: help
-description: "Analyzes what is done and the users query and offers advice on what to do next. Use if user says what should I do next or what do I do now or I'm stuck or I don't know what to do"
+description: Provide one evidence-backed next-step recommendation from a complete current project-stage packet without inferring stages, treating artifact presence, user claims, and detector output as gate approval.
 ---
 
-## Invocation and execution
+# Studio Help
 
-Invoke this workflow as `$help`.
+Provide concise, read-only orientation without allowing an artifact, status string, user claim, or stage diagnosis to substitute for a required approval or gate receipt.
 
-Arguments: `[optional: what you just finished, e.g. 'finished design-review' or 'stuck on ADRs']`. Treat bracketed values as optional unless the workflow says otherwise.
+This workflow recommends one primary next action. It never writes files, invokes a skill, spawns a reviewer, changes project state, or decides that a gate passed.
 
-Before starting, gather this read-only project context without assuming a shell:
+## Invocation
 
-1. Read the first non-empty line of `production/stage.txt`, or use `not set` when absent.
-2. Find the most recently modified Markdown file under `production/sprints/`, or use `none`.
-3. Read the first five lines of `production/session-state/active.md`, or use `none`.
+`$help [question-or-recent-activity]`
 
+The optional argument is context only. Statements such as “I finished design-review” are claims to investigate, not completion evidence.
 
-# Studio Help — What Do I Do Next?
+## Hard boundaries
 
-This skill is read-only — it reports findings but writes no files.
+1. **Read-only:** do not create, edit, migrate, approve, or register anything.
+2. **One primary action:** return one safest next action, with secondary context only when useful.
+3. **No local stage inference:** do not inspect artifact counts, source-file counts, directory names, `stage.txt`, sprint status, or user prose to derive a phase.
+4. **Detector is not a gate:** `project_stage_detection/v2` provides diagnostic stage context only. Its stage, confidence, status, evidence, or recommendation never counts as workflow approval.
+5. **Existence is not completion:** a matching file or status record is never `VERIFIED_PASS` by itself.
+6. **Claims are not receipts:** user prose and session notes remain `CLAIMED` until current evidence verifies them.
+7. **No unsafe advance:** never recommend a later required step or phase when an earlier required prerequisite is not `VERIFIED_PASS` under its catalog-declared completion policy.
 
-This skill figures out exactly where you are in the game development pipeline and
-tells you what comes next. It is **lightweight** — not a full audit. For a full
-gap analysis, use `$project-stage-detect`.
+## Consume project stage only from project_stage_detection/v2
 
----
+The sole source of phase selection is one complete, current packet conforming to the producer-owned `project_stage_detection/v2` schema.
 
-## Step 1: Read the Catalog
+Do not copy, summarize into executable rules, or reconstruct the detector’s phase heuristics. Validate against the producer schema itself; do not maintain a local list of required packet fields.
 
-Read `.codex/docs/workflow-catalog.yaml`. This is the authoritative list of all
-phases, their steps (in order), whether each step is required or optional, and
-the artifact globs that indicate completion.
+### Complete packet
 
----
+A packet is complete only when:
 
-## Step 1b: Find Skills Not in the Catalog
+- its schema identifier is exactly `project_stage_detection/v2`;
+- validation against that schema succeeds with no missing, truncated, omitted, or partial required section;
+- it identifies the project and packet;
+- it contains the detector’s stage result, confidence, evidence, conflicts, unknowns, and read-error sections required by the schema;
+- it contains a snapshot/source manifest with content hashes or explicit absence markers;
+- it identifies the workflow-catalog version/hash used by the detector;
+- its completion marker is the schema-defined complete value.
 
-After reading the catalog, Find files matching `.agents/skills/*/SKILL.md` to get the full list
-of installed skills. For each file, extract the `name:` field from its frontmatter.
+Do not consume individual fields from an invalid or partial packet. A producer verdict named `PASS`, `COMPLETE`, or similar does not relax schema validation.
 
-Compare against the `command:` values in the catalog. Any skill whose name does
-not appear as a catalog command is an **uncataloged skill** — still usable but not
-part of the phase-gated workflow.
+### Current packet
 
-Collect these for the output in Step 7 — show them as a footer block:
+A schema-valid packet is current only when:
 
-```
-### Also installed (not in workflow)
-- `/skill-name` — [description from SKILL.md frontmatter]
-- `/skill-name` — [description]
-```
+- its project identity matches the current project;
+- every path in its declared source manifest can be checked;
+- each current content hash or absence state matches the packet;
+- the current workflow catalog matches the packet’s declared catalog identity/hash;
+- no required source check has an access error;
+- no newer valid packet for the same project/snapshot lineage supersedes it.
 
-Only show this block if at least one uncataloged skill exists. Limit to the 10
-most relevant based on the user's current phase (QA skills in production, team
-skills in production/polish, etc.).
+Timestamp age alone neither proves nor disproves currentness. Any source drift, catalog drift, project mismatch, supersession, or uncheckable required source makes the packet `STALE` or `UNKNOWN`.
 
----
+Use the validated packet’s stage result exactly as produced. If its conflict/unknown/read-error sections say stage selection is unresolved, do not choose a normal phase step; issue a diagnostic recommendation.
 
-## Step 2: Determine Current Phase
+### Packet failure behavior
 
-Check in this order:
+- Missing packet: `STAGE_CONTEXT_MISSING`.
+- Wrong schema or incomplete packet: `STAGE_PACKET_INVALID`.
+- Source/catalog drift: `STAGE_PACKET_STALE`.
+- Unresolved stage conflict or required read error: `STAGE_CONTEXT_CONFLICT`.
 
-1. **Read `production/stage.txt`** — if it exists and has content, this is the
-   authoritative phase name. Map it to a catalog phase key:
-   - "Concept" → `concept`
-   - "Systems Design" → `systems-design`
-   - "Technical Setup" → `technical-setup`
-   - "Pre-Production" → `pre-production`
-   - "Production" → `production`
-   - "Polish" → `polish`
-   - "Release" → `release`
+For all four, do not fall back to local heuristics. Recommend obtaining or refreshing the diagnostic packet, but do not run `project-stage-detect` automatically.
 
-2. **If stage.txt is missing**, infer phase from artifacts (most-advanced match wins):
-   - `src/` has 10+ source files → `production`
-   - `production/stories/*.md` exists → `pre-production`
-   - `docs/architecture/adr-*.md` exists → `technical-setup`
-   - `design/gdd/systems-index.md` exists → `systems-design`
-   - `design/gdd/game-concept.md` exists → `concept`
-   - Nothing → `concept` (fresh project)
+## Workflow catalog use
 
----
+Read the workflow catalog whose identity/hash is bound to the current packet. Use it only for:
 
-## Step 3: Read Session Context
+- ordered steps in the packet-selected phase;
+- required/optional/repeatable flags;
+- command or manual-action labels;
+- the completion policy and receipt schema declared for each step;
+- prerequisite relationships and phase-transition rules.
 
-Read `production/session-state/active.md` if it exists. Extract:
-- What was most recently worked on
-- Any in-progress tasks or open questions
-- Current epic/feature/task from STATUS block (if present)
+Do not use catalog artifact globs as proof of completion. They may locate evidence, but a match begins at `PRESENT_UNVERIFIED`.
 
-This tells you what the user just finished or is stuck on — use it to personalize
-the output.
+If the catalog is unavailable, malformed, hash-mismatched, or lacks a completion policy needed for a required step, return a diagnostic recommendation. Do not invent a policy.
 
----
+## Evidence states
 
-## Step 4: Check Step Completion for the Current Phase
+Classify every relevant prerequisite into exactly one progress state while retaining all evidence records:
 
-For each step in the current phase (from the catalog):
+| State | Meaning | May satisfy a required prerequisite? |
+|---|---|---|
+| `VERIFIED_PASS` | A current evidence bundle satisfies the catalog-declared completion policy; every required approval/gate receipt has verdict `PASS` and matches current sources/artifacts | Yes |
+| `CLAIMED` | User, session note, or unverified status source says the work is done | No |
+| `PRESENT_UNVERIFIED` | An artifact or record exists, but no valid current completion evidence proves it | No |
+| `STALE` | Receipt or artifact was valid for different source, artifact, catalog, or run hashes | No |
+| `BLOCKED` | Current authoritative receipt says `BLOCKED`, `FAIL`, `REJECTED`, or equivalent non-pass | No |
+| `MISSING` | Required artifact/evidence/receipt is absent | No |
+| `CONTRADICTORY` | Current evidence sources disagree in a way that affects completion | No |
+| `UNKNOWN` | Required evidence could not be read or interpreted safely | No |
 
-### Artifact-based checks
+Never display `CLAIMED`, `PRESENT_UNVERIFIED`, or a detector conclusion with a completed/checkmark symbol.
 
-If the step has `artifact.glob`:
-- Search matching files to check if files matching the pattern exist
-- If `min_count` is specified, verify at least that many files match
-- If `artifact.pattern` is specified, search to verify the pattern exists in the matched file
-- **Complete** = artifact condition is met
-- **Incomplete** = artifact is missing or pattern not found
+### Deterministic precedence
 
-If the step has `artifact.note` (no file pattern):
-- Mark as **MANUAL** — cannot auto-detect, will ask user
+For one prerequisite:
 
-If the step has no `artifact` field:
-- Mark as **UNKNOWN** — completion not trackable (e.g. repeatable implementation work)
+1. conflicting current authoritative receipts → `CONTRADICTORY`;
+2. one current authoritative negative receipt with no conflicting current receipt → `BLOCKED`;
+3. one valid current `PASS` evidence bundle with no conflict → `VERIFIED_PASS`;
+4. only mismatched/outdated evidence → `STALE`;
+5. no valid receipt plus a user/session/status assertion → `CLAIMED`;
+6. no claim plus an artifact/status file that merely exists → `PRESENT_UNVERIFIED`;
+7. confirmed absence → `MISSING`;
+8. access, schema, or interpretation failure → `UNKNOWN`.
 
-### Special case: production phase — read `sprint-status.yaml`
+When multiple non-authoritative signals exist, list all of them; do not upgrade the state.
 
-When the current phase is `production`, check for `production/sprint-status.yaml`
-before doing any pattern-based story checks. If it exists, read it directly:
+## Completion evidence
 
-- Stories with `status: in-progress` → surface as "currently active"
-- Stories with `status: ready-for-dev` → surface as "next up"
-- Stories with `status: done` → count as complete
-- Stories with `status: blocked` → surface as blocker with the `blocker` field
+For a required step, validate the exact completion policy declared by the packet-bound catalog. When approval or a gate is required, `VERIFIED_PASS` requires a receipt that binds at least:
 
-This gives precise per-story status without Markdown scanning. Skip the pattern
-artifact check for the `implement` and `story-done` steps — the YAML is authoritative.
+- receipt and run identity;
+- catalog step and gate/approval identity;
+- explicit `PASS` verdict;
+- authorized approver/authority evidence required by policy;
+- subject artifact identities and content hashes;
+- input/source snapshot hashes;
+- catalog identity/hash;
+- issue time and any expiry/supersession data.
 
-### Special case: `repeatable: true` (non-production)
+Re-hash current subject artifacts and declared sources. A receipt for an older revision, a different run, changed inputs, changed artifact bytes, or a rejected/blocked verdict cannot pass.
 
-For repeatable steps outside production (e.g. "System GDDs"), the artifact
-check tells you whether *any* work has been done, not whether it's finished.
-Label these differently — show what's been detected, then note it may be ongoing.
+A detector packet is not a completion receipt even if it contains the same paths or says the project is in a later stage.
 
----
+For repeatable work, use the latest non-superseded run receipt that matches the current inputs and requested scope. An arbitrary same-named file, previous run, or “last completed” prose is not sufficient.
 
-## Step 5: Find Position and Identify Next Steps
+Treat `sprint-status.yaml`, session state, active task notes, and user statements as contextual claims unless the catalog completion policy explicitly declares their schema and they satisfy its current receipt requirements.
 
-From the completion data, determine:
+## Recommendation algorithm
 
-1. **Last confirmed complete step** — the furthest completed required step
-2. **Current blocker** — the first incomplete *required* step (this is what the
-   user must do next)
-3. **Optional opportunities** — incomplete *optional* steps that can be done
-   before or alongside the blocker
-4. **Upcoming required steps** — required steps after the current blocker
-   (show as "coming up" so user can plan ahead)
+1. Validate one full current `project_stage_detection/v2` packet.
+2. Validate and bind the exact workflow catalog referenced by that packet.
+3. Read the packet-selected phase and its ordered catalog steps without performing phase inference.
+4. Gather bounded evidence for relevant required prerequisites and the user’s question.
+5. Classify each prerequisite using the evidence-state contract.
+6. Surface all same-level prerequisite conflicts that affect the primary action.
+7. Select the first required step that is not `VERIFIED_PASS`:
+   - `CLAIMED` or `PRESENT_UNVERIFIED` → recommend the catalog-declared verification/review/receipt-producing action;
+   - `STALE` → recommend revalidation on current hashes;
+   - `BLOCKED` → recommend resolving the recorded blocker;
+   - `CONTRADICTORY` or `UNKNOWN` → recommend a diagnostic/reconciliation action;
+   - `MISSING` → recommend the catalog-declared creation or completion action.
+8. Recommend a later required step only when every earlier required prerequisite is `VERIFIED_PASS`.
+9. Optional actions may be mentioned as secondary context only when they do not imply bypassing the primary prerequisite.
+10. Never say a phase gate passed. Recommend the catalog-declared gate check when appropriate; that separate workflow owns its verdict.
 
-If the user provided an argument (e.g. "just finished design-review"), use that
-to advance past the step they named even if the artifact check is ambiguous.
+If there is no safe catalog-declared command, describe the required manual verification or diagnostic action rather than inventing a command.
 
----
+## Structured output
 
-## Step 6: Check for In-Progress Work
+Keep the human-facing answer short, but include this evidence envelope:
 
-If `active.md` shows an active task or epic:
-- Surface it prominently at the top: "It looks like you were working on [X]"
-- Suggest continuing it or confirm if it's done
+- `recommendation_id`: stable hash of packet ID, packet snapshot hash, catalog hash, primary step/action, and reason codes;
+- `outcome`;
+- `stage_source: project_stage_detection/v2`;
+- packet ID/hash and snapshot time;
+- catalog version/hash;
+- detector stage result and confidence, labelled `DIAGNOSTIC_ONLY`;
+- one primary action and why it is safe;
+- affected prerequisite and its progress state;
+- evidence grouped as `verified`, `claimed`, `present_unverified`, `stale`, `blocked`, `missing`, `contradictory`, and `unknown`;
+- receipt/run IDs and current source/artifact hashes used;
+- conflicts or missing information;
+- explicit `auto_executed: false` and `files_written: none`.
 
----
+Suggested concise form:
 
-## Step 7: Present Output
-
-Keep it **short and direct**. This is a quick orientation, not a report.
-
-```
-## Where You Are: [Phase Label]
-
-**In progress:** [from active.md, if any]
-
-### ✓ Done
-- [completed step name]
-- [completed step name]
-
-### → Next up (REQUIRED)
-**[Step name]** — [description]
-Command: `[/command]`
-
-### ~ Also available (OPTIONAL)
-- **[Step name]** — [description] → `/command`
-- **[Step name]** — [description] → `/command`
-
-### Coming up after that
-- [Next required step name] (`/command`)
-- [Next required step name] (`/command`)
-
----
-Approaching **[next phase]** gate → run `$gate-check` when ready.
+```text
+Where you are: <packet stage> (diagnostic context, not gate approval)
+Primary next action: <one command or manual action>
+Why: <prerequisite state and decisive evidence>
+Blocked from advancing: <earlier unverified prerequisite, if any>
+Evidence snapshot: <packet/catalog/source identity>
 ```
 
-**Formatting rules:**
-- `✓` for confirmed complete
-- `→` for the current required next step (only one — the first blocker)
-- `~` for optional steps available now
-- Show commands inline as backtick code
-- If a step has no command (e.g. "Implement Stories"), explain what to do instead of showing a slash command
-- For MANUAL steps, ask the user: "I can't tell if [step] is done — has it been completed?"
+Only `VERIFIED_PASS` items may appear under “Verified done.” Claims must be labelled “You reported,” present artifacts “Found but unverified,” and stale/blocked/conflicting evidence plainly named.
 
-Verdict: **COMPLETE** — next steps identified.
+## Outcomes
 
----
+- `HELP_RECOMMENDATION_READY` — one safe catalog-backed primary action was selected from a complete current packet.
+- `HELP_DIAGNOSTIC_REQUIRED` — packet/catalog/evidence is missing, stale, invalid, conflicted, blocked, or unsafe to interpret; one diagnostic/reconciliation action is recommended.
+- `HELP_NO_SAFE_RECOMMENDATION` — no catalog-declared safe action can be identified; explain the missing contract.
+- `HELP_READ_ERROR` — required read failed and no safe diagnostic can be grounded.
 
-## Step 8: Gate Warning (if close)
+No outcome means a gate passed. Do not use `COMPLETE` or `PASS` as the help workflow’s verdict.
 
-After the current phase's steps, check if the user is likely approaching a gate:
-- If all required steps in the current phase are complete (or nearly complete),
-  add: "You're close to the **[Current] → [Next]** gate. Run `$gate-check` when ready."
-- If multiple required steps remain, skip the gate warning — it's not relevant yet.
+## Read-only verification
 
----
+Before responding, confirm:
 
-## Step 9: Escalation Paths
-
-After the recommendations, if the user seems stuck or confused, add:
-
-```
----
-Need more detail?
-- `$project-stage-detect` — full gap analysis with all missing artifacts listed
-- `$gate-check` — formal readiness check for your next phase
-- `$start` — re-orient from scratch
-```
-
-Only show this if the user's input suggested confusion (e.g. "I don't know", "stuck",
-"lost", "not sure"). Don't show it for simple "what's next?" queries.
-
----
-
-## Collaborative Protocol
-
-- **Never auto-run the next skill.** Recommend it, let the user invoke it.
-- **Ask about MANUAL steps** rather than assuming complete or incomplete.
-- **Match the user's tone** — if they sound stressed ("I'm totally lost"), be
-  reassuring and give one action, not a list of six.
-- **One primary recommendation** — the user should leave knowing exactly one thing
-  to do next. Optional steps and "coming up" are secondary context.
+- no file was written;
+- no skill or agent was invoked;
+- no local stage heuristic was used;
+- the packet was complete and current, or the output is diagnostic;
+- artifact existence and user claims did not become `VERIFIED_PASS`;
+- every skipped ordered prerequisite was `VERIFIED_PASS` on current hashes;
+- exactly one primary action is present;
+- the detector was not represented as a gate or approval authority.

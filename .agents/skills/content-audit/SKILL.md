@@ -1,211 +1,168 @@
 ---
 name: content-audit
-description: "Audit GDD-specified content counts against implemented content. Identifies what's planned vs built."
+description: "Read-only comparison of stable GDD content IDs with build-inclusion evidence, with fail-closed coverage and deterministic verdicts."
 ---
 
 ## Invocation and execution
 
-Invoke this workflow as `$content-audit`.
+Invoke this workflow as $content-audit.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+Arguments: [system-id | --summary | no argument]. No argument audits every system represented by the authoritative content inventory. A system-id scopes the comparison to one stable system ID. The --summary flag changes presentation only.
 
-Arguments: `[system-name | --summary | (no arg = full audit)]`. Treat bracketed values as optional unless the workflow says otherwise.
+This workflow is a strictly read-only analyzer. It may read project artifacts and return results in conversation, but it must not create, edit, delete, rename, stage, commit, or publish any file. It must not offer a report-writing branch, request write approval, invoke a director gate, or invoke another project skill.
 
-Delegate substantive work to the `producer` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
-
-
-When this skill is invoked:
-
-Parse the argument:
-- No argument → full audit across all systems
-- `[system-name]` → audit that single system only
-- `--summary` → summary table only, no file write
+Use the target snapshot captured in Phase 1 throughout one run. If an observed source changes during the run, mark that source STALE and return PARTIAL rather than mixing snapshots.
 
 ---
 
-## Phase 1 — Context Gathering
+## Phase 1 — Establish scope and requirement coverage
 
-1. **Read `design/gdd/systems-index.md`** for the full list of systems, their
-   categories, and MVP/priority tier.
+1. Resolve the requested system-id against design/gdd/systems-index.md when it exists. Reject ambiguous names with result ERROR. For a full audit, enumerate all authoritative system and content-inventory sources.
+2. Read every in-scope GDD or structured Content Inventory in full. Do not select files through keyword, filename, summary-section, or regular-expression pre-scans.
+3. For every source, record:
+   - stable path or artifact ID
+   - content hash
+   - read status: READ, MISSING, UNREADABLE, INVALID, or STALE
+   - requirement IDs contributed by that source
+4. Normalize each auditable requirement into this shape:
 
-2. **L0 pre-scan**: Before full-reading any GDDs, Search all GDD files for
-   `## Summary` sections plus common content-count keywords:
-   ```
-   Search files matching `design/gdd/*.md` for regex `(## Summary|N enemies|N levels|N items|N abilities|enemy types|item types)` and list the matching files.
-   ```
-   For a single-system audit: skip this step and go straight to full-read.
-   For a full audit: full-read only the GDDs that matched content-count keywords.
-   GDDs with no content-count language (pure mechanics GDDs) are noted as
-   "No auditable content counts" without a full read.
+    requirement_id
+    system_id
+    content_type
+    display_name
+    criticality: CRITICAL or ORDINARY
+    required_variant_policy
+    source_artifact
+    source_locator
+    source_hash
 
-3. **Full-read in-scope GDD files** (or the single system GDD if a system
-   name was given).
+5. Use a stable content ID supplied by the authoritative inventory or GDD. Names may be display labels but are not identity.
+6. A bare numeric statement without stable IDs is UNIDENTIFIED_REQUIREMENTS. Preserve the stated quantity and source as a coverage gap; do not invent names or IDs and do not use it to prove completeness.
+7. Model localized, difficulty, platform, and cosmetic variants under their logical requirement ID according to required_variant_policy. Do not count variants as separate logical items unless the authoritative specification explicitly gives them separate IDs.
+8. If any in-scope requirement source is missing, unreadable, invalid, stale, ambiguous, or only count-based, requirement_coverage is INCOMPLETE.
 
-4. **For each GDD, extract explicit content counts or lists.** Look for patterns
-   like:
-   - "N enemies" / "enemy types:" / list of named enemies
-   - "N levels" / "N areas" / "N maps" / "N stages"
-   - "N items" / "N weapons" / "N equipment pieces"
-   - "N abilities" / "N skills" / "N spells"
-   - "N dialogue scenes" / "N conversations" / "N cutscenes"
-   - "N quests" / "N missions" / "N objectives"
-   - Any explicit enumerated list (bullet list of named content pieces)
-
-4. **Build a content inventory table** from the extracted data:
-
-   | System | Content Type | Specified Count/List | Source GDD |
-   |--------|-------------|---------------------|------------|
-
-   Note: If a GDD describes content qualitatively but gives no count, record
-   "Unspecified" and flag it — unspecified counts are a design gap worth noting.
+If no authoritative content specifications exist, return PARTIAL with the gap NO_AUTHORITATIVE_REQUIREMENTS. Do not infer planned content from asset folders.
 
 ---
 
-## Phase 2 — Implementation Scan
+## Phase 2 — Load implementation evidence
 
-For each content type found in Phase 1, scan the relevant directories to count
-what has been implemented. Search file names and contents to locate files.
+For every normalized requirement ID, seek authoritative inclusion evidence from a versioned content/build manifest or an engine adapter that proves inclusion in the target build.
 
-**Levels / Areas / Maps:**
-- Find files matching `assets/**/*.tscn`, `assets/**/*.unity`, `assets/**/*.umap`
-- Find files matching `src/**/*.tscn`, `src/**/*.unity`
-- Look for scene files in subdirectories named `levels/`, `areas/`, `maps/`,
-  `worlds/`, `stages/`
-- Count unique files that appear to be level/scene definitions (not UI scenes)
+A valid inclusion record contains:
 
-**Enemies / Characters / NPCs:**
-- Find files matching `assets/data/**/enemies/**`, `assets/data/**/characters/**`
-- Find files matching `src/**/enemies/**`, `src/**/characters/**`
-- Look for `.json`, `.tres`, `.asset`, `.yaml` data files defining entity stats
-- Look for scene/prefab files in character subdirectories
+    requirement_id
+    logical_content_id
+    target_id
+    build_or_manifest_id
+    included: true or false
+    source_artifact
+    source_locator
+    source_hash
+    adapter_or_schema_version
 
-**Items / Equipment / Loot:**
-- Find files matching `assets/data/**/items/**`, `assets/data/**/equipment/**`,
-  `assets/data/**/loot/**`
-- Look for `.json`, `.tres`, `.asset` data files
+The evidence must match the target snapshot and the logical ID/variant policy. Classify each requirement as:
 
-**Abilities / Skills / Spells:**
-- Find files matching `assets/data/**/abilities/**`, `assets/data/**/skills/**`,
-  `assets/data/**/spells/**`
-- Look for `.json`, `.tres`, `.asset` data files
+- SHIPPED_VERIFIED — valid current evidence proves all required content and variants are included in the target build.
+- MISSING — current authoritative evidence explicitly shows the required logical item is absent or excluded.
+- PRESENT_UNVERIFIED — a matching file, folder, resource, editor object, test fixture, or source definition exists, but current build inclusion is not proven.
+- EVIDENCE_CONFLICT — authoritative records disagree, use an unknown schema, refer to a different target, or refer to stale hashes.
 
-**Dialogue / Conversations / Cutscenes:**
-- Find files matching `assets/**/*.dialogue`, `assets/**/*.csv`, `assets/**/*.ink`
-- Search file contents for dialogue data files in `assets/data/`
+File paths, filenames, directory names, glob totals, source-code matches, asset counts, and editor/test fixtures are advisory observations only. They never establish SHIPPED_VERIFIED, never reduce the missing set, never raise confidence, and never permit COMPLETE. Editor-only and test-only content is excluded unless the authoritative target manifest explicitly includes it as shipped content.
 
-**Quests / Missions:**
-- Find files matching `assets/data/**/quests/**`, `assets/data/**/missions/**`
-- Look for `.json`, `.yaml` definition files
+If the target manifest is absent, unreadable, invalid, stale, unsupported, or does not cover every in-scope requirement ID, implementation_coverage is INCOMPLETE. Preserve any verified or known-missing findings, but do not fill gaps with file counts.
 
-**Engine-specific notes (acknowledge in the report):**
-- Counts are approximations — the skill cannot perfectly parse every engine
-  format or distinguish editor-only files from shipped content
-- Scene files may include both gameplay content and system/UI scenes; the scan
-  counts all matches and notes this caveat
+Format, naming, file-size, and pipeline compliance belong to asset-audit. Content-audit does not rescan or decide those rules. It may display a current, hash-bound asset-audit finding as external evidence, with its owner and provenance, but that evidence does not substitute for build inclusion.
 
 ---
 
-## Phase 3 — Gap Report
+## Phase 3 — Compare stable sets and determine verdict
 
-Produce the gap table:
+Compute set differences by requirement_id:
 
-```
-| System | Content Type | Specified | Found | Gap | Status |
-|--------|-------------|-----------|-------|-----|--------|
-```
+- specified_ids — all normalized requirement IDs
+- shipped_verified_ids — IDs classified SHIPPED_VERIFIED
+- missing_ids — IDs classified MISSING
+- present_unverified_ids — IDs classified PRESENT_UNVERIFIED
+- conflict_ids — IDs classified EVIDENCE_CONFLICT
 
-**Status categories:**
-- `COMPLETE` — Found ≥ Specified (100%+)
-- `IN PROGRESS` — Found is 50–99% of Specified
-- `EARLY` — Found is 1–49% of Specified
-- `NOT STARTED` — Found is 0
+Counts may be derived from these explicit sets for display. Never infer identities from counts, add unmatched file totals to verified counts, or calculate completion percentages.
 
-**Priority flags:**
-Flag a system as `HIGH PRIORITY` in the report if:
-- Status is `NOT STARTED` or `EARLY`, AND
-- The system is tagged MVP or Vertical Slice in the systems index, OR
-- The systems index shows the system is blocking downstream systems
+Use this fail-closed order:
 
-**Summary line:**
-- Total content items specified (sum of all Specified column values)
-- Total content items found (sum of all Found column values)
-- Overall gap percentage: `(Specified - Found) / Specified * 100`
+1. result is ERROR when the requested scope cannot be resolved safely or the target itself is invalid.
+2. verdict is PARTIAL when requirement_coverage or implementation_coverage is INCOMPLETE, any source is STALE, any ID is PRESENT_UNVERIFIED or EVIDENCE_CONFLICT, or the run cannot inspect all required evidence.
+3. verdict is MISSING CRITICAL CONTENT when coverage is complete and one or more MISSING IDs are CRITICAL.
+4. verdict is GAPS FOUND when coverage is complete, no critical ID is missing, and one or more ORDINARY IDs are MISSING.
+5. verdict is COMPLETE only when coverage is complete, every specified ID is SHIPPED_VERIFIED, both missing sets are empty, and there are no conflicts, blockers, unidentified requirements, or unverified items.
+
+Known critical or ordinary gaps remain visible even when PARTIAL takes precedence. The output must explain that PARTIAL means the audit cannot make an exhaustive verdict; it does not mean the known gaps are harmless.
+
+Priority comes only from authoritative criticality and stable dependency edges. Do not derive priority from gap counts, percentages, directory totals, elapsed time, or estimated implementation effort.
 
 ---
 
-## Phase 4 — Output
+## Phase 4 — Return the evidence packet
 
-### Full audit and single-system modes
+Return one conversation-only packet with schema content_audit/v2:
 
-Present the gap table and summary to the user. Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+    schema_version: content_audit/v2
+    result: OK or ERROR
+    verdict: COMPLETE | GAPS FOUND | MISSING CRITICAL CONTENT | PARTIAL
+    scope:
+      requested_argument
+      resolved_system_ids
+      target_id
+      snapshot_at
+    coverage:
+      requirements: COMPLETE | INCOMPLETE
+      implementation: COMPLETE | INCOMPLETE
+      sources: [{artifact, hash, status, contribution}]
+      gaps: [{code, artifact, reason}]
+    rows:
+      - requirement_id
+        system_id
+        content_type
+        display_name
+        criticality
+        implementation_state
+        requirement_evidence
+        implementation_evidence
+        missing_reason
+    sets:
+      specified_ids
+      shipped_verified_ids
+      missing_ids
+      present_unverified_ids
+      conflict_ids
+    advisory_observations
+    external_asset_audit_evidence
+    contradictions
+    recommendation
+    disclaimer
 
-Once the complete changeset is authorized, write the file:
+Each evidence reference includes a stable artifact/path, locator, hash, target ID where applicable, and classification reason. Sort rows by system_id, content_type, then requirement_id so repeated runs against the same snapshot are stable.
 
-```markdown
-# Content Audit — [Date]
+For --summary, return the same verdict and coverage fields plus the five ID sets; rows may be compacted but evidence must remain traceable. Summary mode is not allowed to weaken coverage rules.
 
-## Summary
-- **Total specified**: [N] content items across [M] systems
-- **Total found**: [N]
-- **Gap**: [N] items ([X%] unimplemented)
-- **Scope**: [Full audit | System: name]
-
-> Note: Counts are approximations based on file scanning.
-> The audit cannot distinguish shipped content from editor/test assets.
-> Manual verification is recommended for any HIGH PRIORITY gaps.
-
-## Gap Table
-
-| System | Content Type | Specified | Found | Gap | Status |
-|--------|-------------|-----------|-------|-----|--------|
-
-## HIGH PRIORITY Gaps
-
-[List systems flagged HIGH PRIORITY with rationale]
-
-## Per-System Breakdown
-
-### [System Name]
-- **GDD**: `design/gdd/[file].md`
-- **Content types audited**: [list]
-- **Notes**: [any caveats about scan accuracy for this system]
-
-## Recommendation
-
-Focus implementation effort on:
-1. [Highest-gap HIGH PRIORITY system]
-2. [Second system]
-3. [Third system]
-
-## Unspecified Content Counts
-
-The following GDDs describe content without giving explicit counts.
-Consider adding counts to improve auditability:
-[List of GDDs and content types with "Unspecified"]
-```
-
-After writing the report, ask:
-
-> "Would you like to create backlog stories for any of the content gaps?"
-
-If yes: for each system the user selects, suggest a story title and point them
-to `$create-stories [epic-slug]` or `$quick-design` depending on the size of the gap.
-
-### --summary mode
-
-Print the Gap Table and Summary directly to conversation. Do not write a file.
-End with: "Run `$content-audit` without `--summary` to write the full report."
+The disclaimer must say that file presence is not proof of shipped content and that PARTIAL is not a completeness claim.
 
 ---
 
-## Phase 5 — Next Steps
+## Phase 5 — Handoff and stop
 
-After the audit, recommend the highest-value follow-up actions:
+Return at most one next action, chosen by the evidence owner:
 
-- If any system is `NOT STARTED` and MVP-tagged → "Run `$design-system [name]` to
-  add missing content counts to the GDD before implementation begins."
-- If total gap is >50% → "Run `$sprint-plan` to allocate content work across upcoming sprints."
-- If backlog stories are needed → "Run `$create-stories [epic-slug]` for each HIGH PRIORITY gap."
-- If `--summary` was used → "Run `$content-audit` (no flag) to write the full report to `docs/`."
+- Missing implementation with an adequate specification: recommend the production/backlog owner create or schedule implementation work. This is not a design change.
+- Missing or ambiguous specification: recommend the design owner clarify the authoritative inventory.
+- Asset compliance evidence: point to the asset-audit owner.
+- Evidence coverage failure: point to the manifest, build, or engine-adapter owner.
+- No gap: state that no follow-up is required.
 
-Verdict: **COMPLETE** — content audit finished.
+Do not invoke the recommendation.
+
+If specification repair may use quick-design, route to it only after evaluating structural risk. The route is eligible only when the proposed design change is local and does not alter shared contracts, schemas, save compatibility, networking, economy, progression, cross-system dependencies, canonical narrative, accessibility obligations, or release/platform commitments. Any such structural risk routes to the appropriate full design or architecture owner instead.
+
+Never select quick-design because a gap is small, a count is low, the work seems short, or an hour estimate falls below a threshold. quick-design produces a proposal only. Its proposal is not authoritative content-audit evidence and does not close a gap until a separate, explicitly approved application step updates the canonical artifact and the next audit observes that applied artifact in a new snapshot.
+
+Stop after returning the packet and recommendation. Never write an audit report or mutate project state.

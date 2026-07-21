@@ -1,6 +1,6 @@
 ---
 name: ux-review
-description: "Validates a UX spec, HUD design, or interaction pattern library for completeness, accessibility compliance, GDD alignment, and implementation readiness. Produces APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED verdict with specific gaps."
+description: "Read-only, profile-aware validation of UX artifacts with deterministic verdicts and hash-bound review records."
 ---
 
 ## Invocation and execution
@@ -10,6 +10,162 @@ Invoke this workflow as `$ux-review`.
 Arguments: `[file-path or 'all' or 'hud' or 'patterns']`. Treat bracketed values as optional unless the workflow says otherwise.
 
 Delegate substantive work to the `ux-designer` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+
+## P0 review protocol (authoritative)
+
+This protocol overrides every conflicting routing rule, checklist, output template,
+verdict definition, and advisory statement later in this file. The later material
+is legacy detail and may only be used when it agrees with this protocol. This
+skill remains READ-ONLY: it never creates, edits, or persists a file.
+
+### 1. Load the author's versioned profiles
+
+Before selecting a review profile, read these author sources in full:
+
+- .agents/skills/ux-design/SKILL.md
+- .agents/skills/ux-design/references/continued-workflow.md
+
+They are the schema source of truth. Compute author_schema_hash as SHA-256 over
+the exact bytes of the first file, one NUL byte, and the exact bytes of the
+second file. The active schema_version is
+ux-design-author-sha256:<author_schema_hash>. Load the matching fenced skeleton
+and only the requirements or minimums stated for that mode in the author
+sources. Do not invent a parallel reviewer schema.
+
+The current author profiles are:
+
+- ux-spec: Purpose & Player Need; Player Context on Arrival; Navigation
+  Position; Entry & Exit Points; Layout Specification; States & Variants;
+  Interaction Map; Events Fired; Transitions & Animations; Data Requirements;
+  Accessibility; Localization Considerations; Acceptance Criteria; Open Questions.
+- hud-design: HUD Philosophy; Information Architecture; Layout Zones; HUD
+  Elements; Dynamic Behaviors; Platform & Input Variants; Accessibility; Open
+  Questions.
+- interaction-pattern-library: Overview; Pattern Catalog; Patterns; Gaps &
+  Patterns Needed; Open Questions.
+
+If an author source is missing or unreadable, the requested profile is absent,
+an explicit schema version is unsupported, or these documented mappings no
+longer agree with the author sources, return ERROR / MIGRATION REQUIRED with
+verdict: null. Report expected and observed values. Never apply a stale or
+best-fit checklist. In particular, do not require HUD States, Visual Budget,
+Tuning Knobs, Feedback & Notification, Animation Standards, or Sound Standards
+unless a future author profile requires them.
+
+### 2. Resolve artifact identity before routing
+
+Read each candidate before choosing a profile. Resolve artifact_type,
+schema_version, and routing_basis in this precedence order:
+
+1. Explicit blockquote fields Artifact Type and Schema Version, when both exist.
+2. The exact current-author Template marker, which is a machine-readable legacy
+   compatibility alias:
+   - Template: UX Spec maps to ux-spec.
+   - Template: HUD Design maps to hud-design.
+   - Template: Interaction Pattern Library maps to
+     interaction-pattern-library.
+   A Template marker uses the current author-schema hash as schema_version.
+3. Filename is fallback evidence only. When recognized metadata is absent,
+   propose the inferred type and obtain user confirmation before reviewing.
+   Record routing_basis: user-confirmed-filename-fallback. Before confirmation,
+   do not run a checklist and do not issue a quality verdict.
+
+The hud and patterns arguments select candidate paths only; they do not force a
+profile. If explicit metadata conflicts with the Template marker, or an alias
+selects a document of another type, return ERROR / MIGRATION REQUIRED with no
+quality verdict.
+
+Review reports and unknown documents are ineligible. A review-record declaration,
+a top-level UX Review or Review Record heading, or a path below a review/reports
+directory identifies a review report. In all mode, list ineligible paths under
+skipped with reason review-report or unknown-artifact-type and do not review
+them. A specifically requested ineligible file returns an error with no verdict.
+
+### 3. Normalize findings and calculate the verdict
+
+Evaluate every required top-level section and every requirement or minimum for
+the selected author profile. Never apply another profile's checklist. Normalize
+each failure with stable fields:
+
+- id: UXF-<profile>-<stable-check-key>
+- check_id: <profile>.<stable-check-key>
+- severity: MAJOR, BLOCKING, or ADVISORY
+- path and section
+- observed evidence and expected author requirement
+- specific remediation
+
+Reuse the same ID for the same check on re-review. Assign severity by rule:
+
+- MAJOR: a foundation section is absent. Foundations are Purpose & Player Need
+  or Interaction Map for ux-spec; HUD Philosophy, Information Architecture, or
+  HUD Elements for hud-design; Pattern Catalog or Patterns for the interaction
+  pattern library.
+- BLOCKING: any other author-required section, nested structure, or stated
+  minimum fails.
+- ADVISORY: an improvement not required by the author profile.
+
+Apply this verdict algorithm exactly, in order:
+
+1. Routing or schema failure: ERROR / MIGRATION REQUIRED; verdict: null.
+2. Any required check not evaluated: ERROR; verdict: null.
+3. One or more MAJOR findings: MAJOR REVISION NEEDED.
+4. Otherwise, one or more BLOCKING findings: NEEDS REVISION.
+5. Otherwise: APPROVED. Advisory findings may remain only when every required
+   check passed.
+
+Do not choose a verdict by overall impression. Report passed/total required-check
+coverage and counts for every severity.
+
+### 4. Return a hash-bound review record
+
+Hash the exact target bytes at review start and immediately before output. A
+change between those hashes returns ERROR with reason
+target-changed-during-review and verdict: null. Every result must include this
+complete structured record:
+
+    review_record_schema: ux-review-record-v1
+    review_policy: ux-review-p0-v1
+    review_status: COMPLETE | ERROR
+    reviewed_at_utc: <ISO-8601 UTC>
+    target_path: <repository-relative path>
+    target_sha256: <hash of exact reviewed bytes>
+    artifact_type: ux-spec | hud-design | interaction-pattern-library | null
+    routing_basis: explicit-metadata | template-marker |
+      user-confirmed-filename-fallback | null
+    profile_id: <artifact_type>@<schema_version> | null
+    schema_version: <version | null>
+    author_schema_hash: <hash | null>
+    required_checks_passed: <integer>
+    required_checks_total: <integer>
+    finding_counts: { major: <integer>, blocking: <integer>, advisory: <integer> }
+    verdict: APPROVED | NEEDS REVISION | MAJOR REVISION NEEDED | null
+    approval_status: APPROVED | NOT_APPROVED
+    accepted_risk: false
+    gate_evidence_eligible: <true only for COMPLETE plus APPROVED>
+    gate_evidence_status: NOT_PERSISTED
+    stale_when: sha256(current target bytes) != target_sha256
+    findings: []
+    skipped: []
+    error: null
+
+For all mode, return one record per eligible artifact; never combine target
+hashes into one approval. Any artifact edit makes its old record stale.
+
+This skill returns a conversation record only and never claims it is persisted.
+A separate, explicitly authorized recorder may persist the record only after
+rechecking target_sha256. A gate consumer must reject an unpersisted or stale
+record, every non-APPROVED verdict, and approval_status: NOT_APPROVED.
+
+### 5. Accepted risk is not approval
+
+A user may proceed despite a non-approved result, but the original verdict does
+not change. Add decision_status: ACCEPTED_RISK, accepted_risk: true,
+approval_status: NOT_APPROVED, gate_evidence_eligible: false, the accepting user
+and UTC timestamp, and every accepted open finding ID. Never describe this state
+as approved, implementation-ready, reviewed-and-passed, or sufficient hard
+evidence.
+
+---
 
 
 ## Overview
@@ -26,7 +182,9 @@ the `$team-ui` pipeline.
 - After major revisions to a UX spec
 
 **Verdict levels:**
-- **APPROVED** — spec is complete, consistent, and implementation-ready
+- **APPROVED** — every required author-profile check passed for the exact
+  `target_sha256`. This conversation result is not persisted evidence and does
+  not itself authorize implementation or handoff.
 - **NEEDS REVISION** — specific gaps found; fix before handoff but not a full redesign
 - **MAJOR REVISION NEEDED** — fundamental issues with scope, player need, or
   completeness; needs significant rework
@@ -234,12 +392,15 @@ Run all checks against a `hud-design.md`-based document.
 ### Pattern Library: [CONSISTENT / INCONSISTENCIES FOUND]
 - [findings]
 
-### Verdict: APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED
+### Review Status: COMPLETE / ERROR
+### Verdict: APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED / null
 **Blocking issues**: [N] — must be resolved before implementation
 **Advisory issues**: [N] — recommended but not blocking
 
-[For APPROVED]: This spec is ready for handoff to `$team-ui` Phase 2
-(Visual Design).
+[For APPROVED]: All required checks passed for the reported target hash. Return
+the complete `ux-review-record-v1` with `gate_evidence_status: NOT_PERSISTED`.
+Implementation or visual-design handoff requires a separate authorized consumer
+to persist and revalidate current-hash evidence.
 
 [For NEEDS REVISION]: Address the [N] blocking issues above, then re-run
 `$ux-review`.
@@ -255,13 +416,14 @@ Recommend returning to `$ux-design` to rework [sections].
 This skill is READ-ONLY — it never edits or writes files. It reports findings only.
 
 After delivering the verdict:
-- For **APPROVED**: suggest running `$team-ui` to begin implementation coordination
+- For **APPROVED**: state that the conversation result remains `NOT_PERSISTED`;
+  do not claim implementation readiness or recommend direct implementation
 - For **NEEDS REVISION**: offer to help fix specific gaps ("Would you like me to
   help draft the missing error state?") — but do not auto-fix; wait for user
   instruction
 - For **MAJOR REVISION NEEDED**: suggest returning to `$ux-design` with the
   specific sections to rework
 
-Never block the user from proceeding — the verdict is advisory. Document risks,
-present findings, let the user decide whether to proceed despite concerns. A user
-who chooses to proceed with a NEEDS REVISION spec takes on the documented risk.
+The user controls whether to proceed, but the P0 review contract governs status.
+Proceeding with open findings records ACCEPTED_RISK / NOT_APPROVED; it never
+changes the original verdict or satisfies an approval gate.

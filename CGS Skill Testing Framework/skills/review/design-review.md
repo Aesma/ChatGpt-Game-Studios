@@ -2,170 +2,184 @@
 
 ## Skill Summary
 
-`$design-review` reads a game design document (GDD) and evaluates it against
-the project's 8-section design standard (Overview, Player Fantasy, Detailed
-Rules, Formulas, Edge Cases, Dependencies, Tuning Knobs, Acceptance Criteria).
-It checks for internal consistency, implementability, and cross-system
-conflicts. It produces a verdict of APPROVED, NEEDS REVISION, or MAJOR
-REVISION NEEDED. It is a read-only skill (no file writes) and runs as a
-`context: fork` subagent.
+`$design-review` is a strictly read-only quality gate for exactly one system GDD
+at `design/gdd/<system-slug>.md`. It applies the system-GDD rubric, emits stable
+destination-aware findings, binds formal approval to the target SHA-256, returns
+one report, and stops. It never revises a document, updates `systems-index.md`,
+writes a review log, creates an artifact, or approves an unreviewed revision.
+
+Formal verdicts are `APPROVED`, `NEEDS REVISION`, and
+`MAJOR REVISION NEEDED`. `PARTIAL REVIEW`,
+`BLOCKED — PRODUCT DECISION REQUIRED`, and
+`ADVISORY REVIEW — NOT APPROVAL` are non-approval gate states.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings or numbered steps
-- [ ] Contains verdict keywords: APPROVED, NEEDS REVISION, MAJOR REVISION NEEDED
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Output format is documented (review template shown in skill body)
+- [ ] Frontmatter contains only `name` and a non-empty `description`
+- [ ] The description and `agents/openai.yaml` say read-only and one system GDD
+- [ ] The entire workflow, rather than one phase, is explicitly read-only
+- [ ] No write-authorization, inline-revision, index-update, review-log, artifact,
+  skip-re-review approval, or chained-workflow branch exists
+- [ ] Supported target profile and exclusions are explicit
+- [ ] Finding Schema includes stable ID, evidence, severity, destination,
+  acceptance, status, and `introduced_by_revision`
+- [ ] Destination, convergence, hash-binding, and output contracts are documented
 
 ---
 
-## Test Cases
+## Case 1: Mutation guard and valid approval
 
-### Case 1: Happy Path — Complete GDD, all 8 sections present
+**Fixture:** `design/gdd/light-manipulation.md` is a regular file with substantive
+content in all eight required sections. `systems-index.md` and the reviews
+directory exist.
 
-**Fixture:**
-- `design/gdd/light-manipulation.md` exists (use `_fixtures/minimal-game-concept.md`
-  as a stand-in — represents a complete document with all required content)
-- All 8 required sections are populated with substantive content
-- Formulas section contains at least one formula with defined variables
-- Acceptance Criteria section contains at least 3 testable criteria
+Before invocation, record hashes for the target and systems index, the complete
+file list and hashes under reviews, and a project file snapshot.
 
 **Input:** `$design-review design/gdd/light-manipulation.md`
 
-**Expected behavior:**
-1. Skill reads the target document in full
-2. Skill reads AGENTS.md for project context and standards
-3. Skill evaluates all 8 required sections (present/absent check)
-4. Skill checks internal consistency (formulas match described behavior)
-5. Skill checks implementability (rules are precise enough to code)
-6. Skill outputs structured review with section-by-section status
-7. Skill outputs APPROVED verdict
-
 **Assertions:**
-- [ ] Skill reads the target file before producing any output
-- [ ] Output includes a "Completeness" section showing X/8 sections present
-- [ ] Output includes an "Internal Consistency" section
-- [ ] Output includes an "Implementability" section
-- [ ] Output ends with a verdict line: APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED
-- [ ] APPROVED verdict is given when all 8 sections are present and consistent
+
+- [ ] Profile is `system-gdd` and the normalized target is reported
+- [ ] Applicable root-to-target `AGENTS.md` files are listed
+- [ ] Target SHA-256 is reported
+- [ ] Completeness, Internal Consistency, Implementability and Declared
+  Interfaces, Findings, Convergence, Gate, Verdict, and Boundary are present
+- [ ] `open_blockers == 0` produces `APPROVED` for the reported hash
+- [ ] Target and systems-index hashes are unchanged
+- [ ] Review directory list and hashes are unchanged
+- [ ] No project file is created, edited, renamed, or deleted
+- [ ] Output does not claim any revision, status update, or log write
 
 ---
 
-### Case 2: Failure Path — Incomplete GDD (4/8 sections)
+## Case 2: Invalid and unsupported target routing
 
-**Fixture:**
-- Create the case from this inline document description; no fixture file is required.
-- `design/gdd/light-manipulation.md` has Overview, Player Fantasy, Detailed Rules,
-  and Dependencies. Formulas, Edge Cases, Tuning Knobs, and Acceptance Criteria
-  are absent.
+Run each independently:
 
-**Input:** `$design-review design/gdd/light-manipulation.md`
+| Input | Expected |
+|---|---|
+| `$design-review` | missing required target ERROR |
+| `$design-review design/gdd/nonexistent.md` | file-not-found ERROR |
+| `$design-review design/gdd/` | directory ERROR |
+| `$design-review README.md` | unsupported directory ERROR |
+| `$design-review design/gdd/data.json` | non-Markdown ERROR |
+| `$design-review ../outside.md` | outside-project ERROR |
+| `$design-review design/gdd/game-concept.md` | unsupported profile ERROR |
+| `$design-review design/gdd/systems-index.md` | excluded index ERROR |
+| `$design-review design/gdd/reviews/combat-review.md` | review report ERROR |
+| `$design-review design/narrative/story.md` | narrative profile ERROR |
+| `$design-review design/levels/level-01.md` | level profile ERROR |
+| `$design-review design/live-ops/season-01.md` | live-ops profile ERROR |
+| `$design-review design/gdd/combat.md --depth exhaustive` | invalid depth ERROR |
 
-**Expected behavior:**
-1. Skill reads the document
-2. Skill identifies 4 missing sections
-3. Skill outputs "Completeness: 4/8 sections present"
-4. Skill lists specifically which 4 sections are missing
-5. Skill outputs MAJOR REVISION NEEDED verdict (not APPROVED or NEEDS REVISION)
+For every row:
 
-**Assertions:**
-- [ ] Output shows "4/8" in the completeness section (not a higher number)
-- [ ] Output explicitly names each missing section (Formulas, Edge Cases, Tuning Knobs, Acceptance Criteria)
-- [ ] Verdict is MAJOR REVISION NEEDED (not APPROVED or NEEDS REVISION) when ≥3 sections are missing
-- [ ] Output does not suggest the document is implementation-ready
-- [ ] Skill does not write any files (read-only enforcement)
-
----
-
-### Case 3: Partial Path — 7/8 sections, minor inconsistency
-
-**Fixture:**
-- GDD has all sections except Formulas
-- The described behavior mentions numeric values but no formulas are defined
-- Acceptance Criteria exist but are vague ("feels good" rather than measurable)
-
-**Input:** `$design-review design/gdd/[document].md`
-
-**Expected behavior:**
-1. Skill identifies missing Formulas section
-2. Skill flags vague acceptance criteria as an implementability issue
-3. Skill outputs NEEDS REVISION verdict (not APPROVED, not MAJOR REVISION NEEDED)
-4. Skill provides specific remediation notes for each issue
-
-**Assertions:**
-- [ ] Verdict is NEEDS REVISION (not APPROVED, not MAJOR REVISION NEEDED) for 7/8 with issues
-- [ ] Output identifies the missing Formulas section specifically
-- [ ] Output flags the vague acceptance criteria as an implementability gap
-- [ ] Each flagged issue has a specific, actionable remediation note
+- [ ] Output names the rejected input and reason
+- [ ] No system-GDD completeness score or formal verdict is emitted
+- [ ] No file changes occur
 
 ---
 
-### Case 4: Edge Case — File not found
+## Case 3: Finding destinations prevent GDD contamination
 
-**Fixture:**
-- The path provided does not exist in the project
-
-**Input:** `$design-review design/gdd/nonexistent.md`
-
-**Expected behavior:**
-1. Skill attempts to read the file
-2. File not found
-3. Skill outputs an error message naming the missing file
-4. Skill suggests checking the path or listing files in `design/gdd/`
-5. Skill does NOT produce a verdict
+**Fixture:** A valid system GDD contains an ambiguous player-visible stacking
+rule, an implementation-specific replication/data-layout concern, a missing test
+matrix, a polish idea, and review rationale.
 
 **Assertions:**
-- [ ] Skill outputs a clear error when the file is not found
-- [ ] Skill does NOT output APPROVED, NEEDS REVISION, or MAJOR REVISION NEEDED when file is missing
-- [ ] Skill suggests a corrective action (check path, list available GDDs)
+
+- [ ] Ambiguous player-visible rules route to `GDD`
+- [ ] Architecture, data layout, synchronization, and performance implementation
+  route to `ADR/TECH`
+- [ ] Test matrices, data, observability, and automation route to `QA`
+- [ ] Non-blocking enhancements route to `BACKLOG`
+- [ ] Evidence, disagreement, and review explanation route to `REVIEW_ONLY`
+- [ ] API/class/schema/test-step/review content is never routed into `GDD`
+- [ ] `BACKLOG` and `REVIEW_ONLY` are never blockers
+- [ ] Every finding has the complete documented schema
+- [ ] The skill reports destinations but writes none of the routed content
 
 ---
 
+## Case 4: Stable IDs and finite convergence
+
+First review two objective blockers and one advisory. Save the report externally
+as a prior-review fixture; the skill must not create it.
+
+- [ ] Findings are sorted, deduplicated, and assigned deterministic IDs
+- [ ] Target hash and `OPEN` statuses are present
+- [ ] The skill stops after one report without revision or re-review
+
+In a fresh task, revise one blocker, leave one open, introduce no regression, and
+supply the prior report plus revision diff.
+
+- [ ] Prior IDs are retained exactly
+- [ ] The fixed blocker becomes `RESOLVED` and the other remains `OPEN`
+- [ ] Scope is prior open blockers plus revision-introduced regressions
+- [ ] A newly noticed subjective improvement is advisory, not a blocker
+- [ ] The gate is `NEEDS REVISION` and the skill stops
+
+Convergence variants:
+
+- [ ] Zero open blockers with no regression yields `APPROVED` and stops
+- [ ] The same blocker open through two consecutive re-reviews yields
+  `BLOCKED — PRODUCT DECISION REQUIRED`, no formal approval, and no automatic loop
+
 ---
 
-### Case 5: Director Gate — no gate spawned regardless of review mode
+## Case 5: Approval independence and content binding
 
-**Fixture:**
-- `design/gdd/light-manipulation.md` exists with all 8 sections
-- `production/session-state/review-mode.txt` exists with `full` (most permissive mode)
+Test these variants:
 
-**Input:** `$design-review design/gdd/light-manipulation.md` (with full review mode active)
-
-**Expected behavior:**
-1. Skill reads the GDD document
-2. Skill does NOT read `review-mode.txt` — this skill has no director gates
-3. Skill produces the review output normally
-4. No director gate agents are spawned at any point
-5. Verdict is APPROVED (all 8 sections present in fixture)
+1. review in the task that authored or revised the target;
+2. a second review in a task that already completed one review;
+3. `--depth solo` from an embedding workflow;
+4. an old `APPROVED` report after changing one target byte; and
+5. a request to accept unresolved risk and mark Approved.
 
 **Assertions:**
-- [ ] Skill does NOT spawn any director gate agent (CD-, TD-, PR-, AD- prefixed agents)
-- [ ] Skill does NOT read `review-mode.txt` or equivalent mode file
-- [ ] The `--review` flag or `full` mode state has NO effect on whether directors spawn
-- [ ] Output does not contain any "Gate: [GATE-ID]" entries
-- [ ] Skill IS the review — it does not delegate the review to a director
+
+- [ ] Variants 1 and 2 return `ERROR — INDEPENDENT REVIEW REQUIRED` with no verdict
+- [ ] Variant 3 returns `ADVISORY REVIEW — NOT APPROVAL`
+- [ ] Variant 4 treats the old approval as stale because SHA-256 differs
+- [ ] Variant 5 can only be `Accepted Risk / Not Approved`
+- [ ] Formal `APPROVED` is possible only for the current hash in an independent task
+- [ ] No variant offers skip-re-review, index update, or review-log append
+
+---
+
+## Case 6: Read-only closing
+
+Use a valid target that yields `NEEDS REVISION`.
+
+- [ ] The complete report precedes any next-step sentence
+- [ ] The only follow-up states that selected findings may be handled in a
+  separate authoring/revision task and re-reviewed in another fresh task
+- [ ] The skill does not ask which findings to fix or request write authorization
+- [ ] The skill does not offer inline revision, tracking writes, skip-review
+  approval, the next system, or another review workflow
+- [ ] The skill stops after one report
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Does NOT use file-editing operations (read-only skill)
-- [ ] Presents complete findings before any verdict
-- [ ] Does not ask for approval before producing output (no writes to approve)
-- [ ] Ends with recommended next step (e.g., fix issues and re-run, or proceed to `$map-systems`)
-
----
+- [ ] The entire workflow performs zero file writes
+- [ ] Unsupported input returns ERROR without a verdict
+- [ ] Only one system GDD and its reported SHA-256 are reviewed
+- [ ] Every finding has stable identity and an explicit destination
+- [ ] Re-review validates prior blockers and revision regressions
+- [ ] `open_blockers == 0` is the fixed convergence condition
+- [ ] Same-task review → edit → review loops are impossible
+- [ ] Author/reviser self-approval is impossible
+- [ ] SKILL, metadata, and this spec share one contract
 
 ## Coverage Notes
 
-- Cross-system consistency checking (Case 3 in the skill's own phase list) is
-  not directly tested here because it requires multiple GDD files to compare;
-  this is covered by the `$review-all-gdds` spec instead.
-- The skill's `context: fork` behavior (running as a subagent) is not tested
-  at the spec level — this is a runtime behavior verified manually.
-- Performance and edge cases involving very large GDD files are not in scope.
+Cross-GDD consistency and non-system document profiles are intentionally out of
+scope. Persistence and status updates are also out of scope because
+`$design-review` never writes files. Do not update `catalog.yaml` result fields
+until the corresponding tests are actually executed.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Soak Test"
-  short_description: "Generate a soak test protocol for extended play sessions"
-  default_prompt: "Use $soak-test to run the Soak Test game-studio workflow."
+  short_description: "Plan and finalize build-bound endurance runs"
+  default_prompt: "Use $soak-test to create an immutable endurance protocol, ingest hashed run evidence, or finalize a build-, workload-, and environment-bound soak result."

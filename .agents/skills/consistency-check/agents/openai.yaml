@@ -1,4 +1,4 @@
 interface:
   display_name: "Consistency Check"
-  short_description: "Scan all GDDs against the entity registry to detect..."
-  default_prompt: "Use $consistency-check to run the Consistency Check game-studio workflow."
+  short_description: "Read-only audit of competing GDD claims"
+  default_prompt: "Use $consistency-check to compare GDD claims, formulas, ownership, and dependencies without changing project files."

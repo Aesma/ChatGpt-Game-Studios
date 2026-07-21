@@ -2,177 +2,286 @@
 
 ## Skill Summary
 
-`$review-all-gdds` performs a holistic cross-GDD review
-across all files in `design/gdd/`. It runs two complementary review phases in
-parallel: Phase 1 checks for consistency (contradictions, formula mismatches,
-stale references, competing ownership), and Phase 2 checks design theory (dominant
-strategies, pillar drift, cognitive overload, economic imbalance). Because the two
-phases are independent, they are spawned simultaneously to save time. The skill
-produces a CONSISTENT / MINOR ISSUES / MAJOR ISSUES verdict and is read-only — no
-files are written without explicit user approval.
+`$review-all-gdds` performs a report-only holistic review of the current,
+hash-bound system-GDD set. It builds an input manifest, runs cross-GDD
+consistency and game-design-holism phases in parallel when the selected mode
+requires both, walks sampled cross-system scenarios, merges explicit coverage,
+and returns exactly `PASS`, `CONCERNS`, `FAIL`, or `PARTIAL`.
 
-The skill is itself the holistic review gate in the pipeline. It is invoked after
-individual GDDs are complete and before architecture work begins. It does NOT spawn
-any director gate agents (it IS the director-level review).
+Conversation output is the default. The only permitted mutation is one new,
+explicitly authorized immutable report at the exact previewed path. The skill
+never modifies GDDs, systems index, registry, session state, lifecycle status,
+sign-off, or accepted-risk records.
+
+The skill is itself the holistic review gate input. It does not spawn a director
+gate agent. Design-theory observations are `HYPOTHESIS / ADVISORY` unless
+they reproducibly violate an explicit anti-pillar, owner-approved invariant, or
+owner-approved threshold in the hashed inputs.
 
 ---
 
 ## Static Assertions (Structural)
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥5 phase headings (complex multi-phase skill)
-- [ ] Contains verdict keywords: CONSISTENT, MINOR ISSUES, MAJOR ISSUES
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff at the end
-- [ ] Documents parallel phase spawning (Phase 1 and Phase 2 are independent)
+- [ ] YAML frontmatter contains only required `name` and non-empty
+      `description`; name matches the skill directory
+- [ ] Has at least five phase headings across the main file and required
+      continuation
+- [ ] Declares exactly the verdict vocabulary PASS / CONCERNS / FAIL / PARTIAL
+- [ ] Declares conversation output as default and limits writes to one new,
+      explicitly authorized immutable report
+- [ ] Explicitly forbids mutations to GDDs, systems index, registry, session
+      state, lifecycle status, sign-off, and accepted-risk records
+- [ ] Builds an input manifest with project ID, run ID, source revision,
+      canonical paths, SHA-256 hashes, mode, and coverage
+- [ ] Defines changed input paths/hashes as stale and rejects stale PASS as gate
+      evidence
+- [ ] Requires incomplete coverage or worker failure to produce PARTIAL
+- [ ] Treats unmeasured design theory as HYPOTHESIS / ADVISORY with assumptions,
+      a counterexample, and a validation plan
+- [ ] Documents parallel spawning of consistency and design-theory phases
+- [ ] Includes the cross-system scenario walkthrough and a separate handoff
 
 ---
 
 ## Director Gate Checks
 
-No director gates — this skill spawns no director gate agents. It IS the holistic
-review; delegating to a director gate would create a circular dependency.
+No director gates. This skill produces evidence for a later gate; delegating its
+own verdict to a director gate would create a circular dependency.
 
 ---
 
 ## Test Cases
 
-### Case 1: Happy Path — Clean GDD set with no conflicts
+### Case 1: Clean, fully covered GDD set
 
-**Fixture:**
-- `design/gdd/` contains ≥3 system GDDs
-- All GDDs are internally consistent: no formula contradictions, no competing ownership, no stale references
-- All GDDs align with the pillars defined in `design/gdd/game-pillars.md`
+**Fixture:** At least three current system GDDs with compatible rules, no stale
+references, and explicit pillar alignment.
 
-**Input:** `$review-all-gdds`
+**Input:** `$review-all-gdds full`
 
 **Expected behavior:**
-1. Skill reads all GDD files in `design/gdd/`
-2. Phase 1 (consistency scan) and Phase 2 (design theory check) spawn in parallel
-3. Phase 1 finds no contradictions, no formula mismatches, no ownership conflicts
-4. Phase 2 finds no pillar drift, no dominant strategies, no cognitive overload
-5. Skill outputs a structured findings table with 0 blocking issues
-6. Verdict: CONSISTENT
+
+1. Builds a complete canonical path/SHA-256 manifest and run ID.
+2. Runs consistency and design-theory phases in parallel.
+3. Completes the scenario walkthrough and coverage table.
+4. Reports no blockers, warnings, or advisory hypotheses.
+5. Returns `PASS`.
+6. Does not write unless the exact immutable report path is authorized.
 
 **Assertions:**
-- [ ] Both review phases are spawned in parallel (not sequentially)
-- [ ] Output includes a findings table (even if empty — shows "No issues found")
-- [ ] Verdict is CONSISTENT when no conflicts are found
-- [ ] Skill does NOT write any files outside the authorized changeset
-- [ ] Next-step handoff to `$architecture-review` or `$create-architecture` is present
+
+- [ ] Verdict is PASS
+- [ ] Coverage status is COMPLETE with no unchecked scope
+- [ ] Report contains project ID, run ID, source revision, mode, manifest digest,
+      and per-input hashes
+- [ ] No project file is mutated by default
+- [ ] Handoff offers `$gate-check` or `$create-architecture`
 
 ---
 
-### Case 2: Failure Path — Conflicting rules between two GDDs
+### Case 2: Deterministic cross-GDD contradiction
 
-**Fixture:**
-- GDD-A defines a floor value (e.g. "minimum [output] is [N]")
-- GDD-B states a mechanic that bypasses that floor (e.g. "[mechanic] can reduce [output] to 0")
-- The two GDDs are otherwise complete and valid
+**Fixture:** GDD-A defines an output floor; GDD-B explicitly allows the same
+output below that floor, with no scoped exception.
 
-**Input:** `$review-all-gdds`
+**Input:** `$review-all-gdds consistency`
 
 **Expected behavior:**
-1. Phase 1 (consistency scan) detects the contradiction between GDD-A and GDD-B
-2. Conflict is reported with: both filenames, the specific conflicting rules, and severity HIGH
-3. Verdict: MAJOR ISSUES
-4. Handoff instructs user to resolve the conflict and re-run before proceeding
+
+1. Quotes or precisely describes both current rules and their paths/sections.
+2. Binds both findings to input hashes.
+3. Classifies the reproducible contradiction as blocking.
+4. Returns `FAIL`.
+5. Does not choose which GDD is authoritative or modify either GDD.
 
 **Assertions:**
-- [ ] Verdict is MAJOR ISSUES (not CONSISTENT or MINOR ISSUES)
-- [ ] Both GDD filenames are named in the conflict entry
-- [ ] The specific contradicting rules are quoted or described (not vague "conflict found")
-- [ ] Issue is classified as severity HIGH (blocking)
-- [ ] Skill does NOT auto-resolve the conflict
+
+- [ ] Verdict is FAIL
+- [ ] Both filenames, sections, rules, and hashes are present
+- [ ] Issue is deterministic and blocking
+- [ ] No source, index, session, or lifecycle mutation occurs
 
 ---
 
-### Case 3: Partial Path — Single GDD with orphaned dependency reference
+### Case 3: Orphaned dependency without a contradictory rule
 
-**Fixture:**
-- GDD-A lists a dependency in its Dependencies section pointing to "system-B"
-- No GDD for system-B exists in `design/gdd/`
-- All other GDDs are consistent
+**Fixture:** GDD-A references system-B, but no system-B GDD exists; all checked
+rules are otherwise compatible.
 
-**Input:** `$review-all-gdds`
+**Input:** `$review-all-gdds consistency`
 
-**Expected behavior:**
-1. Phase 1 detects the orphaned dependency reference in GDD-A
-2. Issue is reported as: DEPENDENCY GAP — GDD-A references system-B which has no GDD
-3. No other conflicts found
-4. Verdict: MINOR ISSUES (dependency gap is advisory, not blocking by itself)
+**Expected behavior:** Reports the exact dependency gap as non-blocking and
+returns `CONCERNS`.
 
 **Assertions:**
-- [ ] Verdict is MINOR ISSUES (not MAJOR ISSUES for a single orphaned reference)
-- [ ] The specific GDD filename and the missing dependency name are reported
-- [ ] Skill suggests running `$design-system system-B` to resolve the gap
-- [ ] Skill does NOT skip or silently ignore the missing dependency
+
+- [ ] Verdict is CONCERNS
+- [ ] GDD-A and system-B are named
+- [ ] The gap is not silently ignored or upgraded to a blocker without an
+      approved invariant
+- [ ] Handoff recommends a separate owner-authorized remediation workflow
 
 ---
 
-### Case 4: Edge Case — No GDD files found
+### Case 4: No reviewable GDDs
 
-**Fixture:**
-- `design/gdd/` directory is empty or does not exist
-- No GDD files are present
+**Fixture:** No system GDDs exist.
 
 **Input:** `$review-all-gdds`
 
-**Expected behavior:**
-1. Skill attempts to read files in `design/gdd/`
-2. No files found — skill outputs an error with guidance
-3. Skill recommends running `$brainstorm` and `$design-system` before re-running
-4. Skill does NOT produce a verdict (CONSISTENT / MINOR ISSUES / MAJOR ISSUES)
+**Expected behavior:** Stops with clear guidance and no review verdict or file
+mutation.
 
 **Assertions:**
-- [ ] Skill outputs a clear error message when no GDDs are found
-- [ ] No verdict is produced when the directory is empty
-- [ ] Skill recommends the correct next action (`$brainstorm` or `$design-system`)
-- [ ] Skill does NOT crash or produce a partial report
+
+- [ ] No PASS / CONCERNS / FAIL / PARTIAL verdict is emitted for a run that
+      never acquired minimum inputs
+- [ ] Error explains the minimum input requirement
+- [ ] No report, session state, or project file is created
 
 ---
 
-### Case 5: Director Gate — No gate spawned regardless of review mode
+### Case 5: No director gate in any mode
 
-**Fixture:**
-- `design/gdd/` contains ≥2 consistent system GDDs
-- `production/session-state/review-mode.txt` exists with content `full`
+**Fixture:** At least two valid system GDDs; an unrelated
+`production/session-state/review-mode.txt` exists.
 
-**Input:** `$review-all-gdds`
-
-**Expected behavior:**
-1. Skill reads all GDDs and runs the two review phases
-2. Skill does NOT read `review-mode.txt`
-3. Skill does NOT spawn any director gate agent (CD-, TD-, PR-, AD- prefixed)
-4. Skill completes and outputs its verdict normally
-5. Review mode setting has no effect on this skill's behavior
+**Input:** `$review-all-gdds full`
 
 **Assertions:**
-- [ ] No director gate agents are spawned at any point
-- [ ] Skill does NOT read `production/session-state/review-mode.txt`
-- [ ] Output does not contain any "Gate: [GATE-ID]" or "skipped" gate entries
-- [ ] The skill produces a verdict regardless of review mode
-- [ ] R4 metric: gate count for this skill = 0 in all modes
+
+- [ ] No director gate agent is spawned
+- [ ] `review-mode.txt` is not read or modified
+- [ ] No gate-prefixed entry is fabricated
+- [ ] The review's own evidence and verdict are produced normally
+
+---
+
+### Case 6: Unmeasured design-theory risk
+
+**Fixture:** Six systems appear concurrently, and ranged attacks list 80% of
+melee damage. No owner-approved attention budget, dominance threshold,
+telemetry, simulation, or playtest result exists.
+
+**Input:** `$review-all-gdds design-theory`
+
+**Expected behavior:** Records advisory hypotheses rather than cognitive-load or
+dominant-strategy blockers.
+
+**Assertions:**
+
+- [ ] Each theory item is labeled HYPOTHESIS / ADVISORY
+- [ ] Each includes evidence, assumptions, a plausible counterexample, and a
+      concrete validation plan
+- [ ] Missing measurements are labeled NEEDS_MEASUREMENT
+- [ ] These heuristics alone cannot produce FAIL
+- [ ] Verdict is CONCERNS when coverage is otherwise complete
+
+---
+
+### Case 7: Incomplete worker or scenario coverage
+
+**Fixture:** A required parallel worker errors, returns mismatched input hashes,
+or cannot complete a required check.
+
+**Input:** `$review-all-gdds full`
+
+**Expected behavior:** Preserves completed evidence, names unchecked scope, and
+returns `PARTIAL`.
+
+**Assertions:**
+
+- [ ] Verdict is PARTIAL
+- [ ] Coverage identifies the failed worker/check and affected paths
+- [ ] Output is never PASS
+- [ ] Available evidence is not discarded
+- [ ] No mutation occurs unless the user separately authorizes the exact report
+
+---
+
+### Case 8: Stale prior report
+
+**Fixture:** A prior PASS exists, then one input GDD changes content, is renamed,
+is removed, or a new review input is added.
+
+**Input:** Validate the prior report for gate consumption or run
+`$review-all-gdds since-last-review`.
+
+**Expected behavior:** Recomputes exact hashes, marks the prior report STALE, and
+does not use it as gate evidence. Incremental mode uses the embedded manifest,
+never filesystem modification time; without a trustworthy baseline it falls
+back to full mode.
+
+**Assertions:**
+
+- [ ] Any path/hash-set difference makes the prior report stale
+- [ ] Stale PASS is rejected as gate evidence
+- [ ] Baseline selection does not use report mtime
+- [ ] Current report records project ID, mode, source revision, run ID, manifest,
+      and coverage
+
+---
+
+### Case 9: Mutation guard and optional persistence
+
+**Fixture:** A complete report is rendered. Test both decline and explicit
+approval of a unique path.
+
+**Expected behavior:**
+
+- Decline: zero file mutations.
+- Approve: creates only the exact new report path, verifies its manifest digest,
+  and leaves all other files byte-identical.
+- Existing target path: refuses to overwrite and selects no replacement without
+  new approval.
+
+**Assertions:**
+
+- [ ] GDDs, systems index, registry, session state, lifecycle, sign-off, and
+      accepted-risk records remain byte-identical
+- [ ] At most one new immutable report is written
+- [ ] No existing report is overwritten
+- [ ] A corrected report uses a new run and `supersedes_run_id`
+
+---
+
+### Case 10: Accepted risk does not rewrite verdict
+
+**Fixture:** A current FAIL report and a separate owner-signed accepted-risk
+record naming its run ID and exact findings.
+
+**Expected behavior:** The review remains FAIL. The record is reported separately
+with scope and expiry; the reviewer neither creates nor signs it.
+
+**Assertions:**
+
+- [ ] FAIL is never changed to PASS or CONCERNS
+- [ ] Accepted risk includes run ID, exact findings, scope, owner/signature, and
+      expiry
+- [ ] Missing or expired accepted risk provides no exception
+- [ ] The consuming gate, not this reviewer, decides whether policy permits
+      proceeding
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Phase 1 (consistency) and Phase 2 (design theory) spawned in parallel — not sequentially
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Findings table shown before any write ask
-- [ ] Verdict is one of exactly: CONSISTENT, MINOR ISSUES, MAJOR ISSUES
-- [ ] Ends with appropriate handoff: MAJOR ISSUES → fix and re-run; MINOR ISSUES → may proceed with awareness; CONSISTENT → `$create-architecture`
+- [ ] Full mode runs consistency and design-theory phases in parallel
+- [ ] Scenario walkthrough and coverage are represented in the report
+- [ ] Verdict is exactly one of PASS / CONCERNS / FAIL / PARTIAL
+- [ ] Deterministic blockers and advisory hypotheses are separated
+- [ ] Critical unknown or incomplete coverage cannot PASS
+- [ ] Default execution is mutation-free
+- [ ] Optional persistence writes only one authorized immutable report
+- [ ] Report identity and staleness are hash-based, not timestamp-based
+- [ ] FAIL remains FAIL even when a separate accepted risk exists
+- [ ] Handoff invokes a separate workflow and does not edit reviewed sources
 
 ---
 
 ## Coverage Notes
 
-- Economic balance analysis (source/sink loops) requires cross-GDD resource data — covered
-  structurally by Case 2 (the conflict detection pattern is the same).
-- The design theory phase (Phase 2) checks including dominant strategy detection and
-  cognitive overload are not individually fixture-tested — they follow the same
-  pattern as consistency checks and are validated via the pillar drift case structure.
-- The `since-last-review` scoping mode is not tested here — it is a runtime concern.
+Cases 1–5 preserve the baseline consistency, empty-input, and no-director-gate
+behaviors. Cases 6–10 cover the P0 contract: theory evidence boundaries,
+PARTIAL, input staleness, mutation guard, immutable report persistence, and
+accepted-risk separation.

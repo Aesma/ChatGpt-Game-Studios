@@ -1,4 +1,4 @@
 interface:
   display_name: "Reverse Document"
-  short_description: "Generate design or architecture documents from existing..."
-  default_prompt: "Use $reverse-document to run the Reverse Document game-studio workflow."
+  short_description: "Create non-authoritative reports from implementation evidence"
+  default_prompt: "Use $reverse-document with a bounded manifest to separate source-cited observations, explicit user-attested intent, unknowns, and unimplemented proposals in one provenance-bound non-authoritative report."

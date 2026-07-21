@@ -1,311 +1,246 @@
 ---
 name: consistency-check
-description: "Scan all GDDs against the entity registry to detect cross-document inconsistencies: same entity with different stats, same item with different values, same formula with different variables. Search-first approach — reads registry then targets only conflicting GDD sections rather than full document reads."
+description: "Read-only cross-GDD consistency audit that compares competing claims, ownership, formulas, and dependencies, with optional registry context, and returns PASS, FINDINGS, PARTIAL, or ERROR."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$consistency-check`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[full | since-last-review | entity:<name> | item:<name>]`. Treat bracketed values as optional unless the workflow says otherwise.
-
 
 # Consistency Check
 
-Detects cross-document inconsistencies by comparing all GDDs against the
-entity registry (`design/registry/entities.yaml`). Uses a search-first approach:
-reads the registry once, then targets only the GDD sections that mention
-registered names — no full document reads unless a conflict needs investigation.
+Audit cross-document design consistency without changing the project. Compare
+claims in all in-scope GDDs directly. If `design/registry/entities.yaml` exists,
+use it as an additional claim source and coverage aid, never as automatic proof
+that one product value is correct.
 
-**This skill is the write-time safety net.** It catches what `$design-system`'s
-per-section checks may have missed and what `$review-all-gdds`'s holistic review
-catches too late.
+## Invocation and contract
 
-**When to run:**
-- After writing each new GDD (before moving to the next system)
-- Before `$review-all-gdds` (so that skill starts with a clean baseline)
-- Before `$create-architecture` (inconsistencies poison downstream ADRs)
-- On demand: `$consistency-check entity:[name]` to check one entity specifically
+Invoke as `$consistency-check [full | since-last-review | entity:<id> | item:<id>]`.
+No argument is equivalent to `full`.
 
-**Output:** Conflict report + optional registry corrections
+This workflow is strictly read-only:
 
----
+- It may enumerate, search, and read project files and inspect read-only Git
+  history when a mode requires a baseline.
+- It must not create, edit, append, rename, or delete any file.
+- It must not update GDDs, the entity registry, consistency logs, reports, or
+  session state.
+- It must not run another skill, spawn a director gate, or silently delegate a
+  remediation.
+- Its only deliverable is the complete report returned to the caller.
 
-## Phase 1: Parse Arguments and Load Registry
+If the caller later wants a finding resolved or persisted, that is a separate
+owner-led task with its own explicit scope. Do not perform that work during this
+scan.
 
-**Modes:**
-- No argument / `full` — check all registered entries against all GDDs
-- `since-last-review` — check only GDDs modified since the last review report
-- `entity:<name>` — check one specific entity across all GDDs
-- `item:<name>` — check one specific item across all GDDs
+Verdict contract: `PASS | FINDINGS | PARTIAL | ERROR`.
 
-**Load the registry:**
+The final verdict is exactly one of:
 
-```
-Read `design/registry/entities.yaml` in full.
-```
+- `PASS` — coverage is complete and there are no actionable consistency
+  findings.
+- `FINDINGS` — coverage is complete and one or more actionable conflicts or
+  dependency gaps exist.
+- `PARTIAL` — the scan produced useful results, but at least one material input
+  or required check could not be completed. `PARTIAL` takes precedence over
+  `FINDINGS`; preserve any findings already proven.
+- `ERROR` — the scan cannot establish a meaningful audit scope or cannot inspect
+  any in-scope GDD.
 
-If the file does not exist or has no entries:
-> "Entity registry is empty. Run `$design-system` to write GDDs — the registry
-> is populated automatically after each GDD is completed. Nothing to check yet."
-
-Stop and exit.
-
-Build four lookup tables from the registry:
-- **entity_map**: `{ name → { source, attributes, referenced_by } }`
-- **item_map**: `{ name → { source, value_gold, weight, ... } }`
-- **formula_map**: `{ name → { source, variables, output_range } }`
-- **constant_map**: `{ name → { source, value, unit } }`
-
-Count total registered entries. Report:
-```
-Registry loaded: [N] entities, [N] items, [N] formulas, [N] constants
-Scope: [full | since-last-review | entity:name]
-```
+Dependency gaps are a finding category, not a separate verdict.
 
 ---
 
-## Phase 2: Locate In-Scope GDDs
+## Phase 1: Validate scope and inventory inputs
 
-```
-Search for files matching `design/gdd/*.md`.
-```
+1. Parse the optional argument.
+   - `full`: compare every system GDD.
+   - `since-last-review`: compare the complete GDD corpus, but report only
+     findings for which at least one side changed after the last review
+     baseline.
+   - `entity:<id>`: compare claims about one normalized entity identifier across
+     the complete GDD corpus.
+   - `item:<id>`: compare claims about one normalized item identifier across the
+     complete GDD corpus.
+2. Reject an empty identifier, more than one mode, or an unrecognized argument
+   with `ERROR`. Show the accepted syntax and stop.
+3. Enumerate `design/gdd/*.md`. Exclude generated cross-review reports and the
+   non-system overview files `game-concept.md`, `systems-index.md`, and
+   `game-pillars.md`.
+4. If no system GDD exists, return `ERROR` with:
+   `No system GDDs found in design/gdd/. Create or identify the GDDs to audit.`
+5. Record every in-scope path before comparison. For the default and `full`
+   modes, every discovered system GDD is in scope.
+6. For `since-last-review`, locate the baseline using read-only Git history for
+   the most recent `design/gdd/gdd-cross-review-*.md` artifact. If a reproducible
+   baseline cannot be established, continue with a full scan, disclose the
+   fallback, and force `PARTIAL`.
+7. Attempt to read `design/registry/entities.yaml` when present.
+   - Missing or empty registry: continue with direct GDD-to-GDD comparison and
+     report registry coverage as unavailable. Never stop with “nothing to
+     check,” and never infer consistency from registry absence.
+   - Malformed or unreadable registry: continue with direct comparison, record
+     the failed coverage channel, and force `PARTIAL`.
+   - Valid registry: index its entries as attributed claims. A `source` field is
+     provenance supplied by the registry, not authority and not user approval.
 
-Exclude: `game-concept.md`, `systems-index.md`, `game-pillars.md` — these are
-not system GDDs.
-
-For `since-last-review` mode:
-Run `git log --name-only --pretty=format: -- design/gdd/`, keep unique paths ending in `.md`, and ignore blank lines.
-Limit to GDDs modified since the most recent `design/gdd/gdd-cross-review-*.md`
-file's creation date.
-
-Report the in-scope GDD list before scanning.
-
----
-
-## Phase 3: Search-First Conflict Scan
-
-For each registered entry, search every in-scope GDD for the entry's name.
-Do NOT do full reads — extract only the matching lines and their immediate
-context (-C 3 lines).
-
-This is the core optimization: instead of reading 10 GDDs × 400 lines each
-(4,000 lines), you search 50 entity names × 10 GDDs (50 targeted searches,
-each returning ~10 lines on a hit).
-
-### 3a: Entity Scan
-
-For each entity in entity_map:
-
-```
-Search files matching `design/gdd/*.md` for `[entity_name]` and include 3 surrounding lines of context.
-```
-
-For each GDD hit, extract the values mentioned near the entity name:
-- any numeric attributes (counts, costs, durations, ranges, rates)
-- any categorical attributes (types, tiers, categories)
-- any derived values (totals, outputs, results)
-- any other attributes registered in entity_map
-
-Compare extracted values against the registry entry.
-
-**Conflict detection:**
-- Registry says `[entity_name].[attribute] = [value_A]`. GDD says `[entity_name] has [value_B]`. → **CONFLICT**
-- Registry says `[item_name].[attribute] = [value_A]`. GDD says `[item_name] is [value_B]`. → **CONFLICT**
-- GDD mentions `[entity_name]` but doesn't specify the attribute. → **NOTE** (no conflict, just unverifiable)
-
-### 3b: Item Scan
-
-For each item in item_map, search all GDDs for the item name. Extract:
-- sell price / value / gold value
-- weight
-- stack rules (stackable / non-stackable)
-- category
-
-Compare against registry entry values.
-
-### 3c: Formula Scan
-
-For each formula in formula_map, search all GDDs for the formula name. Extract:
-- variable names mentioned near the formula
-- output range or cap values mentioned
-
-Compare against registry entry:
-- Different variable names → **CONFLICT**
-- Output range stated differently → **CONFLICT**
-
-### 3d: Constant Scan
-
-For each constant in constant_map, search all GDDs for the constant name. Extract:
-- Any numeric value mentioned near the constant name
-
-Compare against registry value:
-- Different number → **CONFLICT**
+Report the selected mode, GDD inventory, exclusions, registry status, and any
+baseline fallback before reporting findings.
 
 ---
 
-## Phase 4: Deep Investigation (Conflicts Only)
+## Phase 2: Build a direct claim index
 
-For each conflict found in Phase 3, do a targeted full-section read of the
-conflicting GDD to get precise context:
+Read each in-scope GDD in full once before issuing a verdict. A read failure for
+one or more GDDs forces `PARTIAL`; failure to read every in-scope GDD is `ERROR`.
 
-```
-Read `design/gdd/[conflicting_gdd].md` in full.
-```
-(Or search with wider context if the file is large)
+Index only claims supported by identifiable text. Each indexed claim records:
 
-Confirm the conflict with full context. Determine:
-1. **Which GDD is correct?** Check the `source:` field in the registry — the
-   source GDD is the authoritative owner. Any other GDD that contradicts it
-   is the one that needs updating.
-2. **Is the registry itself out of date?** If the source GDD was updated after
-   the registry entry was written (check git log), the registry may be stale.
-3. **Is this a genuine design change?** If the conflict represents an intentional
-   design decision, the resolution is: update the source GDD, update the registry,
-   then fix all other GDDs.
+- subject identifier and aliases stated in the document;
+- claim category: `VALUE`, `FORMULA`, `OWNERSHIP`, `DEPENDENCY`, or `REFERENCE`;
+- attribute or relationship name;
+- raw value or expression and a normalized representation when normalization is
+  unambiguous;
+- unit and scope or applicability conditions;
+- evidence location: file, heading, line or line range, and a short excerpt;
+- stated owner, decision reference, or change rationale when present.
 
-For each conflict, classify:
-- **🔴 CONFLICT** — same named entity/item/formula/constant with different values
-  in different GDDs. Must resolve before architecture begins.
-- **⚠️ STALE REGISTRY** — source GDD value changed but registry not updated.
-  Registry needs updating; other GDDs may be correct already.
-- **ℹ️ UNVERIFIABLE** — entity mentioned but no comparable attribute stated.
-  Not a conflict; just noting the reference.
+Also index registry entries in the same neutral claim form when the registry is
+available. Label them `registry claim`; do not relabel them as canonical values.
+
+Do not turn nearby examples, historical values, prose speculation, or unrelated
+numbers into product claims. If identity, unit, scope, or meaning is ambiguous,
+record an advisory `UNVERIFIABLE` note instead of inventing a comparison. An
+ordinary reference that makes no value claim is not itself a conflict.
+
+For targeted `entity:` or `item:` modes, still inspect all system GDDs, then
+filter the claim index to the requested normalized identifier. Zero matches are
+a `FINDINGS` result with category `MISSING_CLAIM`, unless a material read or
+normalization gap requires `PARTIAL`.
 
 ---
 
-## Phase 5: Output Report
+## Phase 3: Compare competing claims
 
-```
+Compare claims only when subject, attribute, unit, and applicability overlap.
+Compare GDDs directly with one another; registry claims supplement that graph.
+
+Create actionable findings for:
+
+- `VALUE_MISMATCH`: comparable values differ.
+- `FORMULA_MISMATCH`: formulas for the same output and applicability differ in
+  variables, operators, coefficients, caps, or output range.
+- `COMPETING_OWNERSHIP`: more than one document makes an exclusive ownership
+  claim for the same entity, mechanic, or decision.
+- `DEPENDENCY_GAP`: a required dependency names a system or artifact that does
+  not exist in the audited corpus and is not explicitly marked planned.
+- `STALE_REFERENCE`: a document points to a removed, renamed, or superseded
+  artifact and the replacement cannot be resolved from explicit evidence.
+- `MISSING_CLAIM`: a targeted identifier has no supported claim.
+
+Assign severity from impact, not from which document supplied the claim:
+
+- `HIGH`: mutually exclusive normative formulas, values, or ownership claims
+  can change core behavior or block downstream architecture.
+- `MEDIUM`: an unresolved required dependency, stale reference, or bounded value
+  mismatch can invalidate a dependent system.
+- `LOW`: the contradiction is real and actionable but isolated, optional, or
+  unlikely to affect another system. Keep ambiguous evidence advisory instead
+  of inflating it into a low-severity conflict.
+
+Do not report a mismatch when values are equivalent after an unambiguous unit
+conversion, when conditions are explicitly different, or when one passage is
+clearly an example rather than a normative rule.
+
+Every actionable finding must show at least two evidence sides when two claims
+compete. A dependency or missing-claim finding instead shows the declaring
+evidence plus the audited inventory that failed to resolve it. Never emit a bare
+“conflict exists” statement.
+
+### Product-truth boundary
+
+The scanner reports claims; it does not select product truth.
+
+- Never declare a registry claim correct merely because its entry has a
+  `source` field.
+- Never declare the named source GDD correct merely because the registry points
+  to it.
+- Never rewrite “GDD versus registry” as “stale registry” or “wrong GDD” without
+  explicit, current decision evidence.
+- Never choose a new number, formula, owner, or dependency for the user.
+- When claims compete, use status `DECISION REQUIRED` and identify the artifact
+  owner or user decision needed.
+- If a current approved decision artifact explicitly selects a claim and the
+  finding includes its evidence, the report may state which claims match that
+  decision. It still must not modify any target.
+
+Owner metadata and change rationale may guide the handoff, but neither is enough
+to overwrite another claim without explicit decision evidence.
+
+---
+
+## Phase 4: Coverage and verdict
+
+Build a coverage ledger with one row per discovered system GDD and one row for
+the optional registry channel:
+
+| Input | Status | Checks completed | Limitation |
+|---|---|---|---|
+| `path` | `READ / SKIPPED / FAILED` | values, formulas, ownership, dependencies | reason or `none` |
+
+Material limitations include unreadable GDDs, malformed registry data when it
+was present, an indeterminate incremental baseline, or a required comparison
+that could not be normalized. A missing registry alone is not an error when the
+complete GDD corpus was directly compared; disclose that registry-backed
+coverage was unavailable.
+
+Choose one verdict in this order:
+
+1. `ERROR` if scope is invalid, no system GDD exists, or none can be read.
+2. `PARTIAL` if any material coverage limitation remains.
+3. `FINDINGS` if coverage is complete and at least one actionable finding exists.
+4. `PASS` otherwise.
+
+Do not issue `PASS` based only on a registry lookup, a subset of GDDs, or an
+empty result from text search.
+
+---
+
+## Phase 5: Return the report and stop
+
+Return the full report in the response using this structure:
+
+```markdown
 ## Consistency Check Report
-Date: [date]
-Registry entries checked: [N entities, N items, N formulas, N constants]
-GDDs scanned: [N] ([list names])
+Date: [YYYY-MM-DD]
+Mode: [mode]
+GDDs discovered: [N]
+GDDs read: [N]
+Registry coverage: [available | missing | empty | invalid | unreadable]
 
----
+### Coverage
+[coverage ledger]
 
-### Conflicts Found (must resolve before architecture)
+### Actionable findings
+| # | Category | Severity | Subject | Claim A | Claim B / Missing target | Evidence | Status |
+|---|---|---|---|---|---|---|---|
+| 1 | FORMULA_MISMATCH | HIGH | damage | ... | ... | both file locations | DECISION REQUIRED |
 
-🔴 [Entity/Item/Formula/Constant Name]
-   Registry (source: [gdd]): [attribute] = [value]
-   Conflict in [other_gdd].md: [attribute] = [different_value]
-   → Resolution needed: [which doc to change and to what]
+If there are none: `No actionable consistency findings.`
 
----
+### Advisory notes
+[unverifiable or non-blocking observations, or `None.`]
 
-### Stale Registry Entries (registry behind the GDD)
+### Decision handoff
+[For each finding: owner/user decision needed and the exact competing claims.
+Do not prescribe a winning product value without explicit decision evidence.]
 
-⚠️ [Entry Name]
-   Registry says: [value] (written [date])
-   Source GDD now says: [new value]
-   → Update registry entry to match source GDD, then check referenced_by docs.
-
----
-
-### Unverifiable References (no conflict, informational)
-
-ℹ️ [gdd].md mentions [entity_name] but states no comparable attributes.
-   No conflict detected. No action required.
-
----
-
-### Clean Entries (no issues found)
-
-✅ [N] registry entries verified across all GDDs with no conflicts.
-
----
-
-Verdict: PASS | CONFLICTS FOUND
+Verdict: PASS | FINDINGS | PARTIAL | ERROR
 ```
 
-**Verdict:**
-- **PASS** — no conflicts. Registry and GDDs agree on all checked values.
-- **CONFLICTS FOUND** — one or more conflicts detected. List resolution steps.
+The report is the output. Do not save it, append a log, update session state, or
+offer an in-workflow write. End after one concise next-step handoff:
 
----
-
-## Phase 6: Registry Corrections
-
-If stale registry entries were found, ask:
-> Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-For each stale entry:
-- Update the `value` / attribute field
-- Set `revised:` to today's date
-- Add a YAML comment with the old value: `# was: [old_value] before [date]`
-
-If new entries were found in GDDs that are not in the registry, ask:
-> "Found [N] entities/items mentioned in GDDs that aren't in the registry yet.
-> "Should these new cross-system entries be included in the proposed update to `design/registry/entities.yaml`?"
-
-Only add entries that appear in more than one GDD (true cross-system facts).
-
-**Never delete registry entries.** Set `status: deprecated` if an entry is removed
-from all GDDs.
-
-After writing: Verdict: **COMPLETE** — consistency check finished.
-If conflicts remain unresolved: Verdict: **BLOCKED** — [N] conflicts need manual resolution before architecture begins.
-
-### 6b: Append to Reflexion Log
-
-If any 🔴 CONFLICT entries were found (regardless of whether they were resolved),
-append an entry to `docs/consistency-failures.md` for each conflict:
-
-```markdown
-### [YYYY-MM-DD] — $consistency-check — 🔴 CONFLICT
-**Domain**: [system domain(s) involved]
-**Documents involved**: [source GDD] vs [conflicting GDD]
-**What happened**: [specific conflict — entity name, attribute, differing values]
-**Resolution**: [how it was fixed, or "Unresolved — manual action needed"]
-**Pattern**: [generalised lesson, e.g. "Item values defined in combat GDD were not
-referenced in economy GDD before authoring — always check entities.yaml first"]
-```
-
-If `docs/consistency-failures.md` does not exist, create it with this header before appending:
-
-```markdown
-# Consistency Failure Log
-
-<!-- Auto-maintained by $consistency-check. Do not edit manually. -->
-<!-- One entry per detected conflict, in chronological order. -->
-
-| Date | GDD A | GDD B | Conflict Type | Status |
-|------|-------|-------|---------------|--------|
-```
-
-Then append the new conflict entries. Never skip logging — a missing file is not a reason to lose conflict history.
-
----
-
-## Phase 7: Session State and Closing
-
-Silently append to `production/session-state/active.md` (create the file if it does not exist):
-
-```
-<!-- CONSISTENCY-CHECK: [date] | GDDs checked: [N] | Conflicts found: [N] | Report: docs/consistency-report-[date].md -->
-```
-
-Then close with an a structured choice prompt:
-
-- **Prompt**: "Consistency check complete — [N] conflicts found. What next?"
-- **Options**:
-  - `[A] Fix the highest-priority conflict now`
-  - `[B] Save full report and stop`
-  - `[C] Run $design-review on the most conflicted GDD`
-  - `[D] Stop here`
-
-Never end the skill with plain text. Always close with this structured prompt.
-
----
-
-## Recovery / Reference
-
-- **If PASS**: Run `$review-all-gdds` for holistic design-theory review, or
-  `$create-architecture` if all MVP GDDs are complete.
-- **If CONFLICTS FOUND**: Fix the flagged GDDs, then re-run
-  `$consistency-check` to confirm resolution.
-- **If STALE REGISTRY**: Update the registry (Phase 6), then re-run to verify.
-- Run `$consistency-check` after writing each new GDD to catch issues early,
-  not at architecture time.
+- `PASS`: the caller may proceed to the next already-planned review or
+  architecture step.
+- `FINDINGS`: the responsible artifact owner or user must choose among the shown
+  claims in a separate remediation task.
+- `PARTIAL`: restore the named coverage inputs, then rerun the audit.
+- `ERROR`: correct the scope or create/identify auditable GDDs, then rerun.

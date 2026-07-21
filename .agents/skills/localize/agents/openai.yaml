@@ -1,4 +1,4 @@
 interface:
   display_name: "Localize"
-  short_description: "Full localization pipeline: scan for hardcoded strings..."
-  default_prompt: "Use $localize to run the Localize game-studio workflow."
+  short_description: "Build owner-separated localization evidence"
+  default_prompt: "Use $localize with an explicit subcommand and locale; never treat templates, drafts, static checks, or QA plans as completed localization."
