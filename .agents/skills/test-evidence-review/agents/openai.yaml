@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Evidence Review"
-  short_description: "Quality review of test files and manual evidence documents"
-  default_prompt: "Use $test-evidence-review to run the Test Evidence Review game-studio workflow."
+  short_description: "Review test quality and build-bound evidence"
+  default_prompt: "Use $test-evidence-review with an exact evidence-review manifest; add --persist only when a durable review is needed."

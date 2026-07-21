@@ -2,167 +2,282 @@
 
 ## Skill Summary
 
-`$scope-check` is a read-only analysis skill that analyzes a feature, sprint,
-or story for scope creep risk. It reads sprint and story files and compares them
-against the active milestone goals. It is designed for fast, low-cost checks
-before or during planning. No director gates are invoked. No files are written.
-Verdicts: ON SCOPE, CONCERNS, or SCOPE CREEP DETECTED.
+`$scope-check` is a read-only comparator for one explicit immutable approved baseline
+and one current scope manifest. It identifies additions, removals, and semantic
+modifications using stable Scope IDs and content hashes. It may attach compatible
+estimate, capacity, dependency, test, and decision evidence from one bounded allowlist
+manifest. It never infers scope from code, uses raw item counts as a health score,
+chooses Cut/Keep/Defer, mutates a plan, or re-baselines.
 
----
+Canonical results are `ERROR`, `INPUT REQUIRED`, `INSUFFICIENT EVIDENCE`, `PARTIAL`,
+`NO SCOPE DELTA`, and `SCOPE DELTA FOUND`.
 
-## Static Assertions (Structural)
+## Static assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
+- [ ] YAML frontmatter contains only `name` and non-empty `description`
+- [ ] Metadata describes an explicit, immutable, read-only comparison
+- [ ] `compare` requires both `--baseline` and `--current`
+- [ ] No feature-name, filename-similarity, or repository-scan baseline inference
+- [ ] Scope classification uses stable IDs and semantic hashes
+- [ ] Raw item counts and percentages cannot produce a result or impact claim
+- [ ] Missing approval, baseline linkage, stable IDs, or completeness blocks
+      `NO SCOPE DELTA`
+- [ ] Product options are neutral and require a user/product-owner decision
+- [ ] No file, Git, gate, delegation, workflow, or re-baseline mutation
+- [ ] Canonical result vocabulary matches this specification exactly
+- [ ] Report includes exact artifact paths, hashes, coverage, deltas, unknowns, and
+      the read-only statement
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: ON SCOPE, CONCERNS, SCOPE CREEP DETECTED
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff (what to do based on verdict)
+## Director gate checks
 
----
+None. This skill has no director gate and cannot obtain product-scope authority from
+an agent recommendation.
 
-## Director Gate Checks
+## Test cases
 
-None. Scope check is a read-only advisory skill; no gates are invoked.
+### Case 1: Equal stable-ID semantics produce NO SCOPE DELTA
 
----
+**Fixture**
 
-## Test Cases
+- Approved baseline `B1/v3` has a trusted approval record, complete marker, parent
+  scope `M3`, and Scope IDs `COMBAT-01`, `AI-02`, `LEVEL-03`.
+- Current manifest declares the exact `B1/v3` hash, parent `M3`, completeness, and the
+  same IDs and normalized semantic entry hashes.
+- Current presentation order and heading formatting differ.
 
-### Case 1: Happy Path — Sprint stories align with milestone goals
+**Input**
 
-**Fixture:**
-- `production/milestones/milestone-03.md` lists 3 goals: combat system, enemy AI, level loading
-- `production/sprints/sprint-006.md` contains 5 stories, all tagged to one of the 3 goals
-- `production/session-state/active.md` references milestone-03 as the active milestone
+`$scope-check compare --baseline <baseline> --current <current>`
 
-**Input:** `$scope-check`
+**Expected**
 
-**Expected behavior:**
-1. Skill reads active milestone goals from milestone-03
-2. Skill reads sprint-006 stories and checks each against milestone goals
-3. All 5 stories map to one of the 3 goals
-4. Skill outputs a mapping table: story → milestone goal
-5. Verdict is ON SCOPE
+- Both artifacts are reported with exact path, version, byte length, and SHA-256.
+- Presentation-only changes do not create a delta.
+- Result is `NO SCOPE DELTA`.
+- The result explicitly does not mean schedule/quality approval.
+- No files or state are changed.
 
-**Assertions:**
-- [ ] Each story is mapped to a milestone goal in the output
-- [ ] Verdict is ON SCOPE when all stories map to milestone goals
-- [ ] No files are written
-- [ ] Skill does not modify sprint or milestone files
+### Case 2: One large addition and many tiny additions are not count-weighted
 
----
+**Fixture**
 
-### Case 2: Scope Creep Detected — Stories introducing systems not in milestone
+- Variant A adds one new network subsystem Scope ID.
+- Variant B adds ten small text Scope IDs.
+- Neither variant has compatible estimate evidence.
 
-**Fixture:**
-- `production/milestones/milestone-03.md` goals: combat, enemy AI, level loading
-- `production/sprints/sprint-006.md` contains 5 stories:
-  - 3 stories map to milestone goals
-  - 2 stories reference "online leaderboard" and "achievement system" (not in milestone-03)
+**Expected**
 
-**Input:** `$scope-check`
+- Both variants produce stable `ADDED` findings and `SCOPE DELTA FOUND`.
+- No percent bloat, count-derived severity, or effort comparison is emitted.
+- Both show `Effort Delta: UNVERIFIED`.
+- The model does not claim ten text items are larger than one network subsystem.
 
-**Expected behavior:**
-1. Skill reads milestone goals and sprint stories
-2. Skill identifies 2 stories with no matching milestone goal
-3. Skill names the out-of-scope stories: "Online Leaderboard Feature", "Achievement System Setup"
-4. Verdict is SCOPE CREEP DETECTED
+### Case 3: Row split and merge preserve semantic scope
 
-**Assertions:**
-- [ ] Out-of-scope stories are named explicitly in the output
-- [ ] Verdict is SCOPE CREEP DETECTED when any story has no milestone goal match
-- [ ] Skill does not automatically remove the stories — findings are advisory
-- [ ] Output recommends deferring the out-of-scope stories to a later milestone
+**Fixture**
 
----
+- Baseline and current artifacts retain the same stable IDs and normalized semantic
+  content, but render them as different checklist rows.
 
-### Case 3: No Milestone Defined — CONCERNS; scope cannot be validated
+**Expected**
 
-**Fixture:**
-- `production/session-state/active.md` has no milestone reference
-- `production/milestones/` directory exists but is empty
-- `production/sprints/sprint-006.md` has 4 stories
+- Row count differences are display-only.
+- No addition or removal is inferred from row count.
+- Result is `NO SCOPE DELTA` when all other contract fields are complete.
 
-**Input:** `$scope-check`
+### Case 4: Missing or ambiguous baseline blocks comparison
 
-**Expected behavior:**
-1. Skill reads active.md — finds no milestone reference
-2. Skill checks `production/milestones/` — no milestone files found
-3. Skill outputs: "No active milestone defined — scope cannot be validated"
-4. Verdict is CONCERNS
+**Variants**
 
-**Assertions:**
-- [ ] Skill does not error when no milestone is defined
-- [ ] Output explicitly states that scope validation requires a milestone reference
-- [ ] Verdict is CONCERNS (not ON SCOPE or SCOPE CREEP DETECTED without data)
-- [ ] Output suggests running `$milestone-review` or creating a milestone
+- no `--baseline`;
+- two active-state baseline candidates;
+- fuzzy feature nickname only;
+- baseline lacks version or approval record;
+- baseline bytes no longer match the current manifest's declared hash.
 
----
+**Expected**
 
-### Case 4: Single Story Check — Evaluated against its parent epic
+- Missing input returns `INPUT REQUIRED`; invalid/ambiguous resolution returns
+  `ERROR`; identity or approval gaps return `INSUFFICIENT EVIDENCE`.
+- No candidate is selected by similarity or modification time.
+- No scope-health or delta verdict is produced.
 
-**Fixture:**
-- User targets a single story: `production/epics/combat/story-parry-timing.md`
-- Story references parent epic: `epic-combat.md`
-- `production/epics/combat/epic-combat.md` has scope: "melee combat mechanics"
-- Story title: "Implement parry timing window" — matches epic scope
+### Case 5: No-argument invocation only discovers candidates
 
-**Input:** `$scope-check production/epics/combat/story-parry-timing.md`
+**Fixture**
 
-**Expected behavior:**
-1. Skill reads the specified story file
-2. Skill reads the parent epic to get scope definition
-3. Skill evaluates story against epic scope — "parry timing" matches "melee combat"
-4. Verdict is ON SCOPE
+- Active state points to exactly one milestone baseline and one sprint manifest.
 
-**Assertions:**
-- [ ] Single-file argument is accepted (story path, not sprint)
-- [ ] Skill reads the parent epic referenced in the story file
-- [ ] Story is evaluated against epic scope (not milestone scope) in single-story mode
-- [ ] Verdict is ON SCOPE when story matches epic scope
+**Input**
 
----
+`$scope-check`
 
-### Case 5: Gate Compliance — No gate; PR may be consulted separately
+**Expected**
 
-**Fixture:**
-- Sprint has 2 SCOPE CREEP stories and 3 ON SCOPE stories
-- `review-mode.txt` contains `full`
+- The skill may display the exact suggested paths and hashes.
+- It returns `INPUT REQUIRED` and asks the user to confirm both.
+- It does not analyze or silently choose them in that invocation.
 
-**Input:** `$scope-check`
+### Case 6: Story comparison requires an explicit parent baseline
 
-**Expected behavior:**
-1. Skill reads milestone and sprint; identifies 2 scope creep items
-2. No director gate is invoked regardless of review mode
-3. Skill presents findings with SCOPE CREEP DETECTED verdict
-4. Output notes: "Consider raising scope concerns with the Producer before sprint begins"
-5. Skill ends without writing any files
+**Fixture**
 
-**Assertions:**
-- [ ] No director gate is invoked in any review mode
-- [ ] Producer consultation is suggested (not mandated)
-- [ ] No files are written
-- [ ] Verdict is SCOPE CREEP DETECTED
+- Current story manifest explicitly references approved epic baseline path/hash `E7`.
+- A similarly named milestone also exists.
 
----
+**Input**
 
-## Protocol Compliance
+`$scope-check compare --baseline <E7> --current <story>`
 
-- [ ] Reads milestone goals and sprint/story files before analysis
-- [ ] Maps each story to a milestone goal (or flags as unmapped)
-- [ ] Does not write any files
-- [ ] No director gates are invoked
-- [ ] Does not pin model or reasoning settings; inherits the parent Codex session
-- [ ] Verdict is one of: ON SCOPE, CONCERNS, SCOPE CREEP DETECTED
+**Expected**
 
----
+- The story is checked against exactly `E7`, not the similarly named milestone.
+- Parent and baseline hashes must match.
+- A missing explicit parent link returns `INSUFFICIENT EVIDENCE`.
 
-## Coverage Notes
+### Case 7: Git, code and TODO evidence cannot create scope
 
-- The case where the sprint file itself does not exist is not tested; the
-  skill would output a CONCERNS verdict with a message about missing sprint data.
-- Partial scope overlap (story touches a milestone goal but also introduces
-  new scope) is not explicitly tested; implementation may classify this as
-  CONCERNS rather than SCOPE CREEP DETECTED.
+**Fixture**
+
+- Git contains a leaderboard commit and code contains an achievement TODO.
+- Neither has a Scope ID in the current manifest.
+
+**Expected**
+
+- `compare` does not scan them.
+- If exact evidence paths/commits are allowlisted for `inspect`, they are labeled
+  implementation evidence only.
+- They do not become additions, approvals, or justification records.
+
+### Case 8: Change justification requires a bound decision record
+
+**Fixture variants**
+
+- A: an addition has a change record binding Scope ID, baseline/current hashes,
+  decision, owner, and timestamp.
+- B: only the implementer's Git author and prose explanation exist.
+
+**Expected**
+
+- A is `APPROVED_CHANGE` only when every binding matches.
+- B is `NO_RECORD`, not “justified”.
+- Commit author is never treated as scope decision owner.
+
+### Case 9: Product decision remains with user or designated owner
+
+**Fixture**
+
+- Three additions and one removal have complete evidence.
+- No product decision selects a remedy.
+
+**Expected**
+
+- Result is `SCOPE DELTA FOUND`.
+- Two or three unranked options show affected Scope IDs, known impacts, unknowns, and
+  owner/action requirements.
+- The skill does not recommend, rank, choose, apply, or label Cut/Keep/Defer.
+- No planner or producer agent is invoked.
+
+### Case 10: Effort and risk remain unverified without compatible receipts
+
+**Fixture**
+
+- Some changed IDs use hours, some use story points, and one has no estimate.
+- There is no capacity receipt, test-plan coverage, or dependency evidence.
+
+**Expected**
+
+- No effort percentage is calculated.
+- Effort delta is `UNVERIFIED`.
+- Schedule, quality, and integration states are `UNVERIFIED` or `PARTIAL`, with exact
+  missing fields listed.
+- No intuitive Low/Medium/High rating appears.
+
+### Case 11: Compatible evidence enables bounded impact reporting
+
+**Fixture**
+
+- All changed IDs have estimates using one calibrated unit/method and matching
+  baseline/current hashes.
+- Capacity, test-plan, and dependency receipts are complete and current.
+
+**Expected**
+
+- Absolute effort delta and uncertainty interval are reported.
+- Impact dimensions are `SUPPORTED` with receipt paths/hashes.
+- Impact evidence does not change delta types or make a product decision.
+
+### Case 12: Evidence manifest enforces bounded context
+
+**Variants**
+
+- an allowlisted path hash mismatches;
+- a supporting path is outside the allowlist;
+- the path, byte, or commit budget is exceeded.
+
+**Expected**
+
+- The skill never expands the allowlist or scans for related files.
+- Valid core deltas are preserved, but result is `PARTIAL` and affected impacts are
+  `UNVERIFIED`.
+- Unexamined entries and budget limits are explicit.
+
+### Case 13: Immutable baseline survives repeat checks
+
+**Fixture**
+
+- Run 1 compares baseline hash `H1` with current `C1`.
+- A planner file later changes to hash `H2` without an approved re-baseline decision.
+- Run 2 still supplies `H1`; variant Run 3 supplies the changed path whose bytes are
+  `H2` while current manifest still cites `H1`.
+
+**Expected**
+
+- Run 2 remains reproducible against immutable `H1` if bytes are available.
+- Run 3 returns `INSUFFICIENT EVIDENCE — BASELINE MISMATCH`.
+- The skill never treats the edited plan as an improved or replacement baseline.
+
+### Case 14: Inputs changing during analysis invalidate conclusions
+
+**Fixture**
+
+- Baseline or current bytes change after initial hashing and before final reporting.
+
+**Expected**
+
+- Final re-hash detects the change.
+- Result is `INSUFFICIENT EVIDENCE — INPUT CHANGED DURING CHECK`.
+- All earlier conclusions are discarded and no partial healthy result is shown.
+
+### Case 15: Delta findings are deterministic and reproducible
+
+**Fixture**
+
+- The same immutable baseline/current/evidence bytes are provided twice.
+
+**Expected**
+
+- Stable Delta IDs, sorted findings, coverage, optional metrics, and result are
+  identical in both runs.
+- Each finding contains both artifact hashes and its Scope ID/delta type.
+
+## Protocol compliance
+
+- [ ] Reads only explicit baseline/current artifacts and evidence-manifest allowlist
+- [ ] Re-hashes every consumed artifact before reporting
+- [ ] Never uses item counts or percentages as scope-health or effort metrics
+- [ ] Missing evidence cannot yield `NO SCOPE DELTA`
+- [ ] Never makes a product decision or silently re-baselines
+- [ ] Never writes files, mutates Git, invokes gates, delegates, or launches follow-ups
+- [ ] Result is exactly one canonical value from the shared result table
+
+## Audit remediation coverage
+
+- Cases 2–3 close SCP-001: heterogeneous items and presentation splits cannot drive
+  magnitude or verdicts.
+- Case 9 closes SCP-002: the skill presents neutral options and waits for the actual
+  product owner.
+- Cases 1 and 4–6 close SCP-003: inputs, default behavior, single-story mode, artifact
+  identity, and result vocabulary share one contract with the skill and metadata.
+- Cases 4–8 and 10–15 cover baseline routing, source evidence, justification, risk,
+  bounded context, immutable re-checks, stable findings, and owner boundaries.

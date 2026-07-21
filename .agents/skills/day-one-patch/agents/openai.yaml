@@ -1,4 +1,4 @@
 interface:
   display_name: "Day One Patch"
-  short_description: "Prepare a day-one patch for a game launch"
-  default_prompt: "Use $day-one-patch to run the Day One Patch game-studio workflow."
+  short_description: "Plan and evidence-gate one exact day-one patch"
+  default_prompt: "Use $day-one-patch with an explicit plan or gate mode and hash-bound manifests; it prepares bounded artifacts and evaluates a new candidate without implementing, deploying, or publishing."

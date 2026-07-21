@@ -1,6 +1,6 @@
 ---
 name: create-stories
-description: "Break a single epic into implementable story files. Reads the epic, its GDD, governing ADRs, and control manifest. Each story embeds its GDD requirement TR-ID, ADR guidance, acceptance criteria, story type, and test evidence path. Run after $create-epics for each epic."
+description: "Break a single epic into traceable story files. Fails closed: a story cannot be Ready without active stable TR-IDs and complete QA specifications, and unresolved traceability is routed to the registry-owning architecture-review workflow. Run after $create-epics for each epic."
 ---
 
 ## Invocation and execution
@@ -27,7 +27,9 @@ then Core, and so on — matching the dependency order.
 **Output:** `production/epics/[epic-slug]/story-NNN-[slug].md` files
 
 **Previous step:** `$create-epics [system]`
-**Next step after stories exist:** `$story-readiness [story-path]` then `$dev-story [story-path]`
+**Next step after stories exist:** run `$story-readiness [story-path]` for a
+`Ready` candidate; run `$dev-story [story-path]` only when readiness returns its
+final `READY` verdict.
 
 ---
 
@@ -53,8 +55,22 @@ Read in full:
 - `production/epics/[epic-slug]/EPIC.md` — epic overview, governing ADRs, GDD requirements table
 - The epic's GDD (`design/gdd/[filename].md`) — read all 8 sections, especially Acceptance Criteria, Formulas, and Edge Cases
 - All governing ADRs listed in the epic — read the Decision, Implementation Guidelines, Engine Compatibility, and Engine Notes sections
-- `docs/architecture/control-manifest.md` — extract rules for this epic's layer; note the Manifest Version date from the header
+- `docs/architecture/control-manifest.md` — read the exact raw bytes, compute
+  `sha256:<64 lowercase hexadecimal characters>`, extract the exact Manifest
+  Version header, and preserve each applicable rule's `MUST`, `MUST NOT`,
+  `SHOULD`, `SHOULD NOT`, or `MAY` strength plus contextual rejections and
+  guardrails for this epic's layer
 - `docs/architecture/tr-registry.yaml` — load all TR-IDs for this system
+
+Parse the TR registry before decomposition and record its source status as
+`loaded`, `missing`, `unreadable`, or `invalid`. Index only exact IDs matching
+`TR-[system]-NNN`; an entry is usable only when it has `status: active`.
+
+`$architecture-review` is the sole workflow that assigns or repairs registry
+IDs. `$create-stories` is a registry consumer: it must never create, guess,
+renumber, or edit a TR-ID or the registry. A registry source failure does not
+stop the draft; it makes every affected story `Blocked` and is included in the
+traceability gap report in Step 5.
 
 **ADR existence validation**: After reading the governing ADRs list from the epic, confirm each ADR file exists on disk. If any ADR file cannot be found, **stop immediately** before decomposing any story:
 
@@ -64,7 +80,7 @@ Read in full:
 
 Do not proceed to Step 3 until all referenced ADR files are confirmed present.
 
-Report: "Loaded epic [name], GDD [filename], [N] governing ADRs (all confirmed present), control manifest v[date]."
+Report: "Loaded epic [name], GDD [filename], [N] governing ADRs (all confirmed present), control manifest v[version], sha256:[hash]."
 
 ---
 
@@ -92,13 +108,28 @@ For each GDD acceptance criterion:
 1. Group related criteria that require the same core implementation
 2. Each group = one story
 3. Order stories: foundational behaviour first, edge cases last, UI last
+4. Assign each criterion a story-local stable ID such as `AC-S001-01`.
+   Preserve that ID when wording or order changes; never recycle it for a
+   different criterion.
 
 **Story sizing rule:** one story = one focused session (~2-4 hours). If a
 group of criteria would take longer, split into two stories.
 
 For each story, determine:
 - **GDD requirement**: which acceptance criterion(ia) does this satisfy?
-- **TR-ID**: look up in `tr-registry.yaml`. Use the stable ID. If no match, use `TR-[system]-???` and warn.
+- **TR-ID**: map every covered GDD requirement and acceptance criterion to an
+  exact registry entry with `status: active`.
+  - Exact active match → embed the stable ID unchanged.
+  - No match, ambiguous match, malformed ID, unknown ID, non-active entry, or
+    unavailable registry → do **not** invent or emit a replacement ID. Set the
+    story status to `Blocked`, record the source requirement and GDD location in
+    the story's `Traceability Gaps`, and add it to the batch gap report for
+    `$architecture-review`.
+  - If a story covers several requirements, every one must resolve. One
+    unresolved requirement blocks that story; it does not change unrelated
+    stories.
+  - `TR-[system]-???` and every other placeholder TR value are forbidden in
+    previews and written files.
 - **Governing ADR**: which ADR governs how to implement this?
   - `Status: Accepted` → embed normally
   - `Status: Proposed` → set story `Status: Blocked` with note: "BLOCKED: ADR-NNNN is Proposed — run `$architecture-decision` to advance it"
@@ -112,30 +143,74 @@ For each story, determine:
 ## 4b. QA Lead Story Readiness Gate
 
 **Review mode check** — apply before spawning QL-STORY-READY:
-- `solo` → skip. Note: "QL-STORY-READY skipped — Solo mode." Proceed to Step 5 (present stories for review).
-- `lean` → skip (not a PHASE-GATE). Note: "QL-STORY-READY skipped — Lean mode." Proceed to Step 5 (present stories for review).
+- `solo` → skip. Note: "QL-STORY-READY skipped — Solo mode." Continue with QA
+  specification coverage below; skipping the gate does not waive test specs.
+- `lean` → skip (not a PHASE-GATE). Note: "QL-STORY-READY skipped — Lean mode."
+  Continue with QA specification coverage below; skipping the gate does not
+  waive test specs.
 - `full` → spawn as normal.
 
-After decomposing all stories (Step 4 complete) but before presenting them for single changeset approval, spawn `qa-lead` through Codex subagent delegation using gate **QL-STORY-READY** (`.codex/docs/director-gates.md`).
+After decomposing all stories (Step 4 complete) but before presenting them for single changeset approval, spawn `qa-lead` through Codex subagent delegation using gate **QL-STORY-READY** (`.codex/docs/director-gates.md`). Request one capped batch review, but require a separate verdict for every story.
 
 Pass: the full story list with acceptance criteria, story types, and TR-IDs; the epic's GDD acceptance criteria for reference.
 
-Present the QA lead's assessment. For each story flagged as GAPS or INADEQUATE, revise the acceptance criteria before proceeding — stories with untestable criteria cannot be implemented correctly. Once all stories reach ADEQUATE, proceed.
+Present the QA lead's assessment and keep the result attached to its story.
+`ADEQUATE` does not change the deterministic status; `GAPS` makes the story at
+least `Needs Work`; `INADEQUATE` makes it `Blocked`. A stricter pre-existing
+status remains. Revise when the user chooses to do so, but never convert a QA
+failure to `Ready` by accepting risk.
 
-**Before generating test specs**: Find files matching `production/qa/qa-plan-*.md` for the most recently modified file. If found, read it and check whether it contains test case specifications for the stories in this epic (look for story titles or slugs in the plan's Automated Tests Required section). If matching specs exist:
+**Before generating test specs**: A QA plan may be imported only by an explicit,
+canonical project-relative plan path selected by the user or referenced by the
+epic. Never select a plan by modification time, title text, slug text, or a
+"latest" filename. Read the complete plan bytes and compute its SHA-256. Parse
+its declared state, source manifest, story bindings, stable AC IDs, and stable
+test/check IDs.
+
+Before offering an import, re-read and hash every source path captured by the QA
+plan. The plan is usable only when all of the following are true:
+
+- its declared and effective state are both `CURRENT`, never `PARTIAL` or
+  `STALE`;
+- every captured source path is readable and its current raw-byte hash exactly
+  matches the plan manifest;
+- each candidate story is identified by its canonical path and its candidate
+  byte hash, not by title or slug;
+- the plan's stable AC IDs exactly equal the story's stable AC IDs; and
+- every imported test/check ID is unique and bound to exactly one matching AC.
+
+If any check fails, report the exact provenance or binding gap, do not import
+any affected specification, and keep that story at least `Needs Work` until a
+current QA plan is regenerated or fresh specifications are produced. User risk
+acceptance cannot make a `PARTIAL` or `STALE` plan current.
+
+If a current, exact matching plan exists:
 - Ask the user directly:
   - Prompt: "A QA plan exists at [path] with test specs for some of these stories. How do you want to proceed?"
   - Options:
     - `Use existing specs from the QA plan — embed them into the story files (Recommended)`
     - `Ask qa-lead to generate fresh specs — override the QA plan`
-    - `Skip test spec generation — I'll fill in ## QA Test Cases manually`
-- If "Use existing specs": extract the test case specs from the qa-plan for each matching story and embed them directly into the `## QA Test Cases` section. No qa-lead spawn needed for those stories. Only spawn qa-lead for stories with no coverage in the qa-plan.
+    - `Defer test specs — write affected stories as Needs Work`
+- If "Use existing specs": copy only the exact specifications whose stable
+  IDs and AC bindings passed the checks above. Record `QA Plan Path`, `QA Plan
+  Hash`, `QA Plan State: CURRENT`, and the imported IDs in the story's
+  `## QA Test Cases` section. No qa-lead spawn is needed for those exact covered
+  criteria. Spawn qa-lead only for criteria with no current exact coverage.
 - If "Generate fresh": proceed with the qa-lead spawn below as normal.
-- If "Skip": leave `## QA Test Cases` with a placeholder: `*Test cases not yet defined — run $qa-plan to generate them.*`
+- If "Defer": record `QA Coverage: Missing`, list the uncovered AC IDs, and
+  set each affected story to `Needs Work` unless it is already `Blocked`. This
+  option authorizes writing a non-ready planning artifact only; it never makes
+  the story implementation-ready.
 
-**After ADEQUATE** (or after qa-plan import): for every Logic and Integration story, ask the qa-lead to produce concrete test case specifications — one per acceptance criterion — in this format:
+**After ADEQUATE, a skipped readiness gate, or qa-plan import**: for every Logic and Integration
+story, require one concrete automated test specification per acceptance
+criterion. Each specification must have a stable, non-placeholder ID in the
+form `TC-[epic-slug]-S[story-number]-AC[criterion-number]`; preserve an existing
+ID when revising a story and never renumber IDs merely because wording or order
+changes. Use this format:
 
 ```
+Test ID: TC-[epic-slug]-S[story-number]-AC[criterion-number]
 Test: [criterion text]
   Given: [precondition]
   When: [action]
@@ -143,15 +218,46 @@ Test: [criterion text]
   Edge cases: [boundary values or failure states to test]
 ```
 
-For Visual/Feel and UI stories, produce manual verification steps instead:
+For Visual/Feel and UI stories, produce manual verification steps instead. Give
+each check a stable ID in the form
+`MC-[epic-slug]-S[story-number]-AC[criterion-number]`:
 ```
+Manual Check ID: MC-[epic-slug]-S[story-number]-AC[criterion-number]
 Manual check: [criterion text]
   Setup: [how to reach the state]
   Verify: [what to look for]
   Pass condition: [unambiguous pass description]
 ```
 
-These test case specs are embedded directly into each story's `## QA Test Cases` section. The developer implements against these cases. The programmer does not write tests from scratch — QA has already defined what "done" looks like.
+For Config/Data stories, require a stable smoke-check ID and an observable pass
+condition. These specifications are embedded directly into each story's
+`## QA Test Cases` section. The developer implements against them.
+
+A QA specification is complete only when its stable ID and every field required
+for that story type contain concrete values. Blank values and markers such as
+`TBD`, `TODO`, `???`, or "fill later" count as missing coverage. Match
+specifications to the stable AC IDs, not only to mutable criterion text or order.
+
+### 4c. Compute Story Status (fail closed)
+
+Compute `story_status` for each story before previewing or rendering any file.
+Use the strictest applicable result (`Blocked` > `Needs Work` > `Ready`):
+
+- `Blocked` — any covered requirement lacks an exact active TR-ID; the registry
+  is missing/unreadable/invalid; a governing ADR is missing or Proposed; or the
+  full-mode QA gate returns `INADEQUATE` or no valid verdict.
+- `Needs Work` — no blocker exists, but any acceptance criterion lacks its
+  required complete QA specification or stable test/manual-check ID; QA specs
+  were deferred; or the full-mode QA gate returns `GAPS`.
+- `Ready` — every covered requirement maps to an exact active TR-ID, all ADR
+  checks pass, every acceptance criterion has its required complete QA
+  specification and stable ID, and the applicable QA gate does not downgrade
+  the result.
+
+Never use a template default to set status. Keep the same computed status in the
+preview, story header, EPIC table, and completion summary. `Ready` in this skill
+means eligible for `$story-readiness`; that downstream workflow still makes the
+authoritative implementation-readiness decision.
 
 ---
 
@@ -163,19 +269,33 @@ Before writing any files, present the full story list:
 ## Stories for Epic: [name]
 
 Story 001: [title] — Logic — ADR-NNNN
+  Status: [Ready | Needs Work | Blocked]
   Covers: TR-[system]-001 ([1-line summary of requirement])
+  QA coverage: [complete | missing AC-N, ...]
   Test required: tests/unit/[system]/[slug]_test.[ext]
 
 Story 002: [title] — Integration — ADR-MMMM
+  Status: [Ready | Needs Work | Blocked]
   Covers: TR-[system]-002, TR-[system]-003
+  QA coverage: [complete | missing AC-N, ...]
   Test required: tests/integration/[system]/[slug]_test.[ext]
 
 Story 003: [title] — Visual/Feel — ADR-NNNN
+  Status: [Ready | Needs Work | Blocked]
   Covers: TR-[system]-004
+  QA coverage: [complete | missing AC-N, ...]
   Evidence required: production/qa/evidence/[slug]-evidence.md
 
 [N stories total: N Logic, N Integration, N Visual/Feel, N UI, N Config/Data]
+
+### Traceability Gaps — route to `$architecture-review`
+- [Story NNN / GDD path + section / requirement text / reason unresolved]
 ```
+
+Omit the Traceability Gaps section only when there are no gaps. The report is an
+ownership handoff, not permission for this skill to edit the registry. Confirm
+that the preview contains no `TR-...-???` or other placeholder TR value before
+asking for changeset authorization.
 
 Ask the user directly:
 - Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
@@ -191,18 +311,21 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 # Story [NNN]: [title]
 
 > **Epic**: [epic name]
-> **Status**: Ready
+> **Status**: [story_status — Ready | Needs Work | Blocked]
 > **Layer**: [Foundation / Core / Feature / Presentation]
 > **Type**: [Logic | Integration | Visual/Feel | UI | Config/Data]
 > **Estimate**: [hours or t-shirt size — fill before sprint planning]
 > **Manifest Version**: [date from control-manifest.md header]
+> **Manifest Hash**: sha256:[hash of exact current control-manifest.md bytes]
 > **Last Updated**: [set by $dev-story when implementation begins]
 
 ## Context
 
 **GDD**: `design/gdd/[filename].md`
-**Requirement**: `TR-[system]-NNN`
+**Requirement**: [one or more exact active `TR-[system]-NNN` values, or `Unresolved — see Traceability Gaps`]
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
+
+**Traceability Gaps**: [None | GDD path + section, unresolved requirement text, and reason]
 
 **ADR Governing Implementation**: [ADR-NNNN: title]
 **ADR Decision Summary**: [1-2 sentence summary of what the ADR decided]
@@ -211,9 +334,15 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 **Engine Notes**: [from ADR Engine Compatibility section — post-cutoff APIs, verification required]
 
 **Control Manifest Rules (this layer)**:
-- Required: [relevant required pattern]
-- Forbidden: [relevant forbidden pattern]
+- MUST / MUST NOT: [applicable mandatory rules, preserving conditions]
+- SHOULD / SHOULD NOT: [applicable recommendations, preserving conditions]
+- MAY: [applicable permitted options]
+- Contextual Rejections: [rejected alternatives and reconsideration conditions; not prohibitions]
 - Guardrail: [relevant performance guardrail]
+
+## Source Snapshot
+
+- `docs/architecture/control-manifest.md`: `sha256:[same exact hash as the header]`
 
 ---
 
@@ -221,9 +350,9 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 
 *From GDD `design/gdd/[filename].md`, scoped to this story:*
 
-- [ ] [criterion 1 — directly from GDD]
-- [ ] [criterion 2]
-- [ ] [performance criterion if applicable]
+- [ ] **AC-S[story-number]-01**: [criterion 1 — directly from GDD]
+- [ ] **AC-S[story-number]-02**: [criterion 2]
+- [ ] **AC-S[story-number]-03**: [performance criterion if applicable]
 
 ---
 
@@ -248,9 +377,11 @@ change meaning. This is what the programmer reads instead of the ADR.]
 
 *Written by qa-lead at story creation. The developer implements against these — do not invent new test cases during implementation.*
 
+**QA Coverage**: [Complete | Missing — AC IDs]
+
 **[For Logic / Integration stories — automated test specs]:**
 
-- **AC-1**: [criterion text]
+- **TC-[epic-slug]-S[story-number]-AC[criterion-number]** — **AC-S[story-number]-[criterion-number]**: [criterion text]
   - Given: [precondition]
   - When: [action]
   - Then: [assertion]
@@ -258,7 +389,7 @@ change meaning. This is what the programmer reads instead of the ADR.]
 
 **[For Visual/Feel / UI stories — manual verification steps]:**
 
-- **AC-1**: [criterion text]
+- **MC-[epic-slug]-S[story-number]-AC[criterion-number]** — **AC-S[story-number]-[criterion-number]**: [criterion text]
   - Setup: [how to reach the state]
   - Verify: [what to look for]
   - Pass condition: [unambiguous pass description]
@@ -294,8 +425,8 @@ Replace the "Stories: Not yet created" line with a populated table:
 
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
-| 001 | [title] | Logic | Ready | ADR-NNNN |
-| 002 | [title] | Integration | Ready | ADR-MMMM |
+| 001 | [title] | Logic | [story_status] | ADR-NNNN |
+| 002 | [title] | Integration | [story_status] | ADR-MMMM |
 ```
 
 ### Also update `production/epics/index.md`
@@ -311,11 +442,14 @@ Ask the user directly to close with context-aware next steps:
 Check:
 - Are there other epics in `production/epics/` without stories yet? List them.
 - Is this the last epic? If so, include `$sprint-plan` as an option.
+- Which written stories are `Needs Work` or `Blocked`? Do not offer
+  `$dev-story` for those stories. Route missing TR work to
+  `$architecture-review` and missing QA coverage to `$qa-plan`.
 
 Structured prompt:
 - Prompt: "[N] stories written to `production/epics/[epic-slug]/`. What next?"
 - Options (include all that apply):
-  - `[A] Start implementing — run $story-readiness [first-story-path]` (Recommended)
+  - `[A] Validate the first Ready story — run $story-readiness [first-ready-story-path]` (Recommended; only if a Ready story exists)
   - `[B] Create stories for [next-epic-slug] — run $create-stories [slug]` (only if other epics have no stories yet)
   - `[C] Plan the sprint — run $sprint-plan new` (only if all epics have stories)
   - `[D] Stop here for this session`
@@ -331,9 +465,12 @@ Note in output: "Work through stories in order — each story's `Depends on:` fi
 3. **Warn on blocked stories** — flag any story with a Proposed ADR before writing
 4. **Single changeset approval** — preview the full story set and write it only after the one approval
 5. **No invention** — acceptance criteria come from GDDs, implementation notes from ADRs, rules from the manifest
-6. **Never start implementation** — this skill stops at the story file level
+6. **Fail closed** — never invent TR-IDs, never render a status constant, and never label missing QA coverage Ready
+7. **Never start implementation** — this skill stops at the story file level
 
 After writing (or declining):
 
-- **Verdict: COMPLETE** — [N] stories written to `production/epics/[epic-slug]/`. Run `$story-readiness` → `$dev-story` to begin implementation.
+- **Verdict: COMPLETE** — [N] stories written to `production/epics/[epic-slug]/`: [R] Ready, [W] Needs Work, [B] Blocked. Run `$story-readiness` only for a Ready candidate; `$dev-story` is allowed only after the downstream final verdict is READY.
+- **Verdict: NEEDS WORK** — stories were written, but none is currently Ready and no hard blocker exists. Resolve the listed QA coverage gaps with `$qa-plan`, then rerun `$create-stories`.
+- **Verdict: BLOCKED** — one or more stories have traceability, ADR, or full-mode QA blockers. The written files remain planning artifacts; route TR registry gaps to `$architecture-review` and do not run `$dev-story` for them.
 - **Verdict: BLOCKED** — user declined. No story files written.

@@ -20,7 +20,7 @@
 | `$brainstorm` | Guided ideation using professional studio methods (MDA, SDT, Bartle, verb-first) |
 | `$map-systems` | Decompose game concept into systems, map dependencies, prioritize design order |
 | `$design-system` | Guided, section-by-section GDD authoring for a single game system |
-| `$quick-design` | Lightweight design spec for small changes — tuning, tweaks, minor additions |
+| `$quick-design` | Proposal-only workflow for structurally low-risk bounded changes; requires independent review and an `APPLIED` receipt |
 | `$review-all-gdds` | Cross-GDD consistency and game design holism review across all design docs |
 | `$propagate-design-change` | When a GDD is revised, find affected ADRs and produce an impact report |
 
@@ -59,7 +59,7 @@
 | `$sprint-status` | Fast 30-line sprint snapshot (reads sprint-status.yaml) |
 | `$story-readiness` | Validate a story is implementation-ready before pickup (READY/NEEDS WORK/BLOCKED) |
 | `$story-done` | 8-phase completion review after implementation; updates story file, surfaces next story |
-| `$estimate` | Structured effort estimate with complexity, dependencies, and risk breakdown |
+| `$estimate` | Read-only relative/calibrated effort evidence; no scope, staffing, budget, or schedule decision |
 
 ## Reviews & Analysis
 
@@ -69,8 +69,8 @@
 | `$code-review` | Architectural code review for a file or changeset |
 | `$balance-check` | Analyze game balance data, formulas, and config — flag outliers |
 | `$content-audit` | Audit GDD-specified content counts against implemented content |
-| `$scope-check` | Analyze feature or sprint scope against original plan, flag scope creep |
-| `$perf-profile` | Structured performance profiling with bottleneck identification |
+| `$scope-check` | Compare explicit baseline/current scope by stable IDs and evidence coverage |
+| `$perf-profile` | Capture preparation or deterministic runtime-export analysis with build-bound evidence |
 | `$tech-debt` | Scan, track, prioritize, and report on technical debt |
 | `$gate-check` | Validate readiness to advance between development phases (PASS/CONCERNS/FAIL) |
 | `$consistency-check` | Scan all GDDs against the entity registry to detect cross-document inconsistencies (stats, names, rules that contradict each other) |
@@ -81,7 +81,7 @@
 | Command | Purpose |
 |---------|---------|
 | `$qa-plan` | Generate a QA test plan for a sprint or feature |
-| `$smoke-check` | Run critical path smoke test gate before QA hand-off |
+| `$smoke-check` | Run a build-bound smoke gate; only a persisted sprint PASS receipt is hand-off eligible |
 | `$soak-test` | Generate a soak test protocol for extended play sessions |
 | `$regression-suite` | Map test coverage to GDD critical paths, identify fixed bugs without regression tests |
 | `$test-setup` | Scaffold the test framework and CI/CD pipeline for the project's engine |
@@ -98,7 +98,7 @@
 | `$milestone-review` | Review milestone progress and generate status report |
 | `$retrospective` | Run a structured sprint or milestone retrospective |
 | `$bug-report` | Create a structured bug report |
-| `$bug-triage` | Read all open bugs, re-evaluate priority vs. severity, assign owner and label |
+| `$bug-triage` | Read all canonical open bugs and propose priority, scheduling, owner, and risk dispositions without committing them |
 | `$reverse-document` | Generate design or architecture docs from existing implementation |
 | `$playtest-report` | Generate a structured playtest report or analyze existing playtest notes |
 
@@ -108,8 +108,8 @@
 |---------|---------|
 | `$release-checklist` | Generate and validate a pre-release checklist for the current build |
 | `$launch-checklist` | Complete launch readiness validation across all departments |
-| `$changelog` | Auto-generate changelog from git commits and sprint data |
-| `$patch-notes` | Generate player-facing patch notes from git history and internal data |
+| `$changelog` | Reproducible local changelog entry from an explicit Git range and evidence manifest |
+| `$patch-notes` | Traceable local patch-note draft from approved candidate and production deployment evidence; never publishes |
 | `$hotfix` | Emergency fix workflow with audit trail, bypassing normal sprint process |
 | `$day-one-patch` | Prepare a focused day-one patch for known issues discovered after gold master but before or at public launch |
 
@@ -118,7 +118,7 @@
 | Command | Purpose |
 |---------|---------|
 | `$prototype` | Concept prototype — throwaway build right after brainstorm to validate core idea (Phase 1) |
-| `$vertical-slice` | Pre-Production validation — production-quality end-to-end build before committing to Production (Phase 4) |
+| `$vertical-slice` | Pre-Production plan/evaluate/status contract with bounded batches and current persisted evidence (Phase 4) |
 | `$onboard` | Generate contextual onboarding document for a new contributor or agent |
 | `$localize` | Localization workflow: string extraction, validation, translation readiness |
 
@@ -136,4 +136,4 @@ Coordinate multiple agents on a single feature area:
 | `$team-audio` | audio-director + sound-designer + technical-artist + gameplay-programmer |
 | `$team-level` | level-designer + narrative-director + world-builder + art-director + systems-designer + qa-tester |
 | `$team-live-ops` | live-ops-designer + economy-designer + community-manager + analytics-engineer |
-| `$team-qa` | qa-lead + qa-tester + gameplay-programmer + producer |
+| `$team-qa` | Evidence-bound qa-lead + qa-tester cycle for one exact candidate; implementation is outside the QA reviewer run |

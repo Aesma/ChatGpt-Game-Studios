@@ -1,4 +1,4 @@
 interface:
-  display_name: "Qa Plan"
-  short_description: "Generate a QA test plan for a sprint or feature"
-  default_prompt: "Use $qa-plan to run the QA Plan game-studio workflow."
+  display_name: "QA Plan"
+  short_description: "Write a hash-bound QA plan without editing stories"
+  default_prompt: "Use $qa-plan to create one version-bound QA plan with stable AC/test IDs and no story or session-state writes."

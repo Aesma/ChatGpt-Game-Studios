@@ -1,4 +1,4 @@
 interface:
   display_name: "Estimate"
-  short_description: "Estimates task effort by analyzing complexity, dependencies..."
-  default_prompt: "Use $estimate to run the Estimate game-studio workflow."
+  short_description: "Produce relative or calibrated effort evidence"
+  default_prompt: "Use $estimate with an explicit story, sprint, or freeform profile to produce a read-only estimate bound to Scope ID and baseline/current hashes."

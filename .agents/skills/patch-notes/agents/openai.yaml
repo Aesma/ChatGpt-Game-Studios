@@ -1,4 +1,4 @@
 interface:
   display_name: "Patch Notes"
-  short_description: "Generate player-facing patch notes from git history, sprint..."
-  default_prompt: "Use $patch-notes to run the Patch Notes game-studio workflow."
+  short_description: "Draft from exact production deployment evidence; never publish"
+  default_prompt: "Use $patch-notes to create a traceable local draft only when an approved exact candidate has a matching verified production deployment receipt."

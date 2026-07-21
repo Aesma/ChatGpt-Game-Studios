@@ -1,4 +1,4 @@
 interface:
   display_name: "Onboard"
-  short_description: "Generates a contextual onboarding document for a new..."
-  default_prompt: "Use $onboard to run the Onboard game-studio workflow."
+  short_description: "Read-only, bounded, source-cited project orientation"
+  default_prompt: "Use $onboard to return a role-aware onboarding summary with bounded sources, visibility controls, provenance, and explicit partial/error states."

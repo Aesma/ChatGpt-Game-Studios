@@ -1,6 +1,6 @@
 ---
 name: sprint-status
-description: "Fast sprint status check. Reads the current sprint plan, scans story files for status, and produces a concise progress snapshot with burndown assessment and emerging risks. Run at any time during a sprint for quick situational awareness. Use when user asks 'how is the sprint going', 'sprint update', 'show sprint progress'."
+description: "Read-only sprint status check that resolves one explicit active sprint, validates tracker identity and freshness against plan/story hashes, recognizes In Review and recovery checkpoints, and refuses a health verdict on conflicting data."
 ---
 
 ## Invocation and execution
@@ -18,27 +18,62 @@ concise snapshot in under 30 lines. For detailed sprint management, use
 `$sprint-plan update` or `$milestone-review`.
 
 **This skill is read-only.** It never proposes changes, never asks to write
-files, and makes at most one concrete recommendation.
+files, and makes at most one concrete recommendation. It never uses file
+modification time to select a sprint. If sprint identity or tracker freshness
+cannot be proven, it returns `DATA CONFLICT` and stops before calculating or
+printing a health verdict.
 
 ---
 
-## 1. Find the Sprint
+## 1. Resolve Exactly One Sprint
 
-**Argument:** the first provided argument (blank = use current sprint)
+**Argument:** the first provided argument (blank = resolve the current sprint)
 
-- If an argument is given (e.g., `$sprint-status 3`), search
-  `production/sprints/` for a file matching `sprint-03.md`, `sprint-3.md`,
-  or similar. Report which file was found.
-- If no argument is given, find the most recently modified file in
-  `production/sprints/` and treat it as the current sprint.
-- If `production/sprints/` does not exist or is empty, report: "No sprint
-  files found. Start a sprint with `$sprint-plan new`." Then stop.
+Read `production/sprint-status.yaml`, when it exists, and
+`production/session-state/active.md` as selector inputs before choosing a
+plan. Selection and status authority are separate decisions: a tracker may name
+the active sprint but is not trusted for story status until Phase 3 passes every
+identity and freshness check.
 
-Read the sprint file in full. Extract:
-- Sprint number and goal
-- Start date and end date
-- All story or task entries with their priority (Must Have / Should Have /
-  Nice to Have), owner, and estimate
+Apply this precedence:
+
+1. **Explicit argument.** Normalize the requested sprint ID and find a plan
+   under `production/sprints/` whose declared sprint ID matches it. A
+   filename match is only a candidate; the ID inside the plan must agree.
+2. **Tracker selector.** With no argument, use exactly one well-formed top-level
+   `active_sprint_id` from `production/sprint-status.yaml`.
+3. **Session selector.** If the tracker has no `active_sprint_id`, use
+   exactly one active sprint ID or plan reference from
+   `production/session-state/active.md`.
+4. **Ask.** If no source resolves exactly one sprint, or a source contains
+   multiple active sprint IDs, list the candidate IDs and paths and ask the user
+   which sprint to inspect. Do not continue to status collection.
+
+Never select the most recently modified file and never use mtime as a
+tie-breaker. If the selected ID resolves to zero plans, report the missing ID and
+source. If it resolves to multiple plans, report the ambiguity and ask; do not
+pick one.
+
+An explicit request for a historical sprint may ignore a tracker that
+consistently identifies a different active sprint, but the report must mark that
+tracker `NOT APPLICABLE — different active sprint` and use story/plan
+fallback data. Without an explicit historical argument, disagreement between
+the selected plan, tracker, and session-state active sprint is `DATA
+CONFLICT`.
+
+If `production/sprints/` does not exist or contains no plan and neither
+selector names a sprint, report: "No active sprint found. Start a sprint with
+`$sprint-plan new`." Then stop without a verdict.
+
+Read the selected sprint plan in full. Extract:
+
+- sprint ID/number and goal;
+- explicit `plan_revision` and `updated_at`, if present;
+- start date and end date; and
+- every story/task stable ID, exact referenced path or inline entry, priority,
+  owner, and estimate.
+
+Record the selection source and selected plan path for the report.
 
 ---
 
@@ -55,31 +90,125 @@ found — burndown assessment skipped."
 
 ---
 
-## 3. Scan Story Status
+## 3. Validate the Tracker Before Reading Status
 
-**First: check for `production/sprint-status.yaml`.**
+When `production/sprint-status.yaml` exists and applies to the selected
+sprint, it may be used only after this complete fail-closed check. Required
+top-level fields are:
 
-If it exists, read it directly — it is the authoritative source of truth.
-Extract status for each story from the `status` field. No markdown scanning needed.
-Use its `sprint`, `goal`, `start`, `end` fields instead of re-parsing the sprint plan.
+- `sprint_id` — exact normalized selected sprint ID;
+- `active_sprint_id` — exact normalized selected sprint ID for a current
+  sprint report;
+- `plan_revision` — exact match for the selected plan's explicit
+  `plan_revision`;
+- `story_set_hash` — `sha256:` plus 64 lowercase hexadecimal digits;
+  and
+- `updated_at` — a parseable ISO-8601 timestamp.
 
-**If `sprint-status.yaml` does not exist** (legacy sprint or first-time setup),
-fall back to markdown scanning:
+A legacy `sprint`, `generated`, or `updated` field is not a
+substitute for the required contract. If the selected plan lacks an explicit
+`plan_revision`, an applicable tracker exists but lacks a required field,
+or a field is malformed, return `DATA CONFLICT`. Never fall back to
+markdown to bypass a present but invalid applicable tracker.
 
-1. If the entry references a story file path, check if the file exists.
-   Read the file and scan for status markers: DONE, COMPLETE, IN PROGRESS,
-   BLOCKED, NOT STARTED (case-insensitive).
-2. If the entry has no file path (inline task in the sprint plan), scan the
-   sprint plan itself for status markers next to that entry.
-3. If no status marker is found, classify as NOT STARTED.
-4. If a file is referenced but does not exist, classify as MISSING and note it.
+### 3.1 Recompute the story-set hash
 
-When using the fallback, add a note at the bottom of the output:
-"⚠ No `sprint-status.yaml` found — status inferred from markdown. Run `$sprint-plan update` to generate one."
+Resolve every plan entry before trusting tracker status. For each item produce
+one canonical UTF-8 record:
 
-Optionally (fast check only — do not do a deep scan): search `src/` for a
-directory or file name that matches the story's system slug to check for
-implementation evidence. This is a hint only, not a definitive status.
+`<story-id>\t<normalized-path-or-INLINE>\t<source-hash>`
+
+Normalize path separators to `/`. The source hash is the SHA-256 of the
+referenced story's raw bytes; for an inline item it is the SHA-256 of the exact
+UTF-8 task entry; for a missing referenced file use the literal `MISSING`.
+Sort records by story ID using code-point order, join them with LF and no trailing
+LF, hash those exact bytes, and prefix the lowercase digest with `sha256:`.
+Duplicate or missing stable story IDs make the contract unverifiable and
+therefore `DATA CONFLICT`.
+
+Require exact agreement among:
+
+- selected ID, plan-declared ID, tracker `sprint_id`, and—on a current
+  sprint report—tracker `active_sprint_id`;
+- selected plan `plan_revision` and tracker `plan_revision`; and
+- recomputed story-set hash and tracker `story_set_hash`.
+
+The tracker `updated_at` must not predate a parseable plan
+`updated_at` or any parseable status-update timestamp in the current story
+set. Hash agreement, not timestamps alone, proves freshness.
+
+For each tracker story, require one matching plan/story ID and normalize only
+these equivalent lifecycle spellings:
+
+| Story file | Tracker | Report |
+|---|---|---|
+| Complete or Done | done | DONE |
+| In Review | review or in_review | IN REVIEW |
+| In Progress | in-progress or in_progress | IN PROGRESS |
+| Ready | ready-for-dev or ready_for_dev | READY |
+| Not Started | backlog | NOT STARTED |
+| Blocked | blocked | BLOCKED |
+
+`IN REVIEW` is implemented but not accepted; it is never counted as
+complete. A story/tracker status disagreement after normalization is `DATA
+CONFLICT`, not a choice of which source to trust.
+
+### 3.2 Recognize dev-story recovery evidence
+
+For each story, check only the exact derived path
+`production/session-state/dev-story-[story-id].yaml`. A checkpoint is
+recovery evidence, never a status override or proof of completion.
+
+An unresolved checkpoint must identify the same story ID/path, contain a
+well-formed `plan_hash`, source hashes, baseline/current target hashes,
+planned and actual write sets, test evidence or error, and an exact safe resume
+point. Rehash every current path the checkpoint claims is current. Any malformed
+hash, identity mismatch, or current-hash mismatch is `DATA CONFLICT` and
+must show observed and expected values.
+
+A valid unresolved PARTIAL or BLOCKED checkpoint requires both story and tracker
+to remain IN PROGRESS. IN REVIEW together with such a checkpoint is `DATA
+CONFLICT`: staged `$dev-story` permits IN REVIEW only after every
+blocking test passes and no partial transaction remains. A valid checkpoint is
+reported as `RECOVERY CHECKPOINT` with its plan hash and resume point; the
+story is still not complete. A FAILED transaction that was fully restored is
+not inferred from a checkpoint unless its recorded baseline hashes equal the
+freshly rehashed files.
+
+For an IN REVIEW story, validate the story's recorded plan hash, implementation
+and evidence post-write hashes, and test evidence. A missing/malformed hash, a
+nonzero test exit code, or an absent log hash contradicts the successful
+dev-story projection and is `DATA CONFLICT`.
+
+### 3.3 Conflict response
+
+On any identity, revision, story-set, projection, checkpoint, or evidence
+conflict, output only:
+
+`DATA CONFLICT — sprint health not assessed.`
+
+Then list the selected sprint ID/path, selection source, every source checked,
+each expected and observed value, and one recovery owner/action. Do not count
+stories, calculate completion, emit On Track/At Risk/Behind, or let the skill
+repair any file.
+
+### 3.4 Tracker-absent fallback
+
+Only when no applicable tracker exists, scan the selected plan and referenced
+story files:
+
+1. Read exact referenced files and scan for DONE, COMPLETE, IN REVIEW, IN
+   PROGRESS, READY, BLOCKED, or NOT STARTED (case-insensitive).
+2. Scan the plan entry itself for an inline task.
+3. If no marker is found, retain the existing fallback classification of NOT
+   STARTED.
+4. If a referenced file is absent, classify it MISSING.
+
+Add: "⚠ No applicable `sprint-status.yaml` found — status inferred from
+markdown. Run `$sprint-plan update` to generate a revisioned tracker."
+
+Optionally search `src/` for a matching system slug as an evidence hint
+only; it never changes status, source identity, counts, or verdict.
 
 ### Stale Story Detection
 
@@ -108,6 +237,7 @@ On Track window. Record this escalation reason: "At Risk — [N] story(ies) with
 
 Calculate:
 - Tasks complete (DONE or COMPLETE)
+- Tasks in review (IN REVIEW; not complete)
 - Tasks in progress (IN PROGRESS)
 - Tasks blocked (BLOCKED)
 - Tasks not started (NOT STARTED or MISSING)
@@ -131,6 +261,8 @@ Keep the output concise. The story status table is mandatory — do not truncate
 ```markdown
 ## Sprint [N] Status — [Today's Date]
 **Sprint Goal**: [from sprint plan]
+**Selection**: [argument / tracker.active_sprint_id / session state] → [plan path]
+**Sources**: plan revision [value]; tracker updated_at [value or N/A]; story_set_hash [value or fallback]
 **Days Remaining**: [N] of [total] ([% time consumed])
 
 ### Progress: [complete/total] tasks ([%])
@@ -138,6 +270,7 @@ Keep the output concise. The story status table is mandatory — do not truncate
 | Story / Task         | Priority   | Status      | Owner   | Blocker        |
 |----------------------|------------|-------------|---------|----------------|
 | [title]              | Must Have  | DONE        | [owner] |                |
+| [title]              | Must Have  | IN REVIEW   | [owner] | awaiting review|
 | [title]              | Must Have  | IN PROGRESS | [owner] |                |
 | [title]              | Must Have  | BLOCKED     | [owner] | [brief reason] |
 | [title]              | Should Have| NOT STARTED | [owner] |                |
@@ -200,12 +333,14 @@ Run `$story-readiness sprint` to validate story file coverage.
 This skill is read-only. It reports observed facts from files on disk.
 
 - It does not update the sprint plan
-- It does not change story status
+- It does not change story status or reconcile conflicting projections
 - It does not propose scope cuts (that is `$sprint-plan update`)
 - It makes at most one recommendation per run
 
 For more detail on a specific story, the user can read the story file directly
 or run `$story-readiness [path]`.
+
+For tracker identity/revision/hash conflicts, route the exact mismatch to the status recorder (normally `$sprint-plan update`; for a current dev-story recovery checkpoint, resume `$dev-story` from the recorded safe point).
 
 For sprint replanning, use `$sprint-plan update`.
 For end-of-sprint retrospective, use `$retrospective`.

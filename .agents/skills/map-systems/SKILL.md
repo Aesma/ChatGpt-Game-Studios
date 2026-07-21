@@ -1,369 +1,293 @@
 ---
 name: map-systems
-description: "Decompose a game concept into individual systems, map dependencies, prioritize design order, and create the systems index."
+description: "Decompose a game concept into a reviewed systems index, map dependencies, prioritize design order, and stop with a separate GDD-authoring handoff."
 ---
 
-## Invocation and execution
+## Invocation, ownership, and termination
 
-Invoke this workflow as `$map-systems`.
+Invoke this workflow as $map-systems.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+This workflow authors or updates exactly one systems registry:
+design/gdd/systems-index.md. It may also create or update
+production/session-state/active.md only when that state edit was included in the
+same authorized changeset preview.
 
-Arguments: `[next | system-name] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+It owns systems enumeration, dependency mapping, priority order, and the index
+write. It does not author a system GDD, invoke another skill, record a GDD review,
+or change a system row because GDD authoring or review completed. The
+$design-system author owns exactly one GDD and its checkpoint; a separate
+hash-bound recorder owns later index status changes.
 
+Arguments:
 
-When this skill is invoked:
+    [next | <system-id-or-name>] [--review full|lean|solo]
 
-## Parse Arguments
+The modes are exclusive:
 
-Two modes:
+- No selection argument: run the index-authoring workflow below.
+- next: read the index, display the highest-priority Not Started system, return a
+  fresh-task $design-system command, and stop.
+- system-id-or-name: resolve and display that index row, return a fresh-task
+  $design-system command, and stop.
 
-- **No argument**: `$map-systems` — Run the full decomposition workflow (Phases 1-5)
-  to create or update the systems index.
-- **`next`**: `$map-systems next` — Pick the highest-priority undesigned system
-  from the index and hand off to `$design-system` (Phase 6).
+Selection-only modes never write files, spawn review agents, invoke
+$design-system, or loop to another system. Index-authoring mode stops immediately
+after its authorized index/state changes are verified. A user request to begin
+GDD authoring is a new task, not another phase of this workflow.
 
-Also resolve the review mode (once, store for all gate spawns this run):
-1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
-3. Else → default to `lean`
+Resolve review mode once:
 
-See `.codex/docs/director-gates.md` for the full check pattern.
+1. use an explicit --review value;
+2. otherwise read production/review-mode.txt;
+3. otherwise use lean.
 
----
+See .codex/docs/director-gates.md for gate definitions. This workflow strengthens
+their mutation boundary: every reviewer is read-only and reviews an in-memory,
+hash-bound draft before any authoritative write.
 
-## Phase 1: Read Concept (Required Context)
+## 1. Selection-only handoff
 
-Read the game concept and any existing design work. This provides the raw material
-for systems decomposition.
+For next or an explicit system ID/name, read design/gdd/systems-index.md and do
+nothing else.
 
-**Required:**
-- Read `design/gdd/game-concept.md` — **fail with a clear message if missing**:
-  > "No game concept found at `design/gdd/game-concept.md`. Run `$brainstorm` first
-  > to create one, then come back to decompose it into systems."
+For next, select the first Not Started row by Recommended Design Order. For an
+explicit value, prefer an exact stable ID match, then an exact case-insensitive
+name match. If the index is absent, no eligible row exists, or a name is
+ambiguous, return Verdict: BLOCKED with the evidence and stop.
 
-**Optional (read if they exist):**
-- Read `design/gdd/game-pillars.md` — pillars constrain priority and scope
-- Read `design/gdd/systems-index.md` — if exists, **resume** from where it left off
-  (update, don't recreate from scratch)
-- Find files matching `design/gdd/*.md` — check which system GDDs already exist
+Return:
 
-**If the systems index already exists:**
-- Read it and present current status to the user
-- Ask the user directly to ask:
-  "The systems index already exists with [N] systems ([M] designed, [K] not started).
-  What would you like to do?"
-  - Options: "Update the index with new systems", "Design the next undesigned system",
-    "Review and revise priorities"
+    System ID: <stable ID, or the row's current identifier if legacy>
+    System: <name>
+    Status: <current status>
+    Handoff: Start a fresh task and run $design-system "<system name>"
 
----
+Then return Verdict: COMPLETE — HANDOFF ONLY and stop. Do not call the command.
+Do not ask whether to continue to another system.
 
-## Phase 2: Systems Enumeration (Collaborative)
+## 2. Load index-authoring context
 
-Extract and identify all systems the game needs. This is the creative core of the
-skill — it requires human judgment because concept docs rarely enumerate every
-system explicitly.
+Read applicable AGENTS.md files, then:
 
-### Step 2a: Extract Explicit Systems
+Required:
 
-Scan the game concept for directly mentioned systems and mechanics:
-- Core Mechanics section (most explicit)
-- Core Loop section (implies what systems drive each loop tier)
-- Technical Considerations section (networking, procedural generation, etc.)
-- MVP Definition section (required features = required systems)
+- design/gdd/game-concept.md
 
-### Step 2b: Identify Implicit Systems
+If the concept is missing, return:
 
-For each explicit system, identify the **hidden systems** it implies. Games always
-need more systems than the concept doc mentions. Use this inference pattern:
+    No game concept found at design/gdd/game-concept.md. Run $brainstorm first
+    to create one, then return to $map-systems.
+    Verdict: BLOCKED
 
-- "Inventory" implies: item database, equipment slots, weight/capacity rules,
-  inventory UI, item serialization for save/load
-- "Combat" implies: damage calculation, health system, hit detection, status effects,
-  enemy AI, combat UI (health bars, damage numbers), death/respawn
-- "Open world" implies: streaming/chunking, LOD system, fast travel, map/minimap,
-  point of interest tracking, world state persistence
-- "Multiplayer" implies: networking layer, lobby/matchmaking, state synchronization,
-  anti-cheat, network UI (ping, player list)
-- "Crafting" implies: recipe database, ingredient gathering, crafting UI,
-  success/failure mechanics, recipe discovery/learning
-- "Dialogue" implies: dialogue tree system, dialogue UI, choice tracking, NPC
-  state management, localization hooks
-- "Progression" implies: XP system, level-up mechanics, skill tree, unlock
-  tracking, progression UI, progression save data
+Stop without writing.
 
-Explain in conversation text why each implicit system is needed (with examples).
+Read when present:
 
-### Step 2c: User Review
+- design/gdd/game-pillars.md;
+- design/gdd/systems-index.md;
+- direct child Markdown files under design/gdd/ only to determine whether a
+  named GDD path exists.
 
-Present the enumeration organized by category. For each system, show:
-- Name
-- Category
-- Brief description (1 sentence)
-- Whether it was explicit (from concept) or implicit (inferred)
+Do not invoke any workflow while gathering context.
 
-Then ask the user directly to capture feedback:
-- "Are there systems missing from this list?"
-- "Should any of these be combined or split?"
-- "Are there systems listed that this game does NOT need?"
+If the index exists, report its current system count and status counts and ask
+the user to choose one bounded intent:
 
-Iterate until the user approves the enumeration.
+- add newly discovered systems;
+- review and revise dependencies or priorities; or
+- stop and use a selection-only handoff.
 
----
+Never silently recreate or overwrite an existing index.
 
-## Phase 3: Dependency Mapping (Collaborative)
+## 3. Enumerate systems collaboratively
 
-For each system, determine what it depends on. A system "depends on" another if
-it cannot function without that other system existing first.
+Extract explicit systems from the concept's core mechanics, loop, technical
+considerations, and MVP definition.
 
-### Step 3a: Map Dependencies
+Identify implied candidates, explaining the evidence and player/product reason
+for each. Typical implications include inventory data and UI, combat health and
+feedback, world streaming and persistence, networking synchronization and lobby
+flows, crafting recipes and discovery, dialogue state and localization hooks,
+and progression unlocks and save data.
 
-For each system, list its dependencies. Use these dependency heuristics:
-- **Input/output dependencies**: System A produces data System B needs
-- **Structural dependencies**: System A provides the framework System B plugs into
-- **UI dependencies**: Every gameplay system has a corresponding UI system that
-  depends on it (but UI is designed after the gameplay system)
+Present each proposed system with:
 
-### Step 3b: Sort by Dependency Order
+- stable System ID in the form `SYS-<canonical-kebab-slug>`;
+- name;
+- category;
+- one-sentence responsibility;
+- explicit or inferred origin; and
+- concept evidence.
 
-Arrange systems into layers:
-1. **Foundation**: Systems with zero dependencies (designed and built first)
-2. **Core**: Systems depending only on Foundation systems
-3. **Feature**: Systems depending on Core systems
-4. **Presentation**: UI and feedback systems that wrap gameplay systems
-5. **Polish**: Meta-systems, tutorials, analytics, accessibility
+Ask the user which systems are missing, should be combined or split, or should be
+removed. Iterate in conversation until the user approves the enumeration. Do not
+write a draft file during this phase.
 
-### Step 3c: Detect Circular Dependencies
+System IDs are persistent identity, not display order. Preserve every existing
+valid ID exactly. For a new system, derive `SYS-<canonical-kebab-slug>` only when
+it is unique across current and proposed rows. A normalization collision is
+BLOCKED until the user chooses distinct names/IDs. Never renumber an existing
+system when ordering changes. For a legacy row with no System ID, propose one in
+the reviewed draft and show the migration explicitly; do not let downstream
+workflows consume that row until the ID is recorded.
 
-Check for cycles in the dependency graph. If found:
-- Highlight them to the user
-- Propose resolutions (interface abstraction, simultaneous design, breaking the
-  cycle by defining a contract between the two systems)
+## 4. Map dependencies collaboratively
 
-### Step 3d: Present to User
+For every approved system, map:
 
-Show the dependency map as a layered list. Highlight:
-- Any circular dependencies
-- Any "bottleneck" systems (many others depend on them — these are high-risk)
-- Any systems with no dependents (leaf nodes — lower risk, can be designed late)
+- input/output dependencies;
+- structural dependencies;
+- player-facing UI dependencies; and
+- the layer: Foundation, Core, Feature, Presentation, or Polish.
 
-Ask the user directly to ask: "Does this dependency ordering look right? Any
-dependencies I'm missing or that should be removed?"
+Sort the graph in dependency order. Surface circular dependencies, bottlenecks,
+and leaf systems, with proposed cycle-breaking outcomes. Ask the user to approve
+or revise the map.
 
-**Review mode check** — apply before spawning TD-SYSTEM-BOUNDARY:
-- `solo` → skip. Note: "TD-SYSTEM-BOUNDARY skipped — Solo mode." Proceed to priority assignment.
-- `lean` → skip (not a PHASE-GATE). Note: "TD-SYSTEM-BOUNDARY skipped — Lean mode." Proceed to priority assignment.
-- `full` → spawn as normal.
+Do not spawn TD-SYSTEM-BOUNDARY here. All active reviews must inspect the same
+complete draft and hash at the single pre-write checkpoint in section 7.
 
-**After dependency mapping is approved, spawn `technical-director` through Codex subagent delegation using gate TD-SYSTEM-BOUNDARY (`.codex/docs/director-gates.md`) before proceeding to priority assignment.**
+## 5. Assign priorities and design order
 
-Pass: the dependency map summary, layer assignments, bottleneck systems list, any circular dependency resolutions.
+Propose MVP, Vertical Slice, Alpha, and Full Vision tiers from the concept and
+dependency graph. Explain both technical necessity and player-experience impact.
 
-Present the assessment. If REJECT, revise the system boundaries with the user before moving to priority assignment. If CONCERNS, note them inline in the systems index and continue.
+Ask the user to approve or revise the priorities. Then combine dependency order
+and milestone priority into the recommended design order.
 
----
+Do not spawn PR-SCOPE here. It reviews the same complete draft at the pre-write
+checkpoint.
 
-## Phase 4: Priority Assignment (Collaborative)
+## 6. Render one canonical draft
 
-Assign each system to a priority tier based on what milestone it's needed for.
+Populate .codex/docs/templates/systems-index.md in memory for the authoritative
+path design/gdd/systems-index.md. The candidate schema must include a persistent
+`System ID` column in every enumeration, dependency/order, and progress row; if
+the legacy template lacks that column, augment the in-memory candidate rather
+than omitting identity. Include enumeration, dependency map, design order,
+risks, and progress. Preserve existing IDs, GDD/status claims unless the user
+explicitly selected a change; never infer Approved from a GDD's existence.
 
-### Step 4a: Auto-Assign Based on Concept
+Render the exact UTF-8 Markdown bytes with LF line endings. Compute:
 
-Use these heuristics for initial assignment:
-- **MVP**: Systems mentioned in the concept's "Required for MVP" section, plus their
-  Foundation-layer dependencies
-- **Vertical Slice**: Systems needed for a complete experience in one area
-- **Alpha**: All remaining gameplay systems
-- **Full Vision**: Polish, meta, and nice-to-have systems
+    candidate_sha256: <SHA-256 of the exact proposed bytes>
 
-### Step 4b: User Review
+Show the complete draft or a lossless reviewable representation plus the hash.
+The draft remains in memory. No systems index, temporary draft, review record,
+or session-state file may be written before section 8.
 
-Present the priority assignments in a table. For each tier, explain why systems
-were placed there.
+Any content change after this point creates a new candidate hash and invalidates
+every earlier review and authorization.
 
-Ask the user directly to ask: "Do these priority assignments match your vision?
-Which systems should be higher or lower priority?"
+## 7. Run one read-only pre-write review checkpoint
 
-Explain reasoning in conversation: "I placed [system] in MVP because the core loop
-requires it — without [system], the 30-second loop can't function."
+Review mode handling:
 
-**"Why" column guidance**: When explaining why each system was placed in a priority tier, mix technical necessity with player-experience reasoning. Do not use purely technical justifications like "Combat needs damage math" — connect to player experience where relevant. Examples of good "Why" entries:
-- "Required for the core loop — without it, placement decisions have no consequence (Pillar 2: Placement is the Puzzle)"
-- "Ballista's punch-through identity is established here — this stat definition is what makes it feel different from Archer"
-- "Foundation for all economy decisions — players must understand upgrade costs to make meaningful placement choices"
+- solo: note CD-SYSTEMS, TD-SYSTEM-BOUNDARY, and PR-SCOPE skipped — Solo mode.
+- lean: note CD-SYSTEMS, TD-SYSTEM-BOUNDARY, and PR-SCOPE skipped — Lean mode.
+- full: spawn creative-director for CD-SYSTEMS, technical-director for
+  TD-SYSTEM-BOUNDARY, and producer for PR-SCOPE simultaneously. Issue every
+  delegation before waiting for any result, then collect all results.
 
-Pure technical necessity ("X depends on Y") is insufficient alone when the system directly shapes player experience.
+Pass every active reviewer:
 
-**Review mode check** — apply before spawning PR-SCOPE:
-- `solo` → skip. Note: "PR-SCOPE skipped — Solo mode." Proceed to writing the systems index.
-- `lean` → skip (not a PHASE-GATE). Note: "PR-SCOPE skipped — Lean mode." Proceed to writing the systems index.
-- `full` → spawn as normal.
+- the complete candidate bytes;
+- candidate_sha256;
+- proposed destination path;
+- relevant concept and pillar evidence;
+- priority tiers, dependency graph, bottlenecks, cycles, and scope context; and
+- an explicit read-only contract: do not write files, edit the draft, revise the
+  system set, or invoke another workflow.
 
-**After priorities are approved, spawn `producer` through Codex subagent delegation using gate PR-SCOPE (`.codex/docs/director-gates.md`) before writing the index.**
+Reviewers return only a verdict and stable findings. Every finding must use ID
+<gate-id>-F### and include candidate_sha256, location, evidence, impact, and
+required outcome. Normalize producer REALISTIC as pass, OPTIMISTIC as concerns,
+and UNREALISTIC as reject.
 
-Pass: total system count per milestone tier, estimated implementation volume per tier (system count × average complexity), team size, stated project timeline.
+Apply the strictest disposition:
 
-Present the assessment. If UNREALISTIC, offer to revise priority tier assignments before writing the index. If CONCERNS, note them and continue.
+- Any REJECT or UNREALISTIC: display the stable findings, output a revision
+  handoff containing candidate_sha256 and every finding ID, return Verdict:
+  BLOCKED — REVIEW REJECTED, and stop with zero writes.
+- CONCERNS or OPTIMISTIC with no rejection: ask the user to accept the unchanged
+  reviewed draft, start a fresh author task to revise the listed findings, or
+  stop. Accepting unchanged binds the same candidate_sha256. Choosing revision
+  outputs the stable finding handoff and stops with zero writes.
+- All pass: continue with the same candidate_sha256.
 
-### Step 4c: Determine Design Order
+A reviewer never edits source of truth. A requested revision is performed in a
+fresh $map-systems authoring task. That fresh task must re-render, re-hash, and
+repeat all active reviews; prior verdicts never authorize changed bytes.
 
-Combine dependency sort + priority tier to produce the final design order:
-1. MVP Foundation systems first
-2. MVP Core systems second
-3. MVP Feature systems third
-4. Vertical Slice Foundation/Core systems
-5. ...and so on
+If an active reviewer does not return a complete verdict bound to the candidate
+hash, do not write. Return the available stable findings and Verdict: BLOCKED —
+INCOMPLETE REVIEW.
 
-This is the order the team should write GDDs in.
+For lean or solo, record the skipped gate names and bind the user authorization
+to candidate_sha256; do not claim an independent review occurred.
 
----
+## 8. Authorize and write the reviewed bytes once
 
-## Phase 5: Create Systems Index (Write)
+Present the complete changeset before the first write:
 
-### Step 5a: Draft the Document
+- design/gdd/systems-index.md: create or replace with the exact bytes whose
+  SHA-256 is candidate_sha256;
+- production/session-state/active.md: create or update the systems-decomposition
+  task/status/file/next fields;
+- all other writes: none.
 
-Using the template at `.codex/docs/templates/systems-index.md`, populate the
-systems index with all data from Phases 2-4:
-- Fill the enumeration table
-- Fill the dependency map
-- Fill the recommended design order
-- Fill the high-risk systems
-- Fill progress tracker (all systems "Not Started" initially, unless GDDs already exist)
+Also show review mode, gate dispositions, candidate_sha256, system counts, first
+three design-order entries, and high-risk items. Obtain one explicit changeset
+authorization. Review acceptance is not filesystem authorization.
 
-### Step 5b: Approval
+If the user declines, return Verdict: BLOCKED — CHANGESET NOT AUTHORIZED and
+stop with zero writes.
 
-Present a summary of the document:
-- Total systems count by category
-- MVP system count
-- First 3 systems in the design order
-- Any high-risk items
+Immediately before writing:
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+1. re-render the candidate and verify its SHA-256 still equals candidate_sha256;
+2. in full mode, verify every accepted verdict names candidate_sha256;
+3. if updating an existing index, verify its current SHA-256 still equals the
+   base hash read in section 2.
 
-Write the file only after the complete changeset has received its one authorization.
+Any mismatch returns Verdict: BLOCKED — STALE DRAFT or CONCURRENT INDEX CHANGE
+and makes no write.
 
-**Review mode check** — apply before spawning CD-SYSTEMS:
-- `solo` → skip. Note: "CD-SYSTEMS skipped — Solo mode." Proceed to Phase 7 next steps.
-- `lean` → skip (not a PHASE-GATE). Note: "CD-SYSTEMS skipped — Lean mode." Proceed to Phase 7 next steps.
-- `full` → spawn as normal.
+Write design/gdd/systems-index.md exactly once from the bound candidate bytes,
+then re-read it and verify its SHA-256 equals candidate_sha256. Update only the
+previewed session-state fields. If either authorized result cannot be verified,
+return Verdict: PARTIAL with the exact successful and failed paths; never claim
+COMPLETE.
 
-**After the systems index is written, spawn `creative-director` through Codex subagent delegation using gate CD-SYSTEMS (`.codex/docs/director-gates.md`).**
+On success return:
 
-Pass: systems index path, game pillars and core fantasy (from `design/gdd/game-concept.md`), MVP priority tier system list.
+    Verdict: COMPLETE
+    Index: design/gdd/systems-index.md
+    SHA-256: <candidate_sha256>
+    Next: Start a fresh task and run $design-system "<first system name>"
 
-Present the assessment. If REJECT, revise the system set with the user before GDD authoring begins. If CONCERNS, record them in the systems index as a `> **Creative Director Note**` at the top of the relevant tier section.
+Then stop. Do not invoke the command, ask to continue, or process another system.
 
-### Step 5c: Update Session State
+## Review and recorder separation
 
-After writing, create `production/session-state/active.md` if it does not exist, then update it with:
-- Task: Systems decomposition
-- Status: Systems index created
-- File: design/gdd/systems-index.md
-- Next: Design individual system GDDs
+This workflow's reviews are advisory/eligibility checks for the systems-index
+draft only. They do not approve any future GDD.
 
-**Verdict: COMPLETE** — systems index written to `design/gdd/systems-index.md`.
-If the user declined: **Verdict: BLOCKED** — user did not approve the write.
+After a separate $design-system author task stops at In Review, a separate
+independent whole-artifact review may produce hash-bound approval evidence. Only
+a separate recorder may compare-and-set the matching systems-index row from its
+expected pre-state. Neither this workflow nor the GDD author may infer, record,
+or loop over that completion.
 
----
+## Collaborative protocol
 
-## Phase 6: Design Individual Systems (Handoff to $design-system)
+Use Question -> Options -> Decision -> Draft -> Approval for product decisions.
+The user approves enumeration, dependencies, priorities, disposition of
+non-blocking review findings, and the final hash-bound changeset.
 
-This phase is entered when:
-- The user says "yes" to designing systems after creating the index
-- The user invokes `$map-systems [system-name]`
-- The user invokes `$map-systems next`
-
-### Step 6a: Select the System
-
-- If a system name was provided, find it in the systems index
-- If `next` was used, pick the highest-priority undesigned system (by design order)
-- If the user just finished the index, ask:
-  "Would you like to start designing individual systems now? The first system in
-  the design order is [name]. Or would you prefer to stop here and come back later?"
-
-Ask the user directly for: "Start designing [system-name] now, pick a different
-system, or stop here?"
-
-### Step 6b: Hand Off to $design-system
-
-Once a system is selected, invoke the `$design-system [system-name]` skill.
-
-The `$design-system` skill handles the full GDD authoring process:
-- Gathers context from game concept, systems index, and dependency GDDs
-- Creates a file skeleton immediately
-- Walks through all 8 required sections one at a time (collaborative, incremental)
-- Cross-references existing docs to prevent contradictions
-- Routes to specialist agents for domain expertise
-- Writes each section to file as soon as it's approved
-- Runs `$design-review` when complete
-- Updates the systems index
-
-**Do not duplicate the $design-system workflow here.** This skill owns the systems
-*index*; `$design-system` owns individual system *GDDs*.
-
-### Step 6c: Loop or Stop
-
-After `$design-system` completes, ask the user directly:
-- "Continue to the next system ([next system name])?"
-- "Pick a different system?"
-- "Stop here for this session?"
-
-If continuing, return to Step 6a.
-
----
-
-## Phase 7: Suggest Next Steps
-
-After the systems index is created (or after designing some systems), present next actions by asking the user directly:
-
-- "Systems index is written. What would you like to do next?"
-  - [A] Start designing GDDs — run `$design-system [first-system-in-order]`
-  - [B] Run `$gate-check systems-design` — triggers the CD-SYSTEMS and TD-SYSTEM-BOUNDARY gates automatically for a formal director sign-off on the system set
-  - [C] Stop here for this session
-
-**The gate-check option ([B]) is worth highlighting**: running `$gate-check systems-design` triggers both the CD-SYSTEMS and TD-SYSTEM-BOUNDARY gates, catching scope issues, missing systems, and boundary problems before they're locked in across many documents. It is optional but recommended for new projects.
-
-After any individual GDD is completed:
-- "Run `$design-review design/gdd/[system].md` in a fresh session to validate quality"
-- "Run `$gate-check systems-design` when all MVP GDDs are complete"
-
----
-
-## Collaborative Protocol
-
-This skill follows the collaborative design principle at every phase:
-
-1. **Question -> Options -> Decision -> Draft -> Approval** at every step
-2. **direct question to the user** at every decision point (Explain -> Capture pattern):
-   - Phase 2: "Missing systems? Combine or split?"
-   - Phase 3: "Dependency ordering correct?"
-   - Phase 4: "Priority assignments match your vision?"
-   - Phase 5: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-   - Phase 6: "Start designing, pick different, or stop?" then hand off to `$design-system`
-3. **Single changeset authorization**: preview the systems-index edit before the first file write
-4. **Incremental writing**: Update the systems index after each system is designed
-5. **Handoff**: Individual GDD authoring is owned by `$design-system`, which handles
-   incremental section writing, cross-referencing, design review, and index updates
-6. **Session state updates**: Write to `production/session-state/active.md` after
-   each milestone (index created, system designed, priorities changed)
-
-**Never** auto-generate the full systems list and write it without review.
-**Never** start designing a system without user confirmation.
-**Always** show the enumeration, dependencies, and priorities for user validation.
-
-## Context Window Awareness
-
-If context reaches or exceeds 70% at any point, append this notice:
-
-> **Context is approaching the limit (≥70%).** The systems index is saved to
-> `design/gdd/systems-index.md`. Open a fresh Codex session to continue
-> designing individual GDDs — run `$map-systems next` to pick up where you left off.
-
----
-
-## Recommended Next Steps
-
-- Run `$design-system [first-system-in-order]` to author the first GDD (use design order from the index)
-- Run `$map-systems next` to always pick the highest-priority undesigned system automatically
-- Run `$design-review design/gdd/[system].md` in a fresh session after each GDD is authored
-- Run `$gate-check pre-production` when all MVP GDDs are authored and reviewed
+Never write an unreviewed full-mode draft.
+Never let a reviewer revise or write the index.
+Never reuse a verdict after the draft hash changes.
+Never invoke $design-system from this workflow.
+Never loop across GDDs.
+Always stop after the index write or selection-only handoff.

@@ -1,199 +1,266 @@
 ---
 name: project-stage-detect
-description: "Automatically analyze project state, detect stage, identify gaps, and recommend next steps based on existing artifacts. Use when user asks 'where are we in development', 'what stage are we in', 'full project audit'."
+description: "Read-only project-stage evidence service that validates versioned stage declarations and gate receipts against current source hashes, reports confidence and contradictions, and never infers progress from artifact counts."
 ---
 
 ## Invocation and execution
 
-Invoke this workflow as `$project-stage-detect`.
+Invoke this workflow as `$project-stage-detect [general|programmer|designer|producer]`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+No argument means `general`. The optional role filters only the final
+recommendation; it never changes evidence, stage, result state, or confidence.
+Reject unknown, repeated, or combined roles with `ERROR`.
 
-Arguments: `[optional: role filter like 'programmer' or 'designer']`. Treat bracketed values as optional unless the workflow says otherwise.
+This workflow is strictly read-only. It has no changeset, authorization prompt,
+persistent report, stage mutation, gate invocation, or director delegation.
 
+Output schema: `project_stage_detection/v2`.
 
-# Project Stage Detection
+Result state is exactly one of:
 
-This skill scans your project to determine its current development stage, completeness
-of artifacts, and gaps that need attention. It's especially useful when:
-- Starting with an existing project
-- Onboarding to a codebase
-- Checking what's missing before a milestone
-- Understanding "where are we?"
+- `DETECTED`;
+- `CONFLICT`;
+- `UNKNOWN`; or
+- `ERROR`.
 
----
+`detected_stage` is one of `Concept`, `Systems Design`, `Technical Setup`,
+`Pre-Production`, `Production`, `Polish`, `Release`, or `UNKNOWN`.
+Confidence is exactly `HIGH`, `MEDIUM`, or `LOW`.
 
-## Workflow
-
-### 1. Scan Key Directories
-
-Analyze project structure and content:
-
-**Design Documentation** (`design/`):
-- Count GDD files in `design/gdd/*.md`
-- Check for game-concept.md, game-pillars.md, systems-index.md
-- If systems-index.md exists, count total systems vs. designed systems
-- Analyze completeness (Overview, Detailed Design, Edge Cases, etc.)
-- Count narrative docs in `design/narrative/`
-- Count level designs in `design/levels/`
-
-**Source Code** (`src/`):
-- Count source files (language-agnostic)
-- Identify major systems (directories with 5+ files)
-- Check for core/, gameplay/, ai/, networking/, ui/ directories
-- Estimate lines of code (rough scale)
-
-**Production Artifacts** (`production/`):
-- Check for active sprint plans
-- Look for milestone definitions
-- Find roadmap documents
-
-**Prototypes** (`prototypes/`):
-- Count prototype directories
-- Check for READMEs (documented vs undocumented)
-- Assess if prototypes are archived or active
-
-**Architecture Docs** (`docs/architecture/`):
-- Count ADRs (Architecture Decision Records)
-- Check for overview/index documents
-
-**Tests** (`tests/`):
-- Count test files
-- Estimate test coverage (rough heuristic)
-
-### 2. Classify Project Stage
-
-Based on scanned artifacts, determine stage. Check `production/stage.txt` first —
-if it exists, use its value (explicit override from `$gate-check`). Otherwise,
-auto-detect using these heuristics (check from most-advanced backward):
-
-| Stage | Indicators |
-|-------|-----------|
-| **Concept** | No game concept doc, brainstorming phase |
-| **Systems Design** | Game concept exists, systems index missing or incomplete |
-| **Technical Setup** | Systems index exists, engine not configured |
-| **Pre-Production** | Engine configured, `src/` has <10 source files |
-| **Production** | `src/` has 10+ source files, active development |
-| **Polish** | Explicit only (set by `$gate-check` Production → Polish gate) |
-| **Release** | Explicit only (set by `$gate-check` Polish → Release gate) |
-
-### 3. Collaborative Gap Identification
-
-**DO NOT** just list missing files. Instead, **ask clarifying questions**:
-
-- "I see combat code (`src/gameplay/combat/`) but no `design/gdd/combat-system.md`. Was this prototyped first, or should we reverse-document?"
-- "You have 15 ADRs but no architecture overview. Should I create one to help new contributors?"
-- "No sprint plans in `production/`. Are you tracking work elsewhere (Jira, Trello, etc.)?"
-- "I found a game concept but no systems index. Have you decomposed the concept into individual systems yet, or should we run `$map-systems`?"
-- "Prototypes directory has 3 projects with no READMEs. Were these experiments, or do they need documentation?"
-
-### 4. Generate Stage Report
-
-Use template: `.codex/docs/templates/project-stage-report.md`
-
-**Report structure**:
-```markdown
-# Project Stage Analysis
-
-**Date**: [date]
-**Stage**: [Concept/Systems Design/Technical Setup/Pre-Production/Production/Polish/Release]
-**Stage Confidence**: [PASS — clearly detected / CONCERNS — ambiguous signals / FAIL — critical gaps block progress]
-
-## Completeness Overview
-- Design: [X%] ([N] docs, [gaps])
-- Code: [X%] ([N] files, [systems])
-- Architecture: [X%] ([N] ADRs, [gaps])
-- Production: [X%] ([status])
-- Tests: [X%] ([coverage estimate])
-
-## Gaps Identified
-1. [Gap description + clarifying question]
-2. [Gap description + clarifying question]
-
-## Recommended Next Steps
-[Priority-ordered list based on stage and role]
-```
-
-### 5. Role-Filtered Recommendations (Optional)
-
-If user provided a role argument (e.g., `$project-stage-detect programmer`):
-
-**Programmer**:
-- Focus on architecture docs, test coverage, missing ADRs
-- Code-to-docs gaps
-
-**Designer**:
-- Focus on GDD completeness, missing design sections
-- Prototype documentation
-
-**Producer**:
-- Focus on sprint plans, milestone tracking, roadmap
-- Cross-team coordination docs
-
-**General** (no role):
-- Holistic view of all gaps
-- Highest-priority items across domains
-
-### 6. Request Approval Before Writing
-
-**Collaborative protocol**:
-```
-I've analyzed your project. Here's what I found:
-
-[Show summary]
-
-Gaps identified:
-1. [Gap 1 + question]
-2. [Gap 2 + question]
-
-Recommended next steps:
-- [Priority 1]
-- [Priority 2]
-- [Priority 3]
-
-Should the proposed changeset include the full stage analysis at `production/project-stage-report.md`?
-```
-
-Treat that answer as a content-scope choice. Present the complete changeset and obtain its one authorization before creating the file.
+No result authorizes a stage transition or gate.
 
 ---
 
-## Example Usage
+## Phase 0: Freeze a read-only snapshot
 
-```text
-# General project analysis
-$project-stage-detect
+Resolve one workspace root. Reject traversal, outside-root paths, symlink escape,
+or ambiguous roots.
 
-# Programmer-focused analysis
-$project-stage-detect programmer
+Record:
 
-# Designer-focused analysis
-$project-stage-detect designer
+- `snapshot_at` in UTC;
+- VCS commit/ref and dirty-state evidence when available;
+- exact stage-schema/catalog sources and raw hashes;
+- declared stage record and raw hash, when present;
+- referenced gate receipt paths and raw hashes;
+- exact source/build/artifact manifests referenced by those receipts; and
+- included, excluded, inaccessible, malformed, and concurrently changed sources.
+
+Use stable evidence IDs and provenance types:
+
+| Provenance | Meaning |
+|---|---|
+| AUTHORITY RECORD | versioned stage state written by its declared owner |
+| GATE RECEIPT | immutable evidence for one allowed transition |
+| SOURCE SNAPSHOT | current raw artifact/build/config hashes |
+| LEGACY DECLARATION | unversioned stage text such as a plain stage.txt value |
+| ADVISORY OBSERVATION | artifact presence/absence with no transition authority |
+| COVERAGE GAP | unreadable, malformed, missing, stale, or unsupported evidence |
+
+All evidence records contain ID, path, relevant field/section, raw hash,
+snapshot time, and validation state.
+
+If the shared workflow catalog does not provide a versioned stage schema,
+allowed transition, owner, and receipt requirements, record `STAGE SCHEMA
+UNVERIFIED`. Do not copy or invent a stage table inside this workflow.
+
+---
+
+## Phase 1: Validate the stage authority contract
+
+A stage authority record is valid only when the shared versioned schema defines
+and the record supplies:
+
+- `schema_version`;
+- allowed exact `stage` enum;
+- `owner` authorized for that transition;
+- `transition_from`;
+- `updated_at`;
+- target commit/ref and dirty-state policy;
+- canonical `source_snapshot_hash`;
+- required gate receipt ID/path/hash, or explicit schema rule that no receipt is
+  required; and
+- previous authority-record hash for transition continuity.
+
+Validate the transition against the schema-defined graph and owner. Validate
+every required receipt for:
+
+- stable receipt ID and schema version;
+- exact from/to stage;
+- gate/profile identity and final PASS state;
+- authorized owner/approver;
+- passed-at timestamp;
+- target commit/dirty state;
+- source, build, test, and required artifact hashes;
+- receipt raw hash matching the authority record; and
+- current freshness under the schema policy.
+
+A plain `production/stage.txt` value without this provenance is a LEGACY
+DECLARATION, not authoritative stage evidence. Report its declared value and
+hash, but do not promote it to `detected_stage`.
+
+Unknown enum values, missing fields, invalid transitions, unauthorized owners,
+unreadable/corrupt records, stale receipts, hash mismatches, or missing required
+receipts cannot be repaired or guessed here. They produce UNKNOWN or CONFLICT.
+
+---
+
+## Phase 2: Collect supporting and contradictory evidence
+
+Read only evidence explicitly required by the stage schema/receipt and a bounded
+set of advisory artifacts needed to explain contradictions. Hash every source.
+
+Artifact presence, directory names, GDD/ADR/story/test counts, lines of code,
+source-file thresholds, engine configuration, prototype counts, and sprint-file
+existence are ADVISORY OBSERVATIONS only. They may explain a conflict or suggest
+a question, but they can never:
+
+- select a stage;
+- advance a stage;
+- validate a transition;
+- substitute for a gate receipt;
+- increase confidence to HIGH; or
+- produce a completion percentage.
+
+Exclude generated, vendor, example, cache, imported, and third-party files from
+any source inventory unless the authoritative receipt explicitly includes them.
+Never classify Production because a source directory contains ten or more files.
+
+Do not estimate design, code, architecture, production, test, milestone, or
+overall completion percentages. Do not produce weighted scores, progress bars,
+or precise completion numbers without a separately versioned measurement schema
+and real denominator; no such schema is assumed here.
+
+If the current source/build/config hashes differ from those bound to the
+authority record or receipt, record exact expected/observed hashes as a
+contradiction. Do not silently honor the declared stage.
+
+Rehash every read source before returning. Concurrent change makes affected
+evidence stale and prevents a clean DETECTED result.
+
+---
+
+## Phase 3: Determine result and confidence
+
+Apply this order:
+
+### ERROR
+
+Return `ERROR`, `detected_stage: UNKNOWN`, and `confidence: LOW` when the
+workspace root is invalid, no evidence source can be read, evidence integrity
+fails globally, or invocation is invalid.
+
+### CONFLICT
+
+Return `CONFLICT`, `detected_stage: UNKNOWN`, and `confidence: LOW` when a stage
+declaration exists but conflicts with schema, transition, owner, receipt,
+target/build/source hashes, or another valid authority record. Preserve the
+claimed value separately as `declared_stage`.
+
+### UNKNOWN
+
+Return `UNKNOWN` and `detected_stage: UNKNOWN` when no complete authority chain
+exists.
+
+- Confidence is LOW for legacy/invalid/missing stage authority, missing required
+  receipts, or critical coverage gaps.
+- Confidence may be MEDIUM only when the stage schema is valid and most
+  authority evidence is present, but a non-authoritative freshness/supporting
+  check is incomplete. MEDIUM never authorizes a stage value.
+
+### DETECTED
+
+Return `DETECTED` and the exact stage only when one valid authority record,
+allowed transition/owner, all required receipts, and current target/source/build
+hashes agree with no contradiction.
+
+- Confidence is HIGH when the complete current authority chain and all required
+  evidence validate.
+- Confidence is MEDIUM only if the schema explicitly permits an advisory source
+  gap that cannot affect authority or freshness.
+
+Never use `PASS`, `CONCERNS`, or `FAIL` as confidence values.
+
+---
+
+## Phase 4: Return one evidence packet
+
+Return in conversation only:
+
+```yaml
+schema: project_stage_detection/v2
+result: DETECTED | CONFLICT | UNKNOWN | ERROR
+detected_stage: Concept | Systems Design | Technical Setup | Pre-Production | Production | Polish | Release | UNKNOWN
+declared_stage: <value-or-NONE>
+confidence: HIGH | MEDIUM | LOW
+snapshot_at: <UTC>
+target:
+  commit: <hash-or-UNVERIFIED>
+  dirty_state: <clean|dirty|UNVERIFIED>
+  source_snapshot_hash: <sha256-or-UNVERIFIED>
+authority:
+  schema_version: <version-or-UNVERIFIED>
+  record_path: <path-or-NONE>
+  record_hash: <sha256-or-NONE>
+  owner: <owner-or-UNVERIFIED>
+  transition_from: <stage-or-UNVERIFIED>
+receipts:
+  required: <count-or-UNVERIFIED>
+  valid: <count>
+evidence:
+  - id: <stable-id>
+    provenance: <type>
+    path: <path>
+    hash: <sha256>
+    state: VALID | INVALID | STALE | UNVERIFIED | NOT_APPLICABLE
+contradictions:
+  - id: <stable-id>
+    expected: <redacted value/hash>
+    observed: <redacted value/hash>
+coverage_gaps:
+  - <exact gap>
+advisory_observations:
+  - <observation explicitly marked non-authoritative>
+recommendation:
+  role: general | programmer | designer | producer
+  action: <one evidence-resolution or formal-transition action>
+disclaimer: ADVISORY DETECTION ONLY — NOT A GATE OR TRANSITION
 ```
 
----
+The role filter may change only `recommendation.role` and wording. All preceding
+fields must be byte-for-byte identical for the same snapshot.
 
-## Follow-Up Actions
+Give at most one next action:
 
-After generating the report, suggest relevant next steps:
+- resolve the missing/conflicting authority evidence;
+- run the separately authorized formal gate when advancement is desired; or
+- align a direct consumer to this schema.
 
-- **Concept exists but no systems index?** → `$map-systems` to decompose into systems
-- **Missing design docs?** → `$reverse-document design src/[system]`
-- **Missing architecture docs?** → `$architecture-decision` or `$reverse-document architecture`
-- **Prototypes need documentation?** → `$reverse-document concept prototypes/[name]`
-- **No sprint plan?** → `$sprint-plan`
-- **Approaching milestone?** → `$milestone-review`
+Do not invoke the action.
 
 ---
 
-## Collaborative Protocol
+## Read-only and consumer boundaries
 
-This skill follows the collaborative design principle:
+Never write `production/project-stage-report.md`, `production/stage.txt`, an
+authority record, receipt, cache, checkpoint, or any project file. Never ask to
+persist the packet inside this workflow.
 
-1. **Question First**: Ask about gaps, don't assume
-2. **Present Options**: "Should I create X, or is it tracked elsewhere?"
-3. **User Decides**: Wait for direction
-4. **Show Draft**: Display report summary
-5. **Get Approval**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Do not invoke `$gate-check`, `$start`, `$help`, `$studio-status`, or another
+project skill. Refer to a separately authorized formal gate only as a handoff.
 
-**Never** silently write files. Always show findings, include every artifact in the complete changeset preview, and write only after its one authorization.
+Consumers must use the full `project_stage_detection/v2` packet and current
+snapshot hash. They must not parse a prose stage line, substitute their own
+artifact-count heuristic, treat UNKNOWN/CONFLICT as a stage, or use this detector
+as gate approval.
+
+---
+
+## Non-negotiable rules
+
+- Never mutate the project or request write authorization.
+- Never infer a stage from file/source/artifact counts.
+- Never emit completion percentages.
+- Never treat an unversioned stage value as authoritative.
+- Never hide contradictions or stale hashes.
+- Never use detection as permission to advance.

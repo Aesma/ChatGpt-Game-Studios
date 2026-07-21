@@ -1,192 +1,175 @@
 ---
 name: patch-notes
-description: "Generate player-facing patch notes from git history, sprint data, and internal changelogs. Translates developer language into clear, engaging player communication."
+description: "Create traceable local patch-note drafts only from an exact approved candidate and its verified production deployment receipt; never publish."
 ---
 
 ## Invocation and execution
 
-Invoke this workflow as `$patch-notes`.
+Invoke this workflow as $patch-notes.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+Arguments: [release-id] [--style brief|detailed|full]. A release-id is required. Style changes presentation only and defaults to detailed.
 
-Arguments: `[version] [--style brief|detailed|full]`. Treat bracketed values as optional unless the workflow says otherwise.
+This workflow may generate a local draft after its evidence requirements pass. It never deploys or publishes, never posts to a store, website, forum, email, chat, or social channel, and never treats local-write authorization as public-publish approval.
 
-Delegate substantive work to the `community-manager` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+Before the first local file change, present one complete changeset containing the single canonical target, its expected content hash, and the intended write. Obtain one explicit authorization for that local write. Do not re-prompt file by file. If the boundary expands, stop and obtain a new authorization.
 
-
-## Phase 1: Parse Arguments
-
-- `version`: the release version to generate notes for (e.g., `1.2.0`)
-- `--style`: output style — `brief` (bullet points), `detailed` (with context), `full` (with developer commentary). Default: `detailed`.
-
-If no version is provided, ask the user before proceeding.
+Do not invoke another project skill, a director gate, a deployment, or a publication workflow.
 
 ---
 
-## Phase 2: Gather Change Data
+## Phase 1 — Validate release identity and exact candidate
 
-- Read the internal changelog at `production/releases/[version]/changelog.md` if it exists
-- Also check `docs/CHANGELOG.md` for the relevant version entry
-- Run `git log` between the previous release tag and current tag/HEAD as a fallback
-- Read sprint retrospectives in `production/sprints/` for context
-- Read any balance change documents in `design/balance/`
-- Read bug fix records from QA if available
+1. Validate release-id against the project release-ID schema. Reject separators, traversal tokens, absolute paths, control characters, ambiguous aliases, and unversioned labels.
+2. Load one approved change manifest for that exact release ID. Do not fall back to HEAD, the working tree, an inferred tag, an arbitrary Git range, or the newest changelog.
+3. Require this manifest contract:
 
-**If no changelog data is available** (neither `production/releases/[version]/changelog.md`
-nor a `docs/CHANGELOG.md` entry for this version exists, and git log is empty or unavailable):
+    schema_version
+    release_id
+    manifest_id
+    manifest_hash
+    approval_receipt_id
+    approval_status: APPROVED
+    from_ref
+    to_ref
+    candidate_digest
+    target_platforms
+    change_items
 
-> "No changelog data found for [version]. Run `$changelog [version]` first to generate the
-> internal changelog, then re-run `$patch-notes [version]`."
+4. Require every change item to contain:
 
-Verdict: **BLOCKED** — stop here without generating notes.
+    change_id
+    disposition: INCLUDE or EXCLUDE
+    player_visible: true or false
+    category
+    approved_player_fact
+    source_ids
+    verification_ids
+    sensitive_classification
+    manifest_item_hash
 
----
+5. Verify that from_ref and to_ref resolve exactly as declared, form the approved bounded range, and that to_ref/candidate_digest identify the candidate under review. A local HEAD may be observed only to detect mismatch; it must never widen the candidate.
+6. Capture a single evidence snapshot with release ID, manifest hash, candidate digest, resolved refs, and source hashes. If any required field is missing, ambiguous, stale, unverifiable, or inconsistent, return BLOCKED before drafting prose.
 
-## Phase 2b: Detect Tone Guide and Template
-
-**Tone guide detection** — before drafting notes, check for writing style guidance:
-
-1. Check `.codex/docs/technical-preferences.md` for any "tone", "voice", or "style"
-   fields or sections.
-2. Check `docs/PATCH-NOTES-STYLE.md` if it exists.
-3. Check `design/community/tone-guide.md` if it exists.
-4. If any source contains tone/voice/style instructions, extract them and apply
-   them to the language and framing of the generated notes.
-5. If no tone guidance is found anywhere, default to:
-   player-friendly, non-technical language; enthusiastic but not hyperbolic;
-   focus on what the player experiences, not what the developer changed.
-
-**Template detection** — check whether a patch notes template exists:
-
-1. Check for a project-provided `docs/patch-notes-template.md`.
-2. If found, read it and use it as the output structure for Phase 4
-   instead of the built-in style templates (Brief / Detailed / Full). Fill in the
-   template's sections with the categorized data.
-3. If not found, use the built-in style templates as defined in Phase 4.
+Only INCLUDE items that are player_visible and belong to the exact approved manifest may enter the claim table. Changelogs, Git commits, sprint data, retrospectives, design documents, balance proposals, bug trackers, and QA records cannot add claims. Manifest-linked records may corroborate an approved_player_fact but may not expand or strengthen it.
 
 ---
 
-## Phase 3: Categorize and Translate
+## Phase 2 — Verify production deployment authority
 
-Categorize all changes into player-facing categories:
+Load one immutable deployment receipt from the configured production deployment authority. The receipt must contain:
 
-- **New Content**: new features, maps, characters, items, modes
-- **Gameplay Changes**: balance adjustments, mechanic changes, progression changes
-- **Quality of Life**: UI improvements, convenience features, accessibility
-- **Bug Fixes**: grouped by system (combat, UI, networking, etc.)
-- **Performance**: optimization improvements players might notice
-- **Known Issues**: transparency about unresolved problems
+    schema_version
+    receipt_id
+    receipt_hash
+    release_id
+    environment: production
+    deployment_status: SUCCEEDED
+    candidate_digest
+    manifest_hash
+    deployed_artifact_digest
+    deployed_targets
+    deployed_at
+    issuer
+    verification_status: VERIFIED
 
-Translate developer language to player language:
+The receipt is valid only when release_id, candidate_digest, and manifest_hash exactly match Phase 1; the environment is production; status is SUCCEEDED; the receipt is verified by the configured authority; and every claimed target is included in deployed_targets.
 
-- "Refactored damage calculation pipeline" → "Improved hit detection accuracy"
-- "Fixed null reference in inventory manager" → "Fixed a crash when opening inventory"
-- "Reduced GC allocations in combat loop" → "Improved combat performance"
-- Remove purely internal changes that don't affect players
-- Preserve specific numbers for balance changes (damage: 50 → 45)
+A local hotfix branch, hotfix plan, hotfix approval, tag, merge, build success, QA pass, release-checklist result, release readiness, staging deployment, canary result, scheduled rollout, or user assertion is not proof of production deployment. These signals must never authorize released, deployed, live, available now, fixed, or shipped language.
 
----
-
-## Phase 4: Generate Patch Notes
-
-### Brief Style
-```markdown
-# Patch [Version] — [Title]
-
-**New**
-- [Feature 1]
-- [Feature 2]
-
-**Changes**
-- [Balance/mechanic change with before → after values]
-
-**Fixes**
-- [Bug fix 1]
-- [Bug fix 2]
-
-**Known Issues**
-- [Issue 1]
-```
-
-### Detailed Style
-```markdown
-# Patch [Version] — [Title]
-*[Date]*
-
-## Highlights
-[1-2 sentence summary of the most exciting changes]
-
-## New Content
-### [Feature Name]
-[2-3 sentences describing the feature and why players should be excited]
-
-## Gameplay Changes
-### Balance
-| Change | Before | After | Reason |
-| ---- | ---- | ---- | ---- |
-| [Item/ability] | [old value] | [new value] | [brief rationale] |
-
-### Mechanics
-- **[Change]**: [explanation of what changed and why]
-
-## Quality of Life
-- [Improvement with context]
-
-## Bug Fixes
-### Combat
-- Fixed [description of what players experienced]
-
-### UI
-- Fixed [description]
-
-### Networking
-- Fixed [description]
-
-## Performance
-- [Improvement players will notice]
-
-## Known Issues
-- [Issue and workaround if available]
-```
-
-### Full Style
-Includes everything from Detailed, plus:
-```markdown
-## Developer Commentary
-### [Topic]
-> [Developer insight into a major change — why it was made, what was considered,
-> what the team learned. Written in first-person team voice.]
-```
+If the production receipt is absent, unverified, non-production, unsuccessful, stale, for another target, or bound to another candidate or manifest, return BLOCKED with an evidence table. Do not generate player-facing release narrative, not even as a speculative draft. A claim is eligible only when both its exact approved candidate item and the matching production receipt are valid.
 
 ---
 
-## Phase 5: Review Output
+## Phase 3 — Build and review the claim table
 
-Check the generated notes for:
+Create one deterministic row per eligible change_id:
 
-- No internal jargon (replace technical terms with player-friendly language)
-- No references to internal systems, tickets, or sprint numbers
-- Balance changes include before/after values
-- Bug fixes describe the player experience, not the technical cause
-- Tone matches the game's voice (adjust formality based on game style)
+    claim_id
+    change_id
+    category
+    exact_player_fact
+    candidate_digest
+    manifest_id
+    manifest_item_hash
+    source_ids
+    verification_ids
+    deployment_receipt_id
+    deployment_receipt_hash
+    deployed_targets
+    sensitivity
+    disclosure_state
+    draft_text
+    status
+
+Rules:
+
+- Preserve the approved_player_fact. Rewrite for clarity and tone only when the meaning, scope, causality, platform coverage, numbers, and certainty do not change.
+- Never infer implementation from a design document, intent from a retrospective, player impact from a technical refactor, or deployment from readiness evidence.
+- Never turn fixed a null reference into fixed a player crash unless the approved fact and verification evidence explicitly establish that behavior.
+- Preserve exact before/after values, platform qualifiers, rollout boundaries, and known limitations.
+- Purely internal or EXCLUDE items remain in an exclusions table and never enter prose.
+- Every sentence or bullet in the draft maps to one or more claim IDs. No untraced title, highlight, reason, availability promise, or known issue is allowed.
+- Tone guides and templates may shape wording and layout but cannot introduce facts, promises, quotations, dates, links, or scope.
+
+Sensitive classes include SECURITY, ANTI_CHEAT, PRIVACY, EXPLOIT, LEGAL, EMBARGOED, and any project-defined restricted class. Default to OMIT when a claim is sensitive. Include it only with a separate verified public-disclosure approval bound to the claim ID, candidate digest, approved text boundary, audience, and expiry. The model cannot self-approve disclosure.
+
+Do not invent developer commentary, first-person team voice, quotations, motives, lessons, or opinions. Full style may include developer commentary only when supplied verbatim in an approved quote record containing speaker, exact text, claim IDs, candidate digest, public-use approval, and provenance. Otherwise omit the section and record NO_APPROVED_QUOTE.
+
+Assign stable review findings for unsupported, overstated, sensitive, contradictory, or untraceable text. Perform at most one bounded revision against those same findings. Any unresolved blocker returns BLOCKED and no prose artifact is written.
 
 ---
 
-## Phase 6: Save Patch Notes
+## Phase 4 — Draft and optionally write one canonical artifact
 
-Present the completed patch notes to the user along with: a count of changes by category, and any internal changes that were excluded (for review).
+When all evidence and review checks pass, present:
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+- the local draft
+- the claim-to-source table
+- excluded items with reasons
+- sensitive omissions without exploitable detail
+- manifest and production receipt identities/hashes
+- the canonical target
+- publication_state: NOT_AUTHORIZED
 
-Once the complete changeset is authorized, write the file to `docs/patch-notes/[version].md`, creating the directory
-if needed. Also write to `production/releases/[version]/patch-notes.md` as the
-internal archive copy.
+Use the selected style, but do not create empty or invented sections. Title, date, platform list, and links require explicit manifest or receipt evidence. The resulting document includes machine-readable provenance for release_id, candidate_digest, manifest_hash, and deployment_receipt_hash.
+
+The only canonical local target is:
+
+    production/releases/[validated-release-id]/patch-notes.md
+
+Do not also write a docs copy. Any public-site or documentation representation must be a downstream generated projection that cites the canonical artifact hash.
+
+If no local-write authorization is requested or granted, return status DRAFTED and stop. If the user explicitly authorizes the exact one-file changeset, write only the canonical artifact, verify its hash, return status WRITTEN, and stop.
+
+DRAFTED and WRITTEN describe local artifact state only. Neither means publicly approved, publicly posted, or successfully published. This workflow must not perform any external publication action.
 
 ---
 
-## Phase 7: Next Steps
+## Phase 5 — Return status and handoff
 
-Verdict: **COMPLETE** — patch notes generated and saved.
+Return patch_notes/v2:
 
-- Run `$release-checklist` to verify all other release gates are met before publishing.
-- Share the patch notes draft with the community-manager for tone review before posting publicly.
+    schema_version: patch_notes/v2
+    status: DRAFTED | WRITTEN | BLOCKED
+    release_id
+    candidate_digest
+    manifest_id
+    manifest_hash
+    production_receipt_id
+    production_receipt_hash
+    deployed_targets
+    claim_table
+    exclusions
+    sensitive_omissions
+    review_findings
+    canonical_target
+    canonical_hash
+    publication_state: NOT_AUTHORIZED
+    blocker_codes
+    next_owner
+
+Use BLOCKED when exact candidate authority, production deployment authority, evidence coverage, sensitive disclosure, or final traceability is insufficient. Do not report COMPLETE.
+
+Return at most one next-owner handoff. A local content reviewer may approve or reject the draft as a separate decision. Public publishing requires a separate explicit approval and a separate publishing workflow outside this skill. Never imply that a release checklist, hotfix readiness, community review, local write, or this status packet grants publication authority.
+
+Stop after returning the packet. Do not invoke the handoff.

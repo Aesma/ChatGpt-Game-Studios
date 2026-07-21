@@ -1,260 +1,323 @@
 ---
 name: start
-description: "First-time onboarding — asks where you are, then guides you to the right workflow. No assumptions."
+description: "Collects onboarding intent and optional preferences, then recommends one catalog-derived next workflow without self-certifying project stage or bypassing missing concept evidence."
 ---
 
-## Invocation and execution
-
-Invoke this workflow as `$start`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-This workflow takes no arguments.
-
-
-# Guided Onboarding
-
-This skill prepares two configuration files: `production/stage.txt` and `production/review-mode.txt`. It writes both only after one complete changeset approval.
-
-This skill is the entry point for new users. It does NOT assume you have a game idea, an engine preference, or any prior experience. It asks first, then routes you to the right workflow.
-
----
-
-## Phase 1: Detect Project State
-
-Before asking anything, silently gather context so you can tailor your guidance. Do NOT show these results unprompted — they inform your recommendations, not the conversation opener.
-
-Check:
-- **Engine configured?** Read `.codex/docs/technical-preferences.md`. If the Engine field contains `[TO BE CONFIGURED]`, the engine is not set.
-- **Game concept exists?** Check for `design/gdd/game-concept.md`.
-- **Source code exists?** Search `src/` for files ending in `.gd`, `.cs`, `.cpp`, `.h`, `.rs`, `.py`, `.js`, or `.ts`.
-- **Prototypes exist?** Check for subdirectories in `prototypes/`.
-- **Design docs exist?** Count markdown files in `design/gdd/`.
-- **Production artifacts?** Check for files in `production/sprints/` or `production/milestones/`.
-
-Store these findings internally to validate the user's self-assessment and tailor recommendations.
-
----
-
-## Phase 2: Ask Where the User Is
-
-This is the first thing the user sees. Ask the user directly with these exact options and wait for the user's choice:
-
-- **Prompt**: "Welcome to ChatGPT Game Studios! Before I suggest anything, I'd like to understand where you're starting from. Where are you at with your game idea right now?"
-- **Options**:
-  - `A) No idea yet` — I don't have a game concept at all. I want to explore and figure out what to make.
-  - `B) Vague idea` — I have a rough theme, feeling, or genre in mind (e.g., "something with space" or "a cozy farming game") but nothing concrete.
-  - `C) Clear concept` — I know the core idea — genre, basic mechanics, maybe a pitch sentence — but haven't formalized it into documents yet.
-  - `D) Existing work` — I already have design docs, prototypes, code, or significant planning done. I want to organize or continue the work.
-
-Wait for the user's selection. Do not proceed until they respond.
-
----
-
-## Phase 3: Route Based on Answer
-
-#### If A: No idea yet
-
-The user needs creative exploration before anything else.
-
-1. Acknowledge that starting from zero is completely fine
-2. Briefly explain what `$brainstorm` does (guided ideation using professional frameworks — MDA, player psychology, verb-first design). Mention that it has two modes: `$brainstorm open` for fully open exploration, or `$brainstorm [hint]` if they have even a vague theme (e.g., "space", "cozy", "horror").
-3. Recommend running `$brainstorm open` as the next step, but invite them to use a hint if something comes to mind
-4. Show the recommended path:
-   **Concept phase:**
-   - `$brainstorm open` — discover your game concept
-   - `$setup-engine` — configure the engine (brainstorm will recommend one)
-   - `$prototype` — throwaway concept build: validate the core idea is fun before designing (1–3 days)
-   - `$art-bible` — define visual identity (uses the Visual Identity Anchor brainstorm produces)
-   - `$map-systems` — decompose the concept into systems
-   - `$design-system` — author a GDD for each MVP system
-   - `$review-all-gdds` — cross-system consistency check
-   - `$gate-check` — validate readiness before architecture work
-   **Architecture phase:**
-   - `$create-architecture` — produce the master architecture blueprint and Required ADR list
-   - `$architecture-decision (×N)` — record key technical decisions, following the Required ADR list
-   - `$create-control-manifest` — compile decisions into an actionable rules sheet
-   - `$architecture-review` — validate architecture coverage
-   **Pre-Production phase:**
-   - `$ux-design` — author UX specs for key screens (main menu, HUD, core interactions)
-   - `$vertical-slice` — production-quality end-to-end build to validate the full game loop
-   - `$playtest-report (×1+)` — document each vertical slice playtest session
-   - `$create-epics` — map systems to epics
-   - `$create-stories` — break epics into implementable stories
-   - `$sprint-plan` — plan the first sprint
-   **Production phase:** → pick up stories with `$dev-story`
-
-#### If B: Vague idea
-
-1. Ask them to share their vague idea — even a few words is enough
-2. Validate the idea as a starting point (don't judge or redirect)
-3. Recommend running `$brainstorm [their hint]` to develop it
-4. Show the recommended path:
-   **Concept phase:**
-   - `$brainstorm [hint]` — develop the idea into a full concept
-   - `$setup-engine` — configure the engine
-   - `$prototype` — throwaway concept build: validate the core idea is fun before designing (1–3 days)
-   - `$art-bible` — define visual identity (uses the Visual Identity Anchor brainstorm produces)
-   - `$map-systems` — decompose the concept into systems
-   - `$design-system` — author a GDD for each MVP system
-   - `$review-all-gdds` — cross-system consistency check
-   - `$gate-check` — validate readiness before architecture work
-   **Architecture phase:**
-   - `$create-architecture` — produce the master architecture blueprint and Required ADR list
-   - `$architecture-decision (×N)` — record key technical decisions, following the Required ADR list
-   - `$create-control-manifest` — compile decisions into an actionable rules sheet
-   - `$architecture-review` — validate architecture coverage
-   **Pre-Production phase:**
-   - `$ux-design` — author UX specs for key screens (main menu, HUD, core interactions)
-   - `$vertical-slice` — production-quality end-to-end build to validate the full game loop
-   - `$playtest-report (×1+)` — document each vertical slice playtest session
-   - `$create-epics` — map systems to epics
-   - `$create-stories` — break epics into implementable stories
-   - `$sprint-plan` — plan the first sprint
-   **Production phase:** → pick up stories with `$dev-story`
-
-#### If C: Clear concept
-
-1. Ask them to describe their concept in one sentence — genre and core mechanic. Ask for an open-ended response rather than constrained options (it's an open response).
-2. Acknowledge the concept, then ask the user directly and offer two paths:
-   - **Prompt**: "How would you like to proceed?"
-   - **Options**:
-     - `Formalize it first` — Run `$brainstorm [concept]` to structure it into a proper game concept document
-     - `Jump straight in` — Go to `$setup-engine` now and write the GDD manually afterward
-3. Show the recommended path:
-   **Concept phase:**
-   - `$brainstorm` or `$setup-engine` — (their pick from step 2)
-   - `$prototype` — throwaway concept build: validate the core idea is fun before designing (1–3 days)
-   - `$art-bible` — define visual identity (after brainstorm if run, or after concept doc exists)
-   - `$design-review` — validate the concept doc
-   - `$map-systems` — decompose the concept into individual systems
-   - `$design-system` — author a GDD for each MVP system
-   - `$review-all-gdds` — cross-system consistency check
-   - `$gate-check` — validate readiness before architecture work
-   **Architecture phase:**
-   - `$create-architecture` — produce the master architecture blueprint and Required ADR list
-   - `$architecture-decision (×N)` — record key technical decisions, following the Required ADR list
-   - `$create-control-manifest` — compile decisions into an actionable rules sheet
-   - `$architecture-review` — validate architecture coverage
-   **Pre-Production phase:**
-   - `$ux-design` — author UX specs for key screens (main menu, HUD, core interactions)
-   - `$vertical-slice` — production-quality end-to-end build to validate the full game loop
-   - `$playtest-report (×1+)` — document each vertical slice playtest session
-   - `$create-epics` — map systems to epics
-   - `$create-stories` — break epics into implementable stories
-   - `$sprint-plan` — plan the first sprint
-   **Production phase:** → pick up stories with `$dev-story`
+# Start
 
-#### If D: Existing work
+`start` is a read-mostly orientation workflow. It asks what the user wants, consumes
+one optional externally persisted `project_stage_detection/v2` packet, records non-authoritative preferences
+when requested, recommends one catalog entry, and stops.
 
-1. Share what you found in Phase 1:
-   - "I can see you have [X source files / Y design docs / Z prototypes]..."
-   - "Your engine is [configured as X / not yet configured]..."
+It never scans artifact existence to declare work complete, updates authoritative
+stage, invokes another workflow, creates project structure, selects an engine, or
+runs a director gate.
 
-2. **Sub-case D1 — Early stage** (engine not configured or only a game concept exists):
-   - Recommend `$setup-engine` first if engine not configured
-   - Then `$project-stage-detect` for a gap inventory
+## Invocation
 
-   **Sub-case D2 — GDDs, ADRs, or stories already exist:**
-   - Explain: "Having files isn't the same as the template's skills being able to use them. GDDs might be missing required sections. `$adopt` checks this specifically."
-   - Recommend:
-     1. `$project-stage-detect` — understand what phase and what's missing entirely
-     2. `$adopt` — audit whether existing artifacts are in the right internal format
+Use:
 
-3. Show the recommended path for D2:
-   - `$project-stage-detect` — phase detection + existence gaps
-   - `$adopt` — format compliance audit + migration plan
-   - `$setup-engine` — if engine not configured
-   - `$design-system retrofit [path]` — fill missing GDD sections
-   - `$architecture-decision retrofit [path]` — add missing ADR sections
-   - `$architecture-review` — bootstrap the TR requirement registry
-   - `$gate-check` — validate readiness for next phase
+~~~text
+$start [--analysis <project-stage-detection-v2-path> --expect-analysis <sha256:...>] [--persist]
+~~~
 
----
+Reject unknown or duplicate flags, missing values, directories, unsafe paths, and
+positional project/engine/stage names. `--analysis` and `--expect-analysis` are an
+inseparable pair selecting exactly one externally recorded detector packet; do not
+choose the newest report. Without `--persist`, the workflow is read-only.
 
-## Phase 3a: Prepare the Initial Stage
+## Authority boundaries
 
-After confirming the starting path, determine the initial stage value and hold it in the pending changeset. Do not write yet.
+Treat these as independent:
 
-Stage mapping:
-- **Path A, B, or C (starting from scratch)**: write `Concept`
-- **Path D, existing project, engine not configured or only a game concept exists**: write `Concept`
-- **Path D, existing project with GDDs but no architecture documents**: write `Systems Design`
-- **Path D, existing project with full architecture (ADRs, architecture doc)**: write `Technical Setup`
+1. **Observed state** — exact catalog, optional stage analysis, existing preference,
+   and existing configuration bytes may be read and hashed.
+2. **Onboarding preference** — `start` may CREATE or UPDATE only
+   `production/onboarding/preferences.yaml` after exact changeset authorization.
+3. **Authoritative project stage** — only the separate stage owner may update it
+   after current evidence gates. `start` always reports
+   `Authoritative Stage Mutation: NONE`.
+4. **Workflow execution** — a recommendation is not execution authorization.
+5. **Implementation/external actions** — no preference or onboarding decision
+   authorizes source changes, engine setup, deployment, publication, or messaging.
+
+A user decision, file existence, model inference, analysis proposal, old stage label,
+review-mode preference, or accepted risk cannot be recorded as an authoritative gate
+PASS. Approval to write preferences never carries to another file or workflow.
+
+## Canonical inputs and output
 
-Keep this value pending until the review mode is selected.
+Read only these fixed routing/configuration inputs when present:
 
-Say: "The proposed initial stage is `[stage]`; it will anchor studio status and stage detection."
+~~~text
+.codex/docs/workflow-catalog.yaml
+production/onboarding/preferences.yaml
+production/stage.txt
+production/review-mode.txt
+~~~
 
----
+The only optional variable input is the literal `--analysis` path. The only owned
+output is:
 
-## Phase 3b: Set Review Mode
+~~~text
+production/onboarding/preferences.yaml
+~~~
 
-Check if `production/review-mode.txt` already exists.
+If `production/` or `production/onboarding/` is absent, directory creation is a
+mutation and must appear in the changeset preview. Never write `production/stage.txt`
+or `production/review-mode.txt`; existing values are observed configuration only.
 
-**If it exists**: Read it and show the current mode. Include only `production/stage.txt` in the pending changeset, then continue to Phase 3c.
+## Status vocabulary
 
-**If it does not exist**: Ask the user directly:
+| Field | Allowed values |
+|---|---|
+| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED`, `STOPPED`, `ERROR` |
+| `Analysis State` | `CURRENT`, `PARTIAL`, `STALE`, `INVALID`, `UNAVAILABLE`, `NOT_SUPPLIED` |
+| `Stage Authority` | `OBSERVED_ONLY`, `PROPOSED_ONLY`, `UNKNOWN` |
+| `Route State` | `READY`, `AT_RISK`, `UNKNOWN`, `BLOCKED`, `NO_ROUTE` |
+| `Preference Operation` | `CREATE`, `UPDATE`, `UNCHANGED`, `DECLINED`, `CONFLICT`, `FAILED`, `NOT_REQUESTED` |
+| `Persistence` | `WRITTEN`, `NOT_REQUESTED`, `DECLINED`, `FAILED`, `NOT_ATTEMPTED` |
+| `Authoritative Stage Mutation` | always `NONE` |
 
-- **Prompt**: "One setup choice: how much design review would you want as you work through the workflow?"
-- **Options**:
-  - `Full` — Director specialists review at each key workflow step. Best for teams, learning the workflow, or when you want thorough feedback on every decision.
-  - `Lean (recommended)` — Directors only at phase gate transitions ($gate-check). Skips per-skill reviews. Balanced approach for solo devs and small teams.
-  - `Solo` — No director reviews at all. Maximum speed. Best for game jams, prototypes, or if the reviews feel like overhead.
+`COMPLETE` means the onboarding interaction produced a transparent recommendation or
+stop decision. It never means that a development phase, gate, concept, engine, or
+project setup is complete.
+
+## Phase 0: Validate the catalog and minimal state
+
+Resolve literal and real paths, reject symlink escapes and paths outside the project
+root, read raw bytes once, and compute full lowercase SHA-256.
 
-Store the selected review mode in the pending changeset without writing it yet:
-- `Full` → write `full`
-- `Lean (recommended)` → write `lean`
-- `Solo` → write `solo`
+### Workflow catalog
+
+Require `.codex/docs/workflow-catalog.yaml` to have a supported schema/version and
+unique stable workflow IDs. Each routable entry must define:
+
+- command/display name and artifact types it accepts/produces;
+- required predecessor step IDs and evidence types;
+- optional/required classification and phase;
+- risk flags and whether it can be recommended when evidence is unknown;
+- deprecation/replacement metadata when applicable.
 
-Create the `production/` directory if it does not exist.
+The catalog is the only route source. Do not embed or reconstruct a multi-step
+roadmap in this skill. If the catalog is missing, invalid, duplicated, or lacks the
+needed typed route, set `Route State: BLOCKED` or `UNKNOWN`; do not guess a command.
 
----
-
-## Phase 3c: Approve and Apply Onboarding Configuration
-
-Present one complete changeset preview:
-
-- `production/stage.txt` with the proposed stage;
-- `production/review-mode.txt` with the selected mode, unless that file already exists unchanged;
-- creation of `production/` if needed.
-
-Obtain one explicit approval. On approval, write the complete changeset without further prompts. If declined, leave both files unchanged and continue with guidance only.
-
----
-
-## Phase 4: Confirm Before Proceeding
-
-After presenting the recommended path, ask the user directly which step they'd like to take first. Never auto-run the next skill.
-
-- **Prompt**: "Would you like to start with [recommended first step]?"
-- **Options**:
-  - `Yes, let's start with [recommended first step]`
-  - `I'd like to do something else first`
-
----
-
-## Phase 5: Hand Off
-
-When the user confirms their next step, respond with a single short line: "Type `[skill command]` to begin." Nothing else. Do not re-explain the skill or add encouragement. The `$start` skill's job is done.
-
-Verdict: **COMPLETE** — user oriented and handed off to next step.
-
----
-
-## Edge Cases
-
-- **User picks D but project is empty**: Gently redirect — "It looks like the project is a fresh template with no artifacts yet. Would Path A or B be a better fit?"
-- **User picks A but project has code**: Mention what you found — "I noticed there's already code in `src/`. Did you mean to pick D (existing work)?"
-- **User is returning (engine configured, concept exists)**: Skip onboarding entirely — "It looks like you're already set up! Your engine is [X] and you have a game concept at `design/gdd/game-concept.md`. Review mode: `[read from production/review-mode.txt, or 'lean (default)' if missing]`. Want to pick up where you left off? Try `$sprint-plan` or just tell me what you'd like to work on."
-- **User doesn't fit any option**: Let them describe their situation in their own words and adapt.
-
----
-
-## Collaborative Protocol
-
-1. **Ask first** — never assume the user's state or intent
-2. **Present options** — give clear paths, not mandates
-3. **User decides** — they pick the direction
-4. **No auto-execution** — recommend the next skill, don't run it without asking
-5. **Adapt** — if the user's situation doesn't fit a template, listen and adjust
+### Existing preferences and observed configuration
+
+If `production/onboarding/preferences.yaml` exists, read and validate its schema,
+raw-byte hash, preference ID, user decision provenance, and catalog/analysis hashes.
+A valid file makes persistence an `UPDATE`; absence makes it a `CREATE`. Invalid or
+ambiguous existing preferences block writes rather than being overwritten.
+
+Read existing stage/review-mode bytes only to show observed values and raw hashes.
+A stage label without its owner/evidence receipt remains `OBSERVED_ONLY`. Do not use
+it to skip required catalog steps. A current review-mode value is not immutable; the
+user may record a different onboarding preference, but `start` does not apply it to
+the authoritative configuration.
+
+## Phase 1: Consume one versioned detection packet or remain unknown
+
+When `--analysis` is supplied, first verify the exact packet bytes against
+`--expect-analysis`, then require the complete `project_stage_detection/v2` contract:
+
+- `result`, `detected_stage`, `declared_stage`, `confidence`, and `snapshot_at`;
+- target commit, dirty state, and source snapshot hash;
+- authority schema/version, record path/hash, owner, and transition source;
+- required/valid receipt counts;
+- the full ordered evidence list with stable ID, provenance, path, hash, and state;
+- contradictions, coverage gaps, advisory observations, recommendation, and the
+  `ADVISORY DETECTION ONLY — NOT A GATE OR TRANSITION` disclaimer.
+
+Re-hash the packet and every declared path/receipt against the same snapshot. A
+filename, directory, nonempty document, GDD/architecture/source existence, unchecked
+status text, or newest artifact can never establish completion. `UNKNOWN`, `CONFLICT`,
+`ERROR`, any non-current target, or any INVALID/STALE/UNVERIFIED evidence makes the
+analysis unsafe for stage-based routing. Even `DETECTED` is advisory and never gate
+or transition authority.
+
+When no packet is supplied, use `Analysis State: NOT_SUPPLIED` and
+`Stage Authority: UNKNOWN`. Ask the user's intent, but do not perform a duplicate
+stage scan or impersonate a stage analyzer.
+
+This workflow never invokes the detector automatically. If a current packet is required
+for a safe route, select the catalog's typed stage-detection entry as the single
+recommendation when available.
+
+## Phase 2: Ask the user's onboarding intent
+
+The first visible question asks where the user is starting:
+
+- no idea yet;
+- vague idea;
+- clear but unformalized concept;
+- existing work;
+- describe another situation.
+
+For existing work, report only facts from a `CURRENT` analysis receipt. Otherwise say
+that project completeness is unknown; do not cite counts obtained from an ad hoc scan.
+
+Collect only routing preferences needed for the next step:
+
+- short free-text intent or idea hint;
+- whether the user wants concept formalization before technical work;
+- desired review preference: `full`, `lean`, `solo`, or `unspecified`;
+- whether they want to record preferences;
+- any explicit request to continue despite a missing required concept.
+
+Do not ask the user to choose an engine here. Platform/engine decisions belong to
+their typed catalog workflow and current evidence.
+
+## Phase 3: Determine one catalog-derived route
+
+Use the current catalog hash plus the stage analysis:
+
+1. If analysis is CURRENT, locate its first unmet required step by stable workflow ID
+   and confirm its evidence dependencies against the catalog.
+2. If analysis is missing/partial/stale, recommend the typed stage-analysis entry
+   when safe and available; otherwise return `Route State: UNKNOWN`.
+3. For a fresh/no-idea intent, select the catalog entry whose declared purpose and
+   accepted input type match open concept ideation.
+4. For a vague/clear idea, select a concept-authoring or concept-specific review entry
+   only when its artifact-type contract accepts `game-concept`.
+5. For existing work, never jump to a later phase merely because files exist. Use the
+   first unmet required step from current analysis.
+6. Return one workflow ID/command, its catalog path/hash, input artifact type,
+   prerequisites/evidence, and why it is the first safe next step.
+
+### Artifact-type review routing
+
+A game concept is not a system GDD. A review route is eligible only when the catalog
+entry explicitly declares `accepts_artifact_type: game-concept` and a concept-specific
+profile. A system-GDD-only rubric is ineligible. If no typed concept reviewer exists,
+record a catalog gap and recommend concept authoring/analysis or stop; never send the
+concept to a mismatched reviewer.
+
+### Missing-concept risk
+
+If a concept is a required predecessor but the user asks to jump to later technical
+work, explain the missing evidence and offer:
+
+- formalize the concept;
+- continue with risk recorded;
+- stop.
+
+Continuing requires an explicit user decision and creates one immutable preference
+record:
+
+~~~text
+Risk ID: accepted-risk/missing-concept
+State: ACCEPTED_BY_USER
+Missing Requirement IDs: <stable IDs>
+Selected Workflow ID: <catalog ID>
+Consequences: <bounded concrete list>
+Decision Owner: user
+Decision ID: <stable ID>
+Accepted At: <ISO-8601>
+Expires/Review At: <milestone or timestamp>
+Remediation: <first missing concept step>
+Catalog SHA-256: <digest>
+Analysis SHA-256: <digest or NOT_SUPPLIED>
+~~~
+
+Set `Route State: AT_RISK`, not READY. Set every missing concept/gate item to
+`UNSATISFIED`; never mark it complete, passed, waived, or stage-approved. If the user
+does not explicitly accept, route to the missing concept step or stop.
+
+Risk acceptance is a preference record only. It does not authorize the selected
+workflow, implementation, stage advancement, or any file except the exact preferences
+file.
+
+## Phase 4: Build schema-valid onboarding preferences
+
+The exact YAML document uses:
+
+~~~text
+Artifact Type: onboarding-preferences
+Schema Version: 1
+Preference ID: <stable UUID/slug>
+Project Root ID: <normalized-root digest>
+Catalog Path: .codex/docs/workflow-catalog.yaml
+Catalog SHA-256: sha256:<64 lowercase hex>
+Analysis Path: <path or NOT_SUPPLIED>
+Analysis SHA-256: <digest or NOT_SUPPLIED>
+Analysis State: <enum>
+Observed Stage Path: <path or ABSENT>
+Observed Stage SHA-256: <digest or ABSENT>
+Observed Stage Value: <value or UNKNOWN>
+Stage Authority: OBSERVED_ONLY | PROPOSED_ONLY | UNKNOWN
+Proposed Stage: <analysis proposal or UNKNOWN>
+Observed Review Mode Path: <path or ABSENT>
+Observed Review Mode SHA-256: <digest or ABSENT>
+Observed Review Mode: <value or UNKNOWN>
+Review Mode Preference: full | lean | solo | unspecified
+Self-Reported Start State: <stable enum>
+Intent Summary: <bounded user text>
+Selected Workflow ID: <catalog ID or NONE>
+Selected Workflow Command: <catalog command or NONE>
+Route State: READY | AT_RISK | UNKNOWN | BLOCKED | NO_ROUTE
+Decision ID: <stable ID>
+Decision Owner: user
+Decision Timestamp: <ISO-8601>
+Risk Records: <ordered records or NONE>
+Authoritative Stage Mutation: NONE
+~~~
+
+For UPDATE, preserve unrelated existing preference fields and prior risk/decision
+history. Append a new immutable decision event; do not rewrite history. Display a
+field-level diff, old/new raw hash, catalog/analysis hashes, all directory/file
+operations, and the fact that stage/review-mode files remain unchanged.
+
+If the user chose not to persist, return `Preference Operation: NOT_REQUESTED` and
+retain the recommendation in conversation only.
+
+## Phase 5: Authorize, compare-and-set, and persist
+
+For `--persist`, an explicit bounded request may authorize the exact preference
+changes. Otherwise preview the complete changeset and obtain one approval.
+
+Immediately before writing:
+
+- re-hash catalog, analysis and every referenced receipt;
+- re-read observed stage/review-mode for transparent drift reporting;
+- for CREATE, confirm the target and directories have the previewed existence state;
+- for UPDATE, require the existing preference raw SHA-256 to equal its preimage;
+- revalidate route ID/command against the same catalog bytes.
+
+Any relevant change returns `Preference Operation: CONFLICT`, `Workflow Status:
+BLOCKED`, and writes nothing. Do not merge or overwrite concurrent preference edits.
+
+Create missing directories only if previewed. Write the one preference file
+atomically, re-read exact bytes, validate schema/enums/references/history, and return
+its SHA-256. A directory or file write failure returns `FAILED`; it never implies
+preferences or stage were applied.
+
+Declined persistence returns `DECLINED` while still showing the route, analysis
+limitations, proposed preferences and unchanged authoritative files.
+
+## Phase 6: Output one recommendation and stop
+
+Return a concise but complete result:
+
+- user intent and decision ID;
+- catalog path/hash and selected workflow ID/command;
+- analysis path/hash/state and first unmet evidence;
+- observed/proposed stage with authority label;
+- route state and accepted-risk record if any;
+- preference operation/path/preimage/output hash/persistence;
+- unchanged stage/review-mode paths/hashes;
+- `Authoritative Stage Mutation: NONE`;
+- one next action or `Stop`.
+
+Never auto-run the recommendation, print a copied multi-phase roadmap, guess a later
+sprint, or reduce the result to a single line that hides conflicts/declined writes.
+
+Verdict mapping:
+
+- invalid catalog/schema/path -> `ERROR` or `BLOCKED`;
+- partial/stale analysis that prevents safe routing -> `PARTIAL`;
+- declined recommendation or user stop -> `STOPPED`;
+- successful interaction with transparent READY/AT_RISK/UNKNOWN route and verified
+  persistence state -> `COMPLETE`.
+
+`COMPLETE` is onboarding completion only.

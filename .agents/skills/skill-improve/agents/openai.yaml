@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Improve"
-  short_description: "Improve a Codex skill with a..."
-  default_prompt: "Use $skill-improve to run the Skill Improve game-studio workflow."
+  short_description: "Stage and verify skill fixes against a frozen oracle"
+  default_prompt: "Use $skill-improve to freeze independent acceptance evidence, stage a target-local candidate, verify it without touching the live skill, and CAS-apply only a proven improvement."

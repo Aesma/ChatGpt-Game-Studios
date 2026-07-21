@@ -1,130 +1,277 @@
 ---
 name: team-narrative
-description: "Orchestrate the narrative team: coordinates narrative-director, writer, world-builder, and level-designer to create cohesive story content, world lore, and narrative-driven level design."
+description: "Coordinate canon-safe narrative content through frozen-baseline planning, bounded read-only proposals, single-owner writes, localization gating, and independent final-hash review."
 ---
 
-## Invocation and execution
+# Team Narrative
 
-Invoke this workflow as `$team-narrative`.
+Create or revise narrative content without allowing parallel authors, stale reviews,
+or unresolved localization defects to change canon or ship as complete.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+## Invocation contract
 
-Arguments: `[narrative content description] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Invoke as:
 
-If no argument is provided, output usage guidance and exit without spawning any agents:
-> Usage: `$team-narrative [narrative content description]` — describe the story content, scene, or narrative area to work on (e.g., `boss encounter cutscene`, `faction intro dialogue`, `tutorial narrative`). Do not ask the user directly here; output the guidance directly.
+`$team-narrative --manifest {narrative-content-request-path} [--resume {checkpoint-path}]`
 
-When this skill is invoked with an argument, orchestrate the narrative team through a structured pipeline.
+Parse and validate arguments before reading project files, delegating, asking for a
+decision, or writing anything. With no manifest, print the usage line and stop with
+no side effects. Do not infer a topic from the repository.
 
-**Decision Points:** At each phase transition, ask the user directly to present
-the user with the subagent's proposals as selectable options. Write the agent's
-full analysis in conversation, then capture the decision with concise labels.
-The user must approve before moving to the next phase.
+The request manifest is required to contain:
 
-## Phase 0: Resolve Review Mode
+- stable `content_id`, unique `run_id`, and operation `create` or `revise`;
+- narrative goal, intended audience, content-rating policy, and spoiler class;
+- requested artifact types and explicit destination paths;
+- canon roots, registries, voice profiles, UX/string constraint sources, and
+  gameplay/level trigger-contract sources;
+- expected base hash for every existing file that may be changed;
+- proposed owner role for every artifact and every shared registry;
+- read budget per source group, maximum parallelism, per-attempt deadline, phase
+  deadline, and checkpoint root;
+- the authority allowed to decide canon, authorize canon promotion, and authorize
+  narrative-content writes.
 
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
+Reject path traversal, absolute paths outside the repository, duplicate normalized
+paths, duplicate IDs, missing revise targets, occupied create targets, unsupported
+artifact types, and any manifest that names the same path for two writers. Never
+write through symlinks or junctions that resolve outside the repository.
 
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
+## Non-negotiable invariants
 
-Store the resolved mode for use in all subsequent phases.
+1. Canon validation and explicit canon decisions finish before dialogue, visual, or
+   level proposals start. A frozen canon baseline hash is the hard dependency gate.
+2. Delegates are read-only proposal or review agents until a separately authorized
+   mutation manifest names their exact paths. A proposal is never permission to
+   write.
+3. Each artifact path has exactly one writer. Shared registries and manifests have
+   one recorder and are updated sequentially with base-hash checks.
+4. An author cannot approve their own artifact. Final review is fresh, independent,
+   read-only, and bound to the final artifact-set hash.
+5. Any blocking localization defect yields `NOT LOCALIZATION READY`; accepting the
+   risk does not turn it into `COMPLETE` and does not permit downstream localization
+   or implementation handoff.
+6. Do not invoke a system-GDD review workflow for narrative artifacts. Use the
+   narrative review profile in this document.
+7. Never implement engine code, triggers, assets, translations, or other production
+   work. This workflow produces authorized narrative artifacts and contracts only.
 
-## Team Composition
-- **narrative-director** — Story arcs, character design, dialogue strategy, narrative vision
-- **writer** — Dialogue writing, lore entries, item descriptions, in-game text
-- **world-builder** — World rules, faction design, history, geography, environmental storytelling
-- **art-director** — Character visual design, environmental visual storytelling, cutscene/cinematic tone
-- **level-designer** — Level layouts that serve the narrative, pacing, environmental storytelling beats
-- **localization-lead** — Localization readiness — flags non-localizable strings, cultural assumptions, and i18n gaps
+## Evidence and records
 
-## How to Delegate
+Use immutable operational records under:
 
-Use the Codex subagent delegation to spawn each team member as a subagent:
-- `subagent_type: narrative-director` — Story arcs, character design, narrative vision
-- `subagent_type: writer` — Dialogue writing, lore entries, in-game text
-- `subagent_type: world-builder` — World rules, faction design, history, geography
-- `subagent_type: art-director` — Character visual profiles, environmental visual storytelling, cinematic tone
-- `subagent_type: level-designer` — Level layouts that serve the narrative, pacing
-- `subagent_type: localization-lead` — Localization readiness — flags non-localizable strings, cultural assumptions, and i18n gaps
+`production/narrative/team-narrative/{content_id}/{run_id}/`
 
-Always provide full context in each agent's prompt (narrative brief, lore dependencies, character profiles). Launch independent agents in parallel where the pipeline allows it (e.g., Phase 2 agents can run simultaneously).
+The coordinator is the sole writer for these records:
 
-## Pipeline
+- `context-manifest.yaml`: normalized source paths, exact hashes, selected sections,
+  byte/token budgets, omissions, and dependency edges;
+- `ownership-manifest.yaml`: artifact path, artifact type, one writer identity,
+  reviewer identity, destination owner, and expected base hash;
+- `mutation-manifest.yaml`: the exact authorized operations and limits;
+- `checkpoints/{sequence}-{phase}.yaml`: immutable phase state and attempt tokens;
+- `review/narrative-review.yaml`: final review evidence;
+- `result.yaml`: terminal status and one next action.
 
-### Phase 1: Narrative Direction
-Delegate to **narrative-director**:
-- Define the narrative purpose of this content: what story beat does it serve?
-- Identify characters involved, their motivations, and how this fits the overall arc
-- Set the emotional tone and pacing targets
-- Specify any lore dependencies or new lore this introduces
-- Output: narrative brief with story requirements
+Every finding and proposed change has a stable ID. Use `NCF-{check-id}` for canon
+findings, `NCP-{artifact-id}` for proposals, `LOC-{string-id}-{check-id}` for
+localization findings, and `NRF-{profile-check-id}` for final-review findings.
 
-### Phase 2: World Foundation (parallel)
-Delegate in parallel — issue all three subagent delegations simultaneously before waiting for any result:
-- **world-builder**: Create or update lore entries for factions, locations, and history relevant to this content. Cross-reference against existing lore for contradictions. Set canon level for new entries.
-- **writer**: Draft character dialogue using voice profiles. Ensure all lines are under 120 characters, use named placeholders for variables, and are localization-ready.
-- **art-director**: Define character visual design direction for key characters appearing in this content (silhouette, visual archetype, distinguishing features). Specify environmental visual storytelling elements for each key space (prop composition, lighting notes, spatial arrangement). Define tone palette and cinematic direction for any cutscenes or scripted sequences.
+## Phase 1: Validate request and build bounded canon graph
 
-### Phase 3: Level Narrative Integration
-Delegate to **level-designer**:
-- Review the narrative brief and lore foundation
-- Design environmental storytelling elements in the level
-- Place narrative triggers, dialogue zones, and discovery points
-- Ensure pacing serves both gameplay and story
+1. Normalize and validate the request manifest and all destination paths.
+2. Build a directed canon dependency graph from only the declared roots and direct
+   references. Detect cycles, missing references, ambiguous IDs, and budget overflow.
+   Do not recursively load the whole repository.
+3. Write `context-manifest.yaml` only within already granted orchestration-record
+   authority. If that authority is absent, keep the record in conversation and
+   return `BLOCKED` without creating it.
+4. Delegate a read-only canon inspection to `world-builder`. It returns source-bound
+   findings and a proposed canon diff; it creates or edits no files.
+5. Delegate a read-only narrative brief proposal to `narrative-director`. It must cite
+   the context-manifest hashes and mark assumptions as unresolved, not canon.
 
-### Phase 4: Review and Consistency
-Delegate to **narrative-director**:
-- Review all dialogue against character voice profiles
-- Verify lore consistency across new and existing entries
-- Confirm narrative pacing aligns with level design
-- Check that all mysteries have documented "true answers"
+If context is missing or contradictory, report stable finding IDs, the competing
+claims with source paths and hashes, affected downstream artifacts, and selectable
+canon options. Stop before any writer, art-director, or level-designer delegation.
 
-### Phase 5: Polish (parallel)
-Delegate in parallel:
-- **writer**: Final self-review — verify no line exceeds dialogue box constraints, all text uses string keys (not raw strings), placeholder variable names are consistent
-- **localization-lead**: Validate i18n compliance — check string key naming conventions, flag any strings with hardcoded formatting that won't survive translation, verify character limit headroom for languages that expand (German/Finnish typically +30%), confirm no cultural assumptions in text that would need locale-specific variants
-- **world-builder**: Finalize canon levels for all new lore entries
+## Phase 2: Decide, authorize, and freeze canon
 
-## Error Recovery Protocol
+Canon choice is a product decision. Ask the named canon authority to choose among
+the source-backed options; never select a convenient version on the user's behalf.
+Record the decision ID, choice, rationale, decision-maker, and timestamp.
 
-If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors, or cannot complete:
+If the decision requires changing canon, first present a canon-only mutation
+manifest containing every operation, path, expected base hash, proposed new ID or
+registry entry, assigned unique writer, maximum bytes, and explicit non-writes.
+Obtain separate promotion authorization from the named authority. Then:
 
-1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
-2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
-3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
-   - Retry with narrower scope
-   - Stop here and resolve the blocker first
-4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
+1. one canon writer applies the authorized canon files sequentially;
+2. one canon-registry recorder updates shared registries sequentially;
+3. each writer verifies the expected base hash immediately before writing and stops
+   on drift or an unlisted path;
+4. read back every changed file, validate IDs and references, and compute hashes;
+5. compute the canon-baseline hash from a canonical, sorted manifest of canon paths
+   and hashes.
 
-Common blockers:
-- Input file missing (story not found, GDD absent) → redirect to the skill that creates it
-- ADR status is Proposed → do not implement; run `$architecture-decision` first
-- Scope too large → split into two stories via `$create-stories`
-- Conflicting instructions between ADR and story → surface the conflict, do not guess
+No downstream proposal may start until the checkpoint state is `CANON_FROZEN` and
+contains the canon-baseline hash. Authorization refusal, unresolved canon, hash
+drift, validation failure, or an unverified registry update is `BLOCKED`.
 
-## File Write Protocol
+## Phase 3: Run bounded read-only proposals
 
-All file writes (narrative docs, dialogue files, lore entries) are delegated to
-sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+After `CANON_FROZEN`, issue these independent proposal tasks together, up to the
+manifest's maximum concurrency and never more than three at once:
 
-## Output
+- `writer`: dialogue, string-key, lore-text, and voice proposals;
+- `art-director`: a visual narrative brief only, with no asset production;
+- `level-designer`: trigger, discovery, pacing, and environmental-storytelling
+  contracts only, with no engine implementation.
 
-A summary report covering: narrative brief status, lore entries created/updated, dialogue lines written, level narrative integration points, consistency review results, and any unresolved contradictions.
+Each task receives the same frozen canon-baseline hash, only its declared context
+slice, an artifact schema, prohibited paths, and a unique attempt token. It returns
+proposal text, citations, destination suggestions, assumptions, and stable proposal
+IDs. It must not write content or operational files and must not delegate again.
 
-Verdict: **COMPLETE** — narrative content delivered.
+Concurrency controls:
 
-If the pipeline stops because a dependency is unresolved (e.g., lore contradiction or missing prerequisite not resolved by the user):
+- default and maximum concurrency: 3;
+- default per-attempt deadline: 15 minutes; manifest may lower it, not raise it;
+- maximum phase deadline: 30 minutes;
+- at most one retry, only for an attempt proven to have made no writes;
+- on timeout or cancellation, revoke the attempt token and ignore/quarantine every
+  late result or patch from that token;
+- a missing, timed-out, or invalid proposal produces `PARTIAL` and a checkpoint;
+  dependent writes do not begin.
 
-Verdict: **BLOCKED** — [reason]
+## Phase 4: Route ownership and obtain write authorization
 
-## Next Steps
+Reconcile proposals without writing them. Create an ownership manifest where every
+normalized destination path has one writer and every writer has a disjoint path set.
+Typical ownership is:
 
-- Run `$design-review` on the narrative documents for consistency validation.
-- Run `$localize extract` to extract new strings for translation after dialogue is finalized.
-- Run `$dev-story` to implement dialogue triggers and narrative events in-engine.
+- canon files: canon writer; canon registry: canon-registry recorder;
+- arc/brief: narrative author; dialogue/string source: dialogue writer;
+- lore entry: lore writer; trigger contract: level-integration writer;
+- visual narrative brief: art-brief writer;
+- operational evidence and final result: coordinator recorder.
+
+Experts may propose across these boundaries, but only the named owner may write the
+path. If a shared path cannot be split, assign one recorder and serialize all
+accepted changes through that recorder.
+
+Before the first narrative-content write, present one exact mutation manifest that
+lists every operation, destination, expected base hash, writer identity, proposal
+IDs, size limit, and explicit non-writes. Obtain authorization from the named content
+authority. Unknown paths and later scope expansion require a revised manifest and
+new authorization. Do not ask again per file inside an unchanged authorized scope.
+
+## Phase 5: Localization review before delivery
+
+The `localization-lead` performs a read-only review of accepted dialogue and string
+proposals against the actual declared UX and string-system sources. Never substitute
+a generic fixed limit such as 120 characters. If a constraint source is absent,
+record the constraint as `UNKNOWN` and block affected strings.
+
+Check stable string IDs, source-language ownership, placeholders, formatter
+contracts, plurals, gender, grammar dependencies, concatenation, locale-specific
+dates/numbers, expansion budgets from the real UI constraints, cultural assumptions,
+content-rating exposure, and spoiler partitioning.
+
+Every blocking defect must be fixed by the assigned artifact owner inside the
+authorized manifest and then re-reviewed, or the run becomes
+`NOT LOCALIZATION READY`. A user may accept the business risk, but the terminal
+verdict remains `PARTIAL`, never `COMPLETE`, and no localization or implementation
+handoff is allowed.
+
+## Phase 6: Apply writes and verify read-back
+
+Only after canon freeze, valid ownership, localization clearance, and content-write
+authorization may the unique artifact owners write. Apply operations sequentially
+per path with an immediate base-hash guard and atomic replacement where supported.
+Reject unlisted writes, ownership mismatches, oversized output, broken references,
+or a changed canon-baseline hash.
+
+After all writes, read back every artifact, validate schema and reference integrity,
+and create a canonical sorted final artifact manifest. Its hash is the
+`final_artifact_set_hash`. A write failure produces `PARTIAL`; do not claim or infer
+that an unwritten proposal was delivered.
+
+Mystery truths belong only in an access-controlled private canon artifact such as
+`design/narrative/canon/private/{content_id}-truths.*`. Public artifacts may contain
+stable truth IDs but not their protected answers. Validate the declared spoiler
+class and access boundary during read-back.
+
+## Phase 7: Independent narrative review on final hashes
+
+Spawn a fresh reviewer who did not author, edit, record, or approve any reviewed
+artifact. The reviewer is read-only, receives the frozen canon-baseline hash and
+`final_artifact_set_hash`, and loads only the final hashed files. The reviewer uses
+this narrative-specific profile:
+
+- canon consistency and source/hash/reference integrity;
+- character voice and relationship continuity;
+- arc purpose, pacing, causality, and emotional progression;
+- gameplay/level trigger-contract completeness without implementation;
+- mystery truth-ID coverage and public/private spoiler separation;
+- localization readiness and real UX/string constraints;
+- content-rating and cultural-safety policy compliance.
+
+Persist stable findings, severity, evidence path/hash, owner, required destination,
+and disposition in `review/narrative-review.yaml`. The review is current only when
+its recorded artifact-set hash equals the recomputed final hash.
+
+If polish or fixes occur, the prior approval becomes stale. The same unique owners
+may apply only authorized fixes; then recompute hashes and run a fresh independent
+scoped review over every changed artifact and its dependents. Allow at most two fix
+rounds. Unresolved blockers, stale evidence, or reviewer/author identity overlap is
+`PARTIAL` or `BLOCKED`, never `COMPLETE`.
+
+## Checkpoint and recovery protocol
+
+Write an immutable checkpoint after request validation, canon decision, canon
+freeze, proposals, authorization, localization review, writes, and final review.
+Each checkpoint records input hashes, output hashes, decisions, authorizations,
+ownership, active/revoked attempt tokens, completed and pending work, blockers, and
+the exact next safe phase.
+
+On `--resume`, validate content ID, run ID, checkpoint chain, current source hashes,
+canon-baseline hash, authorization scope, and absence of late writes. Resume only
+from the recorded next phase. Drift or an invalid chain is `BLOCKED`; never silently
+restart or reuse stale proposals/reviews.
+
+Agent errors are surfaced immediately. Preserve valid read-only proposals in the
+checkpoint, cancel dependents, and return `PARTIAL` when independent work succeeded.
+Never skip a required agent, reviewer, canon decision, or localization blocker to
+keep the pipeline moving.
+
+## Completion gate and output
+
+`Verdict: COMPLETE` is legal only when all of the following are true:
+
+- canon is frozen and its current baseline hash is recorded;
+- every authorized artifact exists at its declared path with its final hash;
+- ownership and base-hash guards passed, with no unlisted writes;
+- localization status is `LOCALIZATION READY` with zero blocking findings;
+- canon, voice, arc, trigger contract, mystery-truth boundary, content rating, and
+  references pass the independent review on the current final artifact-set hash;
+- all final evidence, checkpoints, and `result.yaml` were read back successfully;
+- there are zero unresolved blockers and zero stale or late results.
+
+Otherwise return exactly one of:
+
+- `Verdict: PARTIAL` — safe work/evidence exists, but delivery is incomplete; include
+  `NOT LOCALIZATION READY` when applicable;
+- `Verdict: BLOCKED` — no safe progress can continue without a decision, authority,
+  missing dependency, or drift resolution.
+
+The final report includes content/run IDs, status, canon-baseline hash, final
+artifact-set hash, artifact path/hash/owner table, authorization IDs, localization
+status and evidence, final reviewer identity and review hash, blockers, checkpoint
+path, and exactly one status-driven next action.
+
+For `COMPLETE`, the next action may be an explicit downstream handoff request using
+the artifact manifest and `LOCALIZATION READY` evidence. Do not invoke another
+workflow and do not start localization, assets, or production implementation from
+this skill. For `PARTIAL` or `BLOCKED`, the one next action must resolve the named
+blocking condition.

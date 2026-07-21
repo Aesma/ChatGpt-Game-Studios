@@ -1,4 +1,4 @@
 interface:
   display_name: "Release Checklist"
-  short_description: "Generates a comprehensive pre-release validation checklist..."
-  default_prompt: "Use $release-checklist to run the Release Checklist game-studio workflow."
+  short_description: "Normalize candidate-bound release evidence"
+  default_prompt: "Use $release-checklist with an exact release-candidate manifest and hash-bound evidence index."

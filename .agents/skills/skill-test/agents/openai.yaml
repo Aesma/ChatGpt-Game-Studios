@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Test"
-  short_description: "Validate Codex skills for structural compliance, UI metadata..."
-  default_prompt: "Use $skill-test to run the Skill Test game-studio workflow."
+  short_description: "Validate contracts; optionally persist hash-bound receipts"
+  default_prompt: "Use $skill-test for read-only structural, semantic, spec, category, or audit validation; persist an immutable version-bound receipt only when explicitly requested."

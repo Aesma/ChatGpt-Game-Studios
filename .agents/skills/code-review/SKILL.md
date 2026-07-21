@@ -11,10 +11,37 @@ Arguments: `[path-to-file-or-directory]`. Treat bracketed values as optional unl
 
 Delegate substantive work to the `lead-programmer` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
+### Read-only review contract
+
+This workflow is strictly read-only: it must not edit source, tests, metadata,
+or workflow artifacts.
+
+Use finding severities `BLOCKING`, `WARNING`, and `INFO`. Use only these
+verdicts, in precedence order:
+
+1. `PARTIAL` — mandatory coverage is incomplete; approval is prohibited.
+2. `NEEDS CHANGES` — coverage is complete and a `BLOCKING` finding exists.
+3. `CONCERNS` — coverage is complete, no `BLOCKING` finding exists, and a
+   `WARNING` finding exists.
+4. `APPROVED` — coverage is complete with no `BLOCKING` or `WARNING` findings.
+
+Mandatory coverage is complete only when every resolved target file was read
+and reviewed, every applicable check has an evidence-backed `PASS`, `FAIL`, or
+`N/A`, every explicit ADR reference was resolved and status-checked (with every
+`Accepted` ADR evaluated), and every required reviewer completed. Any omitted,
+unreadable, unresolved, `UNKNOWN`, or `UNVERIFIED` item is a named coverage gap
+and forces `PARTIAL`. If the `lead-programmer` role is unavailable, the current
+agent may satisfy that reviewer responsibility only by actually performing it.
+A missing or invalid target that cannot form a manifest is an input error; emit
+no verdict.
+
 
 ## Phase 1: Load Target Files
 
-Read the target file(s) in full. Read AGENTS.md for project coding standards.
+Read the target file(s) in full and enumerate them in a target manifest. Read
+AGENTS.md for project coding standards. If the manifest resolves but any listed
+file cannot be read or reviewed, record a file coverage gap; do not silently
+drop it.
 
 ---
 
@@ -42,9 +69,24 @@ Search for ADR references in, in priority order:
 
 Look for patterns like `ADR-NNN` or `docs/architecture/ADR-`.
 
-If no ADR references found, note: "No ADR references found — ADR compliance check skipped. For full ADR compliance review, provide the story path: `$code-review [files] [story-path]`."
+If no ADR references are found, report `ADR_NOT_EVALUATED`, explain that no ADR
+compliance claim can be made, and record an ADR coverage gap. This forces a
+`PARTIAL` verdict. Suggest providing the story path for a complete review:
+`$code-review [files] [story-path]`.
 
-For each referenced ADR: read the file, extract the **Decision** and **Consequences** sections, then classify any deviation:
+For each referenced ADR, first read and report its `Status`:
+
+- Only `Accepted` ADRs can be used as compliance evidence. Read their
+  **Decision** and **Consequences** sections and evaluate the implementation.
+- A readable ADR with any other status (for example, `Proposed`) is
+  `ADR_NOT_EVALUATED`; add an `ARCHITECTURE RISK` finding with `WARNING`
+  severity. This completed status check maps to `CONCERNS` when the rest of the
+  review is complete.
+- A referenced ADR that is missing, unreadable, has no determinable status, or
+  lacks the sections required for evaluation is an ADR coverage gap and forces
+  `PARTIAL`.
+
+For each evaluated `Accepted` ADR, classify any deviation:
 
 - **ARCHITECTURAL VIOLATION** (BLOCKING): Uses a pattern explicitly rejected in the ADR
 - **ADR DRIFT** (WARNING): Meaningfully diverges from the chosen approach without using a forbidden pattern
@@ -97,6 +139,16 @@ Identify the system category (engine, gameplay, AI, networking, UI, tools) and e
 
 Spawn all applicable specialists simultaneously through Codex subagent delegation — do not wait for one before starting the next.
 
+Before spawning, list every required reviewer and why it applies. Reviewers are
+part of mandatory coverage: use the platform's bounded wait/timeout behavior,
+never wait indefinitely, and make at most one retry after a transient
+no-response. Record `REVIEWER_UNAVAILABLE`, `REVIEWER_TIMEOUT`,
+`REVIEWER_BLOCKED`, or `REVIEWER_INVALID_RESPONSE` for any reviewer that does
+not return a usable final review. Each such record is a coverage gap and forces
+`PARTIAL`; never infer a clean result from reviewer silence. The documented
+current-agent fallback applies only when the `lead-programmer` role itself is
+unavailable and the current agent actually performs that role's review.
+
 ### Engine Specialists
 
 If an engine is configured, determine which specialist applies to each file and spawn in parallel:
@@ -124,7 +176,9 @@ Ask the qa-tester to evaluate:
 
 For Visual/Feel and UI stories: qa-tester reviews whether the manual verification steps in `## QA Test Cases` are achievable with the implementation as written — e.g., "is the state the manual checker needs to reach actually reachable?"
 
-Collect all specialist findings before producing output.
+Collect all completed specialist findings before producing output. Preserve
+named failures in the coverage report instead of presenting the reviewer set as
+complete.
 
 ---
 
@@ -140,11 +194,18 @@ Collect all specialist findings before producing output.
 [qa-tester findings: test hooks, coverage gaps, untestable paths, new edge cases]
 [If BLOCKING: implementation must expose [X] before tests in ## QA Test Cases can run]
 
-### ADR Compliance: [NO ADRS FOUND / COMPLIANT / DRIFT / VIOLATION]
-[List each ADR checked, result, and any deviations with severity]
+### Coverage: [COMPLETE / PARTIAL]
+- Target files: [reviewed count / manifest count; list omitted or unreadable files]
+- Required checks: [evaluated count / applicable count; list UNKNOWN or UNVERIFIED checks]
+- ADR evidence: [evaluated Accepted ADRs / explicit references; list gaps or ADR_NOT_EVALUATED reason]
+- Required reviewers: [completed count / required count; list reviewer failure codes]
+[For PARTIAL: list every coverage gap and state that approval is prohibited]
+
+### ADR Compliance: [ADR_NOT_EVALUATED / COMPLIANT / DRIFT / VIOLATION]
+[List each ADR, its status, whether it was eligible as compliance evidence, and any deviations with severity]
 
 ### Standards Compliance: [X/6 passing]
-[List failures with line references]
+[List each check as PASS / FAIL / N/A / UNVERIFIED with evidence and line references]
 
 ### Architecture: [CLEAN / MINOR ISSUES / VIOLATIONS FOUND]
 [List specific architectural concerns]
@@ -164,7 +225,7 @@ Collect all specialist findings before producing output.
 ### Suggestions
 [Nice-to-have improvements]
 
-### Verdict: [APPROVED / APPROVED WITH SUGGESTIONS / CHANGES REQUIRED]
+### Verdict: [APPROVED / CONCERNS / NEEDS CHANGES / PARTIAL]
 ```
 
 This skill is read-only — no files are written.
@@ -174,15 +235,18 @@ This skill is read-only — no files are written.
 ## Phase 9: Next Steps
 
 Ask the user directly:
-- Prompt: "Code review complete — verdict: [APPROVED / CHANGES REQUIRED / MAJOR REVISION]. How would you like to proceed?"
+- Prompt: "Code review complete — verdict: [APPROVED / CONCERNS / NEEDS CHANGES / PARTIAL]. How would you like to proceed?"
 - Options (adjust based on verdict):
   - If APPROVED:
     - `[A] Run $story-done to mark the story complete`
     - `[B] Stop here`
-  - If CHANGES REQUIRED or MAJOR REVISION:
+  - If CONCERNS or NEEDS CHANGES:
     - `[A] Fix the issues and re-run $code-review`
     - `[B] Run $story-done anyway with noted exceptions`
     - `[C] Stop here`
+  - If PARTIAL:
+    - `[A] Resolve the listed coverage gaps and re-run $code-review`
+    - `[B] Stop here`
 
 If an ARCHITECTURAL VIOLATION is found:
 - If the violation contradicts an **existing ADR**: fix the implementation to comply with `docs/architecture/[adr-file].md`. If the design has legitimately changed, run `$architecture-decision` to formally *revise* the existing ADR — do not create a competing one.

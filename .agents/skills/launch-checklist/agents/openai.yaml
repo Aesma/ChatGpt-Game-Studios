@@ -1,4 +1,4 @@
 interface:
   display_name: "Launch Checklist"
-  short_description: "Complete launch readiness validation covering every..."
-  default_prompt: "Use $launch-checklist to run the Launch Checklist game-studio workflow."
+  short_description: "Assess build-bound launch readiness evidence"
+  default_prompt: "Use $launch-checklist with one explicit launch manifest to validate current candidate evidence and derive a deterministic readiness verdict without fabricating external status or sign-offs."

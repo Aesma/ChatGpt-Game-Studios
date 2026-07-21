@@ -1,4 +1,4 @@
 interface:
   display_name: "Security Audit"
-  short_description: "Audit the game for security vulnerabilities: save tampering..."
-  default_prompt: "Use $security-audit to run the Security Audit game-studio workflow."
+  short_description: "Evidence-bound read-only scan; redacted, never ship approval"
+  default_prompt: "Use $security-audit to run a scoped, read-only security assessment with real command, scope, hash, build, and advisory evidence; fail closed on anything unverified."

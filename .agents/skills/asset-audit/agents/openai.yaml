@@ -1,4 +1,4 @@
 interface:
   display_name: "Asset Audit"
-  short_description: "Audits game assets for compliance with naming conventions..."
-  default_prompt: "Use $asset-audit to run the Asset Audit game-studio workflow."
+  short_description: "Read-only adapter-backed asset compliance audit"
+  default_prompt: "Use $asset-audit with an exact hash-bound audit manifest to verify asset metadata, rules, references, and production eligibility; unsupported coverage returns PARTIAL, never COMPLIANT."

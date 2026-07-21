@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Narrative"
-  short_description: "Orchestrate the narrative team: coordinates..."
-  default_prompt: "Use $team-narrative to run the Team Narrative game-studio workflow."
+  short_description: "Deliver canon-safe narrative with independent review"
+  default_prompt: "Use $team-narrative with a narrative request manifest to freeze canon, collect bounded read-only proposals, route single-owner writes, enforce localization readiness, and verify final hashes independently."

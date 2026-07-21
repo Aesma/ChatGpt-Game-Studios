@@ -1,4 +1,4 @@
 interface:
   display_name: "Art Bible"
-  short_description: "Guided, section-by-section Art Bible authoring"
-  default_prompt: "Use $art-bible to run the Art Bible game-studio workflow."
+  short_description: "Versioned Art Bible drafts with current-hash approval"
+  default_prompt: "Use $art-bible to author an AB-1 Art Bible with skeleton-first persistence and independent hash-bound art-director approval."

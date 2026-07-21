@@ -1,245 +1,363 @@
 ---
 name: launch-checklist
-description: "Complete launch readiness validation covering every department: code, content, store, marketing, community, infrastructure, legal, and go/no-go sign-offs."
+description: "Evaluates one immutable launch candidate from build-bound test evidence, verifiable external receipts, and authorized owner attestations using a deterministic readiness algorithm."
 ---
 
-## Invocation and execution
+# Launch Checklist
 
-Invoke this workflow as `$launch-checklist`.
+Explicit invocation only. Use:
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+- `$launch-checklist assess --manifest <launch-manifest-path> --assessment-id <id> [--persist]`
+- `$launch-checklist dry-run --manifest <launch-manifest-path> --assessment-id <id>`
 
-Arguments: `[launch-date or 'dry-run']`. Treat bracketed values as optional unless the workflow says otherwise.
+This workflow normalizes evidence and derives an objective readiness verdict. It does
+not publish a build, submit certification, provision infrastructure, sign on behalf
+of an owner, accept risk, or make the final launch decision. It invokes no director
+gate or downstream workflow.
 
+An explicit bounded request authorizes the optional one-report write. Otherwise, when
+`--persist` is present, preview the exact one-file changeset and obtain one approval
+before writing. Do not prompt in dry-run or non-persisted assessment mode. Never
+overwrite an existing assessment.
 
-> **Explicit invocation only**: This skill should only run when the user explicitly requests it with `$launch-checklist`. Do not auto-invoke based on context matching.
+## Status and verdict contract
 
-## Phase 1: Parse Arguments
+Use these independent fields:
 
-Read the argument for the launch date or `dry-run` mode. Dry-run mode generates the checklist without creating sign-off entries or writing files.
+| Field | Allowed values |
+|---|---|
+| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED`, `ERROR` |
+| `Evidence Coverage` | `COMPLETE`, `PARTIAL`, `UNAVAILABLE` |
+| `Check Status` | `PASS`, `FAIL`, `UNKNOWN`, `STALE`, `UNAVAILABLE`, `NOT_APPLICABLE` |
+| `Evidence Status` | `VERIFIED`, `MANUAL_REQUIRED`, `MISSING`, `STALE`, `UNAVAILABLE`, `INVALID` |
+| `Readiness Verdict` | `LAUNCH_READY`, `LAUNCH_BLOCKED`, `CONCERNS`, `UNDETERMINED`, `ERROR` |
+| `Launch Decision` | always `NOT_RECORDED` by this workflow |
+| `Persistence` | `VERIFIED`, `NOT_REQUESTED`, `SIMULATION`, `DECLINED`, `FAILED`, `NOT_ATTEMPTED` |
 
----
+`PASS` is allowed only when the declared evidence contract verifies for the exact
+release candidate. A local file, checked checkbox, filename, date, prose claim, or
+model inference is never enough to prove an external or human fact.
 
-## Phase 2: Gather Project Context
+`LAUNCH_READY` is an evidence result, not permission to launch. A later human or
+formal gate may record `GO`, `NO_GO`, or `PROCEED_WITH_ACCEPTED_RISK`, but that
+decision cannot rewrite this checklist's statuses or evidence.
 
-- Read `AGENTS.md` for tech stack, target platforms, and team structure
-- Read the latest milestone in `production/milestones/`
-- Read any existing release checklist in `production/releases/`
-- Read the content calendar in `design/live-ops/content-calendar.md` if it exists
+## Deterministic readiness algorithm
 
----
+Each stable check in the launch manifest declares `gate_class: HARD` or `ADVISORY`.
+Evaluate every applicable check, then apply this strict order:
 
-## Phase 3: Scan Codebase Health
+1. `ERROR` when the launch manifest or candidate identity cannot be validated.
+2. `LAUNCH_BLOCKED` when any applicable HARD check is `FAIL`, `UNKNOWN`, `STALE`, or
+   `UNAVAILABLE`; a mandatory HARD domain/check is absent; or partial loading affects
+   any HARD check.
+3. `CONCERNS` when all applicable HARD checks are `PASS` or valid
+   `NOT_APPLICABLE`, but any ADVISORY check is `FAIL`, `UNKNOWN`, `STALE`, or
+   `UNAVAILABLE`, or partial loading affects advisory scope only.
+4. `LAUNCH_READY` only when every required source loaded, every applicable HARD and
+   ADVISORY check is `PASS` or valid `NOT_APPLICABLE`, all bindings/hashes are
+   current, and no unresolved warning or manual-required item remains.
 
-- Count `TODO`, `FIXME`, `HACK` comments and their locations
-- Check for any `console.log`, `print()`, or debug output left in production code
-- Check for placeholder assets (search for `placeholder`, `temp_`, `WIP_`)
-- Check for hardcoded test/dev values (localhost, test credentials, debug flags)
+`FAIL` takes precedence over incomplete evidence at the same gate class while the
+report still lists every incomplete item. `UNKNOWN`, `STALE`, `UNAVAILABLE`,
+`MANUAL_REQUIRED`, timeout, omitted evidence, invalid attestation, and unsupported
+`NOT_APPLICABLE` can never be treated as PASS.
 
----
+In dry-run mode set `Readiness Verdict: UNDETERMINED` and show the deterministic
+result only as `Simulation Projection`. Dry-run is never a launch verdict.
 
-## Phase 4: Generate the Launch Checklist
+## Canonical launch and assessment paths
 
-```markdown
-# Launch Checklist: [Game Title]
-Target Launch: [Date or DRY RUN]
-Generated: [Date]
+Require the caller to supply one literal manifest path. The canonical convention is:
 
----
+`production/releases/<release-id>/launch-manifest.yaml`
 
-## 1. Code Readiness
+The immutable assessment path is:
 
-### Build Health
-- [ ] Clean build on all target platforms
-- [ ] Zero compiler warnings
-- [ ] All unit tests passing
-- [ ] All integration tests passing
-- [ ] Performance benchmarks within targets
-- [ ] No memory leaks (verified via extended soak test)
-- [ ] Build size within platform limits
-- [ ] Build version correctly set and tagged in source control
+`production/releases/<release-id>/launch-readiness/<assessment-id>/report.md`
 
-### Code Quality
-- [ ] TODO count: [N] (zero required for launch, or documented exceptions)
-- [ ] FIXME count: [N] (zero required)
-- [ ] HACK count: [N] (each must have documented justification)
-- [ ] No debug output in production code
-- [ ] No hardcoded dev/test values
-- [ ] All feature flags set to production values
-- [ ] Error handling covers all critical paths
-- [ ] Crash reporting integrated and verified
+Assessment IDs are stable slugs or UUIDs, not dates alone. Reject path separators,
+dot segments, missing paths, symlink escapes, mismatched release IDs, and existing
+assessment directories. Never choose a milestone, release, checklist, receipt, or
+prior report by modification time or filename order.
 
-### Security
-- [ ] No exposed API keys or credentials in source
-- [ ] Save data encrypted
-- [ ] Network communication secured (TLS/DTLS)
-- [ ] Anti-cheat measures active (if multiplayer)
-- [ ] Input validation on all server endpoints (if multiplayer)
-- [ ] Privacy policy compliance verified
+## Phase 0: Validate arguments and dry-run boundary
 
----
+Accept exactly one mode and documented options. `assess` may persist only with
+`--persist`; otherwise it is read-only. `dry-run` rejects `--persist` and performs
+zero writes, external submissions, signatures, attestations, and state changes.
 
-## 2. Content Readiness
+Every dry-run output must begin and end with:
 
-### Assets
-- [ ] All placeholder art replaced with final assets
-- [ ] All placeholder audio replaced with final audio
-- [ ] Audio mix finalized and approved by audio director
-- [ ] All VFX polished and performance-verified
-- [ ] No missing or broken asset references
-- [ ] Asset naming conventions enforced
+`SIMULATION — NOT A LAUNCH VERDICT — NO SIGN-OFFS OR FILES CREATED`
 
-### Text and Localization
-- [ ] All player-facing text proofread
-- [ ] No hardcoded strings (all externalized for localization)
-- [ ] All supported languages translated and verified
-- [ ] Text fits UI in all languages (text fitting pass complete)
-- [ ] Font coverage verified for all supported languages
-- [ ] Credits complete, accurate, and up to date
+Do not create placeholder sign-offs, synthetic receipt IDs, fake signatures, or
+claimed external actions in dry-run.
 
-### Game Content
-- [ ] All levels/maps playable from start to finish
-- [ ] Tutorial flow complete and tested with new players
-- [ ] All achievements/trophies implemented and tested
-- [ ] Save/load works correctly for all game states
-- [ ] Difficulty settings balanced and tested
-- [ ] End-game/credits sequence complete
+## Phase 1: Lock one release and build identity
 
----
+Read the exact launch manifest bytes once and compute
+`sha256:<64 lowercase hexadecimal characters>`. Require:
 
-## 3. Quality Assurance
+- `Artifact Type: launch-candidate-manifest`, schema version, release ID, game/product
+  ID, launch version, target launch timestamp, regions, channels/stores;
+- candidate-manifest path/raw SHA-256;
+- candidate ID, build ID, build artifact path/raw SHA-256, source commit, immutable
+  version tag, engine/version, platform/configuration target matrix;
+- exact stable check IDs grouped into mandatory domains;
+- for each check: gate class, applicability rule/result, owner role, evidence type,
+  evidence path/receipt ID/raw SHA-256, freshness/expiry rule, and expected observable;
+- owner/attester registry path/raw SHA-256;
+- optional exact previous-assessment path/raw SHA-256 for delta comparison;
+- manifest generation timestamp and hash algorithm.
 
-### Testing
-- [ ] Full regression test suite passed
-- [ ] Zero S1 (Critical) bugs open
-- [ ] Zero S2 (Major) bugs open (or documented exceptions)
-- [ ] Soak test passed (8+ hours continuous play)
-- [ ] Multiplayer stress test passed (if applicable)
-- [ ] All critical user paths tested on every platform
-- [ ] Edge cases tested (full storage, no network, suspend/resume)
+Read and re-hash the candidate manifest. It must contain the staged build-candidate
+identity: manifest version/type, same candidate/build/artifact hash/source commit,
+engine/runner-compatible version, platform/configuration matrix, test-manifest
+path/hash, and QA-plan path/hash.
 
-### Platform Certification
-- [ ] PC: Steam/Epic/GOG SDK requirements met
-- [ ] Console: TRC/TCR/Lotcheck submission prepared
-- [ ] Mobile: App Store/Play Store guidelines compliant
-- [ ] Accessibility: minimum standards met (remapping, text scaling, colorblind)
-- [ ] Age ratings obtained (ESRB, PEGI, regional)
+Re-hash a local build artifact. A remote artifact requires a trusted build receipt
+binding release/candidate/build/artifact hash/source commit/platform, issuer, job ID,
+timestamp, and signature/verification rule. Any candidate/build mismatch is
+`Workflow Status: ERROR`, `Readiness Verdict: ERROR`, and no report write.
 
-### Performance
-- [ ] Target FPS met on minimum spec hardware
-- [ ] Load times within budget on all platforms
-- [ ] Memory usage within budget on all platforms
-- [ ] Network bandwidth within targets (if multiplayer)
-- [ ] No frame hitches in critical gameplay moments
+## Phase 2: Validate checklist scope and source coverage
 
----
+The launch manifest is the only routing authority. Require stable IDs for every
+applicable domain:
 
-## 4. Store and Distribution
+- `BUILD` and code/security;
+- `CONTENT`, localization, accessibility, and first-run experience;
+- `QA`, performance, bugs, smoke, regression, soak, and playtest as applicable;
+- `PLATFORM` certification and distribution;
+- `STORE`, pricing, regional availability, and published media;
+- `LEGAL`, privacy, licenses, ratings, and IP;
+- `INFRA`, analytics, crash reporting, monitoring, capacity, backup, and security;
+- `COMMUNITY`, support, moderation, and communications;
+- `OPS`, on-call, incident response, rollback, hotfix, launch-day procedure.
 
-### Store Pages
-- [ ] Store page copy finalized and proofread
-- [ ] Screenshots current and per-platform resolution
-- [ ] Trailers current and approved
-- [ ] Key art and capsule images finalized
-- [ ] System requirements accurate (PC)
-- [ ] Pricing configured for all regions
-- [ ] Pre-purchase/wishlist campaigns active (if applicable)
+A domain may be not applicable only when the manifest records the applicability rule,
+reason, authorized owner, candidate/release scope, timestamp, and verifiable
+attestation. The model cannot declare a domain or check not applicable.
 
-### Legal
-- [ ] EULA finalized and approved by legal
-- [ ] Privacy policy published and linked
-- [ ] Third-party license attributions complete
-- [ ] Music/audio licensing verified
-- [ ] Trademark/IP clearance confirmed
-- [ ] GDPR/CCPA compliance verified (data collection, consent, deletion)
+Load every declared source and record exact counts for `required`, `loaded`, `failed`,
+`omitted`, `stale`, `manual_required`, and `not_applicable`. A timeout, unreadable
+file, unsupported format, missing source, hash mismatch, or parse failure is visible
+and sets `Evidence Coverage: PARTIAL` or `UNAVAILABLE`. Never render omitted data as
+zero or a passed checkbox.
 
----
+Create `evidence_snapshot_sha256` from UTF-8 canonical JSON of ordered rows
+`(check_id, gate_class, evidence_path, declared_sha256, observed_sha256,
+evidence_status, check_status)`, sorted by stable check ID. Record the
+canonicalization rule.
 
-## 5. Infrastructure
+## Phase 3: Normalize evidence types
 
-### Servers (if multiplayer/online)
-- [ ] Production servers provisioned and load-tested
-- [ ] Auto-scaling configured and tested
-- [ ] Database backups configured
-- [ ] CDN configured for content delivery
-- [ ] DDoS protection active
-- [ ] Monitoring and alerting configured
+### Build-bound local/CI evidence
 
-### Analytics and Monitoring
-- [ ] Analytics pipeline verified and receiving data
-- [ ] Crash reporting active and dashboard accessible
-- [ ] Server monitoring dashboards live
-- [ ] Key metrics tracked: DAU, session length, retention, crashes
-- [ ] Alerts configured for critical thresholds
+A build, scan, test, benchmark, or configuration item can pass only from a structured
+receipt that binds the exact launch/candidate/build/artifact hash/source commit and
+applicable platform/configuration. It also needs producer identity/version,
+start/end timestamps, command/argv or measurement method, exit/result status, complete
+log/artifact paths and hashes, parser/version, omissions, and receipt signature/hash.
 
----
+Source scans must record repository commit, bounded roots, ruleset version/hash,
+counts, findings, and log hash. A scan of a different commit or dirty unrecorded
+working tree is stale.
 
-## 6. Community and Marketing
+### Verifiable external receipt
 
-### Community Readiness
-- [ ] Community guidelines published
-- [ ] Moderation team briefed and tools ready
-- [ ] Discord/forum/social channels set up
-- [ ] FAQ and known issues page prepared
-- [ ] Support email/ticketing system active
+Certification, store configuration/publication, ratings, legal publication, trailer
+publication, regional pricing, server provisioning, CDN/DDoS, analytics dashboards,
+community channels, review-key distribution, and similar external facts default to:
 
-### Marketing
-- [ ] Launch trailer published
-- [ ] Press/influencer review keys distributed
-- [ ] Social media launch posts scheduled
-- [ ] Launch day blog post/dev update drafted
-- [ ] Patch notes for launch version published
+- `Check Status: UNKNOWN`
+- `Evidence Status: MANUAL_REQUIRED`
 
----
+They may change only when a declared receipt verifies all of:
 
-## 7. Operations
+- `Artifact Type: external-launch-receipt`, schema and receipt ID;
+- stable check IDs and exact release/candidate/build identity when build-specific;
+- issuer/provider, account/project/channel/region/platform, and issuer authority;
+- external object/submission/job/version ID and observed status;
+- issued/observed/verified timestamps and expiry/review time;
+- source URL/API object or exported payload path plus raw SHA-256;
+- verification method, trusted issuer/signature/attestation, and verifier identity;
+- result semantics matching the check's expected observable.
 
-### Team Readiness
-- [ ] On-call schedule set for first 72 hours post-launch
-- [ ] Incident response playbook reviewed by team
-- [ ] Rollback plan documented and tested
-- [ ] Hotfix pipeline tested (can ship emergency fix within 4 hours)
-- [ ] Communication plan for launch issues (who posts, where, how fast)
+A screenshot, copied URL, local policy document, email summary, unchecked API result,
+or model statement alone is not a verified external receipt. If external systems
+cannot be queried or a receipt cannot be verified, keep the item UNKNOWN.
 
-### Day-One Plan
-- [ ] Day-one patch prepared (if needed)
-- [ ] Server unlock/go-live procedure documented
-- [ ] Launch monitoring dashboard bookmarked by all leads
-- [ ] War room/channel established for launch day
+### Authorized owner attestation
 
----
+Human quality, approval, legal interpretation, visual review, moderation readiness,
+on-call briefing, and similar owner-controlled facts require:
 
-## Go / No-Go Decision
+- `Artifact Type: launch-owner-attestation`, schema and attestation ID;
+- owner identity and role verified against the hash-bound attester registry;
+- stable check IDs, release/candidate/build/platform scope;
+- explicit statement and observed result;
+- exact reviewed artifact/receipt paths and hashes;
+- signed-at and valid-until/review timestamp;
+- signature or trusted identity-verification receipt.
 
-**Overall Status**: [READY / NOT READY / CONDITIONAL]
+The workflow never creates, fills, or signs this artifact. A typed name, checkbox,
+copied signature block, or attestation for an older build is invalid and leaves the
+check UNKNOWN.
 
-### Blocking Items
-[List any items that must be resolved before launch]
+### Valid NOT_APPLICABLE evidence
 
-### Conditional Items
-[List items that have documented workarounds or accepted risk]
+`NOT_APPLICABLE` requires the manifest rule, owner authority, reason, exact scope,
+timestamp, and verifiable attestation. An absent file or unsupported platform is not
+automatically N/A.
 
-### Sign-Offs Required
-- [ ] Creative Director — Content and experience quality
-- [ ] Technical Director — Technical health and stability
-- [ ] QA Lead — Quality and test coverage
-- [ ] Producer — Schedule and overall readiness
-- [ ] Release Manager — Build and deployment readiness
-```
+## Phase 4: Consume canonical staged release evidence
 
----
+Use only exact paths/hashes declared by the launch manifest. Re-hash every referenced
+artifact and its transitive evidence. Do not accept protocols, plans, selection
+manifests alone, conversation output, legacy locations, or newest-file guesses.
 
-## Phase 5: Save Checklist
+### Smoke
 
-Present the completed checklist and summary to the user (total items, blocking items count, conditional items count, departments with incomplete sections).
+Accept only:
 
-If not in dry-run mode, add the proposed checklist file to the complete changeset preview; do not write it until that changeset is authorized.
+`production/qa/evidence/smoke/<candidate-id>/<run-id>/report.md`
 
-Once the complete changeset is authorized, write the file, creating directories as needed.
+Require `Artifact Type: smoke-check-receipt`, schema version, exact candidate-manifest
+path/hash and build binding, persisted sprint mode, `Verdict: PASS`,
+`Handoff Eligible: YES`, current QA-plan effective state, test-manifest/scope hashes,
+automated receipt/log/manual evidence hashes, and successful read-back/persistence.
+Quick, targeted, incomplete, failed, warning-bearing, stale, or unpersisted smoke
+evidence cannot pass launch readiness.
 
----
+### Regression
 
-## Phase 6: Next Steps
+Require both:
 
-- Run `$gate-check` to get a formal PASS/CONCERNS/FAIL verdict before launch.
-- Coordinate sign-offs via `$team-release`.
+1. the exact current `tests/regression-suite.md` selection manifest with current
+   QA-plan/requirement/test-source hashes, stable AC/BUG mappings, and
+   failure-sensitivity evidence; and
+2. a matching build-bound execution receipt that names the exact selection-manifest
+   hash, candidate build/commit, runner/config hash, every selected stable test ID,
+   per-test result/duration/source hash/mapping, omissions/skips/quarantines/crashes,
+   and receipt hash/signature.
+
+`Coverage: VERIFIED COVERAGE` requires current eligible mappings plus a passing
+matching receipt. `GAPS FOUND`, `CRITICAL GAPS`, `AWAITING RUN`, `STALE`,
+`INDETERMINATE`, or selection without execution cannot pass.
+
+### Soak
+
+Accept only:
+
+`production/qa/soak-tests/<run-id>/result.md`
+
+Require `Artifact Type: soak-test-result`, schema version, `Status: COMPLETED`, exact
+candidate/build/source/workload/environment/platform/observer binding, protocol,
+manifest, receipt/raw-set/sample-set/result hashes, and `Gate Eligible: YES`.
+
+For positive launch evidence require `Execution Status: EXECUTED`,
+`Readiness Result: PASS`, and every launch-policy-required objective dimension PASS.
+`FAILED_EARLY` or a dimension/readiness FAIL is a HARD failure. `INCOMPLETE`,
+`INCONCLUSIVE`, `NOT_IN_SCOPE` for a required dimension, or gate-ineligible evidence
+is UNKNOWN/incomplete, never PASS. Soak duration comes from the manifest's risk
+profile and protocol rationale; do not impose a universal hour count.
+
+### Playtest
+
+Accept only:
+
+`production/playtests/<session-id>/report.md`
+
+Require `Artifact Type: playtest-session-result`, schema version,
+`Status: COMPLETED`, `Gate Eligible: YES`, matching candidate build/version/source/
+platform/hypothesis or AC IDs, evidence receipt ID, raw evidence, manifest,
+observation-ledger and report hashes, and resolvable finding-to-observation links.
+A protocol, IN_PROGRESS manifest, director review, legacy report, or session for
+another build cannot pass.
+
+### Test-evidence review
+
+Accept only an explicitly declared persisted report at:
+
+`production/qa/evidence/reviews/<review-id>/report.md`
+
+Require `Artifact Type: test-evidence-review-report`, exact candidate/review-manifest/
+QA-plan/smoke/playtest/test-source/artifact/attestation hashes,
+`Workflow Status: COMPLETE`, `Overall Evidence Quality: ADEQUATE`,
+`Overall Execution Status: PASS`, required full execution scope, and
+`Closure Eligible: YES`. A conversation-only, targeted-only, incomplete, stale,
+unknown, unavailable, nonpersisted, or hash-mismatched review cannot pass.
+
+## Phase 5: Validate recovery and operational evidence
+
+A rollback, restore, hotfix, failover, or go-live procedure cannot pass because a plan
+exists. Require a current rehearsal receipt with:
+
+- `Artifact Type: recovery-rehearsal-receipt`, schema and rehearsal ID;
+- exact release/candidate/build and production-equivalent environment identity;
+- procedure/runbook path/hash, owner and participants;
+- start/end timestamps, injected condition, executed steps, logs and artifact hashes;
+- declared RTO/RPO or hotfix objective and measured result;
+- rollback/restore/data-integrity validation;
+- outcome `PASS` or `FAIL`, unresolved findings, and signed receipt/hash.
+
+A verified failed rehearsal is a HARD `FAIL`. Missing, plan-only, stale, partial, or
+unverified rehearsal evidence is `UNKNOWN` for a required check and therefore blocks
+readiness.
+
+## Phase 6: Derive per-check and aggregate results
+
+For each stable check output:
+
+| Check ID | Domain | Gate Class | Applicability | Expected Observable | Evidence Type | Evidence Path/Receipt | Declared/Observed Hash | Evidence Status | Check Status | Owner | Freshness | Reason |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
+Map deterministically:
+
+- `PASS`: verified current evidence proves the expected observable;
+- `FAIL`: verified current evidence proves a blocking/noncompliant result;
+- `UNKNOWN`: evidence is absent, manual-required, nonconclusive, or insufficient;
+- `STALE`: readable binding/hash/scope no longer matches;
+- `UNAVAILABLE`: declared evidence cannot be read, parsed, decoded, or verified;
+- `NOT_APPLICABLE`: valid applicability attestation verifies.
+
+Do not replace UNKNOWN with a guess, old result, assumed default, or user optimism.
+Compute the readiness verdict only after all rows and load counters exist.
+
+Any prior assessment is comparison context only. Load it only from the exact
+path/hash in the launch manifest. Compare stable IDs and show resolved, regressed,
+unchanged, added, and removed items. Current evidence alone determines the verdict.
+A build/candidate/hash change makes old build-bound attestations and receipts stale.
+
+## Phase 7: Present, optionally persist, and stop
+
+The report includes:
+
+1. simulation watermark when applicable;
+2. manifest/release/candidate/build/platform identity and hashes;
+3. workflow/coverage/readiness/persistence/decision fields;
+4. source load counters and evidence snapshot hash;
+5. every stable check row;
+6. canonical smoke/regression/soak/playtest/test-evidence validation;
+7. external receipt and owner-attestation verification;
+8. recovery rehearsal results;
+9. hard blockers, advisory concerns, unknown/manual/stale/unavailable items;
+10. stable-ID delta against an explicitly supplied prior assessment;
+11. evidence limitations and exact owning role/next evidence required.
+
+For `assess --persist`, use only the immutable canonical assessment path. Re-hash all
+inputs immediately before writing; any change invalidates the candidate report.
+Write one report, re-read it, verify internal references, and display its SHA-256.
+Declined or failed persistence never changes the observed readiness verdict but makes
+the report itself non-durable.
+
+For nonpersisted assessment, return `Persistence: NOT_REQUESTED`. For dry-run, return
+`Persistence: SIMULATION`, no path/hash, no sign-offs, `Readiness Verdict:
+UNDETERMINED`, and a clearly labeled simulation projection.
+
+Always return `Launch Decision: NOT_RECORDED`. Suggest exact missing evidence owners,
+but do not invoke `$gate-check`, `$team-release`, release publication, certification,
+store, infrastructure, or communication actions. The user or separately authorized
+launch gate owns the final decision.

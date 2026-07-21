@@ -153,8 +153,10 @@ or any time pillars are revised)
 
 ### CD-GDD-ALIGN — GDD Pillar Alignment Check
 
-**Trigger**: After a system GDD is authored (design-system, quick-design, or any
-workflow that produces a GDD)
+**Trigger**: After a system GDD is authored by its owning design workflow. A
+`quick-design` proposal does not trigger this gate; only the resulting canonical
+artifact after a separately authorized application with a current `APPLIED` receipt
+is eligible.
 
 **Context to pass**:
 - GDD file path
@@ -175,17 +177,20 @@ workflow that produces a GDD)
 
 ### CD-SYSTEMS — Systems Decomposition Vision Check
 
-**Trigger**: After the systems index is written by `$map-systems` — validates the
-complete system set before GDD authoring begins
+**Trigger**: At `$map-systems`' single pre-write checkpoint, after the complete
+canonical index candidate is frozen and SHA-256-bound but before any authoritative
+index/state write — validates the complete system set before GDD authoring begins
 
 **Context to pass**:
-- Systems index path (`design/gdd/systems-index.md`)
+- Complete proposed systems-index bytes, destination path
+  (`design/gdd/systems-index.md`), and candidate SHA-256
 - Game pillars and core fantasy (from `design/gdd/game-concept.md`)
 - Priority tier assignments (MVP / Vertical Slice / Alpha / Full Vision)
 - Any high-risk or bottleneck systems identified in the dependency map
 
 **Prompt**:
-> "Review this systems decomposition against the game's design pillars. Does the
+> "Read-only review: do not edit the candidate or any file. Bind the response to
+> the supplied candidate SHA-256. Review this systems decomposition against the game's design pillars. Does the
 > full set of MVP-tier systems collectively deliver the core fantasy? Are there
 > systems whose mechanics don't serve any stated pillar — indicating they may be
 > scope creep? Are there pillar-critical player experiences that have no system
@@ -302,8 +307,9 @@ sound before teams invest in writing GDDs against it
 
 ### TD-FEASIBILITY — Technical Feasibility Assessment
 
-**Trigger**: After biggest technical risks are identified during scope/feasibility
-(brainstorm Phase 6, quick-design, or any early-stage concept with technical unknowns)
+**Trigger**: After the biggest technical risks are recorded in an authoritative
+scope/feasibility artifact (brainstorm Phase 6 or another owning workflow). A
+`quick-design` proposal alone is not technical-feasibility evidence.
 
 **Context to pass**:
 - Concept's core loop description
@@ -418,8 +424,9 @@ Agent: `producer` | Role complexity: high-complexity | Domain: Scope, timeline, 
 
 ### PR-SCOPE — Scope and Timeline Validation
 
-**Trigger**: After scope tiers are defined (brainstorm Phase 6, quick-design, or
-any workflow that produces an MVP definition and timeline estimate)
+**Trigger**: After scope tiers are defined in an authoritative artifact (brainstorm
+Phase 6 or another owning workflow). A `quick-design` proposal alone neither defines
+the MVP nor supplies a timeline estimate.
 
 **Context to pass**:
 - Full vision scope description
@@ -568,26 +575,43 @@ Agent: `art-director` | Role complexity: standard-complexity | Domain: Visual id
 
 ### AD-ART-BIBLE — Art Bible Sign-Off
 
-**Trigger**: After the art bible is drafted (`$art-bible`), before asset production begins
+**Trigger**: Only after `$art-bible` proves the AB-1 artifact has all nine stable
+sections in COMPLETE state and freezes the exact review candidate bytes; before
+any asset specification, generation, import, outsourcing, or implementation
 
 **Context to pass**:
-- Art bible path (`design/art/art-bible.md`)
+- Canonical art bible path (`design/art/art-bible.md`) and exact raw-byte SHA-256
+- AB-1 schema version; all nine stable section IDs, states, and section hashes
+- Ordered dependency/source manifest with current hashes
+- Author identity and evidence that the assigned `art-director` reviewer did not
+  author, revise, or persist the candidate
+- Proposed immutable external review-record ID/path; the reviewer itself is read-only
 - Game pillars and core fantasy
 - Platform and performance constraints (from `.codex/docs/technical-preferences.md` if configured)
 - Visual identity anchor chosen during brainstorm (from `design/gdd/game-concept.md`)
 
 **Prompt**:
-> "Review this art bible for completeness and internal consistency. Does the color
+> "Independently and read-only review the exact art-bible candidate hash supplied;
+> echo that hash and the nine-section manifest in the response. Review completeness
+> and internal consistency. Does the color
 > system match the mood targets? Does the shape language follow from the visual
 > identity statement? Are the asset standards achievable within the platform
 > constraints? Does the character design direction give artists enough to work from
 > without over-specifying? Are there contradictions between sections? Would an
 > outsourcing team be able to produce assets from this document without additional
-> briefing? Return APPROVE (art bible is production-ready), CONCERNS [specific
+> briefing? Return APPROVE (all nine current sections are complete and the exact
+> candidate is production-ready), CONCERNS [specific
 > sections needing clarification], or REJECT [fundamental inconsistencies that must
 > be resolved before asset production begins]."
 
 **Verdicts**: APPROVE / CONCERNS / REJECT
+
+The response must include reviewer identity, reviewed artifact/dependency hashes,
+stable finding IDs, timestamp, and separation attestation. A separate recorder may
+persist those unchanged bytes as an immutable review record. The reviewer never
+writes the art bible or record. Any candidate/section/dependency byte change makes
+APPROVE stale; DRAFT/PARTIAL, missing identity separation, malformed output, or
+hash mismatch cannot authorize asset production.
 
 ---
 

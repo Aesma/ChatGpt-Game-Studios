@@ -1,4 +1,4 @@
 interface:
   display_name: "Hotfix"
-  short_description: "Emergency fix workflow that bypasses normal sprint processes..."
-  default_prompt: "Use $hotfix to run the Hotfix game-studio workflow."
+  short_description: "Prepare a hash-bound local hotfix candidate"
+  default_prompt: "Use $hotfix with one explicit command to plan, patch, build, assess, or hand off a candidate; never merge, deploy, or publish implicitly."

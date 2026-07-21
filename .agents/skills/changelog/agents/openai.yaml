@@ -1,4 +1,4 @@
 interface:
   display_name: "Changelog"
-  short_description: "Auto-generates a changelog from git commits, sprint data, and..."
-  default_prompt: "Use $changelog to run the Changelog game-studio workflow."
+  short_description: "Build local changelog entries from exact Git-range evidence"
+  default_prompt: "Use $changelog with an explicit from/to range manifest to compute net committed changes, keep version/candidate/deployment states separate, sanitize any player draft, and persist only a history-preserving keyed entry."

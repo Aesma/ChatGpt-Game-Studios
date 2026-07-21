@@ -1,570 +1,347 @@
 # Design System — Required workflow continuation
 
-This file contains required phases of `$design-system`. Read it in full when the main `SKILL.md` reaches its Required continuation section, then execute the phases in order.
+This continuation is mandatory after the main workflow. It preserves the
+author-only mutation boundary: only the selected system GDD and its checkpoint
+may change.
+
+## 4. Section-by-section authoring
+
+Process scoped sections in canonical order. revise-section processes only its one
+selected section. For each section use:
+
+    Context -> Questions -> Options -> User Decision -> Draft ->
+    Content Approval -> Preflight -> Atomic Write -> Checkpoint
+
+Content approval is not a new filesystem authorization. It confirms that the
+draft expresses the user's product decision inside the already authorized
+changeset.
 
-## 4. Section-by-Section Design
+### 4a. Context, questions, and decision
 
-Walk through each section in order. For **each section**, follow this cycle:
+State what the section must decide and cite only relevant product/design evidence
+from the bounded context. Clearly label provisional dependency assumptions.
 
-### The Section Cycle
+For a product choice, present two to four meaningful options with tradeoffs and
+ask the user to decide. Do not let a specialist, registry claim, ADR, or engine
+fact silently make a product decision. For a hard product constraint with direct
+evidence, explain the evidence and ask only for the remaining design choice.
 
-```
-Context  ->  Questions  ->  Options  ->  Decision  ->  Draft  ->  Approval  ->  Write
-```
+If the discussion reaches an implementation or architecture question, route it
+to technical_handoffs in the checkpoint as described in the main workflow. Do
+not answer it inside the GDD and do not quote an ADR or engine implementation into
+the section.
 
-1. **Context**: State what this section needs to contain, and surface any relevant
-   decisions from dependency GDDs that constrain it.
+### 4b. Draft and content approval
 
-2. **Questions**: Ask clarifying questions specific to this section. Use
-   a direct question to the user for constrained questions, conversational text for open-ended
-   exploration.
+Draft only the current section. A GDD draft may include:
 
-3. **Options**: Where the section involves design choices (not just documentation),
-   present 2-4 approaches with pros/cons. Explain reasoning in conversation text,
-   then ask the user directly to capture the decision.
+- player-visible behavior and intended feeling;
+- unambiguous product rules and state outcomes;
+- formula meaning, variables, ranges, and design caps;
+- product-facing dependency contracts such as required inputs and observable
+  outputs, without APIs or data structures;
+- designer-facing tuning values and safe gameplay ranges; and
+- observable acceptance conditions for the design.
 
-4. **Decision**: User picks an approach or provides custom direction.
+It must not include implementation selections, engine APIs, class/module names,
+storage or resource schemas, synchronization mechanisms, architecture decisions,
+technical feasibility discussion, review verdicts, reviewer commentary, or QA
+test procedures.
 
-5. **Draft**: Write the section content in conversation text for review. Flag any
-   provisional assumptions about undesigned dependencies.
+Show the full proposed section body and, in the same response, ask:
 
-6. **Approval**: Immediately after the draft — in the SAME response — use
-   a direct question to the user. **Always present the choices explicitly. NEVER skip this step.**
-   - Prompt: "Approve the [Section Name] section?"
-   - Options: `[A] Approve — write it to file` / `[B] Make changes — describe what to fix` / `[C] Start over`
+    Approve the <Section Name> content?
+    A. Approve this content for the authorized write
+    B. Revise the draft
+    C. Leave this section pending and stop
 
-   **The draft and the approval structured prompt MUST appear together in one response.
-   If the draft appears without the structured prompt, the user is left at a blank prompt
-   with no path forward — this is a protocol violation.**
+If B, revise and ask again. If C, mark the section pending or blocked in the
+checkpoint, set checkpoint status to partial, and stop. Never write empty,
+unapproved, placeholder, or speculative content as if complete.
 
-7. **Write**: Use the targeted file edit to replace the placeholder with the approved content.
-   **CRITICAL**: Always include the section heading in the `old_string` to ensure
-   uniqueness — never match `[To be designed]` alone, as multiple sections use the
-   same placeholder and the targeted file edit requires a unique match. Use this pattern:
-   ```
-   old_string: "## [Section Name]\n\n[To be designed]"
-   new_string: "## [Section Name]\n\n[approved content]"
-   ```
-   Confirm the write.
+### 4c. Preflight before every GDD write
 
-8. **Registry conflict check** (Sections C and D only — Detailed Design and Formulas):
-   After writing, scan the section content for entity names, item names, formula
-   names, and numeric constants that appear in the registry. For each match:
-   - Compare the value just written against the registry entry.
-   - If they differ: **surface the conflict immediately** before starting the next
-     section. Do not continue silently.
-     > "Registry conflict: [name] is registered in [source GDD] as [registry_value].
-     > This section just wrote [new_value]. Which is correct?"
-   - If new (not in registry): flag it as a candidate for registry registration
-     (will be handled in Phase 5).
+Immediately before writing:
 
-After writing each section, update `production/session-state/active.md` with the
-completed section name. Search matching files to check if the file exists — use Write to create
-it if absent, Edit to update it if present.
+1. Re-read the target bytes and compute SHA-256.
+2. Compare that hash with checkpoint.current_sha256. On mismatch, return
+   ERROR — CONCURRENT TARGET CHANGE, write nothing, and stop.
+3. Confirm the target and checkpoint are the only paths in mutation_scope.
+4. Confirm the current section is in scoped_sections.
+5. Apply the mode guard in the following table.
+6. Scan the approved draft for content that belongs in ADR/TECH, QA,
+   REVIEW_ONLY, or another document; route it out before writing.
+7. Compare named values in the draft with relevant read-only registry claims.
+   If a material value conflicts, surface the evidence and obtain the product
+   owner's decision before writing. Do not update the registry.
+8. Confirm the draft is substantive and contains no placeholder.
+9. If the current GDD header says Approved, include a demotion to In Design in
+   this first content-write transaction; the old approval is stale once bytes change.
 
-### Section-Specific Guidance
+| Mode | Required pre-write predicate |
+|---|---|
+| new | Current body is the skeleton placeholder, or an approved-not-written checkpoint state identifies a recoverable write |
+| resume | Checkpoint marks this section pending or approved-not-written and current body is not substantive |
+| fill-gaps | Baseline inventory classified this section missing, empty, or placeholder-only; no substantive body may be replaced |
+| revise-section | This is the one selected section and its current body hash matches the authorized baseline |
 
-Each section has unique design considerations and may benefit from specialist agents:
+If any predicate fails, return ERROR — MODE MUTATION VIOLATION and make no write.
 
----
+### 4d. Atomic section write and checkpoint
 
-### Section A: Overview
+Patch by heading boundaries, not by a bare placeholder string. The replacement
+range starts at the exact level-two canonical heading and ends immediately before
+the next level-two heading or end of file. Reject duplicate canonical headings or
+an ambiguous range.
 
-**Goal**: One paragraph a stranger could read and understand.
+For a missing fill-gaps section, insert the canonical heading and approved body
+at its canonical position without changing neighboring section bytes.
 
-**Derive recommended options before building the structured prompt**: Read the system's category and layer from the systems index (already in context from Phase 2), then determine the recommended option for each question group:
-- **Framing question group**: Foundation/Infrastructure layer → `[A]` recommended. Player-facing categories (Combat, UI, Dialogue, Character, Animation, Visual Effects, Audio) → `[C] Both` recommended.
-- **ADR ref question group**: Find files matching `docs/architecture/adr-*.md` and search for the system name in the GDD Requirements section of each ADR. If a matching ADR is found → `[A] Yes — cite the ADR` recommended. If none found → `[B] No` recommended.
-- **Fantasy question group**: Foundation/Infrastructure layer → `[B] No` recommended. All other categories → `[A] Yes` recommended.
+Apply the GDD write atomically. Then:
 
-Append `(Recommended)` to the appropriate option text in each question group.
+1. re-read the target from disk;
+2. verify exactly one intended section changed and every out-of-scope section is
+   byte-for-byte unchanged, except for an authorized stale Approved to In Design
+   header demotion;
+3. compute the new SHA-256;
+4. set the section state to written;
+5. update checkpoint.current_sha256 to the new hash; and
+6. atomically write only the authorized checkpoint.
 
-**Framing questions (ask BEFORE drafting)**: Ask the user directly with a grouped structured prompt:
-- Question group "Framing" — "How should the overview frame this system?" Options: `[A] As a data/infrastructure layer (technical framing)` / `[B] Through its player-facing effect (design framing)` / `[C] Both — describe the data layer and its player impact`
-- Question group "ADR ref" — "Should the overview reference the existing ADR for this system?" Options: `[A] Yes — cite the ADR for implementation details` / `[B] No — keep the GDD at pure design level`
-- Question group "Fantasy" — "Does this system have a player fantasy worth stating?" Options: `[A] Yes — players feel it directly` / `[B] No — pure infrastructure, players feel what it enables`
+If verification fails, report ERROR with the observed hash and stop. Do not
+attempt unrelated cleanup.
 
-Use the user's answers to shape the draft. Do NOT answer these questions yourself and auto-draft.
+## 5. Section requirements
 
-**Questions to ask**:
-- What is this system in one sentence?
-- How does a player interact with it? (active/passive/automatic)
-- Why does this system exist — what would the game lose without it?
+The following guidance defines design content, not implementation content.
 
-**Cross-reference**: Check that the description aligns with how the systems index
-describes it. Flag discrepancies.
+### A. Overview
 
-**Design vs. implementation boundary**: Overview questions must stay at the behavior
-level — what the system *does*, not *how it is built*. If implementation questions
-arise during the Overview (e.g., "Should this use an Autoload singleton or a signal
-bus?"), note them as "→ becomes an ADR" and move on. Implementation patterns belong
-in `$architecture-decision`, not the GDD. The GDD describes behavior; the ADR
-describes the technical approach used to achieve it.
+Write a concise explanation of what the system does for play, how the player
+encounters it, and why the game needs it. Align it with the systems index
+description, but do not cite or describe an ADR. Infrastructure systems must
+still be framed by their observable effect on play.
 
----
+Questions should establish:
 
-### Section B: Player Fantasy
+- the system's one-sentence product purpose;
+- active, passive, or automatic player interaction; and
+- what player experience would be lost without it.
 
-**Goal**: The emotional target — what the player should *feel*.
+### B. Player Fantasy
 
-**Derive recommended option before building the structured prompt**: Read the system's category and layer from Phase 2 context:
-- Player-facing categories (Combat, UI, Dialogue, Character, Animation, Audio, Level/World) → `[A] Direct` recommended
-- Foundation/Infrastructure layer → `[B] Indirect` recommended
-- Mixed categories (Camera/input, Economy, AI with visible player effects) → `[C] Both` recommended
+Define the intended emotion, competence, tension, or power fantasy. Ask whether
+the system is experienced directly, indirectly through outcomes, or both. Connect
+the answer to a game pillar and a concrete player moment.
 
-Append `(Recommended)` to the appropriate option text.
+A creative specialist may offer candidate framings when useful. Specialist
+output is advisory; present alternatives to the user, record the user's decision,
+and never let a specialist write the file.
 
-**Framing question (ask BEFORE drafting)**: Ask the user directly:
-- Prompt: "Is this system something the player engages with directly, or infrastructure they experience indirectly?"
-- Options: `[A] Direct — player actively uses or feels this system` / `[B] Indirect — player experiences the effects, not the system` / `[C] Both — has a direct interaction layer and infrastructure beneath it`
+### C. Detailed Rules
 
-Use the answer to frame the Player Fantasy section appropriately. Do NOT assume the answer.
+Specify rules, player decision points, valid states, transitions, constraints, and
+interactions with other systems. The rules must be precise at the product level
+without choosing code structure.
 
-**Questions to ask**:
-- What emotion or power fantasy does this serve?
-- What reference games nail this feeling? What specifically creates it?
-- Is this a "system you love engaging with" or "infrastructure you don't notice"?
+Use these subsections when applicable:
 
-**Cross-reference**: Must align with the game pillars. If the system serves a pillar,
-quote the relevant pillar text.
+- Core Rules
+- States and Transitions
+- Interactions with Other Systems
 
-**Review mode check** (apply before spawning):
-- `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`creative-director` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
-- `full` → spawn as described below.
+For each interaction, state the design-owned input, observable output, timing
+semantics relevant to play, and rule owner. Do not specify APIs, messages, classes,
+resources, serialization, or event-bus choices. Route those to ADR/TECH.
 
-**Agent delegation (MANDATORY)**: After the framing answer is given but before drafting,
-spawn `creative-director` through Codex subagent delegation:
-- Provide: system name, framing answer (direct/indirect/both), game pillars, any reference games the user mentioned, the game concept summary
-- Ask: "Shape the Player Fantasy for this system. What emotion or power fantasy should it serve? What player moment should we anchor to? What tone and language fits the game's established feeling? Be specific — give me 2-3 candidate framings."
-- Collect the creative-director's framings and present them to the user alongside the draft.
+Specialists may identify rule gaps or alternatives. They return proposals only;
+the user decides and the author writes.
 
-**Do NOT draft Section B without first consulting `creative-director`.** The framing
-answer tells us *what kind* of fantasy it is; the creative-director shapes *how it's
-described* — tone, language, the specific player moment to anchor to.
+### D. Formulas
 
----
+For each gameplay formula define:
 
-### Section C: Detailed Design (Core Rules, States, Interactions)
+- a stable design name;
+- the mathematical expression;
+- every variable, unit, type, and allowed gameplay range;
+- output range and cap/floor behavior; and
+- a worked gameplay example.
 
-**Goal**: Unambiguous specification a programmer could implement without questions.
+Do not use Formula TBD. Do not turn the section into an implementation function,
+data schema, or optimization plan. If the formula depends on an unresolved
+product value, keep the section pending rather than inventing a number.
 
-This is usually the largest section. Break it into sub-sections:
+A systems or economy specialist may propose curves and explain tradeoffs. The
+user selects the product rule before the author drafts it.
 
-1. **Core Rules**: The fundamental mechanics. Use numbered rules for sequential
-   processes, bullets for properties.
-2. **States and Transitions**: If the system has states, map every state and
-   every valid transition. Use a table.
-3. **Interactions with Other Systems**: For each dependency (upstream and downstream),
-   specify what data flows in, what flows out, and who owns the interface.
+### E. Edge Cases
 
-**Questions to ask**:
-- Walk me through a typical use of this system, step by step
-- What are the decision points the player faces?
-- What can the player NOT do? (Constraints are as important as capabilities)
+Format each item as an exact condition and exact product outcome. Cover zero,
+maximum, invalid or unavailable actions, simultaneous rules, tie-breaking, and
+known degenerate strategies where applicable.
 
-**Review mode check** (apply before spawning):
-- `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "Specialist agents not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
-- `full` → spawn as described below.
+Handle the player-visible resolution. Logging, thread safety, replication,
+persistence recovery, and automated-test mechanics belong outside the GDD unless
+the user first converts their effect into a product rule.
 
-**Agent delegation (MANDATORY)**: Before drafting Section C, spawn specialist agents through Codex subagent delegation in parallel:
-- Look up the system category in the routing table (Section 6 of this skill)
-- Spawn the Primary Agent AND Supporting Agent(s) listed for this category
-- Provide each agent: system name, game concept summary, pillar set, dependency GDD excerpts, the specific section being worked on
-- Collect their findings before drafting
-- Surface any disagreements between agents to the user by asking the user directly
-- Draft only after receiving specialist input
+### F. Dependencies
 
-**Do NOT draft Section C without first consulting the appropriate specialists.** A `systems-designer` reviewing rules and mechanics will catch design gaps the main session cannot.
+List only explicit design dependencies. For each, state:
 
-**Cross-reference**: For each interaction listed, verify it matches what the
-dependency GDD specifies. If a dependency defines a value or formula and this
-system expects something different, flag the conflict.
+- upstream or downstream direction;
+- hard or soft necessity;
+- product-owned input and observable output;
+- provisional status if the dependency GDD is not authored; and
+- the GDD/system that owns the product rule.
 
----
+Do not claim bidirectional consistency unless the dependency document was in the
+bounded context and actually agrees. Flag a mismatch before writing.
 
-### Section D: Formulas
+### G. Tuning Knobs
 
-**Goal**: Every mathematical formula, with variables defined, ranges specified,
-and edge cases noted.
+List designer-adjustable gameplay values, defaults if decided, safe ranges,
+extreme behavior, and interactions among knobs. Do not prescribe config formats,
+editor tooling, asset types, or runtime storage.
 
-**Completion Steering — always begin each formula with this exact structure:**
+### H. Acceptance Criteria
 
-```
-The [formula_name] formula is defined as:
+Write independently observable design conditions, normally as:
 
-`[formula_name] = [expression]`
+    GIVEN <player-visible initial state>
+    WHEN <player action or product trigger>
+    THEN <specific measurable gameplay outcome>
 
-**Variables:**
-| Variable | Symbol | Type | Range | Description |
-|----------|--------|------|-------|-------------|
-| [name] | [sym] | float/int | [min–max] | [what it represents] |
+Cover every core rule and formula. Acceptance criteria define what the product
+must do; QA test matrices, automation steps, instrumentation, frame-time
+implementation budgets, and test data belong in QA or ADR/TECH handoffs.
 
-**Output Range:** [min] to [max] under normal play; [behaviour at extremes]
-**Example:** [worked example with real numbers]
-```
+### Optional material
 
-Do NOT write `[Formula TBD]` or describe a formula in prose without the variable
-table. A formula without defined variables cannot be implemented without guesswork.
+Visual/audio requirements, UI requirements, and open questions are not part of
+the eight-section completeness count. Add an optional section only when it has
+substantive user-approved content and was included in the authorized section
+scope. Never leave an optional placeholder in an artifact marked In Review.
 
-**Questions to ask**:
-- What are the core calculations this system performs?
-- Should scaling be linear, logarithmic, or stepped?
-- What should the output ranges be at early/mid/late game?
+A visual or UI requirement may specify player-facing feedback and accessibility
+intent. Asset production instructions, screen implementation, render technique,
+and tool choices belong in later specialized documents.
 
-**Review mode check** (apply before spawning):
-- `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`systems-designer` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
-- `full` → spawn as described below.
+## 6. Specialist consultation boundary
 
-**Agent delegation (MANDATORY)**: Before proposing any formulas or balance values, spawn specialist agents through Codex subagent delegation in parallel:
-- **Always spawn `systems-designer`**: provide Core Rules from Section C, tuning goals from user, balance context from dependency GDDs. Ask them to propose formulas with variable tables and output ranges.
-- **For economy/cost systems, also spawn `economy-designer`**: provide placement costs, upgrade cost intent, and progression goals. Ask them to validate cost curves and ratios.
-- Present the specialists' proposals to the user for review by asking the user directly
-- The user decides; the main session writes to file
-- **Do NOT invent formula values or balance numbers without specialist input.** A user without balance design expertise cannot evaluate raw numbers — they need the specialists' reasoning.
+Use specialist consultation only when it helps the current scoped section.
+Provide bounded design context and one concrete question. Agents are advisers:
+they do not write files, approve the GDD, update status, or create technical
+decisions.
 
-**Cross-reference**: If a dependency GDD defines a formula whose output feeds into
-this system, reference it explicitly. Don't reinvent — connect.
+If a consultation fails, times out, or returns incomplete evidence, do not
+silently invent its missing contribution. Either continue with an explicit user
+decision when specialist input was optional, or mark the section blocked/partial
+in the checkpoint and stop. The author-only mutation set does not expand.
 
----
+## 7. Whole-artifact validation
 
-### Section E: Edge Cases
+After all scoped sections are written, re-read the entire GDD from disk and
+compute its current SHA-256. Validate the artifact as a whole:
 
-**Goal**: Explicitly handle unusual situations so they don't become bugs.
+- all eight canonical headings occur exactly once;
+- every required body is substantive and contains no placeholder;
+- rules, formulas, edge outcomes, dependencies, tuning knobs, and acceptance
+  conditions are internally coherent;
+- formula variables and ranges are defined;
+- acceptance conditions cover each core rule and formula;
+- no ADR/TECH, QA procedure, reviewer discussion, or approval evidence appears
+  in the GDD; and
+- optional sections, if any, contain substantive content.
 
-**Completion Steering — format each edge case as:**
-- **If [condition]**: [exact outcome]. [rationale if non-obvious]
+Mode completion has two dimensions:
 
-Example (adapt terminology to the game's domain):
-- **If [resource] reaches 0 while [protective condition] is active**: hold at minimum until condition ends, then apply consequence.
-- **If two [triggers/events] fire simultaneously**: resolve in [defined priority order]; ties use [defined tiebreak rule].
+- run scope complete — every section authorized for this invocation was written;
+- artifact complete — the whole current GDD passes all eight-section checks.
 
-Do NOT write vague entries like "handle appropriately" — each must name the exact
-condition and the exact resolution. An edge case without a resolution is an open
-design question, not a specification.
+If run scope is complete but the artifact is not, keep the GDD status In Design,
+set checkpoint status to partial, list the remaining incomplete sections, and
+stop. Do not call it complete.
 
-**Questions to ask**:
-- What happens at zero? At maximum? At out-of-range values?
-- What happens when two rules apply at the same time?
-- What happens if a player finds an unintended interaction? (Identify degenerate strategies)
+If the whole artifact passes, perform one final hash-guarded GDD write that sets
+only the document Status header to In Review. A prior Approved header is stale as
+soon as revise-section changes the artifact; demote it to In Review. Never write
+Approved or embed review/sign-off text.
 
-**Review mode check** (apply before spawning):
-- `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`systems-designer` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
-- `full` → spawn as described below.
+Re-read the file, compute the final SHA-256, set checkpoint status to
+ready-for-independent-review, and set:
 
-**Agent delegation (MANDATORY)**: Spawn `systems-designer` through Codex subagent delegation before finalising edge cases. Provide: the completed Sections C and D, and ask them to identify edge cases from the formula and rule space that the main session may have missed. For narrative systems, also spawn `narrative-director`. Present their findings and ask the user which to include.
+    approved_drafts: {}
+    review_handoff:
+      required: true
+      target_sha256: <final SHA-256>
+      target_status: In Review
+      command: $design-review design/gdd/<system-slug>.md
+      task_requirement: fresh independent task
 
-**Cross-reference**: Check edge cases against dependency GDDs. If a dependency
-defines a floor, cap, or resolution rule that this system could violate, flag it.
+The checkpoint records a request for review, not a verdict.
 
----
+## 8. Independent review and recorder handoff
 
-### Section F: Dependencies
+Return this handoff in conversation:
 
-**Goal**: Map every system connection with direction and nature.
+    Authoring complete for: design/gdd/<system-slug>.md
+    Current SHA-256: <final hash>
+    Author status: In Review
+    Independent review required: open a fresh task and run
+      $design-review design/gdd/<system-slug>.md
+    Author mutations: target GDD and checkpoint only
+    Registry/index/sign-off mutations: none
 
-This section is partially pre-filled from the context gathering phase. Present the
-known dependencies from the systems index and ask:
-- Are there dependencies I'm missing?
-- For each dependency, what's the specific data interface?
-- Which dependencies are hard (system cannot function without it) vs. soft
-  (enhanced by it but works without it)?
+Then stop. Never invoke design-review in this task, never self-review for formal
+approval, and never continue into consistency-check, gate-check, registry
+recording, or systems-index recording.
 
-**Cross-reference**: This section must be bidirectionally consistent. If this system
-lists "depends on Combat", then the Combat GDD should list "depended on by [this
-system]". Flag any one-directional dependencies for correction.
+A later recorder, outside this workflow, may record approval only when all of the
+following evidence is present:
 
----
+1. a formal independent whole-artifact review report;
+2. verdict exactly APPROVED;
+3. report target path exactly matches the GDD;
+4. report target SHA-256 equals the GDD's current SHA-256;
+5. review independence is formal, not advisory-only or same-task;
+6. the report is immutable/hash-bound; and
+7. the systems-index row still matches the recorder's expected pre-state.
 
-### Section G: Tuning Knobs
+The recorder must re-read the current GDD hash immediately before mutation and
+use compare-and-set. A hash mismatch returns STALE REVIEW and changes nothing. An
+index pre-state mismatch returns CONCURRENT INDEX CHANGE and changes nothing.
 
-**Goal**: Every designer-adjustable value, with safe ranges and extreme behaviors.
+The only legal systems-index status values are:
 
-**Questions to ask**:
-- What values should designers be able to tweak without code changes?
-- For each knob, what breaks if it's set too high? Too low?
-- Which knobs interact with each other? (Changing A makes B irrelevant)
+- Not Started
+- In Design
+- In Review
+- Approved
+- Implemented
 
-**Agent delegation**: If formulas are complex, delegate to `systems-designer`
-to derive tuning knobs from the formula variables.
+Designed is invalid. This authoring workflow never writes any index status. Only
+the independent recorder may set Approved, and only from current-hash APPROVED
+evidence. NEEDS REVISION, MAJOR REVISION NEEDED, PARTIAL REVIEW, accepted risk,
+solo/advisory review, a missing hash, or a stale hash can never authorize
+Approved.
 
-**Cross-reference**: If a dependency GDD lists tuning knobs that affect this system,
-reference them here. Don't create duplicate knobs — point to the source of truth.
+When review requires revision, start a separate design-system task in
+revise-section mode for one selected GDD section. After that edit, obtain another
+fresh whole-artifact review of the new hash.
 
----
+## 9. Recovery and resume
 
-### Section H: Acceptance Criteria
+On interruption, re-read the target and checkpoint. Validate schema, target path,
+mode, mutation_scope, and current_sha256 before continuing.
 
-**Goal**: Testable conditions that prove the system works as designed.
+- Matching hash: resume at approved-not-written first, otherwise the first pending
+  scoped section.
+- Different hash: return ERROR — STALE CHECKPOINT and stop without writing.
+- Missing checkpoint: resume mode is unavailable. The user may explicitly choose
+  fill-gaps or revise-section after a new inventory and changeset authorization.
+- A written substantive section is never re-authored by resume.
+- An approved-not-written draft may be recovered only if its approved content is
+  present in the checkpoint and the target hash still matches.
 
-**Completion Steering — format each criterion as Given-When-Then:**
-- **GIVEN** [initial state], **WHEN** [action or trigger], **THEN** [measurable outcome]
-
-Example (adapt terminology to the game's domain):
-- **GIVEN** [initial state], **WHEN** [player action or system trigger], **THEN** [specific measurable outcome].
-- **GIVEN** [a constraint is active], **WHEN** [player attempts an action], **THEN** [feedback shown and action result].
-
-Include at least: one criterion per core rule from Section C, and one per formula
-from Section D. Do NOT write "the system works as designed" — every criterion must
-be independently verifiable by a QA tester without reading the GDD.
-
-**Review mode check** (apply before spawning):
-- `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`qa-lead` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
-- `full` → spawn as described below.
-
-**Agent delegation (MANDATORY)**: Spawn `qa-lead` through Codex subagent delegation before finalising acceptance criteria. Provide: the completed GDD sections C, D, E, and ask them to validate that the criteria are independently testable and cover all core rules and formulas. Surface any gaps or untestable criteria to the user.
-
-**Questions to ask**:
-- What's the minimum set of tests that prove this works?
-- What performance budget does this system get? (frame time, memory)
-- What would a QA tester check first?
-
-**Cross-reference**: Include criteria that verify cross-system interactions work,
-not just this system in isolation.
-
----
-
-### Optional Sections: Visual/Audio, UI Requirements, Open Questions
-
-These sections are included in the template. Visual/Audio is **REQUIRED** for visual system categories — not optional. Determine the requirement level before asking:
-
-**Visual/Audio is REQUIRED (mandatory — do not offer to skip) for these system categories:**
-- Combat, damage, health
-- UI systems (HUD, menus)
-- Animation, character movement
-- Visual effects, particles, shaders
-- Character systems
-- Dialogue, quests, lore
-- Level/world systems
-
-For required systems: **spawn `art-director` through Codex subagent delegation** before drafting this section. Provide: system name, game concept, game pillars, art bible sections 1–4 if they exist. Ask them to specify: (1) VFX and visual feedback requirements for this system's events, (2) any animation or visual style constraints, (3) which art bible principles most directly apply to this system. Present their output; do NOT leave this section as `[To be designed]` for visual systems.
-
-For **all other system categories** (Foundation/Infrastructure, Economy, AI/pathfinding, Camera/input), offer the optional sections after the required sections:
-
-Ask the user directly:
-- "The 8 required sections are complete. Do you want to also define Visual/Audio
-  requirements, UI requirements, or capture open questions?"
-  - Options: "Yes, all three", "Just open questions", "Skip — I'll add these later"
-
-For **Visual/Audio** (non-required systems): Coordinate with `art-director` and `audio-director` if detail is needed. Often a brief note suffices at the GDD stage.
-
-> **Asset Spec Flag**: After the Visual/Audio section is written with real content, output this notice:
-> "📌 **Asset Spec** — Visual/Audio requirements are defined. After the art bible is approved, run `$asset-spec system:[system-name]` to produce per-asset visual descriptions, dimensions, and generation prompts from this section."
-
-For **UI Requirements**: Coordinate with `ux-designer` for complex UI systems.
-After writing this section, check whether it contains real content (not just
-`[To be designed]` or a note that this system has no UI). If it does have real
-UI requirements, output this flag immediately:
-
-> **📌 UX Flag — [System Name]**: This system has UI requirements. In Phase 4
-> (Pre-Production), run `$ux-design` to create a UX spec for each screen or
-> HUD element this system contributes to **before** writing epics. Stories that
-> reference UI should cite `design/ux/[screen].md`, not the GDD directly.
->
-> Note this in the systems index for this system if you update it.
-
-For **Open Questions**: Capture anything that came up during design that wasn't
-fully resolved. Each question should have an owner and target resolution date.
-
----
-
-## 5. Post-Design Validation
-
-After all sections are written:
-
-### 5a: Self-Check
-
-Read back the complete GDD from file (not from conversation memory — the file is
-the source of truth). Verify:
-- All 8 required sections have real content (not placeholders)
-- Formulas reference defined variables
-- Edge cases have resolutions
-- Dependencies are listed with interfaces
-- Acceptance criteria are testable
-
-### 5a-bis: Creative Director Pillar Review
-
-**Review mode check** — apply before spawning CD-GDD-ALIGN:
-- `solo` → skip. Note: "CD-GDD-ALIGN skipped — Solo mode." Proceed to Step 5b.
-- `lean` → skip (not a PHASE-GATE). Note: "CD-GDD-ALIGN skipped — Lean mode." Proceed to Step 5b.
-- `full` → spawn as normal.
-
-Before finalizing the GDD, spawn `creative-director` through Codex subagent delegation using gate **CD-GDD-ALIGN** (`.codex/docs/director-gates.md`).
-
-Pass: completed GDD file path, game pillars (from `design/gdd/game-concept.md` or `design/gdd/game-pillars.md`), MDA aesthetics target.
-
-Handle verdict per the standard rules in `director-gates.md`. After resolution, record the verdict in the GDD Status header:
-`> **Creative Director Review (CD-GDD-ALIGN)**: APPROVED [date] / CONCERNS (accepted) [date] / REVISED [date]`
-
----
-
-### 5b: Update Entity Registry
-
-Scan the completed GDD for cross-system facts that should be registered:
-- Named entities (enemies, NPCs, bosses) with stats or drops
-- Named items with values, weights, or categories
-- Named formulas with defined variables and output ranges
-- Named constants referenced by value in more than one place
-
-For each candidate, check if it already exists in `design/registry/entities.yaml`:
-```
-Search `design/registry/entities.yaml` for `  - name: [candidate_name]`.
-```
-
-Present a summary:
-```
-Registry candidates from this GDD:
-  NEW (not yet registered):
-    - [entity_name] [entity]: [attribute]=[value], [attribute]=[value]
-    - [item_name] [item]: [attribute]=[value], [attribute]=[value]
-    - [formula_name] [formula]: variables=[list], output=[min–max]
-  ALREADY REGISTERED (referenced_by will be updated):
-    - [constant_name] [constant]: value=[N] ← matches registry ✅
-```
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, append new entries and update `referenced_by` arrays. Never modify
-existing `value` / attribute fields without surfacing it as a conflict first.
-
-### 5c: Offer Design Review
-
-Present a completion summary:
-
-> **GDD Complete: [System Name]**
-> - Sections written: [list]
-> - Provisional assumptions: [list any assumptions about undesigned dependencies]
-> - Cross-system conflicts found: [list or "none"]
-
-> **To validate this GDD, open a fresh Codex session and run:**
-> `$design-review design/gdd/[system-name].md`
->
-> **Never run `$design-review` in the same session as `$design-system`.** The reviewing
-> agent must be independent of the authoring context. Running it here would inherit
-> the full design history, making independent critique impossible.
-
-**NEVER offer to run `$design-review` inline.** Always direct the user to a fresh window.
-
-### 5d: Update Systems Index
-
-After the GDD is complete (and optionally reviewed):
-
-- Read the systems index
-- Update the target system's row:
-  - If design-review was run and verdict is APPROVED: Status → "Approved"
-  - If design-review was run and verdict is NEEDS REVISION: Status → "In Review"
-  - If design-review was skipped: Status → "Designed" (pending review)
-  - If the user chose "I'll review it myself first": Status → "Designed"
-  - Design Doc: link to `design/gdd/[system-name].md`
-- Update the Progress Tracker counts
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-### 5e: Update Session State
-
-Update `production/session-state/active.md` with:
-- Task: [system-name] GDD
-- Status: Complete (or In Review if design-review was run)
-- File: design/gdd/[system-name].md
-- Sections: All 8 written
-- Next: [suggest next system from design order]
-
-### 5f: Suggest Next Steps
-
-Ask the user directly:
-- "What's next?"
-  - Options:
-    - "Run `$consistency-check` — verify this GDD's values don't conflict with existing GDDs (recommended before designing the next system)"
-    - "Design next system ([next-in-order])" — if undesigned systems remain
-    - "Fix review findings" — if design-review flagged issues
-    - "Stop here for this session"
-    - "Run `$gate-check`" — if enough MVP systems are designed
-
----
-
-## 6. Specialist Agent Routing
-
-This skill delegates to specialist agents for domain expertise. The main session
-orchestrates the overall flow; agents provide expert content.
-
-| System Category | Primary Agent | Supporting Agent(s) |
-|----------------|---------------|---------------------|
-| **Foundation/Infrastructure** (event bus, save/load, scene mgmt, service locator) | `systems-designer` | `gameplay-programmer` (feasibility), `engine-programmer` (engine integration) |
-| Combat, damage, health | `game-designer` | `systems-designer` (formulas), `ai-programmer` (enemy AI), `art-director` (hit feedback visual direction, VFX intent) |
-| Economy, loot, crafting | `economy-designer` | `systems-designer` (curves), `game-designer` (loops) |
-| Progression, XP, skills | `game-designer` | `systems-designer` (curves), `economy-designer` (sinks) |
-| Dialogue, quests, lore | `game-designer` | `narrative-director` (story), `writer` (content), `art-director` (character visual profiles, cinematic tone) |
-| UI systems (HUD, menus) | `game-designer` | `ux-designer` (flows), `ui-programmer` (feasibility), `art-director` (visual style direction), `technical-artist` (render/shader constraints) |
-| Audio systems | `game-designer` | `audio-director` (direction), `sound-designer` (specs) |
-| AI, pathfinding, behavior | `game-designer` | `ai-programmer` (implementation), `systems-designer` (scoring) |
-| Level/world systems | `game-designer` | `level-designer` (spatial), `world-builder` (lore) |
-| Camera, input, controls | `game-designer` | `ux-designer` (feel), `gameplay-programmer` (feasibility) |
-| Animation, character movement | `game-designer` | `art-director` (animation style, pose language), `technical-artist` (rig/blend constraints), `gameplay-programmer` (feel) |
-| Visual effects, particles, shaders | `game-designer` | `art-director` (VFX visual direction), `technical-artist` (performance budget, shader complexity), `systems-designer` (trigger/state integration) |
-| Character systems (stats, archetypes) | `game-designer` | `art-director` (character visual archetype), `narrative-director` (character arc alignment), `systems-designer` (stat formulas) |
-
-**When delegating via Codex subagent delegation**:
-- Provide: system name, game concept summary, dependency GDD excerpts, the specific
-  section being worked on, and what question needs expert input
-- The agent returns analysis/proposals to the main session
-- The main session presents the agent's output to the user by asking the user directly
-- The user decides; the main session writes to file
-- Agents do NOT write to files directly — the main session owns all file writes
-
----
-
-## 7. Recovery & Resume
-
-If the session is interrupted (compaction, crash, new session):
-
-1. Read `production/session-state/active.md` — it records the current system and
-   which sections are complete
-2. Read `design/gdd/[system-name].md` — sections with real content are done;
-   sections with `[To be designed]` still need work
-3. Resume from the next incomplete section — no need to re-discuss completed ones
-
-This is why incremental writing matters: every approved section survives any
-disruption.
-
----
-
-## Collaborative Protocol
-
-This skill follows the collaborative design principle at every step:
-
-1. **Question -> Options -> Decision -> Draft -> Approval** for every section
-2. **direct question to the user** at every decision point (Explain -> Capture pattern):
-   - Phase 2: "Ready to start, or need more context?"
-   - Phase 3: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-   - Phase 4 (each section): Design questions, approach options, draft approval
-   - Phase 5: "Run design review? Update systems index? What's next?"
-3. **Single changeset authorization**: preview the skeleton and every anticipated edit before the first file write
-4. **Incremental writing inside the authorized boundary**: write approved section content without new file-by-file prompts
-5. **Session state updates**: After every section write
-6. **Cross-referencing**: Every section checks existing GDDs for conflicts
-7. **Specialist routing**: Complex sections get expert agent input, presented to
-   the user for decision — never written silently
-
-**Never** auto-generate the full GDD and present it as a fait accompli.
-**Never** write a section without user approval.
-**Never** contradict an existing approved GDD without flagging the conflict.
-**Always** show where decisions come from (dependency GDDs, pillars, user choices).
-
-## Long-session continuity
-
-This is a long-running skill. Codex skills do not have a reliable numeric context meter, so never claim a context percentage. If the app reports that context is being compacted, or the user asks to continue in a fresh task, confirm that all approved sections are saved in `design/gdd/[system-name].md` and say:
-
-> **Progress is saved.** Open a fresh Codex task and run `$design-system [system-name]`; the workflow will detect completed sections and resume from the next one.
-
----
-
-## Recommended Next Steps
-
-- Run `$design-review design/gdd/[system-name].md` in a **fresh session** to validate the completed GDD independently
-- Run `$consistency-check` to verify this GDD's values don't conflict with other GDDs
-- Run `$map-systems next` to move to the next highest-priority undesigned system
-- Run `$gate-check pre-production` when all MVP GDDs are authored and reviewed
+Never use conversation memory as approval or hash evidence. Never reconstruct a
+formal verdict in the checkpoint.

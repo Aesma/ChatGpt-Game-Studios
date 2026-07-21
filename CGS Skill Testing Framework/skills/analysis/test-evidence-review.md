@@ -1,175 +1,262 @@
-# Skill Test Spec: $test-evidence-review
+# Skill Spec: $test-evidence-review
+
+> **Category**: analysis
+> **Priority**: low
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$test-evidence-review` performs a quality review of test files in `tests/`,
-checking test naming conventions, determinism, isolation, and absence of
-hardcoded magic numbers — all against the project's test standards defined in
-`coding-standards.md`. Findings may be flagged for qa-lead review. No director
-gates are invoked. The skill does not write outside the authorized changeset. Verdicts:
-PASS, WARNINGS, or FAIL.
+$test-evidence-review consumes one exact evidence-review manifest whose stable AC rows bind a CURRENT QA plan, candidate build, test sources, smoke/playtest receipts, manual artifacts, and reviewer attestations by raw-byte SHA-256. It reports Workflow Status, Evidence Quality, Execution Status/Scope, Closure Eligibility, and Persistence as separate fields. It never treats source structure, file presence, dates, or sign-off labels as proof of current execution.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: PASS, WARNINGS, FAIL
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff (what to do after findings are reviewed)
+- [ ] YAML frontmatter contains only name and a non-empty description; name is test-evidence-review
+- [ ] The only accepted scope input is an exact evidence-review manifest
+- [ ] Every scope row requires stable story, AC, and QA-plan test/check IDs plus expected evidence paths/hashes
+- [ ] QA-plan effective CURRENT state is recomputed from every captured source byte hash
+- [ ] Structural quality and current execution use separate result fields
+- [ ] No assertion-token count or assertion-per-function threshold determines quality
+- [ ] Manual artifact presence is distinct from content inspection and provenance validation
+- [ ] Reviewer attestations bind identity, scope, build, artifact hashes, and an authorization source; the model cannot sign
+- [ ] Canonical staged smoke-check and playtest-report consumer contracts are explicit
+- [ ] Read failures are UNAVAILABLE/PARTIAL, not product-level MISSING
+- [ ] Optional persistence owns exactly one unique review report and follows bounded authorization/read-back verification
+- [ ] The workflow ends with ownership-aware remediation without invoking another workflow
 
 ---
 
 ## Director Gate Checks
 
-None. Test evidence review is an advisory quality skill; QL-TEST-COVERAGE gate
-is a separate skill invocation and is NOT triggered here.
+- **Full mode**: N/A; no director gate is invoked.
+- **Lean mode**: N/A; no director gate is invoked.
+- **Solo mode**: N/A; no director gate is invoked.
+- **QA review distinction**: attester identity verification is evidence validation, not a director gate and not approval fabricated by this skill.
 
 ---
 
 ## Test Cases
 
-### Case 1: Happy Path — Tests follow all standards
+### Case 1: Structurally adequate test without runtime receipt
 
-**Fixture:**
-- `tests/unit/combat/health_system_take_damage_test.gd` exists with:
-  - Naming: `test_health_system_take_damage_reduces_health()` (follows `test_[system]_[scenario]_[expected]`)
-  - Arrange/Act/Assert structure present
-  - No `sleep()`, `await` with time values, or random seeds
-  - No calls to external APIs or file I/O
-  - No inline magic numbers (uses constants from `tests/unit/combat/fixtures/`)
+**Fixture**:
+- One automated AC row has exact current QA-plan/test-source hashes.
+- Requirement mapping, expected observable, and failure sensitivity are demonstrated.
+- No current-build smoke receipt is declared.
 
-**Input:** `$test-evidence-review tests/unit/combat/`
+**Expected behavior**:
+1. Structural review reports Evidence Quality: ADEQUATE.
+2. Runtime review reports Overall Execution Status: UNKNOWN and Execution Scope: NONE.
+3. Closure Eligible is NO.
 
-**Expected behavior:**
-1. Skill reads test standards from `coding-standards.md`
-2. Skill reads the test file; checks all 5 standards
-3. All checks pass: naming, structure, determinism, isolation, no hardcoded data
-4. Verdict is PASS
+**Assertions**:
+- [ ] ADEQUATE is never described as evidence that tests ran or passed
+- [ ] No current receipt cannot become a warning-only pass
+- [ ] The missing runtime receipt is listed separately from structural findings
 
-**Assertions:**
-- [ ] Each of the 5 test standards is checked and reported
-- [ ] All checks show PASS when standards are met
-- [ ] Verdict is PASS
-- [ ] No files are written
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 2: Fail — Timing dependency detected
+### Case 2: Assertion-token forgery does not improve quality
 
-**Fixture:**
-- `tests/unit/ui/hud_update_test.gd` contains:
-  ```gdscript
-  await get_tree().create_timer(1.0).timeout
-  assert_eq(label.text, "Ready")
-  ```
-- Real-time wait of 1 second used instead of mock or signal-based assertion
+**Fixture**:
+- A test file contains assert/expect/check/verify in comments, strings, duplicated lines, and an unreviewed helper call.
+- None of those operations is traced to the AC observable or shown failure-sensitive.
 
-**Input:** `$test-evidence-review tests/unit/ui/hud_update_test.gd`
+**Expected behavior**:
+1. The workflow ignores comments, strings, repeated equivalents, and opaque helpers as proof.
+2. It records Evidence Quality: INCOMPLETE for that row.
+3. Assertion line count is not reported as an adequacy threshold.
 
-**Expected behavior:**
-1. Skill reads the test file
-2. Skill detects real-time wait (`create_timer(1.0)`) — non-deterministic timing dependency
-3. Skill flags this as a FAIL-level finding
-4. Verdict is FAIL
-5. Skill recommends replacing the timer with a signal-based assertion or mock
+**Assertions**:
+- [ ] Three or more assertion-looking lines do not automatically pass
+- [ ] Helper semantics must be reviewed and hash-bound
+- [ ] One meaningful negative control may carry more evidence than repeated assertions
 
-**Assertions:**
-- [ ] Real-time wait usage is detected as a non-deterministic timing dependency
-- [ ] Finding is classified as FAIL severity (blocking — violates determinism standard)
-- [ ] Verdict is FAIL
-- [ ] Remediation suggestion references signal-based or mock-based approach
-- [ ] Skill does not edit the test file
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 3: Fail — Test calls external API directly
+### Case 3: Existing screenshot without provenance is incomplete
 
-**Fixture:**
-- `tests/unit/networking/auth_test.gd` contains:
-  ```gdscript
-  var result = HTTPRequest.new().request("https://api.example.com/auth")
-  ```
-- Direct HTTP call to external API without a mock
+**Fixture**:
+- A screenshot path exists.
+- Artifact hash/build/platform/captor/AC mapping or capture metadata is missing.
 
-**Input:** `$test-evidence-review tests/unit/networking/auth_test.gd`
+**Expected behavior**:
+1. Presence is PRESENT.
+2. Evidence Quality is INCOMPLETE, not ADEQUATE.
+3. Execution Status is UNKNOWN and Closure Eligible is NO.
 
-**Expected behavior:**
-1. Skill reads the test file
-2. Skill detects direct external API call (HTTPRequest to live URL)
-3. Skill flags this as a FAIL-level finding — violates isolation standard
-4. Verdict is FAIL
-5. Skill recommends injecting a mock HTTP client
+**Assertions**:
+- [ ] Path existence and date alone do not prove content
+- [ ] The missing receipt fields are enumerated
+- [ ] The skill does not invent capture metadata
 
-**Assertions:**
-- [ ] Direct external API call is detected and flagged
-- [ ] Finding is classified as FAIL severity (violates isolation standard)
-- [ ] Verdict is FAIL
-- [ ] Remediation references dependency injection with a mock HTTP client
-- [ ] Skill does not modify the test file
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 4: Edge Case — No Test Files Found
+### Case 4: Happy path — current per-AC evidence is closure eligible
 
-**Fixture:**
-- User calls `$test-evidence-review tests/unit/audio/`
-- `tests/unit/audio/` directory does not exist
+**Fixture**:
+- The review manifest has unique stable AC/test IDs and matching hashes.
+- QA plan is effectively CURRENT; candidate/build/test-manifest bindings match.
+- Automated tests have a persisted full-scope smoke PASS receipt.
+- Manual/playtest artifacts are content-inspected, hash-valid, build-bound, and have verified current attestations.
+- --persist is authorized and the review ID is unused.
 
-**Input:** `$test-evidence-review tests/unit/audio/`
+**Expected behavior**:
+1. Every AC emits exactly one ADEQUATE/PASS/FULL row.
+2. Workflow Status is COMPLETE and aggregate quality/execution are ADEQUATE/PASS.
+3. The report is atomically written and re-read.
+4. Overall Closure Eligible is YES.
 
-**Expected behavior:**
-1. Skill attempts to read files in `tests/unit/audio/` — not found
-2. Skill outputs: "No test files found at `tests/unit/audio/` — run `$test-setup` to scaffold test directories"
-3. No verdict is emitted
+**Assertions**:
+- [ ] Exact input and report hashes are emitted
+- [ ] No row is inferred from filenames or recent modification time
+- [ ] Persistence is recorded independently from the evidence-based closure assessment
 
-**Assertions:**
-- [ ] Skill does not crash when path does not exist
-- [ ] Output names the attempted path in the message
-- [ ] Output recommends `$test-setup` for scaffolding
-- [ ] No verdict is emitted when there is nothing to review
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 5: Gate Compliance — No gate; QL-TEST-COVERAGE is a separate skill
+### Case 5: Director gate — none and no model-created sign-off
 
-**Fixture:**
-- Test file has 1 WARNINGS-level finding (magic number in a non-boundary test)
-- `review-mode.txt` contains `full`
+**Fixture**:
+- Review mode elsewhere is full.
+- One manual artifact requires QA-lead attestation.
 
-**Input:** `$test-evidence-review tests/unit/combat/`
+**Expected behavior**:
+1. No director gate or agent is invoked.
+2. The skill verifies an existing attestation against its identity source.
+3. If it is absent, Closure Eligible is NO; the model does not fill it in.
 
-**Expected behavior:**
-1. Skill reviews tests; finds 1 WARNINGS-level finding
-2. No director gate is invoked (QL-TEST-COVERAGE is invoked separately, not here)
-3. Verdict is WARNINGS
-4. Output notes: "For full test coverage gate, run `$gate-check` which invokes QL-TEST-COVERAGE"
-5. Skill offers optional report write; asks "changeset authorization" if user opts in
+**Assertions**:
+- [ ] No CD-, TD-, AD-, PR-, or QL-gate controls the result
+- [ ] A role label alone is not an attestation
+- [ ] No approval is inferred or generated
 
-**Assertions:**
-- [ ] No director gate is invoked in any review mode
-- [ ] Output distinguishes this skill from the QL-TEST-COVERAGE gate invocation
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Verdict is WARNINGS for advisory-level test quality issues
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 6: Signed evidence becomes stale after source change
+
+**Fixture**:
+- An attestation correctly names an earlier test/artifact hash.
+- The current test source, story/GDD source, candidate, or artifact bytes differ.
+
+**Expected behavior**:
+1. The changed digest is reported.
+2. Execution Status becomes STALE when runtime binding changed; affected quality/attestation is INCOMPLETE.
+3. Closure Eligible is NO despite the nonempty signature.
+
+**Assertions**:
+- [ ] Dates do not override hash mismatch
+- [ ] The old attestation is not silently carried forward
+- [ ] Remediation names the artifact owner/reviewer that must refresh evidence
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 7: Read failure is unavailable, not missing
+
+**Fixture**:
+- A declared evidence path exists but cannot be read, parsed, decoded, or inspected.
+
+**Expected behavior**:
+1. Presence remains PRESENT when existence is known.
+2. Row quality/execution is UNAVAILABLE as applicable.
+3. Workflow Status is PARTIAL, not COMPLETE.
+4. The workflow does not claim the product lacks evidence.
+
+**Assertions**:
+- [ ] UNAVAILABLE is separated from explicit MISSING
+- [ ] The AC row remains in the report
+- [ ] Overall Closure Eligible is NO
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 8: Canonical naming is advisory and cannot prove coverage
+
+**Fixture**:
+- Test A is named test_combat_damage_clamps_zero and maps semantically to its AC.
+- Test B is named test_damage_clamps_zero without the system segment.
+- Test C has a conforming name but no AC mapping or failure-sensitive observable.
+
+**Expected behavior**:
+1. Test A passes the naming check.
+2. Test B receives a naming finding and is not heuristically split to invent a system.
+3. Test C's name does not satisfy requirement coverage.
+
+**Assertions**:
+- [ ] Parser requires system, scenario, and expected fields
+- [ ] Naming and semantic quality are separate
+- [ ] No filename creates a stable AC binding
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 9: Canonical playtest evidence is verified end to end
+
+**Fixture**:
+- A QA-plan row requires a playtest.
+- The exact canonical completed report binds the same build/platform/AC IDs and references raw evidence, manifest, and observation-ledger hashes.
+
+**Expected behavior**:
+1. The workflow verifies production/playtests/{session-id}/report.md and every referenced hash.
+2. Derived findings resolve to Observation IDs and raw source hash.
+3. A protocol, director review, ingest-only session, or legacy-path report is rejected.
+
+**Assertions**:
+- [ ] Status: COMPLETED and Gate Eligible: YES are both required
+- [ ] File existence alone is insufficient
+- [ ] Mismatched build or observation hash yields STALE/INCOMPLETE and blocks closure
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 10: Smoke receipt is exact, current, and scope-aware
+
+**Fixture**:
+- One exact persisted sprint smoke receipt has formal PASS, Handoff Eligible: YES, and matching candidate/QA-plan/test-manifest/scope hashes.
+- A second fixture is a quick TARGETED CHECK PASSED receipt.
+
+**Expected behavior**:
+1. The sprint receipt yields PASS/FULL for covered rows after all referenced hashes revalidate.
+2. The quick receipt may yield a current targeted row but Execution Scope is TARGETED.
+3. Quick evidence never makes Closure Eligible YES.
+
+**Assertions**:
+- [ ] No newest-receipt discovery occurs
+- [ ] INCOMPLETE, warning-bearing, stale, unpersisted, or hash-mismatched smoke evidence cannot pass
+- [ ] Exact candidate-manifest identity is required
+
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Reads `coding-standards.md` test standards before reviewing test files
-- [ ] Checks naming, Arrange/Act/Assert structure, determinism, isolation, no hardcoded data
-- [ ] Does not edit any test files (read-only skill)
-- [ ] No director gates are invoked
-- [ ] Verdict is one of: PASS, WARNINGS, FAIL
+- [ ] Explicit bounded requests authorize in-scope optional report writes
+- [ ] Without bounded authorization, --persist previews one complete one-file changeset and asks once
+- [ ] Without --persist the workflow remains byte-for-byte read-only
+- [ ] It never edits tests/evidence or invokes directors/downstream workflows
+- [ ] Missing, unavailable, stale, structural, runtime, and persistence states remain distinct
+- [ ] Every declared AC appears exactly once in the output
+- [ ] Persisted reports use unique review IDs and verified raw-byte hashes
+- [ ] Conversation-only or failed/declined persistence is never closure evidence
 
 ---
 
 ## Coverage Notes
 
-- Batch review of all test files in `tests/` is not explicitly tested; behavior
-  is assumed to apply the same checks file by file and aggregate the verdict.
-- The QL-TEST-COVERAGE director gate (which checks test coverage percentage) is
-  a separate concern and is intentionally NOT invoked by this skill.
+This is a behavioral specification, not an executed test result. Runtime fixtures should cover manifest/path validation, duplicate IDs, symlink escape, QA-plan source mutation, opaque assertion helpers, mutation/negative-control receipts, image/log decoding, attester identity verification, current/quick/stale smoke receipts, canonical playtest hashes, optional write decline/failure, and proof that all non-owned files remain byte-identical. story-done, team-qa, milestone-review, catalog, and workflow-guide consumers must independently adopt the same exact-manifest and dual-axis result contract.

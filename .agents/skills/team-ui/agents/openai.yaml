@@ -1,4 +1,4 @@
 interface:
   display_name: "Team UI"
-  short_description: "Orchestrate the UI team through the full UX pipeline: from UX..."
-  default_prompt: "Use $team-ui to run the Team UI game-studio workflow."
+  short_description: "Implement approved UX with final-build verification"
+  default_prompt: "Use $team-ui with an exact UI feature request manifest; production implementation requires a separate bounded manifest."

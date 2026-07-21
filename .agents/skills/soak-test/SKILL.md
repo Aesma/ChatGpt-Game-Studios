@@ -1,286 +1,422 @@
 ---
 name: soak-test
-description: "Generate a soak test protocol for extended play sessions. Defines what to observe, measure, and log during long play sessions to surface slow leaks, fatigue effects, and edge cases that only appear after sustained play. Primarily used in Polish and Release phases."
+description: "Plans build-bound endurance tests, ingests immutable checkpoint evidence, and finalizes reproducible soak results without confusing an empty protocol with an executed test."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$soak-test`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[duration: 30m | 1h | 2h | 4h] [focus: memory | stability | balance | all]`. Treat bracketed values as optional unless the workflow says otherwise.
-
 
 # Soak Test
 
-A soak test (also called an endurance test) is an extended play session run
-with specific observation goals. Unlike a smoke check (broad critical path,
-~10 min) or a single-feature playtest (~30 min), a soak test runs for **30
-minutes to several hours** to surface:
-
-- **Memory leaks** — gradual heap growth that only appears after scene transitions
-- **Performance drift** — frame time degradation that worsens over time
-- **State accumulation bugs** — issues that only appear after N repetitions
-  of a mechanic (inventory full, score overflow, AI state corruption)
-- **Fun fatigue** — mechanics that feel good in a first session but grow
-  repetitive over extended play
-- **Content exhaustion** — the point where players run out of novel content
-
-**This skill generates the observation protocol and analysis harness — the
-human does the actual playing.**
-
-**Output:** `production/qa/soak-test-[date]-[duration].md`
-
-**When to run:**
-- Polish phase — before `$gate-check release`
-- After fixing a memory or stability issue (regression soak)
-- When extended play has not been formally tracked
-
----
-
-## 1. Parse Arguments
-
-**Duration** (default: `1h`):
-- `30m` — short soak; suitable for testing a single mechanic or scene
-- `1h` — standard soak; covers most common leak categories
-- `2h` — extended soak; recommended for first full Polish soak
-- `4h` — deep soak; required for games with long session design (RPGs, sims)
-
-**Focus** (default: `all`):
-- `memory` — focus on heap size, object count, leak patterns
-- `stability` — focus on crash/freeze/hang detection
-- `balance` — focus on fun fatigue, content exhaustion, difficulty perception
-- `all` — all of the above
-
----
-
-## 2. Load Context
-
-Read:
-- `.codex/docs/technical-preferences.md` — engine (for engine-specific memory
-  monitoring guidance), performance budgets (memory ceiling, target FPS)
-- `design/gdd/game-concept.md` — intended session length (for comparison against
-  soak duration), core loop description
-- Most recent file in `production/playtests/` — prior playtest findings
-  (to avoid re-documenting known issues)
-- Most recent file in `production/qa/qa-plan-*.md` — current sprint test coverage
-  (to understand what has been formally tested vs. what the soak covers)
-
-Note any performance budget targets from technical-preferences.md:
-- Memory ceiling: [N MB, or "not set"]
-- Target FPS: [N, or "not set"]
-- Frame budget: [N ms, or "not set"]
-
----
-
-## 3. Define Observation Checkpoints
-
-Based on duration, generate timed checkpoints:
-
-**30m soak**: T+0, T+10, T+20, T+30
-**1h soak**: T+0, T+15, T+30, T+45, T+60
-**2h soak**: T+0, T+20, T+40, T+60, T+80, T+100, T+120
-**4h soak**: T+0, T+30, T+60, T+90, T+120, T+180, T+240
-
-At each checkpoint, the observer records the observation items defined in
-Phase 4.
-
----
-
-## 4. Generate the Soak Test Protocol
-
-### Memory / Stability observation items (if focus = memory or all)
-
-Engine-specific monitoring guidance:
-
-**Godot 4:**
-- Open Debugger → Monitors question group; track `Memory → Static Memory` and
-  `Object Count → Objects` across checkpoints
-- Record: Static Memory (KB), Object Count, Orphan Nodes count
-- Alert threshold: Memory growth > 20% from T+0 after the first 15 minutes
-  (some growth on load is expected; sustained growth indicates a leak)
-- Note: `Performance.get_monitor(Performance.MEMORY_STATIC)` returns bytes
-  in Godot 4.6
-
-**Unity:**
-- Open Memory Profiler (Window → Analysis → Memory Profiler)
-- Record: Total Reserved Memory (MB), GC Allocated (MB), Object Count at each checkpoint
-- Alert threshold: GC Allocated growing monotonically across 3+ checkpoints
-
-**Unreal Engine:**
-- Use `stat memory` console command at each checkpoint
-- Record: Physical Memory Used (MB), Physical Memory Available
-- Alert threshold: Physical Memory Used growth > 50MB over the full soak
-
-### Stability observation items (if focus = stability or all)
-
-At each checkpoint, note:
-- [ ] No crash, hang, or freeze occurred since last checkpoint
-- [ ] Frame rate still within target budget ([target FPS] fps)
-- [ ] Audio still playing correctly (no desync or silence)
-- [ ] All HUD elements still rendering correctly
-- [ ] Input responding as expected (no input loss or lag spike)
-
-### Balance / fatigue observation items (if focus = balance or all)
-
-Collect subjective observations at each checkpoint:
-- [ ] Core mechanic still feels rewarding (Y/N)
-- [ ] Perceived difficulty level: [too easy / appropriate / too hard]
-- [ ] Any "I've seen this before" moments since last checkpoint? (novel content exhaustion)
-- [ ] Any moment of frustration since last checkpoint? Note cause.
-- [ ] Any moment of peak engagement since last checkpoint? Note cause.
-
----
-
-## 5. Generate the Protocol Document
-
-```markdown
-# Soak Test Protocol
-
-> **Date**: [date]
-> **Duration**: [duration]
-> **Focus**: [memory | stability | balance | all]
-> **Engine**: [engine]
-> **Generated by**: $soak-test
-
----
-
-## Pre-Session Setup
-
-Before starting the soak:
-
-- [ ] Game is running from a **fresh launch** (not resumed from a prior session)
-- [ ] All background applications closed (minimise OS memory interference)
-- [ ] Performance monitoring tool open and recording:
-  - **Godot**: Debugger → Monitors question group → Memory section visible
-  - **Unity**: Memory Profiler window open
-  - **Unreal**: `stat memory` ready in console
-- [ ] Soak target confirmed: [session design intent from game concept]
-- [ ] Prior known issues to watch for: [from most recent playtest / qa-plan]
-
----
-
-## Baseline (T+0) — Record Before Playing
-
-| Metric | Baseline Value |
-|--------|---------------|
-| Memory / Heap | [record before first frame of gameplay] |
-| Object Count | [record] |
-| FPS (first 30 seconds) | [record] |
-| [Engine-specific metric] | [record] |
-
----
-
-## Checkpoint Log
-
-### T+[N] minutes
-
-**Memory / Stability** *(if applicable)*:
-
-| Metric | Value | Δ from Baseline | Alert? |
-|--------|-------|-----------------|--------|
-| Memory / Heap | | | |
-| Object Count | | | |
-| FPS | | | |
-| Crashes / Hangs | | | |
-
-**Stability checks**:
-- [ ] No crash or hang since last checkpoint
-- [ ] Frame rate within budget ([N] fps target)
-- [ ] Audio correct
-- [ ] HUD rendering correctly
-- [ ] Input responding correctly
-
-**Balance / Fatigue** *(if applicable)*:
-- Core mechanic still rewarding: Y / N
-- Difficulty perception: too easy / appropriate / too hard
-- Notable moments: [note any peak engagement or frustration]
-- Content exhaustion signs: Y / N — [describe]
-
-**Free observations**:
-*(Note anything unexpected observed since the last checkpoint)*
-
----
-
-[Repeat Checkpoint Log section for each timed checkpoint]
-
----
-
-## Post-Session Analysis
-
-### Memory Trend
-
-| Checkpoint | Memory | Δ/hr extrapolated |
-|------------|--------|-------------------|
-| T+0 | | |
-| [T+N] | | |
-
-**Leak detected?** Y / N
-**Estimated time to OOM at current rate**: [N hours / not applicable]
-
-### Stability Summary
-
-Total crashes: [N]
-Total hangs: [N]
-Worst FPS observed: [N] fps at [checkpoint]
-Performance degradation: stable / mild / severe
-
-### Balance / Fatigue Summary
-
-Fun curve: [engaged throughout / fatigue onset at T+N / repetitive from start]
-Content exhaustion point: [never / at T+N / early]
-Difficulty arc: [appropriate / too easy throughout / difficulty spike at T+N]
-
-### Issues Found
-
-| ID | Severity | Checkpoint | Description |
-|----|----------|------------|-------------|
-| SOAK-001 | S[1-4] | T+[N] | [description] |
-
----
-
-## Verdict: PASS / PASS WITH CONCERNS / FAIL
-
-**PASS**: No leaks detected, stability maintained, fun factor consistent
-**PASS WITH CONCERNS**: Minor drift or fatigue noted; addressable in Polish
-**FAIL**: Memory leak confirmed, stability breach, or severe fun fatigue
-
----
-
-## Sign-Off
-
-- **Tester**: [name] — [date]
-- **QA Lead review**: [name] — [date]
-```
-
----
-
-## 6. Write Output
-
-Present the protocol summary in conversation, then add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write only after the single changeset approval, without re-prompting within its boundary.
-
-After writing:
-
-"Protocol written. To run the soak:
-1. Open the file and follow the Pre-Session Setup checklist
-2. Record each checkpoint as you play
-3. Complete the Post-Session Analysis section when done
-4. File bugs from 'Issues Found' to `production/qa/bugs/`
-5. Run `$bug-triage sprint` after the session to integrate any S1/S2 issues
-
-If the verdict is FAIL, run `$smoke-check` again after fixing the issues."
-
----
-
-## Collaborative Protocol
-
-- **This skill generates a protocol — humans run it** — never attempt to
-  run a soak test automatically. The observations require a human observer.
-- **Duration should match the game's session design** — a 5-minute game
-  doesn't need a 4h soak; a city-builder might. Use judgment and ask if unclear.
-- **First soak should be `all` focus** — narrow focus (memory-only) is for
-  regression soaks after a specific fix, not the first pass
-- **Single changeset approval** — include the protocol file in the complete preview and create it only after the one approval
+Use one explicit mode:
+
+- `$soak-test plan <target-id> --protocol-id <id> --build <version> --build-hash <hash> --commit <commit> --duration <duration> --interval <duration> --focus <memory|stability|performance|experience|all> --profile <workload-profile-id> --environment <environment-profile-id> [--save-protocol] [--supersedes <protocol-id>]`
+- `$soak-test start <protocol-id> --run-id <run-id> --observer <observer-id> --started-at <ISO-8601>`
+- `$soak-test ingest <run-id> <path-to-evidence> --receipt-id <receipt-id>`
+- `$soak-test finalize <run-id> --ended-at <ISO-8601> --termination <reason>`
+- `$soak-test status <run-id>`
+
+The human or an external harness performs the long-running test. This workflow plans
+it, preserves supplied evidence, and derives a result. It never simulates missing
+samples or claims that writing a protocol executed the test.
+
+An explicit bounded request authorizes its in-scope writes. Otherwise, before the
+first file change, show one complete changeset with every intended path and change
+and obtain one approval. Do not re-prompt within that boundary. Stop for new approval
+only when scope expands materially.
+
+## Artifact and status contract
+
+Use only this canonical layout:
+
+~~~text
+production/qa/soak-tests/
+  _protocols/<protocol-id>.md
+  <run-id>/
+    manifest.md
+    receipts/<receipt-id>.md
+    raw/<receipt-id>.<source-extension>
+    samples/<receipt-id>.md
+    result.md
+~~~
+
+Each layer has one meaning:
+
+- protocol: immutable execution plan; `Artifact Type: soak-test-protocol`,
+  `Status: PLANNED`, `Gate Eligible: NO`, `Verdict: PROTOCOL_PLANNED`;
+- run manifest: immutable run identity created before evidence ingest;
+  `Artifact Type: soak-run-manifest`, `Status: RUNNING`, `Gate Eligible: NO`;
+- raw receipt and sample ledger: immutable evidence copied and indexed without
+  changing tester values; never a result;
+- completed result: only `<run-id>/result.md` with
+  `Artifact Type: soak-test-result` and `Status: COMPLETED`.
+
+A protocol, manifest, receipt, sample ledger, legacy soak file, blank template, or
+partially filled table is not an execution result. It must never use `Status:
+COMPLETED`, `Execution Status: EXECUTED`, `Verdict: COMPLETE`, or `Gate Eligible:
+YES`.
+
+Only a result that passes Phase 6 finalization may return `Verdict: COMPLETE`.
+`COMPLETE` means the result artifact was finalized and verified; it is independent
+from technical or experience readiness.
+
+Never overwrite any canonical artifact. A changed build, workload, environment,
+protocol, evidence set, or retry uses a new protocol/run/receipt ID.
+
+## Result fields
+
+Keep these fields independent:
+
+| Field | Allowed values |
+|---|---|
+| `Status` | `COMPLETED` only on a finalized result |
+| `Execution Status` | `EXECUTED`, `FAILED_EARLY`, `INCOMPLETE` |
+| `Stability Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
+| `Memory Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
+| `Performance Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
+| `Experience Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
+| `Readiness Result` | `PASS`, `FAIL`, `INCONCLUSIVE` |
+| `Gate Eligible` | `YES` or `NO`; only a finalized, conclusive execution or verified early objective failure may be `YES` |
+| `Verdict` | `COMPLETE`, `ERROR`, `BLOCKED`, or a mode-specific non-completion verdict |
+
+An experience/fatigue observation cannot turn an objective stability, memory, or
+performance result into PASS or FAIL. Likewise, technical PASS cannot erase
+experience concerns. A consumer may combine dimensions only through an explicit,
+named gate policy.
+
+## Phase 0: Validate mode, IDs, and paths
+
+Accept exactly one mode and its documented arguments. Reject unknown/missing modes,
+unknown options, duplicate options with different values, extra positionals, unsafe
+IDs, and invalid durations before writing anything.
+
+IDs must match:
+
+- protocol ID: `SOAK-PROTO-<slug-or-version>`;
+- run ID: `SOAK-RUN-<slug-or-uuid>`;
+- receipt ID: `SOAK-REC-<slug-or-uuid>`;
+- target, workload-profile, and environment-profile IDs:
+  lowercase/uppercase letters, digits, hyphens, and underscores only.
+
+Reject path separators, dot segments, timestamp-only IDs, existing-path collisions,
+symlink escapes, missing files, directories used as evidence, unsupported file types,
+and evidence larger than 100 MiB. Resolve literal real paths inside the project root.
+Accept UTF-8 `.md`, `.txt`, `.csv`, `.json`, or `.jsonl` evidence.
+
+On validation failure, return `Verdict: ERROR` or `BLOCKED` with the exact failed
+field/path. Write nothing and never emit completion or readiness.
+
+## Phase 1: Validate protocol identity
+
+`plan` requires all of the following before an executable protocol can be produced:
+
+- stable target ID plus exact system, scene/service, and target artifact;
+- build version, build hash, and source commit;
+- configured engine and version when an engine is involved;
+- workload profile ID and content: ordered action/loop step IDs, repetitions or rate,
+  player/bot count, network conditions when relevant, save/state setup, deterministic
+  seed or explicit `NONDETERMINISTIC` rationale, and reset/transition rules;
+- environment profile ID and content: platform, device/hardware, OS, graphics and
+  quality settings, power/thermal mode, input, locale, accessibility configuration,
+  network topology, and relevant background services;
+- requested duration, sampling interval, focus dimensions, observer role, and
+  collection-tool/adapter identity with version;
+- success criteria or acceptance-criterion IDs under test.
+
+Missing target, build, workload, environment, or observer/collection identity is
+`BLOCKED`; do not generate a fillable “executable” protocol with placeholders.
+
+Read context only through explicit IDs and current hashes. Do not read “the most
+recent” playtest, QA plan, protocol, or run. If the plan names a playtest session as
+experience evidence, accept only the staged canonical playtest contract:
+
+`production/playtests/<session-id>/report.md`
+
+It must contain `Artifact Type: playtest-session-result`, `Status: COMPLETED`, and
+`Gate Eligible: YES`, and its manifest, observation-ledger, raw-evidence, and report
+hashes must verify. Treat the playtest report as derived context; it never replaces
+soak raw samples, run identity, or observer evidence.
+
+## Phase 2: Bind budgets, baselines, and measurement policy
+
+For every required metric, record:
+
+- stable metric ID, dimension, unit, and target/environment scope;
+- measurement method, collection tool/adapter, tool version, and source field;
+- warm-up duration and excluded warm-up samples;
+- checkpoint timing, scene/level transition policy, GC policy, sampling frequency,
+  and aggregation method;
+- project budget or approved baseline artifact path, revision, and raw SHA-256;
+- comparison operator and threshold;
+- allowed measurement noise or fluctuation;
+- minimum valid samples and confidence/uncertainty method;
+- early-stop trigger and safe shutdown/evidence-preservation action.
+
+Use only project budgets or an explicitly approved, matching baseline. Do not invent
+or transplant engine-, platform-, or tool-wide thresholds.
+
+A missing, stale, mismatched, or unapproved threshold does not become a default. Mark
+that metric `THRESHOLD_UNAVAILABLE`; the protocol may still be saved as `PLANNED`,
+but `Threshold Readiness: INCOMPLETE` and `Gate Capable: NO`. Any completed run for
+that metric is `INCONCLUSIVE`, never PASS.
+
+Load engine measurement guidance only for the configured engine and exact supported
+version. Record adapter path/hash/version. If required guidance is unavailable or the
+engine version is unverified, return `NEEDS_CONFIRMATION` and do not call the
+protocol executable or gate capable. Do not include instructions for unselected
+engines.
+
+## Phase 3: Generate an immutable protocol
+
+Expand the entire checkpoint schedule; never leave a “repeat this section”
+placeholder. Generate unique IDs such as `CP-000`, `CP-001`, and so on from T+0
+through the requested duration at the exact interval, including the final duration.
+If duration is not evenly divisible, include the final partial interval and explain
+it.
+
+Each checkpoint definition includes planned offset, workload step/repetition range,
+required metric IDs, environment/thermal snapshot, expected collection source,
+observer prompt, and evidence-preservation action. It has no observed value.
+
+The protocol includes:
+
+1. artifact header and complete target/build/workload/environment identity;
+2. acceptance criteria and focus dimensions;
+3. warm-up and reset/transition procedure;
+4. exact checkpoint table and required sample schema;
+5. metric budgets/baselines and provenance;
+6. safety/early-termination triggers;
+7. evidence collection and receipt instructions;
+8. missing-sample semantics (`NOT_COLLECTED`, never zero);
+9. dimension and readiness classification rules;
+10. retest identity requirements.
+
+Do not include filled result values, a leak judgment, test PASS/FAIL fields, completed
+QA sign-off, post-session conclusions, or `Verdict: COMPLETE`.
+
+Without `--save-protocol`, present the candidate protocol and return
+`Verdict: PROTOCOL_DRAFTED`, `Status: PLANNED`, `Gate Eligible: NO`, and no path.
+With `--save-protocol`, write only
+`production/qa/soak-tests/_protocols/<protocol-id>.md` after authorization and
+re-read/hash verification. Return:
+
+- `Artifact Type: soak-test-protocol`
+- `Status: PLANNED`
+- `Execution Status: NOT_STARTED`
+- `Gate Eligible: NO`
+- `Verdict: PROTOCOL_PLANNED`
+- protocol path and SHA-256
+
+Protocol history is selected by exact target/profile/build IDs, never timestamps.
+`--supersedes <protocol-id>` creates a new protocol ID/version and records the
+predecessor path/hash; it never edits or extends the old file.
+
+## Phase 4: Start one build-bound run
+
+`start` reads the exact protocol ID and verifies its bytes, identity, status, and
+hash. Reject a protocol with placeholders, mismatched target/build/profile,
+`Threshold Readiness: INCOMPLETE` when the caller requires gate-capable evidence, or
+an existing run path.
+
+Create only `production/qa/soak-tests/<run-id>/manifest.md` with:
+
+- `Artifact Type: soak-run-manifest`, schema version, run ID, `Status: RUNNING`,
+  `Gate Eligible: NO`;
+- protocol ID/path/raw SHA-256;
+- target/build/source commit, workload profile/hash, environment profile/hash,
+  configured engine/version, duration/interval/focus, checkpoint IDs, metric IDs,
+  adapter IDs/hashes, and threshold/baseline source hashes;
+- observer ID, actual start timestamp, evidence retention classification, and intended
+  result path.
+
+Write after bounded authorization, then re-read and hash it. Return
+`Verdict: RUN_STARTED`; never return `EXECUTED`, `COMPLETE`, or a dimension result.
+
+## Phase 5: Ingest immutable evidence receipts
+
+`ingest` verifies the run manifest, evidence path, receipt ID, and absence of
+collisions. Read source bytes once and compute raw SHA-256 before interpretation.
+
+Create exactly three immutable files in one all-or-none changeset:
+
+1. `raw/<receipt-id>.<source-extension>` copied byte-for-byte;
+2. `samples/<receipt-id>.md`, an observation ledger preserving supplied values;
+3. `receipts/<receipt-id>.md`, a receipt binding the other two files and hashes.
+
+Every sample row requires:
+
+- stable sample ID and expected checkpoint ID;
+- actual ISO-8601 timestamp and elapsed monotonic time;
+- observer ID and raw receipt/source location;
+- workload step/repetition, seed, and relevant state;
+- platform/device/configuration plus thermal/power state;
+- metric ID, observed numeric/text value, unit, collection method, and tool version;
+- event/incident ID when applicable;
+- raw evidence SHA-256.
+
+Preserve values and observer language. Do not interpolate, smooth, replace, or classify
+them in the ledger. A missing expected checkpoint is recorded only during
+finalization as `NOT_COLLECTED`; never create a zero-valued sample.
+
+Preview the three-file changeset, verify internal references/hashes, and publish all
+or none. Existing receipt paths are immutable. Return `Verdict: EVIDENCE_INGESTED`,
+`Status: RUNNING`, receipt/raw/ledger hashes, and `Gate Eligible: NO`.
+
+## Phase 6: Finalize one canonical completed result
+
+`finalize` reads only the requested run's canonical manifest, protocol, receipts, raw
+files, and sample ledgers. Recompute every hash and reject missing artifacts,
+changed bytes, unresolved references, duplicate sample IDs, samples for another
+run/build/profile, or an existing result path.
+
+Finalization requires:
+
+- unique protocol/run IDs and schema version;
+- exact target, build version/hash, source commit, workload/profile hash, environment
+  profile/hash, platform/device/configuration, engine/adapter version when applicable;
+- observer ID, valid start/end timestamps, and end later than start;
+- explicit termination reason;
+- at least one immutable raw receipt and matching sample ledger;
+- baseline sample when required by a metric;
+- every expected checkpoint classified as collected or `NOT_COLLECTED`;
+- each incident tied to raw evidence/source location;
+- all budgets/baselines and threshold states preserved;
+- manifest, protocol, receipt, raw-set, and sample-set SHA-256 values.
+
+Allowed termination reasons are `SCHEDULE_COMPLETED`, `CRASH`, `HANG`, `OOM_RISK`,
+`THERMAL_SAFETY`, `DATA_CORRUPTION`, `OBSERVER_STOP`, `EVIDENCE_FAILURE`, or
+`OTHER:<non-empty-reason>`.
+
+Derive `Execution Status`:
+
+- `EXECUTED` only when termination is `SCHEDULE_COMPLETED`, every required checkpoint
+  and baseline sample exists, observer identity is valid, and all hashes/references
+  verify;
+- `FAILED_EARLY` when a verified crash, hang, OOM risk, data-corruption, or applicable
+  threshold/safety trigger ended the run and all evidence collected before termination
+  is preserved;
+- `INCOMPLETE` for missing checkpoints without a verified product/safety failure,
+  observer stop, evidence failure, or otherwise incomplete execution.
+
+Do not discard early samples. List every uncollected checkpoint as `NOT_COLLECTED`
+with the termination reason; never count it as zero or PASS.
+
+### Dimension results
+
+For each in-scope dimension, evaluate only matching verified samples against the
+protocol's sourced threshold policy:
+
+- missing/unapproved/stale threshold, insufficient valid samples, low confidence,
+  missing checkpoint, or incompatible unit/profile: `INCONCLUSIVE`;
+- verified threshold breach: `FAIL`;
+- all required comparisons passing with required sample count/confidence: `PASS`;
+- excluded focus: `NOT_IN_SCOPE`.
+
+A verified crash/hang/data-loss event makes `Stability Result: FAIL` even if later
+checkpoints are absent. Do not diagnose a memory leak from monotonic growth alone.
+Linear extrapolation or time-to-OOM is prohibited unless the approved protocol
+defines the model, minimum sample count, fit quality, confidence interval, and
+validity range.
+
+Compute `Readiness Result` from the named gate policy:
+
+- `FAIL` when any required objective dimension fails;
+- `INCONCLUSIVE` when any required objective dimension is inconclusive or execution is
+  incomplete;
+- `PASS` only when every required objective dimension passes and execution is
+  `EXECUTED`.
+
+Experience is reported independently. It affects readiness only when the named
+consumer policy explicitly requires `Experience Result`; it never rewrites technical
+dimensions.
+
+### Gate eligibility
+
+Set `Gate Eligible: YES` only when all provenance/finalization checks pass and either:
+
+- execution is `EXECUTED`, every required gate-policy dimension is conclusive, and all
+  required threshold policies are available; or
+- execution is `FAILED_EARLY` because a verified objective product/safety failure
+  occurred, so the artifact is valid negative evidence.
+
+Set `Gate Eligible: NO` for `INCOMPLETE`, any unresolved provenance or threshold gap,
+any required inconclusive dimension, or evidence that cannot support the named gate
+policy. Gate eligibility never converts a failed or inconclusive result into PASS.
+
+### Canonical result header
+
+The result must start with these machine-readable fields:
+
+~~~text
+Artifact Type: soak-test-result
+Schema Version: 1
+Run ID: <run-id>
+Protocol ID: <protocol-id>
+Status: COMPLETED
+Gate Eligible: <YES|NO>
+Execution Status: <EXECUTED|FAILED_EARLY|INCOMPLETE>
+Readiness Result: <PASS|FAIL|INCONCLUSIVE>
+Stability Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
+Memory Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
+Performance Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
+Experience Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
+Target ID: <target-id>
+Build Version: <version>
+Build Hash: <hash>
+Source Commit: <commit>
+Workload Profile ID: <id>
+Workload Profile SHA-256: <hash>
+Environment Profile ID: <id>
+Environment Profile SHA-256: <hash>
+Platform Configuration: <platform/device/config>
+Observer ID: <observer-id>
+Started At: <ISO-8601>
+Ended At: <ISO-8601>
+Termination Reason: <reason>
+Evidence Receipt IDs: <ordered-ids>
+Protocol SHA-256: <hash>
+Manifest SHA-256: <hash>
+Raw Evidence Set SHA-256: <hash>
+Sample Ledger Set SHA-256: <hash>
+~~~
+
+The body includes provenance, target/build/environment/workload, expected-versus-
+collected checkpoints, raw sample traceability, early termination, metric
+calculations, threshold sources, confidence/limitations, the four dimension results,
+readiness policy/result, incidents, experience evidence, and retest requirements.
+
+Preview the exact result changeset, write only `<run-id>/result.md`, re-read it, verify
+the header/internal references, and compute its SHA-256. Only then return:
+
+- `Status: COMPLETED`
+- `Verdict: COMPLETE`
+- `Gate Eligible: <YES|NO>` derived by the rule above
+- `Canonical Result: production/qa/soak-tests/<run-id>/result.md`
+- completion receipt with protocol, manifest, receipt, raw-set, sample-set, and result
+  hashes
+- execution, readiness, and all dimension results
+
+A completed failing, early-failed, incomplete, or inconclusive result remains honest:
+`Verdict: COMPLETE` confirms artifact finalization only and cannot be presented as
+PASS. A malformed or provenance-incomplete run returns `ERROR` and writes no result.
+
+## Phase 7: Status and downstream routing
+
+`status <run-id>` is read-only. Validate the canonical paths and hashes and return one
+of `RUNNING`, `COMPLETED`, `STALE`, `PARTIAL`, or `ERROR`. A legacy protocol/result
+does not count. Do not mutate artifacts.
+
+For each verified incident, return a bug-report candidate containing run ID, sample
+IDs, receipt IDs, build/environment identity, severity evidence, and fingerprint.
+Do not create or triage a bug automatically.
+
+After a fix:
+
+- a smoke check may be used only as a short precondition check;
+- it cannot close, replace, or pass a memory, performance, endurance, or fatigue
+  regression;
+- rerun the same target, workload, environment, thresholds, and duration under a new
+  protocol/run ID, with an explicit predecessor result path/hash;
+- compare only hash-valid matching profiles.
+
+Do not invoke downstream workflows automatically. Never claim a release gate consumed
+the result unless that consumer independently validates the canonical result path,
+`Status: COMPLETED`, all receipt/hashes, build/profile identity, execution status,
+dimension results, and readiness policy.

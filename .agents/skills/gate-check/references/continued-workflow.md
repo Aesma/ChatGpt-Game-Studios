@@ -5,7 +5,7 @@ This file contains required phases of `$gate-check`. Read it in full when the ma
 ## 5. Output the Verdict
 
 ```
-## Gate Check: [Current Phase] → [Target Phase]
+## Gate Check: [transition-id] — [Current Phase] → [Candidate Next Phase]
 
 **Date**: [date]
 **Checked by**: gate-check skill
@@ -30,10 +30,41 @@ This file contains required phases of `$gate-check`. Read it in full when the ma
 - [Optional improvements that aren't blocking]
 
 ### Verdict: [PASS / CONCERNS / FAIL]
-- **PASS**: All required artifacts present, all quality checks passing
-- **CONCERNS**: Minor gaps exist but can be addressed during the next phase
-- **FAIL**: Critical blockers must be resolved before advancing
+- **PASS**: Every blocking check passed
+- **CONCERNS**: No blocking check failed, but one or more advisory risks remain
+- **FAIL**: At least one blocking check failed; risk acceptance does not change this verdict
 ```
+
+### Required immutable gate record
+
+After Chain-of-Verification, emit this machine-readable record in the conversation.
+Compute `record_id` as SHA-256 of canonicalized record content excluding
+`record_id`. Any revision requires a new record ID.
+
+```yaml
+schema: cgs.gate-record/v1
+record_id: sha256:<canonical-gate-record>
+transition_id: <exact transition ID>
+current_stage: <validated stage.txt value>
+candidate_next_stage: <table-mapped stage>
+generated_at: <ISO-8601 timestamp with timezone>
+gate:
+  tool: gate-check
+  version: cgs.gate-check/p0-v1
+checks:
+  - check_id: <stable checklist ID>
+    kind: <blocking|advisory>
+    status: <PASS|FAIL|MANUAL_CHECK_NEEDED|UNBOUND|STALE|NOT_APPLICABLE>
+    artifact_sha256: [<current artifact hashes>]
+    evidence_record_ids: [<validated evidence IDs>]
+    finding_ids: [<stable finding IDs>]
+verdict: <PASS|CONCERNS|FAIL>
+advancement_disposition: <ELIGIBLE|NOT_ELIGIBLE>
+stage_mutated: false
+```
+
+The record MUST retain every UNBOUND or STALE finding and MUST say
+`stage_mutated: false`. Do not save it to the repository.
 
 ---
 
@@ -79,22 +110,37 @@ Do NOT reference the draft verdict text — re-check specific files or ask the u
 
 ---
 
-## 6. Update Stage on PASS
+## 6. Stop Without Updating Stage
 
-When the verdict is **PASS** and the user confirms they want to advance:
+`$gate-check` is read-only. PASS makes the gate record `ELIGIBLE`; it does not
+authorize this skill to edit `production/stage.txt`. CONCERNS and FAIL remain
+`NOT_ELIGIBLE` under the strict verdict.
 
-1. Write the new stage name to `production/stage.txt` (single line, no trailing newline)
-2. Subsequent `$studio-status` runs report the new stage from this file
+If the user explicitly chooses to continue after CONCERNS or FAIL, keep the immutable
+gate record unchanged and emit a separate request in the conversation:
 
-Example: if passing the "Pre-Production → Production" gate, the approved change writes the single value `Production` to `production/stage.txt`.
+```yaml
+schema: cgs.advance-request/v1
+transition_id: <exact transition ID>
+gate_record_id: <cgs.gate-record/v1 record ID>
+requested_disposition: PROCEED_WITH_ACCEPTED_RISK
+operator: <explicit user identity, or user-unverified>
+timestamp: <ISO-8601 timestamp with timezone>
+accepted_risk_finding_ids: [<all explicitly accepted blocker/risk IDs>]
+evidence_record_ids: [<evidence IDs from the gate record>]
+```
 
-**Use the single changeset approval policy**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
+This request does not advance the stage and must never relabel the gate as PASS. Only an
+independent, explicitly authorized stage-advancement workflow may mutate stage state.
+That workflow must compare-and-set the current stage against the transition origin,
+validate the gate-record hash, preserve exact verdict and override fields, append
+transition history, and perform an atomic update. If no such workflow is available, stop
+after emitting the record/request and state that the project was not advanced.
 ---
 
 ## 7. Closing Next-Step Structured prompt
 
-After the verdict is presented and any stage.txt update is complete, close with a structured next-step prompt by asking the user directly.
+After the verdict and immutable gate record (and any accepted-risk request) are presented, close with a structured next-step prompt. Do not imply that the stage changed.
 
 **Tailor the options to the gate that just ran:**
 
@@ -145,11 +191,17 @@ Based on the verdict, suggest specific next steps:
 - **No game concept?** → `$brainstorm` to create one
 - **No systems index?** → `$map-systems` to decompose the concept into systems
 - **Missing design docs?** → `$reverse-document` or delegate to `game-designer`
-- **Small design change needed?** → `$quick-design` for changes under ~4 hours (bypasses full GDD pipeline)
+- **Bounded design change needed?** → run `$quick-design` only when its effort-independent structural-risk preflight says the change is eligible. Its output is a non-authoritative versioned proposal; an independent authorized application step must produce a current `APPLIED` receipt before downstream workflows may consume the changed canonical artifact.
 - **No UX specs?** → `$ux-design [screen name]` to author specs, or `$team-ui [feature]` for full pipeline
 - **UX specs not reviewed?** → `$ux-review [file]` or `$ux-review all` to validate
-- **No accessibility requirements doc?** → run `$ux-design` which creates both `design/accessibility-requirements.md` and `design/ux/interaction-patterns.md` in one step
-- **No interaction pattern library?** → `$ux-design patterns` to initialize it
+- **No accessibility requirements doc?** → stop the screen/HUD readiness path and
+  request a separately authorized accessibility-foundation artifact from its
+  owner; `$ux-design` must not create accessibility and pattern prerequisites as
+  side effects of another artifact
+- **No interaction pattern library?** → use a separate, one-artifact
+  `$ux-design patterns ...` authoring task only under the UX-library owner; a
+  screen/HUD author may create feature-local `UXP-*` proposals but not mutate
+  the global library
 - **GDDs not cross-reviewed?** → `$review-all-gdds` (run after all MVP GDDs are individually approved)
 - **Cross-GDD consistency issues?** → fix flagged GDDs, then re-run `$review-all-gdds`
 - **No test framework?** → `$test-setup` to scaffold the framework for your engine
@@ -165,8 +217,9 @@ Based on the verdict, suggest specific next steps:
 - **Tests failing?** → delegate to `lead-programmer` or `qa-tester`
 - **No playtest data?** → `$playtest-report`
 - **No playtest sessions beyond the minimum?** → Additional sessions give more reliable signal. 3+ total is recommended before committing the full team. Use `$playtest-report` to structure findings.
-- **No Difficulty Curve doc?** → Create `design/difficulty-curve.md` from the template at `.codex/docs/templates/difficulty-curve.md` — or use `$quick-design "difficulty curve"` for a guided session.
-- **No player journey map?** → Create `design/player-journey.md` from the template at `.codex/docs/templates/player-journey.md` — or author it collaboratively using `$ux-design` Phase 2b.
+- **No Difficulty Curve doc?** → Create `design/difficulty-curve.md` through the owning design workflow from `.codex/docs/templates/difficulty-curve.md`. A `$quick-design` proposal may suggest a bounded edit only after its structural-risk preflight passes; it cannot create or replace the authoritative curve by itself.
+- **No player journey map?** → create `design/player-journey.md` as a separate
+  explicitly authorized artifact task; do not bundle it into a screen/HUD write
 - **Need a quick sprint check?** → `$sprint-status` for current sprint progress snapshot
 - **Performance unknown?** → `$perf-profile`
 - **Not localized?** → `$localize`
@@ -178,15 +231,13 @@ Based on the verdict, suggest specific next steps:
 
 This skill follows the collaborative design principle:
 
-1. **Scan first**: Check all artifacts and quality gates
-2. **Ask about unknowns**: Don't assume PASS for things you can't verify
-3. **Present findings**: Show the full checklist with status
-4. **User decides**: The verdict is a recommendation — the user makes the final call
-5. **Get approval**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-6. **Never auto-fix**: If required artifacts are missing, report the FAIL verdict and
-   name the skill to run (e.g. "run `$test-setup`"). Do NOT create missing files or
-   re-run the gate automatically. Creating files to manufacture a PASS defeats the
-   gate's purpose.
+1. **Scan first**: Check artifacts, quality gates, and hash-bound evidence.
+2. **Ask about unknowns**: Do not assume PASS for unverifiable items.
+3. **Present findings**: Show the checklist, strict verdict, and immutable gate record.
+4. **User decides**: The user may accept identified risk, but that never changes the verdict.
+5. **Remain read-only**: Never create or edit `stage.txt`, evidence, reports, or missing artifacts.
+6. **Never auto-fix**: Report missing or stale evidence and name a possible next action;
+   do not create files or re-run the gate to manufacture PASS.
 
-**Never** block a user from advancing — the verdict is advisory. Document the risks
-and let the user decide whether to proceed despite concerns.
+Do not prevent a user from expressing an accepted-risk decision. Record that decision as
+a separate `cgs.advance-request/v1`, explain that no stage mutation occurred, and stop.

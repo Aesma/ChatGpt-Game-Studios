@@ -1,198 +1,414 @@
 ---
 name: team-level
-description: "Orchestrate level design team: level-designer + narrative-director + world-builder + art-director + systems-designer + qa-tester for complete area/level creation."
+description: "Orchestrate a bounded read-only level-design team into one destination-routed, hash-bound level specification with a single writer, non-waivable accessibility blockers, and independent level review before implementation."
 ---
 
 ## Invocation and execution
 
-Invoke this workflow as `$team-level`.
+Invoke this workflow as `$team-level [level-id]`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+Arguments: `[level-id]`. The level ID identifies one level or area. This
+workflow designs or revises exactly one level; it never implements the level.
 
-Arguments: `[level name or area to design] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+The user makes product decisions. Routine phase transitions do not require
+approval. Before the first mutation, present one complete write plan containing
+every exact normal and recovery path, operation, unique owner, baseline hash,
+content scope, and write condition. Obtain one approval bound to its plan hash.
+A new path, owner change, changed operation, or material content expansion
+invalidates that authorization and requires a new complete plan.
 
+This workflow may return:
 
-When this skill is invoked:
+- `COMPLETE — DESIGN APPROVED`;
+- `PARTIAL — NOT APPROVED`;
+- `ACCEPTED RISK / NOT APPROVED`; or
+- `BLOCKED — PRODUCT DECISION REQUIRED`.
 
-**Decision Points:** At each step transition, ask the user directly to present
-the user with the subagent's proposals as selectable options. Write the agent's
-full analysis in conversation, then capture the decision with concise labels.
-The user must approve before moving to the next step.
+No other success label is allowed. A produced file is not proof of approval.
 
-## Phase 0: Resolve Review Mode
+---
 
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
+## Phase 0: Validate and freeze one target
 
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
+Before reading project content or delegating:
 
-Store the resolved mode for use in all subsequent phases.
+1. Require exactly one non-empty level ID.
+2. Normalize it to a lowercase ASCII slug containing only `a-z`, `0-9`, and
+   single hyphens. Reject path separators, `..`, drive prefixes, control
+   characters, leading/trailing hyphens, and ambiguous normalization.
+3. Resolve exactly:
+   - level source: `design/levels/[level-id].md`;
+   - recovery checkpoint:
+     `production/session-state/team-level-[level-id].yaml`.
+4. If the level source exists, ask whether this is a revision. Do not overwrite
+   it under a create operation. If it is absent, use create mode.
+5. Capture raw SHA-256 hashes for both existing targets, or `ABSENT`.
 
-1. **Read the argument** for the target level or area (e.g., `tutorial`,
-   `forest dungeon`, `hub town`, `final boss arena`).
+With no or invalid argument, print usage and examples, then stop without reading
+GDDs, spawning agents, writing files, or emitting a verdict.
 
-2. **Gather context**:
-   - Read the game concept at `design/gdd/game-concept.md`
-   - Read game pillars at `design/gdd/game-pillars.md`
-   - Read existing level docs in `design/levels/`
-   - Read relevant narrative docs in `design/narrative/`
-   - Read world-building docs for the area's region/faction
+---
 
-## How to Delegate
+## Phase 1: Build a bounded context manifest
 
-Use the Codex subagent delegation to spawn each team member as a subagent:
-- `subagent_type: narrative-director` — Narrative purpose, characters, emotional arc
-- `subagent_type: world-builder` — Lore context, environmental storytelling, world rules
-- `subagent_type: level-designer` — Spatial layout, pacing, encounters, navigation
-- `subagent_type: systems-designer` — Enemy compositions, loot tables, difficulty balance
-- `subagent_type: art-director` — Visual theme, color palette, lighting, asset requirements
-- `subagent_type: accessibility-specialist` — Navigation clarity, colorblind safety, cognitive load
-- `subagent_type: qa-tester` — Test cases, boundary testing, playtest checklist
+Read the root and nearest applicable `AGENTS.md` files for both exact target
+paths before planning any write. These mandatory instructions do not count
+against the content budget. They never convert a level document into a system
+GDD; the `design/gdd/` eight-section and `$design-review` rules apply
+only to GDDs.
 
-Always provide full context in each agent's prompt (game concept, pillars, existing level docs, narrative docs).
+Read only sources needed for this level:
 
-3. **Orchestrate the level design team** in sequence:
+1. `design/gdd/game-concept.md` and `design/gdd/game-pillars.md`;
+2. the existing target level document in revision mode;
+3. explicit level, narrative, world, art-bible, accessibility, system-GDD, and
+   adjacency references named by those sources or by the target brief; and
+4. one dependency hop for each referenced adjacent level.
 
-### Step 1: Narrative + Visual Direction (narrative-director + world-builder + art-director, parallel)
+Do not recursively read whole design directories. Set a manifest budget before
+delegation: at most 20 files and 250 KiB of raw UTF-8 text. If the relevant set
+exceeds either limit, present the omitted candidates and ask the user which
+sources to prioritize. Do not silently truncate.
 
-Spawn all three agents simultaneously — issue all three subagent delegations before waiting for any result.
+For every included source record exact path, raw `sha256:<64 lowercase hex>`,
+byte length, relevant sections, and why it is in scope. Detect duplicate and
+cyclic adjacency IDs. A cycle is reported as a dependency fact and is never
+followed recursively.
 
-Spawn the `narrative-director` agent to:
-- Define the narrative purpose of this area (what story beats happen here?)
-- Identify key characters, dialogue triggers, and lore elements
-- Specify emotional arc (how should the player feel entering, during, leaving?)
+Classify each adjacent interface by stable level ID as `AUTHORED`, `PLANNED`,
+`UNRESOLVED`, `BROKEN LINK`, or `INTERFACE CONFLICT`. File existence alone does
+not establish a valid interface. Never invent an adjacent level or automatically
+start another `$team-level` run.
 
-Spawn the `world-builder` agent to:
-- Provide lore context for the area (history, faction presence, ecology)
-- Define environmental storytelling opportunities
-- Specify any world rules that affect gameplay in this area
+Freeze the context manifest hash. Every agent prompt receives only the manifest,
+the relevant excerpts, and prior structured proposals required for its task—not
+all source files verbatim.
 
-Spawn the `art-director` agent to:
-- Establish visual theme targets for this area — these are INPUTS to layout, not outputs of it
-- Define the color temperature and lighting mood for this area (how does it differ from adjacent areas?)
-- Specify shape language direction (angular fortress? organic cave? decayed grandeur?)
-- Name the primary visual landmarks that will orient the player
-- Read `design/art/art-bible.md` if it exists — anchor all direction in the established art bible
+---
 
-**The art-director's visual targets from Step 1 must be passed to the level-designer in Step 2** as explicit constraints. Layout decisions happen within the visual direction, not before it.
+## Roles, concurrency, and ownership
 
-**Gate**: Ask the user directly to present all three Step 1 outputs (narrative brief, lore foundation, visual direction targets) and confirm before proceeding to Step 2.
+All expert work is read-only until the approved write transaction.
 
-### Step 2: Layout and Encounter Design (level-designer)
-Spawn the `level-designer` agent with the full Step 1 output as context:
-- Narrative brief (from narrative-director)
-- Lore foundation (from world-builder)
-- **Visual direction targets (from art-director)** — layout must work within these targets, not contradict them
+| Role | Responsibility | May write? |
+|---|---|---:|
+| narrative-director | narrative-purpose proposal | No |
+| world-builder | world constraints and environmental-story proposal | No |
+| art-director | visual/wayfinding constraints and art-brief proposal | No |
+| level-designer author | layout, pacing, adjacency, and level-source draft | No |
+| systems-designer | encounter/system interface proposal | No |
+| accessibility-specialist | independent accessibility findings | No |
+| qa-tester | proposed tests and playtest coverage after a current level hash exists | No |
+| independent level reviewer | `level-review` evidence | No |
+| transaction writer | approved level source plus its checkpoint | Yes, exact planned paths only |
 
-The level-designer should:
-- Design the spatial layout (critical path, optional paths, secrets) — ensuring primary routes align with the visual landmark targets from Step 1
-- Define pacing curve (tension peaks, rest areas, exploration zones) — coordinated with the emotional arc from narrative-director
-- Place encounters with difficulty progression
-- Design environmental puzzles or navigation challenges
-- Define points of interest and landmarks for wayfinding — these must match the visual landmarks the art-director specified
-- Specify entry/exit points and connections to adjacent areas
+Choose one transaction writer before authorization. It owns both exact target
+paths and is the only writer in the run. Normally it is a fresh
+`level-designer` writer; if that role is unavailable, the current agent may take
+the same responsibility, but the write plan must say so. Ownership cannot change
+under an existing approval.
 
-**Adjacent area dependency check**: After the layout is produced, check `design/levels/` for each adjacent area referenced by the level-designer. If any referenced area's `.md` file does not exist, surface the gap:
-> "Level references [area-name] as an adjacent area but `design/levels/[area-name].md` does not exist."
+Use at most three live subagents. Start independent jobs in one bounded batch,
+then wait for the batch before a dependent phase. Give every job an explicit
+input hash, output schema, and ISO-8601 deadline. Unless the user supplied a
+smaller bound, the deadline is 10 minutes after dispatch. One narrowed follow-up
+is permitted only before its deadline. At the deadline mark the job `TIMED OUT`; do not wait
+indefinitely, forge a result, or spawn repeated replacements. Missing required
+input yields `PARTIAL — NOT APPROVED` or `BLOCKED`, never COMPLETE.
 
-Ask the user directly with options:
-- (a) Proceed with a placeholder reference — mark the connection as UNRESOLVED in the level doc and list it in the open cross-level dependencies section of the summary report
-- (b) Pause and run `$team-level [area-name]` first to establish that area
+---
 
-Do NOT invent content for the missing adjacent area.
+## Phase 2: Collect structured read-only proposals
 
-**Gate**: Ask the user directly to present Step 2 layout (including any unresolved adjacent area dependencies) and confirm before proceeding to Step 3.
+### 2.1 Narrative, world, and visual direction
 
-### Step 3: Systems Integration (systems-designer)
-Spawn the `systems-designer` agent to:
-- Specify enemy compositions and encounter formulas
-- Define loot tables and reward placement
-- Balance difficulty relative to expected player level/gear
-- Design any area-specific mechanics or environmental hazards
-- Specify resource distribution (health pickups, save points, shops)
+Run narrative-director, world-builder, and art-director independently, with the
+three-job concurrency cap. Each returns proposals using this schema:
 
-**Gate**: Ask the user directly to present Step 3 outputs and confirm before proceeding to Step 4.
+| Field | Requirement |
+|---|---|
+| proposal_id | stable `NP-*`, `WP-*`, or `AP-*` ID |
+| source_role | one role |
+| destination | exactly one allowed destination |
+| source_refs | paths, sections, and raw hashes |
+| level_facing_constraint | concise constraint, or `NONE` |
+| assumptions | explicit unresolved assumptions |
+| dependencies | stable IDs only |
+| status | `PROPOSED`, `BLOCKED`, or `TIMED OUT` |
 
-### Step 4: Production Concepts + Accessibility (art-director + accessibility-specialist, parallel)
+Allowed destinations are:
 
-**Note**: The art-director's directional pass (visual theme, color targets, mood) happened in Step 1. This pass is location-specific production concepts — given the finalized layout, what does each specific space look like?
+- `LEVEL SOURCE`;
+- `NARRATIVE / LORE`;
+- `ART BRIEF`;
+- `SYSTEM GDD`;
+- `QA PLAN`;
+- `BACKLOG`; or
+- `REVIEW ONLY`.
 
-Spawn the `art-director` agent with the finalized layout from Step 2:
-- Produce location-specific concept specs for key spaces (entrance, key encounter zones, landmarks, exits)
-- Specify which art assets are unique to this area vs. shared from the global pool
-- Define sight-line and lighting setups per key space (these are now layout-informed, not directional)
-- Specify VFX needs that are specific to this area's layout (weather volumes, particles, atmospheric effects)
-- Flag any locations where the layout creates visual direction conflicts with the Step 1 targets — surface these as production risks
+Narrative prose/dialogue routes to NARRATIVE / LORE. Asset-production detail
+routes to ART BRIEF. Only spatially authoritative constraints—purpose, landmark
+function, sight-line requirement, environmental rule affecting traversal—may
+route to LEVEL SOURCE.
 
-Spawn the `accessibility-specialist` agent in parallel to:
-- Review the level layout for navigation clarity (can players orient themselves without relying on color alone?)
-- Check that critical path signposting uses shape/icon/sound cues in addition to color
-- Review any puzzle mechanics for cognitive load — flag anything that requires holding more than 3 simultaneous states
-- Check that key gameplay areas have sufficient contrast for colorblind players
-- Output: accessibility concerns list with severity (BLOCKING / RECOMMENDED / NICE TO HAVE)
+### 2.2 Layout and adjacency contract
 
-Wait for both agents to return before proceeding.
+After Phase 2.1 completes, run one read-only level-designer author task. It
+consumes only LEVEL SOURCE proposals and references to other destinations. It
+must return:
 
-**Gate**: Ask the user directly to present both Step 4 results. If the accessibility-specialist returned any BLOCKING concerns, highlight them prominently and offer:
-- (a) Return to level-designer and art-director to redesign the flagged elements before Step 5
-- (b) Document as a known accessibility gap and proceed to Step 5 with the concern explicitly logged in the final report
+- stable level identity and purpose;
+- critical and optional paths;
+- pacing beats and rest points;
+- encounter locations expressed as contracts, not system formulas;
+- navigation, landmarks, entry/exit points, and softlock prevention;
+- stable adjacency interface IDs and state;
+- level-facing accessibility requirements;
+- open product decisions and dependencies; and
+- an in-memory level-source draft.
 
-Do NOT proceed to Step 5 without the user acknowledging any BLOCKING accessibility concerns.
+It must not copy proposal transcripts or external-destination content into the
+draft.
 
-### Step 5: QA Planning (qa-tester)
-Spawn the `qa-tester` agent to:
-- Write test cases for the critical path
-- Identify boundary and edge cases (sequence breaks, softlocks)
-- Create a playtest checklist for the area
-- Define acceptance criteria for level completion
+### 2.3 Systems integration and production concepts
 
-4. **Compile the level design document** combining all team outputs into the
-   level design template format.
+Run systems-designer and the location-specific art-director in a bounded
+two-agent batch using the layout draft hash. They return the same proposal
+schema. Enemy formulas, loot tables, balance values, and reusable mechanics go
+to SYSTEM GDD. Asset lists, production concepts, palettes, and VFX inventories
+go to ART BRIEF. The LEVEL SOURCE may retain only interface IDs, placement
+constraints, landmark purpose, and testable encounter/navigation contracts.
 
-After all subagent outputs are collected, spawn `level-designer` through Codex subagent delegation to compile and write the final document:
-- Pass: all subagent outputs (verbatim), the level brief, game pillars, relevant GDD sections
-- Ask level-designer to compile the level design document inside the orchestrator's already authorized changeset boundary; it must not request a separate file approval.
-- The orchestrator does not write files directly for the final document.
+If either proposal contradicts the frozen visual direction or a system GDD,
+surface the exact conflicting IDs and sources as a product decision. Do not let
+the reducer choose across domains.
 
-5. **Save to** `design/levels/[level-name].md` (handled by the level-designer subagent inside the orchestrator's authorized changeset boundary).
+---
 
-6. **Output a summary** with: area overview, encounter count, estimated asset
-   list, narrative beats, any cross-team dependencies or open questions, open
-   cross-level dependencies (adjacent areas referenced but not yet designed, each
-   marked UNRESOLVED), and accessibility concerns with their resolution status.
+## Phase 3: Accessibility review and convergence
 
-## File Write Protocol
+Run a fresh accessibility-specialist against the layout draft hash and committed
+project accessibility requirements. The reviewer is strictly read-only.
 
-All file writes (level design docs, narrative docs, test checklists) are delegated
-to sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+The first review creates stable findings:
 
-Verdict: **COMPLETE** — level design document produced and all team outputs compiled.
-Verdict: **BLOCKED** — one or more agents blocked; partial report produced with unresolved items listed.
+| Field | Requirement |
+|---|---|
+| finding_id | stable `AX-[level-id]-NNN` |
+| severity | `BLOCKING`, `RECOMMENDED`, or `NICE TO HAVE` |
+| evidence | exact draft section plus requirement source/hash |
+| affected_path | critical/optional path or encounter ID |
+| required_outcome | testable closure condition |
+| owner | domain owner |
+| status | `OPEN` or `CLOSED` |
 
-## Next Steps
+A BLOCKING finding is non-waivable. The only choices are:
 
-- Run `$design-review design/levels/[level-name].md` to validate the completed level design doc.
-- Run `$dev-story` to implement level content once the design is approved.
-- Run `$qa-plan` to generate a QA test plan for this level.
+1. authorize a bounded author revision that satisfies the stated outcome; or
+2. stop with `BLOCKED — PRODUCT DECISION REQUIRED`.
 
-## Error Recovery Protocol
+There is no acknowledge-and-proceed option. Step 5, QA planning, design approval,
+and implementation handoff are forbidden while a BLOCKING finding is open.
 
-If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors, or cannot complete:
+A user may accept only a non-blocking risk. Record its stable finding ID,
+specific bounded risk, owner, deadline, `approved_by`, and `approved_at`. The
+workflow then ends `ACCEPTED RISK / NOT APPROVED`; it cannot emit COMPLETE or
+authorize implementation.
 
-1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
-2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
-3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
-   - Retry with narrower scope
-   - Stop here and resolve the blocker first
-4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
+If a BLOCKING finding is revised, start a separate read-only author task with an
+exact diff scope. Permit exactly one verification re-review. The re-review checks
+only the original OPEN finding IDs and regressions caused by that diff. It keeps
+the original IDs; diff-only regressions receive IDs linked to the triggering
+finding. If the same blocker is still open on the second observation, stop
+`BLOCKED — PRODUCT DECISION REQUIRED`. Never enter a recursive
+review → rewrite → review loop.
 
-Common blockers:
-- Input file missing (story not found, GDD absent) → redirect to the skill that creates it
-- ADR status is Proposed → do not implement; run `$architecture-decision` first
-- Scope too large → split into two stories via `$create-stories`
-- Conflicting instructions between ADR and story → surface the conflict, do not guess
+---
+
+## Phase 4: Route destinations and decide the level source
+
+Create a routing ledger containing every proposal/finding ID and exactly one
+destination. Resolve duplicates by reference; never merge source text verbatim.
+
+The level-source reducer may include only:
+
+- level identity, purpose, boundaries, and source snapshot references;
+- spatial layout, critical/optional paths, pacing, navigation, landmarks, and
+  softlock constraints;
+- encounter and mechanic interfaces by stable ID, without formulas or loot
+  tables;
+- adjacency interfaces and their states;
+- level-facing art/wayfinding constraints;
+- accessibility requirements and resolved finding IDs; and
+- open level dependencies and user decisions.
+
+It must exclude lore prose, dialogue, art-production briefs, asset inventories,
+system formulas/tuning tables, QA cases, backlog items, review transcripts, and
+raw agent output. Those remain structured proposals in the report and are handed
+to their owning workflow later. This run writes none of those destinations.
+
+Ask the user only about unresolved product choices or cross-domain conflicts.
+After those decisions, compute the exact UTF-8 draft hash and preserve each
+decision ID in the draft.
+
+---
+
+## Phase 5: Authorize and execute one bounded write transaction
+
+Before any mutation, present:
+
+- exact level and checkpoint paths;
+- create/modify operation for each;
+- the single transaction writer;
+- baseline raw hashes or `ABSENT`;
+- frozen context-manifest hash and source hashes;
+- exact destination ledger;
+- exact draft hash;
+- resolved accessibility findings and open blocker count;
+- success, partial-write, rollback, and checkpoint conditions; and
+- a deterministic canonical `plan_hash`.
+
+Ask once for approval of that complete plan. Authorization never covers
+NARRATIVE / LORE, ART BRIEF, SYSTEM GDD, QA PLAN, BACKLOG, implementation,
+tests, assets, or any unlisted path. Material draft change, new path, new owner,
+or changed operation requires a new full plan and approval.
+
+Immediately before writing, rehash every source and target. Any mismatch cancels
+the plan before mutation.
+
+The transaction writer writes the level source and verifies its raw hash against
+the approved draft hash. It updates only the exact checkpoint path with:
+
+- level ID/path and create/revise mode;
+- plan hash, context-manifest hash, source hashes, and baseline/current hashes;
+- decision and proposal/finding IDs;
+- agent completion/BLOCKED/TIMED OUT states and deadlines;
+- review round and current open blockers;
+- planned and actual write sets;
+- last verified phase and exact safe resume point; and
+- state `ACTIVE`, `PARTIAL`, `BLOCKED`, or `COMPLETE`.
+
+If a write fails, describe rollback only after every changed path is restored
+byte-for-byte and its baseline hash verifies. Otherwise preserve the actual
+partial state, write the failure checkpoint, and return `PARTIAL — NOT
+APPROVED`. If the checkpoint write itself fails, print the complete intended
+checkpoint payload as `RECOVERY CHECKPOINT NOT PERSISTED`, name every
+unverified path/hash, and stop; do not claim the run is safely resumable. Never
+hide a partial write or claim approval.
+
+Resume only when current raw hashes match the checkpoint's claimed hashes.
+Reuse a completed agent result only when its input and output hashes still
+match; otherwise rerun it. Never duplicate a completed write or delegation on
+the strength of prose alone.
+
+---
+
+## Phase 6: Independent level-review profile
+
+After a verified level-source write, compute its current raw hash and run one
+fresh independent reviewer. The reviewer must not be the author/transaction
+writer, must be strictly read-only, and must bind all evidence to that exact
+hash.
+
+The `level-review` profile checks only:
+
+1. critical-path continuity and completion;
+2. sequence breaks, softlocks, and recovery routes;
+3. pacing and rest/pressure transitions;
+4. adjacency IDs, directionality, and interface compatibility;
+5. navigation and wayfinding without color-only cues;
+6. accessibility requirements and resolved finding IDs; and
+7. encounter contracts, dependencies, and acceptance boundaries.
+
+It does not apply system-GDD section rules, call `$design-review`, write the
+level source, or generate implementation. Findings use stable `LR-[level-id]-NNN`
+IDs with severity, exact evidence, required outcome, owner, and status.
+
+If review returns BLOCKING findings, permit at most one separately authorized
+author revision. A fresh read-only author task receives only OPEN finding IDs
+and the approved diff scope and returns a revised draft plus exact diff. Rebuild
+the complete plan with fresh baselines and a new plan hash; only after approval
+may the same transaction writer apply it. The reviewer never writes. Then run
+exactly one verification re-review limited to those IDs and diff regressions. Any original blocker still open after that
+second observation ends `BLOCKED — PRODUCT DECISION REQUIRED`. A timeout,
+missing evidence, reviewer/author identity collision, or evidence hash that does
+not equal the current raw level hash prevents approval.
+
+No level-review evidence is reused after the level file hash changes.
+
+---
+
+## Phase 7: QA proposal and approval gate
+
+Only after the current level hash has zero open BLOCKING accessibility and
+level-review findings may a read-only qa-tester propose QA coverage. It receives
+the current level hash and returns planned critical-path, sequence-break,
+softlock, boundary, navigation, accessibility, and playtest cases with stable
+IDs and source sections.
+
+These are `PLANNED` tests, not executed evidence. Do not write a QA plan in this
+workflow. Do not claim PASS, coverage, playtest completion, or test evidence
+unless an external runner actually executed the named command/session and
+returned timestamp, exit/result, and raw log/evidence hash. Missing or timed-out
+QA proposals prevent COMPLETE and yield PARTIAL.
+
+Present a hash-bound final design-acceptance packet after the QA proposal. It
+contains the current level hash, review evidence IDs, resolved findings,
+adjacency/dependency state, and planned QA case IDs. Ask for final design
+acceptance as a product decision. Declining or deferring acceptance leaves the
+design NOT APPROVED and does not authorize implementation.
+
+Emit `COMPLETE — DESIGN APPROVED` only when:
+
+- the target raw hash matches the approved draft/revision;
+- every required agent completed within its deadline;
+- all adjacency and required dependencies are resolved;
+- zero accessibility and level-review BLOCKING findings remain;
+- no accepted-risk record leaves the design NOT APPROVED;
+- independent level-review evidence is bound to the current level hash;
+- the QA proposal is bound to the same hash;
+- the user explicitly accepted that same hash and evidence packet; and
+- after one last compare-and-swap check, the same transaction writer records the
+  same plan, file hash, evidence IDs, acceptance decision, and COMPLETE state in
+  the pre-authorized checkpoint.
+
+Final design acceptance is not permission to implement.
+
+---
+
+## Output and handoff
+
+Report:
+
+- level ID, exact path, raw hash, and context-manifest hash;
+- proposal/finding destination counts;
+- agent completion, BLOCKED, and TIMED OUT states;
+- accessibility and level-review evidence IDs with bound hash;
+- adjacency/dependency state;
+- checkpoint path/state and safe resume point;
+- planned QA cases separately from any executed evidence; and
+- exactly one workflow verdict.
+
+A COMPLETE result may hand off to the owning workflows for NARRATIVE / LORE,
+ART BRIEF, SYSTEM GDD, BACKLOG, and `$qa-plan`. Implementation remains forbidden
+until the current level hash is DESIGN APPROVED, implementation stories are
+created from that exact hash, and those stories pass their own readiness gate.
+Only then may a separate `$dev-story [story-path]` run begin.
+
+For every non-COMPLETE result, give only the blocking decision or exact safe
+resume action. Never recommend implementation.
+
+---
+
+## Non-negotiable rules
+
+- Never call `$design-review` for a level document.
+- Never waive a BLOCKING accessibility or level-review finding.
+- Never let an author or writer sign its own review.
+- Never run an unbounded review/revision loop.
+- Never pass all agent output verbatim to the reducer.
+- Never write an external destination inside this workflow.
+- Never allow more than one transaction writer or expand its approved paths.
+- Never implement gameplay, code, assets, or tests in this workflow.
+- Never fabricate agent results, test execution, hashes, or review evidence.
+- Never call a partial artifact COMPLETE or DESIGN APPROVED.

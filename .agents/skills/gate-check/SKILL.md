@@ -7,15 +7,24 @@ description: "Validate readiness to advance between development phases. Produces
 
 Invoke this workflow as `$gate-check`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+`$gate-check` is a read-only assessment. It MUST NOT create, edit, or delete project
+files, including `production/stage.txt`. It may ask questions and emit records in the
+conversation, but only a separate, explicitly authorized stage-advancement workflow may
+commit a transition.
 
-Arguments: `[target-phase: systems-design | technical-setup | pre-production | production | polish | release] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[transition-id] [--review full|lean|solo]`, where `transition-id` is
+exactly one of `concept-to-systems-design`,
+`systems-design-to-technical-setup`, `technical-setup-to-pre-production`,
+`pre-production-to-production`, `production-to-polish`, or
+`polish-to-release`. The transition ID is optional only for selection from the
+authoritative current stage. Phase-name shorthand and non-adjacent transitions are invalid.
 
 
 # Phase Gate Validation
 
 This skill validates whether the project is ready to advance to the next development
-phase. It checks for required artifacts, quality standards, and blockers.
+phase. It checks for required artifacts, quality standards, and blockers, produces a
+strict verdict, then stops without changing project state.
 
 **Distinct from `$project-stage-detect`**: That skill is diagnostic ("where are we?").
 This skill is prescriptive ("are we ready to advance?" with a formal verdict).
@@ -32,34 +41,161 @@ The project progresses through these stages:
 6. **Polish** — Performance, playtesting, bug fixing
 7. **Release** — Launch prep, certification
 
-**When a gate passes**, write the new stage name to `production/stage.txt`
-(single line, e.g. `Production`). This becomes the source of truth for subsequent `$studio-status` reports.
+`production/stage.txt` is the authoritative current-stage input. `$gate-check` may
+read it, but MUST NOT write it, even after PASS or an accepted-risk decision.
 
 ---
 
-## 1. Parse Arguments
+## 1. Parse and Validate the Transition
 
-**Target phase:** the first provided argument (blank = auto-detect current stage, then validate next transition)
+Use this exact transition table:
 
-Also resolve the review mode (once, store for all gate spawns this run):
-1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
-3. Else → default to `lean`
+| Transition ID | Required current stage | Candidate next stage |
+|---|---|---|
+| `concept-to-systems-design` | `Concept` | `Systems Design` |
+| `systems-design-to-technical-setup` | `Systems Design` | `Technical Setup` |
+| `technical-setup-to-pre-production` | `Technical Setup` | `Pre-Production` |
+| `pre-production-to-production` | `Pre-Production` | `Production` |
+| `production-to-polish` | `Production` | `Polish` |
+| `polish-to-release` | `Polish` | `Release` |
 
-Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE) are skipped — gate-check becomes artifact-existence checks only. In `lean` mode, all four directors still run (phase gates are the purpose of lean mode).
+Before artifact or quality checks:
 
-- **With argument**: `$gate-check production` — validate readiness for that specific phase
-- **No argument**: Auto-detect current stage using the same heuristics as
-  `$project-stage-detect`, then **confirm with the user before running**:
+1. Read `production/stage.txt` and trim surrounding whitespace only.
+2. If it is missing, empty, or not exactly one of the seven stage names above, return
+   `ERROR` and stop. Do not infer an authoritative stage from artifacts.
+3. If an ID was supplied, require an exact table match and require the current stage to
+   equal its `Required current stage`. Unknown IDs, phase-name shorthand, repeated or
+   backward transitions, and mismatches return `ERROR` and stop.
+4. With no ID, select the single row whose required stage matches. `Release` has no
+   outgoing transition, so return `ERROR` and stop.
 
-  Ask the user directly:
-  - Prompt: "Detected stage: **[current stage]**. Running gate for [Current] → [Next] transition. Is this correct?"
-  - Options:
-    - `[A] Yes — run this gate`
-    - `[B] No — pick a different gate` (if selected, show a second structured prompt listing all gate options: Concept → Systems Design, Systems Design → Technical Setup, Technical Setup → Pre-Production, Pre-Production → Production, Production → Polish, Polish → Release)
+`ERROR` is an invocation/state-validation result, not a gate verdict. It emits no gate
+record and never mutates project state.
 
-  Do not skip this confirmation step when no argument is provided.
+Resolve review mode once for the run: explicit `--review full|lean|solo`, otherwise
+`production/review-mode.txt`, otherwise `lean`. In `solo`, skip director spawns but
+still run every artifact, quality, evidence-binding, and stale-evidence check.
 
+- With an ID: `$gate-check pre-production-to-production` validates only that exact
+  adjacent transition after current-stage validation.
+- With no ID: show the mapped transition and ask for confirmation before checks. If
+  rejected, stop and list the six exact IDs; another ID must still match current stage.
+
+### Strict verdict and accepted-risk semantics
+
+The verdict is a reproducible assessment, not a permission flag:
+
+- `PASS`: every blocking check passed.
+- `CONCERNS`: no blocking check failed, but advisory risks remain.
+- `FAIL`: at least one blocking check failed.
+
+A user decision never rewrites or downgrades the verdict. If the user explicitly elects
+to continue after CONCERNS or FAIL, record `PROCEED_WITH_ACCEPTED_RISK` while
+preserving the verdict and all blocker/finding IDs. This is an advance request in the
+conversation only. A separate stage-advancement workflow must preserve gate record ID,
+exact verdict, accepted risks, evidence IDs, timestamp, and operator identity in
+transition history; accepted risk is never PASS.
+
+### Hash-bound evidence for blocking checks
+
+Any blocking item that depends on a review, approval, sign-off, test report, playtest
+report, audit, or previously produced result is satisfied only by a current immutable
+evidence record. Report existence, a historical verdict string, a statement inside the
+reviewed artifact, or user recollection is not approval evidence.
+
+Accepted evidence is a sidecar file or embedded fenced `gate-evidence` block:
+
+```yaml
+schema: cgs.review-evidence/v1
+record_id: sha256:<canonical-record-payload>
+artifact_id: <stable artifact or artifact-set identifier>
+artifacts:
+  - path: <repository-relative path>
+    sha256: <lowercase SHA-256 of exact reviewed bytes>
+reviewer: <person or delegated reviewer identity>
+verdict: <producer verdict>
+timestamp: <ISO-8601 timestamp with timezone>
+finding_ids: [<stable finding IDs, possibly empty>]
+producer:
+  tool: <review, test, audit, or sign-off producer>
+  version: <producer version or commit>
+```
+
+For an artifact set, list every in-scope path and hash; an aggregate-only hash is not
+enough. Recompute every SHA-256 from current bytes. Missing fields or records are
+`UNBOUND`; missing artifacts or hash mismatches are `STALE`. Either status fails a
+blocking check and forces FAIL. Never fall back to an older glob, document-internal
+sign-off, or structural completeness. Corrections require a new record ID and timestamp.
+Hash binding proves only what exact bytes were evaluated; the checklist's verdict
+threshold still applies.
+
+### Canonical playtest-session evidence
+
+When a check depends on playtest sessions, enumerate only distinct canonical
+`production/playtests/<session-id>/report.md` files. A report counts only when:
+
+- `<session-id>` is a valid unique stable ID and matches the report's `Session ID`;
+- the report declares `Artifact Type: playtest-session-result`,
+  `Status: COMPLETED`, and `Gate Eligible: YES`;
+- build identity, tester/participant identity, start/end timestamps, answered
+  observations, raw receipt, and SHA-256 fields are complete and non-placeholder;
+- the referenced canonical manifest, observation ledger, and raw evidence exist,
+  their current exact-byte hashes match the report, and every finding's
+  Observation IDs resolve; and
+- the report has not been superseded, duplicated under another path, or reused
+  for a different build/evidence receipt.
+
+Files under `_protocols/`, `raw/`, `reviews/`, ingest-only sessions, templates,
+legacy/noncanonical paths, and malformed or hash-mismatched reports count as
+zero sessions. A creative-director review never creates an additional session.
+Record every accepted session ID, report path, current report hash, build, and
+coverage purpose in the gate evidence.
+
+### Regression-suite evidence
+
+A regression check is satisfied only by both the current
+`tests/regression-suite.md` selection manifest and a runner/CI receipt bound to
+the exact current selection-manifest hash and target build. Revalidate the
+selection manifest's QA-plan and source hashes, stable AC/BUG-to-test mappings,
+test-source hashes, current failure-sensitivity receipts, quarantine state, and
+active test IDs. Then verify the execution receipt contains the same selection
+hash/build, every required active stable test ID, conclusive pass results, and
+matching source/config/log hashes. `AWAITING RUN`, `STALE`, `INDETERMINATE`, a
+missing sensitivity receipt, or the selection manifest alone cannot satisfy a
+gate.
+
+### Release-checklist collector evidence
+
+`$release-checklist` is an evidence collector, not this gate's verdict owner.
+Consume only an exact immutable collector report bound to the current release
+manifest, release policy, build-candidate manifest, candidate/build/artifact
+hashes, source commit, version, platform matrix, and complete item evidence.
+Re-hash every referenced receipt and underlying artifact. Require stable item
+IDs and one of `PASS(evidence)`, `FAIL(evidence)`, `UNKNOWN(owner)`, or a
+policy-authorized `N/A(rationale)`.
+
+`Gate Decision: NOT EVALUATED` is the only valid collector gate field. A HARD
+item that is FAIL, UNKNOWN, STALE, UNAVAILABLE, partial, hash-mismatched, or has
+an invalid N/A authority fails this gate. Advisory unresolved items produce
+CONCERNS when no hard item fails. File existence, a checkbox, a model statement,
+or merely running `$release-checklist`/`$launch-checklist` is never release
+evidence. This workflow derives and owns the phase-gate verdict from the current
+collector evidence.
+
+### Localization evidence
+
+Localization checks consume the exact current localization manifest and freeze
+record, source-locale table/keyset/per-key hashes, each target locale table and
+translation-review receipt, font/glyph/UI-fit artifacts, and the exact
+candidate/build/platform receipt. Re-hash every dependency and require locale,
+source, keyset, translation, font/asset, candidate, and build identities to
+match. Source copies, MT drafts, placeholders, missing keys, unreviewed
+translations, `QA PLAN READY`, filenames, or a localization-lead statement are
+not passing evidence. Cultural, legal, rating, and market findings require the
+authorized human owner receipt for the exact locale/scope. Any required locale
+with UNKNOWN, STALE, PARTIAL, unverified, or mismatched evidence fails a blocking
+localization check.
 ---
 
 ## 2. Phase Gate Definitions
@@ -77,7 +213,7 @@ Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GA
       idea that hasn't been played. Acceptable if the concept is proven by other means.
 
 **Quality Checks:**
-- [ ] Game concept has been reviewed (`$design-review` verdict not MAJOR REVISION NEEDED)
+- [ ] Game concept has a current hash-bound `$design-review` evidence record whose verdict satisfies this gate
 - [ ] Core loop is described and understood
 - [ ] Target audience is identified
 - [ ] Visual Identity Anchor contains a one-line visual rule and at least 2 supporting visual principles
@@ -88,12 +224,12 @@ Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GA
 
 **Required Artifacts:**
 - [ ] Systems index exists at `design/gdd/systems-index.md` with at least MVP systems enumerated
-- [ ] All MVP-tier GDDs exist in `design/gdd/` and individually pass `$design-review`
-- [ ] A cross-GDD review report exists in `design/gdd/` (from `$review-all-gdds`)
+- [ ] All MVP-tier GDDs exist and each has current hash-bound `$design-review` evidence satisfying this gate
+- [ ] A current hash-bound `$review-all-gdds` evidence record covers the complete MVP GDD set
 
 **Quality Checks:**
-- [ ] All MVP GDDs pass individual design review (8 required sections, no MAJOR REVISION NEEDED verdict)
-- [ ] `$review-all-gdds` verdict is not FAIL (cross-GDD consistency and design theory checks pass)
+- [ ] Every MVP GDD's current hash-bound review verdict satisfies this gate; section count alone is insufficient
+- [ ] The current hash-bound `$review-all-gdds` evidence verdict satisfies this gate
 - [ ] All cross-GDD consistency issues flagged by `$review-all-gdds` are resolved or explicitly accepted
 - [ ] System dependencies are mapped in the systems index and are bidirectionally consistent
 - [ ] MVP priority tier is defined
@@ -115,7 +251,7 @@ Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GA
 - [ ] At least one example test file exists to confirm the framework is functional
 - [ ] Master architecture document exists at `docs/architecture/architecture.md`
 - [ ] Architecture traceability index exists at `docs/architecture/requirements-traceability.md`
-- [ ] `$architecture-review` has been run (a review report file exists in `docs/architecture/`)
+- [ ] Current hash-bound `$architecture-review` evidence covers the architecture document, traceability index, and in-scope ADRs
 - [ ] `design/accessibility-requirements.md` exists with accessibility tier committed
 - [ ] `design/ux/interaction-patterns.md` exists (pattern library initialized, even if minimal)
 
@@ -149,9 +285,15 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 ### Gate: Pre-Production → Production
 
 **Required Artifacts:**
-- [ ] Vertical slice exists in `prototypes/` with a REPORT.md (run `$vertical-slice`) — **recommended, not blocking**; if absent, surface as CONCERNS
+- [ ] An explicitly supplied persisted `vertical-slice-evaluation-report` schema 1 is
+      read-back verified and bound to its externally supplied report SHA-256. Re-hash
+      its full plan/prerequisite/hypothesis/scope/evidence/source/tree/candidate/build/
+      batch/playtest/velocity/decision graph. PASS requires `Workflow Status: COMPLETE`,
+      all three verdict axes `PROCEED`, `Currentness: CURRENT`, `Gate Eligible: YES`,
+      `Persistence: VERIFIED`, and no later source/build mutation. Filename, mtime,
+      directory existence, or an unbound `REPORT.md` is zero evidence.
 - [ ] First sprint plan exists in `production/sprints/`
-- [ ] Art bible is complete (all 9 sections) and AD-ART-BIBLE sign-off verdict is recorded in `design/art/art-bible.md`
+- [ ] Art bible is complete (all 9 sections) and current hash-bound AD-ART-BIBLE evidence records an accepted verdict outside the reviewed artifact
 - [ ] Entity inventory exists at `design/assets/entity-inventory.md` (recommended — run `$asset-spec` with no arguments to generate collaboratively from GDDs + art bible)
 - [ ] All MVP-tier GDDs from systems index are complete
 - [ ] Master architecture document exists at `docs/architecture/architecture.md`
@@ -163,12 +305,17 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
       layer epics present (use `$create-epics layer: foundation` and
       `$create-epics layer: core` to create them, then `$create-stories [epic-slug]`
       for each epic)
-- [ ] Vertical Slice build exists and is playable (not just scope-defined) — **recommended, not blocking**; if absent, surface as CONCERNS
-- [ ] Vertical Slice has been playtested with at least 1 documented session — **recommended, not blocking**; if absent, surface as CONCERNS
-- [ ] Vertical Slice playtest report exists at `production/playtests/` or equivalent — **recommended, not blocking**; if absent, surface as CONCERNS
+- [ ] The exact build artifact named and hashed by the eligible Vertical Slice report
+      exists and matches its candidate/source/platform/configuration identity
+- [ ] Vertical Slice has at least 1 distinct canonical completed playtest session
+      that passes the validator above — **recommended, not blocking**; if absent,
+      surface as CONCERNS
+- [ ] The counted Vertical Slice report is exactly
+      `production/playtests/<session-id>/report.md`; no equivalent/legacy path or
+      template may satisfy this check
 - [ ] UX specs exist for key screens: main menu, core gameplay HUD (at `design/ux/`), pause menu
 - [ ] HUD design document exists at `design/ux/hud.md` (if game has in-game HUD)
-- [ ] All key screen UX specs have passed `$ux-review` (verdict APPROVED or NEEDS REVISION accepted)
+- [ ] Every key screen UX spec has current hash-bound `$ux-review` evidence whose verdict satisfies this gate
 
 **Quality Checks:**
 - [ ] **Core loop fun is validated** — playtest data confirms the central mechanic is enjoyable, not just functional. Explicitly check the Vertical Slice playtest report.
@@ -192,12 +339,12 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] The core mechanic feels good to interact with (this is a subjective check — ask the user)
 
 > **Verdict rules for Vertical Slice:**
-> - **Slice was built AND any validation item is NO** → verdict is automatically FAIL. A broken
->   or unfun vertical slice should not advance to Production.
-> - **Slice was not built (skipped)** → downgrade to CONCERNS only, not FAIL. Surface the risk
->   clearly: "Advancing without a validated Vertical Slice increases the risk of late-stage design
->   pivots. Recommended before committing full production scope." The user decides.
-> - Skipping is a valid solo dev or time-constrained call. Shipping a broken one is not.
+> - Any missing, PARTIAL, INCONCLUSIVE, PIVOT, KILL, BLOCKED, stale, unpersisted,
+>   advisory-only, hash-mismatched, or later-mutated result is FAIL for this transition.
+> - Creative/director concerns remain advisory and cannot upgrade evidence or override
+>   the separately recorded product decision.
+> - Only the exact current persisted PROCEED report described above can satisfy this
+>   transition; skipping the slice does not become PASS or CONCERNS by policy shortcut.
 
 ---
 
@@ -213,12 +360,15 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] QA plan exists in `production/qa/` (generated by `$qa-plan`) covering this sprint or final production sprint
 - [ ] At least one QA plan exists in `production/qa/` covering this production phase — run `$qa-plan` if missing (CONCERNS — advisory, not blocking)
 - [ ] QA sign-off report exists in `production/qa/` (generated by `$team-qa`) with verdict APPROVED or APPROVED WITH CONDITIONS
-- [ ] At least 3 distinct playtest sessions documented in `production/playtests/`
+- [ ] At least 3 distinct session IDs have canonical completed reports that each
+      pass the playtest-session validator above
 - [ ] Playtest reports cover: new player experience, mid-game systems, and difficulty curve
 - [ ] Fun hypothesis from Game Concept has been explicitly validated or revised
 
 **Quality Checks:**
-- [ ] Tests are passing (run test suite through the configured shell)
+- [ ] Regression selection and the exact build-bound runner receipt both pass
+      the regression-suite evidence contract above; do not infer this from a
+      manifest or command string alone
 - [ ] No critical/blocker bugs in any bug tracker or known issues
 - [ ] Core loop plays as designed (compare to GDD acceptance criteria)
 - [ ] Performance is within budget (check technical-preferences.md targets)
@@ -236,14 +386,20 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 **Required Artifacts:**
 - [ ] All features from milestone plan are implemented
 - [ ] Content is complete (all levels, assets, dialogue referenced in design docs exist)
-- [ ] Localization strings are externalized (no hardcoded player-facing text in `src/`)
+- [ ] Localization source/keyset extraction is current and hash-bound; absence of
+      a hardcoded-string search finding alone is not full localization evidence
 - [ ] QA test plan exists (`$qa-plan` output in `production/qa/`)
-- [ ] QA sign-off report exists (`$team-qa` output — APPROVED or APPROVED WITH CONDITIONS)
+- [ ] Exact persisted `$team-qa` report is bound to this candidate/build and
+      current evidence index, with `Workflow Status: COMPLETE`, `QA Verdict:
+      APPROVED`, `Gate Eligible: YES`, and verified hashes; APPROVED_WITH_CONDITIONS,
+      NOT_APPROVED, INCOMPLETE, PARTIAL, stale, or unpersisted results do not pass
 - [ ] All Must Have story test evidence is present (Logic/Integration: test files pass; Visual/Feel/UI: sign-off docs in `production/qa/evidence/`)
 - [ ] Smoke check passes cleanly (PASS verdict) on the release candidate build
 - [ ] No test regressions from previous sprint (test suite passes fully)
 - [ ] Balance data has been reviewed (`$balance-check` run)
-- [ ] Release checklist completed (`$release-checklist` or `$launch-checklist` run)
+- [ ] The exact current `$release-checklist` collector report and release policy
+      pass the collector-evidence contract above; running a checklist or launch
+      workflow is insufficient
 - [ ] Store metadata prepared (if applicable)
 - [ ] Changelog / patch notes drafted
 
@@ -253,7 +409,8 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] Performance targets met across all target platforms
 - [ ] No known critical, high, or medium-severity bugs
 - [ ] Accessibility basics covered (remapping, text scaling if applicable)
-- [ ] Localization verified for all target languages
+- [ ] Every required target locale passes the localization-evidence contract
+      above for the exact release candidate build
 - [ ] Legal requirements met (EULA, privacy policy, age ratings if applicable)
 - [ ] Build compiles and packages cleanly
 
@@ -276,18 +433,25 @@ For each item in the target gate:
 - For code checks, verify directory structure and file counts
 
 **Systems Design → Technical Setup gate — cross-GDD review check**:
-Use `search for files matching `design/gdd/gdd-cross-review-*.md`` to find the `$review-all-gdds` report.
-If no file matches, mark the "cross-GDD review report exists" artifact as **FAIL** and
-surface it prominently: "No `$review-all-gdds` report found in `design/gdd/`. Run
-`$review-all-gdds` before advancing to Technical Setup."
-If a file is found, read it and check the verdict line: a FAIL verdict means the
-cross-GDD consistency check failed and must be resolved before advancing.
+Search `design/gdd/gdd-cross-review-*.md` and associated evidence records. Validate
+the evidence schema, recompute the SHA-256 of every current MVP GDD in its artifact set,
+and apply the required producer-verdict threshold. A report without bound evidence is
+`UNBOUND`; a record whose manifest omits a current MVP GDD or has any hash mismatch is
+`STALE`. Either is FAIL. Do not select a report merely because its filename is newest or
+accept a verdict line copied from historical content.
 
 ### Quality Checks
 - For test checks: Run the test suite through the configured shell if a test runner is configured
 - For design review checks: read the GDD and check for the 8 required sections
-- For performance checks: read `technical-preferences.md` and compare against any
-  profiling data in `tests/performance/` or recent `$perf-profile` output
+- For performance checks: consume only an explicitly named, persisted and read-back
+  verified `performance-runtime-report-v1` plus its exact versioned
+  `performance-budget-v1` manifest. Recompute the report, input, normalized-data,
+  budget, source/build, platform/hardware, scenario and required-matrix hashes.
+  PASS requires `evidence_kind: RUNTIME_MEASUREMENT`, full required coverage,
+  `gate_evidence_eligible: true`, `performance_targets_met: true`, and overall
+  `Budget Verdict: WITHIN BUDGET`. A recent filename, prose target, static analysis,
+  capture plan, conversation output, accepted risk, partial matrix, stale hash,
+  `CONCERNS`, or `OVER BUDGET` is not performance PASS evidence.
 - For localization checks: `Search` for hardcoded strings in `src/`
 
 ### Cross-Reference Checks
@@ -348,7 +512,7 @@ Art Director:       [READY / CONCERNS / NOT READY]
 ```
 
 **Apply to the verdict:**
-- Any director returns NOT READY → verdict is minimum FAIL (user may override with explicit acknowledgement)
+- Any director returns NOT READY → verdict is minimum FAIL. Accepted risk may request advancement but MUST NOT change that FAIL verdict
 - Any director returns CONCERNS → verdict is minimum CONCERNS
 - All four READY → eligible for PASS (still subject to artifact and quality checks from Section 3)
 

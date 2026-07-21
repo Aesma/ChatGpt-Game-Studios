@@ -1,4 +1,4 @@
 interface:
   display_name: "Vertical Slice"
-  short_description: "Pre-Production validation — build a production-quality..."
-  default_prompt: "Use $vertical-slice to run the Vertical Slice game-studio workflow."
+  short_description: "Plan and evaluate a bounded hash-bound slice"
+  default_prompt: "Use $vertical-slice to freeze a two-attempt validation plan or independently evaluate exact build, playtest, and velocity evidence; implementation remains in separately authorized worktree batches."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Asset Spec"
-  short_description: "Generate per-asset visual specifications and AI generation..."
-  default_prompt: "Use $asset-spec to run the Asset Spec game-studio workflow."
+  short_description: "Atomically publish validated asset specs and manifest rows"
+  default_prompt: "Use $asset-spec to draft a traceable asset specification, classify incomplete validation as BLOCKED_NOT_FOR_PRODUCTION, and publish the specification plus manifest rows only as one collision-safe authorized transaction."

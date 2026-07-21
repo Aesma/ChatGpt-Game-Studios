@@ -1,4 +1,4 @@
 interface:
   display_name: "Prototype"
-  short_description: "Concept prototype — validate the core idea is worth designing..."
-  default_prompt: "Use $prototype to run the Prototype game-studio workflow."
+  short_description: "Run bounded prototypes with user-owned decisions"
+  default_prompt: "Use $prototype to run one isolated, budgeted experiment; prototype writes, evidence publication, and downstream work remain separately authorized."

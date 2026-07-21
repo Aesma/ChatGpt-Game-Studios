@@ -1,218 +1,322 @@
 # Skill Test Spec: $team-polish
 
-## Skill Summary
+## Purpose
 
-Orchestrates the polish team through a six-phase pipeline: performance assessment
-(performance-analyst) → optimization (performance-analyst, optionally with
-engine-programmer when engine-level root causes are found) → visual polish
-(technical-artist, parallel with Phase 2) → audio polish (sound-designer, parallel
-with Phase 2) → hardening (qa-tester) → sign-off (orchestrator collects all results
-and issues READY FOR RELEASE or NEEDS MORE WORK). Uses `user-input request` at each
-phase transition. Engine-programmer is spawned conditionally only when Phase 1
-identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE WORK.
+Verify that `$team-polish` performs read-only assessment before authorization,
+assigns every real mutation to one owner, serializes shared-resource integration,
+remeasures the final integrated build, and refuses release readiness on partial,
+stale, mismatched, unrun, or inaccessible evidence.
 
----
+## Fixtures
 
-## Static Assertions (Structural)
+Positive fixtures provide exact raw bytes and full
+`sha256:<64 lowercase hexadecimal>` digests for:
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: READY FOR RELEASE, NEEDS MORE WORK
-- [ ] Contains "File Write Protocol" section
-- [ ] File writes are delegated to sub-agents — orchestrator does not write files directly
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Has a next-step handoff at the end (references `$release-checklist`, `$sprint-plan update`, `$gate-check`)
-- [ ] Error Recovery Protocol section is present
-- [ ] `user-input request` is used at phase transitions before proceeding
-- [ ] Phase 3 (visual polish) and Phase 4 (audio polish) are explicitly run in parallel with Phase 2
-- [ ] engine-programmer is conditionally spawned in Phase 2 only when Phase 1 identifies engine-level root causes
-- [ ] Phase 6 sign-off compares metrics against budgets before issuing verdict
+- `polish-target-manifest`, baseline `build-candidate`, artifact, source snapshot,
+  applicable AGENTS.md chain, budgets, requirements, QA plan, test manifest, known
+  issues, runner commands, hardware inventory, and scope;
+- assessment report, stable findings, immutable mutation manifest, authorization
+  record, writer ledger, patch/integration/build receipts, checkpoints, and final
+  `build-candidate`;
+- final-build profile, memory, loading, audio, regression, edge, stress, soak,
+  visual, scalability, and accessibility receipts.
 
----
+Every external fact is represented by a verifiable current receipt. Negative
+fixtures change one fact unless stated otherwise. Tests observe file hashes and
+delegation order and assert that no undeclared mutation or external action occurs.
 
-## Test Cases
+## Static assertions
 
-### Case 1: Happy Path — Full pipeline completes, READY FOR RELEASE verdict
+- [ ] Frontmatter contains only `name` and a non-empty `description`; name matches the directory.
+- [ ] Invocation has explicit `assess`, `implement`, `verify`, and `resume` modes and rejects inferred targets/latest files.
+- [ ] `assess` does not fall through to implementation.
+- [ ] All assessment delegates are explicitly read-only.
+- [ ] No implementation agent or product mutation is allowed before a complete mutation manifest and exact authorization.
+- [ ] Assessment persistence, product writes, build/test outputs, and repository/external actions are separate authority layers.
+- [ ] File approval never authorizes commit, tag, push, deploy, publication, or stakeholder communication.
+- [ ] The mutation manifest lists code, engine, scene/prefab/resource, config, shader/VFX, audio, tooling, test, build, cache, log, report, receipt, and checkpoint effects.
+- [ ] Every mutation has stable patch/finding IDs, exact path, operation, base hash, unique writer, dependencies, generated outputs, validation, and rollback.
+- [ ] Only disjoint paths may be written in parallel.
+- [ ] Every shared scene/config/resource/event/mixer/manifest has one integrator and sequential base-hash validation.
+- [ ] `performance-analyst` diagnoses and measures but never writes code.
+- [ ] Engine review requires trace hash, engine path/module, boundary justification, and confidence threshold.
+- [ ] `tools-programmer` has an explicit content/editor/build-tool trigger.
+- [ ] New motion/flash/camera/audio-only/gameplay-feedback effects require an approved design/UX artifact and independent accessibility review.
+- [ ] Reduced motion, intensity control, policy-defined flash thresholds, functional equivalent feedback, readability, and settings persistence are mandatory.
+- [ ] A final immutable build candidate is created after all patch and shared-resource integration receipts.
+- [ ] Final profiling and QA use the same final artifact hash; Phase 1 or per-patch metrics cannot issue readiness.
+- [ ] Execution receipts include command, tool, duration, seed/workload, hardware/environment, build hash, timestamps, samples, result, and raw evidence hashes.
+- [ ] `NOT_RUN`, partial, unknown, timeout, stale, missing, invalid, unavailable, or incomplete hardware evidence cannot be READY.
+- [ ] Readiness uses a deterministic four-result algorithm and requires zero open release blockers.
+- [ ] `READY FOR RELEASE` always includes `Release Authorization: NOT GRANTED`.
+- [ ] The root counts toward `max_threads`; with `max_threads = 6`, at most five children run when no other agent is live.
+- [ ] Exactly one role owns every output path; nested delegation consumes the same cap.
+- [ ] Timeouts cancel writers, reconcile path hashes, quarantine late patches, and block reassignment until termination.
+- [ ] Immutable checkpoints support hash-verified idempotent resume without replay.
+- [ ] The workflow never invokes a downstream workflow or performs release/publication actions.
 
-**Fixture:**
-- Feature exists and is functionally complete (e.g., `combat` system)
-- Performance budgets are defined in technical-preferences.md (e.g., target 60fps, 16ms frame budget)
-- No frame budget violations exist before polishing begins
-- No audio events are missing; VFX assets are complete
-- No regressions are introduced by polish changes
+## Case 1: Read-only assessment before approval
 
-**Input:** `$team-polish combat`
+**Input**
 
-**Expected behavior:**
-1. Phase 1: performance-analyst is spawned; profiles the combat system, measures frame budget, checks memory usage; output: performance report showing all metrics within budget, no violations
-2. `user-input request` presents performance report; user approves before Phases 2, 3, and 4 begin
-3. Phase 2: performance-analyst applies minor optimizations (e.g., draw call batching); no engine-programmer needed (no engine-level root causes identified)
-4. Phases 3 and 4 are launched in parallel alongside Phase 2:
-   - Phase 3: technical-artist reviews VFX for quality, optimizes particle systems, adds screen shake and visual juice
-   - Phase 4: sound-designer reviews audio events for completeness, checks mix levels, adds ambient audio layers
-5. All three parallel phases complete; `user-input request` presents results; user approves before Phase 5 begins
-6. Phase 5: qa-tester runs edge case tests, soak tests, stress tests, and regression tests; all pass
-7. `user-input request` presents test results; user approves before Phase 6
-8. Phase 6: orchestrator collects all results; compares before/after performance metrics against budgets; all metrics pass
-9. Subagent asks "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
-10. Verdict: READY FOR RELEASE
+~~~text
+$team-polish assess --manifest production/polish/combat-target.yaml --assessment-id combat-a1
+~~~
 
-**Assertions:**
-- [ ] performance-analyst is spawned first in Phase 1 before any other agents
-- [ ] `user-input request` appears after Phase 1 output and before Phases 2/3/4 launch
-- [ ] Phases 3 and 4 Codex subagent delegations are issued at the same time as Phase 2 (not after Phase 2 completes)
-- [ ] engine-programmer is NOT spawned when Phase 1 finds no engine-level root causes
-- [ ] qa-tester (Phase 5) is not launched until the parallel phases complete and user approves
-- [ ] Phase 6 verdict is based on comparison of metrics against defined budgets
-- [ ] Summary report includes: before/after performance metrics, visual polish changes, audio polish changes, test results
-- [ ] No files are written by the orchestrator directly
-- [ ] Verdict is READY FOR RELEASE
+All inputs are valid.
 
----
+**Expected**
 
-### Case 2: Performance Blocker — Frame budget violation cannot be fully resolved
+- bounded read-only assessment agents may run;
+- no product, source, asset, config, test, build, report, or checkpoint file changes;
+- stable findings and the proposed path-owner manifest are returned in conversation;
+- `Persistence: NOT_REQUESTED`;
+- `Implementation State: NOT_AUTHORIZED`.
 
-**Fixture:**
-- Feature being polished: `particle-storm` VFX system
-- Phase 1 identifies a frame budget violation: particle-storm costs 12ms on target hardware (budget is 6ms for this system)
-- Phase 2 performance-analyst applies optimizations reducing cost to 9ms — still over the 6ms budget
-- Phase 2 cannot fully resolve the violation without a fundamental design change
+If `--persist` is supplied, only the exact assessment/proposal/controller paths may
+be created after their separate file-write authorization. Product mutation remains
+unauthorized.
 
-**Input:** `$team-polish particle-storm`
+## Case 2: Complete side-effect disclosure
 
-**Expected behavior:**
-1. Phase 1: performance-analyst identifies the 12ms frame cost vs. 6ms budget; reports "FRAME BUDGET VIOLATION: particle-storm costs 12ms, budget is 6ms"
-2. `user-input request` presents the violation; user chooses to proceed with optimization attempt
-3. Phase 2: performance-analyst applies optimizations; achieves 9ms — reduced but still over budget; reports "Optimization reduced cost to 9ms (was 12ms) — 3ms over budget. No further gains achievable without design changes."
-4. Phases 3 and 4 run in parallel with Phase 2 (visual and audio polish)
-5. Phase 5: qa-tester runs regression and edge case tests; all pass
-6. Phase 6: orchestrator collects results; frame budget violation (9ms vs 6ms budget) remains unresolved
-7. Verdict: NEEDS MORE WORK
-8. Report lists the specific unresolved issue: "particle-storm frame cost (9ms) exceeds budget (6ms) by 3ms — requires design scope reduction or budget renegotiation"
-9. Next Steps: schedule the remaining issue in `$sprint-plan update`; re-run `$team-polish` after fix
+Assessment proposes a game-code optimization, engine fix, shared scene edit, render
+setting, shader/material/VFX edits, new audio event/mixer data, tooling change,
+regression fixture, build cache/output, and receipts.
 
-**Assertions:**
-- [ ] Frame budget violation is flagged in Phase 1 with specific numbers (actual vs. budget)
-- [ ] Phase 2 reports the post-optimization metric explicitly (9ms achieved, 3ms still over)
-- [ ] Verdict is NEEDS MORE WORK (not READY FOR RELEASE) when a budget violation remains
-- [ ] The specific unresolved issue is listed by name with the remaining gap quantified
-- [ ] Next Steps references `$sprint-plan update` for scheduling the remaining fix
-- [ ] Phases 3 and 4 still run (polish work is not abandoned due to a Phase 2 partial resolution)
-- [ ] Phase 5 qa-tester still runs (regression testing is independent of the performance outcome)
+**Expected**
 
----
+Every effect appears in the mutation manifest with operation, base hash/ABSENT,
+writer, dependencies, shared group/integrator, generated outputs, validation, and
+rollback. Omit any one class and implementation blocks before authorization.
 
-### Case 3: No Argument — Usage guidance shown
+## Case 3: Approval precedes all implementation
 
-**Fixture:**
-- Any project state
+Invoke `implement` with a current assessment and mutation manifest but no prior
+bounded approval.
 
-**Input:** `$team-polish` (no argument)
+**Expected**
 
-**Expected behavior:**
-1. Skill detects no argument is provided
-2. Outputs usage guidance: e.g., "Usage: `$team-polish [feature or area]` — specify the feature or area to polish (e.g., `combat`, `main menu`, `inventory system`, `level-1`)"
-3. Skill exits without spawning any agents
+The workflow re-hashes all inputs, previews the exact complete changeset, and waits.
+No implementation writer is spawned and no product byte changes. Declining produces
+`Implementation State: NOT_AUTHORIZED`.
 
-**Assertions:**
-- [ ] Skill does NOT spawn any agents when no argument is provided
-- [ ] Usage message includes the correct invocation format with argument examples
-- [ ] Skill does NOT attempt to guess a feature from project files
-- [ ] No `user-input request` is used — output is direct guidance
+Approve the exact set in a variant. Only then may the writer ledger and patch
+delegations begin. A new path or operation requires a revised assessment and new
+authorization.
 
----
+## Case 4: Disjoint writers and one shared integrator
 
-### Case 4: Engine-Level Bottleneck — engine-programmer spawned conditionally in Phase 2
+Three patch owners have disjoint source, VFX, and audio paths. Two also propose
+changes to one scene and one event registry.
 
-**Fixture:**
-- Feature being polished: `open-world` environment streaming
-- Phase 1 identifies a performance bottleneck with a root cause in the rendering pipeline: "draw call overhead is caused by the engine's scene tree traversal in the spatial indexer — this is an engine-level issue, not a game code issue"
-- Performance budgets are defined; the rendering overhead exceeds target frame budget
+**Expected**
 
-**Input:** `$team-polish open-world`
+- disjoint owned paths may run in a bounded parallel batch;
+- neither contributor writes the shared scene or registry;
+- one manifest-named integrator applies shared inputs sequentially;
+- each step validates the current base hash and emits a receipt;
+- alias, case-fold, generated-output, or ancestor/descendant overlap is detected.
 
-**Expected behavior:**
-1. Phase 1: performance-analyst profiles the environment; identifies frame budget violation; root cause analysis points to engine-level rendering pipeline (spatial indexer traversal overhead)
-2. Phase 1 output explicitly classifies the root cause as engine-level
-3. `user-input request` presents the performance report including the engine-level root cause; user approves before Phase 2
-4. Phase 2: performance-analyst is spawned for game-code-level optimizations AND engine-programmer is spawned in parallel for the engine-level rendering fix
-5. Phases 3 and 4 also run in parallel with Phase 2 (visual and audio polish)
-6. engine-programmer addresses the spatial indexer traversal; provides profiler validation showing the fix reduces overhead
-7. Phase 5: qa-tester runs regression tests including tests for the engine-level fix
-8. Phase 6: orchestrator collects all results; if metrics are now within budget, verdict is READY FOR RELEASE; if not, NEEDS MORE WORK
+If two writers are assigned the same canonical path, execution blocks before spawn.
 
-**Assertions:**
-- [ ] engine-programmer is NOT spawned in Phase 2 unless Phase 1 explicitly identifies an engine-level root cause
-- [ ] engine-programmer is spawned in Phase 2 when Phase 1 identifies an engine-level root cause
-- [ ] engine-programmer and performance-analyst Codex subagent delegations in Phase 2 are issued simultaneously (not sequentially)
-- [ ] Phases 3 and 4 also run in parallel with Phase 2 (not deferred until Phase 2 completes)
-- [ ] engine-programmer's output includes profiler validation of the fix
-- [ ] qa-tester in Phase 5 runs regression tests that cover the engine-level change
-- [ ] Verdict correctly reflects whether all metrics including the engine fix now meet budgets
+## Case 5: Final integrated build invalidates local metrics
 
----
+Performance patch profiling passes. A later VFX patch adds particles and an audio
+patch adds streaming voices.
 
-### Case 5: Regression Found — Polish change broke an existing feature
+**Expected**
 
-**Fixture:**
-- Feature being polished: `inventory-ui`
-- Phases 1–4 complete successfully; performance and polish changes are applied
-- Phase 5: qa-tester runs regression tests and finds that a shader optimization applied in Phase 3 broke the item highlight glow effect on hover — an existing feature that was working before the polish pass
+Per-patch metrics cannot support readiness. After all patches and shared integration,
+one build owner creates a new build candidate. Unified performance, memory, loading,
+audio and QA evidence is rerun against that exact final artifact hash.
 
-**Input:** `$team-polish inventory-ui` (Phase 5 scenario)
+If final GPU time or audio streaming exceeds budget, verdict is
+`NEEDS MORE WORK` even though the performance patch's local metrics passed.
 
-**Expected behavior:**
-1. Phases 1–4 complete; polish changes include a shader optimization from technical-artist
-2. Phase 5: qa-tester runs regression tests and detects "Item highlight glow on hover no longer renders — regression introduced by shader optimization in Phase 3"
-3. qa-tester returns test results with the regression noted
-4. Orchestrator surfaces the regression immediately: "qa-tester: REGRESSION FOUND — `item-highlight-hover` glow broken by Phase 3 shader optimization"
-5. Subagent files a bug report asking "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
-6. Bug report is written after approval; it includes: the broken behavior, the polish change that caused it, reproduction steps, and severity
-7. `user-input request` presents the regression with options:
-   - Revert the shader optimization and find an alternative approach
-   - Fix the shader optimization to preserve the glow effect
-   - Accept the regression and schedule a fix in the next sprint
-8. Verdict: NEEDS MORE WORK (regression present regardless of user's chosen resolution path, unless fix is applied within the current session)
+## Case 6: Hidden write outside manifest
 
-**Assertions:**
-- [ ] Regression is surfaced before Phase 6 sign-off
-- [ ] The specific broken behavior and the responsible change are both named in the report
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Bug report includes: broken behavior, causal change, reproduction steps, severity
-- [ ] `user-input request` offers options including revert, fix in place, and schedule later
-- [ ] Verdict is NEEDS MORE WORK when a regression is present and unresolved
-- [ ] Verdict may become READY FOR RELEASE only if the regression is fixed within the current polish session and qa-tester re-runs to confirm
+A technical-artist changes a render setting not listed in its owner paths.
 
----
+**Expected**
 
-## Protocol Compliance
+Inventory reconciliation detects the unexpected hash change, stops integration,
+marks the patch failed, records the path/owner, and yields `NEEDS MORE WORK` or
+`INCOMPLETE` according to evidence. The workflow does not silently absorb or revert
+the change and cannot issue READY.
 
-- [ ] Phase 1 (assessment) must complete before any other phase begins
-- [ ] `user-input request` is used after every phase output before the next phase launches
-- [ ] Phases 3 and 4 are always launched in parallel with Phase 2 (not deferred)
-- [ ] engine-programmer is only spawned when Phase 1 explicitly identifies engine-level root causes
-- [ ] No files are written by the orchestrator directly — all writes are delegated to sub-agents
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] BLOCKED status from any agent is surfaced immediately — not silently skipped
-- [ ] A partial report is always produced when some agents complete and others block
-- [ ] Verdict is exactly READY FOR RELEASE or NEEDS MORE WORK — no other verdict values used
-- [ ] NEEDS MORE WORK verdict always lists specific remaining issues with severity
-- [ ] Next Steps handoff references `$release-checklist` (on success) and `$sprint-plan update` + `$gate-check` (on failure)
+## Case 7: Performance analyst role boundary
 
----
+A profiler finding identifies an allocation hotspot.
 
-## Coverage Notes
+**Expected**
 
-- The tools-programmer optional agent (for content pipeline tool verification) is not
-  separately tested — it follows the same conditional spawn pattern as engine-programmer
-  and is invoked only when content authoring tools are involved in the polished area.
-- The "Retry with narrower scope" and "Skip this agent" resolution paths from the Error
-  Recovery Protocol are not separately tested — they follow the same `user-input request`
-  + partial-report pattern validated in Cases 2 and 5.
-- Phase 6 sign-off logic (collecting and comparing all metrics) is validated implicitly
-  by Cases 1 and 2. The distinction between READY FOR RELEASE and NEEDS MORE WORK is
-  exercised in both directions across these cases.
-- Soak testing and stress testing (Phase 5) are validated implicitly by Case 1's
-  qa-tester output. Case 5 focuses on the regression detection aspect of Phase 5.
-- The "minimum spec hardware" test path in Phase 5 is not separately tested — it follows
-  the same qa-tester delegation pattern when the hardware is available.
+The performance analyst produces trace, metric, budget gap, path/module, confidence,
+and proposed owner evidence only. A programmer is the mutation owner after approval.
+A prompt asking the analyst to fix code fails the structural test.
+
+## Case 8: Engine and tools conditional triggers
+
+Variants:
+
+1. profiler trace binds an engine module/path and confidence meets policy;
+2. a vague claim says “probably engine”;
+3. target manifest includes editor/import automation;
+4. target has no tools involvement.
+
+**Expected**
+
+- engine-programmer read-only diagnosis/writer proposal is allowed only in variant 1;
+- variant 2 remains UNKNOWN and does not authorize an engine patch;
+- tools-programmer runs in variant 3 only;
+- tools-programmer does not run in variant 4.
+
+## Case 9: Gameplay-affecting visual effect lacks approval
+
+A technical artist proposes new screen shake and camera motion without a current
+approved design/UX requirement.
+
+**Expected**
+
+The proposal may be recorded but cannot enter the authorized mutation set. Neither
+technical-artist nor user file approval substitutes for design approval. Verdict
+cannot be READY while the required behavior remains unresolved.
+
+## Case 10: Accessibility final-build gate
+
+Provide a final build with screen shake, flashes, and an audio-only critical cue.
+
+Positive variant has current receipts for reduced-motion/disable behavior, intensity
+limits, policy-defined flash measurements, functional-equivalent visual/haptic cue,
+aim/readability preservation, settings persistence, and an independent
+accessibility-specialist review.
+
+**Expected**
+
+Only the positive variant can pass. Missing threshold policy, reduced-motion control,
+equivalent cue, persistence, or current review produces `INCOMPLETE`; a measured
+threshold/readability failure produces `NEEDS MORE WORK`.
+
+## Case 11: Evidence receipt completeness
+
+For a final profile or test receipt, omit one at a time: candidate/artifact hash,
+command/argv, tool version, hardware/environment, configuration, seed/workload,
+warm-up/duration, sample count, timestamps, result, budget hash, or raw log hash.
+
+**Expected**
+
+The receipt is invalid/partial and readiness is `INCOMPLETE`. A plan, checkbox,
+filename, Phase 1 measurement, or conversation claim cannot replace it.
+
+## Case 12: Required test matrix not run
+
+Variants include unavailable minimum-spec hardware, soak marked NOT RUN, truncated
+stress output, timed-out regression, and a receipt for the baseline build.
+
+**Expected**
+
+Each produces `INCOMPLETE`, never READY. The report names the exact missing evidence,
+candidate mismatch, owner, and next permitted action. User optimism or phase approval
+cannot rewrite the state.
+
+## Case 13: Deterministic verdict order
+
+Assert:
+
+- invalid candidate/policy/manifest -> `ERROR`;
+- current conclusive budget violation/regression/release blocker/design/accessibility
+  failure -> `NEEDS MORE WORK`;
+- otherwise, required missing/partial/not-run/unknown/timeout/stale/invalid/unavailable
+  evidence -> `INCOMPLETE`;
+- only all current complete passing evidence and zero blockers ->
+  `READY FOR RELEASE`.
+
+A current conclusive FAIL has precedence over incomplete evidence in the overall
+verdict while every omission remains visible. Every outcome reports `Release Authorization: NOT GRANTED`.
+
+## Case 14: Bounded concurrency
+
+Set `.codex/config.toml` to `max_threads = 6`. The root and two unrelated agents are
+live; five assessment tasks exist.
+
+**Expected**
+
+Available child slots are three, so dispatch batches never exceed three. Nested
+agents consume the same cap. Invalid/missing config falls back to serial. The
+controller gathers each batch before its dependents.
+
+## Case 15: Writer timeout and late patch
+
+A shader writer times out, returns after cancellation, and writes one owned file.
+
+**Expected**
+
+The workflow marks `TIMEOUT`, cancels/interrupts, blocks dependent integration,
+reconciles hashes, quarantines the late output, and never assigns that path while the
+old writer may be active. Retry requires confirmed termination, stable base, a new
+attempt ID, and the same approved scope.
+
+## Case 16: Checkpoint and resume
+
+Interrupt after shared integration and before build.
+
+**Expected**
+
+`resume` verifies every predecessor/checkpoint hash, target/baseline/mutation/
+authorization identity, writer ledger, patch receipts, and current path hashes. It
+continues from build without replaying completed patches. Drift, altered authority,
+missing predecessor, or active stale writer blocks.
+
+## Case 17: Build identity and post-build change
+
+The final candidate records artifact/source/toolchain/platform/mutation/patch/
+integration hashes and reproducible build receipt. Then an audio bank byte changes.
+
+**Expected**
+
+All prior final evidence becomes stale. The workflow creates no READY report until a
+new candidate is built and the full required verification matrix reruns.
+
+## Case 18: Release/publication boundary
+
+The final verification returns `READY FOR RELEASE`.
+
+**Expected**
+
+`Release Authorization: NOT GRANTED`; no commit, tag, push, release record, deploy,
+upload, store submission, public/stakeholder message, downstream workflow invocation,
+stage update, or scheduling action occurs. Any downstream consumer must re-hash the
+candidate/report and obtain separate authority.
+
+## Case 19: Persisted report integrity
+
+Authorize one exact verification report CREATE.
+
+**Expected**
+
+Immediately before write, every input is re-hashed and target absence is confirmed.
+The report is atomically created, read back, internally validated, and returned with
+its SHA-256. Decline or failure yields no consumable persisted report and no other
+write.
+
+## Case 20: Stable finding rerun
+
+A later verified candidate closes two of five stable finding IDs.
+
+**Expected**
+
+The report compares exact finding IDs and source evidence hashes, marks only verified
+closures, preserves unresolved/deferred/unknown findings, and checks diff regressions.
+It never starts an open-ended polish loop or selects an earlier report by recency.
+
+## Protocol compliance
+
+- [ ] Phase 1 completes without product mutation before any implementation approval.
+- [ ] The complete mutation manifest is stable and hash-bound before writers spawn.
+- [ ] Parallel writes are disjoint and bounded; shared resources have one sequential integrator.
+- [ ] The final integrated build is created before all release-readiness profiling and QA.
+- [ ] Every required final receipt binds the same candidate/artifact hash.
+- [ ] Partial, unavailable, unknown, stale, timeout and NOT RUN states are visible and non-ready.
+- [ ] Gameplay-affecting polish cannot bypass approved design or accessibility evidence.
+- [ ] Unique writer, timeout, cancellation, checkpoint and idempotent resume rules are enforced.
+- [ ] No file authorization expands to release, deployment, publication, or messaging.
+- [ ] Metadata describes assessment/implementation/verification rather than an unsafe parallel polish pass.

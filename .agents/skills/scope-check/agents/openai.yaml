@@ -1,4 +1,4 @@
 interface:
   display_name: "Scope Check"
-  short_description: "Analyze a feature or sprint for scope creep by comparing..."
-  default_prompt: "Use $scope-check to run the Scope Check game-studio workflow."
+  short_description: "Compare immutable scope artifacts by stable IDs"
+  default_prompt: "Use $scope-check compare with explicit baseline and current manifest paths for a read-only, evidence-bound scope delta report."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Architecture Review"
-  short_description: "Validates completeness and consistency of the project..."
-  default_prompt: "Use $architecture-review to run the Architecture Review game-studio workflow."
+  short_description: "Hash-bound read-only architecture traceability gate"
+  default_prompt: "Use $architecture-review to review explicit owner-approved requirement, ADR, engine, story, and current test-run evidence against one hashed target manifest; return exactly PASS, BLOCKED, or PARTIAL and do not modify project truth sources."

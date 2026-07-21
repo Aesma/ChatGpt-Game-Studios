@@ -2,208 +2,333 @@
 
 ## Skill Summary
 
-Orchestrates the narrative team through a five-phase pipeline: narrative direction
-(narrative-director) → world foundation + dialogue drafting (world-builder and writer
-in parallel) → level narrative integration (level-designer) → consistency review
-(narrative-director) → polish + localization compliance (writer, localization-lead,
-and world-builder in parallel). Uses `user-input request` at each phase transition to
-present proposals as selectable options. Produces a narrative summary report and
-delivers narrative documents via subagents that each enforce the "May I apply the proposed changeset?"
-protocol. Verdict is COMPLETE when all phases succeed, or BLOCKED when a dependency
-is unresolved.
+Coordinates narrative delivery through a strict sequence: validate a manifest and
+bounded canon graph, resolve explicit canon decisions, freeze a canon-baseline hash,
+collect bounded read-only proposals, assign one writer per artifact, perform
+localization review, authorize exact writes, read back final hashes, and obtain a
+fresh independent narrative review. Only a current, fully evidenced and localization-
+ready artifact set may receive `COMPLETE`.
 
 ---
 
 ## Static Assertions (Structural)
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: COMPLETE, BLOCKED
-- [ ] Contains "File Write Protocol" section
-- [ ] File writes are delegated to sub-agents — orchestrator does not write files directly
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Has a next-step handoff at the end (references `$design-review`, `$localize extract`, `$dev-story`)
-- [ ] Error Recovery Protocol section is present
-- [ ] `user-input request` is used at phase transitions before proceeding
-- [ ] Phase 2 explicitly spawns world-builder and writer in parallel
-- [ ] Phase 5 explicitly spawns writer, localization-lead, and world-builder in parallel
+- [ ] YAML frontmatter contains only `name` and a non-empty `description`; `name`
+  matches the skill directory
+- [ ] Invocation requires `--manifest` and validates arguments before reads,
+  delegation, decisions, or writes
+- [ ] No-argument behavior has zero reads, delegates, prompts, or writes
+- [ ] Canon validation and an explicit decision precede writer, art-director, and
+  level-designer proposal launch
+- [ ] A verified canon-baseline hash is the hard gate for downstream proposals
+- [ ] Proposal agents are read-only, bounded to maximum concurrency 3, have deadlines,
+  at most one no-write retry, revoked attempt tokens, and late-result quarantine
+- [ ] Every destination path has exactly one writer; shared records have one recorder
+  and sequential base-hash guarded writes
+- [ ] Canon promotion and narrative-content writes have separate exact mutation
+  manifests and separate authorization boundaries
+- [ ] Localization review uses real declared UX/string constraints, never a universal
+  fixed line limit
+- [ ] `NOT LOCALIZATION READY` can never produce `COMPLETE` or a downstream handoff
+- [ ] Final review is fresh, independent, read-only, and tied to the current final
+  artifact-set hash; post-review changes require rehash and scoped re-review
+- [ ] Narrative review profile covers canon, voice, arc, trigger contract, mystery
+  truths, localization, content rating, and reference integrity
+- [ ] The workflow does not invoke or recommend a system-GDD review workflow
+- [ ] Immutable checkpoints and hash-validated resume behavior are specified
+- [ ] Terminal verdicts include `COMPLETE`, `PARTIAL`, and `BLOCKED`
+- [ ] Final output requires artifact paths, hashes, owners, authorization evidence,
+  localization evidence, reviewer identity, blockers, checkpoint, and one next action
 
 ---
 
-## Test Cases
-
-### Case 1: Happy Path — All five phases complete, narrative doc delivered
+## Case 1: Happy path — canon-safe delivery
 
 **Fixture:**
-- A game concept and GDD exist for the target feature (e.g., `design/gdd/faction-intro.md`)
-- Character voice profiles exist (e.g., `design/narrative/characters/`)
-- Existing lore entries exist for cross-reference (e.g., `design/narrative/lore/`)
-- No lore contradictions exist between existing entries and the new content
 
-**Input:** `$team-narrative faction introduction cutscene for the Ironveil faction`
+- A valid request manifest declares content/run IDs, create/revise operation, canon
+  sources, destination paths, base hashes, owners, UX/string constraints, policies,
+  authorities, budgets, and deadlines
+- Canon sources and the proposed brief agree
+- All proposal, localization, write, read-back, and independent review tasks succeed
+
+**Input:**
+
+`$team-narrative --manifest production/requests/ironveil-intro.yaml`
 
 **Expected behavior:**
-1. Phase 1: narrative-director is spawned; outputs a narrative brief defining the story beat, characters involved, emotional tone, and lore dependencies
-2. `user-input request` presents the narrative brief; user approves before Phase 2 begins
-3. Phase 2: world-builder and writer are spawned in parallel; world-builder produces lore entries for the Ironveil faction; writer drafts dialogue lines using character voice profiles
-4. `user-input request` presents world foundation and dialogue drafts; user approves before Phase 3 begins
-5. Phase 3: level-designer is spawned; produces environmental storytelling layout, trigger placement, and pacing plan
-6. `user-input request` presents level narrative plan; user approves before Phase 4 begins
-7. Phase 4: narrative-director reviews all dialogue against voice profiles, verifies lore consistency, confirms pacing; approves or flags issues
-8. `user-input request` presents review results; user approves before Phase 5 begins
-9. Phase 5: writer, localization-lead, and world-builder are spawned in parallel; writer performs final self-review; localization-lead validates i18n compliance; world-builder finalizes canon levels
-10. Final summary report is presented; subagent asks "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
-11. Verdict: COMPLETE
+
+1. Request and bounded dependency graph are validated and hashed.
+2. `world-builder` and `narrative-director` return read-only canon inspection and
+   brief proposals.
+3. Canon authority confirms the source-backed decision; the verified sorted canon
+   manifest produces `CANON_FROZEN` and a baseline hash.
+4. Writer, art-director, and level-designer proposal tasks are issued together with
+   the same baseline hash and make no writes.
+5. Ownership and exact content mutation manifests are authorized.
+6. Localization review passes against declared real constraints.
+7. Unique owners write only their disjoint authorized paths; all files are read back
+   and hashed into the final artifact-set hash.
+8. A fresh non-author reviewer passes the narrative profile against those hashes.
+9. Result is `Verdict: COMPLETE` with all required evidence and exactly one next
+   action; no production implementation starts.
 
 **Assertions:**
-- [ ] narrative-director is spawned in Phase 1 before any other agents
-- [ ] `user-input request` appears after Phase 1 output and before Phase 2 launch
-- [ ] world-builder and writer Codex subagent delegations are issued simultaneously in Phase 2 (not sequentially)
-- [ ] level-designer is not launched until Phase 2 `user-input request` is approved
-- [ ] narrative-director is re-spawned in Phase 4 for consistency review
-- [ ] Phase 5 spawns all three agents (writer, localization-lead, world-builder) simultaneously
-- [ ] Summary report includes: narrative brief status, lore entries created/updated, dialogue lines written, level narrative integration points, consistency review results
-- [ ] No files are written by the orchestrator directly
-- [ ] Verdict is COMPLETE after delivery
+
+- [ ] Writer/art/level proposals start only after `CANON_FROZEN`
+- [ ] Proposal agents have no write authority
+- [ ] Every final path has exactly one owner and a verified final hash
+- [ ] Reviewer identity differs from every author/editor/recorder identity
+- [ ] Review evidence records the current final artifact-set hash
+- [ ] Localization status is `LOCALIZATION READY`
+- [ ] No engine code, asset, translation, or trigger implementation is produced
 
 ---
 
-### Case 2: Lore Contradiction Found — world-builder finds conflict before writer proceeds
+## Case 2: Canon contradiction blocks downstream proposals
 
-**Fixture:**
-- Existing lore entry at `design/narrative/lore/ironveil-history.md` states the Ironveil faction was founded 200 years ago
-- The new narrative brief (from Phase 1) states the Ironveil were founded 50 years ago
-- The writer has been spawned in parallel with the world-builder in Phase 2
-
-**Input:** `$team-narrative ironveil faction introduction cutscene`
+**Fixture:** Canon says Ironveil was founded 200 years ago; the brief proposes 50.
 
 **Expected behavior:**
-1. Phases 1–2 begin normally
-2. Phase 2 world-builder detects a factual contradiction between the narrative brief and existing lore: founding date conflict
-3. world-builder returns BLOCKED with reason: "Lore contradiction found — founding date conflicts with `design/narrative/lore/ironveil-history.md`"
-4. Orchestrator surfaces the contradiction immediately: "world-builder: BLOCKED — Lore contradiction: founding date in narrative brief (50 years ago) conflicts with existing canon (200 years ago in `ironveil-history.md`)"
-5. Orchestrator assesses dependency: the writer's dialogue depends on canon lore — the writer's draft cannot be finalized without resolving the contradiction
-6. `user-input request` presents options:
-   - Revise the narrative brief to match existing canon (200 years ago)
-   - Update the existing lore entry to reflect the new canon (50 years ago)
-   - Stop here and resolve the contradiction in the lore docs first
-7. Writer output is preserved but flagged as pending canon resolution — work is not discarded
-8. Orchestrator does NOT proceed to Phase 3 until the contradiction is resolved or user explicitly chooses to skip
+
+1. World-builder reports a stable `NCF-*` finding with both paths/hashes and impact.
+2. Coordinator presents source-backed options to the canon authority.
+3. Writer, art-director, and level-designer are not launched while unresolved.
+4. Choosing a canon change does not itself authorize a write; a canon-only mutation
+   manifest and separate promotion authorization are required.
+5. If no decision/authority is available, result is `BLOCKED` with a checkpoint and
+   exactly one next action.
 
 **Assertions:**
-- [ ] Contradiction is surfaced before Phase 3 begins
-- [ ] Orchestrator does not silently resolve the contradiction by picking one version
-- [ ] `user-input request` presents at least 3 options including "stop and resolve first"
-- [ ] Writer's draft output is preserved in the partial report, not discarded
-- [ ] Phase 3 (level-designer) is not launched until the user resolves the contradiction
-- [ ] Verdict is BLOCKED (not COMPLETE) if the user stops to resolve the contradiction
+
+- [ ] No speculative dialogue, visual, or level proposal exists before canon freeze
+- [ ] The coordinator never silently chooses canon
+- [ ] Decision, promotion authorization, registry update, read-back, and baseline hash
+  are separately evidenced
+- [ ] Skipping the conflict cannot produce `COMPLETE`
 
 ---
 
-### Case 3: No Argument — Usage guidance shown
+## Case 3: Parallel proposals are read-only and uniquely routed
 
-**Fixture:**
-- Any project state
-
-**Input:** `$team-narrative` (no argument)
+**Fixture:** Frozen canon is available; three proposals target dialogue, an art brief,
+and a trigger contract. Two initially suggest editing the same summary file.
 
 **Expected behavior:**
-1. Skill detects no argument is provided
-2. Outputs usage guidance: e.g., "Usage: `$team-narrative [narrative content description]` — describe the story content, scene, or narrative area to work on (e.g., `boss encounter cutscene`, `faction intro dialogue`, `tutorial narrative`)"
-3. Skill exits without spawning any agents
+
+1. At most three proposal agents run concurrently and return only proposal payloads.
+2. The coordinator rejects overlapping writer ownership.
+3. One recorder is assigned to the shared summary, or the paths are split before
+   authorization.
+4. Exact disjoint path sets are recorded in the ownership manifest.
+5. Writes occur only later, sequentially per path, with expected base-hash guards.
 
 **Assertions:**
-- [ ] Skill does NOT spawn any agents when no argument is provided
-- [ ] Usage message includes the correct invocation format with an argument example
-- [ ] Skill does NOT attempt to guess or infer a narrative topic from project files
-- [ ] No `user-input request` is used — output is direct guidance
+
+- [ ] Parallel delegates cannot patch content or operational files
+- [ ] No normalized path has multiple writers
+- [ ] A shared manifest/registry has exactly one recorder
+- [ ] Unlisted or drifted writes stop the run
 
 ---
 
-### Case 4: Localization Compliance — localization-lead flags a non-translatable string
+## Case 4: Independent final-hash review after polish
 
-**Fixture:**
-- Phases 1–4 complete successfully
-- Phase 5 begins; writer and world-builder complete without issues
-- localization-lead finds a dialogue line that uses a hardcoded formatted date string (e.g., `"On March 12th, Year 3"`) that cannot survive locale-specific translation without a locale-aware formatter
-
-**Input:** `$team-narrative ironveil faction introduction cutscene` (Phase 5 scenario)
+**Fixture:** Initial final review finds a voice defect; the dialogue owner fixes it.
 
 **Expected behavior:**
-1. Phase 5 spawns writer, localization-lead, and world-builder in parallel
-2. localization-lead completes its review and flags: "String key `dialogue.ironveil.intro.003` contains a hardcoded date format (`March 12th, Year 3`) that will not localize correctly — requires a locale-aware date placeholder"
-3. Orchestrator surfaces the localization blocker in the summary report
-4. The localization issue is labeled as BLOCKING in the final report (not advisory)
-5. `user-input request` presents options:
-   - Fix the string now (writer revises the line)
-   - Note the gap and deliver the narrative doc with the issue flagged
-   - Stop and resolve before finalizing
-6. If the user chooses to proceed with the issue flagged, verdict is COMPLETE with noted localization debt; if user stops, verdict is BLOCKED
+
+1. Initial reviewer is fresh, independent, read-only, and reviews final hashes.
+2. The owner's fix makes the first review stale.
+3. Artifacts are read back and the artifact-set hash is recomputed.
+4. A fresh scoped independent review covers the changed dialogue and dependents.
+5. `COMPLETE` is possible only if the new review passes and references the new hash.
 
 **Assertions:**
-- [ ] localization-lead is spawned in Phase 5 simultaneously with writer and world-builder
-- [ ] Hardcoded date format is identified as a localization blocker (not silently passed)
-- [ ] The specific string key and reason are included in the issue report
-- [ ] `user-input request` offers the option to fix now vs. flag and proceed
-- [ ] Verdict notes the localization debt if the user proceeds without fixing
-- [ ] Skill does NOT automatically rewrite the offending line outside the authorized changeset
+
+- [ ] An author never self-approves
+- [ ] Review before the final write cannot satisfy the completion gate
+- [ ] Post-polish changes always cause rehash and re-review
+- [ ] Stale review evidence yields `PARTIAL` or `BLOCKED`, never `COMPLETE`
 
 ---
 
-### Case 5: Writer Blocked — Missing character voice profiles
+## Case 5: Blocking localization defect cannot be waived into COMPLETE
 
-**Fixture:**
-- Phase 1 narrative-director produces a narrative brief referencing two characters: Commander Varek and Advisor Selene
-- No character voice profiles exist in `design/narrative/characters/` for either character
-- Phase 2 begins; world-builder proceeds normally
-
-**Input:** `$team-narrative ironveil surrender negotiation scene`
+**Fixture:** `dialogue.ironveil.intro.003` hardcodes an English date and has no
+locale-aware formatter contract.
 
 **Expected behavior:**
-1. Phase 1 completes; narrative brief lists Commander Varek and Advisor Selene as characters
-2. Phase 2: writer is spawned in parallel with world-builder
-3. writer returns BLOCKED: "Cannot produce dialogue — no voice profiles found for Commander Varek or Advisor Selene in `design/narrative/characters/`. Voice profiles required to match character tone and speech patterns."
-4. Orchestrator surfaces the blocker immediately: "writer: BLOCKED — Missing prerequisite: character voice profiles for Commander Varek and Advisor Selene"
-5. world-builder output is preserved; partial report is produced with lore entries
-6. `user-input request` presents options:
-   - Create voice profiles first (redirects to the narrative-director or design workflow)
-   - Provide minimal voice direction inline and retry the writer with that context
-   - Stop here and create voice profiles before proceeding
-7. Orchestrator does NOT proceed to Phase 3 (level-designer) without writer output
+
+1. Localization-lead returns blocking `LOC-*` evidence with string ID, source hash,
+   violated contract, owner, and required destination.
+2. Assigned dialogue owner may fix it only within the authorized manifest.
+3. The changed string is rehashed and independently re-reviewed.
+4. If the defect remains, status is `NOT LOCALIZATION READY` and verdict `PARTIAL`.
+5. Even if the user accepts business risk, no `COMPLETE`, localization handoff, or
+   implementation handoff is emitted.
 
 **Assertions:**
-- [ ] Writer block is surfaced before Phase 3 begins
-- [ ] world-builder's completed lore output is preserved in the partial report
-- [ ] Missing prerequisite (voice profiles) is named specifically (character names and expected file path)
-- [ ] `user-input request` offers at least one option to resolve the missing prerequisite
-- [ ] Orchestrator does not fabricate voice profiles or invent character voices
-- [ ] Phase 3 is not launched while writer is BLOCKED without explicit user authorization
+
+- [ ] Blocking localization issues must be fixed and re-reviewed for completion
+- [ ] Accepted risk is not equivalent to readiness
+- [ ] The workflow never silently rewrites an unauthorized string
+- [ ] Final output names the blocker and exactly one resolution action
+
+---
+
+## Case 6: Narrative review profile replaces system-GDD review
+
+**Fixture:** All artifacts are written and localization-ready.
+
+**Expected behavior:** A fresh read-only reviewer checks canon/hash/reference
+integrity, voice, arc and pacing, trigger contracts, mystery truth-ID coverage and
+access partition, localization constraints, cultural safety, and content rating.
+
+**Assertions:**
+
+- [ ] Findings use stable `NRF-*` IDs and include evidence path/hash, owner,
+  destination, severity, and disposition
+- [ ] No system-GDD review workflow is invoked or recommended
+- [ ] Narrative evidence is bound to the final artifact-set hash
+- [ ] Missing profile evidence prevents `COMPLETE`
+
+---
+
+## Case 7: No argument exits before side effects
+
+**Input:** `$team-narrative`
+
+**Expected behavior:** Print manifest-based usage and stop.
+
+**Assertions:**
+
+- [ ] No repository file is read
+- [ ] No agent is spawned
+- [ ] No user decision is requested
+- [ ] No file or checkpoint is written
+- [ ] Topic is not inferred from repository state
+
+---
+
+## Case 8: Timeout, cancellation, late result, and resume
+
+**Fixture:** Art-director proposal exceeds its deadline and later returns a patch.
+
+**Expected behavior:**
+
+1. Attempt is canceled, token revoked, and at most one retry occurs only after
+   confirming the first attempt wrote nothing.
+2. Late patch/result is ignored and quarantined.
+3. Phase deadline prevents indefinite waiting; result is `PARTIAL` with a checkpoint.
+4. Resume verifies checkpoint chain, current inputs, canon baseline, authority, and
+   absence of late writes before continuing from the exact safe phase.
+
+**Assertions:**
+
+- [ ] Concurrency never exceeds 3, attempt deadline never exceeds 15 minutes, and
+  phase deadline never exceeds 30 minutes
+- [ ] No more than one no-write retry occurs
+- [ ] Late output cannot mutate or enter the accepted proposal set
+- [ ] Drift on resume yields `BLOCKED` rather than silent restart
+
+---
+
+## Case 9: Exact authorization boundaries
+
+**Fixture:** Proposals are approved conceptually; requested content paths are not yet
+authorized. A delegate also suggests a new glossary file.
+
+**Expected behavior:**
+
+1. Concept approval does not permit mutation.
+2. Exact content mutation manifest lists operation, path, base hash, writer, proposal
+   IDs, size limit, and non-writes.
+3. Only named paths may be written after authority approval.
+4. Suggested glossary path is excluded or requires a revised manifest and new
+   authorization.
+
+**Assertions:**
+
+- [ ] Unknown future changes are never pre-authorized
+- [ ] Canon-promotion authority and content-write authority are distinct
+- [ ] No per-file prompts occur inside unchanged authorized scope
+- [ ] Scope expansion stops before writing
+
+---
+
+## Case 10: Canon registry is a separately verified shared artifact
+
+**Fixture:** A canon decision creates a new faction fact and registry ID.
+
+**Expected behavior:** One canon writer edits the fact; one registry recorder updates
+the shared registry sequentially; both verify base hashes, read back, validate
+references, and contribute to the sorted canon-baseline hash.
+
+**Assertions:**
+
+- [ ] No two agents write the registry
+- [ ] Product decision is recorded before promotion authorization
+- [ ] Failed registry validation prevents `CANON_FROZEN`
+- [ ] Downstream proposals do not start on partial canon promotion
+
+---
+
+## Case 11: Mystery truth and spoiler access boundary
+
+**Fixture:** A public dialogue references a mystery whose true answer is confidential.
+
+**Expected behavior:** The answer is written only to a declared private canon
+artifact; public content uses its stable truth ID. Read-back validates access class,
+truth coverage, references, and hashes.
+
+**Assertions:**
+
+- [ ] Protected truth text does not leak into public artifacts or proposal evidence
+- [ ] Missing private truth artifact or orphan truth ID blocks completion
+- [ ] Independent review includes the spoiler partition check
+
+---
+
+## Case 12: Missing real UI/string constraints
+
+**Fixture:** Dialogue is proposed, but the request manifest declares no verifiable UX
+or string-system constraint source.
+
+**Expected behavior:** Affected constraints are `UNKNOWN`; the workflow does not
+invent a 120-character limit; localization is not ready and verdict is `PARTIAL` or
+`BLOCKED` with one action to supply the source.
+
+**Assertions:**
+
+- [ ] Generic language-expansion percentages do not replace actual constraints
+- [ ] Unknown constraints cannot pass localization review
+- [ ] `COMPLETE` is impossible until sources are supplied and review is rerun
 
 ---
 
 ## Protocol Compliance
 
-- [ ] `user-input request` is used after every phase output before the next phase launches
-- [ ] Parallel spawning: Phase 2 (world-builder + writer) and Phase 5 (writer + localization-lead + world-builder) issue all Codex subagent delegations before waiting for results
-- [ ] No files are written by the orchestrator directly — all writes are delegated to sub-agents
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] BLOCKED status from any agent is surfaced immediately — not silently skipped
-- [ ] A partial report is always produced when some agents complete and others block
-- [ ] Verdict is exactly COMPLETE or BLOCKED — no other verdict values used
-- [ ] Next Steps handoff references `$design-review`, `$localize extract`, and `$dev-story`
+- [ ] Canon is validated, decided, authorized when changed, and frozen before
+  downstream creative proposals
+- [ ] All parallel work is read-only, bounded, cancelable, retry-limited, and immune
+  to late writes
+- [ ] Every write has one owner, an exact authorization entry, a base-hash guard, and
+  read-back evidence
+- [ ] All final changes invalidate prior review until independent scoped re-review
+- [ ] Localization blockers cannot be accepted into `COMPLETE`
+- [ ] Operational records have a single coordinator recorder and immutable checkpoints
+- [ ] `COMPLETE` requires current paths/hashes/owners/review and zero blockers
+- [ ] `PARTIAL` preserves safe evidence; `BLOCKED` names the decision or dependency
+- [ ] Output has exactly one status-driven next action and performs no downstream work
 
 ---
 
 ## Coverage Notes
 
-- Phase 3 (level-designer) and Phase 4 (narrative-director review) happy-path behavior are
-  validated implicitly by Case 1. Separate edge cases are not needed for these phases as
-  their failure modes follow the standard Error Recovery Protocol.
-- The "Retry with narrower scope" and "Skip this agent" resolution paths from the Error
-  Recovery Protocol are not separately tested — they follow the same `user-input request`
-  + partial-report pattern validated in Cases 2 and 5.
-- Localization concerns that are advisory (e.g., German/Finnish +30% expansion warnings)
-  vs. blocking (hardcoded formats) are distinguished in Case 4; advisory-only scenarios
-  follow the same pattern but do not change the verdict.
-- The writer's "all lines under 120 characters" and "string keys not raw strings" checks
-  in Phase 5 are covered implicitly by Case 4's localization compliance scenario.
+Cases 2, 4, 5, and 6 directly regress the five audited P0 failures: canon-before-
+parallel ordering, unique write ownership, independent final-hash review,
+localization completion gating, and narrative-specific review routing. Cases 7–12
+cover adjacent side-effect, authorization, bounded-concurrency, resume, registry,
+spoiler, and real-constraint contracts so those P0 fixes cannot be bypassed through
+another path.

@@ -17,12 +17,14 @@ team member understand the "big picture" of what needs to be designed and built.
 
 ## Systems Enumeration
 
-| # | System Name | Category | Priority | Status | Design Doc | Depends On |
-|---|-------------|----------|----------|--------|------------|------------|
-| 1 | [e.g., Player Controller] | Core | MVP | [Not Started / In Design / In Review / Approved / Implemented] | [design/gdd/player-controller.md or "—"] | [e.g., Input System, Physics] |
-| 2 | [e.g., Camera System] | Core | MVP | Not Started | — | Player Controller |
+| # | System ID | System Name | Category | Priority | Status | Design Doc | Depends On IDs |
+|---|-----------|-------------|----------|----------|--------|------------|----------------|
+| 1 | SYS-player-controller | [e.g., Player Controller] | Core | MVP | [Not Started / In Design / In Review / Approved / Implemented] | [design/gdd/player-controller.md or "—"] | [e.g., SYS-input, SYS-physics] |
+| 2 | SYS-camera | [e.g., Camera System] | Core | MVP | Not Started | — | SYS-player-controller |
 
-[Add a row for every identified system. Use the categories and priority tiers
+[Add a row for every identified system. `System ID` is persistent identity in
+the form `SYS-<canonical-kebab-slug>`; preserve it when ordering or display names
+change and block normalization collisions. Use the categories and priority tiers
 defined below. Mark systems that were inferred (not explicitly in the concept doc)
 with "(inferred)" in the system name.]
 
@@ -65,23 +67,23 @@ Systems at the top are foundations; systems at the bottom are wrappers.]
 
 ### Foundation Layer (no dependencies)
 
-1. [System] — [one-line rationale for why this is foundational]
+1. [SYS-id] [System] — [one-line rationale for why this is foundational]
 
 ### Core Layer (depends on foundation)
 
-1. [System] — depends on: [list]
+1. [SYS-id] [System] — depends on IDs: [list]
 
 ### Feature Layer (depends on core)
 
-1. [System] — depends on: [list]
+1. [SYS-id] [System] — depends on IDs: [list]
 
 ### Presentation Layer (depends on features)
 
-1. [System] — depends on: [list]
+1. [SYS-id] [System] — depends on IDs: [list]
 
 ### Polish Layer (depends on everything)
 
-1. [System] — depends on: [list]
+1. [SYS-id] [System] — depends on IDs: [list]
 
 ---
 
@@ -91,10 +93,10 @@ Systems at the top are foundations; systems at the bottom are wrappers.]
 order. Each system's GDD should be completed and reviewed before starting the
 next, though independent systems at the same layer can be designed in parallel.]
 
-| Order | System | Priority | Layer | Agent(s) | Est. Effort |
-|-------|--------|----------|-------|----------|-------------|
-| 1 | [First system to design] | MVP | Foundation | game-designer | [S/M/L] |
-| 2 | [Second system] | MVP | Foundation | game-designer | [S/M/L] |
+| Order | System ID | System | Priority | Layer | Agent(s) | Est. Effort |
+|-------|-----------|--------|----------|-------|----------|-------------|
+| 1 | [SYS-id] | [First system to design] | MVP | Foundation | game-designer | [S/M/L] |
+| 2 | [SYS-id] | [Second system] | MVP | Foundation | game-designer | [S/M/L] |
 
 [Effort estimates: S = 1 session, M = 2-3 sessions, L = 4+ sessions.
 A "session" is one focused design conversation producing a complete GDD.]

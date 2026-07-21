@@ -1,4 +1,4 @@
 interface:
   display_name: "Dev Story"
-  short_description: "Read a story file and implement it"
-  default_prompt: "Use $dev-story to run the Dev Story game-studio workflow."
+  short_description: "Implement an authorized, provenance-safe story transaction"
+  default_prompt: "Use $dev-story to validate provenance and dependencies, authorize an exact owned fileset, implement the story with tests, and hand it to review."

@@ -1,449 +1,308 @@
 ---
 name: adopt
-description: "Brownfield onboarding — audits existing project artifacts for template format compliance (not just existence), classifies gaps by impact, and produces a numbered migration plan. Run this when joining an in-progress project or upgrading from an older template version. Distinct from $project-stage-detect (which checks what exists) — this checks whether what exists will actually work with the template's skills."
+description: "Audit brownfield artifact formats against versioned rules, produce stable hash-bound FORMAT GAP or COMPATIBILITY RISK findings, and write only one separately approved immutable migration report."
 ---
 
 ## Invocation and execution
 
-Invoke this workflow as `$adopt`.
+Invoke this workflow as `$adopt [summary|full|gdds|adrs|stories|infra]`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+No argument means `summary`: inventory artifact classes, declared stage,
+available rule sources, prior report IDs, and estimated full-scan size without
+opening every artifact. `full` must be explicit. Reject unknown, repeated, or
+combined modes with `ERROR`.
 
-Arguments: `[focus: full | gdds | adrs | stories | infra]`. Treat bracketed values as optional unless the workflow says otherwise.
+The audited GDDs, ADRs, indexes, stories, infrastructure, stage, and configuration
+are strictly read-only. The only permitted mutation is one independent migration
+report after exact authorization. This workflow never repairs an artifact,
+changes `review-mode.txt`, runs a retrofit, or invokes another project skill.
 
-Delegate substantive work to the `technical-director` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+Valid outcomes are:
 
+- `REPORT READY`;
+- `PARTIAL`;
+- `NO FORMAT GAPS IN SCANNED SCOPE`; or
+- `ERROR`.
 
-# Adopt — Brownfield Template Adoption
-
-This skill audits an existing project's artifacts for **format compliance** with
-the template's skill pipeline, then produces a prioritised migration plan.
-
-**This is not `$project-stage-detect`.**
-`$project-stage-detect` answers: *what exists?*
-`$adopt` answers: *will what exists actually work with the template's skills?*
-
-A project can have GDDs, ADRs, and stories — and every format-sensitive skill
-will still fail silently or produce wrong results if those artifacts are in the
-wrong internal format.
-
-**Output:** `docs/adoption-plan-[date].md` — a persistent, checkable migration plan.
-
-**Argument modes:**
-
-**Audit mode:** the first provided argument (blank = `full`)
-
-- **No argument / `full`**: Complete audit — all artifact types
-- **`gdds`**: GDD format compliance only
-- **`adrs`**: ADR format compliance only
-- **`stories`**: Story format compliance only
-- **`infra`**: Infrastructure artifact gaps only (registry, manifest, sprint-status, stage.txt)
+None of these outcomes proves runtime compatibility.
 
 ---
 
-## Phase 1: Detect Project State
+## Phase 0: Freeze target, rules, and write boundary
 
-Emit one line before reading: `"Scanning project artifacts..."` — this confirms the
-skill is running during the silent read phase.
+Resolve one workspace root and one mode. Reject traversal, outside-root paths,
+ambiguous roots, and symlink escape.
 
-Then read silently before presenting anything else.
+Record a target snapshot:
 
-### Existence check
-- `production/stage.txt` — if present, read it (authoritative phase)
-- `design/gdd/game-concept.md` — concept exists?
-- `design/gdd/systems-index.md` — systems index exists?
-- Count GDD files: `design/gdd/*.md` (excluding game-concept.md and systems-index.md)
-- Count ADR files: `docs/architecture/adr-*.md`
-- Count story files: `production/epics/**/*.md` (excluding EPIC.md)
-- `.codex/docs/technical-preferences.md` — engine configured?
-- `docs/engine-reference/` — engine reference docs present?
-- Find files matching `docs/adoption-plan-*.md` — note the filename of the most recent prior plan if any exist
+- VCS commit/ref and dirty state when available;
+- normalized artifact inventory with raw path/hash/byte size/class;
+- authoritative declared stage from `production/stage.txt`, if valid;
+- current template/rule sources with version and raw hash; and
+- current consumer skill/spec versions or hashes when explicitly available.
 
-### Infer phase (if no stage.txt)
-Use the same heuristic as `$project-stage-detect`:
-- 10+ source files in `src/` → Production
-- Stories in `production/epics/` → Pre-Production
-- ADRs exist → Technical Setup
-- systems-index.md exists → Systems Design
-- game-concept.md exists → Concept
-- Nothing → Fresh (not a brownfield project — suggest `$start`)
+Do not infer a project stage from source/story/ADR counts. If no versioned
+stage-analysis artifact or valid stage declaration exists, report stage
+`UNVERIFIED`. This workflow never duplicates `$project-stage-detect` heuristics
+or invokes that workflow.
 
-If the project appears fresh (no artifacts at all), ask the user directly:
-- "This looks like a fresh project — no existing artifacts found. `$adopt` is for
-  projects with work to migrate. What would you like to do?"
-  - "Run `$start` — begin guided first-time onboarding"
-  - "My artifacts are in a non-standard location — help me find them"
-  - "Cancel"
+Before scanning, declare the only possible write paths:
 
-Then stop — do not proceed with the audit regardless of which option the user picks
-(each option leads to a different skill or manual investigation).
+- normal artifact: an immutable report at
+  `docs/adoption/adoption-audit-[UTC-run-id]-[snapshot8].md`;
+- no source, configuration, checkpoint, cache, or auxiliary path.
 
-Report: "Detected phase: [phase]. Found: [N] GDDs, [M] ADRs, [P] stories."
+The UTC run ID must include seconds and the first eight hex characters of the
+target snapshot hash. If the exact report path already exists, treat it as a
+collision, generate a new run ID, and rebuild the preview. Never overwrite or
+append to a prior report.
+
+All analyzers and reviewers are read-only. Choose exactly one report writer only
+after the report bytes are complete. It owns the one exact path and nothing else.
 
 ---
 
-## Phase 2: Format Audit
+## Phase 1: Build a versioned rule manifest
 
-For each artifact type in scope (based on argument mode), check not just that
-the file exists but that it contains the internal structure the template requires.
+For the selected artifact classes, load only current canonical templates,
+schemas, or behavioral specs that explicitly define required structure. Record
+for every rule:
 
-### 2a: GDD Format Audit
+- stable rule ID and rule version;
+- artifact class and exact applicability predicate;
+- canonical source path, section, and raw hash;
+- objective format check;
+- evidence required to call the check present/missing/unknown;
+- default migration priority and rationale; and
+- owning artifact workflow.
 
-For each GDD file found, check for the 8 required sections by scanning headings:
+A copied heading/status list inside this skill is not authoritative. If a
+canonical source is missing, conflicting, unversioned, or unreadable, mark the
+rule `UNVERIFIED` and do not manufacture a gap.
 
-| Required Section | Heading pattern to look for |
+The report may distinguish:
+
+- `FORMAT GAP` — objective current artifact bytes do not satisfy a versioned
+  structural rule;
+- `COMPATIBILITY RISK` — a format difference may affect a named consumer, but
+  runtime behavior has not been fixture-tested;
+- `RULE UNVERIFIED` — no trustworthy current rule can support a conclusion; and
+- `NOT APPLICABLE` — the rule's explicit applicability predicate is false.
+
+Never state that a skill silently passes, fails, malfunctions, is safe, or
+continues to work from headings, field presence, regexes, filenames, or status
+strings alone. Actual behavior belongs to a separately executed `$skill-test`
+fixture against the current consumer version.
+
+---
+
+## Phase 2: Run a bounded read-only format audit
+
+Use exact mode scopes:
+
+| Mode | Artifact scope |
 |---|---|
-| Overview | `## Overview` |
-| Player Fantasy | `## Player Fantasy` |
-| Detailed Rules / Design | `## Detailed` or `## Core Rules` or `## Detailed Design` |
-| Formulas | `## Formulas` or `## Formula` |
-| Edge Cases | `## Edge Cases` |
-| Dependencies | `## Dependencies` or `## Depends` |
-| Tuning Knobs | `## Tuning` |
-| Acceptance Criteria | `## Acceptance` |
+| summary | inventory and cost estimate only; no per-artifact compliance verdict |
+| full | GDD, ADR, systems index, stories, infrastructure, and technical preferences |
+| gdds | GDD artifacts only |
+| adrs | ADR artifacts only |
+| stories | story artifacts only |
+| infra | infrastructure/configuration artifacts only |
 
-For each GDD, record:
-- Which sections are present
-- Which sections are missing
-- Whether it has any content in present sections or just placeholder text
-  (`[To be designed]` or equivalent)
+Process at most 20 artifact files or 250 KiB of UTF-8 text per batch. Paginate
+deterministically by normalized path. The full scan may use multiple explicit
+batches, but it must record each batch manifest hash and stop at the declared
+time/context budget. Never silently sample or omit.
 
-Also check: does each GDD have a `**Status**:` field in its header block?
-Valid values: `In Design`, `Designed`, `In Review`, `Approved`, `Needs Revision`.
+For each artifact, record raw hash before reading, applicable rule IDs, objective
+evidence locations, and parse result. Unreadable, concurrently changed,
+oversized, parser-unsupported, permission-denied, or omitted files are coverage
+gaps. If any selected-scope artifact or rule is unverified, the maximum outcome
+is PARTIAL.
 
-### 2b: ADR Format Audit
+An optional technical-director reviewer may inspect the evidence and priorities,
+but remains read-only. Reviewer prose cannot replace a canonical rule, artifact
+hash, or behavioral fixture.
 
-For each ADR file found, check for these critical sections:
-
-| Section | Impact if missing |
-|---|---|
-| `## Status` | **BLOCKING** — `$story-readiness` ADR status check silently passes everything |
-| `## ADR Dependencies` | HIGH — dependency ordering in `$architecture-review` breaks |
-| `## Engine Compatibility` | HIGH — post-cutoff API risk is unknown |
-| `## GDD Requirements Addressed` | MEDIUM — traceability matrix loses coverage |
-| `## Performance Implications` | LOW — not pipeline-critical |
-
-For each ADR, record: which sections present, which missing, current Status value
-if the Status section exists.
-
-### 2c: systems-index.md Format Audit
-
-If `design/gdd/systems-index.md` exists:
-
-1. **Parenthetical status values** — Search file contents for any Status cell containing
-   parentheses: `"Needs Revision ("`, `"In Progress ("`, etc.
-   These break exact-string matching in `$gate-check`, `$create-stories`,
-   and `$architecture-review`. **BLOCKING.**
-
-2. **Valid status values** — check that Status column values are only from:
-   `Not Started`, `In Progress`, `In Review`, `Designed`, `Approved`, `Needs Revision`
-   Flag any unrecognised values.
-
-3. **Column structure** — check that the table has at minimum: System name,
-   Layer, Priority, Status columns. Missing columns degrade skill functionality.
-
-### 2d: Story Format Audit
-
-For each story file found:
-
-- **`Manifest Version:` field** — present in story header? (LOW — auto-passes if absent)
-- **TR-ID reference** — does story contain `TR-[a-z]+-[0-9]+` pattern? (MEDIUM — no staleness tracking)
-- **ADR reference** — does story reference at least one ADR? (check for `ADR-` pattern)
-- **Status field** — present and readable?
-- **Acceptance criteria** — does the story have a checkbox list (`- [ ]`)?
-
-### 2e: Infrastructure Audit
-
-| Artifact | Path | Impact if missing |
-|---|---|---|
-| TR registry | `docs/architecture/tr-registry.yaml` | HIGH — no stable requirement IDs |
-| Control manifest | `docs/architecture/control-manifest.md` | HIGH — no layer rules for stories |
-| Manifest version stamp | In manifest header: `Manifest Version:` | MEDIUM — staleness checks blind |
-| Sprint status | `production/sprint-status.yaml` | MEDIUM — `$sprint-status` falls back to markdown |
-| Stage file | `production/stage.txt` | MEDIUM — phase auto-detect unreliable |
-| Engine reference | `docs/engine-reference/[engine]/VERSION.md` | HIGH — ADR engine checks blind |
-| Architecture traceability | `docs/architecture/architecture-traceability.md` | MEDIUM — no persistent matrix |
-
-### 2f: Technical Preferences Audit
-
-Read `.codex/docs/technical-preferences.md`. Check each field for `[TO BE CONFIGURED]`:
-- Engine, Language, Rendering, Physics → HIGH if unconfigured (ADR skills fail)
-- Naming conventions → MEDIUM
-- Performance budgets → MEDIUM
-- Forbidden Patterns, Allowed Libraries → LOW (starts empty by design)
+After scanning, rehash every read artifact. Any changed hash makes its findings
+stale. Do not reread under the old snapshot, overwrite the concurrent edit, or
+continue to a clean conclusion.
 
 ---
 
-## Phase 3: Classify and Prioritise Gaps
+## Phase 3: Normalize stable findings
 
-Organise every gap found across all audits into four severity tiers:
+Every finding contains:
 
-**BLOCKING** — Will cause template skills to silently produce wrong results *right now*.
-Examples: ADR missing Status field, systems-index parenthetical status values,
-engine not configured when ADRs exist.
+- stable ID:
+  `ADOPT-[class]-[rule-id]-[normalized-path-fingerprint]`;
+- kind: FORMAT GAP, COMPATIBILITY RISK, or RULE UNVERIFIED;
+- migration priority: BLOCKING, HIGH, MEDIUM, or LOW;
+- rule ID/version/source path/section/hash;
+- artifact path, target raw hash, and target snapshot hash;
+- exact redacted structural evidence;
+- confidence and applicability;
+- status `OPEN`;
+- unique artifact owner;
+- proposed destination workflow;
+- testable closure condition; and
+- behavior-validation requirement, when compatibility is only a risk.
 
-**HIGH** — Will cause stories to be generated with missing safety checks, or
-infrastructure bootstrapping will fail.
-Examples: ADRs missing Engine Compatibility, GDDs missing Acceptance Criteria
-(stories can't be generated from them), tr-registry.yaml missing.
+Priority orders migration work; it is not a claim about runtime behavior. Words
+such as BLOCKING or HIGH must be accompanied by the exact versioned rule and
+bounded consequence. Do not say the consumer actually fails unless an external
+current-version fixture supplies that evidence.
 
-**MEDIUM** — Degrades quality and pipeline tracking but does not break functionality.
-Examples: GDDs missing Tuning Knobs or Formulas sections, stories missing TR-IDs,
-sprint-status.yaml missing.
-
-**LOW** — Retroactive improvements that are nice-to-have but not urgent.
-Examples: Stories missing Manifest Version stamps, GDDs missing Open Questions section.
-
-Count totals per tier. If zero BLOCKING and zero HIGH gaps: report that the project
-is template-compatible and only advisory improvements remain.
-
----
-
-## Phase 4: Build the Migration Plan
-
-Compose a numbered, ordered action plan. Ordering rules:
-1. BLOCKING gaps first (must fix before any pipeline skill runs reliably)
-2. HIGH gaps next, infrastructure before GDD/ADR content (bootstrapping needs correct formats)
-3. MEDIUM gaps ordered: GDD gaps before ADR gaps before story gaps (stories depend on GDDs and ADRs)
-4. LOW gaps last
-
-For each gap, produce a plan entry with:
-- A clear problem statement (one sentence, no jargon)
-- The exact command to fix it, if a skill handles it
-- Manual steps if it requires direct editing
-- A time estimate (rough: 5 min / 30 min / 1 session)
-- A checkbox `- [ ]` for tracking
-
-**Special case — systems-index parenthetical status values:**
-This is always the first item if present. Show the exact values that need changing
-and the exact replacement text. Offer to fix this immediately before writing the plan.
-
-**Special case — ADRs missing Status field:**
-For each affected ADR, the fix is:
-`$architecture-decision retrofit docs/architecture/adr-[NNNN]-[slug].md`
-List each ADR as a separate checkable item.
-
-**Special case — GDDs missing sections:**
-For each affected GDD, list which sections are missing and the fix:
-`$design-system retrofit design/gdd/[filename].md`
-
-**Infrastructure bootstrap ordering** — always present in this sequence:
-1. Fix ADR formats first (registry depends on reading ADR Status fields)
-2. Run `$architecture-review` → bootstraps `tr-registry.yaml`
-3. Run `$create-control-manifest` → creates manifest with version stamp
-4. Run `$sprint-plan update` → creates `sprint-status.yaml`
-5. Run `$gate-check [phase]` → writes `stage.txt` authoritatively
-
-**Existing stories** — note explicitly:
-> "Existing stories continue to work with all template skills — all new format
-> checks auto-pass when the fields are absent. They won't benefit from TR-ID
-> staleness tracking or manifest version checks until they're regenerated. This
-> is intentional: do not regenerate stories that are already in progress."
+Deduplicate by stable ID. A changed title, ordering, or report run does not create
+a new ID when the rule and normalized artifact identity are unchanged.
 
 ---
 
-## Phase 5: Present Summary and Ask to Write
+## Phase 4: Build a migration handoff plan
 
-Present a compact summary before writing:
+Order OPEN findings by dependency, then migration priority. For each entry list:
 
-```
-## Adoption Audit Summary
-Phase detected: [phase]
-Engine: [configured / NOT CONFIGURED]
-GDDs audited: [N] ([X] fully compliant, [Y] with gaps)
-ADRs audited: [N] ([X] fully compliant, [Y] with gaps)
-Stories audited: [N]
+- finding ID and evidence hash;
+- owning artifact workflow/role;
+- exact artifact path;
+- bounded desired end state and closure check;
+- prerequisites and dependency IDs;
+- suggested separate workflow or manual owner action; and
+- rough effort labeled as an estimate, not evidence.
 
-Gap counts:
-  BLOCKING: [N] — template skills will malfunction without these fixes
-  HIGH:     [N] — unsafe to run $create-stories or $story-readiness
-  MEDIUM:   [N] — quality degradation
-  LOW:      [N] — optional improvements
+This is a handoff manifest, not an implementation plan. It contains no write
+authorization for audited artifacts and does not execute any listed command or
+skill.
 
-Estimated remediation: [X blocking items × ~Y min each = roughly Z hours]
-```
+Route by authority:
 
-Before asking to write, show a **Gap Preview**:
-- List every BLOCKING gap as a one-line bullet describing the actual problem
-  (e.g. `systems-index.md: 3 rows have parenthetical status values`,
-  `adr-0002.md: missing ## Status section`). No counts — show the actual items.
-- Show HIGH / MEDIUM / LOW as counts only (e.g. `HIGH: 4, MEDIUM: 2, LOW: 1`).
+- GDD gaps → the GDD's authoring/retrofit owner;
+- ADR gaps → architecture-decision owner;
+- story gaps → story authoring/readiness owner;
+- systems index → systems-design/index owner;
+- infrastructure/manifest/registry → its declared bootstrap owner;
+- review-mode/configuration → an independently authorized configuration owner.
 
-This gives the user enough context to judge scope before committing to writing the file.
+Do not offer to fix a status string, add ADR fields, generate stories, bootstrap
+registries, set stage, or write review mode inside this run. Do not claim
+existing stories will or will not work; route compatibility validation to an
+explicit current-version fixture.
 
-If a prior adoption plan was detected in Phase 1, add a note:
-> "A previous plan exists at `docs/adoption-plan-[prior-date].md`. The new plan will
-> reflect current project state — it does not diff against the prior run."
-
-Ask the user directly:
-- "Ready to write the migration plan?"
-  - "Yes — write `docs/adoption-plan-[date].md`"
-  - "Show me the full plan preview first (don't write yet)"
-  - "Cancel — I'll handle migration manually"
-
-If the user picks "Show me the full plan preview", output the complete plan as a
-fenced markdown block. Then ask again with the same three options.
+Any downstream handoff failure remains an OPEN dependency in the report. It
+cannot mutate this audit outcome or trigger another workflow automatically.
 
 ---
 
-## Phase 6: Write the Adoption Plan
+## Phase 5: Focused re-audit and convergence
 
-Once the complete changeset is authorized, write `docs/adoption-plan-[date].md` with this structure:
+If a prior immutable adoption report is supplied, validate its report hash,
+target snapshot, rule-manifest hash, and OPEN finding set.
 
-```markdown
-# Adoption Plan
+A focused re-audit checks:
 
-> **Generated**: [date]
-> **Project phase**: [phase]
-> **Engine**: [name + version, or "Not configured"]
-> **Template version**: v1.0+
+1. prior OPEN finding IDs against their exact closure conditions;
+2. artifacts changed since the prior target snapshot;
+3. rules changed since the prior rule-manifest snapshot; and
+4. regressions introduced by the current diff.
 
-Work through these steps in order. Check off each item as you complete it.
-Re-run `$adopt` anytime to check remaining gaps.
+Preserve stable IDs. Mark a prior finding `RESOLUTION UNVERIFIED` unless its
+current artifact hash and closure evidence are actually checked. The audit
+report itself never edits an external lifecycle record.
 
----
-
-## Step 1: Fix Blocking Gaps
-
-[One sub-section per blocking gap with problem, fix command, time estimate, checkbox]
-
----
-
-## Step 2: Fix High-Priority Gaps
-
-[One sub-section per high gap]
+Allow one focused verification pass per invocation. If targets change again
+during that pass, stop PARTIAL and require a new invocation. Never loop through
+report → retrofit → report inside one task.
 
 ---
 
-## Step 3: Bootstrap Infrastructure
+## Phase 6: Preview and write only the immutable report
 
-### 3a. Register existing requirements (creates tr-registry.yaml)
-Run `$architecture-review` — even if ADRs already exist, this run bootstraps
-the TR registry from your existing GDDs and ADRs.
-**Time**: 1 session (review can be long for large codebases)
-- [ ] tr-registry.yaml created
+First return a complete redacted preview containing:
 
-### 3b. Create control manifest
-Run `$create-control-manifest`
-**Time**: 30 min
-- [ ] docs/architecture/control-manifest.md created
+- mode, run ID, target snapshot/hash, declared stage evidence;
+- rule-manifest version/hash and consumer versions examined;
+- batch/scope coverage and omitted/unverified items;
+- every stable finding with kind, priority, evidence, owner, and status;
+- migration handoff dependencies;
+- prior-run delta when performing a focused re-audit;
+- explicit disclaimer:
+  `FORMAT AUDIT ONLY — RUNTIME COMPATIBILITY NOT TESTED`; and
+- exact report bytes and raw SHA-256.
 
-### 3c. Create sprint tracking file
-Run `$sprint-plan update`
-**Time**: 5 min (if sprint plan already exists as markdown)
-- [ ] production/sprint-status.yaml created
+If the user wants persistence, present one changeset with the exact report path,
+create operation, `ABSENT` baseline, single report writer, content hash, and
+target/rule snapshot hashes. Ask once. Any path, owner, operation, content, target
+snapshot, or rule-manifest change invalidates approval.
 
-### 3d. Set authoritative project stage
-Run `$gate-check [current-phase]`
-**Time**: 5 min
-- [ ] production/stage.txt written
+Immediately before writing, rehash every audited artifact, rule source, and the
+report target. Any mismatch cancels the write. The report writer writes the exact
+approved bytes once and verifies the post-write raw hash.
 
----
-
-## Step 4: Medium-Priority Gaps
-
-[One sub-section per medium gap]
+If the user cancels, return the preview and stop with no mutation. Do not ask
+about review mode or offer an immediate fix afterward.
 
 ---
 
-## Step 5: Optional Improvements
+## Outcome rules
 
-[One sub-section per low gap]
+Return `ERROR` when no valid target/rule/scope identity can be established.
 
----
+Return `PARTIAL` when any selected artifact/rule was omitted, changed,
+unreadable, unparsed, permission-denied, or otherwise unverified. Include
+confirmed findings separately; never call the project compatible.
 
-## What to Expect from Existing Stories
+Return `NO FORMAT GAPS IN SCANNED SCOPE` only when every selected artifact and
+applicable versioned rule was checked and no FORMAT GAP or COMPATIBILITY RISK was
+found. Still state that runtime compatibility was not tested.
 
-Existing stories continue to work with all template skills. New format checks
-(TR-ID validation, manifest version staleness) auto-pass when the fields are
-absent — so nothing breaks. They won't benefit from staleness tracking until
-regenerated. Do not regenerate stories that are in progress or done.
-
----
-
-## Re-run
-
-Run `$adopt` again after completing Step 3 to verify all blocking and high gaps
-are resolved. The new run will reflect the current state of the project.
-```
+Return `REPORT READY` when complete selected-scope evidence contains one or more
+findings and the preview/report is ready. A report write is optional and does not
+change the evidence outcome.
 
 ---
 
-## Phase 6b: Set Review Mode
+## Mutation and authorization boundaries
 
-After writing the adoption plan (or if the user cancels writing), check whether
-`production/review-mode.txt` exists.
+During ordinary analysis, the allowed write set is empty. After exact report
+approval, it contains one create-only immutable report path.
 
-**If it exists**: Read it and note the current mode — "Review mode is already set to `[current]`." — skip the prompt.
+Never modify:
 
-**If it does not exist**: Ask the user directly:
+- `design/gdd/systems-index.md` or any GDD;
+- any ADR, story, registry, manifest, sprint/status, stage, or engine reference;
+- `production/review-mode.txt` or another configuration;
+- source, tests, assets, templates, skills, catalogs, or prior adoption reports.
 
-- **Prompt**: "One more setup step: how much design review would you like as you work through the workflow?"
-- **Options**:
-  - `Full` — Director specialists review at each key workflow step. Best for teams, learning the workflow, or when you want thorough feedback on every decision.
-  - `Lean (recommended)` — Directors only at phase gate transitions ($gate-check). Skips per-skill reviews. Balanced for solo devs and small teams.
-  - `Solo` — No director reviews at all. Maximum speed. Best for game jams, prototypes, or if reviews feel like overhead.
-
-Write the choice to `production/review-mode.txt` immediately after selection — without requesting a second approval:
-- `Full` → write `full`
-- `Lean (recommended)` → write `lean`
-- `Solo` → write `solo`
-
-Create the `production/` directory if it does not exist.
+Do not ask for broad directory, glob, retrofit, bulk-fix, or future-file
+authorization. External fixes require a separate task with exact paths, unique
+owners, operations, baseline hashes, tests, and explicit approval.
 
 ---
 
-## Phase 7: Offer First Action
+## Output
 
-After writing the plan, don't stop there. Pick the single highest-priority gap
-and offer to handle it immediately by asking the user directly. Choose the first
-branch that applies:
+Report:
 
-**If there are parenthetical status values in systems-index.md:**
-Ask the user directly:
-- "The most urgent fix is `systems-index.md` — [N] rows have parenthetical status
-  values (e.g. `Needs Revision (see notes)`) that break $gate-check,
-  $create-stories, and $architecture-review right now. I can fix these in-place."
-  - "Fix it now — edit systems-index.md"
-  - "I'll fix it myself"
-  - "Done — leave me with the plan"
+- one outcome;
+- exact mode, scope/batch coverage, target and rule-manifest hashes;
+- stable finding counts by kind and migration priority;
+- omitted/unverified/concurrently changed items;
+- immutable report path/hash or `NOT WRITTEN`;
+- owner-separated migration handoffs; and
+- the runtime-compatibility disclaimer.
 
-**If ADRs are missing `## Status` (and no parenthetical issue):**
-Ask the user directly:
-- "The most urgent fix is adding `## Status` to [N] ADR(s): [list filenames].
-  Without it, $story-readiness silently passes all ADR checks. Start with
-  [first affected filename]?"
-  - "Yes — retrofit [first affected filename] now"
-  - "Retrofit all [N] ADRs one by one"
-  - "I'll handle ADRs myself"
-
-**If GDDs are missing Acceptance Criteria (and no blocking issues above):**
-Ask the user directly:
-- "The most urgent gap is missing Acceptance Criteria in [N] GDD(s):
-  [list filenames]. Without them, $create-stories can't generate stories.
-  Start with [highest-priority GDD filename]?"
-  - "Yes — add Acceptance Criteria to [GDD filename] now"
-  - "Do all [N] GDDs one by one"
-  - "I'll handle GDDs myself"
-
-**If no BLOCKING or HIGH gaps exist:**
-Ask the user directly:
-- "No blocking gaps — this project is template-compatible. What next?"
-  - "Walk me through the medium-priority improvements"
-  - "Run $project-stage-detect for a broader health check"
-  - "Done — I'll work through the plan at my own pace"
-
-> **Adoption plan saved to `docs/adoption-plan-[date].md`.** Re-run `$adopt` at any time to re-check remaining gaps as you complete them.
+Recommend at most one next action: the highest-priority artifact-owner handoff,
+a current-version compatibility fixture, or completion of missing audit
+coverage. Never execute it in this workflow.
 
 ---
 
-## Collaborative Protocol
+## Non-negotiable rules
 
-1. **Read silently** — complete the full audit before presenting anything
-2. **Show the summary first** — let the user see scope before asking to write
-3. **Single changeset approval** — include the adoption plan in the complete preview and create it only after the one approval
-4. **Offer, don't force** — the plan is advisory; the user decides what to fix and when
-5. **One action at a time** — after handing off the plan, offer one specific next step,
-   not a list of six things to do simultaneously
-6. **Never regenerate existing artifacts** — only fill gaps in what exists;
-   do not rewrite GDDs, ADRs, or stories that already have content
+- Never repair an audited artifact or configuration.
+- Never write or change review mode.
+- Never infer runtime behavior from static format heuristics.
+- Never overwrite an adoption report.
+- Never let an analyzer/reviewer write.
+- Never expand the approved one-file write boundary.
+- Never run another project skill from this workflow.

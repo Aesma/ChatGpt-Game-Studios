@@ -1,4 +1,4 @@
 interface:
   display_name: "Start"
-  short_description: "First-time onboarding — asks where you are, then guides you..."
-  default_prompt: "Use $start to run the Start game-studio workflow."
+  short_description: "Safe onboarding intent and catalog-derived routing"
+  default_prompt: "Use $start to record non-authoritative onboarding preferences and receive one workflow-catalog-derived recommendation without changing project stage or auto-running another workflow."

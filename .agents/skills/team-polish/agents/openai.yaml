@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Polish"
-  short_description: "Orchestrate the polish team: coordinates performance-analyst..."
-  default_prompt: "Use $team-polish to run the Team Polish game-studio workflow."
+  short_description: "Assess, integrate, and verify one exact polish candidate"
+  default_prompt: "Use $team-polish with an explicit mode and hash-bound manifest to assess read-only, authorize exact path-owned patches, and verify the final integrated build without granting release authority."

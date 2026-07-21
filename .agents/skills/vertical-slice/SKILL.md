@@ -1,364 +1,458 @@
 ---
 name: vertical-slice
-description: "Pre-Production validation — build a production-quality end-to-end build to confirm the full game loop is achievable before committing to Production. Run after GDDs, architecture, and UX specs are complete. Produces a PROCEED/PIVOT/KILL verdict that gates the Pre-Production → Production transition."
+description: "Plan and independently evaluate a hash-bound vertical-slice run using bounded implementation batches, immutable playtest evidence, a two-attempt hypothesis limit, and a deterministic non-overridable verdict."
 ---
 
-## Invocation and execution
+# Vertical Slice
 
-Invoke this workflow as `$vertical-slice`.
+A vertical slice tests whether one representative core loop can meet approved
+experience, technical, quality, and velocity thresholds. This skill separates
+planning from implementation, evidence capture, evaluation, creative advice, and
+recording. It never treats a multi-week build as one conversational changeset.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+## Invocation and task separation
 
-Arguments: `[--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Use one explicit mode:
 
-Delegate substantive work to the `prototyper` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
-
-Run implementation in an isolated Git worktree. If an isolated worktree is not available, ask the user before modifying the current workspace.
-
-
-## Purpose
-
-The **vertical slice** answers a different question from the concept prototype:
-*"Can we build this full game loop at production quality, on schedule?"*
-
-**Default use** — run late in Pre-Production, after GDDs, architecture, and UX
-specs are complete. It is a near-production-quality build demonstrating one complete
-[start → challenge → resolution] cycle.
-
-**Post-pivot?** If a PIVOT verdict from an earlier vertical slice sent you back to
-revise GDDs and architecture, run this again after revisions to re-validate. It can
-be run as many times as needed until a PROCEED or KILL verdict is reached.
-
-It validates:
-
-1. The pipeline (can the team actually produce this quality of content?)
-2. Execution feasibility (are the architecture decisions correct for this game?)
-3. Fun survival (does the fun from the concept prototype survive full design?)
-4. **Velocity** (how long did this take? That's your real production rate estimate.)
-
-**Earlier in the project?** If you haven't written GDDs yet and want to validate
-whether the core idea is worth designing, run `$prototype` (concept prototype) instead.
-
----
-
-## Phase 1: Resolve Review Mode and Load Context
-
-Resolve the review mode:
-1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
-3. Else → default to `lean`
-
-See `.codex/docs/director-gates.md` for the full check pattern.
-
-Read the following files to understand the full design intent:
-- `AGENTS.md` — tech stack and engine
-- `design/gdd/game-concept.md` — core fantasy and game pillars
-- `design/gdd/systems-index.md` — MVP systems and their priorities
-- `docs/architecture/architecture.md` — layer structure
-- `docs/architecture/control-manifest.md` — technical rules for implementation
-- Key GDDs for the systems being sliced
-
----
-
-## Phase 2: Define the Slice Scope and Validation Question
-
-Before building, define the **falsifiable validation question**:
-
-> *"Does a player, starting from nothing, experience [core fantasy from game-concept.md]
-> within [N] minutes, without developer guidance — and can we build one such loop
-> in [X] days at representative quality?"*
-
-Both parts matter: player experience AND build feasibility.
-
-**Scope discipline:**
-- Include ALL core loop systems (minimum). If a system is required to complete one
-  [start → challenge → resolution] cycle, it must be in the slice.
-- **Target scope: 3–5 minutes of polished, continuous gameplay.** This is the
-  industry-standard vertical slice length — long enough to demonstrate mechanics
-  and tone, short enough to build at representative quality. If your slice would
-  take longer than 5 minutes to play through, cut content, not quality.
-- **Cut scope before cutting quality.** A low-quality slice that looks nothing like
-  the intended game cannot validate production feasibility.
-- If the scope feels too large to build in 1–3 weeks, the slice scope is wrong —
-  not too big to build, but the slice is trying to prove too much at once.
-
-**Scope creep warning:** The vertical slice is the highest-risk moment for scope
-creep in the pre-production phase. Features feel "almost there" and it's tempting
-to add "just one more system." Resist this. Cut, do not extend.
-
-Present scope to the user before building and get confirmation.
-
----
-
-## Phase 3: Plan the Build
-
-Define in bullet points:
-- Systems implemented (which GDD sections are being exercised)
-- The complete game loop cycle ([start] → [challenge] → [resolution] exactly)
-- Art and audio quality level (placeholder acceptable, representative preferred)
-- Specific, measurable success criteria for the validation question
-- Hard time limit: [X] days. If exceeded, scope was wrong — stop and reassess.
-
-Ask the user to confirm scope before building.
-
-Once confirmed, write a session checkpoint to `production/session-state/active.md`
-(create `production/session-state/` if it does not exist). Include: concept name,
-validation question, systems in scope, art quality level, and current phase ("Phase
-4 — Implement"). Update this file at the end of each build day with what was
-completed. This is the primary recovery mechanism if the session ends mid-slice —
-multi-week Engine builds will span many sessions.
-
----
-
-## Phase 4: Implement
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, create the directory. Every file must begin with:
-
-```
-// VERTICAL SLICE - NOT FOR PRODUCTION
-// Validation Question: [What this build is proving]
-// Date: [Current date]
+```text
+$vertical-slice plan --run-id <slice-run-id> --hypothesis-id <VS-H-stable-id> --attempt <01|02> --prerequisites <exact-manifest-path> [--prior-report <exact-path>] [--target-findings <IDs>]
+$vertical-slice evaluate --run-id <slice-run-id> --plan <exact-plan-path> --evidence <exact-evidence-manifest-path> --evaluation-id <stable-id> [--creative-concerns <exact-receipt-path>] [--persist]
+$vertical-slice status <exact-evaluation-report-path> --expect-report <sha256:...>
 ```
 
-**Quality standards** — higher than concept prototype, not full production:
-- Follow architecture layers from `docs/architecture/control-manifest.md`
-- Naming conventions from `.codex/docs/technical-preferences.md`
-- No hardcoded gameplay values — use constants or config files
-- Basic error handling on critical paths
-- Placeholder art acceptable; representative art preferred
+Each mode runs in a fresh bounded task. A task that authored the plan, changed
+slice code, built the candidate, captured playtest evidence, or authored creative
+concerns cannot perform the formal evaluation. `status` is read-only.
 
-**Multi-turn loop:** After writing the initial files, ask the user to run the
-build and report what they observe. Iterate until the complete game loop cycle
-is demonstrable. Each round:
-1. User runs → reports errors or observations
-2. Agent fixes errors or adjusts systems
-3. Repeat until the full [start → challenge → resolution] cycle is playable
+Canonical orchestration artifacts live under:
 
-**Sunk cost checkpoint (day 3 of planned timeline):** If the full game loop cycle
-is not yet demonstrable, stop and reassess. Either the scope is too large or an
-architectural assumption is wrong. Surface the blocker explicitly rather than
-continuing to iterate.
+`production/validation/vertical-slices/<hypothesis-id>/attempt-<NN>/<slice-run-id>/`
 
-Conduct at least 1 playtest session once the loop is demonstrable.
+This skill owns only:
 
-**Playtesting tip:** If you can get anyone who hasn't seen the game to play it —
-a friend, family member, online community — watch them silently without explaining
-anything. Don't guide them. Their confusion reveals what the game isn't
-communicating on its own. This gives much better signal than self-testing.
+- `plan.md` in `plan` mode; and
+- a new `reports/<evaluation-id>.md` in `evaluate --persist` mode.
 
-**No external testers available?** Use rotation within the team: Dev A built
-system X, so Dev A is a naive tester for system Y. Even a two-person team can
-rotate effectively. Solo? Step away for 2-3 days then play through as a new
-player — you won't have perfect first-impression signal but you'll catch the
-critical blockers. Also try a "silent walkthrough": play your own slice in one
-sitting without stopping to fix anything and log every moment you hesitate.
+It never writes slice code, build receipts, raw playtest evidence, the evidence
+manifest, project stage, session state, `prototypes/index.md`, a pivot note,
+`GRAVEYARD.md`, or a gate record. Those belong to separately authorized owners.
 
-**Want richer observation data?** Ask the tester to **think aloud** as they play —
-narrate what they're doing and why in real time. "I'm trying to figure out how to
-attack... I pressed E... nothing... is it click?" This surfaces confusion the
-instant it occurs rather than in retrospect. Best for onboarding and UI clarity
-validation. Silent observation is still better for feel testing; think-aloud
-changes the experience slightly but produces far more granular UX data.
+Reject glob-only, directory-only, "latest", "most recent", and modification-time
+selection. Reject an existing owned output path rather than overwriting it.
 
-**Async remote option:** Record a Loom or OBS session — give someone the build,
-ask them to record their screen + audio, and send you the video. You get genuine
-first-impression data without synchronous scheduling. Works across timezones.
+## Status axes
 
-**Testing AI, NPC, or complex system behavior before it's fully implemented?** Use the
-**Wizard of Oz** technique: one person plays normally while a second person secretly
-controls the NPC or system behavior in real time. The player believes it's automated.
-This validates the *design intent* of an AI or economy system before the implementation
-is complete — and reveals exactly what behaviors the system must produce to feel correct.
-Particularly useful for vertical slices where an AI system is in scope but not yet
-polished enough for unguided testing.
+Always report these independently:
 
----
+- `Workflow Status`: `COMPLETE`, `PARTIAL`, `BLOCKED`, or `ERROR`.
+- `Evidence Verdict`: `PROCEED`, `PIVOT`, `KILL`, or `INCONCLUSIVE`.
+- `Product Decision`: `PROCEED`, `PIVOT`, `KILL`,
+  `NEW_HYPOTHESIS_REQUIRED`, or `AWAITING`.
+- `Final Verdict`: `PROCEED`, `PIVOT`, `KILL`, or
+  `BLOCKED — PRODUCT DECISION REQUIRED`.
+- `Currentness`: `CURRENT`, `STALE`, or `INVALID`.
+- `Gate Eligible`: `YES` or `NO`.
+- `Persistence`: `NOT_REQUESTED`, `DECLINED`, `VERIFIED`, or `FAILED`.
 
-## Phase 5: Playtest Debrief
+`Workflow Status: COMPLETE` only means the bounded operation finished.
+`Gate Eligible: YES` requires a verified persisted, CURRENT report whose Final
+Verdict is PROCEED. No other combination advances Pre-Production.
 
-The loop is demonstrable. Before writing the report, collect structured observations
-from actually playing it. Do NOT skip to report generation — the report is only as
-good as the observations you capture here.
+## Phase 1: Validate an exact prerequisite manifest
 
-Say exactly this:
-> "Play through the complete [start → challenge → resolution] cycle from scratch,
-> as if you're a new player with no knowledge of how it was built. Don't skip ahead
-> or use developer shortcuts. Come back when you've completed the full loop —
-> or when you've hit something that stopped you."
+`plan` reads only the supplied prerequisite manifest. Require artifact type
+`vertical-slice-prerequisite-manifest`, schema version 1, project ID, stage,
+hash algorithm `sha256`, source commit and tree hash, engine/version, target
+platform/configuration, and an ordered Sources table.
 
-Once the user returns, ask these questions **one at a time**:
+The Sources table must bind exact paths, stable IDs, lifecycle statuses, and raw
+SHA-256 hashes for:
 
-1. **Loop completion:**
-   > "Did you complete the full [start → challenge → resolution] cycle on your own,
-   > without needing any guidance from me or prior knowledge of the build?"
+- game concept and pillars;
+- systems index and every in-scope core-loop system ID;
+- architecture and control manifest;
+- every governing accepted ADR;
+- every in-scope current GDD and acceptance-criterion ID;
+- relevant UX/accessibility specification;
+- engine version reference; and
+- any prior prototype or validation evidence used to set thresholds.
 
-2. **Time check:**
-   > "How long did it take to reach the first meaningful action — the first moment
-   > where you felt like you were actually playing the game?"
+Re-read every source and verify its recorded hash and acceptable lifecycle status.
+The project stage must be Pre-Production. Missing, unreadable, ambiguous,
+unapproved, stale, or contradictory prerequisites return:
 
-3. **Core fantasy:**
-   > "The game is supposed to make you feel [core fantasy from game-concept.md].
-   > Did it? Be honest — not 'kind of' but specifically what you felt and when."
-
-4. **Blockers:**
-   > "What stopped you, confused you, or pulled you out of the experience? Any
-   > moment where you weren't sure what to do, or where something broke?"
-
-5. **Pipeline check:**
-   > "As the developer — not the player — does this feel achievable at this quality
-   > for the full game? What surprised you about how long things took to build?"
-
-6. **Verdict:**
-   > "PROCEED, PIVOT, or KILL — and the specific reason."
-
-If any answer is vague, ask: "Can you give me the specific moment where that happened?"
-Precise observations populate the report. Vague ones produce a useless report.
-
----
-
-## Phase 6: Generate Vertical Slice Report
-
-
-Track velocity throughout the build. Log:
-- Day 1: what was built
-- Day 2: what was built
-- etc.
-
-This is the most honest data you will ever have about your production rate. Do not
-skip it. It feeds directly into sprint planning.
-
-Read `.codex/docs/templates/vertical-slice-report.md` to get the report structure.
-If the template file is not found, use this fallback structure:
-- `## Vertical Slice Report — [Game Title] — [Date]`
-- `### Executive Summary` (PROCEED / PIVOT / STOP verdict + 2-sentence rationale)
-- `### Core Loop Validation` (what was tested, what passed, what failed)
-- `### Feel Assessment` (animation, controls, feedback — subjective notes)
-- `### Technical Findings` (performance, engine issues, architectural risks)
-- `### Velocity Log` (day-by-day actual progress — do not skip)
-- `### Recommended Next Steps`
-
-Fill in every section based on what was observed and built during this session.
-The velocity log must reflect actual day-by-day progress, not estimates — this is
-the most honest production rate data you will ever have. Replace all placeholder
-text with real observations.
-
-### Lessons Learned
-- What assumptions were broken by actually building to near-production quality?
-- What surprised us about the pipeline or architecture?
-- What would we change about the slice scope if we ran this again?
+```text
+Workflow Status: BLOCKED
+Evidence Verdict: INCONCLUSIVE
+Product Decision: AWAITING
+Final Verdict: BLOCKED — PRODUCT DECISION REQUIRED
+Currentness: INVALID | STALE
+Gate Eligible: NO
+Persistence: NOT_REQUESTED
 ```
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+List every failed path/ID. Do not create a plan, worktree, prototype file, or
+implementation task.
 
-Once the complete changeset is authorized, write the file. Then update `prototypes/index.md` (create if it does not
-exist) — append one row to the vertical slice table: concept name, date, verdict,
-and a link to the REPORT.md. Note whether this was a first-run slice or a re-run
-after a PIVOT. The velocity log in this report is some of the most valuable data in
-the project — cross-reference it with sprint estimates.
+## Phase 2: Freeze the hypothesis and attempt budget
 
----
+A hypothesis ID is stable across at most two attempts:
 
-## Phase 7: Creative Director Review
+- attempt `01` is the initial run;
+- attempt `02` is the single targeted rerun;
+- attempt `03` or higher is invalid and returns BLOCKED without writing.
 
-**Review mode check:**
-- `solo` → skip. Note: "CD-PLAYTEST skipped — Solo mode."
-- `lean` → skip (not a PHASE-GATE). Note: "CD-PLAYTEST skipped — Lean mode."
-- `full` → spawn `creative-director` through Codex subagent delegation using gate **CD-PLAYTEST**
-  (`.codex/docs/director-gates.md`).
+The plan must assign stable IDs to the validation question, each proceed
+criterion, each kill rule, each system/AC, each implementation story, each
+expected build check, each playtest cell, and each velocity unit.
 
-Pass: the full REPORT.md content, the validation question, game pillars and core
-fantasy from `design/gdd/game-concept.md`.
+Freeze a `Hypothesis Definition Hash` over the exact question, intended core
+fantasy, proceed criteria, kill rules, measurement definitions, network profile,
+and decision matrix version. Freeze a separate `Scope Hash` over the ordered
+systems, ACs, story rows, target quality, environment, session matrix, and
+prerequisite source hashes.
 
-The creative director evaluates the vertical slice result against the game's
-creative vision and pillars, then confirms, modifies, or overrides the
-recommendation. Their verdict is final. Update REPORT.md if the verdict differs.
+Attempt 02 requires an exact immutable attempt-01 report path and SHA-256. It is
+allowed only when that report is CURRENT, has the same hypothesis ID and
+Hypothesis Definition Hash, and its Final Verdict is PIVOT. The rerun plan must:
 
----
+- name the prior finding IDs being tested;
+- retain the original thresholds and measurement definitions;
+- include only fixes for those findings plus explicit regression rows; and
+- preserve successful prior evidence as historical context, never as proof for a
+  changed build.
 
-## Phase 8: Summary and Next Steps
+Changing the validation question, threshold meaning, core fantasy, or kill rule
+requires a new hypothesis ID and a new attempt 01. It is not a rerun.
 
-Output a summary: the validation question, velocity data, and final recommendation.
-Link to `prototypes/[concept-name]-vertical-slice/REPORT.md`.
+After attempt 02, the same hypothesis cannot create another plan. Another failure
+ends in KILL or `BLOCKED — PRODUCT DECISION REQUIRED`. The user may start a
+separately approved new hypothesis, but neither this skill nor an adviser may
+silently reset the attempt counter.
 
-**If PROCEED:**
-Your vertical slice validated the full game loop. The project is ready for
-Production.
+## Phase 3: Define deterministic evidence requirements
 
-Recommended next steps:
-- `$create-epics layer:foundation` — plan Foundation layer epics
-- `$create-epics layer:core` — plan Core layer epics
-- `$create-stories [epic-slug]` — break each epic into implementable stories
-- `$sprint-plan` — plan the first sprint using velocity data from the slice
-- `$gate-check pre-production` — formally advance the stage to Production
+The plan must define the complete start -> challenge -> resolution loop using
+stable system and AC IDs. "All core systems" means the exact ordered IDs in the
+plan, not an inferred set. The user makes the product scope decision before the
+plan is written.
 
-**Playtest note:** `$gate-check` will look for documented playtest evidence.
-At minimum, 1 documented session with a REPORT.md showing PROCEED is required
-to pass the gate. More sessions give more reliable signal — 3+ is recommended
-before committing the full team to Production, but is not a hard gate.
+For every proceed criterion define:
 
-**If PIVOT:**
+- stable criterion ID and requirement/AC owner;
+- metric, unit, measurement method, threshold, sample size, and allowed
+  tolerance;
+- required build/platform/configuration;
+- required receipt type and evidence owner; and
+- PASS, FAIL, NOT_RUN, UNKNOWN, and STALE mapping.
 
-Before routing back to GDD revision, capture the carry-forward note. Ask these
-two questions (plain text, one at a time):
+For every kill rule define an objective, preapproved predicate. KILL cannot be
+invented after seeing results.
 
-1. "What systems or mechanics worked at this quality level and should be preserved in the revised design?"
-2. "What specifically failed — the core loop, the architecture, the pipeline, or the fun?"
+### Build and technical evidence
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Define exact engine/version, build configuration, platform, required commands,
+exit expectations, artifact type, and checks. A successful editor launch,
+unhashed executable, transcript without provenance, or user claim is not build
+evidence.
 
-Once the complete changeset is authorized, write the file with: what worked, what failed, the specific systems or
-architecture decisions that need revision, and what the next slice should prove
-differently. When `$vertical-slice` is next run after a PIVOT, check the
-`prototypes/` directory for a `PIVOT-NOTE.md` — use it to frame the new validation
-question and inform scope decisions.
+### Playtest session matrix
 
-- Revise affected GDDs with `$design-system [mechanic]`
-- Address architecture issues via `$architecture-decision`
-- Then re-run `$vertical-slice` to validate the revised direction
+Define exact session cells before implementation: session IDs or ID pattern,
+tester cohort/role, minimum distinct tester count, platform/device/input,
+environment, loop start/end conditions, observation method, required raw capture,
+and criteria/hypothesis IDs.
 
-**If KILL:**
+Each completed receipt must contain session ID, tester pseudonymous ID and role,
+candidate/build/source identity, timestamps, platform/device/input, step/event
+observations, completion state, blockers, raw recording/log path and hash,
+observer/producer identity, and attestation. Chat answers and a retrospective
+summary alone are not evidence.
 
-Before abandoning the concept, confirm the verdict is sound:
+If sample count, cohort diversity, required raw capture, or a planned matrix cell
+is missing, the affected criterion is NOT_RUN or UNKNOWN and the Evidence Verdict
+cannot be PROCEED.
 
-- [ ] Full game loop takes >5 minutes even for an experienced player?
-- [ ] No emotional high point (delight, surprise, satisfaction) observed in any playtest session?
-- [ ] 50%+ of testers confused or stuck at the same point after 2+ slice attempts?
-- [ ] Architecture issues would require rebuilding more than 50% of what was built?
-- [ ] This is the 3rd vertical slice attempt on the same concept?
+### Network profile
 
-If 2+ boxes apply → KILL verdict is sound. If 0–1 apply → one targeted PIVOT may recover the concept.
+If network interaction is part of the core fantasy or any required criterion,
+predefine real-peer or simulated-latency cells for target latency, jitter, loss,
+and peer count. Local 0 ms evidence may cover non-network rows only. Missing
+target network cells makes the network criterion NOT_RUN and the overall Evidence
+Verdict INCONCLUSIVE unless another verified required failure already establishes
+PIVOT or KILL.
 
-**Document the kill in `prototypes/GRAVEYARD.md`** (create if it doesn't exist).
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized. Once the complete changeset is authorized, add one entry:
+### Velocity ledger
 
+Define scope units and require each implementation batch to record actual start
+and end timestamps, active time, blocked time, owner, story/finding IDs,
+pre/post commit and tree hashes, build ID, completed units, and exclusions.
+Estimates and day-label prose are not observations. Missing required velocity
+fields yields UNKNOWN and prevents PROCEED.
+
+## Phase 4: Produce an immutable slice plan
+
+Use this exact header:
+
+```markdown
+Artifact Type: vertical-slice-plan
+Schema Version: 1
+Slice Run ID: <slice-run-id>
+Hypothesis ID: <VS-H-stable-id>
+Attempt: <01|02>
+Plan Author Task ID: <task-id>
+Created At UTC: <RFC3339>
+Prerequisite Manifest Path/SHA-256: <path> / <sha256:...>
+Source Commit: <git object ID>
+Source Tree: <git tree object ID>
+Source Manifest SHA-256: <sha256:...>
+Engine/Version: <values>
+Platform/Configuration: <values>
+Hypothesis Definition SHA-256: <sha256:...>
+Scope SHA-256: <sha256:...>
+Prior Report Path/SHA-256: <path/hash | NONE>
+Plan Status: FROZEN
+Implementation Authorized: NO
 ```
-## [Concept Name] Vertical Slice — YYYY-MM-DD
-- **Kill reason:** [what specifically prevented the player from experiencing the core fantasy]
-- **What worked at slice quality:** [systems or mechanics that held up]
-- **What failed:** [core loop issue, architecture decision, or pipeline blocker]
-- **Next time:** [one specific change for the next time a similar concept is attempted]
+
+Include:
+
+1. validation question, core fantasy, non-goals, and immutable attempt rules;
+2. ordered scope manifest with system, GDD, AC, and source hashes;
+3. proceed criteria and kill-rule matrices;
+4. representative quality definition and objective acceptance measures;
+5. bounded implementation story table;
+6. build/test receipt requirements;
+7. playtest session matrix including network cells when applicable;
+8. velocity schema and time/scope budget;
+9. deterministic verdict matrix version;
+10. worktree and artifact ownership contract; and
+11. exact non-writes.
+
+Each implementation story row must include a stable story ID, owned outcome,
+input hashes, exact allowed mutation paths or globs, acceptance IDs, dependencies,
+owner role, initial-batch ID, at most one remediation-batch ID, and stop
+conditions. The plan does not authorize those batches.
+
+Before writing, show the full plan and one exact changeset containing only
+`plan.md`. Obtain one bounded authorization unless the request already explicitly
+authorizes that path. Re-hash all prerequisites immediately before writing. On
+change, return `ERROR — STALE PREREQUISITES` and write nothing.
+
+Reject an existing plan path. Write atomically, re-read, validate every ID/hash,
+and report the plan SHA-256. A declined or failed persistence never claims the
+plan is frozen.
+
+## Phase 5: Handoff bounded implementation batches
+
+After plan persistence, stop. Do not implement in the planning task.
+
+Every implementation story is executed in a fresh task and an isolated Git
+worktree. Lack of an isolated worktree returns BLOCKED; user consent cannot turn
+the main workspace into the slice worktree. Record worktree path, branch, base
+commit/tree, owner, and retention policy. Never delete or merge the worktree
+automatically.
+
+Before each initial or remediation batch writes code, its owner must present an
+exact mutation manifest and obtain bounded authorization. The manifest binds:
+
+- run, hypothesis, attempt, plan path/hash, scope hash, story and batch IDs;
+- worktree/branch/base commit/tree and pre-batch tree hash;
+- exact CREATE/MODIFY paths or tightly bounded globs;
+- engine/version/platform/configuration;
+- acceptance/build commands and expected receipts; and
+- owner task ID, deadline, and stop conditions.
+
+A new path, dependency, system, acceptance criterion, or design rule outside that
+manifest stops the batch. It requires a new authorized batch or a product
+decision; it is never absorbed into the original changeset.
+
+Each story has at most one initial batch and one targeted remediation batch.
+Build failure, deadline expiry, unauthorized scope need, or the exhausted
+remediation budget produces a PARTIAL or BLOCKED receipt and stops. There is no
+open-ended "run, report, fix, repeat" loop.
+
+Each batch produces an immutable receipt with the manifest hash, actual changed
+path/hash list, pre/post commit and tree hashes, commands, exit codes, logs/hashes,
+build IDs/artifact hashes, timings, completed scope units, blocker/finding IDs,
+and result `PASS`, `FAIL`, `PARTIAL`, or `BLOCKED`. Agent summaries or chat
+observations are not receipts.
+
+After all planned stories, a separately authorized build owner produces one final
+candidate manifest binding the exact source commit/tree, engine/version,
+platform/configuration, build artifact path/hash, build command/receipt, plan
+path/hash, and scope hash. Any subsequent code, content, configuration, or build
+change creates a different candidate and invalidates evidence for the old one.
+
+## Phase 6: Capture immutable playtest and velocity evidence
+
+Playtest capture is a separate task from planning, implementation, and evaluation.
+It executes only the frozen session matrix against the exact final candidate.
+Persist raw capture and one immutable receipt per session under paths owned by the
+capture task. Do not backfill missing steps from conversation.
+
+The evidence-manifest owner then freezes an ordered manifest containing:
+
+- artifact type `vertical-slice-evidence-manifest` and schema version 1;
+- run/hypothesis/attempt, plan path/hash, Hypothesis Definition Hash, Scope Hash;
+- prerequisite manifest path/hash and source-set hash;
+- final candidate manifest path/hash, commit/tree, build artifact path/hash,
+  engine/version/platform/configuration;
+- every batch receipt and hash;
+- every playtest session receipt/raw artifact and hash;
+- velocity ledger path/hash;
+- current criterion-result rows keyed by stable IDs;
+- known gaps, invalid rows, failures, and finding IDs; and
+- evidence-manifest creation timestamp and hash algorithm.
+
+The manifest owner must be distinct from the formal evaluator. Missing, stale,
+malformed, or wrong-build inputs remain visible; they are not omitted to improve
+the verdict.
+
+## Phase 7: Independent deterministic evaluation
+
+`evaluate` requires a fresh evaluator task ID distinct from all plan, build,
+capture, evidence-manifest, and creative-concern task IDs. Read only the exact
+plan and evidence manifest. Re-hash their entire referenced graph and confirm one
+run, hypothesis, attempt, scope, candidate, engine, platform, and build identity.
+
+Normalize each required row to `PASS`, `FAIL`, `NOT_RUN`, `UNKNOWN`, `STALE`, or
+`INVALID`. Apply this precedence:
+
+| Precedence | Condition | Evidence Verdict | Workflow Status |
+|---|---|---|---|
+| 1 | A verified current preapproved kill rule is true | KILL | COMPLETE |
+| 2 | Otherwise any verified current required criterion fails | PIVOT | COMPLETE |
+| 3 | Otherwise any required row/evidence is NOT_RUN, UNKNOWN, STALE, INVALID, missing, or partial | INCONCLUSIVE | PARTIAL |
+| 4 | Every required criterion passes, session/network matrix is complete, velocity is known, and no blocker remains | PROCEED | COMPLETE |
+
+A reviewer, director, agent, or user cannot change the Evidence Verdict. List
+failure and incomplete rows even when a higher-precedence result applies.
+
+## Phase 8: Optional creative concerns and product decision
+
+Creative review is advisory and occurs only after the Evidence Verdict exists. If
+`--creative-concerns` is supplied, require an immutable
+`vertical-slice-creative-concerns` receipt bound to the exact plan hash, evidence
+manifest hash, candidate/build hash, hypothesis/attempt, decision-matrix
+version, and the independently recomputed deterministic Evidence Verdict. Record
+its concerns and recommended downgrade; do not accept a verdict field as authority.
+
+Creative concerns may never:
+
+- upgrade PIVOT, KILL, or INCONCLUSIVE to PROCEED;
+- waive a failed threshold, missing session, stale build, or network gap;
+- override a user PIVOT or KILL;
+- edit the evidence, plan, report, or project stage; or
+- declare their recommendation final.
+
+After evidence and optional concerns, the product owner decides within this
+one-way matrix:
+
+| Evidence Verdict / attempt | Allowed Product Decision | Final Verdict |
+|---|---|---|
+| PROCEED / 01 | PROCEED, PIVOT, or KILL | same as decision |
+| PROCEED / 02 | PROCEED, KILL, or NEW_HYPOTHESIS_REQUIRED | PROCEED, KILL, or BLOCKED — PRODUCT DECISION REQUIRED |
+| PIVOT / 01 | PIVOT or KILL | same as decision |
+| PIVOT / 02 | KILL or NEW_HYPOTHESIS_REQUIRED | KILL or BLOCKED — PRODUCT DECISION REQUIRED |
+| KILL / any | KILL or NEW_HYPOTHESIS_REQUIRED | KILL or BLOCKED — PRODUCT DECISION REQUIRED |
+| INCONCLUSIVE / any | KILL or AWAITING | KILL or BLOCKED — PRODUCT DECISION REQUIRED |
+
+The product owner may conservatively downgrade evidence but cannot upgrade it.
+If no allowed decision is recorded, Final Verdict is BLOCKED. A PIVOT on attempt
+01 authorizes only one targeted attempt-02 plan; it does not authorize code or a
+new hypothesis. Attempt-02 failure never produces another same-hypothesis PIVOT.
+
+## Phase 9: Persist one immutable evaluation report
+
+Use this exact header:
+
+```markdown
+Artifact Type: vertical-slice-evaluation-report
+Schema Version: 1
+Evaluation ID: <stable-id>
+Slice Run ID: <slice-run-id>
+Hypothesis ID: <VS-H-stable-id>
+Attempt: <01|02>
+Evaluator Task ID: <task-id>
+Plan Path/SHA-256: <path> / <sha256:...>
+Prerequisite Manifest Path/SHA-256: <path> / <sha256:...>
+Hypothesis Definition SHA-256: <sha256:...>
+Scope SHA-256: <sha256:...>
+Evidence Manifest Path/SHA-256: <path> / <sha256:...>
+Source Commit/Tree: <git object IDs>
+Source Manifest SHA-256: <sha256:...>
+Candidate Manifest Path/SHA-256: <path> / <sha256:...>
+Build Artifact Path/SHA-256: <path> / <sha256:...>
+Engine/Version: <values>
+Platform/Configuration: <values>
+Batch Receipt Set SHA-256: <sha256:...>
+Playtest Session Set SHA-256: <sha256:...>
+Velocity Ledger Path/SHA-256: <path> / <sha256:...>
+Creative Concerns Path/SHA-256: <path/hash | NONE>
+Decision Matrix Version/SHA-256: <values>
+Workflow Status: COMPLETE | PARTIAL
+Evidence Verdict: PROCEED | PIVOT | KILL | INCONCLUSIVE
+Product Decision: PROCEED | PIVOT | KILL | NEW_HYPOTHESIS_REQUIRED | AWAITING
+Final Verdict: PROCEED | PIVOT | KILL | BLOCKED — PRODUCT DECISION REQUIRED
+Currentness: CURRENT
+Gate Eligible: YES | NO
+Persistence: VERIFIED
+Created At UTC: <RFC3339>
 ```
 
-- Return to `$brainstorm` with what you learned
-- Or run `$prototype [new-concept]` to test a new direction cheaply first
+Include prerequisite and candidate identity, scope/criteria tables, build results,
+playtest matrix and raw-evidence references, network evidence, velocity arithmetic,
+all failures/gaps, creative concerns labeled advisory, product decision, attempt
+history, deterministic derivation, and exact next owner.
 
----
+`Gate Eligible` is provisionally YES only for Final Verdict PROCEED, Evidence
+Verdict PROCEED, complete evidence, and CURRENT inputs. Before `--persist`, show
+the exact one-file CREATE and all non-writes. Re-hash every input immediately
+before writing. Reject an existing evaluation path. Write atomically, re-read the
+bytes, and verify its SHA-256. Only then return Gate Eligible YES and Persistence
+VERIFIED.
 
-### Important Constraints
+If persistence is absent, declined, or fails, retain the calculated evidence and
+final verdict but return Gate Eligible NO. This skill never updates an index or
+stage; a later recorder must independently revalidate the report and candidate.
 
-- Vertical slice code must NEVER be refactored into production — it is reference only
-- Production code must NEVER import from `prototypes/`
-- If recommendation is PROCEED, production implementation is written from scratch
-  using the slice as a design reference only
-- Scope cuts are acceptable; quality cuts are not — a low-quality slice proves nothing
-- Total effort: 1–3 weeks. If longer, scope is too large — cut the slice, not the quality.
-- Day 3 sunk cost rule: if the full game loop cycle is not demonstrable by then,
-  stop and surface the blocker
-- **Networked/multiplayer games:** A local vertical slice cannot validate the feel
-  of a networked mechanic. Latency fundamentally changes how combat, movement, and
-  prediction feel — testing locally at 0ms will feel entirely different at 80ms
-  network delay. The slice can validate that the game loop is interesting and
-  complete; it cannot validate that networked mechanics feel good under real
-  conditions. Network feel requires real peers or simulated latency.
+## Phase 10: Read-only currentness status
+
+`status` requires the exact persisted report plus its externally recorded
+`--expect-report` SHA-256, then reads the complete referenced graph. Reject a
+report-byte mismatch as STALE before interpreting its verdict.
+Report `Currentness: CURRENT` only when all paths, hashes, IDs, engine/platform,
+source commit/tree, build artifact, session set, velocity ledger, and decision
+matrix still match.
+
+Any changed source, code, content, configuration, candidate manifest, build
+artifact, plan, playtest receipt, raw capture, velocity record, concern receipt,
+or report byte makes the result STALE and `Gate Eligible: NO`. A same filename or
+successful rebuild does not preserve identity.
+
+A gate consumer may accept only a persisted report with:
+
+- artifact type/schema valid;
+- `Workflow Status: COMPLETE`;
+- `Evidence Verdict: PROCEED`;
+- `Product Decision: PROCEED`;
+- `Final Verdict: PROCEED`;
+- `Currentness: CURRENT`;
+- `Gate Eligible: YES`;
+- exact current report and candidate hashes; and
+- no later code/build mutation.
+
+All PIVOT, KILL, INCONCLUSIVE, PARTIAL, BLOCKED, stale, invalid, unpersisted, or
+advisory-only results are gate-ineligible.
+
+## Final response
+
+Every mode reports exact paths and hashes, hypothesis/attempt/run IDs, owned
+writes and explicit non-writes, every status axis, gaps/findings, remaining
+attempt budget, and the next separate owner.
+
+Do not chain into implementation, playtest capture, creative review, index
+recording, stage transition, or Production planning. Never claim that a plan
+authorization approves implementation, that one chat playtest proves a criterion,
+or that creative authority can replace evidence.

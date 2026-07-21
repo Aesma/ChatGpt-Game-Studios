@@ -1,248 +1,215 @@
-# Review All Gdds — Required workflow continuation
+# Review All GDDs — Required workflow continuation
 
-This file contains required phases of `$review-all-gdds`. Read it in full when the main `SKILL.md` reaches its Required continuation section, then execute the phases in order.
+This file contains required phases of `$review-all-gdds`. Read it in full when
+the main `SKILL.md` reaches its Required continuation section, then execute the
+phases in order. The frozen public contract in `SKILL.md` governs every phase.
 
 ## Phase 4: Cross-System Scenario Walkthrough
 
 Walk through the game from the player's perspective to find problems that only
-appear at the interaction boundary between multiple systems — things static
-analysis of individual GDDs cannot surface.
+appear at the interaction boundary between multiple systems. This phase is part
+of the declared review coverage; it is not a third verdict vocabulary or a
+license to edit source documents.
 
 ### 4a: Identify Key Multi-System Moments
 
-Scan all GDDs and identify the 3–5 most important player-facing moments where
-multiple systems activate simultaneously. Look specifically for:
+Scan the hashed input manifest and identify the 3–5 most important player-facing
+moments where multiple systems activate simultaneously. Look specifically for:
 
-- **Combat + Economy overlap**: killing enemies that drop resources, spending
-  resources during combat, death/respawn interacting with economy state
-- **Progression + Difficulty overlap**: level-up triggering mid-fight, ability
-  unlocks changing combat viability, difficulty scaling at progression milestones
-- **Narrative + Gameplay overlap**: dialogue choices locking/unlocking mechanics,
-  story beats interrupting resource loops, quest completion triggering system
-  state changes
-- **3+ system chains**: any player action that triggers System A, which feeds
-  into System B, which triggers System C (these are highest-risk interaction paths)
+- **Combat + Economy overlap:** rewards, spending, death, and respawn state
+- **Progression + Difficulty overlap:** level changes, unlocks, and scaling
+- **Narrative + Gameplay overlap:** choices, state changes, and interruptions
+- **3+ system chains:** an event flowing through three or more systems
 
-List each identified scenario with a one-line description before proceeding.
+List each selected scenario and why it was selected. Also state that this is a
+sample, not exhaustive scenario coverage.
 
 ### 4b: Walk Through Each Scenario
 
-For each scenario, step through the sequence explicitly:
+For each scenario, step through:
 
-1. **Trigger** — what player action or game event starts this?
-2. **Activation order** — which systems activate, in what sequence?
-3. **Data flow** — what does each system output, and is that output a valid
-   input for the next system in the chain?
-4. **Player experience** — what does the player see, hear, or feel at each step?
-5. **Failure modes** — are there any of the following?
-   - **Race conditions**: two systems trying to modify the same state simultaneously
-   - **Feedback loops**: System A amplifies System B which re-amplifies System A
-     with no cap or dampener
-   - **Broken state transitions**: a system assumes a state that a previous
-     system may have changed (e.g., "player is alive" assumption after a combat
-     step that could have caused death)
-   - **Contradictory messaging**: player receives conflicting feedback from two
-     systems reacting to the same event (e.g., "success" sound + "failure" UI)
-   - **Compounding difficulty spikes**: two systems both scaling up at the same
-     progression point, multiplying the intended difficulty increase
-   - **Reward conflicts**: two systems both reacting to the same trigger with
-     rewards that together exceed the intended value (double-dipping)
-   - **Undefined behavior**: the GDDs don't specify what happens in this combined
-     state (neither system's rules cover it)
+1. **Trigger** — the player action or game event
+2. **Activation order** — the systems and their sequence
+3. **Data flow** — outputs, inputs, units, and ranges
+4. **Player experience** — visible or audible outcomes
+5. **Failure modes** — race conditions, feedback loops, broken transitions,
+   contradictory messaging, compounding spikes, reward conflicts, or undefined
+   combined behavior
 
-```
-Example walkthrough:
-Scenario: Player kills elite enemy at level-up threshold during active quest
+Every claim must cite canonical input paths, sections, and the manifest hashes
+used. A missing combined-state rule is a coverage gap or concern; it is not
+automatically proof that runtime behavior is broken.
 
-Trigger: Player lands killing blow on elite enemy
-→ combat.md: awards kill XP (100 pts)
-→ progression.md: XP total crosses level threshold → triggers level-up
-  Output: new level, stat increases, ability unlock popup
-→ quest.md: kill-count criterion met → triggers quest completion event
-  Output: quest reward XP (500 pts), completion fanfare
-→ progression.md (again): quest XP added → triggers SECOND level-up in same frame
-  ⚠️  Data flow issue: quest.md awards XP without checking if a level-up
-  is already in progress. progression.md has no guard against concurrent
-  level-up events. Undefined behavior: does the player level up once or twice?
-  Does the ability popup fire twice? Does the second level use the updated or
-  pre-update stat baseline?
-```
+### 4c: Classify Scenario Evidence
 
-### 4c: Flag Scenario Issues
+- **BLOCKER:** only a reproducible contradiction or violation of an explicit
+  anti-pillar, owner-approved invariant, or owner-approved threshold. Cite the
+  exact conflicting rules and hashed inputs.
+- **WARNING:** a non-blocking deterministic gap or compatibility concern.
+- **HYPOTHESIS / ADVISORY:** an inferred experience, balance, load, or strategy
+  risk. Include assumptions, a counterexample, and a validation plan.
+- **INFO:** ordering or messaging notes without demonstrated conflict.
 
-For each problem found during the walkthrough, categorize severity:
-
-- **BLOCKER**: undefined behavior, broken state transition, or contradictory
-  player messaging — the experience is broken or incoherent in this scenario
-- **WARNING**: compounding spikes, feedback loops without caps, reward conflicts —
-  the experience works but produces unintended outcomes
-- **INFO**: minor ordering ambiguity or messaging overlap — worth noting but
-  unlikely to cause player-visible problems
-
-Add all findings to the output report under **"Cross-System Scenario Issues"**.
-Each finding must cite: the scenario name, the specific systems involved, the
-step where the issue occurs, and the nature of the failure mode.
+If required scenarios cannot be completed, record the unchecked scope and use
+the overall verdict `PARTIAL`. Do not turn uncertainty into a blocker.
 
 ---
 
-## Phase 5: Output the Review Report
+## Phase 5: Build the Review Report
 
+The report must use the following evidence envelope and sections:
+
+```yaml
+schema: cgs.cross-gdd-review/v1
+run_id: [UTC timestamp]-[manifest digest prefix]
+project_id: [canonical repository root + repository identity]
+generated_at_utc: [ISO-8601]
+mode: [full | consistency | design-theory | since-last-review]
+verdict: [PASS | CONCERNS | FAIL | PARTIAL]
+source_revision:
+  commit: [commit ID or null]
+  input_state: [clean | dirty | includes-untracked-inputs]
+manifest_sha256: [SHA-256 of ordered input manifest]
+coverage_status: [COMPLETE | PARTIAL]
+supersedes_run_id: [run ID or null]
 ```
-## Cross-GDD Review Report
-Date: [date]
-GDDs Reviewed: [N]
-Systems Covered: [list]
 
----
+### Input Manifest
+
+| Canonical input path | SHA-256 | Role |
+|---|---|---|
+| [path] | [hash] | [system-gdd / pillars / systems-index / registry / other] |
+
+### Coverage
+
+| Required phase/check | Status | Checked scope | Unchecked scope / reason |
+|---|---|---|---|
+| [check] | DONE / PARTIAL / ERROR / NOT_APPLICABLE | [paths/rules] | [none or gap] |
 
 ### Consistency Issues
 
-#### Blocking (must resolve before architecture begins)
-🔴 [Issue title]
-[What GDDs are involved, what the contradiction is, what needs to change]
+Separate deterministic blockers from non-blocking warnings. Each issue must cite
+the exact paths, sections, rules, and hashes involved.
 
-#### Warnings (should resolve, but won't block)
-⚠️  [Issue title]
-[What GDDs are involved, what the concern is]
+### Game Design Hypotheses
 
----
-
-### Game Design Issues
-
-#### Blocking
-🔴 [Issue title]
-[What the problem is, which GDDs are involved, design recommendation]
-
-#### Warnings
-⚠️  [Issue title]
-[What the concern is, which GDDs are affected, recommendation]
-
----
+Every theory item is labeled `HYPOTHESIS / ADVISORY` and contains evidence,
+assumptions, a plausible counterexample or compensating mechanic, and a
+validation plan. A theory item may move to Blocking only when it demonstrates a
+current, reproducible violation of an explicit anti-pillar, owner-approved
+invariant, or owner-approved threshold in the manifest.
 
 ### Cross-System Scenario Issues
 
-Scenarios walked: [N]
-[List scenario names]
+List scenarios walked, deterministic issues, advisory hypotheses, and unchecked
+scenario scope.
 
-#### Blockers
-🔴 [Scenario name] — [Systems involved]
-[Step where failure occurs, nature of the failure mode, what must be resolved]
+### GDDs Referenced by Findings
 
-#### Warnings
-⚠️  [Scenario name] — [Systems involved]
-[What the unintended outcome is, recommendation]
+This is evidence only. It does not authorize changing a GDD or its lifecycle
+status.
 
-#### Info
-ℹ️  [Scenario name] — [Systems involved]
-[Minor ordering ambiguity or note]
+| GDD | Finding summary | Evidence class | Severity |
+|---|---|---|---|
+| [path] | [summary] | Deterministic / Hypothesis | Blocking / Warning / Advisory |
 
----
+### Staleness Contract
 
-### GDDs Flagged for Revision
+This report is current only while `project_id` and the complete canonical
+path/SHA-256 manifest match the project. Any input addition, removal, rename, or
+content-hash change makes it `STALE`. A stale report, including a stale
+`PASS`, is not gate evidence and must not authorize architecture.
 
-| GDD | Reason | Type | Priority |
-|-----|--------|------|----------|
-| [system-a].md | Rule contradiction with [system-b].md | Consistency | Blocking |
-| [system-c].md | Stale reference to nonexistent mechanic | Consistency | Blocking |
-| [system-d].md | No pillar alignment | Design Theory | Warning |
+### Verdict: [PASS / CONCERNS / FAIL / PARTIAL]
 
----
+- **PASS:** all required checks for the selected mode completed; no blocking or
+  non-blocking issues remain.
+- **CONCERNS:** all required checks completed; no blockers, but warnings or
+  advisory hypotheses remain.
+- **FAIL:** all required checks completed and one or more deterministic blocking
+  violations remain.
+- **PARTIAL:** required input or coverage is missing, a worker failed, hashes do
+  not match, or evidence conflicts remain unresolved. `PARTIAL` must never be
+  represented as `PASS`.
 
-### Verdict: [PASS / CONCERNS / FAIL]
-
-PASS: No blocking issues. Warnings present but don't prevent architecture.
-CONCERNS: Warnings present that should be resolved but are not blocking.
-FAIL: One or more blocking issues must be resolved before architecture begins.
-
-### If FAIL — required actions before re-running:
-[Specific list of what must change in which GDD]
-```
-
----
-
-## Phase 6: Write Report and Flag GDDs
-
-Use the single changeset approval policy:
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-- Options: `[A] Yes — write the report` / `[B] No — skip`
-
-If any GDDs are flagged for revision, use a second a direct question to the user:
-- Prompt: "Should I update the systems index to mark these GDDs as needing revision? ([list of flagged GDDs])"
-- Options: `[A] Yes — update systems index` / `[B] No — leave as-is`
-- Once the complete changeset is authorized, update each flagged GDD's Status field in systems-index.md to "Needs Revision".
-  (Do NOT append parentheticals to the status value — other skills match "Needs Revision"
-  as an exact string and parentheticals break that match.)
-
-### Session State Update
-
-After writing the report (and updating the systems index when included in the authorized changeset), silently
-append to `production/session-state/active.md`:
-
-    ## Session Extract — $review-all-gdds [date]
-    - Verdict: [PASS / CONCERNS / FAIL]
-    - GDDs reviewed: [N]
-    - Flagged for revision: [comma-separated list, or "None"]
-    - Blocking issues: [N — brief one-line descriptions, or "None"]
-    - Recommended next: [the Phase 7 handoff action, condensed to one line]
-    - Report: design/gdd/gdd-cross-review-[date].md   ← only if user approved the write
-    - Report: (not written — user declined at [date])  ← only if user declined the write
-
-Use the appropriate line based on the user's response to the write-permission structured prompt in Phase 6.
-
-If `active.md` does not exist, create it with this block as the initial content.
-Confirm in conversation: "Session state updated."
+A `FAIL` verdict is immutable for this run. It cannot be waived, renamed, or
+rewritten as `PASS`. If project governance permits proceeding, a separate
+owner-signed `ACCEPTED_RISK` record must name the run ID, exact findings,
+scope, owner identity/signature, and expiry. The reviewer never signs it for the
+owner, and the separate record does not change this report's verdict.
 
 ---
 
-## Phase 7: Handoff
+## Phase 6: Deliver or Persist Only the Review Report
 
-After all file writes are complete, ask the user directly for a closing structured prompt.
+Always render the complete report in conversation first.
 
-Before building options, check project state:
-- Are there any Warning-level items that are simple edits (flagged with "30-second edit", "brief addition", or similar)? → offer inline quick-fix option
-- Are any GDDs in the "Flagged for Revision" table? → offer $design-review option for each
-- Read systems-index.md for the next system with Status: Not Started → offer $design-system option
-- Is the verdict PASS or CONCERNS? → offer $gate-check or $create-architecture
+If the user asks to persist it, preview exactly one new path and obtain explicit
+approval before writing. Use a unique immutable path such as:
 
-Build the option list dynamically — only include options that apply:
+`design/gdd/reviews/gdd-cross-review-[UTC timestamp]-[manifest-prefix].md`
 
-**Option pool:**
-- `[_] Apply quick fix: [W-XX description] in [gdd-name].md — [effort estimate]` (one option per simple-edit warning; only for Warning-level, not Blocking)
-- `[_] Run $design-review [flagged-gdd-path] — address flagged warnings` (one per flagged GDD, if any)
-- `[_] Run $design-system [next-system] — next in design order` (always include, name the actual system)
-- `[_] Run $create-architecture — begin architecture (verdict is PASS/CONCERNS)` (include if verdict is not FAIL)
-- `[_] Run $gate-check — validate Systems Design phase gate` (include if verdict is PASS)
-- `[_] Stop here`
+The path must not already exist. Never overwrite or amend a prior report; a
+correction creates a new report with `supersedes_run_id`. After approval,
+write only that report and verify its saved manifest digest. If the user declines
+or does not authorize the write, perform zero file mutations.
 
-Assign letters A, B, C… only to included options. Mark the most pipeline-advancing option as `(recommended)`.
+Under all outcomes, do **not** modify or create:
 
-Never end the skill with plain text. Always close with this structured prompt.
+- any source GDD;
+- `design/gdd/systems-index.md` or any lifecycle/status field;
+- an entity registry or consistency baseline;
+- `production/session-state/active.md` or any session/state file;
+- sign-off, approval, waiver, or accepted-risk records.
+
+Status transitions and accepted-risk records belong to independent,
+owner-authorized recorders that consume the immutable review evidence.
+
+---
+
+## Phase 7: Handoff and Stop
+
+Offer one separate next workflow; do not edit source content inside this review.
+
+- `FAIL`: recommend the owner choose a remediation workflow for the highest
+  priority deterministic blocker, then rerun this review.
+- `PARTIAL`: recommend resolving the named evidence/coverage gap, then rerun.
+- `CONCERNS`: recommend owner review or the validation plan for the highest
+  priority concern; architecture may proceed only under the consuming gate's
+  policy and with a current report.
+- `PASS`: offer `$gate-check` or `$create-architecture` with the
+  current run ID and manifest digest.
+
+Always include `Stop here`. The handoff is a recommendation, not permission
+for this reviewer to modify GDDs, indexes, session state, or governance records.
 
 ---
 
 ## Error Recovery Protocol
 
-If any spawned agent returns BLOCKED, errors, or fails to complete:
+If any spawned agent is blocked, errors, returns mismatched hashes, or fails to
+complete:
 
-1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" before continuing
-2. **Assess dependencies**: If the blocked agent's output is required by a later phase, do not proceed past that phase without user input
-3. **Offer options** by asking the user directly with three choices:
-   - Skip this agent and note the gap in the final report
-   - Retry with narrower scope (fewer GDDs, single-system focus)
-   - Stop here and resolve the blocker first
-4. **Always produce a partial report** — output whatever was completed so work is not lost
+1. Surface the worker status and reason.
+2. Record affected checks and inputs as unchecked.
+3. Continue only where independent evidence permits.
+4. Produce the available report with verdict `PARTIAL`.
+5. Offer retry with narrower scope, resolve the blocker, or stop.
+
+Never hide missing coverage and never produce `PASS` from partial work.
 
 ---
 
 ## Collaborative Protocol
 
-1. **Read silently** — load all GDDs before presenting anything
-2. **Show everything** — present the full consistency and design theory analysis
-   before asking for any action
-3. **Distinguish blocking from advisory** — not every issue needs to block
-   architecture; be clear about which do
-4. **Don't make design decisions** — flag contradictions and options, but never
-   unilaterally decide which GDD is "right"
-5. **Single changeset approval** — preview the report and systems-index update together, then write both after the one approval
-6. **Be specific** — every issue must cite the exact GDD, section, and text
-   involved; no vague warnings
+1. **Read silently** — load and hash all inputs before presenting findings.
+2. **Show everything** — present consistency, theory, scenario, and coverage
+   evidence before asking whether to persist the report.
+3. **Distinguish deterministic from advisory** — unmeasured theory is a
+   hypothesis, not an architecture blocker.
+4. **Do not make product decisions** — surface evidence and validation options.
+5. **One optional write** — only an explicitly authorized new immutable report.
+6. **No lifecycle or session mutation** — reviewer and recorder roles remain
+   separate.
+7. **Be specific** — every deterministic finding cites exact paths, sections,
+   rules, and hashes.

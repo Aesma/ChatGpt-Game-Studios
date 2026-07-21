@@ -1,134 +1,258 @@
-# Skill Test Spec: $release-checklist
+# Skill Spec: $release-checklist
+
+> **Category**: utility
+> **Priority**: low
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$release-checklist` generates an internal release readiness checklist covering:
-sprint story completion, open bug severity, QA sign-off status, build stability,
-and changelog readiness. It is an internal gate — not a platform/store checklist
-(that is `$launch-checklist`). When a previous release checklist exists, it shows
-a delta of resolved and newly introduced issues.
-
-The skill writes its checklist report to `production/releases/release-checklist-[date].md`
-after a "May I apply the proposed changeset?"
-6. Report written; verdict is RELEASE READY
-
-**Assertions:**
-- [ ] All 4 check categories are evaluated (stories, bugs, QA, changelog)
-- [ ] All items appear with PASS markers
-- [ ] Verdict is RELEASE READY
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+$release-checklist is a release-candidate evidence collector, not the release gate owner. It consumes one exact release manifest and policy, validates only indexed candidate-bound artifacts, and emits an immutable table whose stable items are PASS, FAIL, UNKNOWN, or authorized N/A. It always reports Gate Decision: NOT EVALUATED; a separate gate owner applies the named policy.
 
 ---
 
-### Case 2: Open HIGH Severity Bugs — RELEASE BLOCKED
+## Static Assertions
 
-**Fixture:**
-- All sprint stories are Done
-- `production/bugs/` contains 2 open bugs with severity HIGH
-
-**Input:** `$release-checklist`
-
-**Expected behavior:**
-1. Skill reads sprint — stories complete
-2. Skill reads bugs — 2 HIGH severity bugs open
-3. Skill reports: "RELEASE BLOCKED — 2 open HIGH severity bugs must be resolved"
-4. Both bug filenames are listed in the report
-5. Verdict is RELEASE BLOCKED
-
-**Assertions:**
-- [ ] Verdict is RELEASE BLOCKED (not CONCERNS)
-- [ ] Both bug filenames are listed explicitly
-- [ ] Skill makes clear HIGH severity bugs are blocking (not advisory)
+- [ ] YAML frontmatter contains only name and a non-empty description; name is release-checklist
+- [ ] The only accepted input is an exact release-candidate manifest
+- [ ] Release, candidate, build, artifact, source, platform, policy, and evidence hashes are mandatory
+- [ ] Every policy item has exactly one PASS, FAIL, UNKNOWN, or N/A status
+- [ ] PASS requires current authoritative positive evidence; existence and empty checks are insufficient
+- [ ] Legal/cert/store/sign-off and N/A states require verified authority receipts
+- [ ] Smoke, regression, soak, playtest, and test-evidence-review use exact staged canonical consumer contracts
+- [ ] The skill never emits a release-readiness verdict or invokes the gate owner
+- [ ] Optional predecessor comparison uses an exact path/hash and stable item IDs
+- [ ] Reports use immutable release-manifest-hash paths and transactional read-back verification
+- [ ] The final phase recommends accountable owners without invoking another workflow
 
 ---
 
-### Case 3: Changelog Not Generated — CONCERNS
+## Director Gate Checks
 
-**Fixture:**
-- All stories Done, no HIGH/CRITICAL bugs
-- No changelog entry found for the current version/sprint
-
-**Input:** `$release-checklist`
-
-**Expected behavior:**
-1. Skill checks all items
-2. Changelog check fails: no changelog entry found
-3. Skill reports: "CONCERNS — Changelog not generated for this release"
-4. Skill suggests running `$changelog` to generate it
-5. Verdict is CONCERNS (advisory — not a hard block)
-
-**Assertions:**
-- [ ] Verdict is CONCERNS (not RELEASE BLOCKED — changelog is advisory)
-- [ ] `$changelog` is suggested as the remediation
-- [ ] Other passing checks are shown in the report
-- [ ] Missing changelog is described as advisory, not blocking
+- **Full mode**: N/A; no director gate is invoked.
+- **Lean mode**: N/A; no director gate is invoked.
+- **Solo mode**: N/A; no director gate is invoked.
+- **Release authority**: Gate Decision remains NOT EVALUATED in every mode; the downstream gate owner is separate.
 
 ---
 
-### Case 4: Previous Release Checklist Exists — Delta From Last Release
+## Test Cases
 
-**Fixture:**
-- `production/releases/release-checklist-2026-03-20.md` exists
-- Previous: 1 story was incomplete, 1 HIGH bug open
-- Current: all stories Done, HIGH bug resolved, but now 1 MEDIUM bug appeared
+### Case 1: Happy path — all indexed evidence normalizes to PASS
 
-**Input:** `$release-checklist`
+**Fixture**:
+- Release manifest, build-candidate manifest, build artifact, policy, and AGENTS chain have matching hashes.
+- Every required policy item has exact current authoritative positive evidence for the same candidate/build/platform.
+- The report target is absent and the bounded request authorizes writing.
 
-**Expected behavior:**
-1. Skill finds the previous checklist and loads it
-2. New checklist is generated and compared:
-   - Newly resolved: "Story [X] — was open, now Done"
-   - Newly resolved: "HIGH bug [filename] — was open, now closed"
-   - New item: "1 MEDIUM bug appeared (advisory)"
-3. Delta section shows all changes prominently
-4. Verdict is CONCERNS (MEDIUM bug is advisory, not blocking)
+**Expected behavior**:
+1. Every stable item is emitted once with PASS(evidence).
+2. Summary counts are deterministic and Workflow Status is COMPLETE.
+3. The report is written atomically and re-read.
+4. Gate Decision remains NOT EVALUATED.
 
-**Assertions:**
-- [ ] Delta section appears in the report with resolved and new items
-- [ ] Newly resolved items from the previous checklist are noted
-- [ ] New items not present in the previous checklist are highlighted
-- [ ] Verdict reflects current state (not previous state)
+**Assertions**:
+- [ ] No RELEASE READY/GO verdict is emitted
+- [ ] Every PASS row includes evidence path/hash and candidate binding
+- [ ] Persistence and report SHA-256 are reported independently from item status
+
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 5: Director Gate Check — No gate; release-checklist is an internal audit
+### Case 2: Missing candidate identity blocks before evidence evaluation
 
-**Fixture:**
-- Active sprint with stories and bug reports
+**Fixture**:
+- Release manifest lacks candidate-manifest hash, build ID/artifact hash, source commit, or platform matrix.
 
-**Input:** `$release-checklist`
+**Expected behavior**:
+1. Identity validation enumerates missing fields.
+2. Workflow Status is BLOCKED and Persistence is NOT_ATTEMPTED.
+3. No report or gate decision is produced.
 
-**Expected behavior:**
-1. Skill runs the full checklist and writes the report
-2. No director agents are spawned
-3. No gate IDs appear in output
+**Assertions**:
+- [ ] Old milestone/QA/CI artifacts are not used as fallback
+- [ ] No readiness vocabulary appears
+- [ ] Zero files are written
 
-**Assertions:**
-- [ ] No director gate is invoked
-- [ ] No gate skip messages appear
-- [ ] Verdict is RELEASE READY, RELEASE BLOCKED, or CONCERNS — no gate verdict
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 3: Old-build PASS evidence becomes UNKNOWN
+
+**Fixture**:
+- A smoke, regression, CI, or QA receipt says PASS but names a prior candidate/build/commit or has a mismatched source/log hash.
+
+**Expected behavior**:
+1. Evidence State is STALE.
+2. Item Status is UNKNOWN with the accountable owner.
+3. It cannot increase the PASS count.
+
+**Assertions**:
+- [ ] Modification time or newest-file ordering cannot rescue it
+- [ ] The exact identity/hash mismatch is reported
+- [ ] The workflow does not silently convert stale evidence into FAIL or PASS
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 4: Missing legal or certification authority remains UNKNOWN
+
+**Fixture**:
+- A legal/cert/store checklist box or role name is nonempty.
+- No signed/verifiable authority receipt binds the release/candidate/platform/artifact scope.
+
+**Expected behavior**:
+1. The evidence is INVALID or MISSING.
+2. Item Status is UNKNOWN.
+3. The model neither signs nor grants N/A.
+
+**Assertions**:
+- [ ] A human-looking name is not approval
+- [ ] N/A requires explicit rationale, authority, policy hash, scope, and expiry
+- [ ] Gate Decision remains NOT EVALUATED
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 5: Director gate — none and release verdict has one external owner
+
+**Fixture**:
+- Any valid checklist invocation under any external review mode.
+
+**Expected behavior**:
+1. No director or gate workflow is invoked.
+2. The checklist normalizes evidence only.
+3. Gate Decision is NOT EVALUATED.
+
+**Assertions**:
+- [ ] No CD-, TD-, AD-, PR-, or release gate verdict appears
+- [ ] Workflow Status is not presented as readiness
+- [ ] The spec and implementation use the same collector contract
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 6: Current negative evidence creates FAIL items, not workflow failure
+
+**Fixture**:
+- Exact current evidence shows a required smoke failure, regression test failure, open policy-blocking S1 bug, or soak Readiness Result: FAIL.
+- All inputs are readable.
+
+**Expected behavior**:
+1. Each matching item is FAIL(evidence).
+2. Workflow Status is COMPLETE after every policy item is evaluated.
+3. Summary exposes failures but issues no release verdict.
+
+**Assertions**:
+- [ ] FAIL item provenance names exact candidate-bound evidence
+- [ ] A valid failure is not downgraded to UNKNOWN
+- [ ] COMPLETE describes collection only
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 7: Unreadable required artifact yields PARTIAL
+
+**Fixture**:
+- Release identity and policy are valid.
+- One indexed required evidence artifact exists but cannot be read, parsed, decoded, or verified.
+
+**Expected behavior**:
+1. Evidence State is UNAVAILABLE and Item Status is UNKNOWN.
+2. Workflow Status is PARTIAL.
+3. The affected row remains present with its owner.
+
+**Assertions**:
+- [ ] UNAVAILABLE is not hidden as PASS or product FAIL
+- [ ] The report cannot have a complete-looking blank checkbox
+- [ ] Gate Decision remains NOT EVALUATED
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 8: Stable predecessor delta is reproducible
+
+**Fixture**:
+- Manifest names an exact previous report path/hash with the same policy item namespace.
+- Current evidence changes two item statuses and leaves others unchanged.
+
+**Expected behavior**:
+1. Comparison uses exact stable Item IDs.
+2. Delta labels are RESOLVED, REGRESSED, CHANGED, UNCHANGED, ADDED, or REMOVED.
+3. Prior evidence does not affect current statuses.
+4. Re-running identical bytes produces identical ordered rows/counts/delta.
+
+**Assertions**:
+- [ ] No newest previous report discovery occurs
+- [ ] Candidate/report hashes are shown
+- [ ] Mismatched prior policy/report becomes comparison unavailable
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 9: Canonical technical evidence matrix is enforced
+
+**Fixture**:
+- Current smoke sprint PASS, regression selection plus matching execution/sensitivity receipts, soak completed PASS, completed canonical playtests, and persisted full-scope evidence review are indexed.
+- Alternate fixtures use quick smoke, regression selection alone, soak COMPLETE but inconclusive, playtest protocol, or conversation-only evidence review.
+
+**Expected behavior**:
+1. Only exact current canonical positive artifacts may yield PASS.
+2. Finalization words alone do not imply technical/readiness PASS.
+3. Alternate fixtures yield UNKNOWN unless they contain current conclusive failure evidence.
+
+**Assertions**:
+- [ ] Every referenced raw/log/source/manifest hash is revalidated
+- [ ] Regression selection without execution cannot pass
+- [ ] Soak Verdict: COMPLETE is not treated as Readiness Result: PASS
+- [ ] Playtest template/review does not count as session result
+- [ ] Test-evidence review requires ADEQUATE/PASS/FULL/Closure Eligible YES and persisted report
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 10: Authorized N/A is distinct from silence
+
+**Fixture**:
+- One item is irrelevant to a target platform.
+- A verified policy authority receipt binds item/release/candidate/platform, rationale, policy hash, timestamp, and expiry.
+- Another item merely has an empty or unchecked field.
+
+**Expected behavior**:
+1. The first item is N/A with authority provenance.
+2. The second item is UNKNOWN with owner.
+3. Neither is PASS.
+
+**Assertions**:
+- [ ] Blank or unselected values never become N/A
+- [ ] Expired/out-of-scope authority makes N/A invalid
+- [ ] Counts distinguish PASS, UNKNOWN, and N/A
+
+**Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Checks sprint story completion status
-- [ ] Checks open bug severity (CRITICAL/HIGH = BLOCKED; MEDIUM/LOW = CONCERNS)
-- [ ] Checks QA plan sign-off status
-- [ ] Checks changelog existence
-- [ ] Compares against previous checklist when one exists
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Verdict is RELEASE READY, RELEASE BLOCKED, or CONCERNS
+- [ ] Explicit bounded requests authorize the one report write
+- [ ] Otherwise one complete CREATE changeset is previewed and approved once
+- [ ] Only manifest-indexed evidence is read; no arbitrary scans or newest-file selection
+- [ ] All inputs are re-hashed immediately before write
+- [ ] Report path includes release ID and full release-manifest digest
+- [ ] Existing report targets are never overwritten
+- [ ] Non-owned release/evidence artifacts remain byte-identical
+- [ ] No downstream workflow, director, sign-off, bug closure, or evidence creation is performed
 
 ---
 
 ## Coverage Notes
 
-- Build stability verification (no failed CI runs) is listed as a check category
-  but relies on external CI system state; the skill notes this as a MANUAL CHECK
-  if CI integration is not configured.
-- CRITICAL bugs always result in RELEASE BLOCKED regardless of other items;
-  this is equivalent to the HIGH severity case in Case 2.
-- Stories with `Status: In Review` (not Done) are treated as incomplete
-  and result in RELEASE BLOCKED; this edge case follows the same pattern
-  as the HIGH bug case.
+This is a behavioral specification, not an executed test result. Runtime fixtures should cover manifest/path/symlink validation, candidate/build/source/platform mismatches, policy parsing, authoritative N/A/legal receipts, exact dependency consumers, evidence recursion, bug severity/waivers, unavailable inputs, previous-report delta, deterministic ordering, concurrent changes, write decline/failure, and proof that no readiness verdict or non-owned write occurs.

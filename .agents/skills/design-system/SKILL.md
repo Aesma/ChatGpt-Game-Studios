@@ -1,308 +1,246 @@
 ---
 name: design-system
-description: "Guided, section-by-section GDD authoring for a single game system. Gathers context from existing docs, walks through each required section collaboratively, cross-references dependencies, and writes incrementally to file."
+description: "Guided, section-by-section authoring or bounded revision of one system GDD, with author-only mutation boundaries and hash-bound independent review handoff."
 ---
 
-## Invocation and execution
-
-Invoke this workflow as `$design-system`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `<system-name> [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
-
-
-When this skill is invoked:
-
-## 1. Parse Arguments & Validate
-
-Resolve the review mode (once, store for all gate spawns this run):
-1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
-3. Else → default to `lean`
-
-See `.codex/docs/director-gates.md` for the full check pattern.
-
-A system name or retrofit path is **required**. If missing:
-
-1. Check if `design/gdd/systems-index.md` exists.
-2. If it exists: read it, find the highest-priority system with status "Not Started" or equivalent, and ask the user directly:
-   - Prompt: "The next system in your design order is **[system-name]** ([priority] | [layer]). Start designing it?"
-   - Options: `[A] Yes — design [system-name]` / `[B] Pick a different system` / `[C] Stop here`
-   - If [A]: proceed with that system name. If [B]: ask which system to design (plain text). If [C]: exit.
-3. If no systems index exists, fail with:
-   > "Usage: `$design-system <system-name>` — e.g., `$design-system movement`
-   > Or to fill gaps in an existing GDD: `$design-system retrofit design/gdd/[system-name].md`
-   > No systems index found. Run `$map-systems` first to map your systems and get the design order."
-
-**Detect retrofit mode:**
-If the argument starts with `retrofit` or the argument is a file path to an
-existing `.md` file in `design/gdd/`, enter **retrofit mode**:
-
-1. Read the existing GDD file.
-2. Identify which of the 8 required sections are present (scan for section headings).
-   Required sections: Overview, Player Fantasy, Detailed Design/Rules, Formulas,
-   Edge Cases, Dependencies, Tuning Knobs, Acceptance Criteria.
-3. Identify which sections contain only placeholder text (`[To be designed]` or
-   equivalent — blank, a single line, or obviously incomplete).
-4. Present to the user before doing anything:
-   ```
-   ## Retrofit: [System Name]
-   File: design/gdd/[filename].md
-
-   Sections already written (will not be touched):
-   ✓ [section name]
-   ✓ [section name]
-
-   Missing or incomplete sections (will be authored):
-   ✗ [section name] — missing
-   ✗ [section name] — placeholder only
-   ```
-5. Ask: "Should the revised draft fill the [N] missing sections? Existing content will remain unchanged."
-6. If the user includes them in scope: proceed to **Phase 2 (Gather Context)** as normal, but in **Phase 3**
-   skip creating the skeleton (file already exists) and in **Phase 4** skip
-   sections that are already complete. Only run the section cycle for missing/
-   incomplete sections.
-7. **Never overwrite existing section content.** Use targeted file edit to replace only
-   `[To be designed]` placeholders or empty section bodies.
-
-If NOT in retrofit mode, normalize the system name to kebab-case for the
-filename (e.g., "combat system" becomes `combat-system`).
-
----
-
-## 2. Gather Context (Read Phase)
-
-Read all relevant context **before** asking the user anything. This is the skill's
-primary advantage over ad-hoc design — it arrives informed.
-
-### 2a: Required Reads
-
-- **Game concept**: Read `design/gdd/game-concept.md` — fail if missing:
-  > "No game concept found. Run `$brainstorm` first."
-- **Systems index**: Read `design/gdd/systems-index.md` — fail if missing:
-  > "No systems index found. Run `$map-systems` first to map your systems."
-- **Target system**: Find the system in the index. If not listed, warn:
-  > "[system-name] is not in the systems index. Would you like to add it, or
-  > design it as an off-index system?"
-- **Entity registry**: Read `design/registry/entities.yaml` if it exists.
-  Extract all entries referenced by or relevant to this system (search
-  `referenced_by.*[system-name]` and `source.*[system-name]`). Hold these
-  in context as **known facts** — values that other GDDs have already
-  established and this GDD must not contradict.
-- **Reflexion log**: Read `docs/consistency-failures.md` if it exists.
-  Extract entries whose Domain matches this system's category. These are
-  recurring conflict patterns — present them under "Past failure patterns"
-  in the Phase 2d context summary so the user knows where mistakes have
-  occurred before in this domain.
-
-### 2b: Dependency Reads
-
-From the systems index, identify:
-- **Upstream dependencies**: Systems this one depends on. Read their GDDs if they
-  exist (these contain decisions this system must respect).
-- **Downstream dependents**: Systems that depend on this one. Read their GDDs if
-  they exist (these contain expectations this system must satisfy).
-
-For each dependency GDD that exists, extract and hold in context:
-- Key interfaces (what data flows between the systems)
-- Formulas that reference this system's outputs
-- Edge cases that assume this system's behavior
-- Tuning knobs that feed into this system
-
-### 2c: Optional Reads
-
-- **Game pillars**: Read `design/gdd/game-pillars.md` if it exists
-- **Existing GDD**: Read `design/gdd/[system-name].md` if it exists (resume, don't
-  restart from scratch)
-- **Related GDDs**: Find files matching `design/gdd/*.md` and read any that are thematically related
-  (e.g., if designing a system that overlaps with another in scope, read the related GDD
-  even if it's not a formal dependency)
-
-### 2d: Present Context Summary
-
-Before starting design work, present a brief summary to the user:
-
-> **Designing: [System Name]**
-> - Priority: [from index] | Layer: [from index]
-> - Depends on: [list, noting which have GDDs vs. undesigned]
-> - Depended on by: [list, noting which have GDDs vs. undesigned]
-> - Existing decisions to respect: [key constraints from dependency GDDs]
-> - Pillar alignment: [which pillar(s) this system primarily serves]
-> - **Known cross-system facts (from registry):**
->   - [entity_name]: [attribute]=[value], [attribute]=[value] (owned by [source GDD])
->   - [item_name]: [attribute]=[value], [attribute]=[value] (owned by [source GDD])
->   - [formula_name]: variables=[list], output=[min–max] (owned by [source GDD])
->   - [constant_name]: [value] [unit] (owned by [source GDD])
->   *(These values are locked — if this GDD needs different values, surface
->   the conflict before writing. Do not silently use different numbers.)*
->
-> If no registry entries are relevant: omit the "Known cross-system facts" section.
+## Invocation and author-only contract
 
-If any upstream dependencies are undesigned, warn:
-> "[dependency] doesn't have a GDD yet. We'll need to make assumptions about
-> its interface. Consider designing it first, or we can define the expected
-> contract and flag it as provisional."
+Invoke this workflow as $design-system.
 
-### 2e: Technical Feasibility Pre-Check
+This is an authoring workflow for exactly one system GDD. It may write only:
+
+- the target at design/gdd/<system-slug>.md; and
+- its checkpoint at production/session-state/design-system-<system-slug>.yaml.
+
+Treat those two paths as the complete maximum mutation set. Before the first
+write, present both paths, the selected mode, the exact sections in scope, and the
+intended changes; obtain one explicit changeset authorization. Section approvals
+later in the workflow approve content, not additional filesystem scope. If the
+mutation set or section scope expands, stop and obtain a new changeset
+authorization before writing.
+
+Never write or update systems-index.md, entities.yaml, a review record, a director
+sign-off, an ADR, an engine-reference document, or any other file. Never run an
+inline approval gate and never label this workflow's own output Approved.
+Registry/index recording and formal approval are separate responsibilities that
+consume hash-bound evidence after this authoring task stops.
+
+Arguments:
 
-Before asking the user to begin designing, load engine context and surface any
-constraints or knowledge gaps that will shape the design.
+    <system-name-or-gdd-path>
+    [--mode new|resume|fill-gaps|revise-section]
+    [--section "<required-section>"]
 
-**Step 1 — Determine the engine domain for this system:**
-Map the system's category (from systems-index.md) to an engine domain:
+The review depth is deliberately not an authoring argument. Formal review occurs
+once against the whole artifact in an independent task.
 
-| System Category | Engine Domain |
-|----------------|--------------|
-| Combat, physics, collision | Physics |
-| Rendering, visual effects, shaders | Rendering |
-| UI, HUD, menus | UI |
-| Audio, sound, music | Audio |
-| AI, pathfinding, behavior trees | Navigation / Scripting |
-| Animation, IK, rigs | Animation |
-| Networking, multiplayer, sync | Networking |
-| Input, controls, keybinding | Input |
-| Save/load, persistence, data | Core |
-| Dialogue, quests, narrative | Scripting |
+## 1. Resolve target and explicit mode
 
-**Step 2 — Read engine context (if available):**
-- Read `.codex/docs/technical-preferences.md` to identify the engine and version
-- If engine is configured, read `docs/engine-reference/[engine]/VERSION.md`
-- Read `docs/engine-reference/[engine]/modules/[domain].md` if it exists
-- Read `docs/engine-reference/[engine]/breaking-changes.md` for domain-relevant entries
-- Find files matching `docs/architecture/adr-*.md` and read any ADRs whose domain matches
-  (check the Engine Compatibility table's "Domain" field)
+A system name or a direct child Markdown path under design/gdd/ is required. If
+it is missing, read systems-index.md only to suggest the highest-priority system
+whose status is Not Started, then ask whether to use that name. Do not update the
+index.
+
+Normalize a name to a lowercase kebab-case slug. Reject an empty slug, path
+separators, dot segments, reserved project-document names, or any path whose
+resolved direct parent is not design/gdd/. Never use game-concept.md,
+systems-index.md, a review report, or a template as the target. If normalization
+collides with a different existing document, return ERROR — TARGET COLLISION and
+ask the user for the intended existing path or another name.
+
+Resolve the mode before reading authoring context:
+
+| Mode | Preconditions | Permitted GDD mutation |
+|---|---|---|
+| new | Target does not exist | Create the skeleton, then fill approved sections |
+| resume | Target and matching checkpoint exist; checkpoint is unfinished | Continue only checkpoint sections that are pending or approved-not-written |
+| fill-gaps | Target exists | Fill only required sections that are missing, empty, or placeholder-only |
+| revise-section | Target exists and --section names exactly one required section | Replace only that substantive section after a new user decision and approval |
+
+If the target does not exist and no mode was supplied, new may be selected. If
+the target exists and no mode was supplied, do not infer intent. Show the target
+and ask the user to choose resume, fill-gaps, revise-section, or stop.
+
+Retrofit is not a mode or alias. If the user says retrofit, ask them to choose:
+
+- fill-gaps — preserves every substantive existing section; or
+- revise-section — intentionally replaces one named substantive section.
+
+Reject new for an existing target and reject every other mode for a missing
+target. revise-section requires exactly one canonical section name:
+Overview, Player Fantasy, Detailed Rules, Formulas, Edge Cases, Dependencies,
+Tuning Knobs, or Acceptance Criteria.
 
-**Step 3 — Present the Feasibility Brief:**
+Before any existing-file edit, compute its SHA-256 as base_sha256. resume also
+requires target path and current hash to match the checkpoint. A mismatch returns
+ERROR — STALE CHECKPOINT and makes no write.
 
-If engine reference docs exist, present before starting design:
+## 2. Load bounded design context
 
-```
-## Technical Feasibility Brief: [System Name]
-Engine: [name + version]
-Domain: [domain]
+Read applicable AGENTS.md files from the repository root through design/gdd/, in
+order. Then read:
 
-### Known Engine Capabilities (verified for [version])
-- [capability relevant to this system]
-- [capability 2]
+- design/gdd/game-concept.md; fail with BLOCKED if absent;
+- design/gdd/systems-index.md; fail with BLOCKED if absent;
+- the target GDD for every mode except new;
+- design/registry/entities.yaml, if present, as read-only claims/evidence; and
+- only first-level dependency GDDs explicitly named for the target in the systems
+  index, plus pillar documents directly linked by the game concept.
 
-### Engine Constraints That Will Shape This Design
-- [constraint from engine-reference or existing ADR]
+Do not update any context source. Do not scan thematically related GDDs. Treat a
+registry value as a claim with source evidence, not as an automatically locked
+product decision. If a target draft would contradict a registry claim, surface
+that conflict before a GDD write and require an owner/user decision.
 
-### Knowledge Gaps (verify before committing to these)
-- [post-cutoff feature this design might rely on — mark HIGH/MEDIUM risk]
+### Design/technology boundary
 
-### Existing ADRs That Constrain This System
-- ADR-XXXX: [decision summary] — means [implication for this GDD]
-  (or "None yet")
-```
+Do not load architecture ADRs, engine modules, breaking-change notes, technical
+preferences, or implementation documents into the GDD authoring context. A
+system GDD may contain only player-visible behavior and fantasy, product rules,
+formula semantics, boundary outcomes, design-facing dependencies, tuning intent,
+and observable acceptance conditions.
 
-If no engine reference docs exist (engine not yet configured), show a short note:
-> "No engine configured yet — skipping technical feasibility check. Run
-> `$setup-engine` before moving to architecture if you haven't already."
+When an implementation choice, engine capability, API, class/data structure,
+persistence representation, synchronization strategy, technical performance
+strategy, or ADR question appears:
 
-**Step 4 — Ask before proceeding:**
+1. do not put it in the GDD;
+2. add a typed handoff entry under technical_handoffs in the authorized
+   checkpoint;
+3. use destination ADR/TECH;
+4. record source evidence and whether it is constraint-to-verify or
+   decision-needed; and
+5. continue only if the product rule can be decided without choosing the
+   implementation.
 
-Ask the user directly:
-- "Any constraints to add before we begin, or shall we proceed with these noted?"
-  - Options: "Proceed with these noted", "Add a constraint first", "I need to check the engine docs — pause here"
+If the unresolved technical point prevents a product rule from being specified,
+mark the affected section blocked in the checkpoint and stop. A later technical
+workflow resolves it; this workflow does not create or edit the sidecar or ADR.
 
----
+Present a short context summary that separates:
 
-Ask the user directly:
-- "Ready to start designing [system-name]?"
-  - Options: "Yes, let's go", "Show me more context first", "Design a dependency first"
+- product decisions already made by the user or an authoritative GDD;
+- dependency assumptions that are provisional;
+- read-only registry claims that need preflight comparison; and
+- ADR/TECH handoffs, which will not be written into the GDD.
 
----
+Ask whether the user is ready to proceed. If not, stop without writing.
 
-## 3. Create File Skeleton
+## 3. Inspect sections and authorize the changeset
 
-Once the user confirms, **immediately** create the GDD file with empty section
-headers. This ensures incremental writes have a target.
+The eight required sections are:
 
-Use the template structure from `.codex/docs/templates/game-design-document.md`:
+1. Overview
+2. Player Fantasy
+3. Detailed Rules
+4. Formulas
+5. Edge Cases
+6. Dependencies
+7. Tuning Knobs
+8. Acceptance Criteria
 
-```markdown
-# [System Name]
+For fill-gaps, classify each required section before authorization as substantive,
+missing, empty, or placeholder-only. Present the inventory and scope only
+missing, empty, and placeholder-only sections. Never reinterpret weak but
+substantive content as a gap; use revise-section when the user wants to replace
+it.
 
-> **Status**: In Design
-> **Author**: [user + agents]
-> **Last Updated**: [today's date]
-> **Implements Pillar**: [from context]
+For revise-section, show the selected section's current body and hash, explain
+that only that section will be replaced, and obtain a new product decision before
+drafting. Other sections are out of scope even if incomplete.
 
-## Overview
+For resume, read section states from the checkpoint and verify them against the
+current GDD. Written substantive content wins over a stale pending marker, but a
+hash mismatch remains an error. Resume at the first scoped pending section and
+do not re-discuss completed sections.
 
-[To be designed]
+Present one changeset authorization:
 
-## Player Fantasy
+    Mode: <mode>
+    Target GDD: design/gdd/<system-slug>.md
+    Checkpoint: production/session-state/design-system-<system-slug>.yaml
+    Sections allowed to change: <exact list>
+    Status-header transitions allowed: stale Approved -> In Design on first content mutation; In Design -> In Review only after whole-artifact validation
+    Other writes: none
 
-[To be designed]
+Do not write until the user authorizes this complete boundary.
 
-## Detailed Design
+### New-mode skeleton
 
-### Core Rules
+After authorization in new mode, create this skeleton atomically:
 
-[To be designed]
+    # <System Name>
 
-### States and Transitions
+    > **Status**: In Design
+    > **Decision Owner**: <user or named product owner>
+    > **Last Updated**: <date>
+    > **Implements Pillar**: <pillar or "Unassigned">
 
-[To be designed]
+    ## Overview
 
-### Interactions with Other Systems
+    [To be designed]
 
-[To be designed]
+    ## Player Fantasy
 
-## Formulas
+    [To be designed]
 
-[To be designed]
+    ## Detailed Rules
 
-## Edge Cases
+    [To be designed]
 
-[To be designed]
+    ## Formulas
 
-## Dependencies
+    [To be designed]
 
-[To be designed]
+    ## Edge Cases
 
-## Tuning Knobs
+    [To be designed]
 
-[To be designed]
+    ## Dependencies
 
-## Visual/Audio Requirements
+    [To be designed]
 
-[To be designed]
+    ## Tuning Knobs
 
-## UI Requirements
+    [To be designed]
 
-[To be designed]
+    ## Acceptance Criteria
 
-## Acceptance Criteria
+    [To be designed]
 
-[To be designed]
+The skeleton has exactly the eight required sections. Optional material may be
+added later only as substantive approved content; never leave optional
+placeholders in a document declared ready for review.
 
-## Open Questions
+Create or update the authorized checkpoint after the skeleton or existing-target
+validation. Use this schema:
 
-[To be designed]
-```
+    schema: design-system-checkpoint/v2
+    target: design/gdd/<system-slug>.md
+    mode: new | resume | fill-gaps | revise-section
+    base_sha256: <hash before this run, or null for new>
+    current_sha256: <hash of current target bytes>
+    mutation_scope:
+      - design/gdd/<system-slug>.md
+      - production/session-state/design-system-<system-slug>.yaml
+    scoped_sections:
+      - <canonical section>
+    section_states:
+      <canonical key>: pending | drafting | approved-not-written | written | blocked | out-of-scope
+    technical_handoffs: []
+    approved_drafts: {}
+    status: authoring | partial | ready-for-independent-review | blocked
+    review_handoff:
+      required: true
+      target_sha256: null
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-If the user declines: Stop with the following message:
-> "Verdict: **BLOCKED** — skeleton creation declined. The design session cannot proceed without the skeleton file, as all subsequent phases use it as the base. Re-run `$design-system [system]` when ready to create the file."
-Do not proceed to Section A.
-
-After writing, update `production/session-state/active.md`:
-- Search matching files to check if the file exists.
-- If it **does not exist**: use the **Write** tool to create it. Never attempt Edit on a file that may not exist.
-- If it **already exists**: use the **Edit** tool to update the relevant fields.
-
-File content:
-- Task: Designing [system-name] GDD
-- Current section: Starting (skeleton created)
-- File: design/gdd/[system-name].md
+The checkpoint is continuity state, not approval evidence. It must never claim a
+formal review verdict.
 
 ---
 
 ## Required continuation
 
-Before continuing, read [references/continued-workflow.md](references/continued-workflow.md) in full. It contains the remaining required phases, output formats, recovery rules, and handoff instructions; execute them in order.
+Before continuing, read references/continued-workflow.md in full. It contains the
+section transaction, mode-specific mutation rules, content validation, independent
+review handoff, recorder contract, and recovery behavior; follow it in order.
