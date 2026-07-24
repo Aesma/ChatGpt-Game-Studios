@@ -1,4 +1,4 @@
 interface:
   display_name: "Patch Notes"
-  short_description: "Draft from exact production deployment evidence; never publish"
-  default_prompt: "Use $patch-notes to create a traceable local draft only when an approved exact candidate has a matching verified production deployment receipt."
+  short_description: "Draft local notes only for a verified production candidate"
+  default_prompt: "Use $patch-notes with a hash-pinned v3 request to validate the exact approved candidate and canonical successful production DEPLOY action receipt, derive net-surviving player claims, enforce security/privacy/embargo/localization receipts, and remain read-only unless one absent draft target has explicit create-only CAS authority. Never publish."

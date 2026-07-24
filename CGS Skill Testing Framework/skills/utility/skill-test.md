@@ -46,6 +46,13 @@ The workflow never executes the target skill.
   non-writes.
 - [ ] **[ST-SA-008]** Invalid or partial infrastructure cannot aggregate to
   `COMPLIANT`.
+- [ ] **[ST-SA-009]** One versioned rules authority defines discovery,
+  normalization, exclusions, legacy tokens, placeholder contexts, budgets, and
+  aggregation.
+- [ ] **[ST-SA-010]** A package-local runner is pinned by path, version, hash,
+  allowed argv, timeout, interpreter constraint, and JSON output schema.
+- [ ] **[ST-SA-011]** Every all/audit run reports deterministic
+  selected/loaded/failed/omitted/excluded ledgers.
 
 ---
 
@@ -406,7 +413,9 @@ write; `PARTIAL` only for a documented pre-write dependency read failure.
 2. Generator exclusion is reported with its rule ID and path.
 3. Duplicate normalized names fail before set comparison.
 4. Historical totals do not produce a pass.
-5. Validation is `NON-COMPLIANT` or `PARTIAL_VALIDATION` if required reads fail.
+5. A conclusively detected duplicate yields `NON-COMPLIANT`; unrelated partial
+   coverage remains visible but cannot replace that higher-priority target fail.
+6. An invalid required authority instead yields `TEST_INFRA_INVALID`.
 
 #### Assertions
 
@@ -417,8 +426,245 @@ write; `PARTIAL` only for a documented pre-write dependency read failure.
 
 #### Case Verdict
 
-`PASS` when recursive set comparison exposes the duplicate; otherwise `FAIL`.
-`PARTIAL` applies only when a required fixture path cannot be read.
+`PASS` when recursive set comparison exposes the duplicate and the exact
+outcome vector maps to one verdict; otherwise `FAIL`. A read failure with no
+conclusive target fail is `PARTIAL`; invalid required authority is `INVALID`.
+
+---
+
+
+### Case 9 [ST-C09]: Versioned legacy rules distinguish active use from evidence
+
+#### Fixture
+
+- Active target prose names `.claude/`, `CLAUDE.md`, a Claude-only
+  frontmatter field, and `AskUserQuestion`.
+- A separate heading labelled Migration quotes the same path as removal evidence.
+- Rules authority `cgs-skill-test-rules/v1` is current.
+
+#### Input
+
+`$skill-test static legacy-context`
+
+#### Expected reads
+
+- Target package, rules file, validator manifest, and pinned runner.
+
+#### Expected writes
+
+- None.
+
+#### Expected non-writes
+
+- Target, migration evidence, rules, catalog, and receipts remain unchanged.
+
+#### Expected behavior
+
+1. `LEG-001` through `LEG-003` fail active legacy use.
+2. The labelled migration quotation passes with recorded context.
+3. Every result includes token, rule ID, path, line, and heading/fence context.
+4. Validation is `NON-COMPLIANT`.
+
+#### Assertions
+
+- [ ] **[ST-C09-A01]** Exact patterns and severity come from the versioned rules.
+- [ ] **[ST-C09-A02]** Context exceptions are bounded to labelled evidence.
+- [ ] **[ST-C09-A03]** Bare English read/write verbs are not tool-token matches.
+
+#### Case Verdict
+
+`PASS` when active use fails and labelled evidence does not; otherwise `FAIL`.
+
+---
+
+### Case 10 [ST-C10]: Template-aware parsing preserves declared metavariables
+
+#### Fixture
+
+- An Arguments section contains `$demo <target> [--flag]`.
+- A labelled Output Template YAML fence contains `<generated-id>`.
+- An active contract YAML fence contains `<unresolved>`.
+- Active prose contains `TODO`; a labelled example contains the same token.
+
+#### Input
+
+`$skill-test static placeholder-context`
+
+#### Expected reads
+
+- Target Markdown, rules authority, validator manifest, and pinned runner.
+
+#### Expected writes
+
+- None.
+
+#### Expected non-writes
+
+- Target, examples, templates, and receipts remain unchanged.
+
+#### Expected behavior
+
+1. Declared invocation/path metavariables pass `PH-002`.
+2. The bounded output template passes `PH-003`.
+3. Active structured placeholder fails `PH-004`.
+4. Active sentinel fails `PH-001`; its labelled-template instance is allowed.
+5. Validation is `NON-COMPLIANT` because active failures remain.
+
+#### Assertions
+
+- [ ] **[ST-C10-A01]** Fence and heading state are parsed, not guessed by token.
+- [ ] **[ST-C10-A02]** Legal authoring templates are not false positives.
+- [ ] **[ST-C10-A03]** Active contract placeholders cannot hide in YAML/TOML/JSON.
+
+#### Case Verdict
+
+`PASS` when each token receives the stated context-specific result; otherwise
+`FAIL`.
+
+---
+
+### Case 11 [ST-C11]: All-mode budgets produce a complete coverage ledger
+
+#### Fixture
+
+- Recursive discovery selects paths beyond the versioned file or byte budget.
+- A separate variant has an unreadable subtree.
+- Candidate paths are presented in a deliberately unstable filesystem order.
+
+#### Input
+
+`$skill-test static all`, then `$skill-test audit`
+
+#### Expected reads
+
+- Discovery roots, rules budgets, every admitted path, and available metadata.
+
+#### Expected writes
+
+- None.
+
+#### Expected non-writes
+
+- Implementations, catalog, rules, and receipts remain unchanged.
+
+#### Expected behavior
+
+1. Paths are normalized and sorted before budget admission.
+2. The report includes complete selected/loaded/failed/omitted/excluded sets.
+3. An unreadable subtree is a failed prefix with unknown descendants, not empty.
+4. File, total-byte, per-file, wall-time, and concurrency budgets are reported.
+5. With no conclusive target fail, omission/timeout/read failure aggregates to
+   `PARTIAL_VALIDATION`.
+
+#### Assertions
+
+- [ ] **[ST-C11-A01]** Repeated runs choose the same admitted paths.
+- [ ] **[ST-C11-A02]** Every selected path has one terminal ledger class.
+- [ ] **[ST-C11-A03]** Static all and audit share one implementation and budgets.
+- [ ] **[ST-C11-A04]** Partial coverage never becomes an empty pass.
+
+#### Case Verdict
+
+`PASS` when deterministic omission is fully reported as partial; otherwise
+`FAIL`.
+
+---
+
+### Case 12 [ST-C12]: Aggregation cross-products have one verdict
+
+#### Fixture
+
+Use these exact outcome vectors:
+
+- required authority INVALID + target FAIL;
+- target FAIL + unrelated coverage PARTIAL;
+- target PASS + coverage PARTIAL;
+- target WARN with complete coverage;
+- all required PASS;
+- empty required assertion set.
+
+#### Input
+
+Aggregate each vector with `cgs-skill-test-rules/v1`.
+
+#### Expected reads
+
+- Versioned aggregation table and the exact outcome vector.
+
+#### Expected writes
+
+- None.
+
+#### Expected non-writes
+
+- Target, authorities, rules, and receipts remain unchanged.
+
+#### Expected behavior
+
+1. Results are respectively `TEST_INFRA_INVALID`, `NON-COMPLIANT`,
+   `PARTIAL_VALIDATION`, `WARNINGS`, `COMPLIANT`, and
+   `TEST_INFRA_INVALID`.
+2. Lower-priority axes remain visible in the trace.
+3. No vector permits two aggregate verdicts.
+
+#### Assertions
+
+- [ ] **[ST-C12-A01]** Required-authority invalid outranks target failure.
+- [ ] **[ST-C12-A02]** Conclusive target failure outranks unrelated partial.
+- [ ] **[ST-C12-A03]** Empty coverage cannot pass.
+- [ ] **[ST-C12-A04]** The runner and prose use the same table.
+
+#### Case Verdict
+
+`PASS` only when all six vectors match exactly; otherwise `FAIL`.
+
+---
+
+### Case 13 [ST-C13]: Canonical names expose duplicates and path aliases first
+
+#### Fixture
+
+- Raw names include `Skill-A`, `skill-a`, surrounding whitespace, decomposed
+  Unicode, and a name longer than 64 code points.
+- Two selected paths identify the same filesystem object.
+- Catalog totals still match implementation totals.
+
+#### Input
+
+`$skill-test audit`
+
+#### Expected reads
+
+- Exact raw names and selected path identities from implementations and catalog.
+
+#### Expected writes
+
+- None.
+
+#### Expected non-writes
+
+- Names, paths, catalog, and specs remain unchanged.
+
+#### Expected behavior
+
+1. Duplicate keys use `NFC(raw).casefold()` before grammar rejection.
+2. No source is silently trimmed or Unicode-normalized for acceptance.
+3. Grammar, length, hyphen, and canonical-form failures remain separate.
+4. Same-object paths are reported as `path_alias`.
+5. Exact missing/extra/duplicate/invalid/path-alias diffs determine
+   `NON-COMPLIANT`; equal totals do not pass.
+
+#### Assertions
+
+- [ ] **[ST-C13-A01]** Both duplicate sources are retained in evidence.
+- [ ] **[ST-C13-A02]** Invalid names cannot disappear before duplicate checking.
+- [ ] **[ST-C13-A03]** Path identity is independent of name identity.
+- [ ] **[ST-C13-A04]** Exact set differences are deterministic.
+
+#### Case Verdict
+
+`PASS` when all normalization and alias defects are reported before set
+comparison; otherwise `FAIL`.
 
 ---
 
@@ -434,6 +680,9 @@ write; `PARTIAL` only for a documented pre-write dependency read failure.
 - [ ] **[ST-PC-006]** Legacy catalog `last_*` fields are never written.
 - [ ] **[ST-PC-007]** No target skill is executed or modified.
 - [ ] **[ST-PC-008]** Every finding includes stable ID and direct evidence.
+- [ ] **[ST-PC-009]** Pinned runner and rules hashes are validated before use.
+- [ ] **[ST-PC-010]** Recursive discovery, exact exclusions, budgets, and name
+  normalization are shared across modes.
 
 ---
 
@@ -441,5 +690,21 @@ write; `PARTIAL` only for a documented pre-write dependency read failure.
 
 This spec validates the written-contract analyzer and receipt protocol. It does
 not run `$skill-test`, execute target skills, mutate catalog results, or prove a
-future external validator implementation. Catalog receipt-reference schema,
-hook migration, and flow-diagram updates remain separately owned work.
+future external validator implementation. Catalog receipt-reference schema, shared template/rubric migration,
+hook migration, candidate-root support, and flow-diagram updates remain
+separately owned work.
+
+
+
+## P1 audit remediation trace
+
+| Audit ID | SKILL clause | Case/assertion binding | Rejected shortcut |
+|---|---|---|---|
+| ST-004 | Contract Manifest / Phase 5.4 | Case 8; ST-C08-A01–A04, ST-PC-010 | Nonrecursive `.agents/skills/*/SKILL.md` discovery |
+| ST-005 | Contract Manifest / Phase 5.4 | Case 8; ST-C08-A01–A04, ST-PC-010 | Unfiltered `.codex/agents/**` or hidden/generated TOML inputs |
+| ST-006 | Phase 1 canonical rules | Case 9; ST-C09-A01–A03 | Subjective legacy/product/tool-name judgment |
+| ST-007 | Phase 3 template parser | Case 10; ST-C10-A01–A03 | Token-only unresolved-placeholder failure |
+| ST-008 | Phase 1 pinned validator | Case 7; ST-C07-A01–A03, ST-SA-010, ST-PC-009 | Optional unpinned quick validator or silent fallback |
+| ST-009 | Phase 6 aggregation | Case 12; ST-C12-A01–A04, ST-SA-008 | Undefined PASS/WARN/FAIL conversion or empty COMPLIANT |
+| ST-010 | Phase 5 all/audit ledger | Case 11; ST-C11-A01–A04, ST-SA-011 | Unbounded scan or unreadable-file omission reported complete |
+| ST-011 | Phase 5.4 identity/diff | Case 13; ST-C13-A01–A04 and Case 8 ST-C08-A03 | Normalization collision hidden by equal totals |

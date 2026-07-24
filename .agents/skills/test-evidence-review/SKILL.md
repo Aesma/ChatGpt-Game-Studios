@@ -1,238 +1,351 @@
 ---
 name: test-evidence-review
-description: "Reviews requirement-bound test and manual evidence on separate structural-quality and current-execution axes, with hash-bound provenance and per-AC closure results."
+description: "Reviews requirement-bound evidence on independent structural-quality and current-execution axes with typed admissibility, stable findings, and optional immutable reporting."
 ---
 
-## Invocation and ownership
+# Test Evidence Review
 
-Invoke as:
+## Purpose and authority boundary
 
-~~~text
-$test-evidence-review --manifest {evidence-review-manifest-path} [--persist]
-~~~
+Review one explicit, immutable evidence scope. Determine whether the evidence is structurally meaningful and whether it proves a conclusive result for the exact current build. These are independent questions.
 
-The manifest is mandatory. With no argument, ask for one exact manifest path and do not discover a current sprint, system, story, QA plan, smoke report, or newest file. Reject positional test paths, ambiguous story/system names, unknown flags, duplicate flags, missing values, and any mode not defined above.
+This workflow does not execute tests, generate evidence, approve work, edit tests or requirements, fix findings, change a sprint, create attestations, or invoke another workflow. Default operation is byte-for-byte read-only. The only optional mutation is one immutable owned review report when `--persist` is explicitly requested and authorized.
 
-This workflow is read-only except for its optional owned report:
+## Invocation contract
 
-~~~text
-production/qa/evidence/reviews/{review-id}/report.md
-~~~
-
-It never edits tests, stories, QA plans, candidate manifests, smoke/playtest evidence, attestations, registries, session state, or source artifacts. A review ID must be a stable slug or UUID, not a date alone; reject path separators, dot segments, or an existing review directory.
-
-An explicit bounded user request authorizes its in-scope optional report. Otherwise, if --persist is requested, present the complete one-file changeset and obtain one explicit approval before writing. Do not prompt when no write is requested and do not re-prompt within an authorized boundary.
-
-This workflow never invokes a director gate or another workflow.
-
-## Result vocabulary
-
-Do not emit a single overloaded Verdict field. Report these independent fields:
-
-- Workflow Status: COMPLETE, PARTIAL, or BLOCKED
-- Overall Evidence Quality: ADEQUATE, INCOMPLETE, MISSING, or UNAVAILABLE
-- Overall Execution Status: PASS, FAIL, UNKNOWN, STALE, or UNAVAILABLE
-- Execution Scope: FULL, TARGETED, or NONE
-- Closure Eligible: YES or NO
-- Persistence: NOT_REQUESTED, WRITTEN, DECLINED, FAILED, or NOT_ATTEMPTED
-
-Workflow Status describes whether this review process evaluated the declared scope. Evidence Quality describes structural and semantic sufficiency. Execution Status describes current-build results. COMPLETE never means that evidence passed; ADEQUATE never implies execution; PASS never implies structural quality.
-
-A structurally strong test with no current-build runtime receipt must be reported exactly as Evidence Quality: ADEQUATE, Overall Execution Status: UNKNOWN, Closure Eligible: NO.
-
-## Phase 1: Validate the evidence-review manifest
-
-Resolve the supplied literal path and real path. Reject missing files, directories, symlinks escaping the project root, unreadable bytes, malformed syntax, duplicate keys, and unsupported schema versions. Read each source once as raw bytes and compute SHA-256 over those exact bytes.
-
-Require this manifest schema:
-
-- Artifact Type: test-evidence-review-manifest
-- Schema Version: 1
-- Review ID and generated-at timestamp
-- exact QA-plan path and raw-byte SHA-256
-- exact candidate-manifest path and raw-byte SHA-256
-- candidate ID, build ID, build artifact SHA-256, source commit, and platform/configuration
-- ordered scope rows, each with stable story ID/path/hash, stable AC ID, stable QA-plan test/check ID, evidence method, expected observable, and all expected evidence references
-- exact smoke receipt path/hash when automated or smoke evidence is required
-- exact completed playtest report path/hash when playtest evidence is required
-- test-source, manual-artifact, artifact-receipt, and reviewer-attestation paths/hashes as applicable
-- attester registry or external identity-verification source path/hash when an attestation is required
-
-Every scope row must map one stable AC ID to exactly one stable QA-plan test/check ID. Reject duplicate AC IDs, duplicate test/check IDs assigned to different ACs, missing IDs, ambiguous paths, and references not contained by the project root. Preserve the ordered row set and compute a scope SHA-256 over stable IDs, evidence methods, expected observables, paths, and declared hashes.
-
-If the manifest cannot establish a unique scope, return Workflow Status: BLOCKED, Overall Evidence Quality: UNAVAILABLE, Overall Execution Status: UNAVAILABLE, Closure Eligible: NO, and Persistence: NOT_ATTEMPTED. Do not write a report.
-
-## Phase 2: Revalidate QA-plan and candidate currentness
-
-### QA-plan contract
-
-Read the exact QA-plan bytes named by the manifest and require the captured digest to match. Apply the staged qa-plan consumer contract:
-
-1. Require Plan State at Generation: CURRENT, manifest_version: 1, hash_algorithm: sha256, Sources, Story Requirement Bindings, Test Summary, and Smoke Test Scope.
-2. Re-read every captured source path and hash its current raw bytes.
-3. Any source mismatch, disappearance, unreadable source, invalid digest, PARTIAL generation state, missing stable AC binding, or duplicate mapping makes the effective state STALE or UNAVAILABLE.
-4. Require every review scope row to match the plan's story ID/path/hash, stable AC ID, stable test/check ID, method, expected evidence path, and owner.
-5. Do not infer a mapping from a filename, directory, comment, test name, or similar wording.
-
-### Candidate contract
-
-Read and hash the exact candidate manifest. Require candidate ID, build ID, build artifact hash, source commit, platform/configuration, QA-plan path/hash, and test-manifest path/hash to match the review manifest and current QA plan. Re-hash a local build artifact; for a remote build require its trusted build receipt.
-
-Any relevant story, GDD, ADR, control, QA-plan, candidate, build, test-manifest, test-source, or evidence byte change from a captured digest makes dependent evidence STALE. Dates and modification times never establish freshness.
-
-Currentness failures do not become product-level MISSING findings. Record a mismatched readable input as STALE. Record an input that cannot be read or parsed as UNAVAILABLE and set Workflow Status: PARTIAL. Never silently omit its AC rows.
-
-## Phase 3: Review automated-test structural quality
-
-Use the QA-plan's stable AC-to-test mapping and the exact test-source path/hash from each manifest row. Path presence proves only Presence: PRESENT. Re-hash the source and require the digest to match before semantic review.
-
-For each automated or combined-method AC row, evaluate:
-
-1. Requirement mapping: the stable test ID and source metadata explicitly bind the exact stable AC ID and expected observable.
-2. Observable semantics: trace setup, stimulus, and the actual asserted state/event/output to the AC. Comments and names are context, not proof.
-3. Failure sensitivity: identify why the test would fail if the required behavior were removed, inverted, or changed. Accept a requirement-bound negative control, boundary/fault case, or current mutation-test receipt that names the same stable IDs and source/build hashes.
-4. Independence: distinguish genuinely different observables and cases from duplicate or equivalent assertions.
-5. Helper traceability: a helper assertion counts only after its implementation/contract is read, hash-bound, and shown to check the required observable.
-6. Boundary/formula coverage: use stable requirement IDs and declared plan rows, not keyword searches.
-7. Determinism/isolation findings: report timing, randomness, external I/O, shared state, or hidden-order dependencies when actually evidenced.
-
-Never count lines containing assert, expect, check, or verify. Ignore such tokens inside comments, strings, names, or unreviewed helpers. Repeated low-information assertions do not improve quality, while one high-information failure-sensitive assertion may be sufficient.
-
-Test naming is an independent maintainability finding. Parse the repository convention test_{system}_{scenario}_{expected}. A name missing system, scenario, or expected is nonconforming. A conforming name does not prove coverage, and a nonconforming name must never be split heuristically to invent a system or requirement mapping.
-
-Assign per automated row:
-
-- ADEQUATE only when mapping, observable semantics, and failure sensitivity are demonstrated and no blocking structural gap remains;
-- INCOMPLETE when evidence is present but semantic coverage or provenance is insufficient;
-- MISSING only when a required artifact is explicitly absent;
-- UNAVAILABLE when a declared artifact exists but cannot be read, parsed, or inspected.
-
-## Phase 4: Review manual, visual, UI, and playtest evidence
-
-For every required manual artifact, validate both an artifact receipt and the artifact bytes. A path that exists establishes only Presence: PRESENT.
-
-The receipt must bind:
-
-- stable story, AC, and QA-plan check IDs;
-- candidate ID, build ID/hash, source commit, platform/configuration, device/runtime/input profile;
-- artifact path, MIME type, byte size, SHA-256, capture timestamp, and capture method;
-- captor/observer identity;
-- expected observable and reproducible setup;
-- privacy/redaction classification.
-
-Re-hash the artifact and compare size/type. Inspect its actual content using an appropriate decoder or viewer. A screenshot must visibly demonstrate the expected state for its AC; a walkthrough must preserve ordered actions and observable results; a log must contain the relevant bounded event/result. A filename, path, caption, or creation date alone is never evidence of content. If content cannot be decoded or inspected, mark the row UNAVAILABLE rather than assuming it passes.
-
-### Reviewer attestation
-
-A nonempty sign-off field is not an approval. Require a separate attestation that binds reviewer identity/role, timestamp, exact scope IDs, candidate/build identity, artifact paths/hashes, attestation statement, and the reviewed result. Verify identity and authorization against the manifest's hash-bound attester registry or external verification receipt. A mismatched, unverifiable, stale, or out-of-scope attestation is INCOMPLETE and cannot authorize closure.
-
-The model must never invent an identity, infer approval from a role label, or sign on behalf of a developer, designer, art lead, QA lead, or other reviewer.
-
-### Canonical playtest consumer
-
-When a QA-plan row requires playtest evidence, accept only the exact hash-bound canonical path:
+Accept exactly:
 
 ~~~text
-production/playtests/{session-id}/report.md
+$test-evidence-review --manifest {project-relative-path} --manifest-sha256 {sha256} [--persist]
 ~~~
 
-Require Artifact Type: playtest-session-result, Schema Version: 1, Status: COMPLETED, Gate Eligible: YES, matching candidate build/version/source/platform/hypothesis or AC IDs, evidence receipt ID, raw-evidence SHA-256, manifest SHA-256, and observation-ledger SHA-256. Re-hash the referenced manifest, raw evidence, observation ledger, and report. Require derived findings to resolve to stable Observation IDs and the verified raw hash.
+Reject no-argument calls, direct test paths, story/system/sprint names, absolute paths, globs, latest-file selectors, unsafe paths, unknown or duplicate flags, missing values, and hashes not expressed as 64 lowercase hexadecimal characters. Never discover the current sprint or infer scope from directory names.
 
-Protocols, templates, ingest-only sessions, raw notes, director reviews, legacy paths, malformed reports, or newest-file guesses cannot satisfy an AC.
+The input uses `schema: cgs-test-evidence-review-manifest/v2`. It is the sole review-scope authority. On invalid or ambiguous input, write nothing and return `Workflow Status: BLOCKED`.
 
-## Phase 5: Verify current-build execution evidence
+## Versioned workflow contract
 
-Structural quality and execution are independent. For every automated, smoke, or combined-method AC row, load the exact smoke receipt and hash declared by the review manifest. Apply the staged smoke-check consumer contract:
+Freeze this contract before reading project evidence:
 
-- canonical path production/qa/evidence/smoke/{candidate-id}/{run-id}/report.md;
-- Artifact Type: smoke-check-receipt and Schema Version: 1;
-- exact candidate-manifest path/hash, candidate ID, build ID/hash, source commit, and platform/configuration;
-- exact QA-plan path/hash with recomputed QA Plan Effective State: CURRENT;
-- exact test-manifest path/hash and scope hash;
-- exact automated receipt/log/manual-evidence paths and hashes;
-- persisted receipt with no read-back failure;
-- stable test/check rows covering the declared AC IDs.
+~~~yaml template
+schema: cgs-test-evidence-review-workflow-contract/v1
+input_schema: cgs-test-evidence-review-manifest/v2
+stage_schema: cgs-project-stage-manifest/v1
+session_schema: cgs-active-session-manifest/v1
+qa_plan_schema: cgs-qa-plan/v2
+candidate_schema: cgs-build-candidate/v1
+build_receipt_schema: cgs-build-receipt/v1
+output_schema: cgs-test-evidence-review-report/v2
+default_mutation: none
+optional_mutation: one immutable report
+~~~
 
-Re-hash the candidate manifest, QA plan and all captured QA-plan sources, test manifest, automated receipt/log, manual evidence, and smoke report. Do not select the most recently modified receipt.
+Record the workflow contract schema and SHA-256 in any persisted report.
 
-Map execution status deterministically:
+## Independent result axes
 
-- FAIL if a valid current-build receipt has a conclusive required FAIL;
-- STALE if readable receipt bindings or hashes no longer match;
-- UNAVAILABLE if a declared receipt or required referenced artifact cannot be read/parsed;
-- UNKNOWN if no current-build receipt is declared or its required AC result is NOT RUN, UNKNOWN, incomplete, targeted outside the row, or otherwise nonconclusive;
-- PASS only when every required row has a conclusive current-build pass.
+Never emit one overloaded verdict. Every review returns these fields:
 
-Record Execution Scope: FULL only for a verified persisted sprint-mode smoke receipt with Verdict: PASS and Handoff Eligible: YES. A verified quick TARGETED CHECK PASSED receipt may establish a current targeted row but Execution Scope remains TARGETED and Closure Eligible remains NO. INCOMPLETE, FAIL, warning-bearing, quick, stale, missing, and unpersisted smoke results never authorize closure.
+| Field | Values | Meaning |
+|---|---|---|
+| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED` | Whether every declared row was evaluated |
+| `Structural Quality` | `ADEQUATE`, `INCOMPLETE`, `MISSING`, `UNAVAILABLE`, `UNKNOWN` | Requirement-to-observable quality and provenance |
+| `Evidence Admissibility` | `ADMISSIBLE`, `LIMITED`, `INADMISSIBLE`, `UNAVAILABLE`, `UNKNOWN` | What the supplied evidence type may prove |
+| `Execution Result` | `PASS`, `FAIL`, `UNKNOWN` | Current-build product outcome only |
+| `Execution Currency` | `CURRENT`, `STALE`, `UNAVAILABLE`, `UNKNOWN` | Whether execution bindings match current authorities |
+| `Execution Completeness` | `COMPLETE`, `PARTIAL`, `NONE`, `UNKNOWN` | Whether all required runtime rows are conclusive |
+| `Execution Scope` | `FULL`, `TARGETED`, `NONE`, `UNKNOWN` | Scope proven by runtime evidence |
+| `Closure Eligible` | `YES`, `NO` | Whether every required condition supports closure |
+| `Persistence` | `NOT_REQUESTED`, `WRITTEN`, `DECLINED`, `FAILED`, `NOT_ATTEMPTED` | Optional report outcome only |
 
-Manual and playtest execution rows use their verified build-bound artifact/attestation or completed-session status. Missing runtime evidence never downgrades to a structural warning.
+`COMPLETE` means the review classified every declared row; it does not mean quality or execution passed. `ADEQUATE` does not mean a test ran. `PASS` does not mean the test is meaningful. A structurally adequate test with no current-build receipt is exactly `Structural Quality: ADEQUATE`, `Execution Result: UNKNOWN`, `Execution Currency: UNKNOWN`, `Execution Completeness: NONE`, and closure NO.
 
-## Phase 6: Build per-AC and aggregate results
+## Canonical review manifest
 
-Emit exactly one result row for every manifest AC:
+The manifest binds one deterministic review identity:
 
-| Story ID | AC ID | Test/Check ID | Method | Presence | Evidence Quality | Execution Status | Execution Scope | Attestation | Blocking Findings | Closure Eligible |
-|---|---|---|---|---|---|---|---|---|---|---|
+- review ID, schema, creation identity, canonicalization version, and expected scope SHA-256;
+- scope type `story`, `sprint`, or `system`, plus one stable scope ID;
+- exact project-stage manifest path/hash and active-session manifest path/hash;
+- exact QA-plan path/hash, plan ID, scope ID/hash, source-span hash, ownership hash, and dependency hash;
+- exact candidate path/hash, candidate ID, build ID, artifact SHA-256, source commit, engine, platform, and configuration;
+- exact build-receipt path/hash and verification identity;
+- exact test naming-schema path/hash;
+- ordered scope rows;
+- a typed evidence registry;
+- exact attester-registry or external identity-verification path/hash when attestations are required;
+- explicit input byte/file/row budgets;
+- optional report destination with the required `ABSENT` precondition.
 
-Per-row Closure Eligible is YES only when:
+Each scope row has:
+- stable Scope Row ID, Story ID, Requirement ID, Acceptance Criterion ID, Coverage Unit ID, and QA-plan Test/Check ID;
+- story/requirement source path/hash and relevant-source-set hash;
+- method, expected observable, failure condition, owner, risk, platform/configuration, and required execution scope;
+- ordered required Evidence IDs and allowed evidence-type combinations;
+- exact test-source and metadata path/hash where applicable;
+- explicit required attestation policy.
 
-- all paths/hashes/currentness checks pass;
-- Evidence Quality is ADEQUATE;
-- Execution Status is PASS with the QA-plan-required scope;
-- required manual/playtest content inspection passes;
-- every required attestation is verified and current;
-- no blocking finding remains.
+Reject duplicate stable IDs, one Test ID assigned ambiguously to incompatible ACs, missing requirement bindings, conflicting paths, and rows not present in the exact QA plan. Preserve canonical row order and compute the scope hash over IDs, methods, observables, owners, evidence contracts, paths, and declared hashes.
 
-Aggregate without hiding rows:
+## Phase 1: Resolve the unique stage, session, and sprint scope
 
-- Overall Evidence Quality is MISSING if any required artifact is explicitly absent; otherwise UNAVAILABLE if any row could not be inspected; otherwise INCOMPLETE if any row has a structural/provenance gap; otherwise ADEQUATE.
-- Overall Execution Status is FAIL if any valid current failure exists; otherwise STALE if any binding/hash is stale; otherwise UNAVAILABLE if required evidence could not be read; otherwise UNKNOWN if any required result is absent/nonconclusive; otherwise PASS.
-- Execution Scope is FULL only when every row has its required full-scope evidence; otherwise TARGETED when all evaluated runtime evidence is targeted; otherwise NONE.
-- Workflow Status is BLOCKED for an invalid/ambiguous manifest, PARTIAL for read/parse/inspection failures that leave declared rows unevaluated, and COMPLETE when every declared row was evaluated even when its quality is MISSING or INCOMPLETE.
-- Overall Closure Eligible is YES only if every row is eligible, Workflow Status is COMPLETE, Overall Evidence Quality is ADEQUATE, Overall Execution Status is PASS, and Execution Scope satisfies every QA-plan row.
+Hash raw manifest bytes before parsing and reject duplicate keys. Resolve literal real paths within the project root. Reject missing regular files, path escapes, unexpected symlinks, directories, device files, oversize inputs, and unsupported encodings.
 
-Do not replace these fields with PASS/WARNINGS/FAIL, ADEQUATE/INCOMPLETE/MISSING as a single verdict, or a trailing Verdict: COMPLETE/CONCERNS line.
+Read the exact project-stage and active-session manifests declared by the review manifest. If scope type is `sprint`, require:
+- exactly one active sprint ID in the session manifest;
+- the same sprint ID and tracker identity in the stage manifest, review manifest, and QA plan;
+- current stage/session statuses and matching source hashes;
+- no second active sprint and no unresolved active-scope conflict.
 
-## Phase 7: Present and optionally persist the review
+For story or system scope, require its stable ID and parent sprint/stage context to be explicit; never select a sprint by modification time. A missing, stale, ambiguous, or multiply active scope makes `Workflow Status: BLOCKED`, all evidence/execution axes UNKNOWN or UNAVAILABLE as appropriate, closure NO, and persistence NOT_ATTEMPTED.
 
-Present a machine-readable header:
+## Phase 2: Revalidate requirement, build, and source bindings
+
+Read and hash the exact QA plan. Require `cgs-qa-plan/v2`, `Plan Status: CURRENT`, `Effective Status: CURRENT`, and `Scope Completeness: COMPLETE`. Re-hash every captured requirement, story, GDD, ADR, control, test source, helper contract, naming schema, candidate, build receipt, test manifest, and evidence source relevant to each row.
+
+The candidate and build receipt must agree exactly on candidate ID, build ID, artifact path/hash, source commit, engine/version, platform, configuration, producer identity, status, and completeness. Re-hash a local artifact; for a remote artifact require a verifiable signed or issuer-bound receipt.
+
+Each row's Story, Requirement, AC, Coverage Unit, and Test/Check IDs must match the QA plan and evidence metadata exactly. A filename, comment, similar description, test discovery result, or directory position cannot create a requirement binding.
+
+Compute `relevant_source_set_sha256` from canonical tuples of path, media type, byte count, and raw hash. Any relevant byte change invalidates dependent evidence immediately:
+- a readable hash or identity mismatch is `STALE`;
+- an explicitly absent required artifact is `MISSING`;
+- a declared artifact that cannot be read, parsed, decoded, or verified is `UNAVAILABLE`;
+- an undeclared or indeterminate state is `UNKNOWN`;
+- a partly valid receipt or evidence set is `PARTIAL`.
+
+Dates, sprint start, modification time, and newer-looking filenames never restore currentness.
+
+## Phase 3: Apply typed evidence admissibility
+
+Every evidence item has a stable Evidence ID, type, path, raw SHA-256, media type, byte count, producer, timestamp, subject IDs, build binding where applicable, and admissibility contract ID.
+
+Use this evidence-type registry:
+
+| Evidence Type | May establish | Cannot establish alone | Minimum binding |
+|---|---|---|---|
+| `QA_PLAN_MAPPING` | planned requirement/test mapping | structure quality or execution | plan/scope/source hashes and stable IDs |
+| `TEST_SOURCE` | inspectable structure and observable semantics | execution | Requirement/AC/Test IDs and source hash |
+| `HELPER_CONTRACT` | helper observable semantics | execution or calling-test sensitivity | helper path/hash and stable observable ID |
+| `NEGATIVE_CONTROL_RECEIPT` | failure sensitivity | current product PASS | exact source, requirement, mutation/control and tool hashes |
+| `MUTATION_RECEIPT` | failure sensitivity against a defined change | current product PASS unless separately current-build bound | mutation ID, source/build/test IDs and complete receipt |
+| `EXECUTION_RECEIPT` | current product PASS/FAIL | structural adequacy | exact candidate/build/source/test/scope/runner hashes |
+| `MANUAL_ARTIFACT` | visible or recorded observable | approval or automated execution | artifact receipt, AC/build/platform/capture binding |
+| `ARTIFACT_RECEIPT` | artifact provenance and integrity | artifact content truth | artifact hash/size/type, capture identity and method |
+| `PLAYTEST_RESULT` | verified session observations | automated test execution | canonical completed result and all referenced hashes |
+| `ATTESTATION` | authorized reviewer statement | underlying fact without reviewed evidence | identity/time/scope/build/evidence hashes and authorization source |
+| `BUILD_RECEIPT` | build provenance | test execution | candidate/build/artifact/source/platform binding |
+
+A row may combine types only as allowed by its manifest contract. Evidence is:
+- `ADMISSIBLE` when type, required fields, exact subjects, hashes, currentness, verifier, and intended axis all match;
+- `LIMITED` when valid evidence proves only a declared narrower axis or targeted scope;
+- `INADMISSIBLE` when the type is being used to prove a prohibited claim or has a conclusive contract mismatch;
+- `UNAVAILABLE` when declared bytes or verifier cannot be accessed;
+- `UNKNOWN` when admissibility cannot be determined from declared metadata.
+
+Path presence proves only `Presence: PRESENT`. It never establishes content, currentness, approval, or execution.
+
+## Phase 4: Review automated structural quality semantically
+
+For every automated or combined-method row, inspect exact source bytes and any declared metadata/helper contracts. Evaluate:
+
+1. Stable mapping from Requirement, AC, Coverage Unit, and Test ID to the expected observable.
+2. Setup and stimulus that actually exercise the requirement.
+3. Assertion or observation semantics that trace to the expected state, event, output, invariant, boundary, or formula.
+4. Failure sensitivity: why removal, inversion, boundary violation, or fault injection would fail.
+5. Independence from equivalent duplicate assertions and hidden helper behavior.
+6. Determinism and isolation risks actually evidenced by time, randomness, shared state, external I/O, order, concurrency, or environment dependence.
+7. Required boundary, fault, negative, and formula cases from stable requirement IDs and QA rows.
+
+Never count tokens or lines containing assert, expect, check, or verify. Comments, strings, names, repeated equivalent assertions, and opaque helper calls are not semantic proof. A helper counts only when its exact implementation or contract is hash-bound and inspected. One high-information, failure-sensitive observation may be stronger than many repetitions.
+
+Assign row Structural Quality:
+- `ADEQUATE` only when stable mapping, observable semantics, and failure sensitivity are demonstrated with no blocking structural gap;
+- `INCOMPLETE` when sources exist but semantics, coverage, independence, or provenance is insufficient;
+- `MISSING` only for an explicitly absent required structural artifact;
+- `UNAVAILABLE` when declared material cannot be inspected;
+- `UNKNOWN` when the manifest does not permit a determination.
+
+## Phase 5: Validate canonical test naming independently
+
+Read the exact hash-bound canonical naming schema declared by the review manifest. It must define stable `system`, `scenario`, and `expected` fields and an unambiguous parser or metadata encoding for repository test names.
+
+A valid name represents `test_{system}_{scenario}_{expected}` according to that exact schema. Missing or ambiguous system/scenario/expected produces a stable naming finding. Do not heuristically split underscore text, invent a system, or infer Requirement/AC coverage from a name.
+
+Naming is a maintainability subfinding only. A conforming name cannot improve Structural Quality without semantic mapping; a nonconforming name cannot erase otherwise demonstrated coverage.
+
+## Phase 6: Inspect manual, visual, log, UI, and playtest evidence
+
+For each manual artifact, verify its `ARTIFACT_RECEIPT` and raw bytes. Require stable Story/Requirement/AC/Check IDs, candidate/build/artifact/source, platform/device/OS/runtime/configuration/input, artifact path/hash/type/size, capture time/method, captor/observer identity, reproducible setup, expected observable, and privacy/redaction class.
+
+Inspect actual content with an appropriate decoder or viewer:
+- an image must visibly demonstrate the AC state;
+- a walkthrough must preserve ordered actions and observed results;
+- a log must include the relevant bounded event/result and parser context;
+- UI evidence must identify screen/state/input/platform and observable result.
+
+A filename, caption, path, field being nonempty, or date alone is never content proof. An undecodable artifact or unavailable viewer is UNAVAILABLE, not MISSING or PASS.
+
+For playtest evidence, require an exact current canonical completed result and every referenced manifest, observation ledger, raw artifact, and receipt hash. Derived findings must resolve to stable Observation IDs and raw evidence. A plan, protocol, ingest-only session, director review, legacy path, or summary is inadmissible as executed playtest evidence.
+
+## Phase 7: Verify attestations without impersonation
+
+A nonempty sign-off field or role label is not an attestation. Require a separate typed `ATTESTATION` record binding:
+- verifier-supported reviewer identity and authorized role;
+- timestamp and validity interval;
+- exact review scope, Story/Requirement/AC/Check IDs;
+- candidate/build/artifact/source identities;
+- exact reviewed evidence paths/hashes;
+- attestation statement, result, and policy ID;
+- attester-registry path/hash or external verification receipt.
+
+Verify authorization for the exact scope. A mismatch, expired authorization, stale source/evidence hash, unverifiable identity, or out-of-scope statement is INADMISSIBLE or INCOMPLETE and blocks closure.
+
+The model must never create, complete, copy forward, or sign an attestation on behalf of any person or role.
+
+## Phase 8: Verify current execution independently
+
+For every row requiring runtime evidence, consume only the exact typed `EXECUTION_RECEIPT` declared by Evidence ID. Validate its schema adapter and all referenced raw bytes. A current receipt binds:
+- candidate manifest and build receipt paths/hashes;
+- candidate/build/artifact/source identities;
+- QA plan, scope, requirement, AC, Coverage Unit, Test/Check IDs;
+- test execution manifest, runner/version, ordered argv, cwd, deterministic controls;
+- platform/configuration and required device identity;
+- timestamps, result rows, parser, logs, completeness, and receipt hash;
+- immutable persistence/read-back state when the producer contract requires it.
+
+A `cgs-smoke-check-receipt/v2` is admissible only from the canonical candidate/run evidence root, with exact selected-scope hash and all indexed member hashes verified. Sprint PASS may establish FULL execution scope; quick TARGETED CHECK PASSED can establish only the exact targeted rows and never full closure.
+
+Other execution receipt types require a registered schema adapter with the same exact build, scope, result, completeness, and hash guarantees. A generic CI success, console text, newest report, selected test list, QA plan, or user claim cannot establish execution.
+
+Map per row:
+- `Execution Result: FAIL` only from a current admissible conclusive failure;
+- `Execution Result: PASS` only from a current admissible conclusive pass;
+- otherwise `Execution Result: UNKNOWN`.
+- `Execution Currency: CURRENT` only when every binding/hash is current; readable mismatch is STALE; unreadable required binding is UNAVAILABLE; no determinate receipt is UNKNOWN.
+- `Execution Completeness: COMPLETE` only when every required result row/log/parser record is present and conclusive; some valid rows plus gaps is PARTIAL; no receipt is NONE; indeterminate membership is UNKNOWN.
+- `Execution Scope: FULL` only when exact required full scope is proven; exact subset is TARGETED; no execution is NONE; indeterminate scope is UNKNOWN.
+
+Structural quality never changes these fields.
+
+## Phase 9: Create stable findings and per-AC results
+
+Use versioned rule IDs, including:
+- `TER-R-SCOPE-001` ambiguous active scope;
+- `TER-R-BIND-001` requirement/build/hash mismatch;
+- `TER-R-ADMIT-001` inadmissible evidence type;
+- `TER-R-STRUCT-001` missing semantic observable;
+- `TER-R-SENSE-001` failure sensitivity unproven;
+- `TER-R-NAME-001` canonical naming mismatch;
+- `TER-R-ATTEST-001` invalid attestation;
+- `TER-R-EXEC-001` no conclusive current execution;
+- `TER-R-STALE-001` relevant bytes changed;
+- `TER-R-UNAVAIL-001` declared evidence cannot be inspected;
+- `TER-R-PARTIAL-001` evidence or execution set incomplete.
+
+For every finding compute a deterministic fingerprint over:
+`workflow-contract hash | review scope hash | Scope Row ID | Requirement ID | AC ID | Evidence ID or none | axis | rule ID | observed identity/hash`.
+
+Finding ID is `TER-F-{first-16-hex-of-fingerprint}`. Store the full SHA-256 fingerprint, severity `BLOCKER|MAJOR|MINOR|INFO`, axis, rule ID, stable subjects, observed/expected values, evidence references, and owning role. Sort findings by Scope Row ID, axis, rule ID, Evidence ID, then fingerprint. Rerunning unchanged bytes yields identical IDs and order.
+
+Emit exactly one result row for every declared AC:
+
+| Scope Row ID | Story ID | Requirement ID | AC ID | Test/Check ID | Method | Presence | Structural Quality | Evidence Admissibility | Execution Result | Execution Currency | Execution Completeness | Execution Scope | Attestation | Blocking Finding IDs | Closure Eligible |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
+Never omit a row because an input is unreadable. Mark the appropriate fields UNAVAILABLE/UNKNOWN/PARTIAL and attach stable findings.
+
+## Phase 10: Aggregate with one deterministic decision table
+
+Aggregate without hiding row states:
+
+1. `Workflow Status: BLOCKED` for invalid or ambiguous review scope; otherwise PARTIAL when any declared row could not be fully inspected; otherwise COMPLETE.
+2. Structural Quality is MISSING if any required structural artifact is explicitly absent; otherwise UNAVAILABLE if any is unreadable; otherwise UNKNOWN if any row cannot be determined; otherwise INCOMPLETE if any structural gap exists; otherwise ADEQUATE.
+3. Evidence Admissibility is INADMISSIBLE if any required evidence is conclusively prohibited or mismatched; otherwise UNAVAILABLE if required evidence cannot be accessed; otherwise UNKNOWN if indeterminate; otherwise LIMITED if any required claim is proven only narrowly; otherwise ADMISSIBLE.
+4. Execution Result is FAIL if any current admissible required row conclusively fails; otherwise UNKNOWN unless every required row conclusively passes; otherwise PASS.
+5. Execution Currency is STALE if any required readable binding changed; otherwise UNAVAILABLE if any required binding cannot be read; otherwise UNKNOWN if any required currency is indeterminate; otherwise CURRENT.
+6. Execution Completeness is NONE when no runtime receipt exists for any required row; otherwise UNKNOWN when expected membership is indeterminate; otherwise PARTIAL when any required row or record is nonconclusive/missing; otherwise COMPLETE.
+7. Execution Scope is FULL only when every row's required full scope is current and conclusive; otherwise TARGETED when all available conclusive execution is an exact subset; otherwise NONE when no execution exists; otherwise UNKNOWN.
+8. Closure Eligible is YES only when Workflow COMPLETE, Structural ADEQUATE, Admissibility ADMISSIBLE, Execution PASS/CURRENT/COMPLETE with required FULL scope, all required attestations verify, and no blocking finding exists. Otherwise NO.
+
+These axes are the only review decision vocabulary. Do not append `PASS/WARNINGS/FAIL`, `ADEQUATE/INCOMPLETE/MISSING` as a single verdict, or `COMPLETE/CONCERNS` as a second verdict.
+
+## Phase 11: Present a read-only result
+
+Always present:
+- review manifest path/hash, workflow contract hash, Review ID, Scope ID, and scope SHA-256;
+- stage/session/sprint identities and hashes;
+- QA plan, candidate, build receipt, artifact, source-set, naming schema, evidence-registry, and attester-registry hashes;
+- complete per-AC table;
+- stable findings with rule IDs and fingerprints;
+- structural, admissibility, execution, currentness, completeness, scope, attestation, and persistence sections;
+- aggregate axes and Closure Eligible;
+- exact remediation owner for every blocker.
+
+Without `--persist`, write nothing, return `Persistence: NOT_REQUESTED`, and list zero owned write paths. The review describes underlying evidence but is not itself a durable closure receipt.
+
+## Phase 12: Optionally CAS-persist one immutable report
+
+The only owned output is:
 
 ~~~text
-Artifact Type: test-evidence-review-report
-Schema Version: 1
-Review ID: {review-id}
-Review Manifest Path: {path}
-Review Manifest SHA-256: sha256:{digest}
-Scope SHA-256: sha256:{digest}
-QA Plan Path: {path}
-QA Plan SHA-256: sha256:{digest}
-QA Plan Effective State: CURRENT | STALE | UNAVAILABLE
-Candidate Manifest Path: {path}
-Candidate Manifest SHA-256: sha256:{digest}
-Candidate ID: {candidate-id}
-Build ID: {build-id}
-Build Artifact SHA-256: sha256:{digest}
-Source Commit: {commit}
-Workflow Status: COMPLETE | PARTIAL | BLOCKED
-Overall Evidence Quality: ADEQUATE | INCOMPLETE | MISSING | UNAVAILABLE
-Overall Execution Status: PASS | FAIL | UNKNOWN | STALE | UNAVAILABLE
-Execution Scope: FULL | TARGETED | NONE
-Closure Eligible: YES | NO
-Persistence: NOT_REQUESTED | WRITTEN | DECLINED | FAILED | NOT_ATTEMPTED
+production/qa/evidence/reviews/{review-id}-{first-12-hex-of-scope-sha256}/report.md
 ~~~
 
-Then present:
+Reject an existing directory or report. Never overwrite, append, choose a date-only filename, or update a latest pointer.
 
-1. exact review-manifest, QA-plan, candidate, smoke, playtest, test-source, artifact, receipt, attestation, and scope hashes;
-2. the complete per-AC table;
-3. structural findings separated from runtime findings;
-4. unavailable inputs separated from known missing product evidence;
-5. aggregate fields from Phase 6;
-6. remediation owner for each blocking gap;
-7. Persistence state.
+Before writing, preview the exact one-file CREATE operation, byte count, report SHA-256, all non-writes, aggregate axes, closure result, and persistence consequence. If persistence was not already authorized, obtain one explicit approval. A decline preserves every observed review result, sets `Persistence: DECLINED`, and makes the review report unavailable as durable evidence.
 
-With --persist, generate the full report at production/qa/evidence/reviews/{review-id}/report.md. Preview the exact one-file CREATE operation and explicit non-writes. Reject an existing review directory rather than overwriting. If authorized, re-hash all inputs immediately before writing, abort on any change, write atomically, re-read the bytes, and report the verified report SHA-256. On decline or failure, preserve the evidence-quality, execution, and closure assessment unchanged and report Persistence: DECLINED or FAILED. Persistence is an independent workflow result; a non-persisted review cannot itself be cited as a durable review receipt.
+For an authorized write:
+1. re-read and re-hash the manifest and every stage, session, QA, requirement, candidate, build, test, evidence, naming, adapter, and attestation input;
+2. compare all identities and hashes with the frozen snapshot;
+3. require the final directory and report still absent;
+4. render the complete `cgs-test-evidence-review-report/v2` in private same-filesystem staging;
+5. validate stable finding IDs, per-AC row count, internal references, and report hash;
+6. compare-and-swap unchanged inputs and absent destination;
+7. atomically publish the one report without overwrite;
+8. read back bytes, re-hash, and validate the schema/header.
 
-Without --persist, make no write and report Persistence: NOT_REQUESTED. A conversation-only review may describe the eligibility of the underlying evidence, but the review itself is not a durable closure receipt.
+On drift, collision, write failure, or read-back mismatch, report `Persistence: FAILED`, preserve the observed axes and findings, set the persisted-review receipt availability to NO, and never claim the report was written.
 
-Recommend the exact missing/stale/unavailable evidence or owning role to address. Do not fix tests, create evidence, solicit a fake sign-off, mutate another artifact, or invoke a downstream workflow.
+The persisted report header includes:
+- artifact/schema/review/scope/workflow-contract identities and hashes;
+- exact stage/session/sprint, QA plan, candidate/build/artifact/source, evidence registry, and input-set hashes;
+- Workflow Status, Structural Quality, Evidence Admissibility, Execution Result, Execution Currency, Execution Completeness, Execution Scope, Closure Eligible, and Persistence;
+- stable findings-set SHA-256;
+- report body canonicalization version.
+
+A downstream consumer receives the exact report path and SHA-256 plus review scope, candidate, build, artifact, and input-set hashes. It must re-hash the report and referenced authorities. It must not use a newest report, conversation summary, or Persistence other than WRITTEN.
+
+## Required invariants
+
+- Active scope comes only from exact stage/session manifests, never recent files.
+- Every AC row binds stable requirement, test/check, build, and evidence identities.
+- Evidence type and admissibility limit what each artifact may prove.
+- File presence and token counts cannot establish quality or execution.
+- Structural quality and current execution remain independent.
+- Relevant source byte changes make dependent evidence stale.
+- Missing, unavailable, partial, stale, and unknown states remain distinct.
+- The model never fabricates or impersonates a signatory.
+- Naming conformance is independent and cannot prove coverage.
+- Stable rule IDs and hash fingerprints make findings reproducible.
+- Default operation is byte-for-byte read-only.
+- Optional persistence creates one immutable CAS-verified report only.
+
+
+
+## P1 audit traceability
+
+This table is trace metadata only; it does not add behavior. Each row binds one audit ID to the exact enforcing clause and dedicated-spec assertion set.
+
+| Audit ID | Enforcing SKILL clause | Dedicated spec case and assertions |
+|---|---|---|
+| TER-004 | Phase 1 — stage/session authority selects one declared active sprint; timestamps/newest directories are forbidden | Case 1; TER-STA-003, TER-STA-004, TER-PRO-001, TER-PRO-002 |
+| TER-005 | Canonical review manifest + Phase 2 — every row binds stable Story/Requirement/AC/Coverage Unit/Test/build/evidence identities and hashes | Case 2; TER-STA-005, TER-STA-006, TER-PRO-002, TER-PRO-005 |
+| TER-006 | Phase 4 — semantic observable and failure sensitivity, never names/comments/token counts, establish structural coverage | Case 3; TER-STA-007, TER-STA-017, TER-PRO-005 |
+| TER-007 | Phase 7 — attestation requires verified identity, time, scope, build, hashes, statement, result, and authority; the model never signs | Case 4; TER-STA-008, TER-PRO-006 |
+| TER-008 | Phase 2 — exact relevant source-set hashes determine currency; dates/sprint start/mtime cannot restore freshness | Case 5; TER-STA-009, TER-PRO-008 |
+| TER-009 | Phases 9–10 — every AC row persists and missing/unavailable/partial/stale/unknown remain distinct | Case 6; TER-STA-010, TER-STA-020, TER-PRO-003, TER-PRO-007 |
+| TER-010 | Independent result axes + Phase 10 — workflow status, quality, execution, closure, and persistence use one deterministic multi-axis table, with no second verdict | Case 7; TER-STA-011, TER-STA-012, TER-STA-019 |
+| TER-015 | Phase 5 — canonical naming parses stable system/scenario/expected fields; failure is only a naming finding and never coverage | Case 8; TER-STA-013, TER-STA-014, TER-PRO-005 |
+| TER-016 | Purpose/authority, invocation, independent axes, Phases 11–12 — one evidence-review manifest interface, read-only default, optional authorized report, no code-quality substitute | Case 9; TER-STA-001–TER-STA-024 and TER-PRO-001–TER-PRO-015 |

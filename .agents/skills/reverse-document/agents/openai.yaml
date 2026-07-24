@@ -1,4 +1,7 @@
 interface:
   display_name: "Reverse Document"
-  short_description: "Create non-authoritative reports from implementation evidence"
-  default_prompt: "Use $reverse-document with a bounded manifest to separate source-cited observations, explicit user-attested intent, unknowns, and unimplemented proposals in one provenance-bound non-authoritative report."
+  short_description: "Create immutable reports from bounded implementation evidence"
+  default_prompt: "Use $reverse-document only with an exact hash-pinned v2 request manifest. Produce one create-only, non-authoritative observation report from hard-bounded source evidence; keep observed facts, unverified inferences, explicit user-attested intent, unknowns, and unimplemented proposals separate; expose partial and unsupported coverage; preserve version/hash/tool provenance; never infer identity or create an ADR/authoritative design artifact."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,4 +1,4 @@
 interface:
   display_name: "Team QA"
-  short_description: "Run evidence-bound QA for one exact build candidate"
-  default_prompt: "Use $team-qa with an exact candidate manifest, QA plan, and smoke receipt; keep workflow completion separate from the QA verdict."
+  short_description: "Run bounded evidence QA for one exact scope and build"
+  default_prompt: "Use $team-qa with one exact v2 request; keep immutable checkpoints and workflow completion separate from the evidence-bound QA verdict and every downstream release authority."

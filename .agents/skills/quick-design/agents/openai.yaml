@@ -1,4 +1,4 @@
 interface:
   display_name: "Quick Design"
-  short_description: "Create a hash-bound low-risk design delta proposal"
-  default_prompt: "Use $quick-design to propose a structurally low-risk change against one exact GDD hash; application, review, lifecycle recording, and implementation remain separate."
+  short_description: "Propose an evidence-gated low-risk design delta"
+  default_prompt: "Use $quick-design to create one immutable proposal against explicit target, owner, section, base, and risk-evidence hashes; authoritative application, independent review, lifecycle recording, and implementation remain separate."

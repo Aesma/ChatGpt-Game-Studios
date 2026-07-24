@@ -1,395 +1,418 @@
 ---
 name: team-qa
-description: "Orchestrate an evidence-bound QA cycle for one exact build candidate, separating workflow completion from the QA verdict and refusing approval when required evidence is missing, stale, blocked, not run, or unverifiable."
+description: "Orchestrate one bounded, evidence-bound QA run for an exact scope and build, with immutable checkpoints, controlled concurrency, independent review, and separate workflow-completion and QA-verdict axes."
 ---
 
 # Team QA
 
-Coordinate `qa-lead` and `qa-tester` for one immutable build candidate. This skill
-is an orchestrator and evidence consumer. It does not turn plans, chat selections,
-agent summaries, filenames, or modification times into test results.
+Coordinate one QA run for one immutable scope and build candidate. Plans, selections,
+chat responses, agent summaries, workflow completion, filenames and modification times
+are not execution evidence. This workflow consumes independently produced evidence and
+never turns QA output into release, deployment or publication authority.
 
-## Invocation
+## Invocation and strict request — TQA-007
 
-Use one explicit mode:
+Invoke only as:
+
+`$team-qa --request <path> --expect-request <sha256>`
+
+Require both flags exactly once. Reject unknown or duplicate fields, malformed IDs,
+directories where files are required, globs, `latest`, modification-time selection,
+unsafe paths, symlink escapes, unsupported schemas and request-hash drift. Stop before
+project reads, delegation, output or writes on invocation failure.
+
+The request is strict `cgs.team-qa-request/v2` and declares exactly one operation:
+
+- `START` — validate entry authorities and propose/create the fixed run manifest,
+  strategy and case set;
+- `INGEST` — validate one exact external evidence receipt and propose/create one
+  immutable normalized evidence record plus checkpoint;
+- `FREEZE` — freeze the complete ordered evidence manifest after evidence production;
+- `FINALIZE` — consume the exact frozen manifest and independent evidence review,
+  then derive and optionally record one signoff;
+- `STATUS` — read-only validation of one run/checkpoint chain; or
+- `RESUME` — resume from one exact immutable checkpoint after revalidation.
+
+The request declares stable scope/run/operation IDs; exact `cgs.team-qa-scope-manifest/v2`
+path/hash; candidate/build, QA-plan and smoke authorities; operation-specific evidence
+or review inputs; applicable root-to-target `AGENTS.md` path/hash chain; expected
+predecessor checkpoint path/hash; exact proposed controller output paths; mutation
+authority and expiry when recording; and fixed file, byte, story, receipt, dependency,
+agent, response and elapsed-time budgets.
+
+Never infer an active sprint, session, scope, build, QA plan, smoke result, test receipt,
+checkpoint, evidence review or run. A changed scope manifest, ordered membership,
+candidate/build/artifact/source/platform identity, QA plan, smoke receipt or instruction
+chain requires a new run ID.
+
+## Scope authority and bounded context — TQA-007/TQA-016
+
+`cgs.team-qa-scope-manifest/v2` is the sole scope authority. It contains:
+
+- stable scope ID/kind `SPRINT|FEATURE|STORY`, owner and generated time;
+- for sprint scope, the exact stable sprint ID and sprint manifest path/hash;
+- ordered story/requirement IDs, canonical paths, raw hashes and stable AC IDs;
+- exact candidate manifest/build receipt/artifact/source and target platform,
+  configuration, environment, device and locale matrix;
+- exact QA-plan, test-ID ownership snapshot, evidence policy, producer registry and
+  canonical evidence destinations;
+- permitted exclusions with required approval contract, never informal omissions; and
+- maximum files, raw bytes, story shards, receipts, dependency depth, workers, response
+  bytes and elapsed time, each within workflow hard ceilings.
+
+Normalize Unicode NFC, forward-slash project-relative paths and case-fold comparison
+keys while preserving raw spellings. Reject duplicate canonical IDs/paths, conflicting
+scope membership, multiple sprint candidates, date-only IDs, unsafe paths and hash
+mismatches. Sort by stable story then AC/test/check ID.
+
+Load only declared files and recursive dependencies within the budgets. Admit whole
+story/requirement authority closures; never silently truncate one. Record selected,
+loaded, missing, unreadable, invalid, omitted and unprocessed rows with bytes/edges and
+reason. Any required omission or budget exhaustion makes the run partial and QA
+incomplete. Delegates receive one bounded story shard and return only schema-conforming
+rows plus bounded summaries; they do not receive the full corpus by default.
+
+## Authority, ownership and staged mutation — TQA-008
+
+Read-only evaluation, controller artifact CREATE, test execution, manual observation,
+bug creation, evidence review, release gating, deployment and publication are separate
+authorities. Approval for one never grants another.
+
+The controller owns only absent-target immutable artifacts below the exact run root:
 
 ```text
-$team-qa start <scope-id> --run-id <qa-run-id> --candidate <candidate-manifest-path> --qa-plan <qa-plan-path> --smoke-receipt <smoke-report-path>
-$team-qa ingest <qa-run-id> --automated-receipt <path>
-$team-qa ingest <qa-run-id> --manual-evidence <path>
-$team-qa ingest <qa-run-id> --playtest-result <path>
-$team-qa ingest <qa-run-id> --soak-result <path>
-$team-qa status <qa-run-id>
-$team-qa finalize <qa-run-id> --evidence-review <review-report-path>
+production/qa/team-runs/{qa-run-id}/
+  manifests/{run-manifest-identity-sha256}.yaml
+  strategies/{strategy-identity-sha256}.md
+  cases/{case-id}-{case-identity-sha256}.md
+  evidence/{evidence-id}-{evidence-identity-sha256}.md
+  evidence-manifests/{evidence-manifest-identity-sha256}.yaml
+  checkpoints/{sequence}-{checkpoint-identity-sha256}.yaml
+  signoffs/{signoff-identity-sha256}.md
 ```
 
-All paths are exact. Reject glob-only, "latest", "most recent", directory-only, and
-modification-time selection. A changed build or changed scope starts a new
-`qa-run-id`; never mutate an old run to point at a different candidate.
+One invocation proposes one closed changeset whose paths and exact bytes/hashes are
+already knowable for that operation. `START` authority covers only the presented run
+manifest, strategy, cases and phase checkpoint. It cannot pre-authorize future evidence,
+bugs, signoff or dynamically discovered paths. Each `INGEST`, `FREEZE` and `FINALIZE`
+operation has its own exact absent-target changeset after the relevant IDs and bytes are
+known. If scope or output membership changes, stop for a new operation request and
+authority; never claim an unknowable “complete future changeset.”
 
-Before the first authorized write, present one complete changeset with every
-CREATE path and all explicit non-writes. An invocation that explicitly authorizes
-the bounded operation may serve as that authorization. Otherwise obtain one
-approval for the complete changeset. Do not re-prompt file by file. If the scope
-expands, stop and obtain a new bounded authorization.
+`qa-lead` owns risk/strategy proposals and assessment of the Phase 5 frozen evidence
+manifest. `qa-tester` owns bounded case proposals and faithful transcription of supplied
+evidence. The controller is the sole publisher of run artifacts. External runner,
+tester, playtest, soak and review owners produce their own receipts. Team QA never writes
+`production/qa/bugs/**`, release records, session state, catalog, test sources, builds,
+evidence producer receipts or external state.
 
-This workflow has no review-mode or director-gate branch. It never reads or writes
-`production/review-mode.txt` and never writes session state.
+Before each authorized CREATE, re-hash every input and predecessor, verify target and
+parent preconditions, render exact bytes, then use atomic no-replace. Flush, close,
+strictly parse, read back and verify bytes/hash. Drift, collision or read-back mismatch
+writes nothing further and records recovery-required state.
 
-## Team and authority
+## Paired status model — TQA-011/TQA-012
 
-- `qa-lead` may classify risk, draft the strategy, map requirements to evidence,
-  and assess the frozen evidence index.
-- `qa-tester` may draft test cases and transcribe already-produced evidence into
-  the required schema.
-- Agent output, a user's chat choice, and a qa-lead recommendation are not
-  execution evidence and cannot set a test to PASS.
-- Independent tasks may run concurrently only when each owns disjoint proposed
-  paths. The orchestrator is the sole publisher of the run manifest, evidence
-  index, and signoff.
+Always report these axes together and never emit a bare `COMPLETE`:
 
-If subagents are unavailable, perform the same bounded responsibilities locally.
-Report every unavailable or timed-out assignment in Workflow Status; do not omit
-its required rows.
+- `Workflow State`: `WORKFLOW_NOT_STARTED`, `WORKFLOW_BLOCKED_AT_ENTRY`,
+  `WORKFLOW_RUNNING`, `WORKFLOW_PARTIAL`, `WORKFLOW_COMPLETED`,
+  `WORKFLOW_CANCELLED`, or `WORKFLOW_ERROR`;
+- `QA Verdict`: `QA_APPROVED`, `QA_APPROVED_WITH_CONDITIONS`,
+  `QA_NOT_APPROVED`, or `QA_INCOMPLETE`;
+- `Gate Eligible`: `YES` only for persisted, verified `QA_APPROVED`; otherwise `NO`;
+- `Run Phase`: `PHASE_1_ENTRY`, `PHASE_2_STRATEGY`, `PHASE_3_EVIDENCE`,
+  `PHASE_4_FINDINGS`, `PHASE_5_FROZEN`, `PHASE_6_SIGNOFF`, or `TERMINAL`; and
+- `Persistence`: `ANALYSIS_ONLY`, `VERIFIED`, `DECLINED`, `FAILED`,
+  `CONFLICT`, or `NOT_ATTEMPTED`.
 
-## Artifact ownership and canonical layout
+Also render one unambiguous paired line such as:
 
-This skill owns only a fresh directory:
+`Workflow Outcome: WORKFLOW COMPLETED / QA NOT APPROVED`
+
+Workflow completion means every declared row was processed; it never means product
+quality passed. A completed workflow may be QA_NOT_APPROVED or QA_INCOMPLETE. The
+machine-readable values remain the underscore tokens above.
+
+There is no generic `production/session-state` write. Run recovery state exists only in
+the unique run root and every checkpoint binds run, scope, candidate/build, evidence
+manifest, signoff/report hashes and the paired status vocabulary. Run IDs are stable
+UUIDs/slugs, never date-only, so same-day reports cannot collide.
+
+## Team policy and independence — TQA-015
+
+There is no `full|lean|solo` review mode and no director-gate branch. Review labels may
+not reduce evidence, change the denominator, replace a role or alter signoff semantics.
+
+If `qa-tester` is unavailable, the controller may draft bounded cases locally, still
+with `Execution State: NOT_RUN`; it cannot manufacture execution. If `qa-lead` is
+unavailable, the controller may preserve a draft strategy and mechanically normalize
+rows, but a policy-required qa-lead assessment remains missing and yields QA_INCOMPLETE.
+The independent `test-evidence-review` receipt is never self-produced or waived by this
+fallback. No local fallback may attest a run, manual observation, platform fact,
+playtest, soak result or independent review.
+
+## Delegation budget, deadlines and late results — TQA-009/TQA-014
+
+Before every dispatch, read configured `max_threads`, enumerate all live root/child/
+nested agents and compute:
+
+`available_child_slots = max(0, max_threads - live_threads_including_controller)`
+
+Then use `dispatch_slots = min(request_worker_limit, available_child_slots)`. If config,
+live count or request limit is absent/invalid, work serially. The controller counts as
+one; nested delegates consume the same budget and may not spawn without an assigned
+slot. Never launch one qa-tester per story without batching.
+
+Partition work by stable story shard. Each assignment has assignment ID, exact run/
+scope/candidate/build hashes, immutable inputs, exclusive proposal path, read/write
+boundary, response schema/size limit, deadline, timeout, cancellation rule and retry
+budget of at most one. Gather and record a complete batch before dispatching the next.
+No two writers share a target.
+
+On timeout, error, cancellation or partial response, record assignment state
+`TIMEOUT|ERROR|CANCELLED|PARTIAL`, attempt, loaded/omitted rows and owner. One retry is
+permitted only before Phase 5 freeze, within the same declared inputs/output ownership,
+budget and operation authority. A changed assignment requires new authority.
+
+Once the Phase 5 checkpoint is frozen, cancel outstanding assignments. A late response
+is `LATE_IGNORED`, may be hashed and listed read-only, but cannot write into, amend or
+qualify the frozen run. To admit it, start a new evidence-manifest identity and run.
+Timeout/partial/cancelled required work always leaves rows nonconclusive and prevents
+QA_APPROVED.
+
+## Phase 1 — Resolve entry authorities
+
+### Candidate and build
+
+Require strict build candidate and trusted build receipt schemas with exact candidate/
+build IDs, artifact path/hash, source commit/tree, engine/toolchain/configuration,
+platform/environment matrix, build command/runner/times/result/log hashes, SBOM and
+provenance/signature when policy requires. Re-hash local bytes and all dependencies.
+
+### QA plan integration
+
+Consume only exact P1 `Artifact Type: cgs-qa-plan`, `Schema Version: 2` at
+`production/qa/plans/{plan-id}.md`. Recompute currentness from its scope manifest,
+Sources, requirement bindings, Test ID ownership and dependency/coverage rows. Require
+`Plan State at Generation: CURRENT`, recomputed `Effective State: CURRENT`, complete
+scope/coverage with no required gap, `Build Binding: BOUND` for this candidate and
+`Gate Evidence: NO`. The plan is authority for required rows, not proof they ran.
+
+### Smoke integration
+
+Consume only the exact canonical P1 smoke root:
+
+`production/qa/evidence/smoke/{candidate-id}/{smoke-run-id}/`
+
+Require `cgs-smoke-check-receipt/v2`, sprint mode, exact selected-scope hash and indexed
+member hashes, exact candidate/build/artifact/source/QA-plan/platform/configuration/
+environment identity, current authorities, `Observed Verdict: PASS`, `Persistence:
+VERIFIED`, and `Handoff Eligible: YES`. Quick/targeted success, FAIL, INCOMPLETE,
+UNKNOWN, stale/partial/invalid/missing/unpersisted evidence or identity mismatch blocks.
+
+Any missing/ambiguous scope, candidate, current plan or valid smoke handoff returns:
 
 ```text
-production/qa/team-runs/<qa-run-id>/
-  manifest.md
-  strategy.md
-  cases/<case-id>.md
-  evidence/<evidence-id>.md
-  evidence-index.md
-  signoff.md
-```
-
-Reject an existing `qa-run-id` on `start`. Ingest creates a new immutable evidence
-record and never overwrites source receipts. Finalize creates `evidence-index.md`
-and `signoff.md` only once. Status is read-only.
-
-The run manifest must record:
-
-- artifact type `team-qa-run-manifest` and schema version 1;
-- run ID, scope ID, normalized scope type, and ordered in-scope story/requirement
-  identifiers;
-- exact candidate manifest path and SHA-256;
-- candidate ID, build ID/version/hash, artifact path/hash, source commit,
-  platform, configuration, and environment;
-- exact QA-plan path and SHA-256 plus Effective Plan State;
-- exact smoke-report path and SHA-256, candidate/run ID, verdict, and handoff flag;
-- creation timestamp and hash algorithm `sha256`.
-
-Every persisted artifact contains its own artifact type, schema version, run ID,
-candidate/build identity, source references and hashes, status, and timestamp.
-Use repository-relative canonical paths in artifacts. Verify every proposed byte,
-write transactionally, re-read the result, and report its SHA-256. A declined or
-failed write changes Persistence, never the evidence assessment.
-
-## Status axes
-
-Always report these separately:
-
-- `Workflow Status`: `STARTED`, `RUNNING`, `COMPLETE`, `PARTIAL`, or
-  `BLOCKED_AT_ENTRY`.
-- `QA Verdict`: `APPROVED`, `APPROVED_WITH_CONDITIONS`, `NOT_APPROVED`, or
-  `INCOMPLETE`.
-- `Gate Eligible`: `YES` only for `QA Verdict: APPROVED` after a verified,
-  persisted `signoff.md`; otherwise `NO`.
-- `Persistence`: `NOT_REQUESTED`, `DECLINED`, `VERIFIED`, or `FAILED`.
-
-`Workflow Status: COMPLETE` means the declared review work finished. It never
-means tests passed. A complete run may have `QA Verdict: NOT_APPROVED` or
-`INCOMPLETE`.
-
-## Phase 1: Resolve exact scope and candidate
-
-For `start`, require the caller to supply all three exact inputs: candidate
-manifest, QA plan, and smoke report. Do not infer a sprint, build, platform,
-environment, plan, or report from session state, directory contents, or mtime.
-
-Validate the candidate manifest as a structured `build-candidate` receipt. Require
-its manifest version, hash algorithm, candidate ID, build ID/version/hash,
-artifact path and artifact SHA-256, source commit, engine, platform,
-configuration, environment, creation time, and referenced file hashes. Re-hash
-the manifest and build artifact. Ambiguous, missing, unreadable, or mismatched
-identity yields:
-
-```text
-Workflow Status: BLOCKED_AT_ENTRY
-QA Verdict: INCOMPLETE
+Workflow State: WORKFLOW_BLOCKED_AT_ENTRY
+QA Verdict: QA_INCOMPLETE
 Gate Eligible: NO
-Reason: BUILD CANDIDATE EVIDENCE REQUIRED
+Persistence: NOT_ATTEMPTED
 ```
 
-The only permitted output before a valid entry gate is a draft strategy/test plan
-in conversation. Do not create the run directory, cases, execution records,
-evidence index, bugs, or signoff.
+No run root, cases, evidence, bugs or signoff may be written. Conversation may contain a
+bounded draft only. A successful entry gate produces Phase 1 checkpoint 01.
 
-## Phase 2: Revalidate the QA plan
+## Phase 2 — Strategy and case set
 
-Read the exact QA-plan path. Require the staged `qa-plan` contract: manifest
-version 1, `hash_algorithm: sha256`, mandatory Sources table, Story Requirement Bindings, Test Summary, Smoke Test
-Scope, stable story/AC/test/check IDs, and
-`Plan State at Generation: CURRENT`.
+From the exact plan ledger, qa-lead classifies each row by versioned rule ID into Logic,
+Integration, Visual/Feel, UI, Config/Data and any multi-label combination; assigns
+automation/manual/playtest/soak methods, risks and target environments. Classification
+cannot change plan membership or stable Test IDs.
 
-Re-hash every captured source now. Compute Effective Plan State rather than
-trusting the stored label:
+Each `cgs.team-qa-case/v2` binds case/story/requirement/AC/test IDs, run/scope/candidate/
+build/platform, preconditions, ordered steps/expected results, evidence contract,
+producer, timeout and escalation. It starts `Execution State: NOT_RUN` and `Evidence
+Eligible: NO`. Case approval, qa-lead prose or chat selection cannot change it.
 
-- `CURRENT` only when every required source and binding still matches;
-- `PARTIAL` when required scope or bindings are absent;
-- `STALE` when any captured source hash changed.
+Persist only the exact strategy/cases authorized by START and then Phase 2 checkpoint
+02. This phase designs work; it does not execute tests.
 
-Only `CURRENT` may proceed. `PARTIAL` or `STALE` returns
-`BLOCKED_AT_ENTRY / INCOMPLETE / Gate Eligible: NO` and writes nothing. Never
-choose a plan by filename date or mtime.
+## Phase 3 — Ingest current execution evidence
 
-Create the ordered required-evidence ledger from stable IDs. Each row must identify
-story ID, AC ID, test/check ID, method, required scope, required platform or
-device, and expected artifact type. The ledger defines the denominator used at
-signoff.
+INGEST validates one externally produced receipt; Team QA does not run tests or invent
+observations.
 
-An exclusion may remove a row from the required denominator only when an explicit,
-persisted approval record names the row ID, reason, approver, timestamp, scope
-hash, QA-plan hash, and candidate hash. List exclusions separately; silence,
-"not applicable" text, or an agent decision is not approval.
+### Automated and regression evidence
 
-## Phase 3: Enforce the smoke handoff gate
+Require the exact `regression-selection-manifest`, `Schema Version: 2`, at
+`tests/regression-suite.md` plus a separately persisted current runner receipt. A
+selection is not execution. For every required row verify candidate/build/artifact/
+source/plan/selection/platform/environment identity; command/argv/cwd; runner/parser/
+tool versions; deterministic controls; start/end; exit code; per-test result/count;
+coverage; raw logs/results paths/hashes; producer identity; completeness and persistence.
 
-Read only the exact supplied path:
+Normalize to `PASS|FAIL|NOT_RUN|STALE|INVALID|UNKNOWN`. Only an admissible, current,
+complete matching receipt supplies PASS or FAIL. Zero exit alone is INVALID; missing
+result is NOT_RUN; old build is STALE. Smoke proves only its selected rows.
 
-`production/qa/evidence/smoke/<candidate-id>/<smoke-run-id>/report.md`
+### Manual evidence
 
-Require the staged `smoke-check` receipt contract:
+Require `cgs.team-qa-manual-evidence/v2`: evidence/case/story/AC/test/step IDs; run/
+candidate/build/artifact/source/platform/config/environment/device/OS/input; tester
+identity or approved pseudonym/role; start/end; executed preconditions; actual result
+for every step; result `PASS|FAIL|BLOCKED|NOT_RUN`; rationale/attestation; and required
+attachment/log paths/hashes. Re-hash attachments.
 
-- artifact type `smoke-check-receipt`, schema version 1, and persisted report hash;
-- exact candidate manifest path/hash, candidate ID, build identity, artifact hash,
-  source commit, platform/configuration/environment, and exact QA-plan path/hash;
-- current recomputed QA Plan Effective State `CURRENT`;
-- mode `sprint`, `Verdict: PASS`, `Handoff Eligible: YES`, and no warnings,
-  unknowns, invalid rows, missing rows, or nonconclusive results;
-- referenced automated receipt, logs, and manual evidence exist and re-hash.
+A user choice, chat narrative, agent observation, missing per-step actual, device,
+tester, time, attestation or attachment is INVALID/UNKNOWN, never PASS. Transcription
+must preserve source bytes and provenance.
 
-`TARGETED CHECK PASSED`, quick mode, `FAIL`, `INCOMPLETE`, `UNKNOWN`, a warning,
-a missing/unpersisted report, a stale hash, or a candidate/build mismatch is not a
-handoff. Return exactly:
+### Playtest and soak
 
-```text
-Workflow Status: BLOCKED_AT_ENTRY
-QA Verdict: INCOMPLETE
-Gate Eligible: NO
-Reason: SMOKE EVIDENCE REQUIRED
-```
+Playtest evidence requires exact P1 `cgs.playtest-report/v2` at
+`production/playtests/{session-id}/report.md` plus independent
+`cgs.playtest-report-recorder-receipt/v1`; accept `RECORDED COMPLETED — GATE ELIGIBLE`
+only after report/session/protocol/build/bundle/candidate/recorder and every raw hash
+verify. FINALIZATION READY, COMPLETED, a candidate record or intended path alone is not
+persisted gate evidence.
 
-A smoke failure may additionally be reported as a current failure, but the team
-cycle still does not execute and no signoff is created. Only after the gate passes
-may `start` persist `manifest.md` and `strategy.md`.
+Soak evidence requires exact P1 `cgs-soak-result/v2` and
+`cgs-soak-completion-receipt/v2` beneath its canonical run root, `Persistence Status:
+VERIFIED`, exact candidate/build/profile/environment/gate-policy identity and verified
+receipt/sample hashes. Evaluate Execution, Evidence, Stability, Memory, Performance,
+Experience, Recovery and Readiness separately. `Handoff Eligible: YES` permits
+consumption, not PASS; a required row passes only when its exact readiness/dimension
+policy passes.
 
-## Phase 4: Draft strategy and cases
+Every accepted or rejected receipt creates at most its separately authorized immutable
+normalized record and Phase 3 checkpoint. Never edit source receipts.
 
-Ask `qa-lead` to classify every ledger row as Logic, Integration, Visual/Feel,
-UI, or Config/Data; assign automation, manual, playtest, and soak requirements;
-and identify risk and environment coverage. Ask `qa-tester` to draft cases with
-stable IDs. Validate proposals against the plan before publication.
+## Phase 4 — Findings and collision-free bug handoff
 
-A case is an instruction artifact, not proof of execution. Each case must include:
+For every current failure create a finding row with collision-resistant occurrence ID:
 
-- case ID, story ID, AC ID, test/check ID, candidate/build identity, platform
-  constraints, preconditions, ordered steps, expected results, and evidence needs;
-- owner role and timeout/escalation guidance;
-- `Execution Status: NOT_RUN` and `Evidence Eligible: NO` at creation.
+`TQA-OCC-{qa-run-id}-{test-or-case-id}-{short-evidence-sha256}`
 
-Case approval or a chat response never changes `NOT_RUN`. Persist only the
-authorized manifest, strategy, and case set under this run's exclusive paths.
+Fingerprint exact scope, stable AC/test/check ID, platform and failure signature. Link
+an existing bug only when its canonical stored fingerprint and occurrence mapping match.
 
-## Phase 5: Ingest automated evidence
+Never scan for, reserve or increment `BUG-NNN`; never write the canonical bug registry.
+Parallel testers propose findings only. After exact finding IDs/paths/hashes exist, send
+unmatched occurrences to one serialized `bug-report` owner under a separate bug-write
+authority. This later handoff was not part of START authorization. Until every required
+failure has a verified bug receipt or approved policy disposition, QA remains
+QA_NOT_APPROVED and Gate Eligible NO. Record Phase 4 checkpoint 04.
 
-This skill does not execute tests and does not infer a result from a test file,
-test plan, qa-lead statement, terminal transcript pasted without provenance, or
-process exit text alone.
+## Phase 5 — Freeze evidence manifest and checkpoint — TQA-010/TQA-013
 
-Accept an exact structured receipt bound to this run's candidate. For regression
-coverage, require the exact current `tests/regression-suite.md` selection-manifest
-hash from the staged `regression-suite` contract and a matching build-bound runner
-receipt. For every required automated ID verify:
+FREEZE creates one ordered `cgs.team-qa-evidence-manifest/v2` containing:
 
-- receipt artifact type/schema and evidence ID;
-- candidate ID, build ID/hash, artifact hash, source commit, platform,
-  configuration, environment, and QA-plan hash;
-- stable test/check and AC IDs plus selection-manifest path/hash;
-- exact command/argv, working directory, runner and version, start/end timestamps,
-  exit code, per-test results and counts;
-- log/result paths and SHA-256 hashes;
-- producer/tool identity and attestation.
+- request/run/scope/candidate/build/artifact/source/QA-plan/smoke/instruction identities;
+- every required plan row exactly once with method, owner and normalized status;
+- exact receipt/report/attachment paths and hashes plus currentness/admissibility;
+- declared, excluded, required, conclusive, pass, fail, blocked, not-run, stale,
+  invalid, unknown, partial, timeout, cancelled and late-ignored counts;
+- exclusion approval receipts, findings, occurrences, bugs/dispositions and gaps;
+- assignment/batch ledger with slot arithmetic, deadlines, attempts and outcomes; and
+- freeze time, input-set hash, ordered-row hash and evidence-manifest identity.
 
-Normalize each required row to `PASS`, `FAIL`, `NOT_RUN`, `STALE`, `INVALID`, or
-`UNKNOWN`. Only a structurally valid, current, matching receipt can supply
-`PASS` or `FAIL`. A zero exit code without the required receipt is `INVALID`.
-Missing results are `NOT_RUN`; old-build results are `STALE`. None of these may
-be relabeled PASS.
+Every phase milestone 01–05 has immutable `cgs.team-qa-checkpoint/v2` with sequence,
+predecessor path/hash, paired statuses, phase, input/output identities, current evidence-
+manifest identity or NONE, exact agent/assignment states, pending/cancelled/late work,
+budgets consumed, persistence and one legal resume action.
 
-The smoke receipt proves only its declared smoke rows. It cannot satisfy unrelated
-automated rows in the QA plan.
+Phase 5 cancels outstanding work, re-hashes the predecessor chain and every evidence
+dependency, then CAS-publishes the manifest and checkpoint. It never modifies earlier
+artifacts. Changed evidence after freeze makes the run stale; create a new run/manifest,
+not an edit.
 
-## Phase 6: Ingest manual evidence
+The Phase 6 signoff input is only the exact Phase 1–5 frozen evidence manifest and
+checkpoint plus the exact independent review. Do not describe its input as “Phases 4–6”
+or include its own Phase 6 output.
 
-A canonical manual evidence record requires all of:
+## Resume protocol — TQA-013/TQA-014
 
-- artifact type `team-qa-manual-evidence`, schema version 1, evidence ID, and case
-  ID;
-- stable story, AC, test/check, and step IDs;
-- run ID, candidate ID, build ID/hash, artifact hash, source commit, platform,
-  configuration, environment, device/OS/input details;
-- tester identity or approved pseudonymous ID, tester role, start/end timestamps,
-  and attestation;
-- executed preconditions and an actual observed result for every step;
-- overall result `PASS`, `FAIL`, `BLOCKED`, or `NOT_RUN` with rationale;
-- at least one attachment or log path with its SHA-256, as required by the case.
+RESUME requires exact checkpoint path/hash and expected predecessor chain. Re-hash the
+request, scope, candidate/build/artifact, plan, smoke, all published run members and
+external evidence named by the checkpoint. Recompute status and budget use. Validate
+every target remains absent and reconcile assignment states; do not replay completed
+assignments or admit LATE_IGNORED data.
 
-`qa-tester` may transcribe a supplied receipt but must preserve the source bytes
-and provenance. The orchestrator re-hashes attachments before ingest. A user's
-"Pass" selection, a conversational description, an agent observation, missing
-per-step actuals, missing tester/time/device data, or unverified attachments is
-`INVALID` or `UNKNOWN`, never PASS.
+Broken chain, changed candidate/scope/instruction, missing member, drifted evidence,
+ambiguous assignment outcome or target collision blocks resume with exact owner/action.
+Resume continues only the single legal next operation stored in the checkpoint. STATUS
+does the same validation read-only and never repairs a run.
 
-If an otherwise valid current manual record reports `FAIL`, `BLOCKED`, or
-`NOT_RUN`, preserve that exact status in the ledger.
+## Phase 6 — Independent review and deterministic signoff
 
-## Phase 7: Consume playtest and soak evidence
+Consume only the exact persisted P1 evidence-review path:
 
-When the plan requires playtest evidence, accept only the exact canonical staged
-`playtest-report` result:
+`production/qa/evidence/reviews/{review-id}-{scope-sha256-prefix}/report.md`
 
-`production/playtests/<session-id>/report.md`
+Require the request schema `cgs-test-evidence-review-manifest/v2`, report raw hash,
+`Persistence: WRITTEN`, exact run/scope/candidate/build/artifact/QA-plan/evidence-
+manifest/input-set identities and complete row correspondence. Closure requires all
+review axes simultaneously:
 
-Require artifact type `playtest-session-result`, schema version 1,
-`Status: COMPLETED`, `Gate Eligible: YES`, matching build version/hash, source
-commit, platform/configuration, hypothesis/AC IDs, timestamps, participant count,
-evidence receipt ID, raw-evidence hash, manifest hash, and observation-ledger
-hash. Re-hash all referenced artifacts. `COMPLETE` text alone is not PASS.
-
-When the plan requires soak evidence, accept only:
-
-`production/qa/soak-tests/<soak-run-id>/result.md`
-
-Require artifact type `soak-test-result`, schema version 1, `Status: COMPLETED`,
-matching build/profile/source/platform and verified receipt/raw/ledger hashes.
-Inspect `Execution Status`, `Readiness Result`, `Gate Eligible`, and every required
-Stability, Memory, Performance, and Experience dimension. A plan row passes only
-when the named gate policy and required dimensions pass. `Verdict: COMPLETE`
-describes artifact finalization and never substitutes for readiness.
-
-Missing, in-progress, wrong-build, stale, inconclusive, or gate-ineligible
-playtest/soak evidence leaves the corresponding required row nonconclusive.
-
-## Phase 8: Findings and collision-free bug handoff
-
-For each valid current failure, create a finding in the evidence index with a
-collision-resistant occurrence ID:
-
-`TQA-OCC-<qa-run-id>-<case-or-test-id>-<short-evidence-hash>`
-
-Normalize a fingerprint from scope, stable AC/test/check ID, platform, and failure
-signature. Link an existing canonical bug only when its stored fingerprint and
-occurrence mapping match.
-
-This skill never scans for the next `BUG-NNN`, never reserves or increments bug
-numbers, and never writes `production/qa/bugs/**`. Parallel qa-testers may propose
-finding text only. Hand unmatched occurrences, fingerprints, evidence paths, and
-hashes to one serialized `bug-report` owner. Until every required failure has a
-verified canonical bug receipt or an approved non-bug disposition, the QA verdict
-is `NOT_APPROVED` and Gate Eligible is `NO`. This single-owner handoff removes
-parallel bug-ID allocation races.
-
-## Phase 9: Freeze and review evidence
-
-Before finalize, build an ordered `evidence-index.md` containing:
-
-- run/candidate/build/scope/QA-plan identity and hashes;
-- every ledger row and its normalized status;
-- exact receipt/report/attachment paths and hashes;
-- required, excluded, conclusive, pass, fail, blocked, not-run, stale, invalid,
-  and unknown counts;
-- exclusions and approval-receipt hashes;
-- findings, occurrence IDs, bug/disposition receipts, and unresolved gaps;
-- freeze timestamp, hash algorithm, and ordered-artifact count.
-
-Finalize consumes only this frozen index. Re-hash every referenced artifact.
-Changed evidence makes the frozen index `STALE`; reject signoff and start a new
-QA run rather than editing history.
-
-Read only the exact `--evidence-review` path under
-`production/qa/evidence/reviews/<review-id>/report.md`. Require the staged
-`test-evidence-review` contract and an exact manifest/index/candidate/build match:
-
-- `Artifact Type: test-evidence-review-report` and schema version 1;
 - `Workflow Status: COMPLETE`;
-- `Overall Evidence Quality: ADEQUATE`;
-- `Overall Execution Status: PASS`;
-- `Execution Scope: FULL` and sufficient for every required plan row;
-- `Closure Eligible: YES`;
-- exact QA plan, candidate, evidence-index, and report hashes.
+- `Structural Quality: ADEQUATE`;
+- `Evidence Admissibility: ADMISSIBLE`;
+- `Execution Result: PASS`;
+- `Execution Currency: CURRENT`;
+- `Execution Completeness: COMPLETE`;
+- `Execution Scope: FULL`; and
+- `Closure Eligible: YES`.
 
-Any other combination is not closure evidence. In particular, `Workflow Status:
-COMPLETE` alone never means PASS.
+Any other combination is non-closure evidence. COMPLETE alone is never PASS.
 
-## Phase 10: Deterministic signoff
+Apply this signoff precedence to the frozen required denominator:
 
-Apply this precedence to the frozen required denominator:
+| Priority | Condition | QA Verdict | Gate Eligible |
+|---:|---|---|---|
+| 1 | Any current required FAIL, failed required readiness dimension, or unresolved policy S1/S2 failure | QA_NOT_APPROVED | NO |
+| 2 | Otherwise any required BLOCKED, NOT_RUN, UNKNOWN, STALE, INVALID, missing, PARTIAL, TIMEOUT, CANCELLED, LATE_IGNORED, missing required role assessment, or non-closure review axis | QA_INCOMPLETE | NO |
+| 3 | All rows pass with only policy-approved nonblocking conditions | QA_APPROVED_WITH_CONDITIONS | NO |
+| 4 | Every required row passes, all findings are dispositioned, all required role assessments exist, review is closure eligible and no condition remains | QA_APPROVED | YES after verified signoff persistence |
 
-| Precedence | Condition | QA Verdict | Gate Eligible |
-|---|---|---|---|
-| 1 | Any valid current required FAIL, failed required readiness dimension, or unresolved severity-1/2 failure | NOT_APPROVED | NO |
-| 2 | Otherwise any required BLOCKED, NOT_RUN, UNKNOWN, STALE, INVALID, missing artifact, PARTIAL/BLOCKED review, or non-FULL/non-eligible review | INCOMPLETE | NO |
-| 3 | All required rows pass and only explicitly approved nonblocking conditions remain | APPROVED_WITH_CONDITIONS | NO |
-| 4 | All required rows pass, every finding is dispositioned, review is closure-eligible, and no condition remains | APPROVED | YES after verified persistence |
+Failure takes precedence over incomplete evidence, but all incomplete rows remain listed.
+No required row disappears from the denominator. Exclusion is valid only from an exact
+current approval binding row/scope/plan/candidate/policy/approver/time/hash.
 
-When failure and incomplete evidence coexist, `NOT_APPROVED` takes precedence and
-the signoff must also list every incomplete row. No required row disappears from
-the denominator. Show total declared, approved exclusions, required denominator,
-and all status counts so the arithmetic is auditable.
+`qa-lead` may assess only the frozen Phase 1–5 manifest and cannot change rows, evidence,
+counts or review axes. The controller applies the deterministic table. Create
+`cgs.team-qa-signoff/v2` with every identity, denominator arithmetic, ordered result
+rows, findings/bugs/dispositions, conditions, gaps, paired workflow/QA statuses,
+Gate Eligible, persistence and report hash. Gate Eligible remains NO if persistence is
+declined, failed, conflicted or unverified.
 
-`qa-lead` may draft the assessment but cannot override this table. The final
-`signoff.md` header contains:
+## QA and release integration
 
-```text
-Artifact Type: team-qa-signoff
-Schema Version: 1
-QA Run ID: <qa-run-id>
-Scope ID: <scope-id>
-Candidate ID: <candidate-id>
-Build ID: <build-id>
-Build Hash: <sha256>
-Source Commit: <commit>
-Platform/Configuration/Environment: <values>
-QA Plan Path/SHA-256: <path> / <sha256>
-Smoke Report Path/SHA-256: <path> / <sha256>
-Evidence Index Path/SHA-256: <path> / <sha256>
-Evidence Review Path/SHA-256: <path> / <sha256>
-Workflow Status: COMPLETE | PARTIAL
-QA Verdict: APPROVED | APPROVED_WITH_CONDITIONS | NOT_APPROVED | INCOMPLETE
-Gate Eligible: YES | NO
-Persistence: VERIFIED
-```
+Return `cgs.team-qa-result/v2` with the exact signoff path/hash or NOT_WRITTEN. This is
+QA evidence only:
 
-Then include denominator arithmetic, per-row result table, failure/incomplete
-sections, findings and bug handoffs, conditions, and exact next actions.
+- `$release-checklist` may normalize it only through its exact ordered evidence index
+  and policy adapter into `release-evidence-checklist` Schema Version 2. That checklist
+  still has `Gate Decision: NOT_EVALUATED` and Release/Deployment/Publication Authority
+  NONE.
+- `$team-release` may consume the exact team-QA signoff only through its declared
+  `cgs.release-gate-request/v2`/`cgs.release-gate-receipt/v2` policy binding for the same
+  candidate/build/artifact/source/platform. A QA_APPROVED result is not release GO and
+  grants no staging, production or publication authority.
+- QA_NOT_APPROVED, QA_INCOMPLETE, Gate Eligible NO, stale identity, unpersisted signoff
+  or any mismatched review/checkpoint hash remains a nonpassing release-gate input.
 
-Revalidate all hashes immediately before writing. Publish `signoff.md` atomically,
-re-read it, and verify its bytes. If persistence is declined or fails, return the
-calculated QA verdict but `Gate Eligible: NO` and the appropriate Persistence;
-never claim that signoff exists.
+Never invoke those workflows or update their artifacts.
 
-## Final response
+## Terminal result — TQA-017
 
-Every mode ends with the exact run ID, canonical paths inspected or created,
-verified hashes, Workflow Status, QA Verdict, Gate Eligible, Persistence, gaps,
-and next action. Use `BLOCKED_AT_ENTRY / INCOMPLETE` for a failed entry gate;
-`RUNNING / INCOMPLETE` while required evidence remains; and the deterministic
-Phase 10 result only after finalize.
+Every operation returns `cgs.team-qa-result/v2` with request/run/scope/candidate/build/
+artifact/source/plan/smoke/instruction/evidence/review/signoff identities; paired
+Workflow State and QA Verdict; Gate Eligible, Run Phase and Persistence; complete scope/
+budget/assignment ledgers; denominator/status counts; findings and bug handoffs; all
+checkpoint paths/hashes; partial/timeout/cancelled/late/stale rows and accountable
+owners; explicit non-writes; and exactly one legal next operation/owner or `none`.
 
-Do not recommend a downstream phase gate unless `Gate Eligible: YES`. For all
-other outcomes, name the precise missing, stale, blocked, failed, or undispositioned
-IDs and the command or artifact needed to resume this same run.
+Do not recommend a release gate unless Gate Eligible is YES from a verified QA_APPROVED
+signoff. Stop after the packet. Never continue into another operation or workflow in the
+same invocation.

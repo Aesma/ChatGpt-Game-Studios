@@ -1,4 +1,4 @@
 interface:
   display_name: "Day One Patch"
-  short_description: "Plan and evidence-gate one exact day-one patch"
-  default_prompt: "Use $day-one-patch with an explicit plan or gate mode and hash-bound manifests; it prepares bounded artifacts and evaluates a new candidate without implementing, deploying, or publishing."
+  short_description: "Plan and gate a bounded patch without implementing or deploying"
+  default_prompt: "Use $day-one-patch with a hash-pinned v2 request to select a one-round owner/path-bounded patch set, produce immutable rollback/smoke/evidence handoffs, and evaluate only a fresh new-candidate evidence manifest. Never implement, inherit old release PASS, synthesize partial QA, accept S1 as QA PASS, deploy, submit, notify, or publish."

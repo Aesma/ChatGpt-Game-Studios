@@ -1,6 +1,6 @@
 ---
 name: sprint-plan
-description: "Create or update a sprint from existing implementation-ready story work items, with read-only readiness and QA checks before one authorized atomic plan/tracker write."
+description: "Create or update a sprint from registry-bound AUTHOR_COMPLETE stories with current persisted implementation-eligible readiness records, resolving carryover and deterministic dependency order before one revision-checked plan/tracker transaction."
 ---
 
 ## Invocation and execution
@@ -40,8 +40,8 @@ If the first mode is the legacy value `status`:
 4. **STOP.** This is a terminal branch and cannot enter any later phase.
 
 For `new` and `update`, initialize an in-memory mutation ledger with
-`gate_count = 0`, `write_count = 0`, and an empty authorized path set. The ledger
-is diagnostic state only and is never persisted.
+`gate_count = 0`, `producer_rerun_count = 0`, `write_count = 0`, and an empty
+authorized path set. The ledger is diagnostic state only and is never persisted.
 
 ---
 
@@ -61,8 +61,8 @@ or repairing the persistent review mode is a separate, explicitly authorized
 task. The review-mode file is never part of the sprint changeset, so declining a
 sprint cannot leave a review-mode side effect.
 
-Use the resolved mode for every read-only readiness check and for PR-SPRINT. See
-`.codex/docs/director-gates.md` for gate semantics.
+Use the resolved mode when validating readiness-record currentness and for
+PR-SPRINT. See `.codex/docs/director-gates.md` for gate semantics.
 
 ---
 
@@ -70,150 +70,316 @@ Use the resolved mode for every read-only readiness check and for PR-SPRINT. See
 
 All work in this phase is read-only.
 
-### 2.1 Milestone, capacity, history, and risk context
+### 2.1 Milestone, capacity, history, and stable sprint identity
 
 Read:
 
 - the current milestone from `production/milestones/`;
-- `production/sprints/` and the matching current tracker, if present;
-- team capacity and estimates in the units already established by the project;
-- the latest relevant risk register entries under `production/risk-register/`;
+- `production/sprints/` and `production/sprint-status.yaml`, when present;
+- `production/session-state/active.md`, when present;
+- any versioned project-stage or current-milestone declaration that explicitly
+  carries `active_sprint_id`;
+- one current owner-issued capacity receipt with stable ID/path/revision/raw hash,
+  exact estimate unit, total/reserved/released values, and estimates in that unit;
   and
-- for `update`, `production/sprint-status.yaml` and the sprint plan whose number
-  equals its `sprint` value.
+- the latest relevant risk register entries under `production/risk-register/`.
 
-Treat a missing `production/sprints/` directory as empty history. For `update`,
-a missing tracker, a missing matching plan, or disagreement between their sprint
-identities is **BLOCKED**; do not guess the active sprint from modification time.
+Treat a missing `production/sprints/` directory as empty history for `new`.
+Never choose a sprint from modification time, directory order, a phrase such as
+"most recent", or the greatest number alone.
 
-### 2.2 Build the existing-story registry
+For `update`, collect every explicit `active_sprint_id` from the tracker, active
+session, project-stage declaration, and current milestone. A valid identifier is
+exactly `sprint-[NNN]`. Ignore a source only when it has no sprint declaration;
+do not ignore a malformed declaration. The update is eligible only when all
+present well-formed declarations resolve to exactly one identical stable ID,
+exactly one canonical plan declares that `sprint_id`, and the tracker declares
+both `sprint_id` and `active_sprint_id` equal to it. Zero IDs, conflicting IDs,
+malformed IDs, duplicate plan matches, a missing tracker, or a missing matching
+plan is **BLOCKED**. Report every selector source and value; ask for correction
+instead of guessing.
 
-The only source of new sprint work is the story registry already written by the
-epic/story workflows. Enumerate `production/epics/*/EPIC.md`, parse each managed
-`## Stories` table, and resolve each row to exactly one sibling file matching
-`story-[NNN]-[slug].md`. Build an immutable in-memory registry.
+For `new`, the existing active tracker identifies the previous sprint only when
+its stable IDs and matching plan agree. If history exists but previous-sprint
+identity is ambiguous, stop before carryover selection. Derive the proposed new
+number only after the authoritative previous identity and all existing declared
+sprint IDs are known; collision with any existing plan is **BLOCKED**.
 
-A row is structurally valid only when all of the following hold:
+Capture the exact raw-byte SHA-256 of every selector, plan, and tracker used.
 
-- the epic directory supplies the epic slug and the table supplies a three-digit
-  story number;
-- exactly one sibling story file has that number;
-- the file's `# Story [NNN]: [title]`, `Status`, `Layer`, and `Type` agree with
-  the EPIC table and epic identity;
-- the repository-relative file path is canonical, remains under
-  `production/epics/`, and contains no traversal or symlink escape;
-- the tuple `[epic-slug]/story-[NNN]` and the file path are both unique; and
-- the story file is readable as complete text.
+### 2.2 Consume the canonical story registry and story artifacts
 
-Use `[epic-slug]/story-[NNN]` as the tracker `id` and the exact
-repository-relative story path as the canonical work item. This identity comes
-from the existing epic slug and story number; never derive identity from a title,
-GDD prose, an acceptance criterion, or a newly invented task.
+The only source of sprint work is a sibling `STORIES.md` current registry produced
+by the story authoring workflow. Enumerate only
+`production/epics/*/STORIES.md`; each consumed registry must declare exact schema
+`cgs.story-registry/v2`, one stable epic identity, a positive monotonic registry
+revision, prior/current payload hashes, and an internally consistent Current Story
+Registry plus append-only identity/history ledgers. `EPIC.md` remains a read-only
+source named by the registry; its former `## Stories` table is not a sprint
+registry and its row status is never an eligibility predicate.
 
-Malformed, conflicting, duplicate, or unresolvable rows are reported and excluded.
-If any such row is needed by the requested update or makes the selected scope
-ambiguous, stop with **BLOCKED**.
+A current registry row is structurally valid only when all of the following hold:
 
-### 2.3 Validate every proposed addition against current readiness
+- stable Story ID, never-reused slot, canonical project-relative path, revision,
+  priority, dependency IDs, and current author status are present and unique;
+- the path is a direct-child `story-NNN-<slug>.md` regular file under the same
+  canonical `production/epics/<epic-slug>/` root, with no traversal, symlink,
+  case-fold, ID, slot, or path collision;
+- the file declares exact schema `cgs.story/v2`, the same Story ID, slot, epic ID,
+  canonical path, revision, dependencies, priority, and current registry status;
+- its exact raw-byte SHA-256 and declared Story Core SHA-256 reproduce; and
+- registry payload/ledger hashes and the referenced EPIC/create-stories receipt
+  identities are current and internally consistent.
 
-An existing registry row becomes an eligible new candidate only when:
+Use the registry's stable Story ID verbatim as tracker `story_id`; store the exact
+canonical project-relative path separately. Never derive identity from epic slug,
+story number, title, GDD prose, acceptance criterion, filename, or a planning-time
+task. A rename, slot reuse, or conflicting path is an upstream identity event;
+sprint-plan must not repair or silently rewrite it.
 
-1. the EPIC table status is exactly `Ready`;
-2. the story header status is exactly `Ready` (not `Needs Work`, `Blocked`,
-   `Ready for Dev`, or an inferred synonym);
-3. SHA-256 of the exact current story bytes is captured as
-   `sha256:<64 lowercase hexadecimal characters>`;
-4. the read-only `$story-readiness [story-path] --review [resolved-mode]`
-   contract is evaluated for those exact bytes and returns the final verdict
-   `READY`; and
-5. an immediate re-read has the same SHA-256. A changed file invalidates the
-   result and must be checked again before it can be selected.
+Malformed, stale, conflicting, duplicate, unsafe, or unresolvable registry/story
+evidence is reported and excluded. Corrupt registry ownership or ledgers block the
+affected epic. If a bad row is required by a dependency, requested update, active
+tracker entry, or carryover decision, stop with **Verdict: BLOCKED**.
 
-Record the path, canonical ID, story-byte hash, source status, final readiness
-verdict, review mode, layer, dependencies, priority, type, and estimate in the
-candidate manifest. A historical verdict, a story header alone, a cached output
-for different bytes, or user acceptance of a non-ready result is insufficient.
-Do not run a second QL-STORY-READY gate in sprint-plan; the authoritative
-story-readiness result already merges that gate in `full` mode.
+### 2.3 Require persisted implementation-eligible readiness
 
-Stories with final `NEEDS WORK` or `BLOCKED` remain visible as exclusions but
-cannot enter the proposed additions. If no eligible new candidate exists for a
-`new` sprint, output "No implementation-ready stories in the existing backlog",
-recommend `$create-stories` for missing story artifacts and `$story-readiness`
-for named gaps, then finish **BLOCKED** with zero producer gates and zero writes.
+A valid registry row becomes an eligible new candidate only when:
+
+1. the registry and exact `cgs.story/v2` artifact both say
+   `Story Status: AUTHOR_COMPLETE`;
+2. SHA-256 of the exact current story bytes and Story Core SHA-256 are captured;
+3. exactly one persisted `cgs.story-readiness-record/v1` binds the same stable
+   Story ID, canonical path, raw story hash, story/core revision, context/source
+   snapshot, checker/ruleset, review mode, readiness key, and stale key;
+4. that record has final verdict `READY`, complete evaluation state, persistence
+   state `PERSISTED`, and `implementation_gate_eligible: true`;
+5. exactly one current `cgs.story-readiness-recorder-receipt/v1` reports
+   `RECORDED` or exact `ALREADY_RECORDED` and binds the record candidate/hash,
+   persisted record/hash, authorization, base/final readiness-registry
+   path/hash/revision/head, atomic/CAS result, and receipt hash; and
+6. immediate re-read/re-hash of the story, `STORIES.md`, readiness record,
+   recorder receipt, readiness registry, and every stale-key source reproduces all
+   captured values. Any change makes the item ineligible until independently
+   reevaluated and recorded.
+
+Sprint-plan is only a consumer. It never invokes `$story-readiness`, simulates or
+invokes `cgs.story-readiness-recorder/v1`, persists a record, upgrades a verdict,
+or treats a conversational/candidate `READY` as implementation authorization.
+A record candidate with `NOT_PERSISTED` or `implementation_gate_eligible: false`,
+a bare verdict, missing receipt, stale source, mismatched review mode, or user risk
+acceptance is insufficient.
+
+Record the stable Story ID, canonical path, registry revision/payload hash,
+`cgs.story/v2` revision/raw/core hashes, AUTHOR_COMPLETE status, readiness record
+ID/hash/key/stale key, recorder receipt ID/hash/result, readiness-registry
+revision/head, review mode, dependencies, priority, type, and estimate in the
+candidate manifest.
+
+Non-AUTHOR_COMPLETE, non-READY, unpersisted, ineligible, or stale rows remain
+visible as exact exclusions but cannot enter proposed additions. If no eligible
+new candidate exists for `new`, output "No implementation-gate-eligible stories
+in the existing registry", recommend `$create-stories` for authoring gaps and the
+catalog-declared readiness evaluation plus independent recorder for readiness
+gaps, then finish **BLOCKED** with zero producer gates and zero writes.
 
 Existing tracked items retained by `update`, or explicitly carried from the
-previous sprint, are not new candidates. Preserve their lifecycle status and
-verify that their canonical story file still exists; never reset an in-progress,
-review, done, or blocked item to ready.
+previous sprint, are not new candidates. Preserve their lifecycle status, but
+verify stable ID/path/current story bytes against `STORIES.md` and the originally
+admitted readiness record/receipt. A changed source or identity blocks silent
+carry/update; never reset an in-progress, review, done, or blocked item to ready.
 
 ### 2.4 GDD boundary
 
-GDDs are read-only validation sources only when the readiness contract follows a
-story's explicit GDD reference. Never scan `design/gdd/` for "ready features",
+GDDs are read-only validation sources only through the exact current story and
+persisted readiness record's source/stale-key closure. Never scan `design/gdd/` for "ready features",
 turn GDD prose into sprint tasks, invent acceptance criteria, or add a work item
 that has no valid existing registry row and story file.
 
+### 2.5 Capture tracker recorder preconditions
+
+`production/sprint-status.yaml` has one logical recorder. No workflow may replace
+it directly. Sprint-plan calls the recorder contract for sprint creation and scope
+changes; lifecycle workflows call the same contract only for their owned status
+fields. The recorder requires an exact compare-and-swap tuple:
+
+```text
+expected_tracker_revision
+expected_tracker_sha256
+expected_plan_revision
+expected_story_set_hash
+requested_field_owners
+event_id
+```
+
+For an absent tracker, the expected revision/hash are `ABSENT` and the candidate
+starts at `tracker_revision: 1`. For an existing tracker, require a positive
+integer `tracker_revision`, capture the raw-byte tracker SHA-256, and require its
+`plan_revision` and `story_set_hash` to match the selected plan before drafting.
+The candidate increments the revision by exactly one. `event_id` is unique and
+stable across retries. Reusing an event with different requested bytes, bypassing
+the recorder, an unknown field owner, or any expected/current mismatch is
+**BLOCKED**; it must never be resolved by last-writer-wins.
+
+Sprint-plan owns sprint identity, dates, goal, selected story set, canonical
+paths, priority, estimates, dependency order, and planning hashes. Lifecycle
+workflows own only allowed status-transition fields. A recorder request that
+crosses those field boundaries is **BLOCKED**.
+
 ---
 
-## Phase 3: Select scope and render both drafts in memory
+## Phase 3: Resolve carryover, select scope, and render both drafts
 
-### 3.1 New sprint
+### 3.1 New-sprint carryover is a mandatory decision table
 
-Derive the next sprint number from the existing numbered sprint files. Before
-selecting new work, identify non-done items in the previous tracker and ask the
-user to carry, defer, or cancel each group. A carried item keeps its canonical
-path, origin sprint, and current lifecycle status and is marked `[CARRY]` in the
-draft. The decision selects scope but authorizes no write.
+Compare the authoritative previous plan with its applicable tracker. Every
+planned item whose tracker lifecycle status is not `done` is open. Missing or
+extra tracker rows, duplicate IDs, a stale tracker, or a story path that no longer
+matches the registry is **BLOCKED** before asking for a carryover decision.
 
-Select only eligible candidates from Phase 2.3. Respect dependency order, then
-Foundation → Core → Feature → Presentation layer order, then project priority,
-without exceeding agreed capacity. Do not fill unused capacity with invented work.
+Show each open item with stable `story_id`, canonical path, origin sprint,
+current status, estimate, dependencies, and blocker. Require exactly one explicit
+decision per item:
 
-### 3.2 Update sprint
+- `carry`: include it in the new sprint, preserve its original `origin_sprint`,
+  canonical path, current lifecycle status, and remaining-work estimate;
+- `defer`: exclude it from the new tracker and record the deferral reason in the
+  new plan's carryover decision table; or
+- `cancel from sprint scope`: exclude it and record the reason, without changing
+  the story artifact or claiming the underlying story is cancelled.
 
-Start from the matching plan/tracker pair loaded in Phase 2.1. Show current work
-items and statuses, then gather requested additions, removals, reprioritization,
-or re-estimation. Every addition must pass Phase 2.3 for its current exact bytes.
-Preserve existing statuses. Only not-started items (`backlog` or
-`ready-for-dev`) may be removed or freely reprioritized; otherwise ask the user
-to retain them or handle their lifecycle through the owning workflow.
+Blank, inferred, bulk-defaulted, or contradictory decisions are invalid. The
+decision table is part of the frozen planning payload. A carried item is marked
+`[CARRY]`; it is never reset to `ready_for_dev`. Defer/cancel decisions do not
+authorize edits to the previous tracker or story.
 
-### 3.3 Render the sprint plan
+### 3.2 Deterministic dependency/layer/priority/capacity selection
+
+Validate the dependency graph over eligible candidates, carried items, and
+already-done prerequisites. Each dependency must resolve to one stable story ID.
+A missing dependency, self-edge, cycle, dependency on an excluded unresolved
+story, or a dependent whose prerequisite would not be done or earlier in the
+proposed sprint is **BLOCKED**; never break a cycle or dependency by priority.
+
+Select and order work with this exact algorithm:
+
+1. Seed the ordered set with carried items in dependency-valid order while
+   preserving their lifecycle state and origin.
+2. Build a topological frontier of eligible new candidates whose prerequisites
+   are already done or already ordered.
+3. Within each frontier choose lower layer rank first:
+   `Foundation < Core < Feature < Presentation`.
+4. Within equal layer choose project priority:
+   `must_have < should_have < could_have`.
+5. Break remaining ties by stable `story_id` code-point order.
+6. Add a candidate only when its estimate fits remaining capacity in the one
+   established capacity unit. Recompute the frontier after each addition.
+
+Normalize only authoring priority `must-have` to plan `must_have`,
+`should-have` to `should_have`, and `nice-to-have` to `could_have`; record the
+source spelling and mapping provenance. Any other spelling is **BLOCKED**. Unknown
+or mixed estimate/capacity units make feasibility **BLOCKED**. An item
+that does not fit remains an explicit capacity exclusion; do not skip a required
+prerequisite and admit its dependent, split stories, alter estimates, or invent
+work to fill unused capacity. Record the ordered candidate manifest and every
+dependency/readiness/capacity exclusion.
+
+### 3.3 Update sprint
+
+Start only from the stable active plan/tracker pair resolved in Phase 2.1. Show
+current items and statuses, then gather requested additions, removals,
+reprioritization, or re-estimation. Every addition must pass Phase 2.3 and the
+same graph/order/capacity algorithm in Phase 3.2. Preserve existing statuses.
+Only not-started items (`backlog` or canonical `ready_for_dev`) may be removed or freely
+reprioritized; otherwise ask the user to retain them or use the lifecycle owner.
+
+### 3.4 Render the sprint plan
 
 Render the complete Markdown candidate in memory:
 
-```markdown
-# Sprint [N] — [Start Date] to [End Date]
+````markdown
+# Sprint [N] — [start_date] to [end_date]
 
-sprint_id: sprint-[NNN]
-plan_revision: sha256:[canonical planning-payload digest]
-story_set_hash: sha256:[canonical story-set digest]
-updated_at: [ISO-8601 timestamp with timezone]
+## Machine-readable Plan Record
+
+```yaml
+schema_version: "cgs.sprint-plan/v2"
+sprint_id: "sprint-[NNN]"
+plan_revision: "sha256:[canonical planning-payload digest]"
+story_set_hash: "sha256:[canonical story-set digest]"
+tracker_revision: [positive integer]
+updated_at: "[ISO-8601 instant with offset]"
+goal: "[sprint goal]"
+start_date: "[YYYY-MM-DD]"
+end_date: "[YYYY-MM-DD]"
+timezone: "[IANA timezone]"
+estimate_unit: "[one exact project-supported unit]"
+capacity:
+  receipt_id: "[stable capacity receipt ID]"
+  receipt_path: "[canonical project-relative path]"
+  receipt_revision: [positive integer]
+  receipt_sha256: "sha256:[64 lowercase hexadecimal characters]"
+  unit: "[same exact value as estimate_unit]"
+  total: [non-negative integer]
+  committed: [sum of selected story estimates]
+  reserved: [non-negative integer]
+  released: [non-negative integer]
+  remaining: [total - committed - reserved + released]
+stories:
+  - story_id: "STORY-0123456789abcdef"
+    file: "production/epics/[epic-slug]/story-[NNN]-[slug].md"
+    registry_revision: [positive integer]
+    registry_payload_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    author_status: "AUTHOR_COMPLETE"
+    story_revision: [positive integer]
+    priority: "must_have"
+    source_priority: "must-have"
+    estimate: [non-negative integer]
+    owner: "[owner or UNKNOWN]"
+    dependencies: []
+    source_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    story_core_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_record_id: "[stable record ID]"
+    readiness_record_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_receipt_id: "[stable recorder receipt ID]"
+    readiness_receipt_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    implementation_gate_eligible: true
+```
 
 ## Sprint Goal
 [One sentence tied to the current milestone]
 
 ## Capacity
-- Total: [X established units]
-- Buffer: [Y]
-- Available: [Z]
+- Unit: [the exact estimate_unit above]
+- Total: [X]
+- Committed: [C]
+- Reserved / Buffer: [R]
+- Released: [L]
+- Remaining: [Total - Committed - Reserved + Released]
 
 ## Work Items
-| ID | Story | File | Layer | Priority | Owner | Estimate | Dependencies | Source SHA-256 |
-|---|---|---|---|---|---|---:|---|---|
-| [epic]/story-[NNN] | [existing title] | `production/epics/.../story-NNN-....md` | [layer] | must-have | [owner] | [estimate] | [IDs or None] | `sha256:...` |
+| Order | Story ID | Story | File | Layer | Priority | Owner | Estimate | Dependencies | Source SHA-256 |
+|---:|---|---|---|---|---|---|---:|---|---|
+| 1 | STORY-0123456789abcdef | [existing title] | `production/epics/[epic-slug]/story-[NNN]-[slug].md` | Foundation | must_have | [owner] | [integer] | [stable STORY-* IDs or None] | `sha256:...` |
 
-## Carryover from Previous Sprint
-| ID | Origin Sprint | Current Status | Decision / Reason |
-|---|---:|---|---|
-
-## Readiness Evidence
-| ID | Story Status | Final Verdict | Review Mode | Exact Story SHA-256 |
+## Carryover Decisions
+| Story ID | Origin Sprint | Current Status | Decision | Reason |
 |---|---|---|---|---|
+
+## Exclusions
+| Story ID | Reason | Dependency / Capacity Evidence |
+|---|---|---|
+
+## Implementation Eligibility Evidence
+| Story ID | Author Status | Story SHA-256 / Core SHA-256 | Readiness Record ID / SHA-256 | Recorder Receipt ID / SHA-256 | Eligible |
+|---|---|---|---|---|---|
 
 ## QA Plan
 [path and coverage note, or the exact missing-QA warning from Phase 4]
+
+## Producer Findings
+| Finding ID | Verdict | Evidence | Disposition |
+|---|---|---|---|
 
 ## Risks
 | Risk | Probability | Impact | Mitigation |
@@ -225,81 +391,131 @@ updated_at: [ISO-8601 timestamp with timezone]
 - [ ] QA plan requirements and smoke checks pass
 - [ ] QA sign-off has no unresolved S1 or S2 defect
 - [ ] Required design deviations and reviews are recorded
-```
+````
 
-The plan references the existing stories; it does not copy, rewrite, or extend
-their acceptance criteria.
+The `cgs.sprint-plan/v2` record is the normative machine-readable plan. Every
+human table is a derived view and must agree with it exactly. The plan references
+existing stories; it does not copy, rewrite, or extend their acceptance criteria.
 
-### 3.4 Render the tracker
+### 3.5 Render the tracker through the recorder contract
 
-Render `production/sprint-status.yaml` in memory from the same selected work-item
+Render `production/sprint-status.yaml` in memory from the same ordered work-item
 set. Keep priority separate from lifecycle status. Every newly selected candidate
-starts as `ready-for-dev`, regardless of priority; `should-have` and `nice-to-have`
-must not be mislabeled `backlog` merely because of priority. Preserve the status
-of retained or carried work.
+starts as `ready_for_dev`; preserve retained and carried statuses together with
+their exact status-update timestamp/provenance.
 
 ```yaml
-# Generated by $sprint-plan. Lifecycle updates belong to the owning story workflows.
-# Story header status Ready maps to initial tracker status ready-for-dev.
-# Tracker statuses: backlog | ready-for-dev | in-progress | review | done | blocked
-
+# Generated through the sprint tracker recorder; direct replacement is forbidden.
+schema_version: "cgs.sprint-tracker/v2"
+tracker_revision: [positive integer]
+event_id: "sprint-plan/[sprint-id]/[stable operation id]"
 sprint_id: "sprint-[NNN]"
 active_sprint_id: "sprint-[NNN]"
+sprint_state: "ACTIVE"
+lifecycle_owner: "[stable authority/owner ID]"
+lifecycle_recorder: "cgs.sprint-tracker/v2"
 plan_file: "production/sprints/sprint-[NNN].md"
+plan_sha256: "sha256:[exact final plan raw-byte hash]"
 plan_revision: "sha256:[canonical planning-payload digest]"
 story_set_hash: "sha256:[canonical story-set digest]"
 updated_at: "[ISO-8601 timestamp with timezone]"
 goal: "[sprint goal]"
-start: "[YYYY-MM-DD]"
-end: "[YYYY-MM-DD]"
-generated: "[ISO-8601 timestamp with timezone]"
+start_date: "[YYYY-MM-DD]"
+end_date: "[YYYY-MM-DD]"
+timezone: "[IANA timezone]"
+estimate_unit: "[same exact unit as plan]"
+capacity:
+  receipt_id: "[same stable capacity receipt ID as plan]"
+  receipt_path: "[same canonical project-relative path as plan]"
+  receipt_revision: [same positive integer as plan]
+  receipt_sha256: "sha256:[same exact raw receipt hash as plan]"
+  unit: "[same exact value as plan estimate_unit]"
+  total: [same non-negative integer as plan]
+  committed: [same selected-estimate sum as plan]
+  reserved: [same non-negative integer as plan]
+  released: [same non-negative integer as plan]
+  remaining: [same recomputed value as plan]
 qa_plan: "[canonical path or MISSING]"
 
 stories:
-  - id: "[epic-slug]/story-[NNN]"
+  - story_id: "STORY-0123456789abcdef"
     name: "[existing story title]"
     file: "production/epics/[epic-slug]/story-[NNN]-[slug].md"
+    order: 1
     layer: "[Foundation|Core|Feature|Presentation]"
-    priority: "must-have" # must-have | should-have | nice-to-have
-    status: "ready-for-dev"
-    source_status: "Ready"
+    priority: "must_have"
+    source_priority: "must-have"
+    status: "ready_for_dev"
+    status_updated_at: "[same activation instant as top-level updated_at]"
+    status_update_provenance:
+      event_id: "sprint-plan/[sprint-id]/[stable operation id]"
+      recorder: "cgs.sprint-tracker/v2"
+      reason: "initial sprint admission"
+      prior_status: "ABSENT"
+      source_story_sha256: "sha256:[exact story raw-byte hash]"
+    story_schema: "cgs.story/v2"
+    author_status: "AUTHOR_COMPLETE"
+    story_revision: [positive integer]
     source_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    story_core_sha256: "sha256:[64 lowercase hexadecimal characters]"
     readiness_verdict: "READY"
     readiness_review_mode: "[full|lean|solo]"
+    readiness_record_id: "[stable record ID]"
+    readiness_record_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_key: "[stable readiness key]"
+    readiness_stale_key: "[current stale key]"
+    readiness_receipt_id: "[stable recorder receipt ID]"
+    readiness_receipt_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    implementation_gate_eligible: true
     origin_sprint: ""
     owner: ""
-    estimate: "[value and unit]"
+    estimate: [non-negative integer]
+    dependencies: []
     blocker: ""
     completed: ""
 ```
 
-Before any gate, assert that the Markdown and YAML drafts contain exactly the
-same work-item IDs, paths, priorities, source hashes, and lifecycle meanings.
+Before any gate, assert that Markdown and YAML contain exactly the same sprint
+ID, tracker revision, `ACTIVE` state, stable lifecycle owner/recorder,
+start/end dates, IANA timezone, estimate unit, capacity receipt
+ID/path/revision/raw hash/unit and exact
+`remaining = total - committed - reserved + released` operands, ordered story
+IDs, canonical paths, canonical priorities, integer estimates, owners,
+dependencies, story/core hashes, readiness record/receipt identities, eligibility,
+lifecycle meanings, status-update timestamps/provenance, and carryover origins.
+The plan schema is exactly `cgs.sprint-plan/v2`; the tracker schema is exactly
+`cgs.sprint-tracker/v2`, and tracker `plan_sha256` is the exact raw hash of the
+rendered plan bytes. Re-resolve every canonical story path and require it to
+exist as the same regular `cgs.story/v2` file in the same current
+`cgs.story-registry/v2` row.
 
-Compute `story_set_hash` from the current exact story bytes using the same
-consumer algorithm as `$sprint-status`: for every selected item render
+Compute `story_set_hash` using the same consumer algorithm as `$sprint-status`:
+for every selected item render
 `<story-id>\t<normalized-project-relative-path>\t<sha256-of-current-raw-story-bytes>`,
 sort records by stable story ID using code-point order, join with LF and no
 trailing LF, hash the exact UTF-8 bytes, and prefix the lowercase digest with
-`sha256:`. Duplicate/missing IDs or unreadable stories block the write.
+`sha256:`. Duplicate/missing IDs, unreadable paths, or path/hash disagreement
+blocks the write.
 
-After QA findings, producer result/accepted concerns, and every final scope value
-are resolved, compute `plan_revision` over UTF-8 canonical JSON for the complete
-planning payload: sprint identity/dates/goal/capacity, `story_set_hash`, QA-plan
-path/state or exact warning, carryover decisions, risks, producer outcome, and
-the ordered work-item rows. The payload excludes only the `plan_revision` field
-itself. Use one exact `updated_at` timestamp in both files. Re-render both drafts
-with these three values before the final preview; any later change requires new
+After QA findings, producer findings/dispositions, carryover decisions, and all
+scope values are resolved, compute `plan_revision` over UTF-8 canonical JSON for
+the complete planning payload: sprint identity/dates/goal/capacity unit and
+values, timezone, estimate unit, capacity receipt/operands, ordered work items with canonical priority,
+status-update provenance, and registry/story/readiness-record/receipt identities,
+`story_set_hash`, carryover decisions, exclusions,
+QA state, risks, producer finding IDs/evidence/dispositions, and tracker revision.
+The payload excludes only `plan_revision` itself. Use one exact `updated_at` in
+both files. Re-render both drafts before preview; any later change requires new
 hashes and, when bytes change materially, new authorization.
 
 ---
 
 ## Phase 4: Resolve QA-plan findings before authorization
 
-Still without writing, search `production/qa/` for the canonical QA plan for
-sprint `[N]` or an unambiguous QA plan that identifies that sprint.
+Still without writing, search `production/qa/` for the canonical QA plan for the
+stable sprint ID or one unambiguous QA plan that declares that ID.
 
-- If found, read it, record the path and relevant coverage in both drafts, and
+- If found, read it, record its canonical path and coverage in both drafts, and
   proceed.
 - If absent or ambiguous, surface the finding and ask:
   - `[A] Pause and run $qa-plan sprint first (Recommended)`
@@ -321,35 +537,46 @@ or after either target is written.
 
 ---
 
-## Phase 5: Producer feasibility gate before authorization
+## Phase 5: Bounded producer feasibility gate before authorization
 
-The gate input is the full current Markdown/YAML draft, including readiness
-hashes, carryover decisions, and QA-plan finding.
+The gate input is the full current Markdown/YAML draft, including stable sprint
+selectors, deterministic order, readiness hashes, carryover decisions, exclusions,
+recorder preconditions, and QA finding.
 
 - `solo`: do not spawn; report `[PR-SPRINT] skipped — Solo mode`.
 - `lean`: do not spawn; report `[PR-SPRINT] skipped — Lean mode`.
 - `full`: spawn `producer` through Codex subagent delegation using **PR-SPRINT**
-  from `.codex/docs/director-gates.md`, increment `gate_count`, and await its
-  verdict.
+  from `.codex/docs/director-gates.md`, increment `gate_count`, and await it.
 
-Pass the selected existing story list, estimates, dependency order, capacity,
-carryover, milestone constraints, excluded non-ready stories, and QA finding.
+Require every producer finding to have a stable ID `PR-SPRINT-[NNN]`, verdict,
+specific evidence, affected story IDs or capacity field, and one requested
+disposition. Reject a missing, malformed, duplicate, or evidence-free finding as
+**BLOCKED**. Preserve the same finding ID when the same concern appears on rerun;
+never renumber findings to make an unresolved concern appear new or resolved.
 
-- `REALISTIC`: proceed.
-- `CONCERNS`: surface all concerns. The user may revise scope, accept the stated
-  risk, or stop. Acceptance records the concern in the draft before preview.
-- `UNREALISTIC`: do not write. Revise scope or capacity with the user and rerun
-  every invalidated selection/readiness/QA check and PR-SPRINT as applicable.
-  If unresolved, finish **BLOCKED**.
-- Missing, failed, or malformed full-mode verdict: finish **BLOCKED**.
+On the first result:
 
-After any revision, re-render both complete drafts and repeat their set-equivalence
-assertion. Gate output, warnings, and accepted risk must all be reflected before
-the final changeset is frozen.
+- `REALISTIC`: proceed with all finding IDs/dispositions recorded.
+- `CONCERNS`: show each finding. The user may explicitly accept every concern as
+  risk, stop, or authorize one directed scope/capacity revision.
+- `UNREALISTIC`: do not write. The user may stop or authorize one directed
+  scope/capacity revision addressing the identified findings.
+- Missing, failed, malformed, or unrecognized verdict: finish **BLOCKED**.
+
+At most one directed revision and one PR-SPRINT rerun are allowed. Before the
+rerun, increment `producer_rerun_count` to 1, revalidate every affected story,
+dependency, capacity, carryover, and QA condition, then re-render both drafts.
+Pass the prior finding IDs and their dispositions to the rerun. The rerun must
+return `REALISTIC`; `CONCERNS`, `UNREALISTIC`, malformed output, a second revision
+request, or `producer_rerun_count > 1` is **BLOCKED** with zero final-target
+writes. This workflow never loops until a favorable verdict.
+
+Gate output, accepted first-pass concerns, and stable finding dispositions must
+all appear in the drafts before the final changeset is frozen.
 
 ---
 
-## Phase 6: Freeze, preview, authorize, and atomically write
+## Phase 6: Freeze, preview, authorize, and atomically record
 
 ### 6.1 Freeze and preview
 
@@ -359,71 +586,93 @@ Freeze the exact UTF-8 bytes for:
 - `production/sprint-status.yaml`.
 
 Record SHA-256 of each target's current exact bytes, or `ABSENT`, plus SHA-256 of
-each frozen candidate. Present one complete changeset preview containing both
-paths, both preimages, both candidate hashes, and the complete new content or
-complete unified diff. State explicitly that no other file, including
-`production/review-mode.txt`, will change.
+each frozen candidate. For an existing tracker also show the exact recorder CAS
+tuple from Phase 2.5. Present one complete changeset preview containing both
+paths, preimages, candidate hashes, and complete new content or complete unified
+diff. State that no other file, including `production/review-mode.txt`, changes.
 
 Obtain one explicit authorization for this exact pair. If declined, write
 nothing and finish **BLOCKED — changeset not authorized**. Authorization of an
-earlier draft does not authorize a later QA warning, gate revision, story hash,
-or scope change.
+earlier draft does not authorize a later warning, finding, story hash, recorder
+revision, or scope change.
 
 ### 6.2 Compare-and-swap preconditions
 
 Immediately before the first mutation, perform one read-only preflight:
 
-- every selected/carryover story still exists and matches the previewed
-  `source_sha256`;
-- every target still matches its previewed preimage or remains absent; and
-- the plan and tracker candidates still have identical work-item sets.
+- every selected/carryover story still exists at its canonical path, remains the
+  same current `cgs.story-registry/v2` row and `cgs.story/v2` artifact, and matches
+  the previewed raw/core hashes;
+- every readiness record, recorder receipt, readiness-registry revision/head, and
+  stale-key source remains current and still proves
+  `implementation_gate_eligible: true`;
+- the capacity receipt still has the previewed ID/path/revision/raw hash/unit and
+  operands, and its remaining-capacity equation still reproduces;
+- every active sprint selector still has its previewed hash and value;
+- both plan/tracker targets still match their previewed preimages or remain absent;
+- the current tracker still matches the expected tracker revision, raw hash,
+  plan revision, and story-set hash;
+- the `event_id` is unused or is an exact idempotent replay of the same bytes; and
+- the plan/tracker candidates still have identical ordered work-item sets.
+- both candidates still declare their exact schema versions and identical
+  `start_date`, `end_date`, `timezone`, `estimate_unit`, `ACTIVE` identity, and
+  capacity receipt/operand values.
 
 If any precondition changed, write nothing. Return to the relevant read-only
-phase, rebuild both drafts, re-run invalidated gates, and re-preview. Materially
-different bytes require new authorization.
+phase, rebuild both drafts, re-run invalidated checks, and re-preview. Materially
+different bytes require new authorization. Never overwrite a newer tracker.
 
-### 6.3 Atomic pair write and verification
+### 6.3 Atomic plan write and single-recorder tracker commit
 
-Treat the two files as one transaction:
+Treat the plan and recorder commit as one transaction:
 
 1. Create same-directory temporary siblings containing only the authorized
-   candidate bytes; increment `write_count` for these authorized transaction
-   writes only.
-2. Re-read the temporary files and verify their hashes against the preview.
-3. Recheck both target preimages once more, then replace both targets as one
-   transactional pair. Preserve the captured preimages until both replacements
-   succeed.
-4. If either replacement or verification fails, restore both preimages (or
-   remove only a newly created target), report every path that may have changed,
-   and finish **BLOCKED**. Never report partial success as COMPLETE.
-5. Re-read both final files and verify their exact hashes and work-item-set
-   equivalence. Remove transaction temporaries only after successful verification.
+   candidate bytes; increment `write_count` only for authorized transaction writes.
+2. Re-read temporary files and verify their hashes against the preview.
+3. Recheck all preimages and the recorder CAS tuple once more.
+4. Replace the plan and commit the tracker through the one recorder while keeping
+   both captured preimages until both operations verify.
+5. If replacement, recorder commit, or verification fails, restore both preimages
+   (or remove only a newly created target), report every path that may have
+   changed, and finish **BLOCKED**. Never report one-file success as COMPLETE.
+6. Re-read both finals; verify exact hashes, tracker revision increment, event ID,
+   sprint identity, versioned schemas, date/timezone/unit/capacity equality, ordered set
+   equivalence, per-row status-update provenance, and registry/story/readiness-record/
+   receipt identity/hash/currentness for every canonical story path. Remove
+   transaction temporaries only after successful verification.
 
-Do not write either final target before Phase 4, Phase 5, complete preview, and
-authorization have all resolved.
+Do not write either final target before QA resolution, the bounded producer gate,
+complete preview, and authorization have all resolved.
 
 ---
 
 ## Phase 7: Verdict and handoff
 
 Emit **Verdict: COMPLETE** only after both authorized final files exist and pass
-exact hash verification. Report the two final hashes and the number of selected,
-carried, and excluded non-ready work items.
+exact hash/identity/revision verification. Report final hashes, previous and new
+tracker revisions, recorder event ID, producer rerun count, and counts of selected,
+carried, deferred, cancelled-from-scope, and excluded work items.
 
 Then suggest only applicable next steps:
 
 - `$qa-plan sprint` first when `qa_plan: MISSING`;
-- `$story-readiness [story-path]` to revalidate if a story changes;
-- `$dev-story [story-path]` only for a currently final-READY work item; and
+- the catalog-declared readiness evaluation, followed by separately authorized
+  readiness recording, when an AUTHOR_COMPLETE story lacks current persisted
+  implementation eligibility;
+- `$dev-story [story-path]` only for a still-current
+  `implementation_gate_eligible: true` work item; and
 - `$sprint-status` for all status reporting.
 
 Other terminal results are explicit:
 
-- **Verdict: BLOCKED** — no current READY candidate, invalid registry identity,
-  missing update pair, unresolved QA/producer blocker, changed precondition,
+- **Verdict: BLOCKED** — no current persisted implementation-gate-eligible
+  candidate, invalid registry/story/readiness identity,
+  unresolved carryover, dependency/capacity failure, ambiguous active sprint,
+  recorder conflict, unresolved producer rerun, QA blocker, changed precondition,
   declined authorization, or failed atomic verification.
 - **Verdict: COMPLETE — no changes required** — `update` renders byte-identical
-  plan and tracker candidates and verifies both current files; no write occurs.
+  plan/tracker state and verifies both current files; no write occurs.
 
-In every terminal branch, report `gate_count`, `write_count`, and all paths
-written. The legacy `status` branch must always report zero for both counts.
+In every terminal branch, report `gate_count`, `producer_rerun_count`,
+`write_count`, and all paths written. The legacy `status` branch always reports
+zero gates and zero writes.

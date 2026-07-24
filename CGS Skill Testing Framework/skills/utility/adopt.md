@@ -1,329 +1,176 @@
-# Skill Test Spec: $adopt
-
-## Skill Summary
-
-`$adopt` performs a bounded brownfield artifact-format audit against versioned
-canonical rules. It returns stable, hash-bound `FORMAT GAP`,
-`COMPATIBILITY RISK`, and `RULE UNVERIFIED` findings plus an owner-separated
-migration handoff plan.
-
-Audited artifacts and configuration are strictly read-only. After an exact
-create-only authorization, one report writer may persist one immutable migration
-report under `docs/adoption/`. The workflow never repairs findings, changes
-review mode, invokes another project skill, or claims runtime compatibility from
-static formatting.
-
----
-
-## Static Assertions
-
-- [ ] YAML frontmatter contains only `name` and non-empty `description`; `name`
-      matches the skill directory
-- [ ] Has at least two phase headings
-- [ ] Contains BLOCKING, HIGH, MEDIUM, and LOW migration priorities
-- [ ] Finding kinds are FORMAT GAP, COMPATIBILITY RISK, RULE UNVERIFIED, or
-      NOT APPLICABLE
-- [ ] Runtime success/failure is never inferred from headings, fields, regexes,
-      filenames, or status strings
-- [ ] Audited source/configuration write set is always empty
-- [ ] Only one create-only immutable report path may be authorized
-- [ ] Review-mode mutation and immediate retrofit/fix offers are forbidden
-- [ ] Every finding has stable ID, rule/version/source hash, target/snapshot
-      hash, evidence, priority, status, owner, destination, and closure condition
-- [ ] Default no-argument mode is summary/inventory; full scan is explicit
-- [ ] Audit batching, budget, PARTIAL coverage, concurrent-change checks, and
-      focused re-audit convergence are bounded
-- [ ] Metadata describes the format-only/one-report/no-runtime-claim boundary
-- [ ] No director gate or project workflow is invoked
-
----
-
-## Director Gate Checks
-
-None. Optional technical review is read-only and cannot supply missing canonical
-rules or behavior evidence. No gate or project skill is invoked.
-
----
-
-## Test Cases
-
-### Case 1: Complete format audit produces stable findings and one report
-
-**Fixture:**
-- `full` mode is explicit
-- Target commit/dirty state and artifact inventory are hashable
-- Current canonical rule sources have versions and raw hashes
-- All selected artifacts fit deterministic batches
-- One ADR objectively lacks a required section under rule `ADR-STATUS-v3`
-- One story format differs from a consumer expectation that has not been
-  behavior-tested
-- Report target is absent
-- User approves the exact report bytes/path/hash
-
-**Input:** `$adopt full`
-
-**Expected behavior:**
-1. Freezes target and rule-manifest hashes
-2. Creates a FORMAT GAP for the ADR
-3. Creates a COMPATIBILITY RISK—not a runtime-failure claim—for the story
-4. Builds owner-separated handoffs without executing them
-5. Previews one immutable report
-6. Uses one report writer to create and verify exactly that report
-7. Returns REPORT READY with runtime-compatibility disclaimer
-
-**Assertions:**
-- [ ] Audited ADR/story bytes remain unchanged
-- [ ] Finding IDs are stable and include rule/path identity
-- [ ] Report path contains UTC run ID and snapshot prefix
-- [ ] Report states FORMAT AUDIT ONLY — RUNTIME COMPATIBILITY NOT TESTED
-- [ ] No project skill is invoked
-- [ ] Report writing does not alter evidence outcome
-
----
-
-### Case 2: AD-001 — reviewer never becomes artifact fixer
-
-**Fixture:**
-- systems-index has parenthetical text
-- Three ADRs lack a required field
-- Two stories differ from current templates
-- User asks to fix everything immediately
-
-**Expected behavior:**
-1. Records applicable format findings with evidence
-2. Refuses all source/config mutations
-3. Routes each finding to its unique artifact owner
-4. Produces at most a report preview/write
-5. Stops without retrofit work
-
-**Assertions:**
-- [ ] systems-index, GDDs, ADRs, stories, registry, manifest, sprint status, stage,
-      source, tests, templates, and catalogs are unchanged
-- [ ] No bulk edit or immediate-fix option is offered
-- [ ] Analyzer and reviewer have zero write ownership
-- [ ] Report writer owns only one exact create-only report
-- [ ] Fixes require a separate exact-path authorization
-
----
-
-### Case 3: AD-002 — review-mode cannot bypass the report changeset
-
-Run these variants:
-
-| Variant | State/user request | Expected |
-|---|---|---|
-| 3a | review-mode file absent | report the configuration gap if a versioned rule applies; do not prompt/write |
-| 3b | review-mode exists | read only when in selected scope; never rewrite |
-| 3c | user chooses a mode during audit | route to independent config owner; no write |
-| 3d | report writing is cancelled | no mutation and no follow-up setup write |
-| 3e | report plan approved | only exact report path changes |
-
-**Assertions:**
-- [ ] `production/review-mode.txt` never enters the write manifest
-- [ ] No `immediately write` branch exists
-- [ ] Cancelling the report cannot authorize configuration
-- [ ] Missing `production/` does not cause directory/config creation
-- [ ] Any future config change requires its own exact authorization
-
----
-
-### Case 4: AD-003 — static formatting is not runtime compatibility
-
-**Fixture:**
-- A systems-index status contains parenthetical text
-- An ADR lacks `## Status`
-- A story lacks a newer optional field
-- No current-version behavior fixture was executed
-
-**Expected behavior:**
-1. Applies versioned objective format rules where available
-2. Labels format absence as FORMAT GAP
-3. Labels claimed consumer impact as COMPATIBILITY RISK
-4. Does not say consumers silently pass, fail, malfunction, remain safe, or
-   continue to work
-5. Routes actual behavior validation to a separate current-version fixture
-
-**Assertions:**
-- [ ] Exact headings/status strings alone prove no runtime result
-- [ ] BLOCKING/HIGH are migration priorities, not execution verdicts
-- [ ] Missing behavior evidence is visible
-- [ ] Zero format gaps would still not prove all skills compatible
-- [ ] Current consumer version/hash is named when making a compatibility risk
-
----
-
-### Case 5: Immutable report authorization is exact and non-expanding
-
-**Fixture:**
-- Complete report bytes hash to R1
-- Plan P1 names one absent report path, create operation, writer, R1, target hash,
-  and rule-manifest hash
-- User approves P1
-
-Run these variants:
-
-| Variant | Event | Expected |
-|---|---|---|
-| 5a | report path already exists | collision; generate new run ID and re-preview |
-| 5b | writer requests any audited/config path | stop; P1 does not authorize it |
-| 5c | report bytes or owner change | invalidate P1 |
-| 5d | target/rule hash changes before write | cancel P1 with zero mutation |
-| 5e | unchanged P1 | create exact bytes once and verify R1 |
-
-**Assertions:**
-- [ ] No prior report is overwritten or appended
-- [ ] No glob/directory/future-file authorization exists
-- [ ] Exactly one writer owns the report
-- [ ] Compare-and-swap rehashes audited artifacts, rule sources, and target
-- [ ] Per-file re-prompt is unnecessary inside unchanged P1
-
----
-
-### Case 6: No argument performs summary inventory only
-
-**Fixture:**
-- Large brownfield project with many artifacts
-
-**Input:** `$adopt`
-
-**Expected behavior:**
-1. Inventories artifact classes, rule availability, prior reports, and estimated
-   scan size
-2. Does not open every artifact or emit per-artifact compliance findings
-3. Explains how to request explicit full or focused scope
-4. Writes nothing unless a separately complete summary report is requested and
-   authorized
-
-**Assertions:**
-- [ ] Blank input does not silently trigger maximum scan
-- [ ] Summary scope is exact and hashable
-- [ ] No compatibility conclusion is emitted
-
----
-
-### Case 7: Budget overflow produces deterministic PARTIAL coverage
-
-**Fixture:**
-- Selected scope exceeds 20 files or 250 KiB per batch
-- Declared time/context budget ends before all deterministic batches run
-
-**Expected behavior:**
-1. Orders batches by normalized path
-2. Records each batch manifest hash
-3. Lists omitted/unverified artifact paths and applicable rules
-4. Returns PARTIAL
-5. Does not sample or claim scanned-scope completeness
-
-**Assertions:**
-- [ ] Confirmed findings are retained
-- [ ] Omitted artifacts cannot count as passing
-- [ ] User can resume from the next exact batch without rescanning unchanged ones
-- [ ] No report claims full coverage
-
----
-
-### Case 8: Stable-ID focused re-audit converges
-
-**Fixture:**
-- Prior immutable report has valid report/target/rule hashes and OPEN IDs
-- One target changed to close a finding
-- Another unrelated target changed concurrently during verification
-
-**Expected behavior:**
-1. Checks prior OPEN IDs, current diff, changed rules, and regressions
-2. Preserves stable finding IDs
-3. Marks closure only when current hash and closure evidence are checked
-4. Stops PARTIAL after the concurrent second change
-5. Starts no retrofit/re-audit loop
-
-**Assertions:**
-- [ ] One focused verification pass maximum per invocation
-- [ ] Unchecked prior findings become RESOLUTION UNVERIFIED
-- [ ] Report history is preserved
-- [ ] Concurrent user edits are never overwritten
-
----
-
-### Case 9: Missing or conflicting rule sources fail closed
-
-**Fixture:**
-- An artifact exists but its canonical template/spec is missing, unversioned, or
-  conflicts with another current source
-
-**Expected behavior:**
-1. Creates RULE UNVERIFIED evidence
-2. Does not invent a heading/status dictionary
-3. Returns PARTIAL for selected scope
-4. Names rule owner/source-resolution handoff
-
-**Assertions:**
-- [ ] No FORMAT GAP is manufactured without a canonical rule
-- [ ] Reviewer prose cannot become the rule
-- [ ] Rule source paths/hashes are explicit
-
----
-
-### Case 10: Fresh project and invalid target stop safely
-
-Run an empty project, outside-root path, symlink escape, and invalid combined
-mode.
-
-**Expected behavior:**
-1. Returns ERROR or a summary stating no brownfield artifacts
-2. Makes no project-workflow invocation
-3. Writes nothing
-4. Recommends at most one separate next action
-
-**Assertions:**
-- [ ] No `$start`, gate, or stage detector is automatically run
-- [ ] No inferred stage is manufactured
-- [ ] Invalid scope cannot escape the workspace
-
----
-
-### Case 11: No director gate or downstream workflow runs
-
-**Fixture:**
-- Mixed compliant/non-compliant artifacts
-- Review mode is full
-
-**Expected behavior:**
-1. Performs the selected read-only format audit
-2. Spawns no director gate
-3. Does not invoke architecture-review, design-system, architecture-decision,
-   create-control-manifest, sprint-plan, gate-check, project-stage-detect, or
-   skill-test
-4. Lists relevant owner handoffs only in the report
-
-**Assertions:**
-- [ ] Gate invocation count is zero
-- [ ] Project-skill invocation count is zero
-- [ ] Review mode does not alter behavior
-- [ ] Handoff text is not execution
-
----
-
-## Protocol Compliance
-
-- [ ] Target and versioned rule manifest are frozen before findings
-- [ ] Static format conclusions remain distinct from runtime behavior
-- [ ] Every finding is stable-ID/hash/evidence/owner bound
-- [ ] Audited artifacts/configuration are read-only
-- [ ] Only one immutable report may be created after exact approval
-- [ ] No review-mode or retrofit mutation occurs
-- [ ] Summary/full/focused modes and PARTIAL coverage are deterministic
-- [ ] Re-audit is bounded and preserves history
-- [ ] No director gate or project skill is invoked
-- [ ] Runtime-compatibility disclaimer appears in every report
-
----
-
-## Coverage Notes
-
-The shared stage-analysis format, canonical schema registry, workflow catalog,
-and testing catalog remain unchanged because they are outside this remediation
-boundary. Their absence or disagreement must therefore surface as UNVERIFIED
-rather than being silently repaired.
-
-Catalog last-test fields remain empty because these are static candidates, not
-executed behavioral test results.
+# Contract Specification: `adopt`
+
+## Purpose
+
+This specification validates the `adopt` skill as a bounded, evidence-honest brownfield format audit. The skill may report format gaps, compatibility risks, stable re-audit deltas, and owner-separated handoffs. It may not migrate audited artifacts or claim runtime compatibility.
+
+## Contract identity
+
+- Skill under test: `.agents/skills/adopt/SKILL.md`
+- Metadata under test: `.agents/skills/adopt/agents/openai.yaml`
+- Primary report schema: `cgs.adopt-report/v1`
+- Finding schema: `cgs.adopt-finding/v1`
+- Handoff schema: `cgs.adopt-handoff/v1`
+- Closure receipt schema: `cgs.adopt-closure-receipt/v1`
+- Only accepted stage packet: `cgs.project-stage-detection/v2`
+
+## Invocation matrix
+
+| Invocation | Required behavior |
+|---|---|
+| `$adopt` | identical to `summary`; no artifact bodies or per-artifact findings |
+| `$adopt summary` | canonical inventory, registry/parser coverage, budgets, cost/page preview |
+| `$adopt full` | all registered classes, subject to hard ceilings and deterministic paging |
+| `$adopt gdds|adrs|stories|infra` | only the selected registered artifact class |
+| `--batch N` | one deterministic page anchored to snapshot and registry hashes |
+| `--analysis P --expect-analysis H` | accept only the exact validated `cgs.project-stage-detection/v2` packet |
+| `--prior-report P --expect-prior-report H` | focused re-audit anchored to one exact immutable report |
+
+One option in either path/hash pair without the other must produce `ERROR`. Moving aliases such as `latest` must be rejected.
+
+## Required invariants
+
+### A. Mutation and authority
+
+1. Audited artifacts, indexes, registries, packets, prior reports, receipts, and tests remain read-only.
+2. The only allowed write is one newly created immutable `docs/adoption/<run_id>.md` report after byte-exact preview and explicit user authorization.
+3. Existing reports are never overwritten or amended; a path collision produces `ERROR` and requires a new preview.
+4. Report-write approval never authorizes migrations, handoffs, commits, pushes, or publication.
+5. The skill never invokes a downstream workflow automatically and always records `auto_executed: false`.
+
+### B. Canonical stage ownership — AD-004
+
+1. Stage context may come only from a hash-pinned packet with schema `cgs.project-stage-detection/v2`.
+2. Packet validation includes project-root identity, workflow-catalog version/hash, target-snapshot compatibility, and structural completeness.
+3. Without a valid packet, stage is `UNKNOWN` or `UNVERIFIED`; the skill does not recreate stage analysis.
+4. The skill must not read `production/stage.txt` as stage authority or infer stage from directories, artifact existence, Git history, labels, or prose.
+5. Stage context is diagnostic and cannot convert a failed/unsupported rule into a pass.
+
+### C. Versioned format and rule provenance
+
+1. The canonical registry is discovered only through the project-declared catalog/index, never by newest-file or heading heuristics.
+2. Registry/index sources used in a decision carry path, schema/version, and raw SHA-256.
+3. Artifact format version, parser version, rule ID/version, and registry version/hash are separate fields.
+4. Rules specify supported schema IDs/versions/media/encoding, deterministic adapter, objective check, evidence contract, priority, owner, destination schemas, and closure receipt.
+5. Missing, ambiguous, unversioned, duplicated, or hash-mismatched rules produce `RULE_UNVERIFIED` and cap the result at `PARTIAL`; substitute rules are not invented.
+6. Unsupported versions are not coerced into a nearby supported version.
+
+### D. Bounded discovery — AD-005 and AD-011
+
+1. No-argument mode is `summary` and reads zero artifact bodies.
+2. `full` must be explicit.
+3. Discovery operates through canonical indexed entries; unbounded recursive content scanning is forbidden.
+4. Default ceilings are testable: 256 enumerated entries, depth 6, 20 bodies/batch, 256 KiB/file, 250 KiB parsed/batch, 1 MiB artifact bytes/run, and 4 batches/run.
+5. Ordering is deterministic by artifact class, stable artifact identity, and normalized path.
+6. A ceiling stops before the next read and emits omitted counts/classes and resume tuple `(snapshot_hash, mode, next_ordinal, registry_hash)`. An initial/summary audit returns `PARTIAL`; a focused re-audit uses the stricter `BLOCKED` convergence terminal.
+7. A summary contains counts, known sizes, support declarations, estimated pages/cost, ceilings, expected omissions, and `artifact_bodies_read: 0`.
+8. Summary cannot emit per-artifact verdicts or `NO FORMAT GAPS IN SCANNED SCOPE`.
+
+### E. Unsupported and partial coverage
+
+1. Each selected artifact has exactly one coverage state: `SUPPORTED_CHECKED`, `SUPPORTED_NOT_READ`, `UNSUPPORTED`, `UNREADABLE`, `RULE_UNVERIFIED`, or `NOT_APPLICABLE`.
+2. Oversized/unreadable artifacts, unsupported formats/media/encodings, missing adapters, and parser failures are explicit coverage entries rather than silent omissions.
+3. Any selected unsupported, unreadable, omitted, or rule-unverified item caps the result at `PARTIAL`.
+4. Whole-project absence claims are forbidden when coverage is partial or focused.
+5. Static `PASS` never proves runtime, semantic, integration, gameplay, build, or deployment compatibility.
+
+### F. Canonical status/schema registry — AD-006
+
+1. Status, rule applicability, parser support, priority, owner, destination schema, and closure semantics come from pinned canonical schemas/registry entries.
+2. The skill does not maintain a second inline project-status/template dictionary or derive semantics from headings and examples.
+3. Skill-defined audit outcomes and coverage states are orchestration protocol fields, not replacements for project artifact schemas.
+
+### G. Stable finding and evidence model — AD-007
+
+1. Every actionable/unresolved `FORMAT_GAP`, `COMPATIBILITY_RISK`, or `RULE_UNVERIFIED` record conforms to `cgs.adopt-finding/v1`.
+2. The finding includes stable ID, kind, priority policy, rule ID/version/source hash, registry identity, artifact identity/path/version/parser, exact target hash, snapshot hash, evidence IDs/locators, coverage/confidence, lifecycle, owner, handoff, closure condition, and prior delta.
+3. `finding_id` derives from `(artifact_class, stable_artifact_id_or_PATH_IDENTITY, rule_id, applicability_scope)` and excludes time, target hash, evidence wording, and rule version.
+4. Evidence IDs bind finding ID, rule version, target hash, normalized locator, and observation kind.
+5. New target bytes change evidence identity without destabilizing the logical finding ID.
+6. Rule replacement follows declared lineage or creates a new finding with an explicit relationship.
+
+### H. Focused re-audit closure — AD-008
+
+1. Re-audit requires the exact prior report path/hash and validates schema, run ID, root, snapshots, registry, coverage, findings, and handoffs.
+2. Scope is limited to prior unresolved findings, receipt targets, changed manifest entries, changed rules, and the registry-declared bounded regression set.
+3. Re-audit makes one deterministic bounded pass and never loops until green.
+4. Deltas are one of `UNCHANGED_OPEN`, `EVIDENCE_CHANGED_OPEN`, `CLOSED_IN_THIS_RUN`, `REGRESSION_IN_THIS_RUN`, `RESOLUTION_UNVERIFIED`, `NOT_RECHECKED_BUDGET`, or `NOT_RECHECKED_UNSUPPORTED`.
+5. Closure requires both a valid closure receipt and a current rule pass against the new exact target hash.
+6. Re-audit budget/one-pass exhaustion produces `BLOCKED` with partial coverage and a resume token. Invalid baseline, repeated snapshot change, or unsafe scope also produces `BLOCKED`.
+7. Earlier immutable reports and lifecycle states are never edited.
+
+### I. Immutable run identity and historical diff — AD-009
+
+1. The report uses `ADOPT-RUN-<UTC-basic-milliseconds>-<snapshot8>-<registry8>-<mode>-bNN` and stores full hashes.
+2. Report paths are unique run-ID paths, not date-only overwrite targets.
+3. A re-audit includes prior report path/hash and finding-by-finding deltas.
+4. Timestamps alone do not establish freshness or snapshot identity.
+5. Target manifest hash, registry hash, and individual target hashes remain distinguishable.
+
+### J. Typed handoff and failure terminal — AD-010
+
+1. Each finding has a `cgs.adopt-handoff/v1` record with stable ID, linked evidence, owner/workflow, exact preconditions, required input/output schemas, bounded destinations, non-goals, closure receipt contract, and failure behavior.
+2. Every handoff starts `authorization_state: NOT_AUTHORIZED` and `auto_executed: false`.
+3. Closure receipts identify the finding/handoff, old/new hashes, applied format/rule version, producer run, verification evidence, result, and failure reason.
+4. Missing destination, unsupported downstream behavior, invalid/no receipt, or failed verification leaves the finding `OPEN` or `RESOLUTION_UNVERIFIED` and the plan `BLOCKED`/`PARTIAL`.
+5. Assignment, a claimed edit, a newer file, or a zero exit status alone cannot close a finding.
+
+## Outcome contract
+
+Exactly one outcome is returned:
+
+- `SUMMARY READY`
+- `REPORT READY`
+- `NO FORMAT GAPS IN SCANNED SCOPE`
+- `PARTIAL`
+- `BLOCKED`
+- `ERROR`
+
+Every outcome records run identity (or `NOT_MINTED`), mode/batch, index/registry/snapshot identity, stage and prior-report identities, budget consumption, bodies/bytes read, coverage/omissions/resume token, findings/handoffs or `none`, persisted report or `files_written: none`, `runtime_compatibility_proven: false`, and `auto_executed: false`.
+
+## Persistence protocol
+
+Before a write, the exact report bytes, destination, must-not-exist precondition, byte length, SHA-256, and changeset `(create 1, modify 0, delete 0)` must be shown. Any changed bytes/path require a new preview and approval. Immediately before the write, all expected hashes, snapshot/index/registry identities, input paths, and destination absence are revalidated. Mismatch produces `BLOCKED` and no write. After an authorized create, the written SHA-256 is verified.
+
+## Static test cases
+
+### Positive
+
+- Default invocation declares summary mode and zero artifact body reads.
+- Explicit `full` includes all registered classes but stops at the total run ceiling with deterministic resume data.
+- A valid hash-pinned detector v2 packet is copied as stage context without secondary stage analysis.
+- Same rule/artifact identity across two snapshots retains the finding ID while producing a new evidence ID.
+- Focused re-audit closes a finding only when both a valid receipt and current exact-target pass exist.
+- An authorized report creates one previously absent run-ID path and verifies its hash.
+
+### Negative
+
+- A stage declaration file or folder heuristic is treated as authoritative.
+- Registry rules are inferred from a template/example or a newest file.
+- Unsupported format is parsed with a nearby supported adapter and reported as pass.
+- Full recursive scan has no entry, byte, depth, batch, or run ceiling.
+- Summary mode reads artifact bodies or emits per-artifact findings.
+- A finding ID contains a timestamp or target hash and therefore changes on every run.
+- Re-audit loops until clean, silently drops prior open findings, or edits the earlier report.
+- Handoff execution is implied by report-write approval.
+- Existing date-named report is overwritten.
+- Static pass claims runtime compatibility.
+
+Any negative case is a contract failure.
+
+## Audit remediation traceability
+
+| Finding | Closure evidence in this contract |
+|---|---|
+| AD-004 | Section B consumes only `cgs.project-stage-detection/v2` and forbids local stage heuristics |
+| AD-005 | Section D defines indexed pagination, per-file/batch/run ceilings, omissions, and resume tokens |
+| AD-006 | Sections C/F require a pinned canonical registry and separate protocol states from project schemas |
+| AD-007 | Section G defines stable finding/evidence identities and complete provenance |
+| AD-008 | Section H defines exact-baseline, one-pass focused re-audit and the required max-limit `BLOCKED` terminal |
+| AD-009 | Section I defines immutable run paths and mandatory historical delta binding |
+| AD-010 | Section J defines typed handoffs, closure receipts, authorization boundary, and failure terminal |
+| AD-011 | Invocation matrix and Section D make `summary` the zero-body default and require explicit `full` |
+
+## Required disclaimer semantics
+
+The result must state that it is a bounded static format audit of exact checked bytes under a pinned registry; unsupported, unreadable, omitted, and unverified scope is explicit; static pass does not prove runtime or downstream compatibility; and no audited artifact or downstream workflow was changed or executed.

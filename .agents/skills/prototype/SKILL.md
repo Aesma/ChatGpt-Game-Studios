@@ -1,393 +1,279 @@
 ---
 name: prototype
-description: "Run one bounded throwaway experiment inside an isolated prototype root. Requires explicit write authorization before checkpoint/code/assets, records real build and play evidence, emits advisory recommendations only, and keeps downstream product decisions and publication separately authorized."
+description: Run one finite throwaway experiment inside an approved isolated root, with pinned dependency/build identity, hash-bound run evidence, consent-safe observations, advisory recommendations, and user-owned recoverable decisions.
 ---
-
-## Invocation and execution
-
-Invoke:
-
-```text
-$prototype <concept-or-question> [--path html|engine|paper] [--spike]
-```
-
-A concept or concrete experimental question is required. If it is missing, show
-usage and stop without reading project files, spawning agents, or writing.
-
-Delegate implementation to `prototyper` when available. The orchestrator retains
-responsibility for authorization, budget enforcement, evidence classification,
-and the separation between recommendation and user decision.
 
 # Prototype
 
-This workflow runs one disposable experiment. It is not a design approval,
-production implementation, phase gate, or product portfolio authority.
+Run one disposable experiment against one falsifiable hypothesis. This workflow is not a design approval, production implementation, phase gate, portfolio decision, or authority to invoke downstream work.
 
-It has two independently authorized mutation boundaries:
+## Invocation
 
-1. **Execution changeset** — throwaway prototype code/assets, local checkpoint,
-   build outputs, and raw evidence inside one isolated root.
-2. **Publication changeset** — report, project index, and any user-selected
-   decision record after evidence exists.
+```text
+$prototype <concept-or-question> [--path html|engine|paper] [--spike]
+           [--pivot <pivot-record-path> --expect-pivot <sha256:...>]
+```
 
-Authorization for one boundary never authorizes the other or any downstream
-workflow.
+A concept or concrete experimental question is required. With none, show usage and stop without reading project files, delegating, creating a worktree/directory/checkpoint, or writing.
+
+`--pivot` and `--expect-pivot` are an inseparable pair. They select one exact immutable `cgs.prototype-pivot/v1` record; moving aliases such as `latest` are invalid. A pivot continuation receives a new prototype/run/hypothesis ID, root, budget, and authorization.
+
+An implementer may execute the approved experiment. It receives authority only for the exact execution manifest; it cannot expand scope, approve evidence, choose a product direction, publish project state, or invoke another workflow.
+
+## Separate authority boundaries
+
+There are three independent decisions:
+
+1. **Execution authorization** permits the exact isolated worktree/root action, authored paths, generated subtrees, commands, dependencies, evidence, run receipt, and chosen cleanup/retention action.
+2. **User routing decision** records `PROCEED`, `PIVOT`, `KILL`, `DEFER`, or `MORE_EVIDENCE` after evidence is shown. It changes no file by itself.
+3. **Publication authorization** permits one exact all-or-none publication group after a user decision.
+
+Content approval, risk acceptance, consent, execution approval, user routing choice, publication approval, cleanup authorization, and downstream work are never interchangeable.
+
+Before execution authorization there are zero persistent writes, including no checkpoint, worktree, temp directory, dependency download/install, cache, generated project, lockfile, log, or evidence file.
 
 ## Non-negotiable invariants
 
-- Before execution changeset approval: **zero persistent writes**, including no
-  checkpoint, worktree, directory, dependency install, generated project, or
-  evidence file.
-- All experiment mutations stay under one approved
-  `prototypes/throwaway/<prototype-id>/` root or an explicitly approved isolated
-  worktree containing that same project-relative root.
-- Prototype code/assets never write to or become imports of `src/`, `assets/`,
-  production tests, design, docs, or production state.
-- Build/play claims require actual current-run evidence. File existence, source
-  inspection, a proposed command, a model simulation, or user intent is not proof
-  that a prototype built or was played.
-- The workflow may write `RECOMMENDATION: PROCEED/PIVOT/KILL/INCONCLUSIVE`. It
-  may not write a final product decision without the user's explicit selection.
-- `PROCEED` means only "the evidence supports further user-directed discovery or
-  design." It does not approve a concept, GDD, architecture, asset production,
-  sprint work, or production code.
-- Every loop has a hard, monotonic budget and must terminate.
-- Report, index, and user decision publish together or remain non-authoritative.
+- All experiment writes stay within one new approved throwaway root or its explicitly approved isolated worktree/temp root.
+- Existing user/worktree changes are inventoried but never reverted, overwritten, staged, committed, moved, or cleaned.
+- Prototype and production code/assets cannot import, link, load, generate into, or write each other in either direction.
+- All dependency, cache, temp, user-data, build, and generated-output locations are exact descendants of the approved isolation root.
+- Every iteration, command, consecutive failure, elapsed time, file count, and byte budget is hard, monotonic, and finite.
+- Build/play claims require current-run receipts bound to exact source, dependency-lock, toolchain, command, artifact, and evidence hashes.
+- Every skipped step uses the typed skip taxonomy; a skip is never a pass.
+- Recommendations are advisory. Only an explicit user response can create a routing decision.
+- Report/index/decision/pivot/graveyard publication is all-or-none or remains non-authoritative.
+- KILL is non-destructive, explicitly confirmed, recoverable, and never forced by pivot/iteration count.
+- No mode-selection success probability is asserted without a named, applicable measured dataset.
 
----
+## Phase 0 — Read-only experiment definition
 
-## Phase 0: Read-only experiment definition
+Define exactly one falsifiable hypothesis:
 
-Do not mutate files or create an isolated worktree in this phase.
+> If participant/system X performs action Y under condition Z, measured signal M will meet threshold T.
 
-Ask the user to define one falsifiable hypothesis:
+Record a stable hypothesis ID, riskiest assumption, one mechanic/question, measurable success/failure/inconclusive thresholds, evidence the selected mode cannot establish, and excluded scope. Narrow unfalsifiable prompts such as “is it fun?” before continuing.
 
-> "If the participant does X under condition Y, observable signal Z will meet
-> threshold T."
+Read only the minimum exact project context required to avoid conflicts and choose a mode. Existing concepts, GDDs, source, assets, prototypes, and project status are context, not write authorization.
 
-Record:
+### Evidence-capability mode selection — PROTO-P1-001
 
-- one hypothesis ID;
-- riskiest assumption;
-- one mechanic/question;
-- measurable success/failure/inconclusive criteria;
-- observations that the chosen mode cannot establish;
-- explicitly excluded scope.
+Choose using capability and limitation evidence, never an unsupported success percentage:
 
-Reject `is it fun?` or other unfalsifiable wording. Narrow the experiment before
-continuing.
+| Mode | Can provide | Cannot establish by itself |
+|---|---|---|
+| `html` | browser-load, interaction logic, clarity and coarse timing evidence | native engine timing, target-platform performance, production rendering feel |
+| `engine` | pinned-engine physics/timing/render/build evidence | fun or player value without actual participants/evidence |
+| `paper` | rules, choices, comprehension and facilitator-observation evidence | digital moment-to-moment feel, engine feasibility or executable build status |
+| `spike` | one technical feasibility measurement | product desirability or design approval |
 
-Read only the minimum project context needed to select an engine/mode and avoid
-known conflicts. Existing project concepts, GDDs, source, and assets are context,
-not write authorization.
+If historical success-rate data is offered, record dataset path/hash, sample definition/count, period, measured outcome, confidence/uncertainty, and applicability to this exact hypothesis. Otherwise state `mode_success_probability: NOT_ESTABLISHED`. Never use an inherited, anecdotal, or generic numeric probability as mode guidance.
 
-### Choose evidence-appropriate path
-
-- `html` — browser logic/clarity experiments; do not use browser-only evidence to
-  validate timing-sensitive native feel.
-- `engine` — native timing/physics/rendering experiments.
-- `paper` — rules/decision experiments; cannot validate moment-to-moment digital
-  feel.
-- `spike` — technical feasibility question; does not make a product decision.
-
-Do not state unsupported success percentages for any path.
-
----
-
-## Phase 1: Allocate isolated throwaway identity
+## Phase 1 — Freeze identity, source, toolchain, and worktree protection
 
 Create in memory:
 
 ```yaml
 prototype_id: PT-<slug>-<run-id>
+run_id: PTRUN-<UTC-basic-milliseconds>-<source8>-<hypothesis8>
 hypothesis_id: HYP-<run-id>-001
 mode: html | engine | paper | spike
-throwaway_root: prototypes/throwaway/<prototype_id>/
-isolation: requested_worktree | current_workspace_bounded_root
-source_snapshot:
-  paths_and_sha256: [...]
+isolation_mode: git_worktree | isolated_temp_root | current_workspace_bounded_root
+throwaway_root: <exact new absolute and repository-relative identity>
+parent_pivot: NOT_SUPPLIED | { path: ..., sha256: ... }
 ```
 
-Preferred isolation is an explicit isolated Git worktree. Creating it is a
-persistent side effect and belongs to the execution changeset. If an isolated
-worktree is unavailable, do not silently fall back: offer the current-workspace
-throwaway root as a bounded alternative and obtain its explicit approval.
+Freeze an exact read-only preflight packet:
 
-The throwaway root must be new and absent. Never overwrite, replace, extend,
-archive, or delete an existing prototype under the current run's authorization.
-Resume requires the matching checkpoint and hashes. A new experiment receives a
-new prototype ID/root.
+- repository root, VCS HEAD/commit when available, current branch, Git implementation/version, and submodule state;
+- pre-existing dirty/untracked path inventory with raw path and content hash/size where readable, plus canonical dirty-manifest SHA-256;
+- exact project context paths/SHA-256 used by the plan;
+- this `SKILL.md` and `references/continued-workflow.md` exact paths/SHA-256 values;
+- OS/architecture, engine/runtime/SDK/compiler/build-tool/package-manager names and exact versions;
+- engine executable or runtime path/hash where available;
+- dependency manifest path/hash, lockfile path/hash, registry/source identity, and offline/cache state;
+- build configuration and environment-variable allowlist hash, with secrets redacted and never persisted;
+- expected generated-output/caches/temp/user-data subtrees;
+- prototype/production import-boundary rules and baseline hash.
 
-### Boundary contract
+Unknown or floating engine/runtime/dependency/build identity caps executable claims at `BLOCKED` or `INCONCLUSIVE`. Tags such as `latest`, unpinned package ranges, unlocked resolution, mutable URLs, and global user caches are not reproducible identities.
 
-Every authored file path is exact. The execution preview also identifies bounded
-tool-generated subtrees such as `runtime-cache/` and `build/` whose filenames are
-controlled by the engine/build tool. Those subtrees:
+If dependencies are required, use an existing exact lockfile included by hash, or propose creating a prototype-local lockfile after execution approval from an exact dependency manifest and pinned source. Never modify a production lockfile or install globally. Dependency resolution without a stable lock/source receipt is `DEPENDENCY_UNAVAILABLE`; do not claim a reproducible build.
 
-- must be descendants of the approved throwaway root;
-- may contain only ephemeral generated output;
-- cannot contain authoritative reports or project state;
-- are inventoried and hashed after every command; and
-- never broaden writes outside the root.
+### Isolation and fallback — PROTO-P1-002/003
 
-All build/dependency commands set working directory, cache, temp, output, and
-user-data locations inside the isolated environment. If a tool cannot be
-contained, do not run it.
+Preferred isolation is a detached or dedicated approved Git worktree at an exact new path and base commit. Creating/removing it and any Git metadata changes are persistent operations in the execution/cleanup manifests.
 
-No prototype source may import, link, load, or write production source/assets.
-Production code/assets must not import or load the prototype root. Validate both
-directions before and after execution.
+Before approval, perform read-only feasibility checks. If the requested worktree is unavailable, present exactly these safe choices and their tradeoffs:
 
----
+1. `isolated_temp_root` — an exact new temp/sandbox path, an exact source-copy manifest, redirected caches/build outputs, and a declared retain-or-cleanup policy;
+2. `current_workspace_bounded_root` — exact new `prototypes/throwaway/<prototype-id>/`, original-worktree dirty-manifest protection, and strict no-outside-root mutation monitoring;
+3. `CANCEL` — zero writes.
 
-## Phase 2: Freeze hard execution budget
+Never silently fall back. The user must explicitly select the revised isolation mode, and the execution changeset must be regenerated and approved.
 
-Present a finite budget before authorization. Defaults:
+For any mode:
+
+- the root must be absent and resolve outside existing user prototype roots;
+- every parent path, symlink/junction/reparse point, and filesystem boundary is validated;
+- commands run with exact working directory and redirected dependency/cache/temp/output/user-data locations;
+- the original worktree dirty manifest is rechecked before and after every command;
+- any unexpected original-tree change is `BLOCKED`, is never reverted automatically, and is reported with pre/post hashes and recovery guidance;
+- an uncontainable tool is not run.
+
+The user chooses `RETAIN`, `CLEAN_AFTER_RECEIPT`, or `CLEAN_LATER`. Cleanup is never implied by KILL or task completion. `CLEAN_AFTER_RECEIPT` must be an exact destructive operation explicitly included in the execution manifest, may target only the newly created isolation root/worktree, runs only after required receipts/evidence have been preserved at authorized destinations, and emits a cleanup receipt. Otherwise return `cleanup_state: RETAINED | CLEANUP_REQUIRED`. Never delete production or pre-existing user data.
+
+## Phase 2 — Freeze hard execution budget and exact changeset
+
+Default hard ceilings per run:
 
 ```yaml
-budget:
-  max_implementation_iterations: 3
-  max_build_commands: 12
-  max_consecutive_failures: 2
-  max_elapsed:
-    concept: 8h
-    spike: 4h
-  max_authored_files: <exact manifest count>
-  max_persistent_bytes: <declared bound>
+max_implementation_iterations: 3
+max_build_commands: 12
+max_consecutive_failures: 2
+max_elapsed: { concept: 8h, spike: 4h }
+max_authored_files: <exact approved manifest count>
+max_persistent_bytes: <explicit finite value>
+max_dependency_resolutions: 1
+max_play_sessions: 3
 ```
 
-The budget is monotonic and stored in the checkpoint after approval. Each command
-or iteration increments its counter before execution. Deadline uses an absolute
-timestamp.
+Requested limits may lower but never raise defaults without a new user decision and complete reauthorization before execution begins. Counters increment before a command/iteration/session; deadlines are absolute timestamps. Resume preserves consumed counters and deadline. “Until playable” is forbidden.
 
-When any limit is reached:
+When any limit is reached, stop new implementation/build/play calls, retain current authorized evidence, write only already-authorized checkpoint/receipt paths, and return `PARTIAL — BUDGET_EXHAUSTED` or `BLOCKED`. No in-place budget extension.
 
-1. stop all further implementation/build tool calls;
-2. capture current evidence and unresolved errors;
-3. write only already-authorized checkpoint/evidence paths;
-4. return `PARTIAL — BUDGET EXHAUSTED` or `BLOCKED`;
-5. do not increase the budget in-place.
+The read-only execution preview enumerates:
 
-Further work requires a new user decision, new budget, and separately authorized
-run or revised execution changeset. "Until playable" is forbidden.
+- exact isolation/worktree/temp action and base identity;
+- `PROTOTYPE-MANIFEST.yaml`, `CHECKPOINT.yaml`, `RUN-RECEIPT.yaml`, `EVIDENCE.yaml`, `REPORT-DRAFT.md`, and `PUBLICATION-PROPOSAL.yaml`;
+- every authored source/config/harness/placeholder/consent-record path;
+- prototype-local dependency manifest/lockfile, if applicable;
+- exact raw logs and build/play receipts;
+- bounded generated `build/`, `runtime-cache/`, package-cache, temp, and user-data subtrees;
+- exact commands, dependency sources, toolchain/build identity, environment allowlist, budget, deadline, source/dirty snapshots, production non-writes, privacy plan, retention/cleanup choice;
+- publication paths explicitly not authorized.
 
----
+For each path/subtree show kind, operation, owner, base hash/ABSENT, byte ceiling, and purpose. Ask once for exact execution authorization. Any new path, subtree, dependency, command class, isolation/cleanup action, operation, or raised budget invalidates the approval and requires a new preview.
 
-## Phase 3: Preview and authorize the execution changeset
+## Phase 3 — Initialize only after authorization
 
-The plan remains read-only. Synthesize every expected authored path, including:
+After approval, revalidate source, toolchain, lock, dirty-worktree, target absence, parent safety, and command identities. On mismatch write nothing and return `BLOCKED — PREFLIGHT_DRIFT`.
 
-- `PROTOTYPE-MANIFEST.yaml`;
-- `CHECKPOINT.yaml`;
-- exact prototype source/config files;
-- exact placeholder assets;
-- exact test/harness files;
-- `EVIDENCE.yaml`;
-- `REPORT-DRAFT.md` and `PUBLICATION-PROPOSAL.yaml`, both explicitly non-authoritative;
-- exact raw log destinations when known;
-- bounded ephemeral `build/` and `runtime-cache/` subtrees.
+Then create the exact isolation/root, boundary manifest, checkpoint, minimum scaffold, and local dependency lock as approved. Every authored source begins with a `PROTOTYPE — NOT FOR PRODUCTION` marker plus prototype/run/hypothesis/root identities.
 
-Preview:
+`PROTOTYPE-MANIFEST.yaml` records allowed authored paths, generated subtrees, imports, source snapshot, dirty-worktree baseline, dependency/toolchain/build identities, privacy rules, budget, and cleanup policy.
 
-```markdown
-| Path/subtree | Kind | Operation | Owner | Base SHA-256/ABSENT | Purpose |
-|---|---|---|---|---|---|
-```
+`CHECKPOINT.yaml` records prior-checkpoint hash, phase, counters/deadline, command states, written paths/pre/post hashes, builds, play sessions, skip records, consent records, and next safe step. Each update validates its previous hash. Drift stops the run; do not reset.
 
-Also show:
+## Phase 4 — Bounded implementation, build identity, and run receipts
 
-- isolation/worktree action;
-- hypothesis and success criteria;
-- budget and deadline;
-- exact commands planned;
-- expected environment/dependency versions;
-- excluded project paths;
-- cleanup/retention choice;
-- publication paths explicitly **not authorized**.
+Implement only what is required for the single hypothesis. Before every command/write, verify root/manifest authority, original-worktree baseline, dependency lock/toolchain identity, relevant base hashes, and remaining budget; increment counters first. Afterwards inventory all mutations and rehash source, lockfile, build config, output, logs, checkpoint, and original worktree.
 
-Ask once for approval of this exact execution changeset. An existing bounded task
-authorization counts only if it names the same root, actions, paths/subtrees,
-owners, and operations.
+Unexpected or unlisted writes are `BLOCKED`. Never retroactively authorize them or automatically revert user files.
 
-If the plan later needs a new authored path, subtree, dependency, worktree action,
-or operation, stop before writing and request a revised execution changeset.
-Code/asset authorization never implies report/index/decision or downstream
-workflow authorization.
+### Build identity — PROTO-P1-002
 
----
-
-## Phase 4: Initialize after approval
-
-Only after approval:
-
-1. verify every authored target is ABSENT or matches its approved base hash;
-2. create the isolated worktree/root;
-3. create the boundary manifest and checkpoint;
-4. write the minimum scaffold;
-5. inventory the root and verify no outside path changed.
-
-Every source file begins with the language-appropriate equivalent of:
+Derive `source_manifest_sha256` from exact authored source/config/harness paths and hashes. Derive `build_identity_sha256` from the canonical tuple:
 
 ```text
-PROTOTYPE — NOT FOR PRODUCTION
-Prototype ID: <id>
-Hypothesis ID: <id>
-Throwaway root: <path>
+(prototype_id, run_id, source_manifest_sha256, dependency_manifest_sha256,
+ dependency_lock_sha256, toolchain_manifest_sha256, build_config_sha256,
+ exact_command_and_arguments, environment_allowlist_sha256)
 ```
 
-The manifest records allowed authored paths, generated subtrees, source snapshot,
-dependencies, budget, and the prohibition on production imports.
-
-The checkpoint records:
+Every actual build emits `cgs.prototype-build-receipt/v1`:
 
 ```yaml
+build_id: BUILD-<run-id>-NN
+build_identity_sha256: ...
 prototype_id: ...
-hypothesis_id: ...
-phase: ...
-root: ...
-manifest_sha256: ...
-source_hashes: ...
-budget:
-  limits: ...
-  consumed: ...
-  deadline: ...
-commands:
-  - id: ...
-    status: PLANNED | RUNNING | COMPLETE | FAILED | TIMED_OUT | CANCELED
-written_paths:
-  - { path: ..., pre_sha256: ..., post_sha256: ... }
-builds: []
-play_sessions: []
-next_safe_step: ...
-```
-
-Each checkpoint update verifies its previous hash. An unexplained hash change
-stops the run.
-
----
-
-## Phase 5: Bounded implementation and build
-
-Implement only the minimum needed for the single hypothesis. Relaxed code quality
-does not relax containment, authorization, dependency, privacy, or evidence
-rules.
-
-Before every write or command:
-
-- re-check root containment and manifest authority;
-- re-check relevant base hashes;
-- increment the corresponding budget counter;
-- record command ID and start state in the checkpoint.
-
-After every write or command:
-
-- inventory all root mutations;
-- reject any outside/unlisted authored mutation;
-- hash source, build output, logs, and checkpoint;
-- record exit code and elapsed time;
-- stop on budget limits.
-
-A command that writes outside the isolated environment is canceled/blocked.
-Unexpected outside mutations are BLOCKED and are never retroactively authorized.
-
-### Build evidence
-
-A build exists only when an actual command ran. Record:
-
-```yaml
-build_id: BUILD-...
-prototype_id: ...
+run_id: ...
 source_manifest_sha256: ...
-command: ...
-working_directory: ...
-environment:
-  os: ...
-  engine_or_runtime: ...
-  version: ...
+dependency_manifest_sha256: ...
+dependency_lock_sha256: ...
+toolchain_manifest: [{ name: ..., version: ..., path_sha256: ... }]
+build_config_sha256: ...
+command: { executable: ..., args: [...], working_directory: ... }
+environment_allowlist_sha256: ...
 started_at: ...
 ended_at: ...
 exit_code: ...
-result: PASS | FAIL | TIMED_OUT | NOT_RUN
-artifact_paths_and_sha256: [...]
-log_path_and_sha256: ...
+result: PASS | FAIL | TIMED_OUT | CANCELED | NOT_RUN
+artifacts: [{ path: ..., sha256: ..., bytes: ... }]
+log: { path: ..., sha256: ... }
+generated_manifest_sha256: ...
+outside_root_mutations: []
 ```
 
-`PASS` requires exit code zero and the expected current artifacts. Source
-inspection or an agent statement cannot replace it.
+PASS requires an actual command, exit code zero, expected current artifacts, matching hashes, and zero unapproved outside-root mutations. Source inspection, a proposed/mock command, cached artifact without identity match, or agent statement cannot substitute.
 
-HTML must receive an actual syntax/load check; engine mode must invoke the pinned
-engine/build/run validation appropriate to the scaffold; paper mode may validate
-document structure but this is not play evidence.
+HTML needs an actual pinned syntax/load check; engine mode must invoke the pinned engine/build/run validation; paper mode may validate artifact structure but that is neither executable build nor human play evidence. If build cannot run, use a typed skip/NOT_RUN and make no playable claim.
 
-If no build command can run, record `BUILD NOT RUN` and do not claim a playable
-prototype.
+Each revision links the build/play failure or threshold it addresses. Stop on threshold, hard failure, or budget exhaustion.
 
-### Iteration
+### Immutable run receipt — PROTO-P1-004
 
-Use at most the approved iterations and commands. Each revision states which
-observed build/play failure it targets. Do not add polish or new mechanics.
-Terminate on success criteria, hard failure, or budget exhaustion—whichever
-occurs first.
+Every run maintains `RUN-RECEIPT.yaml` conforming to `cgs.prototype-run-receipt/v1`. It contains:
 
----
+- prototype/run/hypothesis and optional parent-pivot identities;
+- skill-source and mandatory continuation-contract paths/SHA-256 values;
+- execution authorization manifest/hash and isolation/cleanup choice;
+- source snapshot, dirty-worktree baseline/final, source-manifest, dependency manifest/lock, toolchain, build-config, environment, generated-output, and checkpoint hashes;
+- every command ID/exact command/time/exit/result/log hash;
+- every build receipt path/hash and build identity;
+- every play/observation record path/hash and bound build/source identity;
+- every skip record, consent record, redaction receipt, privacy/retention state, and evidence path/hash;
+- budget limits/consumption/deadline and final run/build/play status;
+- report-draft/publication-proposal hashes and cleanup receipt/state.
 
-## Phase 6: Real play/observation evidence
+The receipt is finalized from exact current bytes at run end and becomes immutable. Debrief facts, recommendations, REPORT, DECISION, prototype index rows, pivot notes, and graveyard events must cite the exact run-receipt path/SHA-256 plus source/build/play hashes. If the receipt is missing, stale, internally inconsistent, or hash-mismatched, no fact may be published as current and the recommendation ceiling is `INCONCLUSIVE`.
 
-Do not claim playability from a successful build alone.
+## Phase 5 — Typed skips — PROTO-P1-005
 
-A play session requires an actual user/tester action. Capture:
+Every planned-but-unexecuted or inapplicable step emits `cgs.prototype-skip/v1` with step ID, taxonomy, exact reason, evidence path/hash, actor/source, timestamp, scope, affected hypothesis signal/claim, recommendation ceiling, and recovery condition.
 
-```yaml
-session_id: PLAY-...
-build_id: ...
-participant_type: user | external_tester | self_test | wizard_of_oz
-consent_and_redaction: ...
-started_at: ...
-ended_at: ...
-protocol: ...
-observations:
-  - timestamp_or_step: ...
-    fact: ...
-measurements: [...]
-participant_quotes_or_paraphrases: [...]
-hypothesis_signal: MET | NOT_MET | MIXED | NOT_OBSERVED
-evidence_paths_and_sha256: [...]
-```
+Allowed taxonomy:
 
-Distinguish:
+- `NOT_APPLICABLE` — a predeclared applicability predicate is false;
+- `USER_ACCEPTED_RISK` — the user explicitly accepts a named non-safety risk after seeing consequence/evidence;
+- `ENVIRONMENT_BLOCKED` — actual current environment evidence prevents execution;
+- `DEPENDENCY_UNAVAILABLE` — pinned dependency/lock/source cannot be resolved safely;
+- `BUDGET_EXHAUSTED` — a monotonic limit has been reached;
+- `CONSENT_WITHHELD` — required participant consent/data category was not granted or was withdrawn;
+- `UNSUPPORTED_MODE` — selected mode cannot establish the requested signal;
+- `NOT_REQUESTED` — optional step was outside the approved experiment;
+- `FAILED_PRECONDITION` — required hash, identity, boundary, or freshness check failed.
 
-- `OBSERVED FACT` — directly seen/measured;
-- `PARTICIPANT REPORT` — what a person reports;
-- `MODEL INFERENCE` — interpretation;
-- `NOT OBSERVED` — no valid evidence.
+Free-text “skip” is invalid. `NOT_APPLICABLE` requires the exact predicate and evidence. `USER_ACCEPTED_RISK` requires a hash-bound explicit user response and cannot waive containment, privacy, authorization, destructive-action, identity, or evidence-integrity rules. Environment/dependency claims need current receipts. A skip never becomes PASS, MET, OBSERVED, or evidence of absence. Essential build/play/consent skips cap affected recommendations at `INCONCLUSIVE`.
 
-Do not invent participants, actions, quotes, timestamps, metrics, recordings, or
-results. A model-written paper simulation is labeled `MODEL_SIMULATION` and
-cannot count as human play or first-impression evidence.
+## Phase 6 — Consent-safe play and observation — PROTO-P1-008
 
-If no real play occurs, record `PLAY NOT RUN`. The evidence may support technical
-feasibility, but not player-feel or fun claims.
+Before soliciting or collecting participant feedback, recording, screen/audio/video capture, telemetry, logs tied to a person, direct quotes, or contact identifiers, present a privacy/consent plan:
 
-Collect only data the participant consented to share. Redact secrets and personal
-information before persistent evidence. Unredacted sensitive evidence is BLOCKED.
+- experiment purpose and participant type;
+- exact data categories and collection methods;
+- whether screen/audio/video/telemetry recording occurs;
+- storage paths, access/recipients, retention period, and cleanup/deletion owner;
+- quote/paraphrase/anonymization policy;
+- voluntary nature, ability to decline/withdraw, and consequences of withdrawal;
+- known sensitive/secret data exclusions.
 
-After evidence capture, re-hash the build/source manifest. Stale play evidence
-cannot support a changed build.
+Record an explicit consent response per participant/data category in `cgs.prototype-consent/v1`, hash it, and bind evidence to it. Silence is no consent. Consent for feedback is not consent for recording, quoting, publication, or identity disclosure. Do not recruit or record minors/vulnerable participants without an applicable owner-approved policy and required guardian/organizational consent; otherwise use `CONSENT_WITHHELD`.
 
----
+Do not persist secrets, credentials, access tokens, private keys, or unnecessary direct identifiers. Minimize collection; assign participant IDs; redact/pseudonymize before persistent evidence. Raw unredacted personal/sensitive evidence is quarantined inside an approved restricted in-root path or not written, is never published/indexed, and makes the affected evidence `BLOCKED` until an authorized redaction receipt exists. Do not expose sensitive values in tool output or reports.
+
+Withdrawal stops further collection and marks linked evidence `WITHDRAWN_NOT_USABLE`. Deletion/retention follows the consent plan and requires exact authority; do not silently delete or continue using it.
+
+An actual play/observation record conforms to `cgs.prototype-play-receipt/v1` and contains session/build/run/source identity, participant pseudonymous type/ID, consent record/hash, timing/protocol, observed facts, participant reports, measurements, evidence hashes, redaction state, and hypothesis signal. Separate `OBSERVED_FACT`, `PARTICIPANT_REPORT`, `MODEL_INFERENCE`, and `NOT_OBSERVED`. Never invent a participant, action, quote, timestamp, metric, recording, or result.
+
+No real play yields `PLAY_NOT_RUN` plus a typed skip. A model/paper simulation is `MODEL_SIMULATION` and cannot support human behavior, first-impression, fun, or feel claims. Rehash build/source after capture; stale evidence cannot support a changed build.
 
 ## Required continuation
 
-Before report/recommendation/publication, read
-[references/continued-workflow.md](references/continued-workflow.md) in full and
-follow its evidence, user-decision, and atomic-publication rules.
+Before producing the final advisory recommendation, pivot lineage, user decision, design-route advice, publication proposal, or cleanup result, revalidate the previewed SHA-256 and read [references/continued-workflow.md](references/continued-workflow.md) completely. That reference is a hash-bound part of this skill contract. Drift returns `BLOCKED` and requires a new preview; never continue under mixed contract versions.
 
-## Resume safety
+## Resume and interruption
 
-Resume only when checkpoint, manifest, source, budget, build, and evidence hashes
-match current bytes. Never reset counters or deadline. Completed commands are not
-re-run unless a new iteration is explicitly within the remaining budget.
+Resume only when execution manifest, checkpoint chain, run receipt, source/lock/toolchain/build/evidence/consent hashes, dirty-worktree baseline, budget counters/deadline, root, and optional parent pivot all match. Completed commands are not rerun unless explicitly allowed by remaining budget.
 
-A stale checkpoint, changed root, outside mutation, or exhausted budget returns
-BLOCKED/PARTIAL. Resume never inherits authorization for publication or any
-downstream workflow.
+Drift, an exhausted budget, outside mutation, stale consent, or stale pivot lineage returns `BLOCKED`/`PARTIAL`. Resume inherits neither publication nor downstream authority.

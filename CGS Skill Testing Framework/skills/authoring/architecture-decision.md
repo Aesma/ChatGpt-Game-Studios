@@ -2,237 +2,430 @@
 
 ## Skill Summary
 
-`$architecture-decision` authors or retrofits exactly one Architecture Decision
-Record and leaves it `Proposed` (or `Unknown` for a legacy retrofit whose
-lifecycle evidence is unavailable). Review mode controls advisory review only.
-No advisory result, user write approval, or retrofit answer may produce
-`Accepted`.
+`$architecture-decision` authors or safely retrofits exactly one ADR for one
+cohesive technical decision from `cgs.architecture-decision-request/v2`. It uses
+collision-safe allocation, `architecture-decision-profile-schema-v2`,
+`cgs.adr-content-profile/v2`, bounded source evidence, user-selected comparable
+alternatives, dependency/replacement graph validation, section checkpoints/CAS,
+and external authoring receipt/review/lifecycle records.
+
+The authoring target remains Proposed (or honest Unknown legacy retrofit).
+Authoring completeness, Workflow READY_FOR_REVIEW, independent review
+recommendation, and lifecycle Accepted are separate states.
+
+## Static Assertions
+
+- [ ] ADR-S001: Frontmatter contains only matching name and non-empty description
+- [ ] ADR-S002: Invocation requires one cgs.architecture-decision-request/v2 manifest; no-arg stops before reads/allocation/writes
+- [ ] ADR-S003: Author schema hashes exact SKILL bytes, NUL, and required continuation bytes
+- [ ] ADR-S004: Request and ADR define exactly one decision key/domain/question/in-scope set
+- [ ] ADR-S005: Compound decisions split unless current source hashes prove inseparability
+- [ ] ADR-S006: New ADR consumes cgs.adr-id-allocation/v1 canonical UUID/exact path receipt and never scans next number
+- [ ] ADR-S007: Target ABSENT CAS owns uniqueness; allocation/path collision stops without overwrite/reallocation
+- [ ] ADR-S008: Semantic fingerprint checks bounded ADR summaries and offers cancel/revise/supersede/disjoint-scope/stop to user
+- [ ] ADR-S009: One mutation authorization covers exact target sections and deterministic checkpoint/receipt creates
+- [ ] ADR-S010: Only target ADR and create-only checkpoint/authoring-receipt records are writable
+- [ ] ADR-S011: Profile v2 has stable section IDs plus independent content/evidence/workflow/assertion/status axes
+- [ ] ADR-S012: New/revise/supersede proposal is Proposed; retrofit missing status is only Proposed or Unknown
+- [ ] ADR-S013: Existing Accepted/Deprecated/Superseded ADR is immutable to authoring skill
+- [ ] ADR-S014: External status state machine and cgs.adr-lifecycle-record/v1 define allowed CAS transitions
+- [ ] ADR-S015: Supersession/scoped-exception links bind exact predecessor ID/path/hash/status/scope and remain acyclic
+- [ ] ADR-S016: Context order is deterministic with hard 16-file/524288-byte limits and mutable-target-baseline
+- [ ] ADR-S017: Context overflow may append one authorized PARTIAL checkpoint and leaves target unchanged
+- [ ] ADR-S018: Every requirement/constraint/source records stable ID/owner/path-or-URL/locator/hash/version/date/coverage
+- [ ] ADR-S019: Engine references record pinned version/domain/risk/cutoff/claim/hash/date and VERIFIED/PARTIAL/UNVERIFIED/STALE
+- [ ] ADR-S020: Unclear dependency/API/verification/migration/performance/ordering is UNKNOWN blocker, never assumed None
+- [ ] ADR-S021: Pre-write graph resolves IDs/status/hash and detects self/duplicate/dependency/replacement cycles
+- [ ] ADR-S022: At least two viable alternatives use identical criteria, evidence coverage, reversibility, consequences, and risks
+- [ ] ADR-S023: Actual user/named authority selects alternative/tradeoffs/supersession/scope; author/consultant never selects
+- [ ] ADR-S024: Shared four decision classes plus ADRDEC/ADRCON/ADRALT provenance are stable/truthful
+- [ ] ADR-S025: Skeleton-first section authoring uses cgs.architecture-decision-checkpoint/v2 predecessor CAS and exact resume
+- [ ] ADR-S026: cgs.adr-content-profile/v2 assertions validate all mandatory sections; headings/placeholders are insufficient
+- [ ] ADR-S027: Numeric performance/effort claims require sourced units/method/hash/date or HYPOTHESIS/UNKNOWN plus validation
+- [ ] ADR-S028: Consultations cap one/role, two/run, two concurrent, one 60-second attempt, no retry/nesting; solo is zero
+- [ ] ADR-S029: cgs.adr-consultation-result/v1 types partial/timeout/failed/side-effect/late handling and never changes Status
+- [ ] ADR-S030: ADRAPR binds exact body, decisions/constraints/alternatives, assertions, graph/findings, context, baseline, authorization
+- [ ] ADR-S031: Every target write uses Target/Section/Context/Authorization/Writer CAS
+- [ ] ADR-S032: ADRREV binds before/after target/section, decisions/approval/sources/graph/authorization/actual writer
+- [ ] ADR-S033: cgs.adr-authoring-receipt/v1 remains external and binds complete final authoring evidence without hash cycle
+- [ ] ADR-S034: Receipt/checkpoint failure preserves content completeness but returns workflow PARTIAL with no review handoff
+- [ ] ADR-S035: READY emits only cgs.architecture-review-request/v2 for a fresh read-only independent review task
+- [ ] ADR-S036: cgs.architecture-review/v2 recommendation is not lifecycle status or acceptance
+- [ ] ADR-S037: Only separate lifecycle recorder may CAS status/links and emit cgs.adr-lifecycle-record/v1/registry projection
+- [ ] ADR-S038: GDD/registry/control/story/readiness/review/lifecycle/other ADR/code files remain unchanged; events are non-mutating
+- [ ] ADR-S039: Metadata names single-decision collision-safe Proposed ADR, request v2, bounded evidence, CAS/receipt/review lifecycle
+- [ ] ADR-S040: Spec has complete numbered cases/cross-checks/ADR-001..014 coverage and stages no catalog result changes
 
-Acceptance is a separate lifecycle operation: an independent
-`$architecture-review` record must bind its verdict to the current ADR SHA-256,
-and a separate recorder must validate that record before recording the
-transition and deriving registry state.
+---
 
-The skill has a strict mutation boundary. It may write only the target ADR. GDDs,
-architecture/traceability registries, stories, readiness state, review records,
-and lifecycle records remain unchanged.
+## Behavioral Cases
 
-## Required ADR content
+### Case 1: no argument has zero side effects
 
-A newly authored ADR contains:
+**Input:**
 
-- Status (`Proposed`);
-- Date;
-- Engine Compatibility;
-- ADR Dependencies;
-- Context;
-- Decision and Key Interfaces;
-- Alternatives Considered;
-- Consequences and Risks;
-- GDD Requirements Addressed;
-- Performance Implications;
-- Migration Plan;
-- Validation Criteria;
-- Related Decisions.
+    $architecture-decision
 
-## Fixtures
+**Expected behavior:** print exact manifest-path usage and stop before repository
+discovery, ID allocation, context, consultation, authorization, or write.
 
-Each case snapshots these protected paths before invocation:
+**Assertions:**
 
-- `design/gdd/**`;
-- `docs/registry/**`;
-- story and epic files;
-- review and lifecycle records;
-- every ADR except the selected target.
+- [ ] ADR-C01-A: Usage names cgs.architecture-decision-request/v2
+- [ ] ADR-C01-B: Zero filesystem/context/delegation side effects
+- [ ] ADR-C01-C: No Proposed/review/Accepted result is fabricated
 
-After invocation, compare content hashes. Only the authorized target ADR may
-change.
+---
 
-## Case 1: New ADR remains Proposed after positive full-mode advice
+### Case 2: collision-safe new ADR creates complete skeleton
 
-**Given**
+**Fixture:** valid allocation receipt with canonical UUID/display sequence/slug/
+exact path/nonce/hash; target ABSENT; one decision scope; mutation boundary current.
 
-- A configured engine and relevant engine-reference files.
-- `--review full`.
-- Engine specialist and technical-director advisory reviews both return
-  positive findings.
-- The user authorizes the one-file ADR changeset.
+**Expected behavior:** no directory numbering scan; ABSENT Target CAS creates full
+profile skeleton with Status Proposed and every stable section ID; checkpoint
+captures allocation/scope/fingerprint/state axes.
 
-**Expected**
+**Assertions:**
 
-1. The skill drafts all required sections.
-2. Advisory reviews are labeled `ADVISORY`.
-3. The target ADR is written with `## Status` followed by `Proposed`.
-4. Output reports the target path and current SHA-256.
-5. No acceptance or lifecycle record is created.
+- [ ] ADR-C02-A: Allocation receipt/path/UUID are mutually consistent
+- [ ] ADR-C02-B: Display sequence is not identity
+- [ ] ADR-C02-C: Only target/checkpoint paths change
 
-**Assertions**
+---
 
-- [ ] Positive advisory results do not set `Accepted`.
-- [ ] No `$architecture-review` is spawned in the authoring context.
-- [ ] No recorder is invoked.
-- [ ] Only the target ADR hash changes.
+### Case 3: allocation or path collision fails closed
 
-## Case 2: Retrofit cannot self-sign acceptance
+**Fixture variants:** allocation path already exists; receipt path differs from
+target; allocation hash/nonce reused; another writer creates target before CAS.
 
-**Given**
+**Expected behavior:** validation/Target CAS returns BLOCKED conflict, never
+overwrites/reuses/scans next number or silently selects another path in run.
 
-- A legacy ADR with no `## Status` section.
-- No independent hash-bound review record.
-- The user invokes `retrofit <path>`.
+**Assertions:**
 
-**Expected**
+- [ ] ADR-C03-A: Existing ADR bytes remain unchanged
+- [ ] ADR-C03-B: Allocation owner/new request is the one recovery
+- [ ] ADR-C03-C: No duplicate canonical ADR ID/path is emitted
 
-- The only status choices are `Proposed` and `Unknown`.
-- The skill never offers, infers, or writes `Accepted`.
-- Missing authorized sections may be appended to the target ADR only.
-- Output instructs the user to obtain a fresh independent review of the
-  resulting current hash.
+---
 
-**Assertions**
+### Case 4: semantic duplicate detection is user-routed
 
-- [ ] `Accepted`, `Deprecated`, and `Superseded` are not retrofit choices.
-- [ ] Ambiguous evidence produces `Unknown`, not `Accepted`.
-- [ ] Existing `Accepted`, `Deprecated`, or `Superseded` ADRs cause a lifecycle
-  handoff and are not mutated.
-- [ ] Only the retrofit target hash may change.
+**Fixture variants:** same decision fingerprint under different title; near match
+to Proposed; overlap with Accepted; objectively disjoint component scope.
 
-## Case 3: Technical naming mismatch stays out of GDD
+**Expected behavior:** bounded summary evidence is shown. User chooses cancel,
+revise Proposed in new request, supersede Accepted, prove disjoint scope, or stop.
+Author never creates/title-renames duplicate or chooses route.
 
-**Given**
+**Assertions:**
 
-- A GDD uses a product term that differs from the proposed signal, method, or
-  data type name.
-- The player-facing product rule is unchanged.
+- [ ] ADR-C04-A: Fingerprint uses domain/key/question/sorted in-scope IDs
+- [ ] ADR-C04-B: Existing path/status/hash is explicit
+- [ ] ADR-C04-C: Accepted target is not edited by duplicate handling
 
-**Expected**
+---
 
-- The finding destination is `ADR/TECH`.
-- The ADR records the technical interface and maps it to the GDD term.
-- The GDD remains byte-for-byte unchanged.
-- The one-file changeset preview contains only the ADR.
+### Case 5: compound decision is split unless inseparable
 
-**Assertions**
+**Fixture variants:** networking transport and save format with different owners/
+rollback; renderer/API pair with current proof they cannot vary independently.
 
-- [ ] Technical names are not back-propagated into GDDs.
-- [ ] “ADR + update GDD” is not offered.
-- [ ] GDD hashes remain unchanged.
+**Expected behavior:** first becomes separate ADR/TECH handoffs and one selected
+decision; second may remain bundled only with source IDs/hashes and shared
+alternatives/acceptance/rollback lifecycle.
 
-## Case 4: Product-rule differences go to the design owner
+**Assertions:**
 
-**Given**
+- [ ] ADR-C05-A: Out-of-scope questions have owner/destination
+- [ ] ADR-C05-B: Interfaces/migration cannot smuggle a second decision
+- [ ] ADR-C05-C: User confirms exact decision scope
 
-- The proposed technical approach requires a player-visible or balance rule to
-  change.
+---
 
-**Expected**
+### Case 6: bounded context overflow is reproducible
 
-- The finding destination is `GDD PRODUCT RULE`.
-- Finalization of the affected choice stops.
-- The skill hands the finding to the design owner or
-  `$propagate-design-change`.
-- No GDD is edited by this workflow.
+**Fixture:** required ADR/engine/requirement candidates exceed 16 files or 524288
+exact bytes; one critical dependency would fall beyond cap.
 
-**Assertions**
+**Expected behavior:** normative selection order/size-before-load applies; no
+truncation/broad scan/silent omission; at most one authorized PARTIAL checkpoint;
+target remains unchanged.
 
-- [ ] Product ownership is explicit.
-- [ ] The ADR does not silently redefine the product rule.
-- [ ] GDD hashes remain unchanged.
+**Assertions:**
 
-## Case 5: Registry conflict requires supersession or a scoped exception
+- [ ] ADR-C06-A: Same manifest yields same context digest
+- [ ] ADR-C06-B: CONTEXT_BUDGET_EXCEEDED names loaded/omitted sources
+- [ ] ADR-C06-C: Missing evidence is not converted to None
 
-**Given**
+---
 
-- `docs/registry/architecture.yaml` contains an accepted global stance that
-  conflicts with the proposal.
+### Case 7: missing or stale engine evidence remains unverified
 
-**Expected**
+**Fixture variants:** engine unconfigured; module ref absent; stale hash/version;
+post-cutoff API not covered; current pinned reference verifies claim.
 
-- The registry is read as a constraint projection.
-- The user must align, propose explicit supersession, or define an objectively
-  disjoint scoped exception.
-- A free-form “intentional exception” without scope is rejected.
-- A Proposed supersession does not deactivate the accepted stance.
-- No registry file is edited.
+**Expected behavior:** first four record UNVERIFIED/STALE/UNKNOWN with exact owner/
+needed evidence and prevent READY; setup-engine handoff only. Last records VERIFIED
+with path/locator/hash/version/date/observed-at/risk/claim.
 
-**Assertions**
+**Assertions:**
 
-- [ ] Two contradictory global stances cannot remain active.
-- [ ] Supersession remains proposed until independent acceptance and recording.
-- [ ] Scoped exception includes boundary predicate, owner, reason, and exit
-  condition.
-- [ ] Registry hashes remain unchanged.
+- [ ] ADR-C07-A: No invented engine/version/API support
+- [ ] ADR-C07-B: References Consulted is provenance, not path list alone
+- [ ] ADR-C07-C: Safe Proposed/PARTIAL draft is honest about coverage
 
-## Case 6: Blocked stories are never promoted by the ADR author
+---
 
-**Given**
+### Case 8: comparable alternatives and constraints stay user-owned
 
-- The ADR `Blocks` or `Enables` field names a blocked story.
+**Fixture:** two viable approaches, meaningful status quo, hard compatibility
+constraint, derived implication, missing performance evidence, consultant favorite.
 
-**Expected**
+**Expected behavior:** all alternatives use same criteria; hard source constrains;
+derived implication is shown; performance stays hypothesis/unknown; actual user/
+authority selects ADRALT and tradeoffs. Consultant favorite has no authority.
 
-- The story file is unchanged.
-- Output emits `event: dependency_may_be_unblocked` with ADR path, current
-  SHA-256, affected item, and
-  `eligibility: pending_accepted_lifecycle_record`.
-- Output directs readiness evaluation to `$story-readiness`.
+**Assertions:**
 
-**Assertions**
+- [ ] ADR-C08-A: No straw option or unsourced scoring
+- [ ] ADR-C08-B: ADRDEC/ADRCON/ADRALT IDs and source hashes are complete
+- [ ] ADR-C08-C: Selection is not lifecycle acceptance or file authority
 
-- [ ] No `Status: Blocked` to `Status: Ready` edit occurs.
-- [ ] The event is labeled non-mutating and conditional.
-- [ ] Story hashes remain unchanged.
+---
 
-## Case 7: Acceptance evidence must be independent and current-hash-bound
+### Case 9: section checkpoint and resume are exact/idempotent
 
-**Given**
+**Fixture:** interruption after alternatives approval; variants include valid v2
+chain, missing predecessor/fork, changed target/context, approved-not-written body.
 
-- The ADR has been written.
-- Scenario A supplies no architecture-review record.
-- Scenario B supplies a review record for an older ADR hash.
-- Scenario C supplies a current-hash review record, but the reviewer session is
-  the authoring session.
+**Expected behavior:** valid resume verifies chain/state and writes approved exact
+body before new questions; drift/fork blocks without replay. Whole ADR is not
+regenerated from conversation memory.
 
-**Expected**
+**Assertions:**
 
-- In every scenario the author workflow leaves the ADR `Proposed`.
-- It reports missing, stale, or non-independent evidence.
-- It directs a separate recorder to validate a fresh independent review; it does
-  not perform the transition itself.
+- [ ] ADR-C09-A: Skeleton/decisions/sections persist incrementally
+- [ ] ADR-C09-B: Checkpoint records next legal transition and CAS baselines
+- [ ] ADR-C09-C: Existing out-of-scope bytes are preserved
 
-**Assertions**
+---
 
-- [ ] Missing review evidence cannot accept.
-- [ ] A stale hash cannot accept.
-- [ ] Same-context review cannot accept.
-- [ ] The author never writes lifecycle state or review records.
+### Case 10: consultation modes and caps are deterministic
 
-## Review-mode contract
+**Fixture variants:** solo; lean with engine specialist; full with engine specialist
+and technical-director.
 
-- `solo`: no advisory agents.
-- `lean`: configured primary engine specialist only.
-- `full`: configured primary engine specialist and technical-director;
-  both are advisory and may run in parallel.
-- Any approval, concern, rejection, timeout, or failure leaves the ADR
-  `Proposed`.
+**Expected behavior:** solo zero agents; lean maximum one; full maximum two and may
+run concurrently; each has one question/60s attempt/no retry/nesting; all outputs
+ADVISORY and Status remains Proposed.
 
-## Protocol compliance
+**Assertions:**
 
-- [ ] The exact one-file changeset is authorized once before the first write.
-- [ ] The target ADR is the only permitted mutation.
-- [ ] New ADR status is always `Proposed`.
-- [ ] Retrofit status is only `Proposed` or `Unknown`.
-- [ ] GDD findings use `ADR/TECH` or `GDD PRODUCT RULE` destinations.
-- [ ] Registry conflicts require alignment, explicit supersession, or a scoped
-  exception.
-- [ ] Registries and stories are never written.
-- [ ] Output includes target SHA-256 and the independent review/recorder handoff.
-- [ ] Output does not claim that a blocked dependency is Ready.
+- [ ] ADR-C10-A: Reviewer/recorder identities are not used as consultants
+- [ ] ADR-C10-B: Consultant cannot edit or select alternative
+- [ ] ADR-C10-C: Positive advice cannot set Accepted
 
-## Coverage notes
+---
 
-The following are deliberately outside this P0 contract and require separate
-coverage when their owning remediations land: collision-safe ADR ID allocation,
-semantic duplicate detection, bounded context manifests, dependency-cycle
-validation, engine-reference freshness, resumable checkpoints, append-only
-lifecycle history, and stable requirement IDs.
+### Case 11: consultation failure preserves Proposed partial evidence
+
+**Fixture variants:** required engine consultant timeout; TD partial/malformed;
+consultant writes a file; late result for old draft; optional consultation skipped.
+
+**Expected behavior:** typed result records status/deadline/input/output/omissions/
+identity; failed required evidence becomes UNVERIFIED/PARTIAL, checkpoint, no
+review handoff; side-effect/late output quarantined; no retry/fabrication.
+
+**Assertions:**
+
+- [ ] ADR-C11-A: Status never changes from Proposed
+- [ ] ADR-C11-B: Optional missing input may be UNKNOWN only when no assertion needs it
+- [ ] ADR-C11-C: Target is not directly patched from consultant output
+
+---
+
+### Case 12: dependency graph blocks unknown, cycle, and Proposed prerequisite
+
+**Fixture variants:** unknown Depends On; A->B->A cycle; replacement cycle;
+required prerequisite Proposed; current Accepted prerequisite; evidence-backed no
+dependencies.
+
+**Expected behavior:** unknown/cycles/proposed prerequisite produce blocking graph
+finding and no READY/acceptance eligibility; Accepted resolves; `None` appears only
+when bounded graph evidence proves no edge.
+
+**Assertions:**
+
+- [ ] ADR-C12-A: IDs/status/path/hash/lifecycle receipt resolve uniquely
+- [ ] ADR-C12-B: Self/duplicate/enable-block contradictions are checked
+- [ ] ADR-C12-C: No story/registry readiness is inferred
+
+---
+
+### Case 13: retrofit and lifecycle-managed statuses cannot self-sign
+
+**Fixture variants:** missing legacy status; ambiguous evidence; existing Accepted,
+Deprecated, or Superseded ADR; stale/malformed legacy section.
+
+**Expected behavior:** missing status offers Proposed/Unknown only; ambiguous is
+Unknown. Lifecycle-managed ADR is not mutated. Retrofit revises only explicitly
+authorized missing/stale section with preservation/CAS and never validates old
+acceptance.
+
+**Assertions:**
+
+- [ ] ADR-C13-A: Accepted/Deprecated/Superseded are not author choices
+- [ ] ADR-C13-B: User/file approval cannot create lifecycle transition
+- [ ] ADR-C13-C: Current target hash is used for fresh review handoff only when ready
+
+---
+
+### Case 14: supersede proposal and scoped exception preserve old authority
+
+**Fixture variants:** proposed successor completely replaces Accepted ADR; partial
+replacement; objectively disjoint exception; overlapping “intentional exception”.
+
+**Expected behavior:** complete proposal records exact predecessor/receipt/scope/
+retained obligations/migration; old ADR remains unchanged/authoritative. Partial
+replacement blocks. Disjoint exception records predicate/owner/reason/precedence/
+exit. Overlap requires supersede/align/stop.
+
+**Assertions:**
+
+- [ ] ADR-C14-A: Proposed successor does not write Superseded By to predecessor
+- [ ] ADR-C14-B: Replacement links and graph are acyclic
+- [ ] ADR-C14-C: Only lifecycle recorder may atomically link accepted successor
+
+---
+
+### Case 15: five-part CAS rejects target/section/context/authority/writer drift
+
+**Fixture variants:** target changes; selected anchor/body changes; used source
+changes; authorization changes; wrong writer attempts section patch.
+
+**Expected behavior:** corresponding CAS facet fails immediately before write;
+no target/checkpoint transaction; approved body and collaborator bytes preserved.
+
+**Assertions:**
+
+- [ ] ADR-C15-A: All five CAS facets execute for every section/final metadata write
+- [ ] ADR-C15-B: ADRREV appears only after verified read-back
+- [ ] ADR-C15-C: Error identifies one precise recovery
+
+---
+
+### Case 16: performance numbers require measurement provenance
+
+**Fixture variants:** model predicts 2ms/50MB; user budget; profiler evidence with
+units/method/environment/date/hash; estimate source mismatches scope.
+
+**Expected behavior:** unsupported prediction is HYPOTHESIS/UNKNOWN with validation
+plan; user budget labeled owner; current profiler evidence may be sourced; mismatch
+is finding. No number is presented as measured/verified without provenance.
+
+**Assertions:**
+
+- [ ] ADR-C16-A: Metric/baseline/budget/units/source/method are distinct
+- [ ] ADR-C16-B: Validation names owner/environment/sample/threshold/decision impact
+- [ ] ADR-C16-C: Author does not invoke profiling/estimate/implementation
+
+---
+
+### Case 17: GDD, registry, other ADR, and story boundaries remain read-only
+
+**Fixture variants:** technical name differs from GDD; product rule would change;
+registry global conflict; Blocks names story; successor proposal names old ADR.
+
+**Expected behavior:** ADR/TECH maps terms; GDD PRODUCT RULE blocks/design-owner
+handoff; registry align/supersede/scoped exception candidate only; dependency event
+is conditional; predecessor/story/registry/GDD remain byte-identical.
+
+**Assertions:**
+
+- [ ] ADR-C17-A: No “ADR + update GDD” or registry projection write
+- [ ] ADR-C17-B: No Blocked->Ready story transition
+- [ ] ADR-C17-C: Exact non-write hashes remain unchanged
+
+---
+
+### Case 18: authoring receipt failure cannot create review handoff
+
+**Fixture:** target reaches content-derived CONTENT_COMPLETE and stable read-back,
+but checkpoint/authoring receipt append fails or receipt verification mismatches.
+
+**Expected behavior:** target completeness remains CONTENT_COMPLETE and Status
+Proposed; Workflow PARTIAL; exact unreceipted hash; no review handoff; no replay/
+revert.
+
+**Assertions:**
+
+- [ ] ADR-C18-A: Content completeness, workflow, review, lifecycle status separate
+- [ ] ADR-C18-B: Receipt path/hash stays external without target cycle
+- [ ] ADR-C18-C: Missing receipt cannot support acceptance/registry/readiness
+
+---
+
+### Case 19: independent review recommendation is not Accepted
+
+**Fixture variants:** READY+receipt; self/wrong-schema/stale review; current
+independent ACCEPT; REVISE/REJECT; recorder preimage mismatch; valid recorder CAS.
+
+**Expected behavior:** author only emits cgs.architecture-review-request/v2 and
+does not invoke review. Review is read-only/recommendation only. Only separate
+recorder with current ACCEPT/receipt/eligibility/separation may CAS allowed status
+and emit lifecycle record. All invalid variants remain Proposed.
+
+**Assertions:**
+
+- [ ] ADR-C19-A: Review and acceptance/lifecycle recorder are distinct identities/actions
+- [ ] ADR-C19-B: Review record binds current ADR/receipt/context hashes
+- [ ] ADR-C19-C: Status-only transition receipt binds pre/post hashes
+- [ ] ADR-C19-D: Non-status change requires new receipt/review
+
+---
+
+### Case 20: staged P1 package and catalog claims are honest
+
+**Fixture:** staged SKILL, continuation, metadata, and this spec; shared catalog row
+still points to formal authoring spec with no executed-result updates.
+
+**Expected behavior:** matrix contains ADR-S001..ADR-S040, Cases 1..20,
+ADR-X001..ADR-X008, and explicit ADR-001..ADR-014 coverage. Candidate stages no
+catalog change and does not call source checks an executed `$skill-test`.
+
+**Assertions:**
+
+- [ ] ADR-C20-A: Exclusive files agree on v2 contracts/state/review boundaries
+- [ ] ADR-C20-B: Shared catalog remains untouched
+- [ ] ADR-C20-C: Verification provenance is stated accurately
+
+---
+
+## Cross-skill compatibility
+
+- [ ] ADR-X001: Four decision classes and exact-body approvals match authoring provenance contracts
+- [ ] ADR-X002: Bounded context/canonical manifest/mutable-target-baseline match authoring contracts
+- [ ] ADR-X003: Allocation receipt plus ABSENT CAS provides collision-safe unique ID/path
+- [ ] ADR-X004: Section checkpoints/five-part CAS/revisions preserve collaborator and non-target bytes
+- [ ] ADR-X005: Receipt failure separates content completeness from Workflow Verdict/review handoff
+- [ ] ADR-X006: GDD/engine/registry/story/lifecycle owners remain external and read-only
+- [ ] ADR-X007: Independent review consumes target+authoring receipt but cannot accept; recorder owns transition
+- [ ] ADR-X008: Final output emits one uninvoked owner/evidence handoff or Stop
+
+## Coverage Notes
+
+- ADR-001..ADR-005 remain covered by Proposed/Unknown-only authoring, strict
+  cross-write boundary, sequential lifecycle separation, and current-hash review.
+- ADR-006: Cases 2/3 and ADR-S006/S007 implement collision-safe ID/path allocation.
+- ADR-007: Case 4 and ADR-S008 implement semantic duplicate routing.
+- ADR-008: Case 6 and ADR-S016/S017 bound context deterministically.
+- ADR-009: Cases 7/12 and ADR-S020/S021 make UNKNOWN blocking and validate graph.
+- ADR-010: Cases 10/11 and ADR-S028/S029 define consultation timeout/failure/partial.
+- ADR-011: Case 7 and ADR-S018/S019 require reference provenance/coverage.
+- ADR-012: Case 9 and ADR-S025/S026 provide section checkpoints/resume.
+- ADR-013: Case 5 and ADR-S009/S010 use one authorization and single target boundary.
+- ADR-014: Cases 12/14 and ADR-S015/S021 validate dependency/replacement cycles.
+- Shared catalog/results and downstream consumers require separate ownership; this
+  candidate does not modify them or claim an executed test run.

@@ -1,390 +1,612 @@
 # Skill Test Spec: $map-systems
 
-## Skill Summary
-
-$map-systems authors or updates design/gdd/systems-index.md only after product
-decisions, a canonical in-memory draft, and one hash-bound pre-write review
-checkpoint. In full mode, CD-SYSTEMS, TD-SYSTEM-BOUNDARY, and PR-SCOPE review the
-same candidate SHA-256 concurrently and read-only. A rejection never triggers an
-inline rewrite: it returns stable findings for a fresh author task and leaves the
-authoritative index unchanged.
-
-The next and explicit system-selection modes are handoff-only. They read the
-index, display one stable system selection and a fresh-task $design-system
-command, then stop. The skill never invokes $design-system and never loops across
-GDDs. Later GDD approval/index recording belongs to an independent reviewer and
-recorder, not either author workflow.
-
-This P0 contract covers MS-001 and MS-002.
-
----
-
-## Static Assertions
+## Purpose
+
+Verify that `$map-systems` creates or safely updates exactly
+`design/gdd/systems-index.md` as a hash-bound Draft, separates explicit-loop
+requirements from optional candidates, preserves stable System IDs through a
+three-way merge, validates a typed dependency graph, uses only catalog-declared
+routes/sign-off ownership, publishes through one compare-and-set transaction, and
+stops without formal sign-off or GDD authoring.
+
+This specification retains the P0 no-self-review/no-chaining boundaries and closes
+MS-003 through MS-008. Empty execution/result fields in
+`CGS Skill Testing Framework/catalog.yaml` remain empty until an authorized test
+workflow actually executes these cases.
+
+## Frozen fixtures and observation
+
+Each case freezes exact bytes, source states, normalized real paths, and SHA-256
+values for the applicable subset of:
+
+- `.codex/docs/workflow-catalog.yaml`;
+- `.codex/docs/templates/systems-index.md`;
+- `design/gdd/game-concept.md`;
+- optional `design/gdd/game-pillars.md`;
+- optional `design/gdd/systems-index.md`;
+- an optional exact catalog-declared sign-off receipt;
+- bounded direct-child GDD and epic reference files; and
+- the destination parent directory.
+
+The harness records all reads, directory enumerations, prompts, decision IDs,
+candidate bytes, diffs, hashes, route selections, reviewer/subagent/workflow
+events, temporary-file publication events, and workspace mutations. Unlisted or
+recursive reads fail a bounded-context case. Any persistent mutation outside the
+one exact index path fails every authoring case; one same-directory temporary file
+is permitted only after successful CAS and must not remain afterward.
+
+Catalog fixtures include exact workflow IDs, phase membership, commands,
+artifact paths, repeatable/parameter rules, optional consumer relations, optional
+formal sign-off/transition contracts, and optional receipt rules. Tests never
+infer missing catalog fields from this spec.
+
+## Static assertions
+
+- [ ] Frontmatter contains only `name` and a non-empty `description`; name is
+  `map-systems`.
+- [ ] The only owned/persistent output is `design/gdd/systems-index.md`; an atomic
+  temporary file may exist only after CAS and never remains as an artifact.
+- [ ] The catalog's unique `map-systems` artifact path must exactly equal that
+  canonical path; conflicting paths block.
+- [ ] Metadata states one stable-ID systems index and no formal sign-off/GDD
+  authoring.
+- [ ] The skill defines authoring and selection-only modes and stops after one
+  result.
+- [ ] Missing-concept, downstream, sign-off, transition, and migration commands
+  are selected only from the bound catalog; no command/profile/transition roadmap
+  is copied into the skill.
+- [ ] An unversioned catalog is labeled `LEGACY_UNVERSIONED` and undeclared policy
+  is not inferred.
+- [ ] Formal sign-off is never performed or claimed by `$map-systems`.
+- [ ] No CD, TD, producer, reviewer, or formal gate is spawned by this authoring
+  workflow.
+- [ ] Every changed candidate has `Schema: cgs.systems-index/v2`, `Status: Draft`,
+  and `Formal Sign-off: NOT_PERFORMED`.
+- [ ] Explicit-loop requirements and inferred candidates remain separate until a
+  user decision includes a candidate.
+- [ ] Candidate category or genre convention never inserts a row by default.
+- [ ] Stable IDs match `SYS-<canonical-kebab-slug>`, are globally unique across
+  active/retired rows, and never change after first persistence.
+- [ ] Rename, reorder, dependency, priority, and layer changes preserve System ID.
+- [ ] Deletion is absent; explicit unreferenced removal creates a retirement
+  record, while referenced-ID lifecycle changes block.
+- [ ] Existing updates are BASE + approved INTENT → CANDIDATE with a structured
+  three-way diff.
+- [ ] Manual fields, row status, GDD paths, progress, and prior history are
+  preserved unless owned by the selected operation; progress is never inferred.
+- [ ] Dependency edges use exact active IDs, type, strength, evidence, and decision
+  provenance.
+- [ ] Required-edge cycles and invalid references block; design order respects the
+  deterministic topological order.
+- [ ] Context has fixed path/count/per-file/class/total-byte limits and never
+  samples past a limit.
+- [ ] The one approval binds exact candidate bytes/hash, input hashes, decisions,
+  diff, parent state, and the sole file operation.
+- [ ] CAS revalidates catalog, template, concept/pillars, base/absence, reference
+  closure/directories, parent state, and rerendered candidate before publication.
+- [ ] Concurrent change yields `CONFLICT` with zero writes and no implicit merge or
+  retry.
+- [ ] Atomic publication and read-back verification are required before COMPLETE.
+- [ ] Session state, stage, review mode, catalog, concept, template, GDD, epic,
+  receipt, and review-record writes are forbidden.
+- [ ] `next` and explicit selection return at most one catalog-derived command and
+  never execute it.
+- [ ] COMPLETE means only map-systems authoring/selection completion.
 
-Verified without a fixture.
+## MS-003 — one canonical artifact path
 
-- [ ] YAML frontmatter contains only name and a non-empty description; name is map-systems
-- [ ] The workflow has at least two numbered phase headings
-- [ ] COMPLETE, BLOCKED, and PARTIAL result paths are defined
-- [ ] The authoritative index path is design/gdd/systems-index.md
-- [ ] Every full-mode reviewer receives the exact same candidate_sha256 before the first write
-- [ ] Reviewer instructions are explicitly read-only and forbid draft or filesystem mutation
-- [ ] REJECT and requested revision both stop with stable findings and zero writes
-- [ ] Final authorization and post-write verification bind the exact candidate SHA-256
-- [ ] next and explicit selection are declared read-only handoff modes
-- [ ] No path invokes, executes, chains, or loops $design-system
-- [ ] The workflow stops after a verified index/state changeset
-- [ ] Later GDD status recording is assigned to a separate hash-bound recorder
-- [ ] Every system row has a persistent `SYS-<canonical-kebab-slug>` identity;
-      ordering changes never renumber IDs and collisions block writing
+### Case 1: catalog and implementation agree
 
----
+The unique catalog `map-systems` entry has artifact path
+`design/gdd/systems-index.md`; the template and spec use the same path.
 
-## Behavioral Cases
+**Expected**
 
-### Case 1: Full-mode happy path reviews before any authoritative write
+The path is bound once and every read, preview, write, hash, and final result names
+it exactly. No `design/systems-index.md` alias is read or written.
 
-Fixture:
+### Case 2: catalog path drift blocks
 
-- design/gdd/game-concept.md exists
-- design/gdd/systems-index.md does not exist
-- production/review-mode.txt contains full
-- the user approves enumeration, dependencies, priorities, and the final
-  changeset
-- CD-SYSTEMS returns APPROVE
-- TD-SYSTEM-BOUNDARY returns APPROVE
-- PR-SCOPE returns REALISTIC
-- a write-event log and filesystem pre-state are captured
+Vary the catalog entry to a wildcard, directory, escaping path,
+`design/systems-index.md`, two artifact paths, or a duplicated `map-systems` ID.
 
-Input:
+**Expected**
 
-    $map-systems
+Return `CATALOG_ARTIFACT_PATH_CONFLICT`/`ERROR` before context authoring. Do not
+follow the drift, choose a fallback, or create either candidate path.
 
-Expected behavior:
+### Case 3: caller-looking alternate file does not redirect
 
-1. The skill produces one complete canonical draft in memory.
-   Every enumeration, dependency/order, and progress row contains the same
-   stable System ID for that system, even when the legacy template lacks the
-   column.
-2. It computes candidate_sha256 from the exact UTF-8 LF bytes.
-3. It issues all three reviewer delegations before waiting for any result.
-4. Every reviewer receives the same bytes and candidate_sha256 and is read-only.
-5. No authoritative or temporary index, review record, or state file is written
-   before all active results are collected.
-6. The skill previews the index and active-state edits and asks once for
-   authorization.
-7. Immediately before writing it rechecks candidate_sha256 and any existing-index
-   base hash.
-8. It writes the exact candidate bytes, verifies the on-disk SHA-256, updates only
-   the previewed state fields, reports COMPLETE, returns a fresh-task
-   $design-system command, and stops.
+Provide a populated `design/systems-index.md` plus the valid canonical catalog
+entry and no canonical index.
 
-Assertions:
+**Expected**
 
-- [ ] The first filesystem write occurs after every active review result
-- [ ] CD-SYSTEMS, TD-SYSTEM-BOUNDARY, and PR-SCOPE share one candidate_sha256
-- [ ] Reviewer outputs contain no file mutation
-- [ ] The authorized hash equals the verified on-disk index hash
-- [ ] No GDD, review record, sign-off, registry, guide, or unrelated file changes
-- [ ] Each proposed system has one unique stable ID and the candidate preserves
-      existing IDs byte-for-byte
-- [ ] The command is displayed but not invoked
-- [ ] Verdict is COMPLETE and the workflow terminates
+The alternate file is ignored. Operation is CREATE against only the canonical
+path after normal decisions/approval; the alternate remains byte-identical.
 
----
+## MS-004 and MS-008 — unique review/sign-off owner
 
-### Case 2: Missing concept blocks without writes
+### Case 4: authoring spawns no reviewers
 
-Fixture:
+Run a full CREATE fixture and record subagent/delegation events.
 
-- design/gdd/game-concept.md does not exist
-- index and state pre-state hashes are recorded
+**Expected**
 
-Input:
+No creative director, technical director, producer, reviewer, or gate workflow is
+spawned. User product decisions and file approval occur in the author task, while
+the exact output remains Draft/NOT_PERFORMED.
 
-    $map-systems
+### Case 5: catalog requires external formal sign-off
 
-Expected behavior:
+The catalog declares one exact external sign-off owner, workflow ID, profile,
+transition ID, and receipt rule for the systems-index hash.
 
-1. The skill names design/gdd/game-concept.md as missing.
-2. It recommends $brainstorm.
-3. It returns BLOCKED and stops.
+**Expected**
 
-Assertions:
+After a verified Draft write, return only that exact catalog command/identity as
+the next action. Report `Sign-off State: REQUIRED_BY_CATALOG`; do not invoke it,
+mint a receipt, mark Approved, or route directly to GDD authoring.
 
-- [ ] No systems index, draft, state, or review artifact is created
-- [ ] No reviewer or downstream workflow is invoked
-- [ ] The missing path and recovery command are explicit
-- [ ] Verdict is BLOCKED
+### Case 6: catalog declares sign-off not required
 
----
+The catalog explicitly says no formal sign-off is required and declares one
+repeatable downstream consumer parameterized by stable System ID.
 
-### Case 3: Review REJECT cannot write or self-revise
+**Expected**
 
-Fixture:
+Report `NOT_REQUIRED_BY_CATALOG` and return the consumer's exact command with the
+first eligible stable ID. No local gate policy is added.
 
-- a complete candidate exists in memory with candidate_sha256 H1
-- production/review-mode.txt contains full
-- TD-SYSTEM-BOUNDARY returns REJECT with two blocking findings
-- the other active reviewers return pass or concerns
-- index, active state, and all candidate output paths have recorded pre-state
-  hashes
+### Case 7: sign-off policy is absent or ambiguous
 
-Input:
+Use an unversioned catalog with no sign-off fields, then a fixture with two
+competing sign-off owners.
 
-    Continue from the pre-write review checkpoint
+**Expected**
 
-Expected behavior:
+Undeclared policy remains `UNKNOWN`; conflicting policy is `BLOCKED`. The Draft
+may still be written when the index identity contract is valid, but next action is
+`Stop`. The skill never guesses a gate command, phase shorthand, profile, or
+transition ID.
 
-1. The skill collects all active results and applies the strictest verdict.
-2. TD findings are normalized as TD-SYSTEM-BOUNDARY-F001 and
-   TD-SYSTEM-BOUNDARY-F002, each bound to H1 with location, evidence, impact, and
-   required outcome.
-3. The reviewer does not edit the candidate or any file.
-4. The map-systems author does not revise the candidate in the same task.
-5. The skill outputs a fresh-author revision handoff containing H1 and both
-   finding IDs, returns BLOCKED — REVIEW REJECTED, and stops.
+### Case 8: old sign-off cannot authorize changed bytes
 
-Assertions:
+Provide a receipt bound to base hash B1 and render candidate H1.
 
-- [ ] Index and state remain byte-for-byte unchanged
-- [ ] No temporary draft, review record, or revised candidate is written
-- [ ] Stable finding IDs and candidate_sha256 are present
-- [ ] No changeset authorization is requested after rejection
-- [ ] No $design-system command is invoked
-- [ ] The workflow terminates after the handoff
+**Expected**
 
----
+The old receipt is not reused. Candidate stays Draft/NOT_PERFORMED and the external
+catalog route, if declared, must consume H1.
 
-### Case 4: Concerns revision invalidates the reviewed hash
+### Case 9: user approval is not sign-off
 
-Fixture:
+The user approves enumeration, graph, priority, and the final H1 changeset.
 
-- a full-mode candidate H1 receives no rejection and one CD-SYSTEMS concern
-- the user chooses revise rather than accept unchanged
-- index and state pre-state hashes are recorded
+**Expected**
 
-Input:
+H1 may be published, but neither document nor result says formally reviewed,
+gate-passed, or Approved. There is one authoring owner and one separate catalog
+sign-off owner.
 
-    Revise the flagged item
+## MS-005 — explicit requirements versus candidates
 
-Expected behavior:
+### Case 10: explicit core-loop system is required
 
-1. The skill outputs the stable CD finding and a fresh $map-systems author-task
-   handoff.
-2. It explains that any revised draft must receive a new SHA-256 and repeat all
-   active reviews.
-3. It stops without applying the proposed revision or writing files.
+The concept explicitly says the player gathers ore, crafts tools, and uses those
+tools to cross hazards.
 
-Assertions:
+**Expected**
 
-- [ ] H1 is never reused to authorize changed bytes
-- [ ] Index and state remain byte-for-byte unchanged
-- [ ] The same-task reviewer does not become an author
-- [ ] The same-task author does not revise after review
-- [ ] Verdict is BLOCKED and the workflow terminates
+Systems necessary to those explicit verbs appear as
+`REQUIRED_BY_EXPLICIT_LOOP` with exact section/field evidence. The workflow still
+asks the user to approve names/boundaries and does not infer unrelated genre
+systems.
 
----
+### Case 11: familiar category remains a candidate
 
-### Case 5: Accepted concerns bind unchanged bytes only
+The concept does not mention networking, inventory grids, achievements, dialogue,
+or analytics. The model recognizes they are common possibilities.
 
-Fixture:
+**Expected**
 
-- candidate H1 receives only non-blocking concerns
-- the user accepts the unchanged draft and later authorizes the complete
-  changeset
-- immediately before write the candidate still hashes to H1
+They may appear only in a bounded `CANDIDATE` group with benefit, cost, omission
+consequence, and choices. None enters active candidate bytes before a user decision.
 
-Input:
+### Case 12: candidate excluded or deferred
 
-    Accept unchanged and apply the proposed changeset
+The user excludes analytics and defers achievements.
 
-Expected behavior:
+**Expected**
 
-1. The skill records that the user accepted the findings against H1.
-2. It authorizes and writes only the exact H1 bytes.
-3. It verifies the on-disk index still hashes to H1.
-4. It reports the accepted concern IDs without claiming the reviewers changed
-   the draft.
+Decision IDs and EXCLUDED/DEFERRED provenance are visible, but neither becomes an
+active row, dependency node, priority row, or design-order entry.
 
-Assertions:
+### Case 13: candidate explicitly included
 
-- [ ] Accepted concern evidence names H1
-- [ ] Any byte change before write would block instead
-- [ ] On-disk index hash equals H1
-- [ ] Verdict is COMPLETE only after verification
+The user selects a save system candidate after reviewing tradeoffs.
 
----
+**Expected**
 
-### Case 6: Stale or concurrent bytes cannot pass the write boundary
+It becomes `USER_SELECTED_CANDIDATE` with a stable decision ID, new unique System
+ID, and source rationale. The result never describes it as concept-explicit.
 
-Fixture variants:
+### Case 14: combine/split requires product decision
 
-- A: reviewed candidate is H1 but the re-rendered candidate before write is H2
-- B: existing index base hash was B1 but is B2 immediately before replacement
-- C: on-disk bytes after write do not hash to the authorized candidate hash
+An inferred inventory candidate overlaps an explicit item-data responsibility.
 
-Input:
+**Expected**
 
-    Apply the authorized changeset
+Present combine versus split options and tradeoffs. No boundary or identity plan
+is chosen automatically; stopping leaves both out of candidate bytes unless
+already explicit and unambiguous.
 
-Expected behavior:
+## MS-006 — stable identity and three-way update
 
-- Variant A returns BLOCKED — STALE DRAFT with zero writes.
-- Variant B returns BLOCKED — CONCURRENT INDEX CHANGE with zero writes.
-- Variant C returns PARTIAL, names the mismatch, and does not claim COMPLETE.
+### Case 15: rename and reorder preserve IDs
 
-Assertions:
+BASE contains `SYS-combat` and `SYS-progression`. The user renames Combat to
+Tactical Combat and reorders the two after graph changes.
 
-- [ ] A reviewer verdict cannot authorize a different draft hash
-- [ ] Existing-index replacement uses the recorded base pre-state
-- [ ] Post-write hash verification is mandatory
-- [ ] False COMPLETE is impossible
+**Expected**
 
----
+Candidate retains both exact IDs. Diff separates RENAME from REORDER and preserves
+all unrelated fields.
 
-### Case 7: next is handoff-only and bounded to one row
+### Case 16: normalization collision blocks
 
-Fixture:
+Add two systems whose proposed names both normalize to `SYS-world-map`, or propose
+an ID already present in the retired registry.
 
-- design/gdd/systems-index.md exists
-- the recommended design order contains:
-  - SYS-001, Movement, Approved
-  - SYS-002, Combat, Not Started
-  - SYS-003, Progression, Not Started
-- hashes for every workspace file are recorded
-- an invocation/subagent event log is enabled
+**Expected**
 
-Input:
+Writing blocks until the user chooses unique unused IDs. No suffix or renumbering
+is silently generated.
 
-    $map-systems next
+### Case 17: legacy no-ID migration is explicit
 
-Expected behavior:
+BASE contains a legacy row without System ID.
 
-1. The skill reads the index only.
-2. It resolves SYS-002 as the highest-priority Not Started row.
-3. It displays SYS-002, Combat, its status, and:
-   Start a fresh task and run $design-system "Combat"
-4. It returns COMPLETE — HANDOFF ONLY and stops.
+**Expected**
 
-Assertions:
+Show exact old-row-to-proposed-ID migration and require a decision. Selection-only
+mode blocks on the row. Authoring does not let downstream consumers use a temporary
+or inferred ID.
 
-- [ ] Every workspace hash is unchanged
-- [ ] Exactly one row is selected
-- [ ] No $design-system workflow, agent, or tool is invoked
-- [ ] No question asks to continue to SYS-003
-- [ ] No GDD or checkpoint is created
-- [ ] The handoff explicitly requires a fresh task
+### Case 18: unreferenced retirement creates a tombstone
 
----
+The user explicitly retires `SYS-photo-mode`; bounded GDD/epic reference search is
+complete and finds none.
 
-### Case 8: explicit system selection is also handoff-only
+**Expected**
 
-Fixture variants:
+The active row moves to Retired Systems with the same ID, prior name, reason,
+decision/time, and reference result. It is never deleted or reusable.
 
-- A: SYS-003 uniquely identifies Progression
-- B: an exact case-insensitive name uniquely identifies Progression
-- C: the name is ambiguous
-- D: the requested value is absent
+### Case 19: referenced retirement/merge blocks
 
-Input:
+An exact GDD or epic reference contains the affected stable ID.
 
-    $map-systems SYS-003
+**Expected**
 
-Expected behavior:
+Return `BLOCKED_REFERENCED_ID`; preserve BASE, name reference path/hash, and offer
+only a unique catalog-declared migration route or `Stop`. No consumer or index is
+mutated.
 
-- A and B display the resolved row and one fresh-task $design-system command,
-  return COMPLETE — HANDOFF ONLY, and stop.
-- C and D return BLOCKED with candidates/evidence and no command execution.
+### Case 20: split and merge identity plans
 
-Assertions:
+Exercise one split and one merge.
 
-- [ ] Stable ID takes precedence over name matching
-- [ ] Ambiguous or missing selection never guesses
-- [ ] All variants are read-only
-- [ ] No variant invokes GDD authoring
+**Expected**
 
----
+Each requires explicit predecessor/successor IDs and retirement decisions. New
+identities use unused IDs; predecessor IDs are retained in retirement history.
+Implicitly keeping whichever display row comes first is forbidden.
 
-### Case 9: index completion stops instead of chaining authoring
+### Case 21: manual fields and progress survive UPDATE
 
-Fixture:
+BASE contains manual notes, extension-free custom content, Approved row statuses,
+GDD paths, risk notes, progress counts, and decision history. INTENT changes only
+two dependencies.
 
-- a new or updated index has been written and verified
-- the first design-order system is SYS-001 Movement
-- the user says yes when shown the next command
+**Expected**
 
-Input:
+Candidate changes only the selected graph fields and document-level Draft/sign-off
+state required by a changed hash. All listed base content remains identical in the
+parsed/canonical model; no GDD existence scan upgrades progress.
 
-    Yes, start Movement
+### Case 22: unsupported or ambiguous base blocks
 
-Expected behavior:
+BASE has duplicate IDs, a malformed row, ambiguous custom syntax, or contradictory
+active/retired identity.
 
-1. The completed map-systems task does not interpret yes as authorization to
-   enter GDD authoring.
-2. It repeats that GDD authoring must start as a fresh task with
-   $design-system "Movement".
-3. It performs no further write, invocation, question loop, or row update.
+**Expected**
 
-Assertions:
+Return `BLOCKED_INVALID_BASE`. Do not reconstruct a fresh file from the concept,
+drop unknown content, or call it CREATE.
 
-- [ ] The map-systems task has already terminated
-- [ ] No GDD authoring runs in the completed task
-- [ ] No index progress/status update is inferred
-- [ ] No next-system loop exists
+## Typed dependency graph and design order
 
----
+### Case 23: valid required graph sorts deterministically
 
-### Case 10: lean and solo do not misrepresent skipped review
+Provide active IDs and an acyclic set of REQUIRED typed edges with several
+simultaneously eligible nodes.
 
-Fixture variants:
+**Expected**
 
-- A: review mode is lean
-- B: review mode is solo
-- the user approves all product decisions and the hash-bound changeset
+All exact IDs resolve. Kahn sorting uses stable ID for available-node ties; final
+design order respects prerequisites first, approved milestone tier second, and ID
+last. Roots, leaves, degrees, bottlenecks, and components match the fixture.
 
-Input:
+### Case 24: invalid dependency identities block
 
-    $map-systems
+Test unknown, retired, self, duplicate, and contradictory edges.
 
-Expected behavior:
+**Expected**
 
-1. Both variants note CD-SYSTEMS, TD-SYSTEM-BOUNDARY, and PR-SCOPE as skipped
-   with the resolved mode.
-2. No reviewer is spawned.
-3. The user authorization names candidate_sha256.
-4. The workflow never labels the draft independently reviewed.
-5. After verified writes it returns COMPLETE and stops.
+Each is named and blocks candidate freezing. Display-name similarity never repairs
+an ID reference.
 
-Assertions:
+### Case 25: required cycle needs a user decision
 
-- [ ] All skip notes name gate and mode
-- [ ] No independent-review claim appears
-- [ ] Authorization and on-disk verification use the same candidate hash
-- [ ] No downstream workflow is invoked
+The graph contains `SYS-a → SYS-b → SYS-c → SYS-a` using REQUIRED edges.
 
----
+**Expected**
 
-## Protocol Compliance
+Show the complete cycle IDs and concrete break/downgrade/interface/combine/Stop
+options. Do not break it automatically or write until the user approves a valid
+resolution and topology is recomputed.
 
-- [ ] Product choices follow Question -> Options -> Decision -> Draft -> Approval
-- [ ] Filesystem authorization is one complete, hash-bound changeset
-- [ ] Full-mode review is read-only, parallel, pre-write, and single-hash
-- [ ] Rejection and revision handoffs terminate with zero writes
-- [ ] Author, reviewer, GDD author, and recorder roles remain distinct
-- [ ] Selection-only modes return one command and stop
-- [ ] The workflow never invokes or loops $design-system
-- [ ] COMPLETE requires verified authorized bytes
-- [ ] Stable system identity is independent of display/design order; a legacy
-      no-ID row is explicitly migrated or remains blocked for downstream use
+### Case 26: optional cycle stays a risk
 
-## Coverage Notes
+The only cycle consists of OPTIONAL edges.
 
-MS-001 is covered by Cases 1 and 3 through 6. MS-002 is covered by Cases 7
-through 9. Cases 2 and 10 retain the essential failure and review-mode behavior
-needed to make those P0 boundaries deterministic.
+**Expected**
 
-Lower-priority work remains outside this P0 candidate, including stable-ID
-migration for legacy indexes, three-way merge/delete rules, final shared gate
-ownership, context/input budgets, timeout policy beyond blocking the write, and
-repository-wide path/caller synchronization.
+It is reported as an explicit risk and excluded from required topological
+constraints. It is not mislabeled a required design order.
+
+### Case 27: manual order violates a required edge
+
+The user requests a dependent before its required prerequisite.
+
+**Expected**
+
+Explain the conflict and require an explicit graph/order decision. Never accept an
+internally inconsistent candidate.
+
+## Bounded context
+
+### Case 28: minimal CREATE closure
+
+Concept, template, and catalog are within limits; pillars/index/reference folders
+are absent.
+
+**Expected**
+
+Read only catalog, template, concept, and the canonical index absence/parent state.
+Do not enumerate GDD/epic reference folders because no lifecycle/identity update
+requires them.
+
+### Case 29: bounded reference closure for retirement
+
+An UPDATE proposes retirement and both direct-child reference directories remain
+under declared file/byte limits.
+
+**Expected**
+
+Enumerate only direct children, read only exact ID/reference evidence, and bind
+every path/hash/directory count into preview and CAS. General GDD design content is
+not loaded.
+
+### Case 30: count, file, class, or total budget exceeded
+
+Exercise every contract ceiling independently, including a nested reference that
+would require recursive discovery.
+
+**Expected**
+
+Return `PARTIAL`/`CONTEXT_BUDGET_EXCEEDED`, exact usage/limit, and zero writes. Do
+not sample a subset, infer no references, recurse, or authorize retirement.
+
+### Case 31: source changes during snapshot
+
+Concept, template, catalog, base, or a required reference changes between reads.
+
+**Expected**
+
+Context is PARTIAL/INVALID and authoring stops. Mixed-moment evidence cannot form a
+candidate.
+
+## MS-007 — one complete changeset, no session state
+
+### Case 32: CREATE preview names exactly one file
+
+The user approves final candidate H1.
+
+**Expected**
+
+Preview contains only CREATE of `design/gdd/systems-index.md`, exact H1 bytes/hash,
+all input hashes, decisions, diff, budgets, and destination parent state. It says
+session-state/stage/downstream execution NONE.
+
+### Case 33: UPDATE preview includes full three-way diff
+
+BASE B1 plus approved INTENT produces H1.
+
+**Expected**
+
+Preview shows B1, every explicit operation, unchanged preserved fields, candidate
+H1, and the same single replacement. No later hidden `active.md` edit exists.
+
+### Case 34: declined approval writes nothing
+
+The user declines the exact changeset.
+
+**Expected**
+
+Return STOPPED/DECLINED with candidate hash and proposed diff. Index and every
+session-state path remain unchanged.
+
+### Case 35: publication failure cannot report COMPLETE
+
+Inject failure before atomic replacement, at replacement, and at read-back
+verification.
+
+**Expected**
+
+Pre-publication failures report FAILED/BLOCKED; uncertain or mismatched published
+state reports PARTIAL with the exact observed path/hash. No case claims COMPLETE
+or writes session state.
+
+## Approval and CAS
+
+### Case 36: final approval is hash-bound and singular
+
+The user already approved enumeration, graph, and priorities, then sees H1.
+
+**Expected**
+
+Ask once for the complete H1 changeset unless the user explicitly instructed
+application of that displayed candidate. Do not ask again per table/row/field.
+Changing any byte or decision produces H2 and invalidates H1 approval.
+
+### Case 37: base index changes after preview
+
+Another actor changes B1 to B2 before commit.
+
+**Expected**
+
+CAS returns CONFLICT with old/new hashes and zero writes. No three-way auto-merge,
+refresh, retry, or overwrite occurs.
+
+### Case 38: dependency input changes after preview
+
+Independently change catalog, template, concept, pillars, one reference file,
+reference-directory membership, or destination parent state.
+
+**Expected**
+
+Every variant returns CONFLICT and writes nothing. Even an advisory or optional
+source-state change invalidates the exact preview when it was bound.
+
+### Case 39: rerendered candidate differs
+
+Frozen BASE/INTENT previously produced H1 but rerender now produces H2.
+
+**Expected**
+
+Return CONFLICT/STALE_CANDIDATE before publication. Prior user approval never
+authorizes H2.
+
+### Case 40: verified atomic publication
+
+All CAS inputs match; exact H1 bytes publish atomically and parse/graph validation
+succeeds on read-back.
+
+**Expected**
+
+On-disk hash equals H1, status is Draft, sign-off NOT_PERFORMED, and only the index
+path changed. Authoring may report COMPLETE and proceeds only to route resolution.
+
+## Catalog-only recovery and downstream routing
+
+### Case 41: missing concept uses catalog producer
+
+The concept is absent and exactly one catalog workflow declares its artifact path.
+
+**Expected**
+
+Return that workflow ID/command and Stop. Changing the catalog command changes the
+output without editing this skill. The command is not invoked.
+
+### Case 42: concept producer missing or duplicated
+
+No producer or two producers claim the exact concept artifact.
+
+**Expected**
+
+Route is UNKNOWN/BLOCKED and output is Stop. No familiar authoring command is
+guessed.
+
+### Case 43: downstream consumer command changes in catalog
+
+Two valid catalog fixtures differ only in the unique consumer command.
+
+**Expected**
+
+The selection/authoring handoff follows each catalog fixture. The stable System ID
+is appended only when the entry is repeatable/parameterized.
+
+### Case 44: route-only catalog gap does not corrupt a Draft
+
+The index identity/path contract is valid, but no safe sign-off or consumer route
+exists.
+
+**Expected**
+
+An otherwise approved Draft may be written and verified. Final Route State is
+UNKNOWN/NO_ROUTE with the exact gap and Stop; no command is invented.
+
+## Selection-only and termination
+
+### Case 45: next selects one stable row
+
+The validated v2 index has two Not Started rows in Recommended Design Order and a
+unique allowed consumer.
+
+**Expected**
+
+Read only catalog/index plus an exact catalog-declared receipt when required,
+choose the first ordered row, return one catalog command with its exact stable ID,
+`Index Operation: NOT_REQUESTED`, and stop.
+
+### Case 46: exact ID beats display name
+
+Exercise exact ID, unique case-insensitive name, ambiguous name, missing selector,
+legacy no-ID row, and retired ID.
+
+**Expected**
+
+Exact active ID wins; unique name is fallback only. Ambiguous/missing/legacy/
+retired selection blocks with evidence and never guesses.
+
+### Case 47: required sign-off precedes selected consumer
+
+The catalog requires a missing sign-off receipt while an eligible Not Started row
+exists.
+
+**Expected**
+
+Return only the exact catalog sign-off action, without a system selector. Do not
+route to the consumer or perform sign-off.
+
+### Case 48: no automatic GDD authoring or loop
+
+After any CREATE/UPDATE/UNCHANGED/selection result, the user says “continue.”
+
+**Expected**
+
+The completed task performs no invocation, file change, progress update, second
+selection, or question loop. A downstream action must begin separately.
+
+## Protocol compliance
+
+- [ ] MS-003: implementation, metadata/spec, template destination, and catalog
+  identity agree on `design/gdd/systems-index.md`; drift blocks.
+- [ ] MS-004: the author workflow has no internal reviewer topology; there is no
+  write-then-review or parallel-review ambiguity.
+- [ ] MS-005: inferred candidates remain outside active candidate bytes until an
+  explicit user product decision.
+- [ ] MS-006: stable IDs, retirement, downstream references, BASE/INTENT/CANDIDATE,
+  and preservation rules make silent destructive updates impossible.
+- [ ] MS-007: the complete authorized changeset contains only the index; session
+  state is never a hidden second write.
+- [ ] MS-008: catalog declares the sole formal sign-off owner/route; map-systems
+  neither duplicates nor guesses it.
+- [ ] Typed dependency validation and deterministic order use stable IDs.
+- [ ] Context budgets, one approval, CAS, atomic publication, and read-back are
+  fail-closed.
+- [ ] Selection-only and authoring modes each return one catalog-derived action or
+  Stop and never invoke it.
+- [ ] No static/spec result is recorded merely because this candidate exists.

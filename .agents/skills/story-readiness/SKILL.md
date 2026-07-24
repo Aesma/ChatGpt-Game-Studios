@@ -1,422 +1,383 @@
 ---
 name: story-readiness
-description: "Validate that a story file is implementation-ready. Fails closed when requirement traceability, the current control-manifest snapshot, or the full-mode QA gate is missing or inadequate. Produces READY / NEEDS WORK / BLOCKED with specific gaps. Use when user says 'is this story ready', 'can I start on this story', or 'is story X ready to implement'."
+description: Validate bounded stories with deterministic, hash-bound Story, GDD, TR, ADR, control, dependency, asset, acceptance-criterion, test, sprint, and optional QA evidence; return stable findings and unpersisted readiness-record candidates without authorizing implementation or writing files.
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$story-readiness`.
-
-Arguments: `[story-file-path or 'all' or 'sprint'] [--review full|lean|solo]`.
-Treat bracketed values as optional unless the workflow says otherwise.
 
 # Story Readiness
 
-This skill validates that a story file contains everything a developer needs
-to begin implementation: current requirement traceability, current architecture
-controls, testable acceptance criteria, and no unresolved blockers.
-
-**This skill is read-only.** It never edits story files, source documents,
-registries, manifests, sprint trackers, or gate records. It reports findings
-and can draft missing story text in conversation for the user's approval.
-
-**Output:** A final verdict per story (`READY`, `NEEDS WORK`, or `BLOCKED`) with
-specific evidence for every non-passing check. `READY` is never emitted when a
-required source is unavailable, a production story is untraced or stale, or a
-full-mode QA review returns `GAPS` or `INADEQUATE`.
-
----
-
-## Phase 0: Resolve Review Mode
-
-Resolve the review mode once at startup and retain it for every story in this
-run:
-
-1. If the invocation contains `--review [full|lean|solo]`, use that value.
-2. Else read `production/review-mode.txt` and use its value.
-3. Else default to `lean`.
-
-See `.codex/docs/director-gates.md` for the shared mode and gate contracts.
-
----
-
-## 1. Parse Arguments
-
-The first non-review argument selects scope:
-
-- **Specific path**: validate exactly that story file.
-- **`sprint`**: read the current sprint plan from `production/sprints/` (most
-  recent file), extract every story path it references, and validate each one.
-- **`all`**: find files matching `production/epics/**/*.md`, exclude `EPIC.md`
-  index files, and validate every story file found.
-- **No argument**: ask the user which scope to validate.
-
-If no scope is provided, ask:
-
-- "What would you like to validate?"
-  - "A specific story file"
-  - "All stories in the current sprint"
-  - "All stories in production/epics/"
-  - "Stories for a specific epic"
-
-Report the resolved scope before proceeding: `Validating [N] story files.`
-
----
-
-## 2. Load Supporting Context and Source Status
-
-Load shared sources once, before checking any story. Record each source as
-`loaded`, `missing`, `unreadable`, or `invalid`; never convert a missing or
-unreadable source into a passing check.
-
-### 2.1 Determine whether the production control plane is required
-
-Set `production_control_plane_required = true` for a story when either condition
-is true:
-
-1. Its path is under `production/epics/`; or
-2. It declares any production-schema marker, including `Status: Ready`,
-   `Status: Ready for Dev`, `Layer:`, `Type:`, `Manifest Version:`,
-   `Manifest Hash:`, a `TR-[system]-NNN` requirement, or a governing ADR.
-
-Do not infer that a story is pre-architecture merely because a registry or
-manifest is absent. A story outside the production control plane may use an
-explicit, reasoned N/A where the checklist permits it; a production story may
-not.
-
-### 2.2 Load authoritative sources
-
-- `design/gdd/systems-index.md` — identify approved GDDs.
-- `docs/architecture/tr-registry.yaml` — parse all entries and index them by
-  exact `id`. Record the registry source status. A missing, unreadable, or
-  invalid registry is a critical source failure; TR checks do not auto-pass.
-- `docs/architecture/control-manifest.md` — read the raw file bytes, compute a
-  lowercase SHA-256 digest, and parse the exact `Manifest Version:` value from
-  the header. Record the manifest source status. A missing, unreadable, or
-  structurally invalid manifest does not auto-pass production stories.
-- Referenced ADRs — for every unique ADR across the selected stories, read the
-  file and cache its `Status:` field.
-- The current sprint plan — when scope is `sprint`, read it for Must Have /
-  Should Have escalation.
-- Every selected story — read its current raw bytes and compute a lowercase
-  SHA-256 before evaluating any imported QA-plan provenance.
-
-For display and comparison, format the computed manifest digest as
-`sha256:<64 lowercase hexadecimal characters>`. Hash the current raw bytes;
-never hash normalized, copied, or user-supplied text.
-
----
-
-## 3. Story Readiness Checklist
-
-Evaluate every item for every story. A story is eligible for `READY` only when
-every item passes or has an explicitly permitted N/A reason.
-
-### Design Completeness
-
-- [ ] **GDD requirement referenced**: The story includes a `design/gdd/` path
-  and quotes or links a specific requirement, acceptance criterion, or rule
-  from that GDD. A bare filename does not pass.
-- [ ] **Requirement is self-contained**: The acceptance criteria are
-  understandable without opening the GDD.
-- [ ] **Acceptance criteria are testable**: Each criterion is a specific,
-  observable condition rather than "implement X" or "works correctly."
-- [ ] **No acceptance criteria require unsupported judgment calls**
-  *(auto-pass for `Type: Visual/Feel` only when paired evidence is specified)*:
-  Logic, Integration, UI, and Config/Data criteria need observable benchmarks.
-  Each subjective Visual/Feel criterion must name its playtest protocol or an
-  evidence path such as `production/qa/evidence/[slug]-evidence.md`.
-
-### Architecture Completeness
-
-- [ ] **ADR referenced or N/A stated**: The story references at least one ADR,
-  or explicitly states `No ADR applies` with a brief reason.
-- [ ] **ADR is Accepted**: Every referenced ADR must exist and have
-  `Status: Accepted`. A missing ADR or an ADR with `Status: Proposed` is
-  `BLOCKED`. An explicit, reasoned `No ADR applies` note passes this check.
-- [ ] **TR registry is available**:
-  - If `production_control_plane_required = true` and the registry is missing,
-    unreadable, or invalid, add a `BLOCKED` finding to every affected story.
-  - Name `docs/architecture/tr-registry.yaml` and its source status in the
-    blocker. Do not use story age, a legacy guess, or a waiver to pass it.
-- [ ] **Every TR-ID is valid and active**:
-  - A production story must contain at least one exact `TR-[system]-NNN` ID.
-  - `TR-[system]-???`, malformed values, and a missing TR-ID are `NEEDS WORK`.
-  - Every referenced ID must exist in the loaded registry and have
-    `status: active`.
-  - An unregistered, deprecated, or superseded ID is `NEEDS WORK`; name the
-    current replacement when the registry provides one.
-  - A legacy story is recognized only by the exact explicit marker
-    `Traceability: LEGACY-UNTRACED`. This marker produces `NEEDS WORK` until the
-    story is migrated to an active TR-ID. It never makes a story `READY` and it
-    does not bypass an unavailable registry.
-- [ ] **Manifest snapshot is present and current**:
-  For every story where `production_control_plane_required = true`, require all
-  of the following:
-  1. `Manifest Version: [exact current manifest version]` in the story header.
-  2. `Manifest Hash: sha256:[64 lowercase hex characters]` in the story header.
-  3. A `## Source Snapshot` section containing the exact current entry
-     ``- `docs/architecture/control-manifest.md`: `sha256:[64 lowercase hex characters]` ``.
-
-  Apply this verdict matrix:
-
-  - Current manifest missing, unreadable, or without a parseable version:
-    `NEEDS WORK`.
-  - Story manifest version missing or not an exact match: `NEEDS WORK`.
-  - Story manifest hash missing, malformed, or not equal to the computed current
-    hash: `NEEDS WORK`.
-  - Source Snapshot missing, missing the manifest entry, or carrying a different
-    hash: `NEEDS WORK`.
-  - Version, header hash, and snapshot hash all exactly match the current
-    manifest: pass.
-
-  A `Manifest-Note`, waiver, accepted-risk statement, or user choice is
-  informational only. It must not replace or rewrite the captured hash and must
-  not turn a missing or stale snapshot into a pass.
-- [ ] **Engine notes present**: For post-cutoff engine APIs, the story includes
-  implementation notes or a verification requirement. A pure data/config story
-  may state `N/A — no engine API involved`.
-- [ ] **Control manifest rules noted**: Relevant rules from the current control
-  manifest are referenced. `N/A — manifest not yet created` is permitted only
-  when `production_control_plane_required = false`; it never passes a production
-  story.
-
-### Scope Clarity
-
-- [ ] **Estimate present**: The story includes an hours, points, or t-shirt-size
-  estimate.
-- [ ] **In-scope / Out-of-scope boundary stated**: The story explicitly states
-  what it does not include.
-- [ ] **Story dependencies listed**: Dependencies are listed by stable story ID,
-  or `None` is explicit.
-
-### Open Questions
-
-- [ ] **No unresolved design questions**: Acceptance criteria, implementation
-  notes, and rule statements contain no unresolved `UNRESOLVED`, `TBD`, `TODO`,
-  `?`, or equivalent marker.
-- [ ] **Dependency stories are not DRAFT**: Every listed dependency exists and
-  is not DRAFT. A missing or DRAFT dependency is `BLOCKED`.
-
-### Asset References Check
-
-- [ ] **Referenced assets exist**: Scan for paths containing `assets/` or ending
-  in `.png`, `.jpg`, `.svg`, `.wav`, `.ogg`, `.mp3`, `.glb`, `.gltf`, `.tres`,
-  `.tscn`, or `.res`.
-  - Missing referenced assets are `NEEDS WORK`; name every missing path.
-  - If all exist, report `Referenced assets verified: [count] found.`
-  - If none are referenced, report `No asset references found in story —
-    skipping asset check.` and pass this item.
-
-This is an existence-only check; do not validate asset contents.
-
-### Definition of Done
-
-- [ ] **Minimum testable acceptance criteria by story type**:
-  - Logic / Integration: at least 3
-  - Visual/Feel / UI: at least 2
-  - Config/Data: at least 1
-- [ ] **Performance budget noted if applicable**: Gameplay-loop, rendering, or
-  physics work names a budget or states `no performance impact expected` with a
-  reason.
-- [ ] **Story Type declared**: `Type:` is one of Logic, Integration,
-  Visual/Feel, UI, or Config/Data.
-- [ ] **Test evidence requirement is clear**: A `## Test Evidence` section names
-  the expected test or evidence path for the declared type.
-- [ ] **Imported QA plan evidence is current**: When `## QA Test Cases` names a
-  `QA Plan Path` or claims imported plan IDs, read the complete plan and verify
-  all of the following before those specifications can satisfy readiness:
-  - the recorded `QA Plan Hash` equals the current raw-byte SHA-256 of that
-    canonical plan path;
-  - the plan's declared and recomputed effective states are both `CURRENT`, not
-    `PARTIAL` or `STALE`;
-  - every source path in the plan manifest still exists and matches its captured
-    raw-byte hash;
-  - the plan binding names this exact story path and current story hash;
-  - the story's stable AC IDs exactly match the bound AC IDs; and
-  - every imported stable test/check ID is unique and maps to exactly one AC.
-
-  Any missing path/hash/binding, source mismatch, `PARTIAL`/`STALE` state, or
-  ambiguous ID is `NEEDS WORK`; list the exact gap. It cannot be waived into a
-  pass. Stories whose QA specifications were authored directly and do not claim
-  a QA-plan import remain subject to the ordinary completeness checks.
-
----
-
-## 4. Compute the Base Verdict
-
-Compute a base verdict from deterministic checks before the optional QA gate:
-
-- **BLOCKED** — Any critical source blocker, missing/DRAFT dependency, missing
-  or Proposed ADR, or critical unresolved design question without an owner.
-- **NEEDS WORK** — No blocker exists, but one or more checks fail, including
-  missing/invalid TR-ID, `LEGACY-UNTRACED`, or missing/stale manifest snapshot.
-- **READY** — Every deterministic check passes or has an explicitly permitted
-  N/A reason.
-
-List NEEDS WORK findings even when a stricter blocker makes the base verdict
-`BLOCKED`.
-
----
-
-## 5. Director Gate and Final Verdict
-
-Apply the review mode resolved in Phase 0 to QL-STORY-READY:
-
-- `solo` — skip and record `[QL-STORY-READY] skipped — Solo mode`.
-- `lean` — skip and record `[QL-STORY-READY] skipped — Lean mode`.
-- `full` — spawn `qa-lead` through Codex subagent delegation using gate
-  **QL-STORY-READY** from `.codex/docs/director-gates.md` after deterministic
-  checks finish and before emitting the final verdict.
-
-For each story, pass:
-
-- Story file path and title
-- Story type
-- Acceptance criteria, verbatim
-- TR-ID and current registry requirement text
-- Dependency states
-- Base verdict and deterministic findings
-
-Map the gate result without exception:
-
-| QA result | Required final effect |
-|---|---|
-| `ADEQUATE` | Keep the base verdict. |
-| `GAPS [list]` | Add the QA gaps and set the final verdict to at least `NEEDS WORK`. A pre-existing `BLOCKED` remains `BLOCKED`. |
-| `INADEQUATE [blockers]` | Add the QA blockers and set the final verdict to `BLOCKED`, even when the base verdict was `READY`. |
-| Gate fails to return a valid verdict in `full` mode | Set the final verdict to `BLOCKED` and report the gate failure. |
-
-There is no `proceed anyway` path from `INADEQUATE`. If the user accepts risk
-for `GAPS`, record the accepted risk in the response only; the story remains
-`NEEDS WORK` (or `BLOCKED` if already blocked). Accepted risk never produces
-`READY` and never changes story or source files.
-
-Final verdict is the strictest result across deterministic checks and the QA
-gate: `BLOCKED` > `NEEDS WORK` > `READY`.
-
----
-
-## 6. Output Format
-
-### Single story
-
-```markdown
-## Story Readiness: [story title]
-File: [path]
-Verdict: [READY / NEEDS WORK / BLOCKED]
-
-### Source Status
-- TR registry: [loaded / missing / unreadable / invalid]
-- Control manifest: [loaded / missing / unreadable / invalid]
-- Current manifest version: [value / unavailable]
-- Current manifest hash: [sha256:... / unavailable]
-
-### Gate
-- QL-STORY-READY: [ADEQUATE / GAPS / INADEQUATE / skipped / failed]
-
-### Passing Checks (N/[total])
-[list passing items briefly]
-
-### Gaps
-- [check]: [exact missing, stale, or invalid value]
-  Evidence: [path and field/section]
-  Fix: [specific resolution]
-
-### Blockers (if BLOCKED)
-- [blocker]: [dependency, source, ADR, or QA condition that must resolve]
-
-### Accepted Risks (if any)
-- [risk and user decision]; verdict remains [NEEDS WORK / BLOCKED].
-```
-
-### Multiple stories
-
-```markdown
-## Story Readiness Summary — [scope] — [date]
-
-Ready:      [N] stories
-Needs Work: [N] stories
-Blocked:    [N] stories
-
-### Ready Stories
-- [story title] ([path])
-
-### Needs Work
-- [story title]: [primary gap]
-
-### Blocked Stories
-- [story title]: [primary blocker]
-
----
-[Full detail for each non-ready story follows in the single-story format.]
-```
-
-For `sprint` scope, if any Must Have story is not READY, add:
+Evaluate whether each exact story snapshot is ready for implementation. This is a
+strictly read-only evidence gate. It returns one independent verdict and one
+hash-bound record candidate per story; it never edits a story, source, tracker,
+gate record, readiness registry, or implementation artifact and never invokes a
+recorder or implementation workflow.
+
+A conversational `READY` verdict describes the checked snapshot only. It is not
+durable implementation authorization. Only a separately persisted and still-
+current readiness record may be eligible under a consumer's own gate contract.
+
+## Invocation
+
+Use exactly one scope form:
 
 ```text
-WARNING: [N] Must Have stories are not implementation-ready.
-[List each story with its primary gap or blocker.]
-Resolve these before the sprint begins or replan with `$sprint-plan update`.
+$story-readiness --story <project-relative-story-path>
+                 [--review full|lean|solo]
+                 [--prior-records <project-relative-manifest>@sha256:<64-lower-hex>]
+
+$story-readiness --sprint <stable-sprint-id>
+                 [--review full|lean|solo]
+                 [--prior-records <project-relative-manifest>@sha256:<64-lower-hex>]
+
+$story-readiness --all
+                 --scope-manifest <project-relative-manifest>@sha256:<64-lower-hex>
+                 [--cursor <cgs-story-readiness-cursor-v1>]
+                 [--review full|lean|solo]
+                 [--prior-records <project-relative-manifest>@sha256:<64-lower-hex>]
 ```
 
-Never label a base verdict as final before the required full-mode QA result is
-merged.
+- Exactly one of `--story`, `--sprint`, or `--all` is required.
+- `--scope-manifest` and `--cursor` are valid only with `--all`.
+- Every option may appear once. Paths are canonical project-relative paths with
+  `/` separators, Unicode NFC, no glob, traversal, URI, drive prefix, symlink
+  escape, or case-ambiguous match.
+- A scope/prior-record manifest is bound to its exact raw bytes by SHA-256.
+- A sprint ID is a stable declared ID, not a filename or timestamp.
 
----
+Unknown/missing/repeated options, positional arguments, invalid mode
+combinations, malformed paths/hashes/cursors, or an invalid review value return
+`USAGE_ERROR` before story resolution. A referenced manifest that is unreadable,
+hash-mismatched, malformed, unrelated, or stale returns `INPUT_ERROR`.
 
-## 7. Collaborative Protocol
+Run outcomes are exactly:
 
-This workflow is read-only. After the final report, offer:
-
-"Would you like help drafting the missing sections for any of these stories?"
-
-If the user selects a story, draft only the missing sections in conversation.
-Do not edit files. For a QA `GAPS` result, the available choices are:
-
-- Draft the suggested gaps
-- Record accepted risk and keep the non-ready verdict
-- Discuss further
-
-For `INADEQUATE`, offer only revision help or discussion; do not offer to
-proceed to implementation.
-
-Redirect rules:
-
-- Missing story: run `$create-epics [layer]` and then
-  `$create-stories [epic-slug]`.
-- Missing GDD reference for a small change: consider
-  `$quick-design [description]`, then reference the resulting spec.
-- Scope larger than its estimate: split it or escalate to the producer.
-- Missing TR registry: run `$architecture-review` to establish it.
-- Missing/currently unsnapshotted manifest: regenerate the manifest as needed,
-  then update the story through its owning workflow; a waiver cannot substitute.
-
----
-
-## 8. Next-Story Handoff
-
-After a single-story check, and only when that story's **final** verdict is
-`READY`, read the current sprint file from `production/sprints/` (most recent)
-and surface up to three other Must Have or Should Have stories that are marked
-READY or NOT STARTED and have no incomplete dependencies:
-
-```markdown
-### Other Ready Stories in This Sprint
-
-1. [Story name] — [description] — Est: [X hrs]
-
-Run `$story-readiness [path]` to validate before starting.
+```text
+RUN_COMPLETE | RUN_PARTIAL | RUN_BLOCKED | USAGE_ERROR | INPUT_ERROR
 ```
 
-If no sprint file or eligible story exists, omit this section.
+Per-story machine verdicts are exactly `READY`, `NEEDS_WORK`, and `BLOCKED`;
+display `NEEDS_WORK` as “NEEDS WORK.” `PASS`, `FAIL`, `COMPLETE`, `APPROVED`, a
+story header status, and a prior readiness claim are not verdict substitutes.
 
----
+## Load the contract
 
-## Recommended Next Steps
+Read [readiness-rules-v1.md](references/readiness-rules-v1.md) completely. It
+defines the explicit `cgs.story/v2` producer adapter, source schemas, bounded
+manifests, stable checks/findings, exact sprint
+resolution, GDD/TR/ADR/control joins, story/AC/Test/dependency/asset validation,
+QA normalization, verdict precedence, record candidates, and the independent
+recorder protocol.
 
-- Run `$dev-story [story-path]` only when the final verdict is `READY`.
-- Run `$story-readiness sprint` to inspect the current sprint.
-- Run `$create-stories [epic-slug]` if a story file is missing.
-- Resolve every named source, traceability, snapshot, or QA issue before treating
-  a non-ready story as implementation-authorized.
+Read [continued-workflow.md](references/continued-workflow.md) completely and
+execute its phases in order. If either contract file is missing, unreadable, or
+internally inconsistent, return `INPUT_ERROR` without a readiness verdict.
+
+## Zero-write and implementation boundary
+
+The allowed write set is empty. Do not create or update a story, scope manifest,
+sprint plan/tracker, QA plan, finding register, readiness record, cache, draft,
+accepted-risk record, migration, or session state. Do not install tools, generate
+assets, repair paths/statuses, or ask for ordinary write authorization.
+
+Capture bounded before/after mutation snapshots. Concurrent changes are evidence
+of staleness, not permission to revert or assign blame. A changed story or required
+source invalidates that story's result; completed unaffected story results remain
+valid within their own snapshots. Never call `$dev-story`, another project skill,
+or `cgs.story-readiness-recorder/v1`.
+
+## Resolve review mode
+
+Resolve review mode once per run:
+
+1. use the explicit `--review` value;
+2. otherwise read exact `production/review-mode.txt` bytes and accept exactly
+   `full`, `lean`, or `solo` after trimming one trailing line ending;
+3. otherwise default to `lean` and record the absent source.
+
+Malformed present configuration is `INPUT_ERROR`; do not default around it.
+`lean` and `solo` skip QL-STORY-READY with an explicit reason. `full` requires
+one independently normalized result for every evaluated story before its final
+verdict is computed.
+
+## Resolve an exact bounded story set
+
+### One story
+
+`--story` reads exactly the named file. Do not enumerate siblings or infer a
+story from session state.
+
+### Active sprint
+
+`--sprint` resolves the exact declared sprint ID through
+the exact raw bytes of `production/sprint-status.yaml`, the plan referenced by its
+canonical `cgs.sprint-tracker/v2` fields, and current story bytes. Select
+`cgs.sprint-tracker-v2-readiness-adapter/v1` only from the exact top-level schema;
+legacy `plan_path`/`plan_hash`, unknown schemas, or field-name guessing never form
+authority. Never select “most recent,” use mtime, or choose among multiple matches.
+
+Require a positive `tracker_revision`, stable `event_id`, equal requested
+`sprint_id`/`active_sprint_id`, exactly one `sprint_state: ACTIVE` declaration,
+stable `lifecycle_owner` and `lifecycle_recorder: cgs.sprint-tracker/v2`, canonical
+`plan_file`, exact raw `plan_sha256`, matching `plan_revision`, and recomputed
+`story_set_hash`. Record the tracker's own raw SHA-256 and revision in the context/
+stale key. Resolve only that `plan_file`; require exact `cgs.sprint-plan/v2`
+schema/ID/revision/hash and exact date/timezone/estimate-unit/capacity receipt and
+operand agreement. Validate complete tracker/plan story coverage and each row's
+stable ID, canonical path, priority, current story/core hashes, lifecycle
+provenance, readiness record/receipt binding, and gate-eligibility state.
+Every present session, project-stage, and current-milestone ACTIVE declaration must
+be unique and agree, but none can override tracker/plan identity. Missing,
+malformed, stale, duplicate, ambiguous, inactive, or conflicting sprint authority
+returns `RUN_BLOCKED` before a sprint verdict summary.
+
+### All stories
+
+`--all` consumes only `cgs.story-readiness-scope/v1`; it never performs an
+unbounded recursive glob. The manifest contains the exact ordered story ID/path/
+raw-hash set, root/project/target identity, generation time, and manifest hash.
+Apply the fixed page/file/byte/reference/reviewer limits in the rules reference.
+
+When work remains, return `RUN_PARTIAL` with a deterministic continuation cursor
+bound to the scope manifest, next ordinal, completed result-set hash, ruleset, and
+source snapshot. A changed manifest/context invalidates the cursor. Never silently
+sample or describe a partial page as the whole project.
+
+## Freeze current context and authoritative sources
+
+For every selected story, compute the raw-byte SHA-256 before evaluation and
+create a `cgs.story-readiness-context/v1` snapshot. It includes project target/
+dirty identity and exact source status/path/hash/fields used for:
+
+- the story and optional prior readiness record;
+- the selected story adapter and exact create-stories producer SKILL/contract
+  bytes plus their NUL-delimited bundle identity;
+- `design/gdd/systems-index.md`, the bound Approved system GDD, and the exact GDD
+  requirement IDs/locators;
+- `docs/architecture/tr-registry.yaml` and every referenced TR entry;
+- the story's `Source Manifest ID`, `Story Core SHA-256`, complete Source Manifest
+  and Currentness Matrix, and every current source row used by that matrix;
+- `docs/architecture/control-manifest.md`, its current artifact/source-manifest/
+  ruleset state, applicable Rule IDs, and the story's exact currentness rows;
+- every governing ADR and its status;
+- dependency stories and declared asset/test evidence;
+- imported QA plan/source manifests when claimed;
+- `.codex/docs/technical-preferences.md`, configured engine-version reference,
+  and `production/review-mode.txt` when relevant; and
+- sprint tracker adapter/schema/raw hash/revision/event/unique ACTIVE declaration,
+  exact `plan_file`/raw `plan_sha256`, plan revision/story set, and session
+  corroboration for sprint scope.
+
+Each source status is exactly `LOADED_VALID`, `ABSENT`, `UNREADABLE`, `INVALID`,
+`HASH_MISMATCH`, `STALE`, `UNSUPPORTED`, or `OVER_LIMIT`. Do not turn missing or
+unreadable evidence into N/A or a pass.
+
+A story is in the production control plane when its path is under
+`production/epics/` or it contains a production schema marker listed in the rules
+reference. Select an adapter before interpreting producer-owned fields. The only
+gate-eligible production adapter is
+`cgs.story-v2-readiness-adapter/v1` for exact `Schema: cgs.story/v2`; an absent,
+legacy, mixed, or future schema is `UNSUPPORTED` and fails closed without applying
+v2 field rules to unrelated bytes. Production stories require a valid registry,
+current control manifest, Approved GDD binding, active TR, and a fully current
+producer Source Manifest and Currentness Matrix. `LEGACY-UNTRACED` is explicit
+`NEEDS_WORK`, never READY and never a bypass for an unavailable source.
+
+## Deterministic checks and stable findings
+
+Evaluate every applicable check ID from `SR-C001` through `SR-C016`. A check
+result is exactly `PASS`, `FAIL`, `BLOCKED`, `NOT_APPLICABLE`, or `UNVERIFIED` and
+contains applicability, inputs/hashes, deterministic assertion, evidence locators,
+finding IDs, and check-version hash.
+
+N/A is allowed only where the rules explicitly permit it and must include current
+positive evidence and a reason. A source absence is not positive N/A evidence.
+
+Every non-pass creates `cgs.story-readiness-finding/v1` with a deterministic
+`SRF-<20-lower-hex>` ID, check/story identity, classification, current observation
+state, owner, external action, optional dependency ID, exact evidence, resolution
+condition, first-seen reference when available, and current snapshot hash.
+Diagnostic wording, line number, verdict, timestamp, and source byte hash do not
+control finding identity.
+
+Finding classification is `GAP`, `BLOCKER`, or `WARNING`. Observation is
+`OPEN`, `STILL_OPEN`, `RESOLVED_CANDIDATE`, or `WAIVER_PRESENT`. This analysis
+does not persist lifecycle changes. A waiver remains evidence and never converts a
+failed/blocked required check into `PASS` or `READY`.
+
+## Required design and architecture joins
+
+A production story passes design traceability only when:
+
+1. it declares a stable system ID, exact canonical GDD path/hash, and stable GDD
+   requirement ID/locator;
+2. `systems-index.md` has exactly one matching system entry whose path/hash match
+   current GDD raw bytes and whose status is exactly `Approved`;
+3. the GDD identifies the same system/requirement and its canonical status is
+   `Approved` where the schema requires a document status;
+4. every exact story TR ID exists once in the current registry with
+   `status: active`, maps to that system/GDD requirement, and has no unresolved
+   supersession; and
+5. every governing ADR exists, hashes exactly, and has `Status: Accepted`.
+
+A missing/invalid critical source, Proposed/missing ADR, non-Approved GDD, stale
+index/GDD hash, or ambiguous join is a `BLOCKER`. A story-local missing/malformed
+binding with otherwise available authority is a `GAP`. No filename, quoted prose,
+old record, waiver, or inferred system substitutes for the stable joins.
+
+For `cgs.story/v2`, recompute and compare the producer-owned `Source Manifest ID`
+and `Story Core SHA-256`, then validate every required row in `Source Manifest and
+Currentness Matrix` against current exact bytes/state. The current control artifact,
+its external review/ACTIVE receipt when required, and every applicable stable Rule
+ID must match the control rows and exact bindings in the story. `Manifest Version`,
+`Manifest Hash`, and a `## Source Snapshot` section are not fields produced by
+`cgs.story/v2`; their absence is never a failure under this adapter and their
+presence never substitutes for the producer fields. Missing, malformed, incomplete,
+or stale producer fields or unavailable/invalid authority fail closed. Notes,
+waivers, and accepted risk never rewrite provenance or produce READY.
+
+## Story schema, AC, Test ID, and dependency validation
+
+The rules reference defines the adapter-specific canonical story fields. For
+`cgs.story/v2`, `Story Slot: SNNN` owns the ID suffixes. In particular:
+
+- every acceptance criterion has one unique `AC-SNNN-CC` ID whose story-slot
+  component matches the header and a specific observable assertion; required
+  counts depend on declared story type;
+- every current AC has exactly one unique type-correct
+  `TC|MC|SC-<epic-slug>-SNNN-ACCC` ID, whose epic, story-slot, and criterion-slot
+  components match the current story and AC, with no orphan or ambiguous mapping;
+- Logic/Integration use `TC`, Visual/Feel/UI use `MC`, and Config/Data use `SC`;
+  directly authored and imported QA specifications obey the same ID/cardinality
+  and type-specific evidence rules;
+- imported QA-plan evidence is usable only when plan bytes, effective `CURRENT`
+  state, complete source manifest, exact story path/hash, AC set, Test ID set, and
+  one-to-one Test-ID definition are current;
+- dependencies use unique stable story IDs, canonical paths, explicit hard/soft
+  kind, current raw hashes/statuses, and resolution conditions; and
+- a hard dependency passes only when its current story state is `Complete` or
+  `Done`. Missing, unreadable, Draft, Blocked, Ready, or In Progress hard
+  dependencies are blockers.
+
+Do not infer IDs from headings or line order. Placeholder, duplicate, malformed,
+or conflicting AC/Test/dependency IDs are gaps or blockers as fixed by the rules.
+
+## Asset dependency classification
+
+Normalize every declared or detected asset reference as exactly:
+
+```text
+EXISTING | PLANNED_WITH_STORY | BROKEN | UNKNOWN
+```
+
+- `EXISTING` requires one safe canonical path whose current file exists.
+- `PLANNED_WITH_STORY` requires a declared stable dependency story ID/path whose
+  scope explicitly produces that asset. Hard is the default. Until a hard asset
+  dependency is `Complete`/`Done` and the asset exists, the story is `BLOCKED`.
+- `BROKEN` is a missing path with no valid producing story, or a completed producer
+  whose promised asset is absent; it is `NEEDS_WORK` unless another required
+  dependency rule is stricter.
+- `UNKNOWN` is ambiguous, unsafe, unreadable, unsupported, or over-limit evidence;
+  it makes evaluation partial and cannot pass.
+
+Asset existence checks content presence only. They do not validate art/audio/model
+quality. Planned assets are never disguised as ordinary broken references.
+
+## QA review and batch isolation
+
+After deterministic checks, full mode sends one immutable
+`cgs.story-readiness-qa-packet/v1` per story to QL-STORY-READY. Each packet binds
+story/context/check-result hashes and contains story type, verbatim ACs with IDs,
+GDD/TR requirement text, dependencies, base verdict, and stable deterministic
+findings. Reviewer output cannot change deterministic evidence.
+
+Dispatch `qa-lead` through Codex subagent delegation using gate
+`QL-STORY-READY` from `.codex/docs/director-gates.md`. A bounded batch may be
+dispatched together, but packet ownership and returned verdict/finding identity
+remain one story at a time; never ask the reviewer for a batch-wide verdict.
+
+Normalize one result per packet/story:
+
+| QA result | Final effect |
+|---|---|
+| `ADEQUATE` | keep deterministic verdict |
+| `GAPS` | create stable QA gaps; final is at least `NEEDS_WORK` |
+| `INADEQUATE` | create stable QA blockers; final is `BLOCKED` |
+| timeout, unavailable, malformed, duplicate, missing, or hash mismatch | QA check `UNVERIFIED`; final is `BLOCKED` |
+
+Accepted risk never upgrades the result. In a batch, a failed/missing QA result
+affects only its story. Preserve completed per-story results, mark the run
+`RUN_PARTIAL` when any packet is incomplete, and never collapse reviewer prose
+into an untraceable batch-wide finding.
+
+## Verdict and run outcome
+
+For each story, compute the deterministic base verdict from current check rows:
+
+1. any `BLOCKED` check/finding -> `BLOCKED`;
+2. otherwise any `FAIL` or `UNVERIFIED` required check -> `NEEDS_WORK`;
+3. otherwise all applicable checks `PASS` or permitted `NOT_APPLICABLE` -> `READY`.
+
+Then merge the QA result using the strict table above. `READY` additionally
+requires `evaluation_state: COMPLETE`, complete mutation snapshots, and zero
+unknown required evidence. List gaps even when a stricter blocker controls.
+
+Run outcome:
+
+- `RUN_BLOCKED` when scope/sprint identity cannot resolve or no story can be
+  meaningfully evaluated;
+- `RUN_PARTIAL` when at least one selected story is not evaluated completely,
+  exceeds limits, changes during the run, or lacks a required full-mode QA result,
+  while at least one independent result is retained; or
+- `RUN_COMPLETE` when every selected story has a complete final result.
+
+A run may be `RUN_COMPLETE` while containing `NEEDS_WORK` or `BLOCKED` stories;
+completion describes evaluation coverage, not readiness.
+
+## Readiness record candidate and independent recorder
+
+Return one `cgs.story-readiness-record-candidate/v1` per evaluated story containing
+story ID/path/raw hash, selected adapter ID and producer SKILL/contract/bundle
+hashes, checked-at UTC time,
+checker/ruleset ID/version/hash, review mode, full context/source snapshot,
+producer Source Manifest ID/Story Core hash, stable check rows/findings, base/QA/final
+verdicts, evaluation state, record/readiness keys and hashes, and exact
+`expires_when` conditions.
+
+Every direct candidate states:
+
+```text
+persistence_status: NOT_PERSISTED
+implementation_gate_eligible: false
+record_mutated: false
+recorder_invoked: false
+```
+
+`cgs.story-readiness-recorder/v1` in the rules reference is a separate writer. It
+requires new exact authorization and independently rehashes every source, verifies
+the candidate/verdict, performs a CAS append to an owner-declared readiness
+registry, and emits a persistence receipt. This skill never dispatches or simulates
+it. A record is stale immediately when any story, GDD, systems index, registry/TR,
+ADR, control manifest, dependency, asset, AC/Test/QA-plan, sprint/current-context,
+story adapter/producer SKILL/contract/bundle, review-mode, reviewer-result, checker,
+or ruleset identity changes.
+
+## Return and stop
+
+Return `cgs.story-readiness-run/v2` with normalized invocation, run outcome,
+scope/sprint identity, limits/continuation, source coverage, mutation evidence,
+and the ordered independent per-story results. Each result includes current source
+hashes, checks, stable findings with owner/action/evidence/resolution, QA result,
+verdict derivation, record candidate/hash, and stale key.
+
+Every run envelope states:
+
+```text
+allowed_write_set: []
+record_mutated: false
+recorder_invoked: false
+implementation_started: false
+```
+
+For sprint scope, flag each Must Have/Should Have non-ready story from the exact
+validated plan. Do not recommend implementation for a non-ready or unpersisted
+result. Offer conversation-only drafting help for story-local gaps, then stop;
+never edit or invoke another workflow.

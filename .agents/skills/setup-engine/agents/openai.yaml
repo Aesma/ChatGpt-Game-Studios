@@ -1,4 +1,7 @@
 interface:
   display_name: "Setup Engine"
-  short_description: "Verify real engine identity before configuration or upgrade"
-  default_prompt: "Use $setup-engine with a bounded manifest to separate official-source research, product selection, installation, real executable verification, and strictly authorized project configuration or upgrade."
+  short_description: "Verify official sources and real engine health before activation"
+  default_prompt: "Use $setup-engine only with a hash-pinned v2 manifest. Bind version/support/download/checksum/license claims to allowlisted first-party sources and retrieved-at scope; require real executable, SDK/toolchain, project-health and framework-consistency receipts; protect all refresh/config/upgrade writes with owner snapshots and CAS; preserve explicit offline, partial-download, rollback and recovery states."
+
+policy:
+  allow_implicit_invocation: true

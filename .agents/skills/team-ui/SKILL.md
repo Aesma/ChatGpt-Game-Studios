@@ -1,264 +1,175 @@
 ---
 name: team-ui
-description: "Orchestrates an approved UX spec into a uniquely owned, bounded UI implementation and verifies the final build hash with independent evidence before completion."
+description: "Authors and independently approves bounded UX, then orchestrates one owned UI implementation with final-build evidence and deterministic recovery."
 ---
 
-## Invocation and scope
+# Team UI
 
-Invoke only as:
+## Invocation
+
+Use exactly:
 
 ~~~text
-$team-ui --manifest {ui-feature-request-path} [--resume {checkpoint-path}]
+$team-ui --manifest <ui-request-path> [--resume <checkpoint-path>]
 ~~~
 
-The manifest is mandatory. Before reading any project artifact, reject no argument, unknown or duplicate flags, missing values, directories, unsafe IDs, path traversal, and unsupported schema. With no argument, show this usage and stop with no reads, delegates, writes, or verdict.
+Parse the command before reading any project file. With no argument, print the usage line and stop with no project reads, agents, writes, checkpoint, pipeline result, or verdict. Reject unknown or duplicate flags, missing values, directories, ambiguous relative paths, unsafe IDs, path traversal, and any positional argument.
 
-Require Artifact Type: ui-feature-request, Schema Version: 1 and:
+The manifest must conform to `cgs.team-ui-request/v2` in [request-and-record-contracts.md](references/request-and-record-contracts.md). That reference is normative for identifiers, canonical paths, context and cardinality limits, records, statuses, and verdicts. [execution-and-recovery.md](references/execution-and-recovery.md) is normative for task attempts, cancellation, checkpoints, mutation reconciliation, resume, and final review. A conflict between this file and either reference is `BLOCKED: CONTRACT_CONFLICT`; do not choose an interpretation.
 
-- stable screen ID, run ID, and create or revise operation;
-- exact UX-spec target path and expected absent/base-file SHA-256;
-- ordered context paths/hashes plus file/byte budgets;
-- platform, input, resolution/aspect, locale, accessibility, colorblind, motion, text-scale, and device targets;
-- exact engine/technical-preferences path/hash or Engine Status: UNCONFIGURED;
-- interaction-pattern library path/hash or explicit ABSENT;
-- art-bible, accessibility-requirements, player-journey, relevant GDD requirement, visual-budget, and platform-manifest paths/hashes;
-- target source/output roots and applicable AGENTS.md paths/hashes;
-- named artifact owners;
-- maximum revision/fix rounds, per-task timeout, phase deadline, and maximum concurrent reviewers;
-- exact orchestration record root.
+The sole internal delegation interface is the typed `cgs.team-ui-task/v2` direct-task packet. Do not invoke `$ux-design`, `$ux-review`, or another project workflow, and do not choose between a subskill and an ad-hoc prompt. The packet nevertheless adapts the current owner contracts exactly: UX-author output is the current `ux-design` `ux-spec` artifact contract, and UX-reviewer output is `cgs.review-evidence/v1` with a `cgs.ux-review/v2` extension. Every author, planner, writer, runner, and reviewer receives the same packet schema with a role-specific output schema. An unavailable required role produces `PARTIAL`; it is not replaced by a different interface.
 
-Screen and run IDs are stable slugs or UUIDs, not dates alone. Resolve real paths and reject symlinks escaping the project root. Re-hash exact bytes; do not discover all relevant GDDs or newest artifacts. Enforce the declared context budget and list omitted context.
+## Bounded request and context
 
-## State, authority, and review-mode rules
+Validate the request bytes and schema before following project paths. Re-hash every declared file from exact bytes and reject a mismatch. Resolve paths under the canonical project root, reject escaping symlinks and duplicate normalized paths, and never search for the newest, likely, or “all relevant” artifact.
 
-Resolve optional consultation mode exactly once from the manifest: full, lean, or solo. It never weakens a mandatory quality gate.
+The request declares a purpose for each context entry and exact requirement IDs. It also binds the exact current `cgs.localization-manifest/v2`, its `cgs.localization-catalog/v2` source-table path/raw hash and derived source-table/keyset/catalog identities, plus every conditionally implementation-required `cgs.localization-package/v1` path/raw/payload hash and locale/page identity. Project context is capped at 32 files, 524288 aggregate bytes, and 131072 bytes per file. Lower manifest limits are honored; higher limits are invalid. The target matrix is also bounded as specified by the normative reference. Do not silently truncate a required input. If a required input would exceed a cap, stop `BLOCKED: CONTEXT_LIMIT`; list only path, declared purpose, exact byte count, and hash for accepted and rejected entries.
 
-- full may add optional director consultations whose output is advisory and hash-bound;
-- lean skips optional consultations but retains every mandatory independent review;
-- solo may author a design/prototype in the current agent, but cannot satisfy independent-review quorum or produce production COMPLETE.
+Derive the finite instruction candidates only by joining `AGENTS.md` to the project root and each parent directory of every canonical output or proposed implementation operation. Probe those exact paths, require every existing file to appear in request context, count it against the hard budget, and hash the ordered precedence chain. Do not recursively search for instructions. When implementation falls under `src/ui/AGENTS.md`, its localization, keyboard/mouse and gamepad, skippable motion, audio-event routing, no game-state ownership, no game-thread blocking, scalable-text, colorblind, and min/max-resolution rules become mandatory evidence checks.
 
-Use these pipeline results:
+## State and consultation modes
 
-- SPEC_APPROVED: current UX spec has persisted current-hash approval, but no verified production implementation;
-- ACCEPTED_RISK_SPEC_NOT_APPROVED: user accepted named open findings; only prototype/backlog planning is allowed;
-- NEEDS_REVISION: current spec or implementation has open blocking findings;
-- IMPLEMENTATION_VERIFIED: final implementation/build hash passed all mandatory evidence;
-- PARTIAL: a required task timed out, errored, or returned incomplete evidence;
-- BLOCKED: identity, prerequisite, authorization, ownership, convergence, engine, mutation, or persistence prevents the next legal transition.
+The optional `consultation_mode` is resolved once and checkpointed. Its default is `lean`. The field `review_mode` is invalid.
 
-Verdict: COMPLETE is allowed only with Pipeline Result: IMPLEMENTATION_VERIFIED. All other results use Verdict: PARTIAL or BLOCKED as applicable. Accepted risk never changes a review verdict, never makes approval evidence eligible, and never authorizes production implementation.
+- `full` may add read-only advisory director consultations. Advisory output never supplies gate evidence.
+- `lean` omits optional consultations and keeps every mandatory author, runner, and reviewer.
+- `solo` may produce a scratch design or separately authorized nonproduction prototype proposal, but it cannot satisfy independence and can never start production implementation or return `COMPLETE`.
 
-## Artifact ownership and mutation domains
+Mandatory gates and the four final review streams do not vary by mode. Use only the pipeline results and verdict mapping in the normative contract. `COMPLETE` is legal only for `IMPLEMENTATION_VERIFIED`; accepted risk, an approved spec, file existence, reviewer prose, or partial evidence never implies implementation completion.
 
-This pipeline is not read-only: named writer tasks may write only the exact operations declared in the currently authorized phase manifest. All reviewer tasks are read-only.
+## Authority, independence, and write ownership
 
-Assign one writer to each path before any write:
+This workflow contains controlled project writes, but all roles are read-only unless this table names them as the one writer for an active, authorized manifest:
 
-| Artifact domain | Unique writer | Other roles |
+| Domain | Sole writer | Independence and non-writes |
 |---|---|---|
-| UX spec | ux-author task | all reviewers read-only |
-| UX-review recorder envelopes, phase/implementation manifests, checkpoints, final result | coordinator-recorder | agents return conversation records only |
-| Visual spec and asset manifest | art-author task | art reviewer is a different read-only task |
-| Engine implementation plan | engine-plan author | engine reviewer is a different read-only task |
-| Feature-local pattern proposal | ux-author task | ui-programmer read-only |
-| Global interaction-pattern library | external UX-library owner, outside this run | ui-programmer and coordinator never write |
-| ADR/global UI framework/navigation/binding | architecture owner, outside this run | team-ui emits proposal only |
-| Implementation files listed by manifest | one ui-programmer writer | all review tasks read-only |
-| Build/test logs and evidence | declared runner/evidence recorder paths | reviewers read-only |
+| UX spec and feature-local pattern proposals | UX author task | UX reviewer is a distinct task and read-only |
+| UX-review, final-review, and runner receipt envelopes; phase manifests; checkpoints; final result | coordinator-recorder | never changes embedded role output |
+| Visual spec and asset manifest | art author task | art reviewer is a distinct task and read-only |
+| Global visual language, tokens, or art-bible policy | external art-bible owner, outside this run | team-ui may report a proposal, never apply it |
+| Engine plan | engine-plan author task | engine reviewer is a distinct task and read-only |
+| Global interaction-pattern library | external UX-library owner, outside this run | every team-ui role is read-only |
+| ADR or cross-screen framework/navigation/binding policy | external architecture owner, outside this run | team-ui may report a proposal, never apply it |
+| Authorized implementation source paths | one UI programmer task for the whole run | authors, runner, and reviewers are read-only |
+| Declared runtime logs and raw evidence paths | one evidence-runner task | runner cannot edit design or source |
 
-No agent may delegate further, change another owner's file, or share a write target. The ui-programmer must not create, edit, append, or normalize design/ux/interaction-patterns.md. A new or changed global pattern becomes a feature-local proposal with stable ID UXP-{screen-id}-{slug}; only the external UX-library owner may approve and merge it in a separately authorized task. A feature may reference an approved spec's local proposal, but must not describe it as a global reusable pattern. Cross-screen behavior blocks implementation until the library/ADR owner resolves it.
+No role may spawn children, share a write target, edit another owner’s artifact, or expand its path list. The UI programmer must not create, edit, append, normalize, or rename the global interaction-pattern library. A new pattern is `UXP-<screen-id>-<slug>` in the feature UX spec and remains feature-local until the external owner accepts it. A cross-screen pattern blocks implementation until a current library entry or Accepted ADR is supplied.
 
-For every writer operation, record operation type, exact path, expected base hash or ABSENT, writer task ID, approved content/diff hash, and maximum bytes. Immediately before and after writing, re-hash inputs/base, enumerate changed paths, and compare them with the active allowlist. An outside-path mutation halts the pipeline; report it without silently reverting user work.
+Every write operation records `CREATE` or `UPDATE`, canonical path, expected `ABSENT` or base SHA-256, writer task ID, approved candidate/diff SHA-256, and maximum bytes. Check the complete mutation set immediately before and after each writer. An unexpected change is `BLOCKED: MUTATION_BREACH`; report it without reverting user work.
 
 ## Authorization boundaries
 
-There is no single up-front authorization for the unknown full pipeline.
+An initial request cannot authorize implementation paths that have not been planned.
 
-1. Read-only planning and in-memory/scratch drafting happen before project writes.
-2. Design authorization covers only exact UX-spec, bounded revision, review-envelope, and checkpoint paths. It may authorize at most two revisions of the same spec path, and only changes mapped to stable open finding IDs plus an explicitly approved product decision.
-3. After current-hash UX approval, visual and engine authors draft candidate bytes without project writes. Preview their exact artifact paths/operations and obtain bounded design-support authorization.
-4. Only after approved design-support artifacts exist may the coordinator generate the precise implementation manifest. Preview exact implementation paths, operations, base hashes, unique writer, evidence paths, and explicit non-writes; obtain a separate implementation authorization.
-5. New files, changed paths, global-pattern/ADR edits, or output expansion require a new manifest and authorization. Nested roles never request per-file approval and never broaden the orchestrator's boundary.
+1. Read-only intake, validation, and scratch drafting require no project mutation.
+2. Design authorization can cover only the exact UX-spec operation, its two bounded revisions, the fixed recorder paths, and declared checkpoint temporary/final paths.
+3. After current-hash UX approval, visual, asset, and engine candidates are drafted in scratch. Present their exact operations, base hashes, candidate hashes, writers, byte caps, and non-writes for a separate design-support authorization.
+4. After the support artifacts are current, build the exact implementation manifest. Present every source and evidence operation, base hash, sole writer/runner, byte cap, and explicit non-write for a separate implementation authorization.
+5. A new path, changed operation, new owner, changed base hash, or wider output requires a new manifest and authorization. Nested tasks never request approval and never broaden the coordinator’s boundary.
 
-An explicit user request can authorize a listed boundary when it names the exact operations. It cannot authorize implementation paths that have not yet been planned and enumerated.
+An explicit user instruction can authorize an already enumerated boundary. Pausing for an authorization records `BLOCKED: AUTHORIZATION_REQUIRED` and the single exact next action; it does not fabricate approval.
 
-## Phase 0: Create or resume bounded orchestration state
+## Phase 0 — Validate or resume
 
-Read every applicable AGENTS.md from project root through each declared output, including src/ui/AGENTS.md when it governs implementation. Hash and record the precedence chain. Require its scalable-text, colorblind, accessibility, localization, input, performance, and never-block-game-thread constraints in later checks.
+For a new run, validate the v2 request, canonical paths, hashes, target matrix, owners, configured engine status, and instruction chain. Validate the art-bible target and authoring receipt, then require one fresh independent immutable `cgs.art-bible-review/v1` whose gate is `AD-ART-BIBLE`, verdict is `APPROVE`, reviewer differs from every author/consultant/recorder, and bindings exactly match the current target, authoring receipt, AB-1/all nine section hashes, dependencies, and context bytes. Missing, stale, malformed, `CONCERNS`, `REJECT`, wrong-role, identity-overlap, or hash-mismatched evidence is `BLOCKED: ART_BIBLE_NOT_PRODUCTION_APPROVED`.
 
-Use immutable checkpoints:
+Before the first checkpoint, also apply the exact localization preflight from the
+request contract: re-hash/strictly parse the current v2 manifest and catalog,
+recompute source-table/keyset/catalog identities, validate exact locale coverage,
+and, when package requirement is REQUIRED, re-hash/parse every exact v1 package
+and reproduce its locale/page/payload/source/keyset/catalog bindings. Any absent,
+duplicate, malformed, unsupported, stale, hash-mismatched, parser-mismatched,
+locale-incomplete, or package-incomplete input is
+`BLOCKED: LOCALIZATION_INPUT_NOT_CURRENT`; create no checkpoint and dispatch no
+author, support, programmer, runner, or reviewer. Create the first checkpoint only
+after both art and localization preflights succeed and its exact recorder paths
+are authorized.
 
-~~~text
-production/ui/team-ui/{screen-id}/{run-id}/checkpoints/{sequence}-{phase}.yaml
-production/ui/team-ui/{screen-id}/{run-id}/result.md
-~~~
+For `--resume`, accept only the canonical checkpoint path for the same screen/run and verify its exact SHA-256, request hash, instruction-chain hash, prior checkpoint link, recorded artifacts, authorizations, mutations, task attempt tokens, and current source/build identities. Follow the invalidation and earliest-safe-transition rules in the recovery reference. A checkpoint can never authorize an unrecorded operation.
 
-Each checkpoint contains request/context/instruction hashes, phase state, exact authorized mutation manifest/hash, artifact/output hashes, task IDs/status/deadlines, decisions, stable open/closed finding IDs, target build/source hash, operation ledger, and next legal transition. The coordinator-recorder is the only writer.
+## Phase 1 — Author the bounded UX spec
 
-A resume path must be exact and hash-verified. Re-hash every checkpoint input/output. If any changed, mark the dependent phase STALE and resume from the earliest affected read-only planning point; never reuse a stale approval or review. A checkpoint cannot authorize a write absent from its recorded manifest.
+Read and hash the current `ux-design` `SKILL.md` and its declared `references/continued-workflow.md`. Compute `author_schema_hash` from the exact main bytes, one NUL byte, and exact continuation bytes; construct `cgs.ux-author-contract-manifest/v1`; and require the supported tuple `ux-profile-schema-v2`, `cgs.ux-content-profile/v2`, and `ux-design-author-sha256:<author_schema_hash>`. Missing, mixed, or unsupported author-contract evidence is `BLOCKED: UX_AUTHOR_CONTRACT_INCOMPATIBLE` before a design write.
 
-## Phase 1: Bounded UX authoring
-
-Load only declared context. Missing accessibility requirements, target platforms/inputs, or required author schema is a blocking design gap; do not guess.
-
-The ux-author drafts the exact create/revise candidate in scratch using the current UX author profile. It must include stable screen identity, requirement links, flow/states, navigation, input variants, localization, text scaling/reflow, colorblind/non-color cues, reduced motion, data/event ownership, accessibility, acceptance criteria, and pattern references/proposals.
-
-If the global pattern library is absent, do not create it in this run. Use explicit feature-local proposals or block cross-screen patterns. No implementation role may backfill it.
-
-Preview and authorize the bounded design changeset, then let only the ux-author write the UX spec. Verify exact bytes, target path, base hash, and absence of outside mutations. Write a checkpoint.
-
-## Phase 2: Independent hash-bound UX review with finite convergence
-
-Run the staged ux-review P0 read-only protocol in a fresh reviewer task that is not the author task. Require:
-
-- review_record_schema: ux-review-record-v1;
-- review_policy: ux-review-p0-v1;
-- review_status: COMPLETE;
-- exact target path/SHA-256 and current author-schema hash;
-- stable UXF finding IDs and required-check coverage;
-- deterministic verdict and approval_status;
-- gate_evidence_eligible true only for APPROVED.
-
-The reviewer returns a conversation record with gate_evidence_status: NOT_PERSISTED. The coordinator-recorder re-hashes the unchanged target and persists an immutable envelope at:
+Send one UX author a `cgs.team-ui-task/v2` packet with the exact spec target, base identity, bounded context, current instruction hashes, the author-contract manifest and source hashes, current localization manifest/catalog identities and package identities when required, the current `ux-spec` output schema, deadline, and no-child rule. The canonical UX target is:
 
 ~~~text
-production/qa/evidence/ui/{screen-id}/{run-id}/ux-review-round-{n}.yaml
+design/ux/<screen-id>.md
 ~~~
 
-The envelope contains Artifact Type: team-ui-ux-review-evidence, Schema Version: 1, exact embedded review-record bytes/hash, target path/hash, recorder identity/time, Persistence: WRITTEN, and read-back hash. Never edit the embedded record or change NOT_PERSISTED inside it.
+The candidate must begin with the current `ux-design` header, including `Artifact Type: ux-spec`, `Schema Version: ux-design-author-sha256:<author_schema_hash>`, `Profile Version: ux-profile-schema-v2`, and `Content Profile: cgs.ux-content-profile/v2`. It must contain the exact `UXS-01` through `UXS-14` stable section IDs and headings in author-contract order and satisfy every current `cgs.ux-content-profile/v2` assertion, including the exact required UXS-05 subheadings. It must bind stable requirement IDs and specify flow/state, deterministic focus and navigation, target inputs, resolutions/aspects/safe zones, locales and expansion, every text scale with reflow, non-color cues and colorblind modes, reduced/skippable motion, accessibility, data/event ownership, audio events, lifecycle, acceptance checks, and pattern references/proposals. A team-ui-specific schema or alternate artifact at this canonical path is forbidden.
 
-Formal approval requires the persisted envelope, embedded COMPLETE + APPROVED, approval_status APPROVED, gate_evidence_eligible true, zero MAJOR/BLOCKING findings, complete required-check coverage, and a target hash equal to current UX-spec bytes.
+If the global pattern library is absent, do not create it. A feature-local proposal is allowed; a cross-screen dependency blocks production. Preview and authorize the exact design mutation, then let only the UX author write. Re-hash and verify the whole mutation set before checkpointing.
 
-### Revision limit
+## Phase 2 — Independently approve the current UX hash
 
-Initial review is round 0. Permit at most two author revision attempts, rounds 1 and 2.
+Create a fresh UX reviewer task whose task ID and execution identity differ from the author. It is read-only and receives the exact UX bytes/hash, `cgs.ux-author-contract-manifest/v1`, current author and review-contract source hashes, the complete current UX-review assertion matrix, bounded context, and the exact `cgs.review-evidence/v1` envelope with `cgs.ux-review/v2` extension output schema. The direct task applies that contract; it does not invent a team-ui review schema or invoke `$ux-review`.
 
-- Reuse stable finding IDs for the same checks.
-- Each author revision lists finding ID, before/after evidence, exact diff, and any regression-risk area.
-- Re-review checks every previously OPEN finding plus a full required-check regression scan.
-- Advisory expansion cannot create unbounded scope; new blocking findings must map to deterministic check IDs.
-- The ux-author remains the only spec writer; reviewer and recorder remain read-only to the spec.
-
-If the same MAJOR/BLOCKING finding remains open after two revisions, or the reviewer cannot complete, return BLOCKED or PARTIAL with USER DECISION. Legal choices are narrow/redefine the feature in a new request, stop, or record ACCEPTED_RISK_SPEC_NOT_APPROVED. Accepted risk may generate a backlog/prototype proposal only under a separate nonproduction path manifest; it cannot enter Phase 3, production implementation, or COMPLETE.
-
-## Phase 3: Visual, asset, and engine proposals
-
-Proceed only from a current persisted approved UX envelope.
-
-In scratch, an art-author drafts:
-
-- design/ui/{screen-id}/visual-spec.md;
-- design/ui/{screen-id}/asset-manifest.yaml.
-
-Bind both to UX-spec path/hash, art-bible/hash, accessibility/hash, platform/profile targets, color/contrast, typography/text scaling, spacing/reflow, motion, localization, supported resolutions/aspects, and stable asset IDs/specifications.
-
-When engine status is configured, an engine-plan author drafts design/ui/{screen-id}/engine-plan.md bound to exact engine/version, technical preferences/hash, UX/visual hashes, applicable implementation AGENTS chain, UI hierarchy/navigation/data-binding/events, localization, lifecycle/performance, and test hooks. If a framework/navigation/binding choice affects multiple screens, emit an ADR proposal and block implementation until an accepted current ADR is supplied.
-
-If engine status is UNCONFIGURED, stop after SPEC_APPROVED or a separately authorized engine-neutral prototype plan. Do not spawn ui-programmer, write production UI, or return COMPLETE.
-
-Preview exact support artifacts and obtain design-support authorization. Unique authors write only their owned files; verify bytes and mutation allowlists. Checkpoint all hashes.
-
-## Phase 4: Build and authorize the precise implementation manifest
-
-Create an exact candidate manifest:
+The coordinator persists the returned bytes without editing them in an immutable envelope at:
 
 ~~~text
-Artifact Type: ui-implementation-manifest
-Schema Version: 1
-Screen ID: {screen-id}
-Run ID: {run-id}
-UX Spec Path/SHA-256: {path/hash}
-UX Approval Envelope Path/SHA-256: {path/hash}
-Visual Spec Path/SHA-256: {path/hash}
-Asset Manifest Path/SHA-256: {path/hash}
-Engine Plan Path/SHA-256: {path/hash}
-Engine/Version: {identity}
-Applicable AGENTS Chain SHA-256: {hash}
-Writer Task ID: {single ui-programmer}
-Operations: [{CREATE|UPDATE, exact path, expected base hash or ABSENT, max bytes}]
-Evidence Outputs: [{exact paths}]
-Explicit Non-Writes: [global pattern library, UX spec, visual/asset/engine plan, ADRs, game-state owners, session state]
+production/ui/team-ui/<screen-id>/<run-id>/reviews/ux-round-<n>.yaml
 ~~~
 
-Include localization tables only if exact owned operations and owner are authorized. UI never owns game state; it displays bound state and emits declared events.
+The reviewer result must retain `gate_evidence_status: NOT_PERSISTED` and `gate_evidence_eligible: false`. The coordinator may wrap the exact unchanged bytes only in `cgs.team-ui-ux-review-recording/v1`, after recomputing the generic record ID, extension fields, author-contract manifest, target and dependency hashes, reviewer independence, coverage, and mutation guard. The wrapper records its own path/hash, recorder identity/version, write/read-back timestamps and outcome; it never edits or upgrades the embedded record. Approval requires that read-back-verified wrapper, an embedded complete current generic envelope whose `cgs.ux-review/v2` extension has exact target/profile/content/author-contract identities, deterministic verdict `APPROVED`, `approval_status: APPROVED`, complete required assertion and requirement coverage, and zero open major or blocking findings. Finding IDs and fingerprints use the exact UX-review algorithm (`UXF-<sanitized-artifact-id>-<check-key>-<fingerprint-prefix>`), not a team-ui-local ID scheme.
 
-Before authorization verify every input hash and that every path is necessary. Present full paths/operations/base hashes/owners/non-writes and obtain one implementation authorization. Persist and re-read the manifest before spawning the writer. No writer starts from a proposed, declined, stale, or partial manifest.
+Initial review is round 0. Permit no more than two UX author revisions, rounds 1 and 2. Each revision maps open finding IDs to before/after evidence and an exact diff hash. Re-review checks every prior open finding and the full required regression set on the new hash. If the same blocker remains after revision 2, the review is incomplete, or required evidence is missing, stop `BLOCKED` or `PARTIAL` with one user decision.
 
-## Phase 5: Single-writer implementation and build evidence
+Accepted risk never changes the review record. Record `ACCEPTED_RISK_SPEC_NOT_APPROVED`; only a separately authorized nonproduction backlog/prototype proposal is legal. Do not enter production support planning, implementation, or `COMPLETE`.
 
-Spawn exactly one ui-programmer writer with the authorized manifest and no delegation permission. It may write only listed implementation paths.
+## Phase 3 — Produce owned visual, asset, and engine support
 
-Require implementation to:
+Proceed only from a persisted approval envelope for the current UX hash, the still-current independent `cgs.art-bible-review/v1` APPROVE evidence, and the still-current localization manifest/catalog/package tuple validated in Phase 0. Re-hash the art bible, authoring receipt, review record, localization inputs, context and dependencies immediately before support drafting; any drift blocks support and implementation. In bounded scratch tasks, produce candidates for:
 
-- follow the approved current UX, visual, asset, engine, pattern, and ADR inputs;
-- support every platform-manifest input method rather than hardcoded assumptions;
-- use localization keys for player-facing text;
-- support declared text scales with reflow/no clipping;
-- preserve non-color state cues and colorblind modes;
-- respect reduced motion and skippable transitions;
-- route UI audio through declared events;
-- avoid direct game-state ownership/mutation;
-- avoid blocking the game/main thread;
-- expose deterministic navigation, lifecycle, accessibility, and performance test hooks.
+~~~text
+design/ui/<screen-id>/visual-spec.md
+design/ui/<screen-id>/asset-manifest.yaml
+design/ui/<screen-id>/engine-plan.md
+~~~
 
-After writing, enforce the mutation allowlist and record exact source hashes. Produce a candidate build receipt binding source commit/tree hash, engine/version, platform/config, implementation-manifest hash, UI source-set hash, build ID/artifact hash, compile result, warnings, logs/hashes, and test adapter identity. Compile/run failure, missing engine, outside mutation, or incomplete receipt is BLOCKED/PARTIAL, never implementation complete.
+The art author owns the first two. They bind UX; exact art-bible target, authoring-receipt and `cgs.art-bible-review/v1` hashes; accessibility, platform and visual-budget hashes; typography/text scales; contrast/non-color cues; spacing/reflow; motion; localization; resolutions/aspects; and stable asset IDs. The engine-plan author owns the third and binds exact engine/version, technical preferences, instruction chain, UX/visual/asset hashes, hierarchy, focus/navigation, input routing, data binding/events, localization, lifecycle, performance, cleanup, and test hooks.
 
-## Phase 6: Bounded independent review, fixes, and final revalidation
+If engine status is `UNCONFIGURED`, stop after `SPEC_APPROVED` or a separately authorized engine-neutral nonproduction prototype plan. Do not create a production engine plan, spawn a UI programmer, or claim implementation readiness.
 
-Mandatory review evidence is independent of review mode. Authors/writer cannot review their own domain. Reviewers are read-only.
+If framework, navigation, binding, or interaction policy affects multiple screens, require a current Accepted ADR and, for patterns, a current approved library entry. If visual language, tokens, typography policy, or another art-bible rule changes globally, require a current approved art-bible amendment and its external owner. Route the gap to the named architecture, UX-library, or art-bible owner and stop `BLOCKED: OWNER_DECISION_REQUIRED`; team-ui does not write any of those sources of truth.
 
-Run at most max_parallel_reviewers, capped at 3. Agents may not spawn children. Use stable task IDs and two waves as needed:
+After design-support authorization, only the named authors write their paths. Verify bytes, hashes, ownership, and the full mutation set, then checkpoint.
 
-- independent UX-conformance reviewer;
-- independent art-consistency reviewer;
-- accessibility specialist;
-- engine UI specialist plus QA evidence validation.
+## Phase 4 — Freeze the implementation manifest
 
-Every task receives exact implementation manifest, final candidate build/source hashes, only its bounded context, stable check IDs, deadline, and output schema. Default timeout is the manifest value, capped at 15 minutes; allow one retry with the same target hash and narrower scope. Cap total review phase at 30 minutes. Timeout, error, missing stream, target-hash mismatch, or malformed output yields PARTIAL and cannot satisfy quorum.
+The coordinator creates and persists `cgs.ui-implementation-manifest/v2` at the canonical path in the normative reference. It binds the approved UX envelope, visual spec, asset manifest, engine plan, current art-bible target/authoring-receipt/independent APPROVE record, Accepted ADRs/pattern entries, engine/version, instruction chain, one UI-programmer task ID, exact source operations, exact evidence outputs, evidence-runner ID, byte caps, and explicit non-writes.
 
-Each finding has stable ID UIF-{stream}-{check-id}, severity BLOCKING or ADVISORY, exact target build/source hash, observed evidence, expected requirement, owner, and remediation.
+UI displays bound game state and emits declared commands/events; it never owns or directly mutates game state. The localization manifest, catalog/source table, packages, target translations, and locale ledgers are read-only inputs and explicit non-writes throughout team-ui. UI source may reference only the validated stable keys; changing localization bytes requires a separate owner-authorized workflow and is never a team-ui implementation operation.
 
-Required evidence matrix includes all declared:
+Verify all input and base hashes, present the full implementation boundary, obtain one implementation authorization, then persist and read back the manifest. Do not start a writer from a proposed, declined, stale, incomplete, or unpersisted manifest.
 
-- keyboard/gamepad/touch/assistive input and focus restoration;
-- minimum/maximum resolution, every supported aspect ratio, safe zones;
-- locales, text expansion, every committed text scale and reflow;
-- contrast, non-color cues, colorblind modes;
-- reduced motion/skippable transitions;
-- UI event/audio routing and no direct game-state mutation;
-- frame time, main/game-thread stalls, allocation/lifecycle/leak checks;
-- engine-specific navigation/data binding/lifecycle rules.
+## Phase 5 — Single-writer implementation and real build evidence
 
-Evidence rows bind check ID, build ID/hash, source-set hash, platform/device/config, observer/runner, timestamp, method, result, artifact/log path/hash. Missing/UNKNOWN/NOT RUN/stale evidence is blocking.
+Start exactly one UI programmer with the authorized manifest and no delegation. It writes only listed source paths and must implement all approved inputs, platform-manifest input methods, localization keys, focus restoration, text-scale reflow/no clipping, non-color cues/colorblind modes, reduced/skippable motion, audio events, declared commands, lifecycle/cleanup, and deterministic accessibility/performance test hooks. It must not block the main/game thread.
 
-### Fix and re-review loop
+After the writer returns, reconcile the complete mutation set and record the exact UI source-set hash. Then start the distinct evidence runner against that immutable source set. The runner executes the declared engine/build/test adapters and writes only declared raw logs/receipts. It must produce actual command/adapter identity, argv/config, engine/version, source commit/tree and source-set hashes, build ID/artifact hash, exit status, timestamps, duration, warnings, main/game-thread stalls, and log hashes. A plan, mock receipt, file-existence check, or reviewer assertion is not runtime evidence.
 
-The same ui-programmer is the only fix writer. Permit at most two fix rounds.
+Compile/run failure, missing engine, unverified adapter, stale source, unknown runner state, missing log, or malformed receipt yields `PARTIAL` or `BLOCKED`, never implementation completion.
 
-1. Apply only approved BLOCKING finding IDs within the existing implementation manifest. New paths require new authorization.
-2. Rebuild and produce a new build/source-set hash.
-3. Treat every old review as stale.
-4. Re-run all previously open checks plus the full regression matrix against the new final hash.
-5. Persist immutable reviewer envelopes/checkpoints bound to that hash.
+## Phase 6 — Independent final review, fixes, and revalidation
 
-If the same blocker remains after two fix rounds, any required stream lacks COMPLETE evidence, or a writer changes a non-owned file, return BLOCKED/PARTIAL. Risk acceptance cannot close a mandatory blocker.
+Run these four mandatory read-only streams against the same immutable candidate build/source-set hash:
 
-## Phase 7: Deterministic completion and stop
+1. UX conformance;
+2. art consistency;
+3. accessibility;
+4. engine UI and QA-evidence validation.
 
-Verdict: COMPLETE and Pipeline Result: IMPLEMENTATION_VERIFIED require all of:
+The UX and art reviewers differ from their respective authors. No reviewer may be the UI programmer, evidence runner, or another mandatory stream for this run. The evidence runner supplies observations but never reviews or approves them. Use stable `UIF-<stream>-<check-id>` findings and the full build-bound evidence matrix in the normative contract.
 
-- current persisted UX approval envelope for exact final UX-spec hash;
-- verified visual/asset/engine/ADR inputs and implementation manifest;
-- authorized mutation ledger with no outside writes;
-- final build and source-set hashes after the last fix;
-- all four mandatory review streams COMPLETE and bound to that final hash;
-- evidence matrix complete with zero open BLOCKING findings;
-- accessibility, input, resolution/aspect, locale/text scaling, colorblind, motion, engine, cleanup, and main-thread checks conclusive;
-- every artifact/checkpoint/result written and read-back verified;
-- global interaction-pattern library unchanged by programmer.
+Scheduling, concurrency, deadlines, retry eligibility, cancellation, partial results, and late-output quarantine follow the recovery reference. Any missing/malformed/timed-out stream, incomplete matrix row, target mismatch, `UNKNOWN`, `NOT_RUN`, or stale receipt prevents quorum and yields `PARTIAL`.
 
-Otherwise return the precise Pipeline Result and Verdict: PARTIAL or BLOCKED. Do not describe visual/spec/implementation work as complete when its current-hash evidence is missing.
+The same UI programmer is the only fix writer. Permit at most two fix rounds and only for approved blocking finding IDs within the existing operation paths. New paths require a new authorized manifest. After every fix, rebuild, produce a new build/source-set hash, stale all prior reviews and evidence not bound to the new hash, and rerun every prior open check plus the complete regression matrix. A mandatory blocker cannot be waived.
 
-The final result at production/ui/team-ui/{screen-id}/{run-id}/result.md records every artifact/path/hash, authorization manifest/hash, task status/deadline, finding transition, build/source-set hash, evidence row, mutation, checkpoint, persistence result, and the single legal next action.
+## Phase 7 — Deterministic result and stop
 
-State-driven next action examples: revise one named UX finding, obtain engine configuration/ADR, authorize the exact implementation manifest, repair one named blocker, rerun one timed-out review, or hand the verified result to the story owner. Do not auto-invoke another workflow.
+Return `Pipeline Result: IMPLEMENTATION_VERIFIED` and `Verdict: COMPLETE` only when all completion predicates in the normative contract are true on the post-fix final hash. This includes current persisted UX approval, current support artifacts and accepted owner decisions, authorized mutation ledger with no breach, successful real build/run receipts, all four complete independent review streams, the complete evidence matrix, zero open blockers, and read-back-verified checkpoints/result.
+
+Otherwise use the exact pipeline result and `PARTIAL`/`BLOCKED` mapping. The final result records every input/output path and SHA-256, authorization and manifest identity, task/attempt status, cancellations and quarantined outputs, finding transitions, build/source-set identity, evidence rows, mutation ledger, checkpoints, and persistence status.
+
+Emit exactly one state-derived next action, such as revising one named UX finding, obtaining engine configuration or an Accepted ADR, authorizing one frozen manifest, reconciling one uncertain mutation, repairing one named blocker, or retrying one eligible same-hash task. Never auto-invoke another workflow.

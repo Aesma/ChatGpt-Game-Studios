@@ -1,400 +1,374 @@
 ---
 name: create-control-manifest
-description: "After architecture is complete, produces a source-faithful control sheet for programmers that preserves MUST/SHOULD/MAY strength, keeps contextual rejections distinct from explicit prohibitions, and requires independent hash-bound review."
+description: "Author or update one bounded DRAFT control manifest as a source-faithful derived view of current Accepted ADR rules and stable TR scope, with deterministic conflicts, monotonic versions, immutable provenance, and CAS publication."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$create-control-manifest`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[update — regenerate from current ADRs]`. Treat bracketed values as optional unless the workflow says otherwise.
-
-The current agent is the extraction author. Do not delegate source parsing, rule
-normalization, preview assembly, or manifest drafting to the reviewer. Record the
-author's stable runtime instance identifier (for example, the Codex task name or
-agent ID exposed by the runtime); never invent an identifier.
-
-After the draft is stable, use a fresh `technical-director` Codex subagent instance
-only as the independent, read-only reviewer described in Phase 4b. The reviewer
-must not edit the extraction, draft, sources, or manifest. The author and reviewer
-instance identifiers must differ. If either identifier is unavailable, the
-identifiers match, or an independent reviewer cannot be created, do not self-sign
-or publish an Active manifest; report Verdict: **BLOCKED** with the reason.
-
 
 # Create Control Manifest
 
-The Control Manifest is a flat, actionable rules sheet for programmers. It shows
-what is mandatory, recommended, optional, explicitly prohibited, or merely a
-contextual rejection — organized by architectural layer and extracted from all
-Accepted ADRs, technical preferences, and engine reference docs. Where ADRs
-explain *why*, the manifest preserves *what* they actually require or allow.
+## Invocation
 
-**Output:** `docs/architecture/control-manifest.md`
+```text
+$create-control-manifest <new | update | audit>
+  [--architecture-review <path> --expect-architecture-review <sha256:...>]
+  [--prior-manifest-review <path> --expect-prior-manifest-review <sha256:...>]
+```
 
-**When to run:** After `$architecture-review` passes and ADRs are in Accepted
-status. Re-run whenever new ADRs are accepted or existing ADRs are revised.
+Each evidence path requires its matching expected raw SHA-256 and vice versa. The
+user may explicitly supply exactly one complete inline record instead of the
+corresponding path pair. Reject missing/duplicate/unknown flags, positional extras,
+directories, globs, traversal, outside-root or root-escaping symlink paths,
+malformed hashes, and both path/inline forms for the same record.
+
+Never search for newest/nearest/highest-numbered evidence.
+
+Read
+[references/control-manifest-contract.md](references/control-manifest-contract.md)
+in full before processing. It is normative.
+
+## Author-only boundary and result vocabulary
+
+This workflow deterministically extracts and renders one derived artifact:
+
+```text
+docs/architecture/control-manifest.md
+```
+
+It never delegates source parsing, rule normalization, conflict resolution,
+drafting, review, or recording. It never spawns or impersonates a technical
+director/reviewer/recorder, writes review evidence, or sets `ACTIVE`.
+
+Accepted ADRs own binding technical rules. Current approved GDD requirements own
+product scope; the architecture's current stable TR map links that scope. The
+architecture and control manifest are derived views and cannot create or override
+policy.
+
+Use these fields:
+
+| Field | Values |
+|---|---|
+| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED`, `STOPPED`, `ERROR` |
+| `Manifest Operation` | `CREATE`, `UPDATE`, `UNCHANGED`, `NOT_REQUESTED`, `DECLINED`, `CONFLICT`, `FAILED` |
+| `Profile` | `new`, `update`, `audit` |
+| `Context State` | `COMPLETE`, `PARTIAL`, `INVALID` |
+| `Architecture State` | `CURRENT_REVIEWED`, `CURRENT_UNREVIEWED`, `DRAFT`, `PARTIAL`, `STALE`, `INVALID` |
+| `Rule State` | `DERIVED_CURRENT`, `RETIRED`, `BLOCKED`, `UNKNOWN` |
+| `External Manifest Review` | `NOT_SUPPLIED`, `CURRENT_PASS`, `CURRENT_NONPASS`, `STALE`, `INVALID` |
+| `Route State` | `READY`, `BLOCKED`, `UNKNOWN`, `NO_ROUTE` |
+
+`COMPLETE` means only that this Draft extraction/update/audit interaction completed
+honestly. It never means source truth changed, independent review passed, manifest
+is Active, a story is current, or a gate is ready.
 
 ---
 
-## 1. Load All Inputs
+## Phase 0: Freeze root and bind catalog identity
 
-### ADRs
-- Find files matching `docs/architecture/adr-*.md` and read every file
-- Filter to only Accepted ADRs (Status: Accepted) — skip Proposed, Deprecated,
-  Superseded
-- Note the ADR number and title for every rule sourced
+Resolve exactly one repository root and UTC snapshot. Read exact raw bytes and
+lowercase SHA-256.
 
-### Technical Preferences
-- Read `.codex/docs/technical-preferences.md`
-- Extract: naming conventions, performance budgets, approved libraries/addons,
-  forbidden patterns
+Read `.codex/docs/workflow-catalog.yaml` first. Require unique phase/workflow IDs
+and exactly one `control-manifest` entry whose command identifies this workflow and
+whose single non-wildcard artifact path equals:
 
-### Engine Reference
-- Read `docs/engine-reference/[engine]/VERSION.md` for engine + version
-- Read `docs/engine-reference/[engine]/deprecated-apis.md` — these become
-  forbidden API entries
-- Read `docs/engine-reference/[engine]/current-best-practices.md` if it exists
+```text
+docs/architecture/control-manifest.md
+```
 
-Report: "Loaded [N] Accepted ADRs, engine: [name + version]."
+Also bind the catalog's unique architecture artifact, ADR artifact declaration,
+and any declared architecture-review/control-manifest-review/Active-recorder/
+downstream consumer contracts.
+
+An unversioned catalog is `LEGACY_UNVERSIONED`; use only declared fields. Never
+infer reviewer/recorder identity, receipt schema, Active eligibility, minimum ADR
+count, completion, or next action from comments, step order, filenames, dates, or
+artifact presence.
+
+Catalog-only routing resolves the first source/architecture/ADR evidence gap, an
+independent control-manifest review, Active recording, or a downstream consumer
+only from exact compatible entries. Missing, duplicated, ambiguous, or
+underspecified policy yields UNKNOWN/BLOCKED and `Stop`. Do not hardcode reviewer,
+recorder, story/epic, gate, command, profile, transition, or receipt policy.
+
+Target-path/catalog identity conflict is ERROR before other reads. Route-only gaps
+do not invalidate an otherwise safe Draft/audit but remain visible.
 
 ---
 
-## 2. Extract Rules from Each ADR
+## Phase 1: Enforce profile and base state
 
-The current agent performs this extraction directly. Apply the following
-deterministic normalization rules to every source; the source's normative strength
-and scope are authoritative:
+Read exact target state before source extraction:
 
-### Normative Rules (primarily from "Implementation Guidelines")
-
-Preserve RFC 2119 strength rather than collapsing rules into a single required
-bucket. Match the listed terms case-insensitively when they are used normatively;
-do not treat an ordinary descriptive use of the same word as a normative rule:
-
-| Source wording | Manifest level | Treatment |
+| Profile | Target precondition | Mutation |
 |---|---|---|
-| `MUST`, `REQUIRED`, `SHALL`, `required to`, or an explicit mandate | **MUST** | Mandatory rule |
-| `MUST NOT` or `SHALL NOT` | **MUST NOT** | Mandatory negative rule; do not relabel it as a rejected alternative |
-| `SHOULD` or `RECOMMENDED` | **SHOULD** | Recommendation; never rewrite as `MUST`, `required`, or `always` |
-| `SHOULD NOT` or `NOT RECOMMENDED` | **SHOULD NOT** | Negative recommendation; never rewrite as forbidden |
-| `MAY` or `OPTIONAL` | **MAY** | Permitted option; never rewrite as required |
-| No explicit normative wording, or ambiguous wording | none | Do not create a normative rule; add an ambiguity review finding with the source location |
+| `new` | ABSENT | one v2 DRAFT/PARTIAL CREATE |
+| `update` | valid `cgs.control-manifest/v2` base | one rule-level DRAFT/PARTIAL UPDATE or UNCHANGED |
+| `audit` | valid existing v2 base | none |
 
-- Preserve the source scope and conditions verbatim enough that the rule cannot
-  apply more broadly than the ADR states.
-- Preserve the original meaning. Minimal grammatical normalization is allowed,
-  but do not introduce stronger verbs or delete qualifications.
-- If one sentence contains multiple levels, split it into separately leveled
-  rules without changing their shared conditions.
+Reject mismatches. Never overwrite in `new`, silently convert profiles, treat an
+invalid/legacy file as absent, or retrofit unsupported schema. Return
+`BLOCKED_INVALID_BASE` and require a separately authorized migration owner.
 
-### Forbidden Approaches and Contextual Rejections
+For update/audit, validate base version/payload/source identity, stable rule/
+finding IDs, Local Extensions namespace, and immutable provenance chain. Any
+removed/reordered/edited history, non-monotonic version, payload mismatch,
+unsupported content outside `x-local-*`, or duplicate identity is blocking.
 
-- Put an alternative from "Alternatives Considered" into **Forbidden
-  Approaches** only when the ADR explicitly calls that alternative `forbidden` or
-  `prohibited`. Preserve the stated scope and conditions.
-- A rejected, not-selected, deferred, or lower-ranked alternative is not a global
-  prohibition. Record it under **Contextual Rejections** with the alternative,
-  reason, ADR-local scope, and any conditions under which it could be reconsidered.
-- Keep explicit anti-pattern language at its source strength. If the source does
-  not explicitly say `forbidden` or `prohibited`, do not manufacture `never`.
-- When wording is unclear about whether an item is prohibited, keep it out of the
-  forbidden list and add an ambiguity review finding.
-
-### Performance Guardrails (from "Performance Implications" section)
-- Budget constraints: "max N ms per frame for this system"
-- Memory limits: "this system must not exceed N MB"
-
-### Engine API Constraints (from "Engine Compatibility" section)
-- Post-cutoff APIs that require verification
-- Verified behaviours that differ from default LLM assumptions
-- API fields or methods that behave differently in the pinned engine version
-
-### Layer Classification
-Classify each rule by the architectural layer of the system it governs:
-- **Foundation**: Scene management, event architecture, save/load, engine init
-- **Core**: Core gameplay loops, main player systems, physics/collision
-- **Feature**: Secondary systems, secondary mechanics, AI
-- **Presentation**: Rendering, audio, UI, VFX, shaders
-
-If an ADR spans multiple layers, duplicate the rule into each relevant layer only
-when the ADR's own scope covers those layers. Duplicating a rule must not broaden
-its scope or change its level.
+`audit` is strictly read-only: operation NOT_REQUESTED; no candidate, approval,
+temporary file, review request, status change, or source mutation.
 
 ---
 
-## 3. Add Global Rules
+## Phase 2: Build one bounded input manifest
 
-Combine rules that apply to all layers:
+Apply the reference contract's exact classes, count/per-file/class/40-MiB limits,
+layered loading, direct-child boundaries, deterministic order, and canonical
+`source_manifest_id`.
 
-### From technical-preferences.md:
-- Naming conventions (classes, variables, signals/events, files, constants)
-- Performance budgets (target framerate, frame budget, draw call limits, memory ceiling)
+Start by indexing catalog, target/base, current master architecture v3 header/
+source manifest/TR map/ADR ledger/provenance, registry, and supplied review
+envelopes. Construct the complete intended source set before loading ADR bodies.
 
-### From deprecated-apis.md:
-- All deprecated APIs → Forbidden API entries
+Use architecture/registry exact paths and the catalog-bounded ADR declaration;
+never read every ADR merely because it matches a broad convention. Validate exact
+lifecycle/review evidence first and parse rule-bearing sections only for
+ACCEPTED_CURRENT ADRs. Excluded ADR paths/statuses/hashes remain visible.
 
-### From current-best-practices.md (if available):
-- Preserve the source level for engine-recommended patterns. `SHOULD` remains
-  **SHOULD**, `MAY` remains **MAY**, and non-normative guidance is not promoted to
-  a required entry.
+Read technical preferences and pinned engine references only for exact normative/
+constraint sections. Never scan engine source or promote descriptive guidance.
 
-### From technical-preferences.md forbidden patterns:
-- Copy any "Forbidden Patterns" entries directly
-
----
-
-## 4. Present Rules Summary Before Writing
-
-Before writing the manifest, present a summary to the user:
-
-```
-## Control Manifest Preview
-Engine: [name + version]
-ADRs covered: [list ADR numbers]
-Total rules extracted:
-  - Foundation layer: [N] MUST/MUST NOT, [S] SHOULD/SHOULD NOT, [O] MAY, [M] explicitly forbidden, [C] contextual rejections, [P] guardrails
-  - Core layer: [N] MUST/MUST NOT, [S] SHOULD/SHOULD NOT, [O] MAY, [M] explicitly forbidden, [C] contextual rejections, [P] guardrails
-  - Feature layer: ...
-  - Presentation layer: ...
-  - Global: [N] naming conventions, [M] forbidden APIs, [P] approved libraries
-Ambiguity findings: [count and source locations]
-Extraction author instance: [stable runtime identifier]
-```
-
-Ask the user directly:
-- Prompt: "Does this rule summary look complete?"
-- Options:
-  - `[A] Yes — looks good, run the independent read-only review`
-  - `[B] Correct source mapping — I found an extraction or source-strength error`
-  - `[C] Review ambiguity findings — resolve them in the source ADR or leave them out`
-  - `[D] Stop here — I need to review the ADRs first`
-
-Any requested correction must trace to a loaded source. Do not add an unsourced
-rule, omit a source-mandated rule, or change its normative level merely because a
-user prefers different manifest wording; revise the authoritative source first.
+Any unreadable/ambiguous/oversize/changed/limit-exceeded required source yields
+PARTIAL/INVALID, exact unchecked scope, and zero writes. Do not sample and publish
+apparently complete rules.
 
 ---
 
-## 4b. Independent Read-Only Technical Review
+## Phase 3: Validate current architecture, review, TR, and ADR evidence
 
-This is a mandatory integrity review, not a configurable director gate. Do not
-read `production/review-mode.txt`, do not apply `solo`/`lean`/`full`, and do not
-delegate any authoring work to the reviewer.
+Require `docs/architecture/architecture.md` to parse as
+`cgs.master-architecture/v3`. Validate its exact hash, source manifest,
+append-only provenance, stable derived TR map, and ADR decision ledger. Text found
+only in architecture never becomes a rule.
 
-Before spawning the reviewer, build a deterministic review payload containing:
+When architecture-review evidence is supplied, require generic
+`cgs.review-evidence/v1`, producer `architecture-review`, extension
+`cgs.architecture-review/v2`, full-mode PASS, COMPLETE coverage, internally valid
+record identity, exact architecture-derived path/hash, and reproducible source
+manifest/ADR/TR inputs.
 
-1. the complete proposed manifest content except the review-outcome metadata;
-2. a path-sorted inventory of every included and excluded input with its SHA-256;
-3. all ambiguity findings and the full extracted rule list; and
-4. the extraction author's stable runtime instance identifier.
+Missing/stale/nonpass review keeps Architecture State DRAFT/PARTIAL/
+CURRENT_UNREVIEWED as applicable and blocks Active eligibility. It may allow a
+clearly PARTIAL diagnostic Draft only when all parsed source rules remain safe.
 
-Serialize text as UTF-8 with LF line endings and paths in repository-relative
-POSIX form, then compute the SHA-256 of the exact payload. Record this as the
-**Review Input Hash**. Any rule, level, scope, source inventory, or finding change
-creates a new payload and requires a new review.
+Admit scope from a TR only when `CURRENT` + `DERIVED_COVERED`, exact source
+requirement/approval evidence and current ADR links reproduce. Changed/stale/
+unbound/gap/source-blocked/provisional/ambiguous TRs are blocking/unknown, never
+scope authority.
 
-Spawn a fresh `technical-director` Codex subagent instance as a read-only reviewer.
-Pass the exact review payload and its hash. Require the reviewer to return:
+Classify each ADR exactly as ACCEPTED_CURRENT, PROPOSED, SUPERSEDED, REJECTED,
+STALE, UNBOUND, CONFLICT, or UNKNOWN under lifecycle/review/registry evidence.
+Only ACCEPTED_CURRENT ADRs contribute rules. A status line or architecture summary
+cannot upgrade one.
 
-- reviewer instance identifier;
-- received review-input hash;
-- **APPROVE**, **CONCERNS [list]**, or **REJECT [blockers]**;
-- confirmation that no files or draft content were modified.
-
-The reviewer checks whether:
-
-- every `MUST`/`SHOULD`/`MAY` and negative form retains source strength and scope;
-- only alternatives explicitly called `forbidden` or `prohibited` appear in
-  Forbidden Approaches;
-- ordinary rejected alternatives remain contextual and retain their reasons and
-  conditions;
-- no rule lacks a source and all ambiguity findings are visible; and
-- performance guardrails are consistent with the source constraints.
-
-Validate the response before applying it:
-
-- The reviewer identifier must be present and differ from the author identifier.
-- The received hash must exactly equal the current Review Input Hash.
-- Missing identity, matching identity, hash mismatch, reviewer mutation, or an
-  unavailable independent reviewer yields Verdict: **BLOCKED**. Do not self-review,
-  do not accept a substituted identity, and do not write an Active manifest.
-- **APPROVE** with valid identity and hash may proceed to Phase 5.
-- **CONCERNS** must be resolved and re-reviewed. User acceptance cannot waive
-  source-fidelity or reviewer-independence concerns.
-- **REJECT** must be fixed and re-reviewed; do not write the manifest.
+Every ADR rule's TR IDs must be explicitly addressed by that ADR and current in the
+architecture ledger. Missing/fuzzy scope linkage is UNKNOWN.
 
 ---
 
-## 5. Write the Control Manifest
+## Phase 4: Extract source-faithful stable rules
 
-Ask the user directly:
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-- Options:
-  - `[A] Yes — write to docs/architecture/control-manifest.md`
-  - `[B] Show me the full draft first, then ask again`
-  - `[C] Not yet — I want to make more changes`
+Apply `cgs.control-rule/v2` exactly. For every item preserve stable rule ID, kind,
+RFC level, complete scope/conditions, exact meaning, source ID/path/section/
+locator/excerpt plus excerpt/source/lifecycle hashes, sorted current TR IDs,
+derivation state, and supersedes IDs.
 
-Format:
+Preserve normative strength:
 
-```markdown
-# Control Manifest
+- mandatory positive -> MUST;
+- mandatory negative -> MUST_NOT;
+- recommendation -> SHOULD;
+- negative recommendation -> SHOULD_NOT;
+- permission/option -> MAY;
+- no clear normative meaning -> no rule; stable UNKNOWN finding.
 
-> **Engine**: [name + version]
-> **Last Updated**: [date]
-> **Manifest Version**: [date]
-> **ADRs Covered**: [ADR-NNNN, ADR-MMMM, ...]
-> **Status**: [Active — regenerate with `$create-control-manifest update` when ADRs change]
-> **Extraction Author Instance**: [stable runtime identifier]
-> **Independent Reviewer Instance**: [different stable runtime identifier]
-> **Review Input SHA-256**: [hash approved by the reviewer]
-> **Independent Review**: [APPROVE]
+Never promote SHOULD/MAY, weaken MUST, convert SHOULD_NOT to prohibition, drop a
+condition, or broaden scope. Split multi-level clauses without losing shared
+conditions.
 
-`Manifest Version` is the date this manifest was generated. Story files embed
-this date when created. `$story-readiness` compares a story's embedded version
-to this field to detect stories written against stale rules. Always matches
-`Last Updated` — they are the same date, serving different consumers.
+An alternative is PROHIBITION only when its authoritative source explicitly says
+forbidden/prohibited for that scope. Rejected, deferred, not-selected, or lower-
+ranked alternatives are CONTEXTUAL_REJECTION at level NONE with exact reason,
+scope, and reconsideration condition. Never manufacture global `never`.
 
-This manifest is a programmer's quick-reference extracted from all Accepted ADRs,
-technical preferences, and engine reference docs. Rule levels preserve source
-normative strength: **MUST/MUST NOT** are mandatory, **SHOULD/SHOULD NOT** are
-recommendations, and **MAY** is optional. Contextual rejections explain why an
-alternative was not selected but are not prohibitions. For the reasoning behind
-each rule, see the referenced ADR.
+Use deterministic stable Rule IDs from source-owned IDs or the reference contract's
+source/locator/clause/scope/level tuple. Preserve persisted IDs while identity and
+meaning remain. Changed meaning/level/scope creates a new rule plus supersedes;
+never number by extraction order/date/layer.
+
+Technical preferences and engine references follow the same strength/provenance
+rules. An engine constraint is emitted only for pinned current explicit coverage;
+unsupported/ambiguous claims are UNKNOWN.
 
 ---
 
-## Foundation Layer Rules
+## Phase 5: Deduplicate and detect conflicts/unknown deterministically
 
-*Applies to: scene management, event architecture, save/load, engine initialisation*
+Sort candidates deterministically. Deduplicate only exact same level/kind/meaning/
+scope/conditions/TR/applicability; retain all equivalent sources and choose the
+lexicographically smallest stable ID.
 
-### Normative Rules
-| Level | Rule and preserved conditions | Source |
-|---|---|---|
-| MUST | [mandatory rule] | [ADR-NNNN, section] |
-| SHOULD | [recommendation] | [ADR-NNNN, section] |
-| MAY | [optional pattern] | [ADR-NNNN, section] |
+Only a current explicit lifecycle supersession/exception relation supplies
+precedence. Newer date, higher ADR number, architecture order, source preference,
+or scope width never silently wins.
 
-### Forbidden Approaches
-- **[explicitly forbidden/prohibited approach]** — [preserved scope and reason] — source: [ADR-NNNN, section]
+For overlapping non-superseded incompatible rules, compute the stable
+`CONFLICT-*` ID from sorted rule IDs plus overlap scope; retain every path/section/
+hash and mark BLOCKED. Do not choose/merge/downgrade/waive inside this derived
+workflow.
 
-### Contextual Rejections
-- **[alternative not selected]** — reason: [source reason]; scope: [ADR-local scope]; reconsider when: [conditions or "not stated"] — source: [ADR-NNNN, section]
+Ambiguous/malformed normative wording, missing source/scope/TR/lifecycle data, or
+unverified engine coverage creates deterministic `UNKNOWN-*` and no executable
+rule. A possibly mandatory UNKNOWN blocks Active eligibility.
 
-### Performance Guardrails
-- **[system]**: max [N]ms/frame — source: [ADR-NNNN]
-
----
-
-## Core Layer Rules
-
-*Applies to: core gameplay loop, main player systems, physics, collision*
-
-### Normative Rules
-...
-
-### Forbidden Approaches
-...
-
-### Contextual Rejections
-...
-
-### Performance Guardrails
-...
+Unresolved BLOCKED conflict or blocking UNKNOWN prevents a complete publish. A
+PARTIAL diagnostic Draft is permitted only when excluded rules/limitations are
+explicit and downstream use is forbidden.
 
 ---
 
-## Feature Layer Rules
+## Phase 6: Render canonical candidate and rule-level diff
 
-*Applies to: secondary mechanics, AI systems, secondary features*
+Render exact UTF-8/LF `cgs.control-manifest/v2` sections from the reference
+contract. New/changed author output always uses:
 
-### Normative Rules
-...
-
-### Forbidden Approaches
-...
-
-### Contextual Rejections
-...
-
----
-
-## Presentation Layer Rules
-
-*Applies to: rendering, audio, UI, VFX, shaders, animations*
-
-### Normative Rules
-...
-
-### Forbidden Approaches
-...
-
-### Contextual Rejections
-...
-
----
-
-## Global Rules (All Layers)
-
-### Naming Conventions
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Classes | [from technical-preferences] | [example] |
-| Variables | [from technical-preferences] | [example] |
-| Signals/Events | [from technical-preferences] | [example] |
-| Files | [from technical-preferences] | [example] |
-| Constants | [from technical-preferences] | [example] |
-
-### Performance Budgets
-| Target | Value |
-|--------|-------|
-| Framerate | [from technical-preferences] |
-| Frame budget | [from technical-preferences] |
-| Draw calls | [from technical-preferences] |
-| Memory ceiling | [from technical-preferences] |
-
-### Approved Libraries / Addons
-- [library] — approved for [purpose]
-
-### Forbidden APIs ([engine version])
-These APIs are deprecated or unverified for [engine + version]:
-- `[api name]` — deprecated since [version] / unverified post-cutoff
-- Source: `docs/engine-reference/[engine]/deprecated-apis.md`
-
-### Cross-Cutting Constraints
-- **[MUST/SHOULD/MAY]** [constraint that the source applies everywhere]
-
-### Ambiguity Findings (Not Manifest Rules)
-- [source path and section] — [ambiguous statement and why no normative level was assigned]
+```text
+Status: DRAFT | PARTIAL
+External Review: NOT_CURRENT
 ```
 
+Version/payload rules:
+
+- CREATE version = 1;
+- content/provenance UPDATE version = base + 1;
+- exact no-op preserves base version/generated time and writes nothing;
+- Payload SHA-256 is canonical semantic payload identity, excluding volatile/
+  status/review/self fields; and
+- exact candidate artifact SHA-256 is external, never embedded as its own hash.
+
+For update construct BASE + deterministic current SOURCES -> CANDIDATE and show
+stable-ID diff sets: unchanged, provenance-only, added, retired/superseded,
+level/scope/meaning replacement, conflict/unknown changes, ADR/TR/engine coverage,
+preserved `x-local-*`, version/payload/artifact delta, and appended provenance.
+
+Never delete a prior rule silently. A no-longer-current source retires the rule with
+reason/evidence. Preserve Local Extensions unchanged and non-authoritative; they
+cannot override/suppress/relevel derived rules.
+
+Append exactly one immutable provenance event for an actual content update. Never
+edit prior events. If semantic payload, source manifest, formatted bytes, and
+provenance are identical, operation UNCHANGED and no event/version/time change.
+
+Show complete candidate/lossless representation, source manifest/limits,
+architecture/review/ADR/TR states, every rule/finding/source, complete diff,
+version/payload/candidate hashes, local extensions, provenance event, conflicts,
+unknowns, and Active blockers.
+
+The user may correct extraction only by pointing to loaded source evidence. Do not
+add an unsourced rule, remove a source mandate, change level/scope, or waive a
+conflict because a different control policy is preferred; revise the authoritative
+source separately.
+
 ---
 
-## 6. Suggest Next Steps
+## Phase 7: Approve one changeset and execute CAS
 
-After writing the manifest:
+Preview exactly:
 
-- If epics/stories don't exist yet: "Run `$create-epics layer: foundation` then `$create-stories [epic-slug]` — programmers
-  can now use this manifest when writing story implementation notes."
-- If this is a regeneration (manifest already existed): "Updated. Recommend
-  notifying the team of changed rules — especially any new Forbidden entries."
+```text
+docs/architecture/control-manifest.md: CREATE | REPLACE with candidate_sha256
+all other persistent writes: NONE
+```
+
+Obtain one approval bound to the complete preview/diff, source manifest, base,
+ruleset, architecture/review/ADR/TR evidence, rules/findings, version/payload/
+candidate hashes, provenance append, Local Extensions, and destination parent.
+This is file authorization only—not source approval, independent review, Active
+recording, story freshness, or gate permission.
+
+If declined, return STOPPED/DECLINED and zero writes. Do not ask again per rule,
+layer, source, or section.
+
+Immediately before mutation, execute the reference-contract CAS over the complete
+bound closure, directory membership, base/provenance, deterministic extraction,
+diff, version, payload, and rerendered candidate.
+
+Any mismatch is BLOCKED/CONFLICT with exact old/new evidence and zero writes. Do
+not merge, refresh, retry, overwrite, request a new review, or implicitly accept
+changed bytes.
+
+After CAS, atomically publish only exact candidate bytes, re-read and verify
+artifact hash/v2 schema/version/payload/source ledger/stable rules/conflicts/
+unknowns/extensions/provenance/DRAFT-or-PARTIAL/NOT_CURRENT, and confirm no other
+persistent path changed.
+
+- verified publication -> CREATE/UPDATE and this authoring may be COMPLETE;
+- pre-publication failure -> FAILED/BLOCKED;
+- publication/read-back/result uncertainty -> PARTIAL with exact observed state,
+  never COMPLETE or Active.
+
+Never repair or revert external concurrent changes.
 
 ---
 
-## Collaborative Protocol
+## Phase 8: Observe prior review and route one external action
 
-1. **Load silently** — read all inputs before presenting anything
-2. **Show the summary first** — let the user see the scope before writing
-3. **Single changeset approval** — include the manifest in the complete preview before creating or overwriting it. On write: Verdict: **COMPLETE** — control manifest written. On decline: Verdict: **BLOCKED** — user declined write.
-4. **Source every rule** — never add a rule that doesn't trace to an ADR, a
-   technical preference, or an engine reference doc
-5. **No interpretation** — extract rules as stated in ADRs; do not paraphrase
-   in ways that change meaning
-6. **Preserve normative strength** — never promote `SHOULD` or `MAY` to `MUST`;
-   ambiguous non-normative text becomes a review finding, not a rule
-7. **Keep rejection contextual** — an alternative is forbidden only when the
-   source explicitly calls it `forbidden` or `prohibited`
-8. **No self-signing** — extraction and drafting belong to the current author;
-   a distinct read-only reviewer approves the exact Review Input Hash
+When prior control-manifest review is explicitly supplied, validate it only under
+the catalog-declared generic/extension/ruleset contract. Require exact current
+artifact/payload/source-manifest hashes, complete rule/conflict/unknown coverage,
+internal identity, reviewer/author separation when declared, and passing/nonpassing
+verdict preserved exactly.
+
+Any changed byte/source/ruleset/profile/scope makes it STALE. Never retarget/edit/
+save the record or set Active. If catalog declares no compatible reviewer schema,
+report UNKNOWN instead of inventing one.
+
+Choose exactly one highest-priority catalog-derived action:
+
+1. refresh/resolve current architecture, architecture review, TR, or ADR lifecycle
+   evidence;
+2. resolve first deterministic BLOCKED/UNKNOWN source conflict;
+3. run independent control-manifest review for exact current hashes;
+4. invoke a separate Active recorder when all exact conditions are declared/met;
+5. route to the unique downstream consumer only for a current Active receipt; or
+6. Stop.
+
+Do not print a roadmap, infer downstream story freshness from date/version alone,
+claim gate readiness from file presence, or invoke anything.
+
+Return:
+
+- workflow/profile/operation/context states;
+- catalog identity/hash and route ID/command or gap;
+- manifest path/base/candidate/on-disk artifact hashes;
+- source manifest ID and budget use;
+- architecture path/hash/review/currentness and stable TR states;
+- ADR/lifecycle/engine source states;
+- base/candidate monotonic versions and payload hashes;
+- rule/retired/conflict/unknown IDs and rule-level diff;
+- Local Extensions and provenance event/chain state;
+- external manifest-review state/record/hash;
+- Active blockers and exactly one next action;
+- `Active Mutation: NONE`, `Review Record Mutation: NONE`,
+  `Source Mutation: NONE`, `Session-State Mutation: NONE`,
+  `Auto Executed: false`.
+
+Then stop.
+
+## Status mapping
+
+- invalid invocation/root/catalog target identity -> ERROR;
+- profile/base/provenance/architecture/TR/ADR/rule identity or conflict blocker ->
+  BLOCKED;
+- incomplete context/evidence/source parse or uncertain resulting state -> PARTIAL;
+- declined changeset -> STOPPED;
+- verified DRAFT transaction, honest UNCHANGED, or complete read-only audit ->
+  COMPLETE for this workflow only.

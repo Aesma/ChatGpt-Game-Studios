@@ -1,4 +1,4 @@
 interface:
   display_name: "Content Audit"
-  short_description: "Verify content IDs against current build evidence"
-  default_prompt: "Use $content-audit to compare authoritative content IDs with target build-inclusion evidence and return a read-only, fail-closed audit."
+  short_description: "Verify stable content IDs with build evidence"
+  default_prompt: "Use $content-audit to compare authoritative stable content IDs with one exact target build through a bounded, hash-bound manifest, explicit coverage, and fail-closed PARTIAL behavior; return the evidence packet without changing project state."

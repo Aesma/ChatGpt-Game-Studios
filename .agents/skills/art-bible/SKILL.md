@@ -1,443 +1,301 @@
 ---
 name: art-bible
-description: "Author a versioned nine-section Art Bible through explicit user decisions and skeleton-first persistence. Partial drafts never receive whole-document approval; asset production remains blocked until an independent art-director review record approves the current complete artifact hash."
+description: "Author or safely revise one versioned nine-section Art Bible through bounded evidence, explicit product decisions, content-profile assertions, transactional section writes, and a hash-bound independent-review handoff."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$art-bible [--scope full|core|asset-standards|resume] [--review full|lean|solo]`.
-
-Before the first file change, present the complete exact changeset with every
-path, operation, owner, and current SHA-256/ABSENT state. Use existing bounded
-authorization only when it already covers that exact set. Otherwise obtain one
-approval. A new path or operation requires a revised preview and new approval;
-section decisions never broaden file authorization.
 
 # Art Bible
 
-This workflow authors `design/art/art-bible.md`. It may create/update a separate
-authoring state file and, when eligible and exactly authorized, an immutable
-review record. It never creates production assets or implementation files.
+Author exactly one `AB-1` Art Bible. The authoring task may write only the exact
+Art Bible target and create-only checkpoint/authoring-receipt records named by
+the request. It never creates art assets, implementation files, a review verdict,
+or production approval.
 
-The author and whole-document reviewer must be separate identities. The reviewer
-must be a fresh `art-director` Codex subagent that did not author, draft, revise,
-or approve sections in this run. The reviewer may read the artifact and write
-only its exact immutable review-record path; it never edits the Art Bible.
+## Invocation and request contract
+
+Invoke only as:
+
+    $art-bible <request-manifest-path>
+
+No argument prints that usage and stops before repository discovery, context
+reads, delegation, or writes. Reject positional flags and unknown fields.
+
+The manifest declares `contract: cgs.art-bible-request/v2` and:
+
+- stable artifact/run IDs and exact operation: `create`, `fill-gaps`,
+  `revise-sections`, `migrate-schema`, or `resume`;
+- exact scope alias (`full`, `core`, `asset-standards`, or `custom`) plus ordered
+  stable section IDs; aliases never redefine whole-artifact completeness;
+- exact target path, checkpoint root, expected target SHA-256 or `ABSENT`, and
+  expected latest checkpoint ID/hash or `ABSENT`;
+- declared legacy input path/hash and migration disposition when applicable;
+- exact concept artifact/approval evidence, platform/engine profile evidence,
+  accessibility/UX owners, technical constraints, workflow-catalog row, and
+  reference-source evidence, each with path, stable ID/owner, locator, raw hash,
+  and required/optional role;
+- context budgets no larger than 16 files and 524288 exact bytes;
+- `review_mode: full | lean | solo` and
+  `consultation_mode: bounded | none`; `solo` forces `none` and zero subagents;
+- product-decision owner, mutation authority, author task, checkpoint-recorder
+  task, and intended future reviewer role; identities must be distinct where
+  roles require separation;
+- max revision rounds, consultation limits at or below this contract, and exact
+  non-writes; and
+- authorization manifest ID/hash/authority or an instruction to collect one
+  explicit bounded authorization after inventory.
+
+Reject ambiguous IDs, duplicate paths/section IDs, non-lowercase SHA-256 values,
+target/checkpoint aliasing, target outside `design/art/`, checkpoint root outside
+the declared session-state root, a writer equal to mutation authority when the
+request separates them, a future reviewer equal to any author/consultant/recorder,
+or budgets/limits above this contract.
+
+Use runtime task identities when exposed. Otherwise generate one lowercase UUID
+per role and persist it; never claim a user, director, or another task identity.
+
+## Roles and authority boundary
+
+- The product-decision owner selects visual product choices.
+- The mutation authority authorizes exact target regions and create-only
+  checkpoint/receipt names.
+- The author asks questions, drafts, and performs semantic preflight.
+- The target writer performs target CAS writes only.
+- The checkpoint recorder creates checkpoint/authoring-receipt records only.
+- Optional consultants provide read-only evidence proposals.
+- A future independent `art-director` review task may run `AD-ART-BIBLE`; it is
+  not invoked by this authoring workflow.
+
+One mutation authorization covers the listed target operation/sections and
+deterministically named checkpoint/receipt records for this run. Section-content
+approval is not filesystem authorization. A new path, operation, section, owner,
+writer, or larger limit requires a revised manifest and new authorization.
+
+## Versioned schema and content profile
+
+The author contract version is:
+
+    art-bible-author-sha256:<sha256(SKILL.md exact bytes || 0x00 || references/continued-workflow.md exact bytes)>
+
+The document profile is `art-bible-profile-schema-v2`; the content assertion
+contract is `cgs.art-bible-content-profile/v2`. Stable IDs, not display titles,
+govern inventory, migration, decisions, assertions, writes, and receipts.
+
+| Stable ID | Canonical display title | Coverage owner |
+|---|---|---|
+| `AB-01` | Visual Identity Statement | core visual rules and tests |
+| `AB-02` | Mood, Lighting & Atmosphere | emotional states, lighting, atmosphere |
+| `AB-03` | Shape, Composition & Silhouette | geometry, composition, readability |
+| `AB-04` | Color System & Accessibility | roles, semantics, area, backup cues |
+| `AB-05` | Typography & Iconography | hierarchy, personality, icons, legibility |
+| `AB-06` | Character Art Direction | archetypes, silhouette, pose, camera/LOD |
+| `AB-07` | Environment & Level Art Direction | architecture, materials, density, story |
+| `AB-08` | UI/HUD & VFX Visual Language | presentation, motion, effects, readability |
+| `AB-09` | Asset Standards, References & Prohibitions | budgets, formats, naming, rights, avoid rules |
+
+Every target begins with:
+
+    # Art Bible
+
+    > **Schema**: AB-1
+    > **Profile Version**: art-bible-profile-schema-v2
+    > **Content Profile**: cgs.art-bible-content-profile/v2
+    > **Author Schema**: art-bible-author-sha256:<hash>
+    > **Artifact ID**: <stable ID>
+    > **Artifact Status**: DRAFT | PARTIAL | COMPLETE
+    > **Production Use**: BLOCKED — independent current-hash approval required
+    > **Concept Evidence ID**: <stable approval ID | MISSING>
+    > **Platform/Engine Profile IDs**: <stable IDs | MISSING>
+    > **Context Manifest SHA-256**: <hash>
+    > **Authoring Receipt ID**: <stable ID | PENDING>
+
+Do not write `APPROVED`, reviewer identity/signature/date, a review-record hash,
+or authoring-receipt path/hash into the Art Bible. External records bind final
+target bytes and avoid a target/receipt hash cycle.
+
+## Independent state axes
+
+For each `AB-01` through `AB-09`, checkpoint separately:
+
+- `content_state`: `EMPTY`, `PLACEHOLDER`, `SUBSTANTIVE`, or `NOT_APPLICABLE`;
+- `evidence_state`: `CURRENT`, `STALE`, `PROVISIONAL`, `MISSING`, or `CONFLICTING`;
+- `workflow_state`: `PENDING`, `DRAFTING`, `APPROVED_NOT_WRITTEN`, `WRITTEN`,
+  `BLOCKED`, or `OUT_OF_SCOPE`;
+- `assertion_results`: stable assertion ID, `PASS/FAIL`, evidence, and owner; and
+- `section_status`: `INCOMPLETE`, `COMPLETE`, `INVALID`, or `STALE`, derived from
+  the other axes rather than placeholder detection.
+
+`COMPLETE` section means substantive content, all applicable assertions passing,
+current evidence, current exact-body product approval, and no blocking finding.
+`SECTION_REVIEWED` is optional metadata and never whole-artifact approval.
+
+Artifact status is content-derived:
+
+- `DRAFT`: skeleton exists and no selected section has an approved write;
+- `PARTIAL`: safe content exists but fewer than all nine sections are COMPLETE,
+  or any required dependency is provisional/missing/conflicting/stale;
+- `COMPLETE`: all nine unique sections are COMPLETE, the approved concept evidence
+  is current, no provisional/unmapped/blocking item remains, and target bytes
+  read back stably.
+
+Selected-scope completion is reported separately and never upgrades the artifact.
 
 ## Production safety invariant
 
-Asset specification, generation, import, implementation, outsourcing, and
-production are **BLOCKED** unless all are true:
-
-1. the Art Bible uses schema `AB-1`;
-2. all nine required sections are `COMPLETE`;
-3. an independent `art-director` returned `APPROVE` through `AD-ART-BIBLE`;
-4. the immutable review record names the current raw-byte Art Bible SHA-256; and
-5. the current raw-byte hash still equals that approved hash.
-
-User acceptance of risk, a section review, a partial scope completion, a
-`CONCERNS` verdict, or a status written inside the Art Bible cannot replace this
-gate.
-
----
-
-## Canonical schema AB-1
-
-Section identity is the stable ID, never the display title.
-
-| ID | Display title | Required coverage |
-|---|---|---|
-| `AB-01` | Visual Identity Statement | one-line rule, principles, pillar tests |
-| `AB-02` | Mood, Lighting & Atmosphere | state-based emotion, lighting, atmosphere |
-| `AB-03` | Shape, Composition & Silhouette | character/environment/UI geometry and readability |
-| `AB-04` | Color System & Accessibility | palette roles, semantics, area rules, backup cues |
-| `AB-05` | Typography & Iconography | hierarchy, type personality, icons, legibility |
-| `AB-06` | Character Art Direction | archetypes, silhouettes, pose/expression, camera/LOD |
-| `AB-07` | Environment & Level Art Direction | architecture, materials, density, storytelling |
-| `AB-08` | UI/HUD & VFX Visual Language | HUD presentation, motion, effects, readability |
-| `AB-09` | Asset Standards, References & Prohibitions | budgets, formats, naming, references, avoid rules |
-
-The document header contains:
-
-```markdown
-# Art Bible
-
-> Schema: AB-1
-> Artifact Status: DRAFT | PARTIAL | COMPLETE
-> Production Use: BLOCKED — independent current-hash approval required
-```
-
-Do not write `APPROVED`, a reviewer signature, or an approval date into this
-header. Whole-document approval lives only in external review evidence.
-
-Section state is tracked externally as one of:
-
-- `EMPTY` — skeleton only;
-- `INCOMPLETE` — some required fields exist;
-- `COMPLETE` — every AB-1 assertion is satisfied and user approved its decisions;
-- `INVALID` — contradictory or malformed content;
-- `STALE` — dependencies or constraints changed.
-
-`SECTION REVIEWED` is review metadata, not whole-document approval.
-
----
-
-## Phase 0: Resolve mode and bounded context
-
-Resolve review mode once:
-
-1. explicit `--review full|lean|solo`;
-2. otherwise the configured project review mode;
-3. otherwise `lean`.
-
-Mode behavior:
-
-- `full` — after a complete draft, use one fresh independent `art-director` for
-  `AD-ART-BIBLE`.
-- `lean` — no whole-document director review; document may become COMPLETE but
-  remains UNREVIEWED and production-blocked.
-- `solo` — spawn no director agents. Author locally with the user; document may
-  become COMPLETE but remains UNREVIEWED and production-blocked.
-
-Authoring is not sign-off. No identity that drafted or revised a section may be
-selected as the whole reviewer.
-
-Read the game concept and any approval evidence that exists. Record their current
-raw-byte hashes. A missing or unapproved concept permits only `DRAFT/PARTIAL`
-authoring; it never permits production approval. Do not claim an upstream concept
-is approved merely because its file exists.
-
-Read technical preferences and engine/platform constraints when available.
-Without configured platform/engine budgets, AB-09 asset standards must be marked
-`PROVISIONAL` and therefore not COMPLETE.
-
----
-
-## Phase 1: Detect schema and protect existing content
-
-If `design/art/art-bible.md` does not exist, use fresh mode.
-
-If it exists:
-
-1. read it in full and hash its current raw bytes;
-2. inspect the explicit schema marker and stable section IDs;
-3. inventory every section and byte range;
-4. compare external state/review evidence with current hashes;
-5. never infer identity or completeness from a title alone.
-
-### Current AB-1 document
-
-For each `AB-01` through `AB-09`, evaluate all required coverage and report
-`EMPTY/INCOMPLETE/COMPLETE/INVALID/STALE` with evidence. Preserve content outside
-the selected section byte ranges.
-
-If a prior review record's artifact hash differs from current bytes, mark review
-`STALE` immediately and set Production Use to BLOCKED in the proposed next
-authoring update. Never carry approval forward by title or filename.
-
-### Legacy or unknown schema
-
-A file without `Schema: AB-1`, with old headings, duplicate IDs, missing IDs, or
-unknown headings is a migration candidate. Do not insert the new skeleton over it
-and do not overwrite or discard legacy content.
-
-Create a read-only migration proposal:
-
-```markdown
-| Legacy byte range/title | Proposed AB-1 ID(s) | Action | Ambiguity | Preserved source |
-|---|---|---|---|---|
-```
-
-Old sections that combine or split new concerns may map to multiple AB-1 IDs.
-Unknown content remains `UNMAPPED`. Show the exact before/after diff, including
-where every original byte will go. Ask the user to approve or correct mappings.
-
-Only after the exact migration paths and operation are authorized may the Art
-Bible be rewritten to AB-1. If any mapping is unresolved, keep the document
-legacy, report BLOCKED for approval, and make no migration write.
-
-A migration never establishes section completeness or whole approval by itself.
-Re-evaluate every migrated AB-1 section from content assertions.
-
----
-
-## Phase 2: Select scope and authorize exact files
-
-Ask which sections to author:
-
-- `full` — all nine;
-- `core` — AB-01 through AB-04;
-- `asset-standards` — AB-09 only;
-- `resume` — user selects from non-complete AB-1 sections.
-
-Scope controls authoring work only. It does not redefine the required nine-section
-schema and never makes a subset eligible for whole approval.
-
-Ask for reference sources and record exactly which elements are useful and which
-must not be copied. References never authorize imitation of a living artist or
-unlicensed production use.
-
-### Authoring changeset
-
-Before the first write, preview exact rows:
-
-```markdown
-| Path | Operation | Owner | Base SHA-256/ABSENT | Purpose |
-|---|---|---|---|---|
-| design/art/art-bible.md | create/update | authoring-owner | ... | AB-1 skeleton and approved sections |
-| production/session-state/art-bible.yaml | create/update | authoring-owner | ... | section/decision/hash checkpoint |
-```
-
-The review record is a separate side effect. If `full` mode and full scope make a
-review likely, preallocate a unique review ID and exact path such as
-`design/art/reviews/ABR-<run-id>.md` and include its `create` row with owner
-`independent-art-director-reviewer`. Otherwise, when a later run becomes eligible,
-preview and authorize that exact new record path before review. Never authorize a
-review directory or wildcard.
-
-File authorization and product approval are different:
-
-- changeset approval authorizes exact writes to listed paths;
-- each section's substantive visual decisions still require explicit user choice;
-- a section choice within the authorized paths does not require another file
-  permission prompt;
-- a new path, owner, or operation does.
-
----
-
-## Phase 3: Create or normalize the full skeleton first
-
-After authorization, re-read every target and verify base hashes/absence. On a
-mismatch, write nothing and report `BLOCKED — CONCURRENT CHANGE`.
-
-For a fresh file, create the complete AB-1 header and all nine section headings
-in one skeleton write before adding any section body. Unselected sections receive
-a neutral `[Not authored]` marker. Create the state file in the same authorized
-changeset.
-
-For an authorized legacy migration, write the complete AB-1 structure while
-preserving the user-approved mapping and all unmapped content in a clearly marked
-migration appendix. Do not mix migration and newly invented section content in
-the same write.
-
-The state file records:
-
-```yaml
-schema: AB-1
-run_id: ...
-artifact_path: design/art/art-bible.md
-artifact_sha256: ...
-artifact_status: DRAFT | PARTIAL | COMPLETE
-review_status: NOT_ELIGIBLE | UNREVIEWED | APPROVED | CONCERNS | REJECTED | STALE
-approved_artifact_sha256: null
-sections:
-  AB-01:
-    status: EMPTY | INCOMPLETE | COMPLETE | INVALID | STALE
-    section_sha256: ...
-    decision_ids: []
-    author_id: ...
-    section_review: UNREVIEWED | SECTION_REVIEWED
-selected_scope: [...]
-concept: { path: ..., sha256: ..., approval: ... }
-constraints: { paths_and_hashes: [...] }
-review_record: { id: ..., path: ..., sha256: null }
-next_safe_step: ...
-```
-
-The raw Art Bible hash is stored only in external state/evidence. Do not insert
-its hash into the Art Bible and create a self-referential value.
-
----
-
-## Phase 4: Author selected sections
-
-Process one selected section at a time. For every substantive visual decision:
-
-1. ask a focused question;
-2. provide two or three meaningful options with tradeoffs;
-3. let the user decide;
-4. draft only from approved concept constraints and that decision;
-5. show the complete proposed section;
-6. obtain explicit section-content approval;
-7. verify the Art Bible base hash;
-8. replace only that section's stable-ID byte range;
-9. recompute Art Bible and section raw-byte hashes;
-10. update the state checkpoint within the already authorized paths.
-
-A user-approved product decision is evidence, not new filesystem authority.
-
-The current agent is the author. It may consult `ux-designer` for AB-05/AB-08
-and `technical-artist` for AB-09. Consultants return read-only proposals. In full
-mode, reserve the future whole-document `art-director` reviewer identity; never
-use that same identity to draft or revise sections.
-
-If a consultant fails, times out, or returns partial content, record the section
-`INCOMPLETE` and produce a partial report. Do not fabricate its analysis or mark
-the section COMPLETE.
-
-### Section-specific constraints
-
-- AB-04 must define non-color backup cues for every semantic use that cannot rely
-  on color alone.
-- AB-05 must include measurable hierarchy/legibility rules, not only font names.
-- AB-08 must surface art-versus-UX readability conflicts to the user; the model
-  cannot silently choose a product tradeoff.
-- AB-09 must distinguish hard technical budgets from art preferences. Hard
-  configured constraints win automatically; product-facing visual tradeoffs
-  require user choice. Without configured engine/platform budgets, it remains
-  PROVISIONAL/INCOMPLETE.
-- AB-09 references identify specific reusable elements and explicit divergence;
-  they are not prompts to copy a source's general style.
-
-After every write, verify that only the selected section and state file changed.
-An unexpected byte change outside the approved range is BLOCKED; do not continue
-or overwrite it.
-
----
-
-## Phase 5: Compute artifact status
-
-Re-evaluate all nine stable IDs, including unselected sections.
-
-- `DRAFT` — skeleton exists and no section is complete.
-- `PARTIAL` — at least one but fewer than nine sections is COMPLETE, or any
-  section is INCOMPLETE/INVALID/STALE/PROVISIONAL.
-- `COMPLETE` — all nine sections satisfy AB-1 assertions, all decisions are
-  approved, and no section is invalid, stale, provisional, or unmapped.
-
-A scoped run that finishes all selected sections remains PARTIAL unless every
-AB-1 section is COMPLETE.
-
-Update only `Artifact Status: DRAFT/PARTIAL/COMPLETE` and
-`Production Use: BLOCKED — independent current-hash approval required` in the
-Art Bible. Update external state with the resulting raw-byte artifact hash.
-Never write whole-document APPROVED into the artifact.
-
-A section-level check may record `SECTION REVIEWED` for its exact section hash,
-but it cannot promote artifact review status.
-
----
-
-## Phase 6: Independent whole-document review
-
-Review is eligible only when:
-
-- artifact status is COMPLETE;
-- schema is exactly AB-1 with all nine unique IDs;
-- no migration ambiguity, provisional constraint, or stale dependency remains;
-- review mode is full;
-- the exact immutable record path is authorized and still ABSENT; and
-- the selected reviewer identity did not author, draft, revise, or approve any
-  section.
-
-Otherwise skip formal review, report the specific reason, and keep production
-blocked. A PARTIAL artifact never invokes AD-ART-BIBLE for whole approval. Scope
-completion alone never establishes eligibility; a scoped or resume run may proceed
-only when all nine current sections independently re-evaluate COMPLETE.
-
-Spawn a fresh `art-director` through Codex subagent delegation using
-`AD-ART-BIBLE`. Do not spawn `creative-director` for this gate.
-
-Pass only review evidence:
-
-- exact Art Bible path and current raw-byte SHA-256;
-- AB-1 section manifest and section hashes;
-- current concept/pillar/constraint paths and hashes;
-- decision provenance;
-- author identities; and
-- explicit instruction to remain artifact-read-only and write only the authorized
-  immutable review record.
-
-The reviewer must:
-
-1. independently re-read the complete Art Bible;
-2. recompute the raw-byte hash before review;
-3. verify all nine sections and cross-section consistency;
-4. return `APPROVE`, `CONCERNS`, or `REJECT`;
-5. re-hash the artifact before recording the verdict; and
-6. emit no formal verdict if either hash differs from the supplied current hash.
-
-The immutable record contains:
-
-```yaml
-review_id: ABR-...
-gate: AD-ART-BIBLE
-reviewer_role: art-director
-reviewer_id: ...
-author_ids: [...]
-separation_verified: true
-artifact_path: design/art/art-bible.md
-artifact_sha256: sha256:...
-schema: AB-1
-artifact_status: COMPLETE
-section_hashes: {...}
-dependency_hashes: {...}
-verdict: APPROVE | CONCERNS | REJECT
-findings: [...]
-reviewed_at: ...
-```
-
-The reviewer creates the record once and never edits the Art Bible. If the record
-path already exists, generate a new review ID/path and obtain authorization; do
-not overwrite immutable evidence.
-
-Only `APPROVE` sets external state to `review_status: APPROVED` and
-`approved_artifact_sha256: <current hash>`. After independently verifying the
-immutable record and current artifact hash, the already-authorized authoring owner
-may write this mechanical state projection; it cannot alter the reviewer verdict,
-review record, or Art Bible. `CONCERNS` and `REJECT` remain
-production-blocking. User acceptance of concerns does not convert the verdict.
-
-Do not add a sign-off line to the Art Bible after review; that would change the
-reviewed bytes. The external state and immutable record are the only approval
-projection.
-
----
-
-## Phase 7: Current-hash verification and close
-
-Immediately before reporting approval or recommending asset work:
-
-1. re-read and hash the Art Bible;
-2. re-read and hash the immutable review record;
-3. verify reviewer/author separation;
-4. verify the record verdict is APPROVE;
-5. verify its artifact hash equals current bytes;
-6. verify schema/status/nine section hashes and dependencies remain current.
-
-If any check fails, report `REVIEW STALE/INVALID — PRODUCTION BLOCKED` and update
-the authorized state file to STALE when possible. Never claim the document is
-approved from an older record.
-
-Verdicts:
-
-- `DRAFT` — skeleton only; production blocked.
-- `PARTIAL` — incomplete scoped/full content; production blocked.
-- `COMPLETE — UNREVIEWED` — nine sections complete without current approval;
-  production blocked.
-- `COMPLETE — CONCERNS/REJECTED` — reviewed but not approved; production blocked.
-- `APPROVED` — independent APPROVE record matches the current complete hash;
-  production may use this Art Bible subject to other project gates.
-- `BLOCKED` — migration, conflict, evidence, authorization, or dependency prevents
-  safe progress.
-
-The final report lists exact artifact/state/review paths, current hashes, section
-states, author/reviewer IDs, approval record, production-use decision, preserved
-legacy content, and the next safe handoff. Do not automatically invoke asset
-production or implementation workflows.
-
----
-
-## Resume and authorization safety
-
-On resume, read the Art Bible and state in full, recompute every hash, and compare
-them with the checkpoint. Never trust state over current bytes.
-
-- matching hashes → continue at `next_safe_step`;
-- changed selected section → show diff and require user decision;
-- changed unselected section or unknown bytes → BLOCKED;
-- changed approved artifact → mark approval STALE before further claims;
-- new output path → revised changeset preview and authorization.
-
-Existing bounded authorization applies only to its exact paths/operations.
-Delegation, review, resume, or user acceptance never expands it.
+Production remains blocked unless a separate immutable
+`cgs.art-bible-review/v1` record from a fresh independent `art-director`:
+
+1. declares gate `AD-ART-BIBLE` and verdict `APPROVE`;
+2. names `AB-1`, all nine section hashes, current dependencies, and author IDs;
+3. proves reviewer separation;
+4. binds the current complete target hash and verified authoring receipt; and
+5. still matches current target/context bytes.
+
+A user risk acceptance, section approval/review, scoped completion, authoring
+receipt, `CONCERNS`, or status text inside the target cannot replace this gate.
+
+## Phase 0: Parse request and resolve independent modes
+
+Parse the invocation and request before any authoring context. Validate contract,
+IDs, paths, hashes, roles, budgets, operation, scope, and non-writes.
+
+Resolve modes independently:
+
+- `review_mode: full` permits an independent review handoff only after a COMPLETE
+  receipted artifact; it does not invoke a reviewer here.
+- `lean` performs authoring/optional bounded consultation but emits no formal
+  review handoff; COMPLETE remains UNREVIEWED and production-blocked.
+- `solo` performs local authoring with the user, forces consultation `none`,
+  spawns zero subagents/directors, and remains UNREVIEWED.
+- `consultation_mode: bounded` permits only Phase 8 read-only consultations and
+  never reserves or consumes the independent reviewer identity.
+
+Invalid input returns `ERROR` with zero repository writes. Missing mandatory
+identity/authorization evidence returns `BLOCKED` with zero target writes.
+
+## Phase 1: Inventory target and authorize one mutation boundary
+
+Read only applicable `AGENTS.md`, exact request, target if present, and profile
+sources needed to identify the mutation. Inventory raw target bytes, header,
+stable-ID anchors/ranges, duplicates, unknown content, per-section hashes, current
+artifact/review status, and expected checkpoint head.
+
+Operation rules:
+
+- `create`: target must be `ABSENT`; selects exact skeleton plus requested bodies.
+- `fill-gaps`: selects only EMPTY/PLACEHOLDER sections; never rewrites substantive
+  content.
+- `revise-sections`: selects explicit substantive sections and records why their
+  accepted meaning may change.
+- `migrate-schema`: maps every legacy byte range without new section content.
+- `resume`: requires an exact valid v2 checkpoint chain and resumes only its next
+  legal transition.
+
+Present one mutation manifest before broader context loading:
+
+    Operation / scope / stable section IDs
+    Target / expected target SHA-256 or ABSENT
+    Checkpoint root / expected predecessor ID and SHA-256
+    Deterministic checkpoint and authoring-receipt names
+    Artifact/run/profile/content/author-schema IDs
+    Writer/recorder identities and limits
+    Exact non-writes
+
+Obtain one explicit authorization from the named mutation authority if the
+request does not already bind a current authorization hash. Do not ask again for
+filesystem permission for later approved section bodies inside this boundary.
+
+## Phase 2: Load bounded hash-manifested context
+
+After authorization, select candidates in stable order:
+
+1. applicable `AGENTS.md` root-to-target;
+2. target and latest checkpoint chain;
+3. exact concept artifact plus its approval evidence;
+4. exact platform/engine and technical-budget profiles;
+5. exact accessibility and UX owner artifacts;
+6. exact owned product/pillar requirements;
+7. exact workflow-catalog row evidence;
+8. declared reference sources in manifest order.
+
+Never glob all GDDs/art files or follow undeclared references. Count every loaded
+file, including AGENTS, target, checkpoint, and evidence, against hard maxima 16
+files and 524288 exact bytes. Determine size before load; never truncate.
+
+The context manifest records ordered path, role, stable IDs/owners, locator,
+bytes, raw SHA-256, dependency edge, loaded/omitted state, and reason. Canonicalize
+the manifest as UTF-8 LF, fixed field order, no trailing whitespace, one final
+newline, then store its digest.
+
+Mark an existing target `mutable-target-baseline`: its baseline remains
+provenance, but target currentness is checked by Target/Section CAS rather than as
+external context after an authorized write. Re-hash every external context entry
+before each dependent write and final handoff.
+
+If mandatory context exceeds budget, is absent, or mismatches its declared hash,
+append at most one authorized PARTIAL checkpoint with reason
+`CONTEXT_BUDGET_EXCEEDED` or `CONTEXT_EVIDENCE_INVALID`, leave target unchanged,
+list loaded/omitted evidence, and stop. Required evidence is never silently
+omitted.
+
+Only after bounded context succeeds, summarize product decisions, hard evidence,
+derived visual constraints, technical handoffs, provisional assumptions, and
+dependency findings; then ask the first product question.
+
+## Phase 3: Detect/migrate schema and plan exact sections
+
+For AB-1, inventory all nine IDs using the v2 content assertions; non-placeholder
+text alone never proves completeness. Reject duplicate/missing IDs and ambiguous
+anchors before writes.
+
+For legacy/unknown schema, create a read-only mapping proposal containing every
+source byte range/hash, proposed AB-1 destinations, move/split/merge action,
+ambiguity, preserved bytes, and `UNMAPPED` disposition. Show exact before/after
+diff. Only `migrate-schema` plus accepted mapping and current CAS may rewrite.
+Preserve unresolved content in an explicit appendix; unresolved mapping blocks
+COMPLETE and review handoff. Migration alone grants no completeness or approval.
+
+Build an ordered plan for selected sections with assertion results, source hashes,
+decision dependencies, exact byte anchors/baselines, writer, and expected
+operation. Re-hash target, authorization, and used context after plan approval;
+mismatch returns `ERROR — TARGET/CONTEXT/AUTHORIZATION CHANGED`, zero write.
+
+## Phase 4: Create/migrate skeleton and initialize checkpoint chain
+
+After context and plan succeed, the target writer performs authorized CAS writes.
+Fresh creation first writes the full header and all nine exact stable-ID headings
+in one skeleton transaction; unselected bodies receive neutral placeholders.
+Create no substantive body before the skeleton read-back succeeds.
+
+Migration writes only the accepted lossless mapping, header, and nine-section
+structure; do not mix migration with invented content.
+
+Append a create-only `cgs.art-bible-checkpoint/v2` record containing request/
+authorization/context/target/profile hashes, roles, modes, full section axes,
+assertions, decisions/revisions, operation ledger, consultations/findings,
+budgets, predecessor ID/hash, next legal transition, and UTC timestamp. Canonical
+payload hash excludes its own `record_sha256`; predecessor CAS prevents forks.
+
+The final create-only `cgs.art-bible-authoring-receipt/v1` is written only after
+final target content/header CAS and read-back hash. It binds pre/post target
+hashes, context digest, author/profile/content schema, all section/revision/
+decision IDs, authorization, writer/recorder identities, final checkpoint, and
+target path. It is authoring evidence, never review approval.
+
+If checkpoint/receipt persistence fails after a verified target write, leave the
+content-derived artifact status intact, report Workflow Verdict PARTIAL with the
+exact unreceipted target hash, emit no review handoff, and never replay the write.
+
+## Required continuation
+
+Read and follow `references/continued-workflow.md` in full after Phase 4. It
+defines decision/revision provenance, section assertions and approvals,
+transactional CAS, concept/platform/dependency rules, bounded consultation,
+receipt finalization, independent-review handoff, resume, and catalog-driven
+close behavior.
+
+## Non-implementation and review boundary
+
+This workflow stops after authoring evidence and, when eligible, a review handoff
+for exact target/receipt/context hashes. It does not invoke `AD-ART-BIBLE`, create
+or modify review records, mark itself approved, update shared catalogs, generate
+assets, configure engines, or implement UI/art. Conversation memory, self-review,
+the wrong role, stale hashes, or missing receipts cannot authorize production.

@@ -1,6 +1,6 @@
 ---
 name: team-polish
-description: "Assesses and hardens one hash-bound feature through approved path-owned patches, single-owner integration, final-build remeasurement, QA, and accessibility evidence."
+description: "Assesses and hardens one hash-bound feature through bounded role/context contracts, approved path-owned patches, single-owner integration, fixed-matrix final-build evidence, deterministic readiness, and resumable receipts."
 ---
 
 # Team Polish
@@ -9,15 +9,34 @@ This workflow separates assessment, implementation, integration, and verificatio
 A performance observation, proposal, file-write approval, or readiness verdict is not
 permission to implement, commit, push, deploy, publish, or communicate externally.
 
+## Versioned protocol records
+
+This workflow accepts only the named schema/version, canonical path, and raw-byte
+SHA-256 for each record:
+
+- `cgs.polish-target-manifest/v2`
+- `cgs.polish-context-manifest/v1`
+- `cgs.polish-assessment/v2`
+- `cgs.polish-mutation-manifest/v2`
+- `cgs.polish-agent-task/v1` and `cgs.polish-agent-result/v1`
+- `cgs.polish-profile-request/v1` and `cgs.polish-profile-receipt/v1`
+- `cgs.polish-test-matrix/v1` and `cgs.polish-execution-receipt/v1`
+- `cgs.polish-run-manifest/v1`, `cgs.polish-checkpoint/v1`, and
+  `cgs.polish-verification-report/v2`
+
+Unknown versions, duplicate identities, ambiguous paths, malformed fields, or
+recorded/current hash mismatches are blocking. Do not coerce a legacy/free-text
+artifact into one of these contracts.
+
 ## Invocation
 
 Accept exactly one mode:
 
 ~~~text
-$team-polish assess --manifest <polish-target-manifest-path> --assessment-id <id> [--persist]
-$team-polish implement --assessment <path> --mutation-manifest <path> --implementation-id <id>
-$team-polish verify --candidate-manifest <path> --verification-id <id> [--persist]
-$team-polish resume --checkpoint <path>
+$team-polish assess --manifest {polish-target-manifest-path} --assessment-id {stable-id} [--persist]
+$team-polish implement --assessment {assessment-path} --mutation-manifest {manifest-path} --implementation-id {stable-id}
+$team-polish verify --candidate-manifest {candidate-path} --verification-id {stable-id} [--persist]
+$team-polish resume --checkpoint {checkpoint-path}
 ~~~
 
 Reject unknown or duplicate flags, missing values, directories, unsafe paths, and
@@ -25,6 +44,10 @@ positional feature names. IDs are stable slugs or UUIDs, not timestamps alone. N
 infer a target, newest build, latest assessment, hardware, budget, requirement,
 mutation set, checkpoint, or evidence file. With no mode or required argument, print
 the accepted forms and exit without spawning agents or writing files.
+
+`--review`, `full`, `lean`, `solo`, and generic director/lead skip flags are
+not accepted modes. Actual participation is resolved from the required-role matrix
+and exact target policy below; presentation mode never changes evidence obligations.
 
 One invocation stops at its mode boundary. `assess` never falls through to
 implementation. `implement` never issues release authority or performs publication.
@@ -66,12 +89,12 @@ boundary is satisfied.
 Use:
 
 ~~~text
-production/polish/<target-id>/assessments/<assessment-id>/assessment.md
-production/polish/<target-id>/assessments/<assessment-id>/mutation-manifest.yaml
-production/polish/<target-id>/implementations/<implementation-id>/run-manifest.md
-production/polish/<target-id>/implementations/<implementation-id>/checkpoints/<checkpoint-id>.md
-production/polish/<target-id>/implementations/<implementation-id>/candidate/build-candidate.yaml
-production/polish/<target-id>/implementations/<implementation-id>/verification/<verification-id>/report.md
+production/polish/{target-id}/assessments/{assessment-id}/assessment.md
+production/polish/{target-id}/assessments/{assessment-id}/mutation-manifest.yaml
+production/polish/{target-id}/implementations/{implementation-id}/run-manifest.md
+production/polish/{target-id}/implementations/{implementation-id}/checkpoints/{checkpoint-id}.md
+production/polish/{target-id}/implementations/{implementation-id}/candidate/build-candidate.yaml
+production/polish/{target-id}/implementations/{implementation-id}/verification/{verification-id}/report.md
 ~~~
 
 Never overwrite a prior artifact or select one by modification time. An existing
@@ -98,6 +121,30 @@ No delegate may write a controller, integrator, build-owner, or other delegate p
 If an owner is unavailable, the output remains missing/unknown; ownership is not
 silently transferred. Generated outputs inherit the declared writer and count in
 overlap checks.
+
+### Required-role matrix
+
+The target manifest and current policy classify each row as `REQUIRED`,
+`CONDITIONAL`, or `NOT_APPLICABLE` before assessment. Missing or ambiguous
+classification is blocking.
+
+| Role | Trigger | Required output |
+|---|---|---|
+| performance-analyst | any performance, memory, loading, streaming, or audio budget row | read-only profile receipt and stable findings |
+| qa-tester | every target | assessment coverage receipt and final fixed-matrix execution receipts |
+| accessibility-specialist | every target with visual, motion, input-feedback, audio-cue, or settings impact | read-only assessment plus independent final-candidate review |
+| technical-artist | render, VFX, shader, material, camera, scalability, or visual-readability scope | read-only assessment receipt |
+| sound-designer | audio source/event/bus/mix/spatialization/streaming scope | read-only assessment receipt |
+| tools-programmer | content-authoring, import/export, editor, build-tool, or automation scope | read-only tools-impact receipt and, if later authorized, an owned patch receipt |
+| engine-programmer | trace-backed engine-boundary finding meets the policy confidence threshold | read-only diagnosis and, if later authorized, an owned patch receipt |
+
+There is no ceremonial director/lead gate. Every `REQUIRED` row must produce a
+current `Agent Status: PASS` receipt. `FAIL` maps to a conclusive blocker;
+`UNKNOWN`, `TIMEOUT`, `ERROR`, `CANCELLED`, or skip maps to
+`Workflow Status: PARTIAL` and `Readiness Verdict: INCOMPLETE`. A skipped row
+is nonblocking only when the pre-run policy marks it `NOT_APPLICABLE` and records
+the rule ID, reason, owner, policy path/hash, and affected scope. Conversation or
+review mode cannot reclassify a row.
 
 ## Status and verdict vocabulary
 
@@ -138,6 +185,7 @@ The polish target manifest must contain:
   to the target;
 - exact QA plan/test manifest paths/hashes, required regression/soak/stress matrix,
   seeds/workloads/durations, and hardware/environment inventory;
+- exact context-manifest path/hash and exact fixed test-matrix path/hash;
 - known-issue registry path/hash and canonical severity/blocker mapping;
 - declared profiling/test commands or approved runner receipts;
 - input file/byte limits, context budget, generated-output roots, report root, owner,
@@ -152,6 +200,22 @@ A missing or ambiguous target, stale baseline, dirty unrecorded source, missing
 budget, absent required requirements, hash mismatch, or unsupported platform yields
 `Workflow Status: BLOCKED`, `Implementation State: NOT_AUTHORIZED`, no delegation,
 and no writes.
+
+### Bounded context contract
+
+`cgs.polish-context-manifest/v1` is the only delegation context authority. It
+contains target/baseline IDs and hashes, policy hash, deterministic role-specific
+entries with normalized path/hash/byte length/purpose/required flag, and positive
+integer `max_files`, `max_total_bytes`, and `max_single_file_bytes` ceilings.
+Entries are ordered by required flag, artifact class, stable ID, then normalized
+path. The controller validates sizes before reading bodies and records one context
+digest per agent task.
+
+Never send the repository, a directory tree, unrestricted full context, inferred
+related files, or conversation-only evidence. A missing required entry, hash drift,
+file-count/byte overflow, unreadable file, or inability to honor a ceiling blocks
+that task before delegation; do not truncate silently or substitute an unbound
+summary.
 
 ## Phase 1: Read-only multidisciplinary assessment
 
@@ -183,6 +247,24 @@ Dispatch as applicable:
 No implementation writer runs in this phase. An unavailable tool, runner, target
 hardware, or delegate is visible as `NOT_RUN`, `UNAVAILABLE`, `TIMEOUT`, or
 `UNKNOWN`; do not synthesize results.
+
+### Performance capture interface
+
+Do not invoke `$perf-profile` as a nested workflow. The performance analyst performs
+the equivalent bounded read-only responsibility through one
+`cgs.polish-profile-request/v1` that binds request/target/baseline candidate and
+artifact IDs/hashes, budget and context-manifest hashes, exact platform/hardware,
+tool/version, executable/argv/cwd, warm-up, duration, samples, workload/seed,
+timeout, output paths, deadline, and producer.
+
+The only accepted result is an immutable `cgs.polish-profile-receipt/v1` at the
+request-declared path. It repeats all subject identities, records start/end,
+termination/exit/result, metric units and percentiles, raw trace/log paths/hashes,
+omissions, findings, and producer identity. A compatible receipt produced elsewhere
+may be consumed only when its schema, request, candidate, hardware, command, and raw
+hashes all match. Unsupported runner/tool/interface, missing receipt, timeout, or
+hash mismatch is `NOT_RUN` or `INVALID` and cannot be replaced by a nested call
+or prose summary.
 
 ### Bounded concurrency
 
@@ -310,6 +392,13 @@ revised manifest and new authorization.
 
 ## Phase 5: Timeout, cancellation, checkpoint, and resume
 
+Every delegate consumes a create-only `cgs.polish-agent-task/v1` with stable
+task/attempt ID, role, required-role row, context digest, exact read/write paths,
+expected result path/schema, deadline, timeout, cancel owner, and predecessor
+checkpoint hash. It returns one immutable `cgs.polish-agent-result/v1` with the
+same bindings, start/end timestamps, terminal status, output hashes, omissions,
+unexpected writes, and producer identity.
+
 Every delegation has a deadline, attempt number, one policy-bounded retry maximum,
 and explicit cancel owner. On timeout:
 
@@ -332,11 +421,24 @@ mutation-manifest hash, authorization record hash, writer ledger, patch receipts
 current path hashes, build identity if available, agent attempts/status/deadlines,
 evidence inventory, unresolved findings, and next permitted action.
 
+Each checkpoint conforms to `cgs.polish-checkpoint/v1`, has one stable checkpoint
+ID and create-only canonical path, and records completed step IDs, retry budget
+consumed, quarantined-output hashes, context/test-matrix hashes, and the exact next
+legal idempotent step. A path collision, forked predecessor, duplicate completion,
+or missing terminal agent result is blocking. One policy-bounded retry means at
+most one new attempt after the original attempt; no recursive or unbounded retry.
+
+Retry count is at most one new attempt after the original attempt. Each checkpoint
+records the next legal idempotent step.
+
 `resume` re-hashes the entire checkpoint chain, manifests, instructions, owned/shared
 paths, and external build receipts. Continue only from the first incomplete
 idempotent step. Any unexplained drift, active stale writer, altered authorization,
 or missing predecessor blocks; never replay a completed patch or build based on
 conversation memory.
+
+Resume must never replay a completed patch, integration, build, or verification
+step.
 
 ## Phase 6: Integrate and build the final candidate
 
@@ -371,6 +473,14 @@ baseline measurements or per-patch profiler claims as final evidence. Re-hash th
 candidate, artifact, transitive manifests, requirements, budgets, QA plan, tests,
 patch/integration receipts, and applicable instructions before dispatch.
 
+Require the exact immutable `cgs.polish-test-matrix/v1` already captured by the
+target, assessment, mutation, run, and candidate manifests. Each stable matrix row
+contains category, required/optional classification from current policy, candidate
+platform/configuration and hardware profile, executable/argv/cwd, tool/version,
+environment hash, warm-up, duration, sample count, seed/workload, timeout, expected
+output path, receipt schema, pass predicate, metric units, budget rule ID, and
+evidence owner. Verify may neither add, drop, weaken, nor reclassify a row.
+
 Run the policy-required matrix on the final artifact hash and target hardware/
 environment:
 
@@ -383,11 +493,13 @@ environment:
 - independent accessibility review including reduced-motion, flash thresholds,
   intensity controls, settings persistence, and equivalent feedback.
 
-Every execution receipt requires artifact/candidate/build/source/platform/hardware
-identity, command/argv and tool/version, configuration, seed/workload, warm-up and
-measurement duration, sample counts, start/end timestamps, exit/result status,
-metric units/percentiles, budget path/hash and threshold comparison, raw trace/log/
-capture paths and hashes, omissions, and producer identity.
+Every execution receipt conforms to `cgs.polish-execution-receipt/v1` and requires
+matrix/row ID and hash, artifact/candidate/build/source/platform/hardware identity,
+command/argv and tool/version, configuration/environment hash, seed/workload,
+warm-up and measurement duration, sample counts, start/end timestamps, termination,
+exit/result status, metric units/percentiles, budget path/hash/rule and threshold
+comparison, raw trace/log/capture paths and hashes, omissions, and producer identity.
+The receipt path is the matrix-declared create-only destination.
 
 A plan, assertion, filename, local checkbox, conversation statement, Phase 1 report,
 or receipt for a different build cannot prove a final result. If required hardware or
@@ -399,6 +511,12 @@ candidate and can include performance/accessibility findings. If policy permits
 independent final-build measurements to run concurrently, their output paths must be
 disjoint and the concurrency cap still applies. Final aggregation waits for all
 required receipts.
+
+A required matrix row with no valid current receipt is `NOT_RUN`, `PARTIAL`,
+`UNKNOWN`, `TIMEOUT`, `INVALID`, or `UNAVAILABLE` as evidenced; all map to
+`INCOMPLETE`. Only a row classified optional by the pre-run policy may remain
+nonblocking, and its owner, reason, approval receipt, scope, and expiry remain in the
+report.
 
 ## Phase 8: Deterministic readiness verdict
 

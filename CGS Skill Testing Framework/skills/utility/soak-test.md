@@ -1,295 +1,580 @@
-# Skill Test Spec: $soak-test
+# Skill Spec: $soak-test
+
+> **Spec ID**: soak-test-v2
+> **Spec Schema**: cgs-skill-spec/v2
+> **Category**: utility
+> **Priority**: low
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$soak-test` separates immutable test protocols, run manifests, raw evidence
-receipts, sample ledgers, and canonical completed results. A saved protocol has
-`Status: PLANNED`, `Gate Eligible: NO`, and never proves execution. Only
-`production/qa/soak-tests/<run-id>/result.md` may have `Status: COMPLETED`, and only
-after target/build/workload/environment identity, observer, termination, samples, and
-all hashes validate.
-
-Execution, stability, memory, performance, experience, readiness, artifact completion,
-and gate eligibility are independent fields. No director gate applies.
-
----
+`$soak-test` plans exact build-bound endurance protocols, registers fully scheduled runs, ingests append-only evidence receipts, and finalizes unit-safe stability results. Planning, execution, evidence quality, dimension results, readiness, persistence, and handoff remain separate. Only a CAS-persisted `cgs-soak-result/v2` with verified conclusive evidence is handoff eligible.
 
 ## Static Assertions
 
-- [ ] YAML frontmatter contains only `name` and a non-empty `description`; name matches the skill directory
-- [ ] Has at least two phase headings
-- [ ] Defines plan, start, ingest, finalize, and status modes with invalid-mode handling
-- [ ] Uses distinct canonical paths and artifact types for protocol, manifest, receipts/raw/samples, and result
-- [ ] A protocol returns PLANNED/PROTOCOL_PLANNED, NOT_STARTED, and Gate Eligible: NO
-- [ ] Only a hash-verified canonical result can return Status: COMPLETED and Verdict: COMPLETE; incomplete/inconclusive results are not gate eligible
-- [ ] Requires target, build/hash/commit, workload profile, environment profile, observer, duration/interval, and collection adapter identity
-- [ ] Every metric threshold cites a project budget or approved matching baseline; missing thresholds force INCONCLUSIVE
-- [ ] Contains no hard-coded or transplanted engine-, platform-, or tool-global pass threshold
-- [ ] Expands stable checkpoint IDs and treats omitted samples as NOT_COLLECTED, never zero
-- [ ] Preserves raw evidence and sample values separately from derived classifications
-- [ ] Defines FAILED_EARLY and INCOMPLETE behavior with partial evidence preservation
-- [ ] Separates Stability, Memory, Performance, and Experience results
-- [ ] Consumes playtest context only from canonical completed, gate-eligible, hash-valid staged playtest-result contracts
-- [ ] Uses bounded authorization and all-or-none publication for multi-file ingest
-- [ ] Never overwrites a prior protocol, receipt, run, or result
-- [ ] No director gates apply
+- **SOAK-STA-001**: Frontmatter contains only `name` and a non-empty `description`; name is `soak-test`.
+- **SOAK-STA-002**: Plan, start, ingest, finalize, and status have explicit non-overlapping grammars.
+- **SOAK-STA-003**: Plan requires an explicit target, duration, focus, workload profile, environment, candidate, and build receipt.
+- **SOAK-STA-004**: Candidate and build receipt identity, artifact hash, source, engine, platform, and configuration are cross-validated.
+- **SOAK-STA-005**: Protocol, run manifest, ingest manifest, finalize manifest, result, and completion receipt use versioned schemas.
+- **SOAK-STA-006**: The full checkpoint schedule has unique stable IDs, elapsed offsets, and actual scheduled timestamps.
+- **SOAK-STA-007**: Missing checkpoints are `NOT_COLLECTED`, never zero, carried forward, interpolated, or passed.
+- **SOAK-STA-008**: Crash, hang, heartbeat timeout, OOM risk, thermal, corruption, resource safety, and observer stops have trigger/evidence/action/classification contracts.
+- **SOAK-STA-009**: Existing protocols and results are immutable; extension requires a new ID and exact predecessor hash.
+- **SOAK-STA-010**: Only the configured engine and exact verified adapter/version are loaded.
+- **SOAK-STA-011**: QA, playtest, bug, and history context is consumed only by explicit path/hash and remains advisory unless authoritative.
+- **SOAK-STA-012**: Stability, Memory, Performance, Experience, Recovery, Readiness, Workflow Verdict, and handoff are independent.
+- **SOAK-STA-013**: Ingest creates an absent immutable receipt directory containing source, samples, and receipt.
+- **SOAK-STA-014**: Finalization freezes exact receipt and sample-set hashes and rejects concurrent evidence drift.
+- **SOAK-STA-015**: Smoke evidence cannot close an endurance regression; a matching endurance rerun is required.
+- **SOAK-STA-016**: Every metric has stable identity, value kind, source field, raw/canonical units, conversion provenance, aggregation, and uncertainty.
+- **SOAK-STA-017**: Thresholds come only from current project budgets or approved matching baselines.
+- **SOAK-STA-018**: Missing, stale, mismatched, or unit-incompatible thresholds yield INCONCLUSIVE, never an invented default.
+- **SOAK-STA-019**: Heartbeat, capture, run, output, graceful-stop, forced-stop, cleanup, and recovery budgets are explicit.
+- **SOAK-STA-020**: Partial, invalid, and unknown samples and execution controls cannot become technical PASS.
+- **SOAK-STA-021**: Publication requires target absence, authority rehash, same-filesystem staging, atomic publish, and read-back.
+- **SOAK-STA-022**: The canonical result and completion receipt carry exact evidence paths and SHA-256 values.
+- **SOAK-STA-023**: Handoff eligibility means verified consumable evidence, not readiness success.
+- **SOAK-STA-024**: A protocol or run registration is never executed evidence.
 
----
+## Protocol Assertions
 
-## Case 1: Saving a protocol is PLANNED, not executed
+- **SOAK-PRO-001**: Resolve literal project-relative paths and hash raw bytes before parsing.
+- **SOAK-PRO-002**: Reject duplicate keys, unsafe paths, globs, latest-file discovery, and identity conflicts.
+- **SOAK-PRO-003**: Never synthesize a runner command or use an unverified engine adapter.
+- **SOAK-PRO-004**: Never invent, smooth, interpolate, or silently convert sample values.
+- **SOAK-PRO-005**: Preserve complete pre-termination samples and classify all later checkpoints explicitly.
+- **SOAK-PRO-006**: Verify full process-tree cleanup and required recovery checkpoints.
+- **SOAK-PRO-007**: Never overwrite or mutate prior protocol, run, receipt, result, or shared history bytes.
+- **SOAK-PRO-008**: Treat subjective experience independently from objective technical dimensions.
+- **SOAK-PRO-009**: Reject finalization when receipt membership changes during CAS.
+- **SOAK-PRO-010**: Preserve observed dimension results if persistence fails, but force handoff NO.
+- **SOAK-PRO-011**: Downstream consumers receive exact result/completion paths and hashes and revalidate all members.
+- **SOAK-PRO-012**: Never invoke a smoke check, bug workflow, retest, or downstream gate automatically.
+- **SOAK-PRO-013**: Never treat a finalized artifact as an automatic release PASS.
+- **SOAK-PRO-014**: Never edit product, tests, candidate, build, profile, environment, metric, adapter, or shared catalog authorities.
 
-**Fixture:**
+## Test Cases
 
-- Every target/build/workload/environment and observer/adapter field is supplied
-- Matching project budgets and threshold policies exist
-- The requested bounded change authorizes the protocol path
+### Case 1 [SOAK-C01] — Explicit plan grammar and exact candidate/build manifests
 
-**Input:** `$soak-test plan combat-loop --protocol-id SOAK-PROTO-combat-v1 --build 0.9.0 --build-hash abc123 --commit def456 --duration 2h --interval 30m --focus all --profile combat-standard --environment pc-minspec --save-protocol`
+#### Fixture
 
-**Expected behavior:**
+A caller supplies target `combat-loop`, duration, focus, exact workload and environment manifests, a candidate manifest, and a successful matching build receipt. A second caller supplies the historical shorthand `$soak-test combat 2h`.
 
-1. The skill expands CP-000 through the exact 2h endpoint.
-2. It writes only `_protocols/SOAK-PROTO-combat-v1.md`.
-3. It returns `Status: PLANNED`, `Execution Status: NOT_STARTED`,
-   `Gate Eligible: NO`, and `Verdict: PROTOCOL_PLANNED`.
+#### Input
 
-**Assertions:**
+Parse both requests and validate every supplied authority hash.
 
-- [ ] No run directory, result, observed value, post-session analysis, completed sign-off, PASS/FAIL, EXECUTED, or COMPLETE is created
-- [ ] Protocol identity includes exact build, workload, environment, adapter, target, duration, and thresholds
-- [ ] Re-reading the protocol produces a SHA-256 receipt
+#### Expected reads
 
----
+Only the explicit candidate, build receipt, workload, environment, metric policy, adapter, and optional history authorities named by path and SHA-256.
 
-## Case 2: Missing target identity blocks executable protocol
+#### Expected writes
 
-**Variants:**
+None for the shorthand. For a valid authorized `plan --save`, only the new immutable protocol directory.
 
-- Missing build hash/source commit
-- Missing system/scene target
-- Missing workload steps/player count/seed policy
-- Missing platform/device/configuration
-- Missing observer or collection-tool identity
+#### Expected non-writes
 
-**Expected behavior:**
+No inferred target, generated build receipt, run root, result, shared authority edit, or live skill edit.
 
-- Each variant returns `BLOCKED`, names all missing identity fields, and writes no
-  protocol.
-- It never emits an executable, completed, or gate-capable status.
+#### Expected behavior
 
-**Assertions:**
+The exact plan request validates target, duration, focus, profile conditions, candidate/build identities, and all required flags. The shorthand and every missing or illegal argument are BLOCKED before a write.
 
-- [ ] Placeholders cannot bypass validation
-- [ ] No target is inferred from most-recent playtest or QA plan
-- [ ] No file is written
+#### Assertions
 
----
+SOAK-STA-002, SOAK-STA-003, SOAK-STA-004, SOAK-STA-005, SOAK-PRO-001, SOAK-PRO-002.
 
-## Case 3: Missing budget cannot produce a false PASS
+#### Case Verdict
 
-**Fixture:**
+PASS only if the exact request is accepted and the shorthand is rejected without writes.
 
-- Target/build/workload/environment identity is complete
-- A memory metric has no project budget and no approved matching baseline
-- The full run later supplies every checkpoint sample
+### Case 2 [SOAK-C02] — Early crash preserves evidence and applies the stop contract
 
-**Expected behavior:**
+#### Fixture
 
-- Protocol records `THRESHOLD_UNAVAILABLE`, `Threshold Readiness: INCOMPLETE`, and
-  `Gate Capable: NO`.
-- Finalized `Memory Result: INCONCLUSIVE`, `Readiness Result: INCONCLUSIVE`, and `Gate Eligible: NO`.
-- No engine-, platform-, series-shape, or device-class default is substituted.
+A run reaches three checkpoints, records a hash-bound crash event, then cannot reach later checkpoints. The protocol declares crash evidence, shutdown, cleanup, recovery, and classification rules.
 
-**Assertions:**
+#### Input
 
-- [ ] Missing threshold is never zero or a default
-- [ ] Complete sampling alone cannot create Memory PASS
-- [ ] Result explains the missing threshold source
+Ingest the crash receipt and finalize with termination `CRASH`.
 
----
+#### Expected reads
 
-## Case 4: Full hash-valid run becomes an EXECUTED completed result
+The exact run manifest, protocol, stop-trigger row, evidence receipts, sample ledgers, process-tree cleanup record, and recovery observations.
 
-**Fixture:**
+#### Expected writes
 
-- A valid PLANNED protocol and RUNNING manifest identify one build/profile/environment
-- Every expected checkpoint and baseline is present in immutable receipt/sample files
-- Observer, start/end, `SCHEDULE_COMPLETED`, adapter, thresholds, and confidence rules
-  verify
-- All required objective metric comparisons pass
-- The exact result write is authorized
+An immutable evidence receipt followed by an authorized result/report/completion receipt under the same run root.
 
-**Input:** `$soak-test finalize SOAK-RUN-combat-001 --ended-at 2026-07-22T12:00:00Z --termination SCHEDULE_COMPLETED`
+#### Expected non-writes
 
-**Expected behavior:**
+No discarded early samples, fabricated later values, resumed same-run schedule, technical PASS, or modified protocol.
 
-1. The skill re-hashes the protocol, manifest, receipts, raw files, and sample ledgers.
-2. It writes only `production/qa/soak-tests/SOAK-RUN-combat-001/result.md`.
-3. It re-reads the result before returning `Status: COMPLETED`,
-   `Execution Status: EXECUTED`, `Readiness Result: PASS`, `Gate Eligible: YES`, and
-   `Verdict: COMPLETE`.
+#### Expected behavior
 
-**Assertions:**
+Pre-crash samples remain traceable. Later checkpoints become `NOT_COLLECTED`; verified crash makes Execution FAILED_EARLY and Stability FAIL. Cleanup and recovery retain their independent classifications.
 
-- [ ] Completed header includes target/build/commit/workload/environment/observer/time/termination
-- [ ] Completion receipt includes protocol, manifest, receipt, raw-set, sample-set, and result hashes
-- [ ] COMPLETE is described as artifact finalization, not as an automatic release decision
+#### Assertions
 
----
+SOAK-STA-007, SOAK-STA-008, SOAK-STA-019, SOAK-PRO-005, SOAK-PRO-006.
 
-## Case 5: Verified crash preserves samples and returns FAILED_EARLY
+#### Case Verdict
 
-**Fixture:**
+A conclusive negative result may be finalized and handed off only when all evidence/provenance verifies; readiness remains FAIL.
 
-- A run records valid baseline and early checkpoints
-- A raw crash receipt ties a crash event to observer, build, environment, timestamp,
-  and source location
-- Later scheduled checkpoints were not reached
+### Case 3 [SOAK-C03] — History extension creates a new immutable protocol
 
-**Expected behavior:**
+#### Fixture
 
-- Existing samples remain immutable and referenced.
-- Later checkpoints are `NOT_COLLECTED` with `Termination Reason: CRASH`.
-- `Execution Status: FAILED_EARLY`, `Stability Result: FAIL`,
-  `Readiness Result: FAIL`.
-- A structurally complete result may be finalized; it never claims EXECUTED or PASS.
+A hash-valid history index maps target/profile/environment to `SOAK-PROTO-combat-v1`. A longer request names the predecessor path/hash and a new ID `SOAK-PROTO-combat-v2`.
 
-**Assertions:**
+#### Input
 
-- [ ] Early evidence is not discarded
-- [ ] Missing later samples are not zeros
-- [ ] Bug candidate includes run/sample/receipt/build/environment IDs
-- [ ] Smoke success cannot close this endurance failure
+Plan the extension with explicit history-index and supersedes fields.
 
----
+#### Expected reads
 
-## Case 6: Missing checkpoints without a verified failure are INCOMPLETE
+The exact history index, predecessor protocol, candidate/build/profile/environment authorities, and their hashes.
 
-**Fixture:**
+#### Expected writes
 
-- The operator stops before the end
-- No crash, hang, threshold, OOM, thermal, or data-corruption trigger verifies
-- Some checkpoint IDs have no samples
+Only the absent v2 protocol directory after authorization.
 
-**Expected behavior:**
+#### Expected non-writes
 
-- `Execution Status: INCOMPLETE` and `Gate Eligible: NO`
-- Missing checkpoints are `NOT_COLLECTED`
-- Required affected dimensions and readiness are `INCONCLUSIVE`
-- The skill does not infer values or classify the run PASS
+No v1 edit, result edit, in-place extension, history-index mutation, or timestamp-based selection.
 
-**Assertions:**
+#### Expected behavior
 
-- [ ] Termination reason and observer remain required
-- [ ] Every expected checkpoint has collected/not-collected status
-- [ ] Partial evidence is preserved with hashes
+The workflow verifies the predecessor key, records path/hash and changed fields in v2, and leaves every old byte untouched.
 
----
+#### Assertions
 
-## Case 7: Experience and technical results cannot overwrite each other
+SOAK-STA-009, SOAK-PRO-007.
 
-**Variants:**
+#### Case Verdict
 
-- A: Stability/memory/performance pass, but experience fatigue evidence fails
-- B: Experience passes, but memory threshold fails
-- C: Experience is not in scope
+PASS when v2 is a new immutable version and all protected predecessors remain byte-identical.
 
-**Expected behavior:**
+### Case 4 [SOAK-C04] — Unsupported engine adapter is blocked
 
-- A preserves technical PASS values and `Experience Result: FAIL`.
-- B preserves `Memory Result: FAIL` and does not promote readiness.
-- C uses `Experience Result: NOT_IN_SCOPE`.
-- Readiness follows only the named gate policy.
+#### Fixture
 
-**Assertions:**
+The candidate declares engine version 4.6.3 but the supplied adapter supports 4.5.x. Another adapter for an unrelated engine is locally available.
 
-- [ ] No aggregate sentence rewrites a dimension
-- [ ] Experience affects readiness only when explicitly required by policy
-- [ ] Technical PASS is not evidence of enjoyable long-session experience
+#### Input
 
----
+Validate the plan authorities.
 
-## Case 8: Historical extension creates a new immutable version
+#### Expected reads
 
-**Fixture:**
+The exact candidate and supplied adapter manifests only.
 
-- SOAK-PROTO-combat-v1 already exists for the same target/profile
-- The user requests a longer duration and names it with `--supersedes`
+#### Expected writes
 
-**Expected behavior:**
+None.
 
-- The skill creates SOAK-PROTO-combat-v2 with predecessor path/hash.
-- It never edits v1 or any result produced from v1.
-- History is selected by exact target/profile/build IDs, not mtime.
+#### Expected non-writes
 
-**Assertions:**
+No generic runner manifest, transplanted metric guidance, other-engine instructions, protocol, or evidence.
 
-- [ ] New protocol ID/path is required
-- [ ] Old bytes/hash remain unchanged
-- [ ] No date-only collision workaround is used
+#### Expected behavior
 
----
+The version mismatch yields `Adapter Status: NEEDS_CONFIRMATION`, gate capability NO, and Workflow Verdict BLOCKED. The unrelated adapter is ignored.
 
-## Case 9: Only canonical completed playtest evidence is accepted
+#### Assertions
 
-**Variants:**
+SOAK-STA-010, SOAK-PRO-003.
 
-- A: `production/playtests/PT-fatigue-001/report.md` is a hash-valid
-  `playtest-session-result`, `Status: COMPLETED`, `Gate Eligible: YES`
-- B: The candidate is a playtest protocol, IN_PROGRESS manifest, legacy report,
-  missing-hash report, or director review
+#### Case Verdict
 
-**Expected behavior:**
+BLOCKED with no executable protocol or handoff claim.
 
-- A may be cited as derived experience context and keeps its report/evidence hashes.
-- B is rejected and cannot supply completed experience evidence.
-- Neither replaces the soak raw sample/receipt/observer requirements.
+### Case 5 [SOAK-C05] — Explicit context hashes prevent unrelated issue import
 
-**Assertions:**
+#### Fixture
 
-- [ ] Consumption matches the staged playtest-report completed-result contract
-- [ ] Playtest observations and derived report remain distinct
-- [ ] No “most recent playtest” fallback exists
+The plan authority pins one QA plan and one prior soak result for the same target/build family. A newer but unrelated playtest report exists.
 
----
+#### Input
 
-## Case 10: Unverified engine adapter cannot create gate-capable metrics
+Resolve plan context.
 
-**Fixture:**
+#### Expected reads
 
-- The target uses an unknown engine version or lacks a matching collection adapter
+Only the pinned current QA plan and prior result by exact path/hash, plus required direct authorities.
 
-**Expected behavior:**
+#### Expected writes
 
-- Required metric guidance is `NEEDS_CONFIRMATION`.
-- The skill does not insert Godot, Unity, or Unreal instructions from another version.
-- No protocol is called executable or gate capable until adapter identity verifies.
+At most the authorized new protocol.
 
-**Assertions:**
+#### Expected non-writes
 
-- [ ] Only configured engine/version guidance is loaded
-- [ ] Adapter path/hash/version is required
-- [ ] No fixed engine heuristic appears
+No newest-file scan, unrelated playtest import, scope expansion, or threshold change from advisory prose.
 
----
+#### Expected behavior
 
-## Director Gate Checks
+Matching pinned context is labeled by authority role. The unrelated report is not read or imported. Advisory context cannot alter test scope, identities, or metric budgets.
 
-None. `$soak-test` is an evidence collection and finalization utility.
+#### Assertions
 
-## Protocol Compliance
+SOAK-STA-011, SOAK-PRO-001, SOAK-PRO-002.
 
-- [ ] Explicit bounded authorization covers all in-scope writes; otherwise one complete preview/approval precedes the first write
-- [ ] Protocol, run, receipt/raw/sample, and result artifacts never overwrite each other
-- [ ] Multi-file receipt ingest publishes all or none
-- [ ] Finalization revalidates all hashes and writes only the canonical result
-- [ ] Every mode returns exactly one mode-appropriate verdict
-- [ ] Downstream actions are candidates only and are never invoked automatically
+#### Case Verdict
 
-## Coverage Notes
+PASS when all context is exact, current, and correctly labeled; otherwise BLOCKED or advisory-only.
 
-These cases close the three P0 failures: protocol/result confusion, missing
-system/build/workload/environment identity, and unsupported fixed thresholds. They
-also cover required adjacent behavior: early termination, missing checkpoints,
-dimension separation, immutable history, engine adapter routing, and exact
-compatibility with the staged canonical playtest result/evidence layering.
+### Case 6 [SOAK-C06] — Technical and experience dimensions remain independent
+
+#### Fixture
+
+Variant A has Stability, Memory, and Performance PASS with conclusive fatigue Experience FAIL. Variant B has Experience PASS and Memory FAIL. Variant C excludes Experience.
+
+#### Input
+
+Calculate dimension and readiness results using the named gate policy.
+
+#### Expected reads
+
+Verified samples, exact metric policy, threshold sources, experience evidence, and gate-policy path/hash.
+
+#### Expected writes
+
+Only the authorized finalized result set.
+
+#### Expected non-writes
+
+No aggregate field that rewrites a dimension and no automatic release decision.
+
+#### Expected behavior
+
+A preserves objective PASS fields and Experience FAIL; B preserves Memory FAIL; C records Experience NOT_IN_SCOPE. Readiness follows only required policy dimensions.
+
+#### Assertions
+
+SOAK-STA-012, SOAK-PRO-008, SOAK-PRO-013.
+
+#### Case Verdict
+
+PASS when all independent fields remain unchanged and readiness is deterministically derived.
+
+### Case 7 [SOAK-C07] — Append-only ingest and immutable finalization
+
+#### Fixture
+
+Two absent receipt IDs supply complete checkpoint evidence. After preview, an actor modifies one source byte before ingest. In a second run, receipt membership changes during finalization.
+
+#### Input
+
+Attempt ingest, then attempt finalization against a frozen receipt-set hash.
+
+#### Expected reads
+
+Exact run, ingest, and finalize manifests; raw source bytes; receipt directories; authority hashes; and final-root absence.
+
+#### Expected writes
+
+Private staging only for conflicted attempts. A successful attempt writes one absent receipt directory or the three absent result members.
+
+#### Expected non-writes
+
+No overwrite, partial final directory, changed source capture, silently expanded receipt set, or prior evidence edit.
+
+#### Expected behavior
+
+Source drift fails ingest CAS. Receipt-set drift fails finalize CAS. Successful ingest copies source byte-for-byte and publishes source, samples, and receipt all-or-none.
+
+#### Assertions
+
+SOAK-STA-013, SOAK-STA-014, SOAK-STA-021, SOAK-PRO-007, SOAK-PRO-009.
+
+#### Case Verdict
+
+Conflict attempts are ERROR with handoff NO; only unchanged absent-target transactions pass.
+
+### Case 8 [SOAK-C08] — Endurance regression requires matching re-soak
+
+#### Fixture
+
+A prior exact result proves a memory regression. A code fix has a current smoke PASS but no new soak result.
+
+#### Input
+
+Evaluate retest and closure guidance.
+
+#### Expected reads
+
+The prior result/receipt hashes, fixed candidate/build identities, and smoke receipt only as labeled precondition context.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No closed endurance finding, copied PASS, automatic smoke invocation, or automatic retest run.
+
+#### Expected behavior
+
+The workflow requires a new protocol/run with the same target, workload, environment, metric policy, and duration, plus exact predecessor result hash. Smoke cannot close the regression.
+
+#### Assertions
+
+SOAK-STA-015, SOAK-PRO-012.
+
+#### Case Verdict
+
+INCONCLUSIVE for repair verification until a matching endurance rerun is finalized.
+
+### Case 9 [SOAK-C09] — Full checkpoint expansion and missed-sample semantics
+
+#### Fixture
+
+Duration is 65 minutes, interval is 20 minutes, warm-up is 5 minutes, and the run starts at a fixed RFC 3339 timestamp.
+
+#### Input
+
+Generate the protocol schedule and validate a corresponding run manifest.
+
+#### Expected reads
+
+Duration, interval, warm-up policy, Metric IDs, start time, monotonic origin, and canonicalization rules.
+
+#### Expected writes
+
+An authorized immutable protocol and later the exact run manifest.
+
+#### Expected non-writes
+
+No repeat-section placeholder, duplicate Checkpoint ID, inferred timestamp, omitted final checkpoint, or zero-valued missing sample.
+
+#### Expected behavior
+
+The schedule includes baseline, 20-, 40-, 60-, and exact 65-minute checkpoints with unique IDs, exact elapsed offsets, and start-derived scheduled timestamps. A missed 40-minute sample becomes `NOT_COLLECTED`.
+
+#### Assertions
+
+SOAK-STA-006, SOAK-STA-007.
+
+#### Case Verdict
+
+PASS only when schedule bytes and hash are deterministic and every expected checkpoint has one disposition.
+
+### Case 10 [SOAK-C10] — Resource units and baseline compatibility are fail-closed
+
+#### Fixture
+
+A memory metric arrives in MiB while the policy requires bytes and pins a conversion. Its baseline was collected on a different workload. A performance counter wraps once.
+
+#### Input
+
+Normalize samples and evaluate metric readiness.
+
+#### Expected reads
+
+Metric contracts, conversion ID/version, counter wrap rule, baseline path/hash/revision/applicability, and raw evidence.
+
+#### Expected writes
+
+Only immutable samples and an authorized result that preserves raw and canonical values.
+
+#### Expected non-writes
+
+No implicit MiB/MB conversion, transplanted baseline, invented threshold, smoothed counter, or PASS from incompatible units.
+
+#### Expected behavior
+
+The pinned conversion is applied and recorded. The mismatched baseline yields Threshold UNAVAILABLE and Memory INCONCLUSIVE. Counter wrap follows only its exact declared rule.
+
+#### Assertions
+
+SOAK-STA-016, SOAK-STA-017, SOAK-STA-018, SOAK-PRO-004.
+
+#### Case Verdict
+
+INCONCLUSIVE for any metric lacking compatible unit and threshold evidence.
+
+### Case 11 [SOAK-C11] — Heartbeat timeout, cleanup, and recovery remain explicit
+
+#### Fixture
+
+A harness misses its heartbeat deadline, graceful stop expires, forced stop removes most children, one child remains, and required recovery samples are absent.
+
+#### Input
+
+Ingest watchdog/cleanup evidence and finalize with `HEARTBEAT_TIMEOUT`.
+
+#### Expected reads
+
+Exact harness budgets, process-tree snapshot, stop attempts, output/flush state, recovery rules, and all checkpoint receipts.
+
+#### Expected writes
+
+An authorized result may preserve the partial evidence and exact control states.
+
+#### Expected non-writes
+
+No clean-cleanup claim, recovered claim, resume under the same run ID, technical PASS, or discarded pre-timeout evidence.
+
+#### Expected behavior
+
+Stop is classified from evidence; cleanup is DIRTY; recovery is UNKNOWN; execution is PARTIAL unless a verified objective trigger independently proves FAILED_EARLY; affected metrics/readiness are INCONCLUSIVE.
+
+#### Assertions
+
+SOAK-STA-008, SOAK-STA-019, SOAK-STA-020, SOAK-PRO-005, SOAK-PRO-006.
+
+#### Case Verdict
+
+INCONCLUSIVE with handoff NO unless a separate fully verified negative-evidence policy is satisfied.
+
+### Case 12 [SOAK-C12] — Partial, invalid, and unknown samples cannot pass
+
+#### Fixture
+
+One sample is truncated, one has an unknown unit, one lacks observer identity, and two checkpoints have no records.
+
+#### Input
+
+Ingest and finalize the bounded evidence set.
+
+#### Expected reads
+
+Raw source bytes, parser contract, unit policy, observer/harness identity, expected checkpoint schedule, and receipt hashes.
+
+#### Expected writes
+
+Immutable bounded evidence and an authorized result marking each row and checkpoint explicitly.
+
+#### Expected non-writes
+
+No interpolation, zero fill, carry-forward, hidden row deletion, or technical PASS.
+
+#### Expected behavior
+
+Rows become PARTIAL, INVALID, or UNKNOWN; missing checkpoints become NOT_COLLECTED; Evidence is PARTIAL or INVALID; execution/readiness are PARTIAL or INCONCLUSIVE and handoff is NO.
+
+#### Assertions
+
+SOAK-STA-007, SOAK-STA-020, SOAK-PRO-004, SOAK-PRO-005.
+
+#### Case Verdict
+
+INCONCLUSIVE or ERROR, never PASS.
+
+### Case 13 [SOAK-C13] — CAS persistence and exact handoff semantics
+
+#### Fixture
+
+A complete conclusive negative stability result is rendered. The first attempt has an absent target; the second attempt encounters an existing result path.
+
+#### Input
+
+Publish the result set and construct downstream handoff.
+
+#### Expected reads
+
+Every frozen authority/evidence byte, target absence, rendered schemas, internal member hashes, and read-back bytes.
+
+#### Expected writes
+
+For the first attempt, exactly result.json, report.md, and completion-receipt.json. For the second, no final write.
+
+#### Expected non-writes
+
+No overwrite, partial publication, mutable latest pointer, summary-only handoff, or readiness PASS implied by handoff eligibility.
+
+#### Expected behavior
+
+The first attempt CAS-publishes and read-back verifies the negative result; it may be handoff eligible while Readiness remains FAIL. The collision returns Persistence CONFLICT and handoff NO.
+
+#### Assertions
+
+SOAK-STA-021, SOAK-STA-022, SOAK-STA-023, SOAK-PRO-010, SOAK-PRO-011, SOAK-PRO-013.
+
+#### Case Verdict
+
+PASS only for verified immutable publication and exact path/hash handoff; collision is ERROR without overwrite.
+
+### Case 14 [SOAK-C14] — Complete scheduled run happy path
+
+#### Fixture
+
+All exact authorities are current; the configured adapter matches; all thresholds/baselines and units validate; every scheduled checkpoint is collected; no stop trigger fires; cleanup/recovery requirements are satisfied or validly not required.
+
+#### Input
+
+Plan, register, ingest the frozen evidence set, finalize, and verify as a downstream consumer.
+
+#### Expected reads
+
+Exact candidate/build/profile/environment/metric/adapter/protocol/run/ingest/finalize manifests and every evidence member by path/hash.
+
+#### Expected writes
+
+One immutable protocol directory, one immutable run manifest, absent receipt directories, and one atomically published result/report/completion set.
+
+#### Expected non-writes
+
+No source authority edit, old artifact overwrite, legacy evidence, undeclared runner, newest-file lookup, or automatic downstream action.
+
+#### Expected behavior
+
+The workflow expands deterministic checkpoints, preserves unit-safe samples, freezes receipt membership, derives EXECUTED and VERIFIED, computes each independent dimension and Readiness PASS, CAS-publishes, reads back, and returns exact result/completion paths and hashes with handoff YES.
+
+#### Assertions
+
+SOAK-STA-001 through SOAK-STA-024; SOAK-PRO-001 through SOAK-PRO-014.
+
+#### Case Verdict
+
+PASS only when all bindings, evidence, dimension policies, persistence checks, and downstream rehash verification succeed.
+
+## P1 Remediation Trace
+
+```yaml
+schema: cgs-p1-remediation-trace/v1
+entries:
+  - audit_id: SOAK-004
+    skill_clause_ids: [SOAK-CL-004]
+    spec_case_ids: [SOAK-C01]
+    assertion_ids: [SOAK-STA-002, SOAK-STA-003, SOAK-STA-004, SOAK-STA-005, SOAK-PRO-001, SOAK-PRO-002]
+  - audit_id: SOAK-005
+    skill_clause_ids: [SOAK-CL-005]
+    spec_case_ids: [SOAK-C02, SOAK-C11]
+    assertion_ids: [SOAK-STA-008, SOAK-STA-019, SOAK-STA-020, SOAK-PRO-005, SOAK-PRO-006]
+  - audit_id: SOAK-006
+    skill_clause_ids: [SOAK-CL-006]
+    spec_case_ids: [SOAK-C03]
+    assertion_ids: [SOAK-STA-009, SOAK-PRO-007]
+  - audit_id: SOAK-007
+    skill_clause_ids: [SOAK-CL-007]
+    spec_case_ids: [SOAK-C04]
+    assertion_ids: [SOAK-STA-010, SOAK-PRO-003]
+  - audit_id: SOAK-008
+    skill_clause_ids: [SOAK-CL-008]
+    spec_case_ids: [SOAK-C05]
+    assertion_ids: [SOAK-STA-011, SOAK-PRO-001, SOAK-PRO-002]
+  - audit_id: SOAK-009
+    skill_clause_ids: [SOAK-CL-009]
+    spec_case_ids: [SOAK-C06]
+    assertion_ids: [SOAK-STA-012, SOAK-PRO-008, SOAK-PRO-013]
+  - audit_id: SOAK-010
+    skill_clause_ids: [SOAK-CL-010A, SOAK-CL-010B]
+    spec_case_ids: [SOAK-C07, SOAK-C13]
+    assertion_ids: [SOAK-STA-013, SOAK-STA-014, SOAK-STA-021, SOAK-STA-022, SOAK-PRO-007, SOAK-PRO-009, SOAK-PRO-010]
+  - audit_id: SOAK-011
+    skill_clause_ids: [SOAK-CL-011]
+    spec_case_ids: [SOAK-C08]
+    assertion_ids: [SOAK-STA-015, SOAK-PRO-012]
+  - audit_id: SOAK-012
+    skill_clause_ids: [SOAK-CL-012]
+    spec_case_ids: [SOAK-C09]
+    assertion_ids: [SOAK-STA-006, SOAK-STA-007]
+```
+
+Every P1 ID has an explicit clause/case/assertion join; a prose range is not a
+traceability substitute. This written spec does not claim execution. Runtime
+claims still require current immutable receipts bound to the exact candidate.

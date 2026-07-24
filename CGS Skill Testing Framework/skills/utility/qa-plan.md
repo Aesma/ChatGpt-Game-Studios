@@ -1,318 +1,814 @@
-# Skill Test Spec: $qa-plan
+# Skill Test Spec: qa-plan
+
+> **Spec ID**: qa-plan-v2
+> **Spec Schema**: cgs-skill-spec/v2
+> **Category**: utility
+> **Priority**: high
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$qa-plan` reads a bounded sprint, feature, or story scope and writes one
-independent QA plan. The plan binds every story, GDD, and ADR to a SHA-256 of its
-exact raw bytes, maps story-owned stable AC IDs to stable test/check IDs, and
-declares `CURRENT` or `PARTIAL` at generation. Consumers compute `STALE` by
-rehashing sources. The skill never edits story files or session state.
+qa-plan consumes one cgs-qa-plan-scope/v1 manifest and creates one immutable
+cgs-qa-plan/v2 at production/qa/plans using its stable plan ID. Scope is resolved
+only from stable sprint, feature or story authority IDs and exact paths/hashes.
+No newest-file, title substring, path substring, mtime or legacy positional
+selection is allowed.
 
-The only owned write is
-`production/qa/qa-plan-[scope-slug]-[date].md`. A result may say `written` only
-after byte-for-byte read-back verification.
+The plan binds exact scope, story, GDD, ADR, control, raw requirement-span,
+candidate/build, Test ID ownership, dependency and available evidence hashes. It
+maps every AC to one coverage item and one or more method-specific Test IDs,
+observable/risk tags, dependencies, evidence levels and gaps. Partial, stale or
+unknown state is explicit and never complete gate input. The plan itself always
+declares Gate Evidence: NO.
 
----
-
-## Static Assertions (Structural)
-
-- [ ] Playtest requirements name only canonical completed reports at
-      `production/playtests/<session-id>/report.md`; templates, raw logs,
-      reviews, incomplete sessions, legacy paths, and hash-invalid reports do
-      not satisfy evidence.
-
-Verified automatically by `$skill-test static`; no fixture is required.
-
-- [ ] YAML frontmatter contains only `name` and a non-empty `description`; the
-  name matches the skill directory.
-- [ ] At least two phase headings are present.
-- [ ] The owned-output section names exactly the QA plan artifact family.
-- [ ] The skill explicitly forbids story, session-state, checkpoint, and
-  unlisted writes.
-- [ ] The skill requires full raw-byte SHA-256 provenance for every story, GDD,
-  and ADR.
-- [ ] The skill defines `CURRENT`, `PARTIAL`, and effective `STALE` behavior.
-- [ ] Stable AC, automated test, manual check, and config/smoke-check ID formats
-  are defined.
-- [ ] Result vocabulary includes `written`, `declined`, and `failed`, and
-  `written` is conditioned on read-back verification.
-- [ ] Verdict keywords `COMPLETE`, `PARTIAL`, and `BLOCKED` are present.
+The only owned write is the immutable QA plan. Stories, requirements, build and
+test evidence, ID-ownership snapshots, session state, workflow catalog and all
+other files remain non-writes.
 
 ---
 
-## Case 1: Approved plan write changes only the owned artifact
+## Static Assertions
 
-### Fixture
-
-- `production/epics/combat/story-001-damage.md` contains stable AC IDs
-  `AC-S001-01`, `AC-S001-02`, and `AC-S001-03`.
-- The story references `design/gdd/combat.md` and
-  `docs/architecture/adr-0001-damage.md`; both exist.
-- `production/session-state/active.md` exists with known fixture bytes.
-- Record exact pre-run bytes and SHA-256 for the story, session-state, GDD, ADR,
-  and every other file outside `production/qa/`.
-- The target QA plan does not exist.
-
-### Input
-
-`$qa-plan story: production/epics/combat/story-001-damage.md`
-
-The user approves the displayed one-file changeset.
-
-### Expected writes
-
-- Create exactly
-  `production/qa/qa-plan-story-001-damage-[date].md` with the approved bytes.
-
-### Expected non-writes
-
-- The story file remains byte-for-byte unchanged.
-- `production/session-state/active.md` remains byte-for-byte unchanged.
-- GDD, ADR, sprint, registry, and architecture files remain byte-for-byte
-  unchanged.
-- No checkpoint or unlisted artifact is created.
-
-### Expected behavior and verdict
-
-1. The preview lists exactly the plan file and the explicit non-writes.
-2. The skill re-hashes required inputs immediately before writing.
-3. The plan is read back and verified after writing.
-4. The result ledger lists one `write-qa-plan` operation as `written` with the
-   verified plan SHA-256.
-5. Verdict is `COMPLETE` when the plan is `CURRENT`.
-
-### Assertions
-
-- [ ] Filesystem diff contains exactly the QA plan file.
-- [ ] No story QA section is added or replaced.
-- [ ] No session-state marker is appended.
-- [ ] The reported plan digest equals the digest of written raw bytes.
-- [ ] The response does not claim any non-written artifact was updated or
-  checkpointed.
+- [ ] **[QP-SA-001]** Frontmatter has exactly non-empty name and description and
+  name is qa-plan.
+- [ ] **[QP-SA-002]** cgs-qa-plan-workflow-contract/v1 declares v1 scope input,
+  v2 immutable output, ownership snapshot, states, hashes and non-writes.
+- [ ] **[QP-SA-003]** Only the exact scope-manifest invocation is accepted; all
+  positional, bracketed and legacy epic-slug forms fail before writes.
+- [ ] **[QP-SA-004]** Scope uses stable manifest IDs and exact paths/hashes, never
+  newest, mtime, title, substring or unbounded glob selection.
+- [ ] **[QP-SA-005]** Every expected missing, unreadable, invalid, omitted and
+  unprocessed story remains in the ledger and makes coverage partial.
+- [ ] **[QP-SA-006]** Hard budgets cover stories, files, bytes, requirement
+  spans, dependency edges, plan items, output bytes and wall time.
+- [ ] **[QP-SA-007]** Story declared type is preserved and contradictions produce
+  QP-TYPE-MISMATCH without story mutation.
+- [ ] **[QP-SA-008]** Every AC may have multiple observable/risk tags and methods;
+  no single primary classification exists.
+- [ ] **[QP-SA-009]** Test methods derive from observable, risk, confidence,
+  feasible automation, dependency and build evidence rather than story type.
+- [ ] **[QP-SA-010]** Visual and configuration ACs may require automation,
+  integration, benchmark, capture or manual evidence according to observables.
+- [ ] **[QP-SA-011]** Playtest items use only completed
+  canonical `cgs.playtest-report/v2` reports plus independent current
+  `cgs.playtest-report-recorder-receipt/v1` under production/playtests.
+- [ ] **[QP-SA-012]** Approval exposes every candidate byte through a full
+  artifact/diff and hash-bound lossless chunks; summary-only approval is invalid.
+- [ ] **[QP-SA-013]** Every story, GDD, ADR, control and scope authority carries
+  exact raw-file SHA-256.
+- [ ] **[QP-SA-014]** Every requirement binding carries owner, file hash, exact
+  raw byte span, span hash and parser/tool identity.
+- [ ] **[QP-SA-015]** Build binding is BOUND, PRE_IMPLEMENTATION or
+  REQUIRED_MISSING with exact identity and fail-closed effects.
+- [ ] **[QP-SA-016]** Test ID ownership prevents duplicate owners, cross-AC
+  mapping, reuse of tombstones and concurrent snapshot drift.
+- [ ] **[QP-SA-017]** Dependency and coverage matrices preserve missing
+  endpoints, unknown owners, cycles, evidence levels and gaps.
+- [ ] **[QP-SA-018]** Evidence levels never promote through missing, partial,
+  stale, unsupported or unreadable receipts.
+- [ ] **[QP-SA-019]** Plan IDs are immutable; publication requires target absent
+  or identical and uses exclusive compare-and-set plus read-back.
+- [ ] **[QP-SA-020]** qa-plan never writes stories, session state, requirements,
+  evidence, ownership registry, workflow catalog or checkpoints.
 
 ---
 
-## Case 2: Legacy story-backfill-only request produces no false success
+## Test Cases
 
-### Fixture
+### Case 1 [QP-C01]: Stable scope manifest replaces latest and substring selection
 
-- One valid story with a `## QA Test Cases` section and known fixture bytes.
-- No QA plan target exists.
-- `production/session-state/active.md` is absent.
+#### Fixture
 
-### Input
+- Several sprint files have different mtimes.
+- Two features share similar title text and story paths.
+- One cgs-qa-plan-scope/v1 names stable plan/scope IDs, exact active sprint or
+  feature authority path/hash and ordered stable story path/hash rows.
 
-The user asks `$qa-plan` to perform only the legacy action “back-fill the story
-QA section” and does not approve a QA plan write.
+#### Input
 
-### Expected writes
+- Invoke with the exact scope-manifest path.
+
+#### Expected reads
+
+- Scope manifest, its one exact authority and only its declared story closures.
+
+#### Expected writes
+
+- At most the exact immutable plan path after full validation and authorization.
+
+#### Expected non-writes
+
+- Other sprint/feature/story files, status files, catalogs and session state.
+
+#### Expected behavior
+
+- Scope membership is resolved from stable IDs and exact declared paths/hashes.
+- Mtime, newest file, title/path substring and unbounded glob results are ignored.
+- Scope source and story membership disagreement is invalid.
+- Canonical duplicate IDs/paths are rejected.
+
+#### Assertions
+
+- [ ] Reordering directory entries does not change scope.
+- [ ] Similar feature names do not add stories.
+- [ ] The exact scope authority hash is recorded.
+- [ ] No undeclared story is read for planning.
+
+#### Case Verdict
+
+PASS when selection is invariant and exactly manifest-bound; any inferred scope
+is FAIL.
+
+---
+
+### Case 2 [QP-C02]: Missing story remains explicit PARTIAL and UNKNOWN
+
+#### Fixture
+
+- Scope manifest declares three stable story rows.
+- One story loads, one is missing and one is unreadable.
+- Requirement authorities for the loaded story are valid.
+
+#### Input
+
+- Generate a planning candidate and authorize saving the partial artifact.
+
+#### Expected reads
+
+- Every declared path attempted within budget and the loaded story closure.
+
+#### Expected writes
+
+- One immutable partial plan only when explicitly authorized.
+
+#### Expected non-writes
+
+- Missing placeholders, synthetic story files, guessed hashes, Test ID registry
+  and downstream gate state.
+
+#### Expected behavior
+
+- Missing and unreadable stories remain source and scope-ledger rows with exact
+  statuses and reason IDs.
+- Scope Coverage and Plan State are PARTIAL; Effective State is UNKNOWN.
+- No digest, AC, requirement span or Test ID is invented.
+- Result never describes the plan as complete downstream planning or gate input.
+
+#### Assertions
+
+- [ ] All three declared story IDs reconcile in the ledger.
+- [ ] Missing paths have no fabricated hash.
+- [ ] Verdict is PARTIAL after a verified write.
+- [ ] Gate Evidence remains NO.
+
+#### Case Verdict
+
+PASS for a transparent partial artifact and fail-closed result; COMPLETE is FAIL.
+
+---
+
+### Case 3 [QP-C03]: Planning budgets produce deterministic omitted coverage
+
+#### Fixture
+
+- Scope exceeds maximum stories, authority files, input bytes and dependency
+  edges in different variants.
+- Stories have stable IDs and complete closure-size metadata.
+- Manifest budgets are equal to or below hard workflow maxima.
+
+#### Input
+
+- Generate repeatedly from identical bytes and budgets.
+
+#### Expected reads
+
+- Scope header and story closure metadata first, then only whole admitted closures
+  sorted by stable story ID and canonical path.
+
+#### Expected writes
+
+- At most one explicitly authorized partial plan with a complete budget ledger.
+
+#### Expected non-writes
+
+- Omitted/unprocessed sources and any truncated partial story closure.
+
+#### Expected behavior
+
+- Budgets cover stories, authorities, files, input bytes, requirement spans,
+  dependency edges, plan items, output bytes and wall time.
+- Selected, loaded, missing, unreadable, invalid, omitted and unprocessed rows
+  record consumed counts and reason IDs.
+- Budget exhaustion omits every remaining whole closure in deterministic order.
+- No scan occurs outside the manifest.
+
+#### Assertions
+
+- [ ] Same inputs produce the same ledger and candidate hash.
+- [ ] Counts reconcile to every declared story and authority.
+- [ ] No half-loaded closure becomes current.
+- [ ] Scope Coverage is PARTIAL after any omission.
+
+#### Case Verdict
+
+PASS when bounded selection and omissions are reproducible and complete;
+otherwise FAIL.
+
+---
+
+### Case 4 [QP-C04]: Declared story type mismatch is reported, not rewritten
+
+#### Fixture
+
+- A story declares Visual/Feel.
+- One AC has an exact deterministic formula observable and boundary requirements.
+- Another AC genuinely requires subjective feel evaluation.
+- All requirement bindings have exact source spans and hashes.
+
+#### Input
+
+- Classify the story ACs.
+
+#### Expected reads
+
+- Story declared type and all AC/GDD/ADR requirement bindings.
+
+#### Expected writes
+
+- QA plan candidate only.
+
+#### Expected non-writes
+
+- Story Type field, story AC text, GDD and ADR.
+
+#### Expected behavior
+
+- Preserve Declared Type Visual/Feel.
+- Derive state/formula and boundary/error tags for the deterministic AC and
+  feel/judgment for the subjective AC.
+- Emit QP-TYPE-MISMATCH for contradictory observables with source evidence and
+  owner.
+- Plan supported methods without silently replacing the declared type.
+
+#### Assertions
+
+- [ ] Story bytes remain unchanged.
+- [ ] Finding records declared type, derived tags and source bindings.
+- [ ] Deterministic AC receives automation candidates.
+- [ ] Subjective AC retains reproducible playtest requirements.
+
+#### Case Verdict
+
+PASS for preserved declaration plus explicit evidence-backed mismatch; silent
+acceptance or mutation is FAIL.
+
+---
+
+### Case 5 [QP-C05]: Mixed ACs retain all labels and methods without a primary
+
+#### Fixture
+
+- One AC combines persistence round-trip, UI interaction, visual state and error
+  recovery.
+- Risk and dependency sources are complete.
+- Automation is feasible for interaction/state while final visual judgment needs
+  named manual evidence.
+
+#### Input
+
+- Build coverage rows and Test IDs.
+
+#### Expected reads
+
+- AC requirement bindings, dependencies, build state and ownership snapshot.
+
+#### Expected writes
+
+- Candidate coverage and Test ID rows within the plan only.
+
+#### Expected non-writes
+
+- Story, ownership snapshot, test sources and evidence artifacts.
+
+#### Expected behavior
+
+- The AC carries cross-system/persistence, UI interaction, visual/rendering and
+  recovery tags.
+- It gets all justified automated and manual methods with distinct stable Test
+  IDs and one Coverage Item ID.
+- No field names or selects a single primary type or method.
+- Coverage gaps remain visible if any observable lacks a feasible method.
+
+#### Assertions
+
+- [ ] Secondary coverage is not dropped.
+- [ ] Method-specific Test IDs have one AC and owner status.
+- [ ] Manual evidence does not erase automation.
+- [ ] No risk-score tie breaker selects a primary.
+
+#### Case Verdict
+
+PASS for complete multi-label coverage; any forced primary or dropped method is
+FAIL.
+
+---
+
+### Case 6 [QP-C06]: Observable and risk determine method, not story type
+
+#### Fixture
+
+- Variant A is Visual but exposes deterministic render pixels.
+- Variant B is Config/Data but controls a cross-system runtime behavior.
+- Variant C is UI with automatable accessibility semantics and irreducible
+  aesthetic review.
+- Variant D has performance and recovery thresholds.
+
+#### Input
+
+- Classify methods for every AC.
+
+#### Expected reads
+
+- Exact requirement observables, thresholds, dependencies, platform/build needs
+  and feasible automation constraints.
+
+#### Expected writes
+
+- Plan matrix only.
+
+#### Expected non-writes
+
+- Tests, captures, benchmark results, playtest reports and requirements.
+
+#### Expected behavior
+
+- A gets deterministic capture/diff or benchmark automation.
+- B gets schema validation plus observable integration or smoke execution.
+- C gets interaction/accessibility automation plus manual evidence only for the
+  remaining aesthetic observable.
+- D gets benchmark, failure-injection and recovery methods tied to thresholds.
+- Story type remains a hint, not a decision rule.
+
+#### Assertions
+
+- [ ] Visual is not automatically manual-only.
+- [ ] Config/Data is not reduced to spot-check.
+- [ ] Every method cites observable/risk bindings.
+- [ ] Unsupported method evidence becomes a gap, not an invention.
+
+#### Case Verdict
+
+PASS when methods follow evidence and feasibility; type-only classification is
+FAIL.
+
+---
+
+### Case 7 [QP-C07]: Playtest evidence uses one completed-result contract
+
+#### Fixture
+
+- Plan item requires feel/judgment evidence.
+- Candidate paths include a protocol, raw log, ingest-only session, director
+  review, legacy session-log and canonical completed report.
+- Completed report variants differ in schema, status, build/source hash,
+  completed-result hash or sign-off.
+
+#### Input
+
+- Define expected evidence path/schema and classify supplied evidence level.
+
+#### Expected reads
+
+- Canonical playtest result and every declared dependency when evidence exists.
+
+#### Expected writes
+
+- Expected evidence contract in the plan only.
+
+#### Expected non-writes
+
+- Playtest protocol, session, report, review and legacy evidence paths.
+
+#### Expected behavior
+
+- Expected route is production/playtests under one session ID and report.md.
+- Only the exact canonical `cgs.playtest-report/v2` report and matching independent
+  `cgs.playtest-report-recorder-receipt/v1`, with session status COMPLETED and every
+  report/candidate-record/recorder/dependency identity verified, may produce the
+  `RECORDED COMPLETED — GATE ELIGIBLE` verification needed to promote evidence.
+- Protocols, templates, raw logs, reviews, ingest-only and legacy paths do not
+  satisfy a completed session.
+- Partial/unreadable evidence yields Evidence Level UNKNOWN.
+
+#### Assertions
+
+- [ ] production/session-logs is never generated.
+- [ ] Path alone does not establish completion.
+- [ ] Build/source mismatch prevents promotion.
+- [ ] qa-plan never writes the playtest artifact.
+
+#### Case Verdict
+
+PASS for exact canonical routing and fail-closed evidence classification;
+otherwise FAIL.
+
+---
+
+### Case 8 [QP-C08]: Approval covers every candidate byte, not a summary
+
+#### Fixture
+
+- A large plan exceeds one UI page.
+- Candidate bytes, total length and full SHA-256 are known.
+- One preview variant shows only summary plus selected sections.
+- Another provides ordered lossless chunks with byte ranges and individual hashes
+  whose concatenation equals the candidate hash.
+
+#### Input
+
+- Request authorization for the one-file plan changeset.
+
+#### Expected reads
+
+- Candidate bytes and preview/chunk manifest.
+
+#### Expected writes
+
+- None until every byte is inspectable and the exact hash is approved.
+- After valid approval, only the plan may be written.
+
+#### Expected non-writes
+
+- Any artifact approved from truncated, collapsed, ellipsis or summary-only
+  content.
+
+#### Expected behavior
+
+- Full direct artifact is valid.
+- Pagination is valid only when every ordered byte range and chunk hash
+  reconciles to total bytes and candidate hash.
+- Summary, sampled matrix, collapsed middle and changed-section-only previews are
+  insufficient.
+- Approval binds exact output path, operation and candidate hash.
+
+#### Assertions
+
+- [ ] No omitted content hides a coverage or dependency row.
+- [ ] Concatenated chunks reproduce exact candidate bytes.
+- [ ] Candidate change after approval invalidates authorization.
+- [ ] Preview includes explicit non-writes.
+
+#### Case Verdict
+
+PASS when only full hash-bound content authorizes the write; summary approval is
+FAIL.
+
+---
+
+### Case 9 [QP-C09]: Legacy catalog and positional invocations fail before writes
+
+#### Fixture
+
+- Invocation variants include a bare epic slug, bracketed epic placeholder,
+  sprint positional token, feature text, story path text, no argument, unknown
+  flag and one exact scope-manifest flag.
+- Catalog remains a protected non-write.
+
+#### Input
+
+- Parse each invocation variant.
+
+#### Expected reads
+
+- For invalid variants, no project discovery is required.
+- For the valid variant, only the literal scope manifest begins validation.
+
+#### Expected writes
+
+- None during invocation validation.
+
+#### Expected non-writes
+
+- Workflow catalog, stories, plans and session state.
+
+#### Expected behavior
+
+- All legacy/positional/bracketed/missing/unknown variants fail with the supported
+  invocation and catalog-owner migration handoff.
+- No epic slug is reinterpreted as feature search.
+- Only the exact scope-manifest form proceeds.
+
+#### Assertions
+
+- [ ] Invalid call fails before scope discovery and preview.
+- [ ] Catalog is never patched by qa-plan.
+- [ ] No newest or title-match fallback occurs.
+- [ ] Error does not claim a plan was generated.
+
+#### Case Verdict
+
+PASS when the invocation schema is exact and fail-closed; otherwise FAIL.
+
+---
+
+### Case 10 [QP-C10]: Registered specification has executable structural boundaries
+
+#### Fixture
+
+- The registered qa-plan specification is parsed as cgs-skill-spec/v2.
+- A negative copy removes one required case section or creates a case-number gap.
+- Another negative copy duplicates a static or protocol ID.
+
+#### Input
+
+- Run spec preflight against each fixture.
+
+#### Expected reads
+
+- Exact registered spec bytes.
+
+#### Expected writes
 
 - None.
 
-### Expected non-writes
+#### Expected non-writes
 
-- The story is byte-for-byte unchanged.
-- No QA plan is created.
-- No session-state or checkpoint file is created.
+- Spec, skill, metadata and catalog.
 
-### Expected behavior and verdict
+#### Expected behavior
 
-1. The skill explains that story merging belongs to the story owner.
-2. No backfill option is added to the proposed changeset.
-3. The operation ledger does not contain a `written` result.
-4. The response does not say “QA plan written,” created, registered, or
-   checkpointed.
-5. Verdict is `BLOCKED` because no valid owned operation was selected.
+- Valid spec has stable header, contiguous numbered cases and unique IDs.
+- Every case contains Fixture, Input, Expected reads, Expected writes, Expected
+  non-writes, Expected behavior, Assertions and Case Verdict.
+- Missing section, number gap or duplicate stable ID makes the spec invalid.
+- Structural validity is not reported as behavioral execution.
 
-### Assertions
+#### Assertions
 
-- [ ] Entire fixture tree is byte-for-byte unchanged.
-- [ ] No output path is synthesized for an unselected branch.
-- [ ] No plan success or checkpoint success is reported.
+- [ ] Cases are independently runnable from explicit fixtures.
+- [ ] Side effects and non-writes are testable.
+- [ ] Verdict conditions are explicit.
+- [ ] No catalog result is fabricated.
 
----
+#### Case Verdict
 
-## Case 3: Manifest binds raw-byte hashes and stable IDs
-
-### Fixture
-
-- Epic slug `combat`, story number `001`, and story AC IDs `AC-S001-01` and
-  `AC-S001-02`.
-- The story type is `Logic` and references one GDD and two ADRs.
-- All required inputs exist and are readable.
-- Precompute SHA-256 from each file's exact raw bytes.
-
-### Input
-
-`$qa-plan story: production/epics/combat/story-001-damage.md`
-
-The user approves the plan write.
-
-### Expected writes
-
-- One QA plan file.
-
-### Expected non-writes
-
-- All source files and session state remain unchanged.
-
-### Expected behavior and verdict
-
-1. The manifest lists the story, GDD, and both ADR paths individually.
-2. Every loaded source record contains the expected lowercase
-   `sha256:<64-hex>` digest.
-3. The story binding lists `AC-S001-01` and `AC-S001-02`.
-4. Plan items use `TC-combat-S001-AC01` and `TC-combat-S001-AC02`.
-5. No ID is derived from mutable criterion text or list order.
-6. Plan state and verdict are `CURRENT` / `COMPLETE`.
-
-### Assertions
-
-- [ ] Every expected story/GDD/ADR digest matches raw fixture bytes.
-- [ ] Every stable AC ID maps to exactly one unique stable test ID.
-- [ ] Reordering AC text without changing IDs preserves test IDs when the plan
-  is regenerated.
-- [ ] The plan does not write IDs back into the story.
+PASS when valid and negative structures classify exactly; otherwise FAIL.
 
 ---
 
-## Case 4: Source mutation makes the plan effectively STALE
+### Case 11 [QP-C11]: Story, build and requirement bytes bind evidence levels
 
-### Fixture
+#### Fixture
 
-- Start with the verified `CURRENT` plan from Case 3.
-- Change one byte in `docs/architecture/adr-0001-damage.md` after plan creation.
+- Story/GDD/ADR/control files and exact AC/requirement spans are readable.
+- Variant A binds a current candidate manifest and build artifact.
+- Variant B is explicitly PRE_IMPLEMENTATION.
+- Variant C requires a build but it is missing.
+- Evidence variants include current and stale test source/discovery/execution
+  receipts.
 
-### Input
+#### Input
 
-Attempt to reuse the plan as downstream gate evidence.
+- Generate source, build, requirement and evidence rows.
 
-### Expected writes
+#### Expected reads
 
-- None.
+- Exact raw source files, parser/tool identity, build candidate/artifact or
+  trusted receipt and all evidence dependencies.
 
-### Expected non-writes
+#### Expected writes
 
-- The QA plan and all sources remain unchanged during validation.
+- Plan rows only.
 
-### Expected behavior and verdict
+#### Expected non-writes
 
-1. The consumer re-hashes every captured source before use.
-2. The ADR digest mismatch makes effective state `STALE`, regardless of the
-   stored generation label.
-3. The plan is rejected as gate evidence and regeneration is required.
+- Sources, builds, test implementation and evidence.
 
-### Assertions
+#### Expected behavior
 
-- [ ] Staleness is detected from bytes, not timestamps or copied text.
-- [ ] No automatic story or plan mutation is used to represent `STALE`.
-- [ ] Stable AC/test IDs remain available for regeneration but do not bypass
-  staleness.
+- Each requirement row records binding ID, owner, file hash, exact byte span and
+  span hash.
+- BOUND records candidate/build/artifact/source commit/platform/configuration.
+- PRE_IMPLEMENTATION keeps items PLANNED and Gate Evidence NO.
+- REQUIRED_MISSING makes plan PARTIAL and Effective State UNKNOWN.
+- Evidence promotes only through IMPLEMENTED, DISCOVERED, EXECUTED and VERIFIED
+  when each current exact hash receipt exists; otherwise UNKNOWN.
 
----
+#### Assertions
 
-## Case 5: Missing source or stable AC ID writes only a declared PARTIAL plan
+- [ ] Span hash never replaces full-file hash.
+- [ ] Build name/date cannot replace artifact hash.
+- [ ] Stale receipt cannot promote evidence.
+- [ ] Plan itself is never execution evidence.
 
-### Fixture
+#### Case Verdict
 
-- A sprint references two stories.
-- Story A is valid and has `AC-S001-01`.
-- Story B either is missing or contains one acceptance criterion without a
-  stable AC ID.
-- All existing fixture files have recorded pre-run bytes.
-
-### Input
-
-`$qa-plan sprint`
-
-The user approves writing the partial planning artifact.
-
-### Expected writes
-
-- One QA plan containing the missing source/AC record and exact gap.
-
-### Expected non-writes
-
-- Existing story and session-state bytes do not change.
-- No missing story, AC ID, checkpoint, or placeholder hash is created.
-
-### Expected behavior and verdict
-
-1. The missing path remains in the source manifest with a non-loaded status and
-   no invented digest, or the unbound criterion is listed by story path/text.
-2. `Plan State at Generation` is `PARTIAL`.
-3. The result ledger may report the verified plan as `written`, but the final
-   verdict is `PARTIAL`, not `COMPLETE`.
-4. The plan explicitly cannot satisfy a downstream gate.
-
-### Assertions
-
-- [ ] No `TR-...-???`, fake SHA-256, or guessed AC/test ID appears.
-- [ ] `PARTIAL` is not presented as current or implementation-authorizing.
-- [ ] Only the actual plan artifact is reported as written.
+PASS for exact binding and promotion rules; guessed hash or level is FAIL.
 
 ---
 
-## Case 6: Pre-write source or target race aborts without a success claim
+### Case 12 [QP-C12]: Test ID ownership and dependency coverage are complete
 
-### Fixture
+#### Fixture
 
-- A complete plan preview has been approved.
-- After preview but before write, either a required source changes or an
-  existing target plan's raw bytes change.
-- Record all fixture bytes at the point of approval and after the simulated
-  concurrent change.
+- Ownership snapshot contains owned IDs, one retired tombstone and revision/hash.
+- AC variants request a new deterministic ID, conflict with another AC, reuse a
+  tombstone and map to multiple owners.
+- Dependency graph includes valid edges, missing endpoint and ambiguous cycle.
 
-### Input
+#### Input
 
-Continue the approved write operation.
+- Build ownership and dependency/coverage matrices.
 
-### Expected writes
+#### Expected reads
 
-- None by `$qa-plan` after the mismatch is detected.
+- Ownership snapshot, source plan hashes, AC bindings and dependency authorities.
 
-### Expected non-writes
+#### Expected writes
 
-- The concurrently changed file is preserved.
-- Stories and session state remain unchanged.
+- PROPOSED/OWNED/conflict rows in the plan only.
 
-### Expected behavior and verdict
+#### Expected non-writes
 
-1. Immediate pre-write revalidation detects the digest mismatch.
-2. The operation ledger reports `failed` with the conflicting path and expected
-   versus observed digest.
-3. No artifact is described as written, updated, registered, or checkpointed.
-4. Verdict is `BLOCKED` pending a regenerated preview.
+- Ownership snapshot, prior plans, stories and dependency authorities.
 
-### Assertions
+#### Expected behavior
 
-- [ ] Concurrent user edits are not overwritten.
-- [ ] Read-back verification is never claimed when no write occurred.
-- [ ] The response contains no synthesized success from the approved but
-  aborted operation.
+- Existing ID must map to one AC, method family and owner plan.
+- New deterministic ID is PROPOSED and becomes plan-owned only after immutable
+  publication.
+- Conflict, multiple owner, cross-AC mapping or tombstone reuse makes plan
+  PARTIAL and prevents COMPLETE.
+- Every dependency edge records source/path/hash/relation; missing endpoints,
+  unknown owners and ambiguous cycles remain coverage gaps.
+
+#### Assertions
+
+- [ ] Snapshot revision drift before publish blocks CAS.
+- [ ] IDs are never recycled.
+- [ ] All ACs and dependencies reconcile in the matrix.
+- [ ] No name similarity invents a dependency edge.
+
+#### Case Verdict
+
+PASS for unique ownership and complete gap-preserving graph; otherwise PARTIAL or
+BLOCKED, never COMPLETE.
+
+---
+
+### Case 13 [QP-C13]: Immutable plan publication uses exclusive CAS
+
+#### Fixture
+
+- Candidate bytes, path and full hash are approved.
+- Every authority and ownership snapshot still matches preview.
+- Target variants are absent, byte-identical, different, or appear concurrently.
+
+#### Input
+
+- Publish the approved immutable plan.
+
+#### Expected reads
+
+- Every captured authority and evidence dependency, target existence/bytes and
+  staged candidate bytes.
+
+#### Expected writes
+
+- Absent variant creates exactly one plan.
+- Identical variant performs no write and reports unchanged.
+- Different/concurrent conflict writes nothing.
+
+#### Expected non-writes
+
+- Existing different plan, stories, ownership snapshot, state and all external
+  work.
+
+#### Expected behavior
+
+- Immediately rehash all sources, requirement spans, build, dependency,
+  ownership and evidence state.
+- Require target absent or approved identical no-op.
+- Use same-filesystem staged exclusive create/compare-and-set.
+- Read back and validate candidate bytes and internal references.
+- Existing different bytes yield BLOCKED IMMUTABLE PLAN ID CONFLICT and require a
+  new revision ID.
+
+#### Assertions
+
+- [ ] No UPDATE path exists.
+- [ ] Concurrent user file is preserved.
+- [ ] Written status requires byte-identical read-back.
+- [ ] Superseding a plan never mutates the old plan.
+
+#### Case Verdict
+
+PASS for exact create/no-op/conflict behavior; overwrite or false success is FAIL.
+
+---
+
+### Case 14 [QP-C14]: Complete bounded plan is current but not gate evidence
+
+#### Fixture
+
+- Valid exact scope manifest fits all budgets.
+- Every story and authority loads with exact hashes and unambiguous requirement
+  spans.
+- Build binding is BOUND or valid PRE_IMPLEMENTATION.
+- ACs have complete observable/risk, methods, dependencies and unique Test ID
+  ownership.
+- Available evidence levels are classified from current receipts.
+- Full candidate bytes are approved and CAS publication/read-back succeeds.
+
+#### Input
+
+- Run the full planning transaction.
+
+#### Expected reads
+
+- Every scope, source, build, ownership, dependency and available evidence
+  authority declared by the scope manifest.
+
+#### Expected writes
+
+- One immutable production/qa/plans plan file.
+
+#### Expected non-writes
+
+- Stories, requirements, builds, tests, evidence, ownership snapshot, session
+  state, catalog, checkpoints and downstream workflows.
+
+#### Expected behavior
+
+- Plan State, Effective State and Scope Coverage are CURRENT/CURRENT/COMPLETE.
+- Dependency and coverage matrices reconcile every AC and Test ID.
+- Persistence is WRITTEN or verified UNCHANGED.
+- Verdict is COMPLETE.
+- Gate Evidence remains NO; downstream gates require current separate evidence.
+- No downstream workflow is invoked.
+
+#### Assertions
+
+- [ ] Artifact schema and all v2 mandatory sections exist.
+- [ ] Plan raw hash equals reported and read-back hash.
+- [ ] All non-writes remain byte-identical.
+- [ ] Any partial/stale/unknown predicate prevents COMPLETE.
+
+#### Case Verdict
+
+PASS only for the complete current immutable planning result; otherwise fail
+closed.
 
 ---
 
 ## Protocol Compliance
 
-- [ ] One complete changeset authorization occurs before the first write.
-- [ ] The changeset contains only the independent QA plan.
-- [ ] Story and session-state non-writes are explicit and byte-verified in
-  behavioral fixtures.
-- [ ] Every required story/GDD/ADR is represented in provenance.
-- [ ] Stable AC/test IDs are preserved across wording/order changes.
-- [ ] `PARTIAL` and effective `STALE` plans are rejected as gate evidence.
-- [ ] Result status reflects only selected, completed, read-back-verified work.
-
----
+- [ ] **[QP-PC-001]** Exact scope-manifest invocation validates before discovery
+  or writes.
+- [ ] **[QP-PC-002]** Scope selection, IDs, canonical paths and hard budgets are
+  deterministic and manifest-bound.
+- [ ] **[QP-PC-003]** Every source and raw requirement span is hash-bound with an
+  explicit owner and parser/tool.
+- [ ] **[QP-PC-004]** Build and evidence states distinguish bound,
+  pre-implementation, required-missing, current, partial, stale and unknown.
+- [ ] **[QP-PC-005]** Story declared type is preserved while AC observables and
+  risks independently drive multi-method planning.
+- [ ] **[QP-PC-006]** Test ID ownership is unique, non-recycled and revalidated at
+  publication.
+- [ ] **[QP-PC-007]** Dependency and coverage gaps remain explicit and cannot be
+  score-filled or inferred by name.
+- [ ] **[QP-PC-008]** Full lossless candidate bytes and hash are inspectable
+  before one-file authorization.
+- [ ] **[QP-PC-009]** Partial, stale and unknown plans are not complete
+  downstream inputs and Gate Evidence is always NO.
+- [ ] **[QP-PC-010]** Publication is immutable, exclusive CAS and read-back
+  verified.
+- [ ] **[QP-PC-011]** Result ledger reports only selected and verified operations.
+- [ ] **[QP-PC-012]** No story/state/catalog/authority/evidence/downstream write or
+  workflow invocation occurs.
 
 ## Coverage Notes
 
-- Workflow-catalog argument cleanup is outside these P0 cases; the catalog's
-  legacy epic-slug example remains a separate contract migration.
-- Downstream skills must implement the effective-state revalidation contract;
-  this spec proves the producer contract and records downstream enforcement as
-  a cross-skill dependency.
-- Canonical playtest/smoke/evidence routing is validated by the owning downstream
-  specs and is not used to weaken the plan ownership, provenance, or result
-  assertions above.
+### Authoritative P1 finding trace
+
+| Audit ID | SKILL clause | Case/assertion |
+|---|---|---|
+| `QP-004` | Phase 1 exact scope resolution | Case 1: exact scope authority hash; no undeclared story read |
+| `QP-005` | Phase 1 partial ledger; Phase 4 Plan State Rules | Case 2: no fabricated hash; PARTIAL verdict; Gate Evidence NO |
+| `QP-006` | Phase 1 budgets; Phase 2 bounded context | Case 3: reconciled counts; no half-loaded CURRENT; PARTIAL coverage |
+| `QP-007` | Phase 2.2 declared-type preservation | Case 4: story unchanged; mismatch finding retains declared/derived/source data |
+| `QP-008` | Phase 3 multi-label coverage | Case 5: secondary coverage retained; no primary tie-breaker |
+| `QP-009` | Phase 3 observable/risk-driven methods | Case 6: method bindings; unsupported evidence remains a gap |
+| `QP-010` | Phase 4 Playtest Requirements | Case 7: no session-logs write; path alone insufficient; no playtest write |
+| `QP-011` | Phase 5.1 lossless preview/approval | Case 8: chunks reproduce candidate; post-approval change invalidates authorization |
+| `QP-018` | Invocation and Phase 1 exact scope schema | Case 9: invalid call fails before discovery; no newest/title fallback |
+| `QP-019` | Contract manifest and SKILL trace matrix | Case 10: runnable fixtures; testable writes/non-writes; explicit verdicts |
+
+The matrix above replaces range-only coverage with one independently inspectable
+row for every exact P1 ID in the 2026-07-20 qa-plan audit.
+
+Cases 11 through 14 cover the requested exact story/build/requirement hashes,
+Test ID ownership, evidence levels, dependency/coverage matrix, partial/unknown
+semantics and immutable CAS publication. This specification is a written
+behavioral contract; it does not claim that a plan fixture or downstream evidence
+was executed.

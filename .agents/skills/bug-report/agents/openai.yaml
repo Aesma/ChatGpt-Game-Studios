@@ -1,4 +1,4 @@
 interface:
   display_name: "Bug Report"
-  short_description: "Creates a structured bug report from a description, or..."
-  default_prompt: "Use $bug-report to run the Bug Report game-studio workflow."
+  short_description: "Create and evidence-gate canonical bug records"
+  default_prompt: "Use an explicit $bug-report draft, analyze, create, record-fix-candidate, verify, close, or status manifest; keep hotfix as an immutable candidate-link producer, let only the authorized canonical registry recorder enter Fixed Pending Verification, and require exact target-build plus automated regression receipts for verification and closure."

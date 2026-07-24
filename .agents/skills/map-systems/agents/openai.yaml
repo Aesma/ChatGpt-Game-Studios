@@ -1,4 +1,4 @@
 interface:
   display_name: "Map Systems"
-  short_description: "Decompose a game concept into individual systems, map..."
-  default_prompt: "Use $map-systems to run the Map Systems game-studio workflow."
+  short_description: "Create or update one stable-ID systems index, then stop"
+  default_prompt: "Use $map-systems to create or safely update design/gdd/systems-index.md from explicit product decisions with catalog-derived routing, stable IDs, a validated dependency graph, and one hash-bound compare-and-set write; do not perform formal sign-off or GDD authoring."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Consistency Check"
-  short_description: "Read-only audit of competing GDD claims"
-  default_prompt: "Use $consistency-check to compare GDD claims, formulas, ownership, and dependencies without changing project files."
+  short_description: "Read-only, hash-bound audit of competing GDD claims."
+  default_prompt: "Use $consistency-check to run a bounded, hash-bound comparison of GDD claims, formulas, ownership, and dependencies without changing project files."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Brainstorm"
-  short_description: "Collaborative concept authoring with safe resume"
-  default_prompt: "Use $brainstorm in new, resume, or revise mode to make user-owned game-concept decisions, checkpoint progress, and apply only a hash-verified section-scoped concept change."
+  short_description: "Bounded, resumable, user-owned concept authoring"
+  default_prompt: "Use $brainstorm with a cgs.brainstorm-request/v2 manifest to author or safely revise one game concept through bounded ideation, user-owned decision provenance, finite checkpoints, honest research/engine/estimate boundaries, section-scoped CAS, an external authoring receipt, and an independent concept-review handoff."

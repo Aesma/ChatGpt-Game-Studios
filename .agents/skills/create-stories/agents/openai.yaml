@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Stories"
-  short_description: "Create fail-closed, traceable story files"
-  default_prompt: "Use $create-stories to create stories that cannot be Ready without active TR-IDs and complete QA specifications."
+  short_description: "Author bounded stable story candidates from current evidence"
+  default_prompt: "Use $create-stories to author one bounded batch of vertically sliced cgs.story/v2 planning artifacts with stable story, AC, and Test IDs; preserve per-story partial blockers and append-only trace, use full CAS, and leave final READY to exact-hash story-readiness evidence."

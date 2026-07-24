@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Flakiness"
-  short_description: "Analyze homogeneous run sets; quarantine stays external"
-  default_prompt: "Use $test-flakiness to analyze an identity-bound run-set manifest without modifying tests, CI, or the regression selection manifest."
+  short_description: "Analyze bounded homogeneous runs; quarantine stays external"
+  default_prompt: "Use $test-flakiness to analyze one explicit identity-bound run-set with validated parsers, environment-drift separation, uncertainty, stable evidence, and no test, CI, quarantine, or regression-manifest changes; persist only the optional hash-named report when explicitly requested."

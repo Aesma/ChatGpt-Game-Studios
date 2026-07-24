@@ -1,11 +1,8 @@
 # Director Gates — Shared Review Pattern
 
-This document defines the standard gate prompts for all director and lead reviews
-across every workflow stage. Skills reference gate IDs from this document instead
-of embedding full prompts inline — eliminating drift when prompts need updating.
+This document is a registry of advisory director/lead review prompts. A consumer may use a gate only when its own contract explicitly names the gate, inputs, evidence identity, verdict handling, and supported review modes. Merely referencing this file does not add a CLI flag, spawn authority, write authority, or phase-transition authority.
 
-**Scope**: All 7 production stages (Concept → Release), all 3 Tier 1 directors,
-all key Tier 2 leads. Any skill, team orchestrator, or workflow may invoke these gates.
+**Scope**: opt-in consumers only. Required QA, accessibility, security, separation-of-duties, evidence validation, and canonical recorder roles are outside review-mode skipping and remain mandatory.
 
 ---
 
@@ -23,74 +20,32 @@ the verdict using the **Verdict handling** rules below.
 
 ---
 
-## Review Modes
+## Review-mode contract
 
-Review intensity controls whether director gates run. It can be set globally
-(persists across sessions) or overridden per skill run.
+Review mode is a consumer capability, not a universal feature. A skill that does not explicitly implement the complete contract below MUST reject or ignore review-mode syntax according to its own interface and MUST NOT claim that a mode changed execution.
 
-**Global config**: `production/review-mode.txt` — one word: `full`, `lean`, or `solo`.
-Set once during `$start`. Edit the file directly to change it at any time.
+The optional configuration record is `production/review-mode.txt` with exactly one value: `full`, `lean`, or `solo`. A consumer may read it only if its own SKILL contract declares review-mode support. A per-run `--review` argument exists only when that consumer declares it.
 
-**Per-run override**: any gate-using skill accepts `--review [full|lean|solo]` as an
-argument. This overrides the global config for that run only.
+| Consumer | Gate | `full` | `lean` | `solo` |
+|---|---|---:|---:|---:|
+| `gate-check` | CD/TD/PR/AD-PHASE-GATE | run all four | run all four | do not run; director-gate contribution is `N/A` |
+| `sprint-plan` | PR-SPRINT | run | skip | skip |
+| `story-readiness` | QL-STORY-READY | run | skip | skip |
+| `milestone-review` | PR-MILESTONE | run | skip | skip |
 
-Examples:
-```
-$brainstorm space horror           → uses global mode
-$brainstorm space horror --review full   → forces full mode this run
-$architecture-decision --review solo     → skips all gates this run
-```
+No other consumer inherits those mappings. In particular, a team orchestrator cannot expose an inert mode parameter merely because it uses this document.
 
-| Mode | What runs | Best for |
-|------|-----------|----------|
-| `full` | All gates active — every workflow step reviewed | Teams, learning users, or when you want thorough director feedback at every step |
-| `lean` | PHASE-GATEs only (`$gate-check`) — per-skill gates skipped | **Default** — solo devs and small teams; directors review at milestones only |
-| `solo` | No director gates anywhere | Game jams, prototypes, maximum speed |
+When a declared consumer resolves a mode it records the source (explicit argument or exact configuration path/hash), resolved value, applicable gate IDs, and run/skip disposition. Missing configuration uses the consumer's declared default; there is no repository-wide implied default.
 
-**Check pattern — apply before every gate spawn:**
-
-```
-Before spawning gate [GATE-ID]:
-1. If skill was called with --review [mode], use that
-2. Else read production/review-mode.txt
-3. Else default to lean
-
-Apply the resolved mode:
-- solo → skip all gates. Note: "[GATE-ID] skipped — Solo mode"
-- lean → skip unless this is a PHASE-GATE (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-         Note: "[GATE-ID] skipped — Lean mode"
-- full → spawn as normal
-```
+Mode affects only the advisory director/lead gate listed by the consumer. It MUST NOT skip canonical readiness checks, independent QA, accessibility, security, test evidence, source-hash/currentness validation, non-waivable blockers, required role separation, or recorder receipts. A skipped advisory gate is `N/A`, never APPROVE/READY and never proof of completion.
 
 ---
 
-## Invocation Pattern (copy into any skill)
+## Invocation contract
 
-**MANDATORY: Resolve review mode before every gate spawn.** Never spawn a gate without checking. The resolved mode is determined once per skill run:
-1. If skill was called with `--review [mode]`, use that
-2. Else read `production/review-mode.txt`
-3. Else default to `lean`
+Before delegation, the consumer freezes an input manifest containing gate ID, reviewer role, exact artifact paths and raw SHA-256 values, transitive evidence hashes, catalog/config hashes when applicable, and expected verdict vocabulary. Delegation is read-only. The reviewer may not edit the reviewed artifact or persist the authoritative gate record.
 
-Apply the resolved mode:
-- `solo` → **skip all gates**. Note in output: `[GATE-ID] skipped — Solo mode`
-- `lean` → **skip unless this is a PHASE-GATE** (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE). Note: `[GATE-ID] skipped — Lean mode`
-- `full` → spawn as normal
-
-```
-# Apply mode check, then:
-Spawn `[agent-name]` through Codex subagent delegation:
-- Gate: [GATE-ID] (see .codex/docs/director-gates.md)
-- Context: [fields listed under that gate]
-- Await the verdict before proceeding.
-```
-
-For parallel spawning (multiple directors at the same gate point):
-
-```
-# Apply mode check for each gate first, then spawn all that survive:
-Spawn all [N] agents simultaneously through Codex subagent delegation — issue all Codex subagent delegations before
-waiting for any result. Collect all verdicts before proceeding.
-```
+For multiple applicable gates, delegation may be parallel, but all results must be collected before aggregation. Each result is bound to the frozen manifest and reviewer identity. A separate authorized recorder, when required by the consumer, persists unchanged result bytes plus its raw hash and emits the consumer-declared receipt. No gate is auto-executed and no result advances project stage.
 
 ---
 
@@ -111,14 +66,7 @@ strictest verdict — one NOT READY overrides all READY verdicts.
 
 ## Recording Gate Outcomes
 
-After a gate resolves, record the verdict in the relevant document's status header:
-
-```markdown
-> **[Director] Review ([GATE-ID])**: APPROVED [date] / CONCERNS (accepted) [date] / REVISED [date]
-```
-
-For phase gates, record in `docs/architecture/architecture.md` or
-`production/session-state/active.md` as appropriate.
+A Markdown status line is informative only. When a consumer requires durable evidence, an independently authorized recorder persists the exact review result and a typed receipt bound to gate ID, reviewer identity, input-manifest hash, reviewed artifact hashes, verdict, findings, timestamp, and supersession chain. Stale, malformed, self-authored, or hash-mismatched results are invalid. Only the project-stage authority recorder can advance stage after a current eligible gate record.
 
 ---
 
@@ -251,7 +199,7 @@ any session that produces player feedback
 
 ### CD-PHASE-GATE — Creative Readiness at Phase Transition
 
-**Trigger**: Always at `$gate-check` — spawn in parallel with TD-PHASE-GATE and PR-PHASE-GATE
+**Trigger**: At `$gate-check` in `full` or `lean`; skip with advisory contribution `N/A` in `solo`. Run in parallel with the other applicable phase gates.
 
 **Context to pass**:
 - Target phase name
@@ -397,7 +345,7 @@ or before finalizing any engine-specific implementation approach
 
 ### TD-PHASE-GATE — Technical Readiness at Phase Transition
 
-**Trigger**: Always at `$gate-check` — spawn in parallel with CD-PHASE-GATE and PR-PHASE-GATE
+**Trigger**: At `$gate-check` in `full` or `lean`; skip with advisory contribution `N/A` in `solo`. Run in parallel with the other applicable phase gates.
 
 **Context to pass**:
 - Target phase name
@@ -449,8 +397,7 @@ the MVP nor supplies a timeline estimate.
 
 ### PR-SPRINT — Sprint Feasibility Review
 
-**Trigger**: Before finalising a sprint plan (`$sprint-plan`), and after any
-mid-sprint scope change
+**Trigger**: In `$sprint-plan` only when its resolved declared mode is `full`; skipped in `lean`/`solo`. A mid-sprint scope change uses this gate only if its owning consumer separately declares the same contract.
 
 **Context to pass**:
 - Proposed sprint story list (titles, estimates, dependencies)
@@ -472,8 +419,7 @@ mid-sprint scope change
 
 ### PR-MILESTONE — Milestone Risk Assessment
 
-**Trigger**: At milestone review (`$milestone-review`), at mid-sprint retrospectives,
-or when a scope change is proposed that affects the milestone
+**Trigger**: In `$milestone-review` only when its resolved declared mode is `full`; skipped in `lean`/`solo`. Other workflows use it only through an explicit local contract.
 
 **Context to pass**:
 - Milestone definition and target date
@@ -524,7 +470,7 @@ is invoked
 
 ### PR-PHASE-GATE — Production Readiness at Phase Transition
 
-**Trigger**: Always at `$gate-check` — spawn in parallel with CD-PHASE-GATE and TD-PHASE-GATE
+**Trigger**: At `$gate-check` in `full` or `lean`; skip with advisory contribution `N/A` in `solo`. Run in parallel with the other applicable phase gates.
 
 **Context to pass**:
 - Target phase name
@@ -617,7 +563,7 @@ hash mismatch cannot authorize asset production.
 
 ### AD-PHASE-GATE — Visual Readiness at Phase Transition
 
-**Trigger**: Always at `$gate-check` — spawn in parallel with CD-PHASE-GATE, TD-PHASE-GATE, and PR-PHASE-GATE
+**Trigger**: At `$gate-check` in `full` or `lean`; skip with advisory contribution `N/A` in `solo`. Run in parallel with the other applicable phase gates.
 
 **Context to pass**:
 - Target phase name
@@ -693,8 +639,7 @@ as part of `$code-review`
 
 ### QL-STORY-READY — QA Lead Story Readiness Check
 
-**Trigger**: Before a story is accepted into a sprint — invoked by `$create-stories`,
-`$story-readiness`, and `$sprint-plan` during story selection
+**Trigger**: In `$story-readiness` only when its resolved declared mode is `full`; skipped in `lean`/`solo`. `$create-stories` and `$sprint-plan` do not inherit this gate unless their own contracts explicitly adopt it.
 
 **Context to pass**:
 - Story file path
@@ -817,14 +762,16 @@ When a new gate is needed for a new skill or workflow:
 
 ---
 
-## Gate Coverage by Stage
+## Gate registry by stage
 
-| Stage | Required Gates | Optional Gates |
-|-------|---------------|----------------|
-| **Concept** | CD-PILLARS, AD-CONCEPT-VISUAL | TD-FEASIBILITY, PR-SCOPE |
-| **Systems Design** | TD-SYSTEM-BOUNDARY, CD-SYSTEMS, PR-SCOPE, CD-GDD-ALIGN (per GDD) | ND-CONSISTENCY, AD-VISUAL |
-| **Technical Setup** | TD-ARCHITECTURE, TD-ADR (per ADR), LP-FEASIBILITY, AD-ART-BIBLE | TD-ENGINE-RISK |
-| **Pre-Production** | PR-EPIC, QL-STORY-READY (per story), PR-SPRINT, all four PHASE-GATEs (via gate-check) | CD-PLAYTEST |
-| **Production** | LP-CODE-REVIEW (per story), QL-STORY-READY, PR-SPRINT (per sprint), QL-TEST-COVERAGE (per sprint close-out) | PR-MILESTONE, AD-VISUAL |
-| **Polish** | QL-TEST-COVERAGE, CD-PLAYTEST, PR-MILESTONE | AD-VISUAL |
-| **Release** | All four PHASE-GATEs (via gate-check) | QL-TEST-COVERAGE |
+This table is discovery metadata, not a required-gate matrix. The consumer-specific mode table and each consumer's own contract decide applicability.
+
+| Stage | Available gate IDs |
+|---|---|
+| Concept | CD-PILLARS, AD-CONCEPT-VISUAL, TD-FEASIBILITY, PR-SCOPE |
+| Systems Design | TD-SYSTEM-BOUNDARY, CD-SYSTEMS, PR-SCOPE, CD-GDD-ALIGN, ND-CONSISTENCY, AD-VISUAL |
+| Technical Setup | TD-ARCHITECTURE, TD-ADR, LP-FEASIBILITY, AD-ART-BIBLE, TD-ENGINE-RISK |
+| Pre-Production | PR-EPIC, QL-STORY-READY, PR-SPRINT, CD/TD/PR/AD-PHASE-GATE, CD-PLAYTEST |
+| Production | LP-CODE-REVIEW, QL-STORY-READY, PR-SPRINT, QL-TEST-COVERAGE, PR-MILESTONE, AD-VISUAL |
+| Polish | QL-TEST-COVERAGE, CD-PLAYTEST, PR-MILESTONE, AD-VISUAL |
+| Release | CD/TD/PR/AD-PHASE-GATE, QL-TEST-COVERAGE |

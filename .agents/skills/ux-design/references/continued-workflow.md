@@ -1,201 +1,378 @@
 # UX Design — Required workflow continuation
 
-This continuation is part of the `ux-design` author schema. Execute it only after the
-main workflow has validated the request, loaded bounded context, obtained the one
-task mutation authorization, and created or migrated the exact profile skeleton.
+This continuation is part of the ux-design author schema. Follow it only after
+the main workflow has validated the v2 request, inventoried the target,
+authorized one mutation boundary, loaded bounded current context, and created or
+migrated the exact profile skeleton.
 
-## Phase 5: Section-by-section product decisions and writes
+## Phase 5: Decision provenance and section transactions
 
-Process only the authorized stable section IDs, in profile order unless the manifest
-records a dependency-safe alternative. For each section use:
+Process only authorized stable section IDs in profile order unless the request
+records a dependency-safe alternative. Each section uses:
 
-`Context → Questions → Options → Decision → Draft → Product approval → Atomic write → Checkpoint`
+    Context -> Decision Classification -> Questions -> Options -> Decision
+    -> Draft -> Semantic Preflight -> Product Approval
+    -> Transactional CAS -> Atomic Write -> Revision Record -> Checkpoint
 
-1. **Context**: cite requirement IDs, source paths/hashes, platform/accessibility
-   commitments, prior decisions, and open dependency IDs relevant to the section.
-2. **Questions**: ask only information not already sourced. Separate product choices
-   from missing external requirements.
-3. **Options**: present two or three materially distinct approaches and trade-offs.
-   Do not select layout, flow, density, input, or interaction behavior by convention.
-4. **Decision**: record stable `UXDEC-{artifact-id}-{section-id}-{sequence}`, the real
-   decision-maker, options, choice, rationale, sources, and UTC timestamp.
-5. **Draft**: show the complete candidate section in conversation. Mark provisional
-   content and dependency IDs; never hide a missing source inside confident prose.
-6. **Product approval**: ask whether the draft captures the intended design. This is
-   a content decision inside the already authorized mutation boundary, not a new
-   filesystem authorization.
-7. **Atomic write**: only the named UX-author task re-hashes the current target,
-   replaces the one authorized stable-ID region, preserves all other bytes, writes
-   atomically where supported, and reads the result back. Never prompt again for file
-   permission while paths/sections/limits/owners are unchanged.
-8. **Checkpoint**: only the checkpoint recorder appends a new immutable checkpoint
-   with before/after target hashes, decision ID, section state, operation result,
-   remaining budget, open findings, and next legal section.
+Product approval confirms exact content inside the already authorized boundary.
+Never request filesystem permission again while paths, sections, limits, owners,
+and operation stay unchanged.
 
-If product approval is withheld, retain the draft only in conversation/checkpoint
-evidence and revise within the manifest's round limit. Do not write it. Exceeding the
-round limit returns `PARTIAL` with the unresolved section and one next decision.
+### Decision records
 
-## Profile evidence requirements
+Every material statement traces to one stable record:
 
-The exact required H2 headings and stable IDs are defined in `SKILL.md`. The rules
-below refine their evidence without creating another schema.
+    id: UXDEC-<artifact-id>-<section-id>-<NNN>
+    section_id: <stable ID>
+    class: product-choice | evidence-backed-hard-constraint |
+      derived-design-constraint | technical-handoff
+    authority: <user/product owner/source owner/derivation>
+    source:
+      path: <exact path or null>
+      artifact_or_requirement_id: <stable ID or null>
+      locator: <section/row/field or null>
+      sha256: <raw hash or null>
+    options: []
+    selected: <outcome or routed question>
+    inputs: []
+    derivation: null
+    assumptions: []
+    provisional: true | false
+    rationale: <reason>
+    status: accepted | routed | blocked
+    decided_at_utc: <RFC3339 seconds Z>
 
-### ux-spec evidence
+- product-choice is selected only by the named decision owner after two or
+  three meaningful options/tradeoffs;
+- evidence-backed-hard-constraint requires a current owner source and cannot be
+  overridden in this artifact;
+- derived-design-constraint preserves inputs/reasoning and user acceptance when
+  it affects a product outcome;
+- technical-handoff routes implementation/API/storage/test/architecture
+  questions outside the UX artifact.
 
-- `UXS-01` links the player's goal and expected outcome to existing requirement IDs;
-  it does not invent missing system behavior.
-- `UXS-02` records arrival source, prior action, player state, urgency, and journey
-  evidence or an open dependency.
-- `UXS-03` and `UXS-04` use stable screen IDs. Every entry/exit names its trigger,
-  state carried, destination/source ID, and irreversible effect.
-- `UXS-05` establishes information hierarchy before zones. Its component inventory
-  gives stable component IDs, content, interactivity, pattern reference/proposal,
-  and viewport assumptions. ASCII/wireframe material is explicitly schematic.
-- `UXS-06` covers every applicable state. A non-applicable loading, empty, or error
-  state needs a source-backed rationale rather than omission.
-- `UXS-07` maps every interactive component across every declared input and includes
-  focus order, immediate multimodal feedback, outcome, cancel/back, and recovery.
-- `UXS-08` maps every player action to a stable event/payload/owner or an explicit
-  source-backed `none`; UX does not become the game-state owner.
-- `UXS-09` covers enter, exit, and applicable state changes plus reduced-motion
-  equivalents and interrupt/cancel behavior.
-- `UXS-10` records source-system owner, read/write intent, update trigger/rate, null
-  handling, privacy/sensitivity, and stale-data behavior.
-- `UXS-11` traces each screen obligation to the external accessibility tier/hash.
-  It covers declared keyboard/gamepad/touch/assistive input, text scale/reflow,
-  non-color cues, focus restoration, announcements, and reduced motion as applicable.
-- `UXS-12` uses real declared layout constraints and localization infrastructure;
-  it covers expansion/reflow, truncation policy, plural/gender, dates/numbers,
-  placeholders, bidirectionality when targeted, and string ownership. Do not replace
-  sources with a generic expansion percentage.
-- `UXS-13` cites requirement and decision IDs and adds observable local conditions,
-  fixtures, input, expected result, platform/accessibility variant, and evidence.
-  It does not copy another document's product rules or require a tester to infer them.
-- `UXS-14` lists stable open questions/dependency IDs with severity, owner, evidence,
-  status, destination, and one resolution action.
+Platform/input/accessibility facts are hard constraints only when exact profile
+IDs/versions/hashes validate. A temporary answer is provisional derived content,
+creates an OPEN blocking finding, and cannot make a section CURRENT.
 
-### hud-design evidence
+Consultants propose evidence only. They are never product decision owner, target
+author, checkpoint recorder, accessibility-tier owner, global-library owner, or
+review approver.
 
-- `HUD-01` records the approved density philosophy and measurable implications.
-- `HUD-02` traces every declared requirement ID to an information item, owner, and
-  Must Show/Contextual/On Demand/Hidden decision. Surface philosophy conflicts.
-- `HUD-03` records safe-zone, aspect, resolution, text-scale, focal-area, and split-
-  screen assumptions from the declared platform profile.
-- `HUD-04` gives stable element IDs, category, data owner, visual form, update rule,
-  visibility/priority, null/error behavior, and pattern reference/proposal.
-- `HUD-05` defines exploration/combat/dialogue/cutscene/pause behavior when applicable,
-  contention/queue rules, density transitions, and reduced-motion alternatives.
-- `HUD-06` covers every declared input/platform/device/resolution/aspect/text-scale
-  variant; unsupported configurations become owned dependency gaps.
-- `HUD-07` traces committed accessibility obligations, including non-color cues,
-  scaling/reflow, assistive exposure, attention demands, and motion.
-- `HUD-08` uses the same stable finding schema as `UXS-14`.
+### Semantic preflight and approval
 
-### interaction-pattern-library evidence
+Draft only the current section from accepted decision records and current
+evidence. Mark provisional statements and finding IDs visibly.
 
-- `PAT-01` names the external UX-library owner, canonical scope, consumers, and
-  current target/base/schema hashes.
-- `PAT-02` catalog rows use stable `UXP-GLOBAL-*` IDs, versions, status, category,
-  anchors, source proposal IDs, and owner.
-- `PAT-03` entries match catalog IDs and define all states, supported inputs, focus,
-  cancel/back behavior, multimodal feedback, accessibility, localization, data/event
-  boundaries, use/non-use rules, and references.
-- `PAT-04` lists unmerged feature-local `UXP-{screen-id}-{slug}` proposals with source
-  screen/hash, requested disposition, owner, and blocker status.
-- `PAT-05` uses the same stable finding schema as `UXS-14`.
+Before product approval:
 
-Only a run whose sole target is the global library and whose mutation authority is
-the named external UX-library owner may add or revise canonical patterns. Apply one
-stable pattern-ID patch at a time with the current base hash. A collision, stale base,
-duplicate semantic pattern, or unowned cross-screen behavior is `BLOCKED`; never
-append optimistically.
+1. run every applicable cgs.ux-content-profile/v2 assertion in Phase 6;
+2. confirm every material choice/constraint maps to decision IDs;
+3. confirm platform/accessibility/requirement/pattern/navigation references use
+   exact stable IDs and current hashes;
+4. reject implementation/QA/review material and content owned by another
+   artifact;
+5. detect duplicate component/element/pattern/event/finding/AC IDs;
+6. compare all named owners/interfaces with bounded source evidence; and
+7. record assertion failures and dependency findings before presenting approval.
 
-## Phase 6: Cross-reference and dependency gate
+If preflight changes the draft, show the full new body and rerun it. Earlier
+approval never applies to changed bytes.
 
-After selected sections are written, run deterministic checks against the exact
-bounded context manifest:
+Ask approve exact body, revise, or stop. If stopped, preserve only
+APPROVED_NOT_WRITTEN evidence when exact draft bytes and all bound hashes are in
+the checkpoint; otherwise keep PENDING. Exceeding maximum three revision rounds
+returns PARTIAL with one unresolved decision/finding.
 
-1. every applicable GDD requirement ID is covered or has an OPEN owned gap;
-2. every navigation edge agrees by stable screen ID and expected neighbor hash;
-3. every global pattern reference resolves at the declared library hash, while every
-   local proposal remains explicitly non-global;
-4. accessibility obligations trace to the external foundation tier/hash;
-5. every data-dependent component/HUD element defines null, empty, stale, loading,
-   and error behavior when applicable;
-6. every declared platform/input/resolution/aspect/text-scale target is covered;
-7. each profile-required section ID is present once, correctly headed, substantive,
-   and current against its source hashes;
-8. author and decision provenance match recorded identities.
+### Transactional CAS, revision record, and checkpoint
 
-Emit stable `UXD-{artifact-id}-{check-id}` findings with severity `BLOCKING` or
-`ADVISORY`, evidence path/hash/section, expected rule, observed state, owner,
-destination, and status `OPEN` or `CLOSED`. Advisory improvements may remain for
-review; any BLOCKING or critical dependency finding prevents `READY_FOR_REVIEW`.
+Immediately before target write:
 
-Read back the target and compute `target_sha256`. Recheck immediately before output;
-if the bytes changed, return `PARTIAL` with `target-changed-during-authoring` and do
-not reuse previous section results.
+Treat the checks below as one five-part compare-and-set gate: **Target CAS**,
+**Section CAS**, **Context CAS**, **Authorization CAS**, and **Writer CAS**. Every
+part must pass against the authorized baseline in the same transaction attempt.
 
-## Phase 7: Bounded consultations and failures
+1. re-hash current target and selected section body;
+2. re-hash every external context source used by the section plus the
+   context-manifest digest; the mutable target is checked only by target/section
+   CAS and is not treated as external context evidence;
+3. revalidate authorization hash, writer identity, scope, approved draft bytes,
+   and expected operation;
+4. reject duplicate/ambiguous section anchors; and
+5. confirm all out-of-scope byte ranges equal the checkpoint baseline/current
+   hashes.
 
-The UX-author owns target bytes. Consultants are read-only and return evidence to the
-author; they never edit the target, checkpoint, accessibility foundation, pattern
-library, or implementation files.
+Mismatch returns ERROR — CONCURRENT TARGET CHANGE or
+ERROR — CONTEXT EVIDENCE CHANGED with no transaction write.
 
-Use at most two consultants concurrently. Each gets exact context paths/hashes, one
-question, stable task/attempt ID, result schema, and prohibited writes. Cap each
-attempt at 15 minutes and the consultation phase at 30 minutes. Allow at most one
-retry after proving the first attempt wrote nothing. Revoke canceled attempt tokens
-and ignore/quarantine late results.
+The target writer replaces exactly one stable-ID region atomically and reads
+back bytes. Verify only that region plus authorized header fields changed.
 
-Possible consultations include art direction, read-only UI feasibility, gameplay
-requirement ownership, narrative text constraints, and accessibility conformance.
-Consultants cannot approve product choices, define the accessibility tier, merge a
-global pattern, or implement UI.
+Append revision provenance:
 
-A timeout, malformed result, missing required consultation, or side-effect attempt
-produces `PARTIAL` and an immutable checkpoint. Preserve valid approved sections;
-do not mark a dependent section current or silently skip the failed evidence.
+    id: UXREV-<artifact-id>-<section-id>-<NNN>
+    mode: create | fill-gaps | revise-sections | migrate-schema
+    section_id: <stable ID>
+    before_target_sha256: <hash>
+    after_target_sha256: <hash>
+    before_section_sha256: <hash or ABSENT>
+    after_section_sha256: <hash>
+    decision_ids: []
+    source_hashes: []
+    authorization_sha256: <hash>
+    writer_task_id: <actual identity>
+    operation: insert | replace | move-without-edit
+    timestamp_utc: <RFC3339 seconds Z>
 
-## Phase 8: Checkpoint and resume
+Then append one cgs.ux-design-checkpoint/v2 record through checkpoint-recorder
+create-if-absent CAS. If receipt/checkpoint persistence fails after a verified
+target write, leave the content-derived artifact Status unchanged, report
+Workflow Verdict PARTIAL and the exact unreceipted target hash, emit no review
+handoff, and never replay the write.
 
-On `--resume`, validate the exact checkpoint path, request/run/artifact IDs,
-checkpoint chain, author schema hash, instruction/context hashes, target hash,
-authorization manifest, owner identities, section states, decisions, and absence of
-late writes. Resume from the recorded next legal transition only.
+## Phase 6: cgs.ux-content-profile/v2 assertions
 
-If the schema changed, switch to `migrate-schema`; if a source changed, mark only its
-dependent sections STALE; if target or authorization drifted, return `BLOCKED`. Never
-infer completion from non-placeholder text alone and never replay a prior write.
+Heading/ID presence, non-empty prose, and absence of placeholder tokens are
+necessary but not sufficient. Record PASS/FAIL for every assertion ID.
 
-## Phase 9: Determine authoring result and hand off
+### ux-spec assertions
 
-Set the artifact header and final result deterministically:
+- UXS-01 purpose-requirement: player goal/outcome plus current requirement IDs
+  and owners.
+- UXS-02 arrival-context: prior activity/action, player state, pressure/urgency,
+  and journey evidence or OPEN owned gap.
+- UXS-03 navigation-position: stable screen IDs for root/parent/current and all
+  alternate access, each source-hash-bound.
+- UXS-04 entry-exit: every edge has trigger, source/destination ID, carried
+  state, irreversible effect, and neighbor evidence.
+- UXS-05 layout: exact required H3s; hierarchy precedes zones; component
+  inventory has stable ID/content/interactivity/pattern/viewport; schematics
+  declare platform profile/viewports/scales and are non-authoritative.
+- UXS-06 states: default plus every applicable loading/empty/populated/error/
+  locked/platform state; a not-applicable state has source-backed rationale.
+- UXS-07 interaction: every interactive component across every declared input,
+  focus order, multimodal feedback, outcome, cancel/back, error/recovery.
+- UXS-08 events: every player action maps to stable event/payload/owner or
+  source-backed none; UX does not become game-state owner.
+- UXS-09 transitions: enter/exit/state changes, duration/trigger/interrupt, and
+  reduced-motion equivalent.
+- UXS-10 data: stable source owner, read/write intent, trigger/rate, null/empty/
+  stale/error behavior, privacy/sensitivity.
+- UXS-11 accessibility: every obligation traces to external foundation
+  ID/version/tier/hash and covers applicable input, reflow, non-color, focus,
+  announcements, and reduced motion.
+- UXS-12 localization: exact string owner/profile, expansion/reflow/truncation,
+  plural/gender, date/number, placeholder, and targeted bidi constraints.
+- UXS-13 acceptance: every item satisfies the reference-first schema below.
+- UXS-14 questions: every open item uses dependency-finding contract v1 with
+  severity/owner/evidence/status/destination/acceptance/next action.
 
-- all profile sections current, every critical dependency present, zero BLOCKING
-  findings, read-back hashes stable: `Status: READY_FOR_REVIEW` and
-  `Verdict: READY_FOR_REVIEW`;
-- some safe work is written but sections, dependencies, evidence, consultations, or
-  migration remain: `Status: PARTIAL` and `Verdict: PARTIAL`;
-- no safe transition is possible because identity, authorization, ownership, target
-  drift, or an unresolved mandatory decision prevents work: preserve the last safe
-  artifact status and return `Verdict: BLOCKED`.
+### hud-design assertions
 
-Never emit `COMPLETE`, `APPROVED`, or `IMPLEMENTATION READY` from authoring. User risk
-acceptance keeps named findings OPEN and cannot upgrade status.
+- HUD-01 philosophy: accepted density principle, requirement/decision IDs, and
+  measurable implications/conflicts.
+- HUD-02 information: every declared requirement maps to item/owner and Must
+  Show/Contextual/On Demand/Hidden decision.
+- HUD-03 zones: exact platform-profile ID/version/hash, safe-zone, aspect,
+  resolution, viewport, text-scale, focal/split-screen assumptions.
+- HUD-04 elements: stable IDs, data owner/form/update/visibility/priority,
+  null/error behavior, states, and pattern IDs.
+- HUD-05 behavior: applicable exploration/combat/dialogue/cutscene/pause
+  transitions, priority/contention/queue, density, reduced motion.
+- HUD-06 variants: every declared platform/device/input/resolution/aspect/
+  text-scale target; unsupported target is OPEN blocking gap.
+- HUD-07 accessibility: foundation ID/tier/hash, non-color cues, reflow,
+  assistive exposure, attention, focus, motion.
+- HUD-08 questions: dependency-finding contract v1.
 
-Return artifact/run/screen IDs, profile and author schema hash, actual author task ID,
-target path/hash, context manifest hash, section-state matrix, decision IDs,
-authorization manifest/hash, dependency/finding table, checkpoint path/hash, and
-exactly one status-driven next action.
+### interaction-pattern-library assertions
 
-For `READY_FOR_REVIEW`, the next action is to request a fresh independent read-only
-review of this exact target hash. The reviewer task must differ from the author and
-must return the hash-bound current-schema review record. Do not invoke that review,
-persist its record, start visual work, or start implementation in this workflow.
+- PAT-01 overview: external library owner, canonical scope, consumers,
+  content/profile/schema/context hashes.
+- PAT-02 catalog: unique UXP-GLOBAL IDs, versions, status, category, exact
+  anchors, source proposal IDs, owner.
+- PAT-03 patterns: one entry/catalog ID with states, declared inputs, focus,
+  cancel/back, multimodal feedback, accessibility/localization, data/event
+  boundaries, use/non-use, current references.
+- PAT-04 gaps: unmerged local UXP-<screen-id>-<slug> IDs, source screen/hash,
+  requested disposition, owner, blocking status.
+- PAT-05 questions: dependency-finding contract v1.
 
-For `PARTIAL` or `BLOCKED`, the sole next action resolves one named dependency,
-decision, authorization, drift, owner, or timed-out evidence item. Do not claim that
-this run created an accessibility foundation or any artifact other than its one
-authorized target and checkpoints.
+Only the dedicated library target/owner may write global patterns. Each pattern
+patch uses target/entry/context CAS. Collision, stale base, duplicate semantics,
+or unowned cross-screen behavior blocks.
+
+## Phase 7: Reference-first acceptance criteria
+
+UXS-13 items use:
+
+    id: UXAC-<artifact-id>-<NNN>
+    requirement_refs:
+      - id: <stable requirement ID>
+        owner: <artifact owner>
+        path: <exact source path>
+        locator: <section/row>
+        sha256: <raw hash>
+    decision_refs: [<UXDEC IDs>]
+    local_precondition: <screen/HUD state>
+    action_or_input: <declared user/system input>
+    expected_local_result: <observable UX response>
+    platform_profile_ids: []
+    accessibility_obligations: []
+    evidence_method: <observable local check>
+    validation_owner: <owner>
+
+Reference the product rule by ID/locator/hash; do not copy/rephrase it as a
+second authority. Include enough local precondition/input/result to execute the
+UX check after loading the cited requirement. Missing/stale requirement evidence
+creates a blocking finding; never invent or duplicate the product rule.
+
+ACs may verify UI state, focus, feedback, navigation, presentation of owned
+data, and platform/accessibility variants. They do not prescribe QA automation,
+implementation structure, or redefine gameplay outcomes.
+
+## Phase 8: Cross-reference and dependency finding gate
+
+Run deterministic checks over exact context:
+
+1. every applicable requirement is covered or has OPEN owned finding;
+2. navigation edges agree by screen ID and neighbor hash;
+3. global pattern references resolve at declared library hash and local
+   proposals remain non-global;
+4. accessibility obligations trace to current foundation/tier;
+5. data UI defines applicable null/empty/stale/loading/error behavior;
+6. platform/input/resolution/aspect/text-scale declarations are covered;
+7. every profile section occurs once and passes all content assertions;
+8. author/decision/revision provenance matches identities/hashes; and
+9. every AC references current requirement and decision evidence.
+
+Use contract cgs.ux-dependency-finding/v1:
+
+    id: UXD-<artifact-id>-<check-id>-<fingerprint>
+    severity: BLOCKING | ADVISORY
+    category: requirement | navigation | pattern | accessibility | data |
+      platform | schema | provenance | acceptance
+    evidence:
+      path: <exact path>
+      artifact_or_requirement_id: <ID>
+      locator: <section/row/field>
+      sha256: <raw hash>
+      observed: <fact>
+    expected: <rule>
+    owner: <resolution owner>
+    destination: <artifact/workflow>
+    acceptance: <objective close condition>
+    first_seen_target_sha256: <hash>
+    last_evaluated_target_sha256: <hash>
+    status: OPEN | RESOLVED | WAIVED
+    resolution: <current-hash evidence or null>
+
+Fingerprint is deterministic over category, owner, source ID/locator, expected,
+and observed normalized facts. Preserve IDs across re-evaluation. RESOLVED
+requires current evidence meeting acceptance. BLOCKING WAIVED remains unresolved
+and prevents readiness. A user cannot close an external-owner gap by acceptance.
+
+Any unresolved BLOCKING/critical finding prevents READY_FOR_REVIEW. Advisory
+findings may remain.
+
+## Phase 9: Bounded consultations and failure results
+
+Consultants are read-only advisers. Limits:
+
+- at most one consultant per section;
+- at most three consultations per run;
+- at most two concurrently;
+- one question and one 60-second attempt;
+- no automatic retry or nested delegation;
+- canceled/late result token is revoked and result quarantined.
+
+Record:
+
+    id: UXCON-<run-id>-<NNN>
+    section_id: <stable ID>
+    role: <consultant role>
+    question: <one bounded question>
+    input_paths_sha256: []
+    required: true | false
+    started_at_utc: <timestamp>
+    deadline_seconds: 60
+    status: complete | partial | timeout | failed | side-effect | skipped
+    output_sha256: <canonical result hash or null>
+    evidence_summary: <bounded evidence or null>
+    fallback: none | explicit-product-decision | section-blocked
+
+Optional non-complete input may continue only when the product decision does not
+depend on missing evidence and the owner explicitly decides; record fallback.
+Required non-complete, malformed, side-effect, or late input marks dependent
+section BLOCKED, artifact PARTIAL, appends checkpoint, and stops. Never invent
+or merge quarantined output.
+
+Consultants cannot choose layout/flow/density/input/interaction, define platform
+or accessibility foundation, merge patterns, edit files, approve content, or
+delegate.
+
+## Phase 10: Checkpoint recovery and mode safety
+
+On --resume validate exact request/checkpoint paths, v2 chain/payload hashes,
+artifact/run/profile/content/author schema, authorization, target, context,
+owners, section states/assertions, decisions/revisions, consultations, findings,
+budgets, next transition, and absence of late writes.
+
+- all hashes current: resume APPROVED_NOT_WRITTEN exact bytes first, otherwise
+  next PENDING legal section;
+- target mismatch: BLOCKED — TARGET/AUTHORIZATION DRIFT, zero write;
+- context source mismatch: mark only dependent sections STALE and require new
+  decision/preflight; do not replay;
+- profile/content/author schema mismatch: switch to newly authorized
+  migrate-schema;
+- unsupported old checkpoint: ERROR — UNSUPPORTED CHECKPOINT SCHEMA;
+- missing checkpoint: resume unavailable.
+
+Non-placeholder text is not completion evidence. No conversation memory
+reconstructs approval, provenance, receipt, or hashes.
+
+## Phase 11: Final receipt, result, and independent-review handoff
+
+Re-read target, re-run content/cross-reference gates, and re-hash every external
+context-evidence entry (not the mutable-target-baseline entry). Append the final
+cgs.ux-authoring-receipt/v1 checkpoint only after a final CAS writes the
+content-derived artifact Status and stable receipt ID, then reads the final
+target hash. The receipt is valid only when target,
+section revisions, decision records, context digest, authorization, writer/
+recorder identities, and finding set all recompute.
+
+Set artifact Status from content/dependency state, then set Workflow Verdict:
+
+- all required sections current/substantive, platform/accessibility/requirements
+  current, zero unresolved BLOCKING findings, consultations complete/skipped
+  legally, stable target:
+  artifact Status READY_FOR_REVIEW;
+- READY_FOR_REVIEW target plus verified receipt:
+  Workflow Verdict READY_FOR_REVIEW and independent-review handoff;
+- READY_FOR_REVIEW target but receipt append/verification failed:
+  Workflow Verdict PARTIAL, no review handoff, report exact unreceipted target
+  hash without reverting content;
+- safe work preserved but content/evidence/dependency/consultation/migration is
+  incomplete:
+  artifact Status and Workflow Verdict PARTIAL;
+- no safe transition due identity/authorization/owner/mandatory decision/target
+  drift:
+  preserve last safe status and Verdict BLOCKED;
+- invalid/unsupported input or corrupt evidence before safe authoring:
+  ERROR with no false artifact verdict.
+
+Never emit COMPLETE, APPROVED, or IMPLEMENTATION READY.
+
+Return artifact/run/screen IDs, profile/content/author schema hashes, actual
+author/recorder identities, target pre/post/hash, context digest, section state/
+assertions, decision/revision IDs, authorization hash, consultations, findings,
+receipt ID/path/hash, non-writes, and exactly one next action.
+
+READY_FOR_REVIEW next action is a fresh independent read-only UX review of exact
+target and cgs.ux-authoring-receipt/v1 path/hash. Reviewer identity differs from
+author/recorder and returns hash-bound current-schema evidence. This workflow
+does not invoke review, persist review evidence, start visual production, or
+implement UI.
+
+PARTIAL/BLOCKED next action resolves one named dependency, decision,
+authorization, drift, owner, migration, consultation, or receipt item.

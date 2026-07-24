@@ -1,4 +1,4 @@
 interface:
   display_name: "Vertical Slice"
-  short_description: "Plan and evaluate a bounded hash-bound slice"
-  default_prompt: "Use $vertical-slice to freeze a two-attempt validation plan or independently evaluate exact build, playtest, and velocity evidence; implementation remains in separately authorized worktree batches."
+  short_description: "Plan or evaluate a bounded evidence-driven slice"
+  default_prompt: "Use $vertical-slice in one explicit mode to validate exact prerequisites and scope, freeze finite build/playtest/velocity/network evidence requirements, or independently derive a build-bound verdict; implementation and evidence capture remain separate authorized tasks."

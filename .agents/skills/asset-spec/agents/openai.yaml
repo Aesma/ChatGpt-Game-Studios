@@ -1,4 +1,7 @@
 interface:
   display_name: "Asset Spec"
-  short_description: "Atomically publish validated asset specs and manifest rows"
-  default_prompt: "Use $asset-spec to draft a traceable asset specification, classify incomplete validation as BLOCKED_NOT_FOR_PRODUCTION, and publish the specification plus manifest rows only as one collision-safe authorized transaction."
+  short_description: "Publish bounded, provenance-bound asset specs atomically"
+  default_prompt: "Use $asset-spec only with a hash-pinned v2 request. Bound every source; separate explicit, user-stated, inferred, confirmed, and reuse-candidate requirements; consume the canonical global review mode; enforce finite art/technical review and regeneration; bind source/reviewer provenance; validate reuse license, variants, LOD and platforms; reject slug/path collisions; and publish the spec plus manifest only as one collision-safe authorized transaction."
+
+policy:
+  allow_implicit_invocation: true

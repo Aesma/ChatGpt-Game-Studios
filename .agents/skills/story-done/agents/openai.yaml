@@ -1,4 +1,4 @@
 interface:
   display_name: "Story Done"
-  short_description: "Fail-closed, hash-bound story completion gate"
-  default_prompt: "Use $story-done to verify every required acceptance criterion with current automated or build-bound manual evidence before closing the story."
+  short_description: "Evidence-bound tracker-only story closure"
+  default_prompt: "Use $story-done to require immutable story and planning inputs, a current tracker row in review, exact dev/test/review/QA evidence, and a verified lifecycle-recorder CAS receipt before reporting the tracker row done."

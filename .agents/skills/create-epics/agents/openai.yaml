@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Epics"
-  short_description: "Translate approved GDDs + architecture into epics — one epic..."
-  default_prompt: "Use $create-epics to run the Create Epics game-studio workflow."
+  short_description: "Create one source-bound epic per architecture module"
+  default_prompt: "Use $create-epics to plan one epic per architecture module from current approved design evidence, then require exact approval and authorization before any bounded write."

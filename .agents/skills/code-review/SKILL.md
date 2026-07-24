@@ -1,253 +1,231 @@
 ---
 name: code-review
-description: "Performs an architectural and quality code review on a specified file or set of files. Checks for coding standard compliance, architectural pattern adherence, SOLID principles, testability, and performance concerns."
+description: Performs a strictly read-only, hash-bound review of explicit project source targets against their complete applicable rule chain, Accepted ADR evidence, deterministic analysis receipts, and bounded specialist coverage.
 ---
 
-## Invocation and execution
+# Code Review
 
-Invoke this workflow as `$code-review`.
+Review exact project source targets without modifying them. Build a bounded,
+hash-bound manifest; load the complete rule chain for every target; distinguish
+verified analysis from judgment; and return stable findings in a generic review
+evidence envelope. This workflow neither fixes code nor completes a story.
 
-Arguments: `[path-to-file-or-directory]`. Treat bracketed values as optional unless the workflow says otherwise.
+## Invocation
 
-Delegate substantive work to the `lead-programmer` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+Use this grammar exactly:
 
-### Read-only review contract
-
-This workflow is strictly read-only: it must not edit source, tests, metadata,
-or workflow artifacts.
-
-Use finding severities `BLOCKING`, `WARNING`, and `INFO`. Use only these
-verdicts, in precedence order:
-
-1. `PARTIAL` — mandatory coverage is incomplete; approval is prohibited.
-2. `NEEDS CHANGES` — coverage is complete and a `BLOCKING` finding exists.
-3. `CONCERNS` — coverage is complete, no `BLOCKING` finding exists, and a
-   `WARNING` finding exists.
-4. `APPROVED` — coverage is complete with no `BLOCKING` or `WARNING` findings.
-
-Mandatory coverage is complete only when every resolved target file was read
-and reviewed, every applicable check has an evidence-backed `PASS`, `FAIL`, or
-`N/A`, every explicit ADR reference was resolved and status-checked (with every
-`Accepted` ADR evaluated), and every required reviewer completed. Any omitted,
-unreadable, unresolved, `UNKNOWN`, or `UNVERIFIED` item is a named coverage gap
-and forces `PARTIAL`. If the `lead-programmer` role is unavailable, the current
-agent may satisfy that reviewer responsibility only by actually performing it.
-A missing or invalid target that cannot form a manifest is an input error; emit
-no verdict.
-
-
-## Phase 1: Load Target Files
-
-Read the target file(s) in full and enumerate them in a target manifest. Read
-AGENTS.md for project coding standards. If the manifest resolves but any listed
-file cannot be read or reviewed, record a file coverage gap; do not silently
-drop it.
-
----
-
-## Phase 2: Identify Engine Specialists
-
-Read `.codex/docs/technical-preferences.md`, section `## Engine Specialists`. Note:
-
-- The **Primary** specialist (used for architecture and broad engine concerns)
-- The **Language/Code Specialist** (used when reviewing the project's primary language files)
-- The **Shader Specialist** (used when reviewing shader files)
-- The **UI Specialist** (used when reviewing UI code)
-
-If the section reads `[TO BE CONFIGURED]`, no engine is pinned — skip engine specialist steps.
-
----
-
-## Phase 3: ADR Compliance Check
-
-**Argument:** `$code-review [file(s)]` may optionally include a story file path as the last argument (e.g., `$code-review src/combat/attack.gd production/epics/combat/story-001.md`). If a story path is provided, read it to extract the governing ADR reference.
-
-Search for ADR references in, in priority order:
-1. The story file (if provided as argument)
-2. Header comments at the top of the implementation files
-3. Commit messages referencing these files (`git log --oneline -- [file]`)
-
-Look for patterns like `ADR-NNN` or `docs/architecture/ADR-`.
-
-If no ADR references are found, report `ADR_NOT_EVALUATED`, explain that no ADR
-compliance claim can be made, and record an ADR coverage gap. This forces a
-`PARTIAL` verdict. Suggest providing the story path for a complete review:
-`$code-review [files] [story-path]`.
-
-For each referenced ADR, first read and report its `Status`:
-
-- Only `Accepted` ADRs can be used as compliance evidence. Read their
-  **Decision** and **Consequences** sections and evaluate the implementation.
-- A readable ADR with any other status (for example, `Proposed`) is
-  `ADR_NOT_EVALUATED`; add an `ARCHITECTURE RISK` finding with `WARNING`
-  severity. This completed status check maps to `CONCERNS` when the rest of the
-  review is complete.
-- A referenced ADR that is missing, unreadable, has no determinable status, or
-  lacks the sections required for evaluation is an ADR coverage gap and forces
-  `PARTIAL`.
-
-For each evaluated `Accepted` ADR, classify any deviation:
-
-- **ARCHITECTURAL VIOLATION** (BLOCKING): Uses a pattern explicitly rejected in the ADR
-- **ADR DRIFT** (WARNING): Meaningfully diverges from the chosen approach without using a forbidden pattern
-- **MINOR DEVIATION** (INFO): Small difference from ADR guidance that doesn't affect overall architecture
-
----
-
-## Phase 4: Standards Compliance
-
-Identify the system category (engine, gameplay, AI, networking, UI, tools) and evaluate:
-
-- [ ] Public methods and classes have doc comments
-- [ ] Cyclomatic complexity under 10 per method
-- [ ] No method exceeds 40 lines (excluding data declarations)
-- [ ] Dependencies are injected (no static singletons for game state)
-- [ ] Configuration values loaded from data files
-- [ ] Systems expose interfaces (not concrete class dependencies)
-
----
-
-## Phase 5: Architecture and SOLID
-
-**Architecture:**
-- [ ] Correct dependency direction (engine <- gameplay, not reverse)
-- [ ] No circular dependencies between modules
-- [ ] Proper layer separation (UI does not own game state)
-- [ ] Events/signals used for cross-system communication
-- [ ] Consistent with established patterns in the codebase
-
-**SOLID:**
-- [ ] Single Responsibility: Each class has one reason to change
-- [ ] Open/Closed: Extendable without modification
-- [ ] Liskov Substitution: Subtypes substitutable for base types
-- [ ] Interface Segregation: No fat interfaces
-- [ ] Dependency Inversion: Depends on abstractions, not concretions
-
----
-
-## Phase 6: Game-Specific Concerns
-
-- [ ] Frame-rate independence (delta time usage)
-- [ ] No allocations in hot paths (update loops)
-- [ ] Proper null/empty state handling
-- [ ] Thread safety where required
-- [ ] Resource cleanup (no leaks)
-
----
-
-## Phase 7: Specialist Reviews (Parallel)
-
-Spawn all applicable specialists simultaneously through Codex subagent delegation — do not wait for one before starting the next.
-
-Before spawning, list every required reviewer and why it applies. Reviewers are
-part of mandatory coverage: use the platform's bounded wait/timeout behavior,
-never wait indefinitely, and make at most one retry after a transient
-no-response. Record `REVIEWER_UNAVAILABLE`, `REVIEWER_TIMEOUT`,
-`REVIEWER_BLOCKED`, or `REVIEWER_INVALID_RESPONSE` for any reviewer that does
-not return a usable final review. Each such record is a coverage gap and forces
-`PARTIAL`; never infer a clean result from reviewer silence. The documented
-current-agent fallback applies only when the `lead-programmer` role itself is
-unavailable and the current agent actually performs that role's review.
-
-### Engine Specialists
-
-If an engine is configured, determine which specialist applies to each file and spawn in parallel:
-
-- Primary language files (`.gd`, `.cs`, `.cpp`) → Language/Code Specialist
-- Shader files (`.gdshader`, `.hlsl`, shader graph) → Shader Specialist
-- UI screen/structured prompt code → UI Specialist
-- Cross-cutting or unclear → Primary Specialist
-
-Also spawn the **Primary Specialist** for any file touching engine architecture (scene structure, node hierarchy, lifecycle hooks).
-
-### QA Testability Review
-
-For Logic and Integration stories, also spawn `qa-tester` through Codex subagent delegation in parallel with the engine specialists. Pass:
-- The implementation files being reviewed
-- The story's `## QA Test Cases` section (the pre-written test specs from qa-lead)
-- The story's `## Acceptance Criteria`
-
-Ask the qa-tester to evaluate:
-- [ ] Are all test hooks and interfaces exposed (not hidden behind private/internal access)?
-- [ ] Do the QA test cases from the story's `## QA Test Cases` section map to testable code paths?
-- [ ] Are any acceptance criteria untestable as implemented (e.g., hardcoded values, no seam for injection)?
-- [ ] Does the implementation introduce any new edge cases not covered by the existing QA test cases?
-- [ ] Are there any observable side effects that should have a test but don't?
-
-For Visual/Feel and UI stories: qa-tester reviews whether the manual verification steps in `## QA Test Cases` are achievable with the implementation as written — e.g., "is the state the manual checker needs to reach actually reachable?"
-
-Collect all completed specialist findings before producing output. Preserve
-named failures in the coverage report instead of presenting the reviewer set as
-complete.
-
----
-
-## Phase 8: Output Review
-
-```
-## Code Review: [File/System Name]
-
-### Engine Specialist Findings: [N/A — no engine configured / CLEAN / ISSUES FOUND]
-[Findings from engine specialist(s), or "No engine configured." if skipped]
-
-### Testability: [N/A — Visual/Feel or Config story / TESTABLE / GAPS / BLOCKING]
-[qa-tester findings: test hooks, coverage gaps, untestable paths, new edge cases]
-[If BLOCKING: implementation must expose [X] before tests in ## QA Test Cases can run]
-
-### Coverage: [COMPLETE / PARTIAL]
-- Target files: [reviewed count / manifest count; list omitted or unreadable files]
-- Required checks: [evaluated count / applicable count; list UNKNOWN or UNVERIFIED checks]
-- ADR evidence: [evaluated Accepted ADRs / explicit references; list gaps or ADR_NOT_EVALUATED reason]
-- Required reviewers: [completed count / required count; list reviewer failure codes]
-[For PARTIAL: list every coverage gap and state that approval is prohibited]
-
-### ADR Compliance: [ADR_NOT_EVALUATED / COMPLIANT / DRIFT / VIOLATION]
-[List each ADR, its status, whether it was eligible as compliance evidence, and any deviations with severity]
-
-### Standards Compliance: [X/6 passing]
-[List each check as PASS / FAIL / N/A / UNVERIFIED with evidence and line references]
-
-### Architecture: [CLEAN / MINOR ISSUES / VIOLATIONS FOUND]
-[List specific architectural concerns]
-
-### SOLID: [COMPLIANT / ISSUES FOUND]
-[List specific violations]
-
-### Game-Specific Concerns
-[List game development specific issues]
-
-### Positive Observations
-[What is done well -- always include this section]
-
-### Required Changes
-[Must-fix items before approval — ARCHITECTURAL VIOLATIONs always appear here]
-
-### Suggestions
-[Nice-to-have improvements]
-
-### Verdict: [APPROVED / CONCERNS / NEEDS CHANGES / PARTIAL]
+```text
+$code-review --target <project-relative-file-or-directory>
+             [--target <project-relative-file-or-directory> ...]
+             [--story <project-relative-story.md>]
 ```
 
-This skill is read-only — no files are written.
+- `--target` is required and may appear at most eight times.
+- `--story` is optional and may appear exactly once.
+- Paths must be literal, project-relative paths. Reject absolute paths, empty
+  values, wildcards/globs, duplicate canonical paths, unresolved traversal,
+  symlink/junction escape, and paths outside the project root.
+- A direct file must be an eligible textual source artifact. A directory is
+  resolved recursively through the bounded manifest procedure.
+- The story must be a readable project story with stable identity. It is context,
+  not a hidden target and not permission to edit or complete the story.
 
----
+No arguments, positional paths, unknown options, duplicate `--story`, invalid
+types, and a target set that resolves to no eligible source are input `ERROR`s.
+Return usage, the exact rejected input, and remediation; emit no quality verdict.
 
-## Phase 9: Next Steps
+## Read-only boundary
 
-Ask the user directly:
-- Prompt: "Code review complete — verdict: [APPROVED / CONCERNS / NEEDS CHANGES / PARTIAL]. How would you like to proceed?"
-- Options (adjust based on verdict):
-  - If APPROVED:
-    - `[A] Run $story-done to mark the story complete`
-    - `[B] Stop here`
-  - If CONCERNS or NEEDS CHANGES:
-    - `[A] Fix the issues and re-run $code-review`
-    - `[B] Run $story-done anyway with noted exceptions`
-    - `[C] Stop here`
-  - If PARTIAL:
-    - `[A] Resolve the listed coverage gaps and re-run $code-review`
-    - `[B] Stop here`
+The allowed write set is empty. Do not edit source, tests, rules, ADRs, stories,
+metadata, reports, registries, status, logs, or session state. Do not install
+tools, generate projects, compile, build, run tests, profile, or execute a command
+that can create caches or outputs. A parser, linter, or graph analyzer may run
+only when its configured invocation is proven read-only and its exact receipt is
+captured. Otherwise consume an existing current receipt or mark the check
+`UNVERIFIED`.
 
-If an ARCHITECTURAL VIOLATION is found:
-- If the violation contradicts an **existing ADR**: fix the implementation to comply with `docs/architecture/[adr-file].md`. If the design has legitimately changed, run `$architecture-decision` to formally *revise* the existing ADR — do not create a competing one.
-- If **no ADR exists** for the pattern that was violated: run `$architecture-decision` to document the correct approach before fixing the code.
+Take the before/after streaming mutation snapshots defined in the continued
+workflow. Any changed or incompletely covered in-scope project state forces
+`PARTIAL`; report it but never repair or revert it.
+
+## Contract sources
+
+Read [review-rules-v1.md](references/review-rules-v1.md) completely. It defines
+the bounded manifest, rule/evidence states, severity mapping, ADR admission,
+engine-specialist routing, reviewer limits, stable findings, verdict precedence,
+and output schemas.
+
+Read [continued-workflow.md](references/continued-workflow.md) completely and
+execute its phases in order. Missing, unreadable, or inconsistent contract files
+are an `ERROR` with no quality verdict.
+
+## Build the exact target manifest
+
+Canonicalize every target under the repository root. For directories, enumerate
+eligible regular source files deterministically without following links outside
+root. Apply exclusions only when Git internals or current owner-approved project
+rules/markers classify content as generated, vendored, cached, or build output.
+Do not exclude a path merely because its directory name resembles `vendor` or
+`generated`.
+
+For every candidate record normalized path, type classification, size, complete
+SHA-256, origin target, eligibility, and exclusion reason. Sort by normalized
+path and hash the complete manifest. The fixed bounds are in the rules reference.
+Every eligible file beyond a limit remains visible as `UNCHECKED`; an unreadable
+or unchecked eligible file makes coverage `PARTIAL`. A direct ineligible file is
+an input error rather than a silent exclusion.
+
+Re-hash every target immediately before evidence rendering. If bytes no longer
+match the reviewed hash, mark `TARGET_CHANGED_DURING_REVIEW` and return
+`PARTIAL`.
+
+## Load the complete rule chain
+
+For each target, discover `AGENTS.md` from repository root through every target
+parent. Read and hash the entire chain in root-to-leaf order; the closest
+applicable file wins only where the project guidance explicitly grants that
+precedence. Follow directly linked standards when their subject applies, including
+coding standards and configured technical preferences. Record every source path,
+SHA-256, scope, precedence, stable rule ID, normative wording, and severity.
+
+Do not use one target's nested rules for another target. Do not replace the chain
+with remembered repository conventions. If an applicable rule source cannot be
+read, precedence is ambiguous, or two authorities conflict without an explicit
+override, record a rule coverage gap and return `PARTIAL`.
+
+Checks come from current rule sources, Accepted ADRs, and the optional story's
+explicit requirements. Do not impose universal thresholds such as complexity
+`< 10`, method length `40`, mandatory interfaces, dependency injection, or SOLID
+labels unless an applicable exact source states them. A language/engine-specific
+rule is `N/A` only with exact applicability evidence. Unsupported N/A is
+`UNVERIFIED`.
+
+## Bind ADR evidence explicitly
+
+Build the ADR candidate set only from explicit stable ADR IDs and paths in:
+
+1. the exact `--story` artifact;
+2. target source metadata/header references; and
+3. an owner-approved bounded implementation manifest referenced by those inputs.
+
+Commit messages may be recorded as non-authoritative discovery clues, but never
+create an ADR binding, establish scope, or prove compliance. Do not search old
+commits to choose among renamed, stale, duplicate, or multiple ADRs.
+
+Resolve every explicit ADR ID to one exact current path and SHA-256. Read status,
+Decision, and Consequences. Only `Accepted` ADRs provide compliance rules. A
+readable non-Accepted ADR is `ADR_NOT_EVALUATED` and may produce a source-bound
+`WARNING`; it is never compliance evidence. A missing, unreadable, ambiguous,
+stale, statusless, or structurally incomplete explicit ADR is a coverage gap and
+forces `PARTIAL`. When current project rules require an ADR but no explicit ID is
+available, record `ADR_NOT_EVALUATED`; never infer `COMPLIANT`.
+
+## Evaluate with reproducible evidence
+
+Create a rule ledger before checking code. Each applicable check has exactly one
+state:
+
+```text
+VERIFIED_PASS | VERIFIED_FAIL | NOT_APPLICABLE | UNVERIFIED
+```
+
+`VERIFIED_PASS` and `VERIFIED_FAIL` require the evidence method mandated by the
+rule. Direct source evidence can prove syntactic/local facts. Cyclomatic
+complexity requires a compatible AST/linter receipt; dependency cycles require a
+current build/module graph; hot-path allocation and runtime performance require
+compatible analyzer/profiler evidence. Natural-language inspection alone cannot
+verify those properties.
+
+Every tool/receipt row identifies tool, version, configuration hash, input hashes,
+invocation or receipt path, result hash, and currentness. Missing capability,
+timeout, incompatible configuration, stale input, ambiguous output, or a tool
+that cannot run read-only yields `UNVERIFIED`. Any required `UNVERIFIED` check is
+a named coverage gap and forces `PARTIAL`; never report it as pass.
+
+## Route bounded reviewers
+
+Mechanical rule, hash, parser, graph, and receipt checks remain local. Build one
+deduplicated reviewer plan from exact project configuration and target types:
+
+- `lead-programmer` owns the integrated code-quality/architecture review;
+- configured engine language, shader, UI, native/plugin, or primary specialists
+  apply only through the current `Engine Specialists` and extension-routing
+  configuration;
+- `qa-tester` applies only when the explicit story schema makes testability or
+  manual-verification reachability part of this review.
+
+Do not invent an engine or specialist from a filename. If the engine is configured
+but a needed routing row is empty, use the configured Primary only when the
+project routing contract explicitly permits that fallback. Otherwise record
+`ROUTING_UNCONFIGURED`.
+
+Deduplicate roles before dispatch. At most three reviewers total may run in one
+parallel batch, including the lead. Reviewer selection and overflow use the
+deterministic table in the rules reference. Each receives the same manifest hash,
+only its assigned target hashes/rules, a read-only boundary, and no verdict
+authority. A required reviewer not dispatched because of the cap, or returning
+unavailable/declined/blocked/timeout/error/malformed/target-mismatched evidence,
+forces `PARTIAL`. Reviewer silence is never clean evidence.
+
+If the lead role is unavailable, the current agent may perform that exact role
+locally and record `DONE_LOCAL_FALLBACK`; no engine or QA role may be silently
+substituted. Normalize every usable reviewer observation against a current rule
+ID and target hash. Unsupported advice is `INFO`, not a blocking rule.
+
+## Normalize stable findings
+
+Finding severity is exactly `BLOCKING`, `WARNING`, or `INFO`. Derive severity
+from the applicable rule source and the deterministic mapping in the rules file;
+reviewer rhetoric cannot raise severity. Every finding includes a stable ID and
+fingerprint, rule source/path/hash, target path/hash, stable symbol or subject,
+exact evidence location, check state, consequence, owner, and remediation.
+
+The fingerprint excludes target byte hashes, line numbers, wording, timestamps,
+and reviewer identity, so an unchanged defect retains its ID across revisions.
+Hashes remain in the evidence record for staleness. Security, performance, and
+test-execution observations are routed to their owning domains as candidate
+findings; code review does not duplicate their approval gates.
+
+## Coverage and verdict
+
+Coverage is `COMPLETE` only when:
+
+- every eligible target in the bounded manifest was read, hashed, and reviewed;
+- every applicable rule source and precedence decision is current and resolved;
+- every required rule check is verified pass/fail or evidence-backed N/A;
+- required ADR scope is explicit and every explicit ADR was resolved/status
+  checked, with every Accepted ADR evaluated;
+- every required reviewer completed with usable target-bound evidence; and
+- before/after mutation and final target-hash guards are complete and unchanged.
+
+Apply this precedence exactly:
+
+1. No valid manifest or invalid invocation -> `ERROR`, verdict null.
+2. Any mandatory coverage gap -> `PARTIAL`.
+3. Complete coverage plus any open `BLOCKING` finding -> `NEEDS CHANGES`.
+4. Complete coverage, no blocking finding, and any open `WARNING` -> `CONCERNS`.
+5. Complete coverage with only `INFO` findings or none -> `APPROVED`.
+
+Accepted risk, user preference, or an incomplete reviewer never overrides this
+table. `INFO` is advisory and does not block approval.
+
+## Return and stop
+
+Return one `cgs.review-evidence/v1` envelope with a `cgs.code-review/v2`
+extension as defined in the rules reference. Include the complete target
+manifest, exact target hashes, rule chains/ledger, ADR and tool evidence,
+reviewer plan/results, coverage gaps, stable findings, mutation guard, verdict,
+and stale key.
+
+This skill never persists the record, so always state:
+
+```text
+gate_evidence_status: NOT_PERSISTED
+gate_evidence_eligible: false
+```
+
+Deliver findings and stop. Do not invoke, recommend bypassing into, or represent
+this review as `$story-done`. Story completion is an independent verification
+that must evaluate its own current evidence. For `PARTIAL`, identify coverage to
+restore; for `NEEDS CHANGES` or `CONCERNS`, list source-bound remediation; for
+`APPROVED`, state only what this exact non-persisted code-review record proves.

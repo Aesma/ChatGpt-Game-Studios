@@ -1,311 +1,371 @@
 # Skill Test Spec: $day-one-patch
 
-## Purpose
-
-Verify that `$day-one-patch` is a planner and evidence gate, not an implementer or
-deployment workflow. It must consume canonical bug lifecycle evidence, invalidate old
-release approval after any patch, use stable-ID quick smoke only as targeted evidence,
-hard-block unresolved S1 by default, and keep implementation/deployment/publication
-authorization independent.
+## Skill Summary
+
+`$day-one-patch` is a bounded planner and new-candidate evidence gate. It never
+implements, builds, runs QA, verifies/closes bugs, deploys, submits, notifies or
+publishes. Every patch item has a stable content identity, exact owner/path/budget and
+one implementation round. Rollback, smoke and evidence handoffs are immutable schemas;
+the gate accepts only current new-build evidence. Unresolved S1 and required partial/
+timeout evidence fail closed. Final deployment is a separate human decision.
+
+---
+
+## Static Assertions
+
+- [ ] Frontmatter contains only matching `name` and non-empty `description`
+- [ ] Invocation requires hash-pinned `cgs.day-one-patch-request/v2` with explicit
+  PLAN/GATE/RESUME and no latest/current discovery
+- [ ] Planning/evaluation, controller recording, implementation, build/QA, deployment/
+  submission and publication/notification are non-collapsible authority layers
+- [ ] All implementation/deployment/submission/publication/notification authorization
+  fields remain NOT_GRANTED and Deployment Decision NOT_RECORDED
+- [ ] Hard ceilings bound candidates/items/files/lines/assets/platforms/evidence/time and
+  implementation rounds exactly one; overflow never starts a per-bug loop
+- [ ] Each `cgs.day-one-patch-item/v2` has stable content ID, immutable owner/registry,
+  exact allowed/prohibited paths, item/total budgets, tests, risk and rollback
+- [ ] Plan bundle is `cgs.day-one-patch-plan/v2` with hash-bound item/finding/source
+  identities, rollback, smoke requests, evidence template and observation proposal
+- [ ] Rollback schema and rehearsal bind executable steps, base/new artifacts, data/
+  schema compatibility, backup/restore, RTO/RPO, thresholds, owner/verifier and verdict
+- [ ] QA is never executed/delegated inline; immutable requests carry deadline/timeout
+  and required output, and timeout/partial/error cannot become PASS
+- [ ] `cgs.day-one-smoke-request/v2` pins stable QA IDs, candidate/build/artifact/source/
+  platform, QA/test manifests, scope hash, mode and response contract
+- [ ] Quick targeted smoke remains non-handoff evidence; separately persisted full
+  smoke is required for DAY_ONE_PATCH_READY
+- [ ] `cgs.day-one-patch-evidence-manifest/v2` and stable gate rows bind every
+  implementation/diff/bug/test/smoke/release/rollback hash and finding ID
+- [ ] Changed candidate invalidates all gold-master build-bound PASS/sign-offs
+- [ ] Fresh release checklist is Schema Version 2, full candidate/checklist identity,
+  CREATED, NOT_EVALUATED and authority NONE; it is input, never permission
+- [ ] Open S1 is hard block; exact human+platform exception returns only non-QA-PASS
+- [ ] Optional controller persistence creates one absent full-identity artifact with
+  full-input CAS/read-back; no overwrite/replay
+- [ ] Deployment handoff defines an immutable receipt, minimum observation window,
+  numeric thresholds/sample cadence, accountable owner, automatic stop/rollback points
+  and explicit terminal states without performing post-deploy work
+- [ ] Workflow stops without invoking implementers, tests, downstream gates,
+  deployment, stores, monitoring, communication or publication
+- [ ] Phases are uniquely numbered 1 through 10 with matching implementation/spec scope
+
+---
+
+## Traceability to requested P1 findings
+
+| Finding | Required regression |
+|---|---|
+| DOP-005 | Cases 2–3: hard candidate/file/diff/time budgets and exactly one implementation round |
+| DOP-006 | Cases 4–5: executable rollback schema and current rehearsal verdict with compatibility/hashes |
+| DOP-007 | Cases 2 and 6: per-item owner, allowed/prohibited paths, budgets; actual diff outside scope replans |
+| DOP-008 | Cases 7 and 11: no inline QA; timeout/partial/error receipts remain incomplete/blocking |
+| DOP-009 | Cases 7–9: versioned quick/full smoke request with exact candidate, stable IDs, scope hash and receipts |
+| DOP-010 | Cases 2, 10 and 12: stable patch/finding IDs, immutable v2 plan/evidence/gate manifests and hashes |
+| DOP-011 | Case 14: deployment receipt, minimum observation window, thresholds/cadence, owner, auto-stop and terminal states |
+
+---
 
-## Fixtures
-
-Positive fixtures provide exact bytes and full
-`sha256:<64 lowercase hexadecimal>` digests for:
+## Canonical phase contract
+
+| Phase | Input | Output | Mutation |
+|---|---|---|---|
+| 1 — Base/bugs | Hash-pinned request, instructions, base release/candidate and exact bug/cert index | Valid immutable base and lifecycle state | None |
+| 2 — Bounded scope | Policy, issues, owners and hard budgets | Stable included/deferred v2 items | None |
+| 3 — Plan bundle | Ordered items and source evidence | v2 plan with rollback/smoke/evidence/observation schemas | None |
+| 4 — Rollback | Base/platform/data risk and objectives | Executable rollback contract; later exact rehearsal requirement | None |
+| 5 — QA handoffs | Stable item QA IDs and candidate requirements | Quick/full versioned requests with deadlines; no execution | None |
+| 6 — New candidate | Approved plan, new build/diff and v2 evidence manifest | Scope/budget/owner/new-build validation | None |
+| 7 — Release evidence | New candidate Schema2 release checklist and dependencies | Independently evaluated release-policy rows | None |
+| 8 — Patch gate | All current gate rows/findings/S1 state | One deterministic new-candidate verdict | None |
+| 9 — Record/resume | Candidate plan/gate/checkpoint and optional mutation authority | Zero-write response or one CAS-created artifact | Create one absent target only |
+| 10 — Deployment proposal | Ready/nonready evidence packet | Observation/rollback receipt requirements and one next owner | None |
 
-- `day-one-patch-request`, gold-master and patch `build-candidate` manifests,
-  artifacts, source refs, test manifests, QA plans, release manifests/policies,
-  applicable AGENTS.md chain, and owner registry;
-- canonical `production/qa/bugs/<BUG-ID>.md` records using schema 1, canonical
-  severities/statuses, transition history, fix references, target-build reproduction
-  and failure-sensitive automated regression receipts;
-- immutable plan, scope decision, implementation/diff receipts, patch evidence
-  manifest, quick and sprint smoke receipts, fresh release checklist, rollback
-  rehearsal, platform and risk-derived evidence.
+No implicit implementation, QA execution, deployment, publication or downstream-call
+phase exists.
 
-Negative fixtures alter one fact unless stated otherwise. Tests assert that no source,
-config, data, test, bug, release-state, Git, deployment, platform, publication, or
-notification mutation occurs.
+---
 
-## Static assertions
+## Case 1: Planning is zero product mutation and no human approval is fabricated
 
-- [ ] Frontmatter contains only `name` and non-empty `description`; name matches the directory.
-- [ ] Invocation supports explicit `plan`, `gate`, and `resume` modes and never infers newest/latest artifacts.
-- [ ] The skill contains no fix implementation loop and never edits code/config/data/tests/assets/build scripts.
-- [ ] Plan/report persistence, implementation, build/QA, deployment, and publication are separate authority layers.
-- [ ] Scope approval is only implementation handoff and never authorizes implementation.
-- [ ] `DAY-ONE PATCH READY` grants no deployment or publication permission.
-- [ ] Only `production/qa/bugs/<BUG-ID>.md` with schema 1 and stable BUG ID is canonical.
-- [ ] Canonical severities and lifecycle states exactly match staged bug-report.
-- [ ] `Verified Fixed` requires target-build reproduction PASS plus failure-sensitive automated regression PASS.
-- [ ] This workflow never verifies, closes, or mutates a bug record.
-- [ ] Every patch item has stable ID, owner, allowed/prohibited paths, effort/file/diff budgets, one implementation round, regression ID, and stable smoke IDs.
-- [ ] Open S1 is a default hard block and can never become QA PASS.
-- [ ] An S1 exception requires both human risk acceptance and platform/policy permission and returns only `PROCEED WITH ACCEPTED S1 RISK — NOT QA PASS`.
-- [ ] Gold-master release PASS becomes stale for a changed patch candidate.
-- [ ] New candidate identity matches staged smoke-check `build-candidate` fields.
-- [ ] Quick smoke uses exact stable QA-plan IDs, `TARGETED CHECK PASSED`, and `Handoff Eligible: NO`.
-- [ ] Quick smoke alone cannot make the patch ready; a current persisted sprint PASS is required.
-- [ ] Fresh release checklist uses the full release-manifest hash path, exact new candidate identity, `Persistence: WRITTEN`, and `Gate Decision: NOT EVALUATED`.
-- [ ] Rollback evidence includes previous artifact, executable method, data compatibility, rehearsal environment, result, hashes, RTO/RPO, thresholds, and owner.
-- [ ] Missing/partial/unknown/timeout/not-run/stale/wrong-build/unpersisted evidence cannot pass.
-- [ ] Deterministic gate returns exactly one named verdict and preserves failures/incomplete rows.
-- [ ] Agent recommendations and role checkboxes are not human approvals.
-- [ ] Deployment/platform submission and publication/notification require independent human authorization.
-- [ ] The skill stops without invoking downstream workflows or post-launch actions.
-- [ ] Controller artifacts have one writer; timeouts/checkpoints/resume are hash-bound and idempotent.
+**Fixture:** Valid PLAN request, exact current base and issue index. QA lead, producer
+and release-manager agents recommend a patch and deployment time.
 
-## Case 1: Planning mode has zero product mutation
+**Expected behavior:** Return a plan candidate only. Code/config/data/tests/assets/build
+scripts/bugs/Git/release/external systems remain unchanged. All authorization fields are
+NOT_GRANTED and Deployment Decision NOT_RECORDED.
 
-**Input**
+**Assertions:**
 
-~~~text
-$day-one-patch plan --manifest production/releases/r1/day-one-request.yaml --plan-id plan-1
-~~~
+- [ ] Role labels/checkboxes/recommendations are not human deployment approval
+- [ ] Scope approval means implementation handoff only
+- [ ] No implementer, test, gate, deploy or communication workflow is invoked
 
-All declared inputs are current.
+---
 
-**Expected**
+## Case 2: Complete patch item has stable owner/scope/evidence identity
 
-The workflow reads only indexed evidence and returns a bounded proposed plan in
-conversation. It does not edit code, config, data, tests, assets, build scripts, bug
-records, Git, release state, or external systems. `Persistence: NOT_REQUESTED` and
-`Implementation Authorization: NOT GRANTED`.
+**Fixture:** One eligible S2 bug fits all bounds.
 
-With `--persist`, only controller-owned plan/rollback/template/checkpoint CREATE paths
-may be written after exact file authorization.
+**Expected behavior:** Emit a DOPI content-derived ID and v2 item containing canonical
+bug hash/state, owner/registry, allowed/prohibited paths, symlink/generated-output rules,
+file/line/binary/effort/dependency/round budgets, acceptance, repro/regression/stable QA
+IDs, risk, evidence outputs and rollback.
 
-## Case 2: Complete bounded patch item
+**Assertions:**
 
-One S2 bug is eligible.
+- [ ] Discovery order cannot change item identity
+- [ ] Missing owner/path/budget/test/rollback field is REPLAN REQUIRED/INCOMPLETE
+- [ ] Free-text commit/tag slots do not count as evidence
 
-**Expected**
+---
 
-Its plan row has stable patch item ID, canonical bug ID/path/hash/severity/status,
-owner, exact allowed/prohibited paths, effort/file/diff/asset limits, dependencies,
-one implementation round, minimum fix behavior, repro case, failure-sensitive
-regression ID/path, ordered quick-smoke stable IDs, broader risk tests, candidate
-outputs, and rollback obligations.
+## Case 3: Budget overflow stops before implementation
 
-Missing any mandatory field yields `REPLAN REQUIRED` or `INCOMPLETE`, not handoff.
+**Fixture:** Candidate/item/file/diff/platform/time limits are exceeded and a required
+issue cannot fit the single implementation round.
 
-## Case 3: Budget overflow stops the loop
+**Expected behavior:** Apply frozen deterministic ranking, record every deferred item/
+owner/reason, return REPLAN REQUIRED or BLOCKED, and start no per-bug loop.
 
-Six eligible bugs exceed request limits of three issues, four files, one
-implementation round, and eight hours.
+**Assertions:**
 
-**Expected**
+- [ ] Request may lower but not raise hard ceilings
+- [ ] Hidden second round or partial implementation is forbidden
+- [ ] Limit/time stop has counts, hashes and resume cursor
 
-The deterministic policy ranking selects only a bounded set, records every deferred
-item and owner/rationale, and returns `REPLAN REQUIRED` when required issues do not
-fit. No implementer spawns and no per-bug implementation loop begins.
+---
 
-## Case 4: Canonical bug location and enums
+## Case 4: Rollback plan is executable and compatibility-aware
 
-Test canonical `production/qa/bugs/BUG-0007.md`, legacy `production/bugs/BUG-0007.md`,
-duplicate IDs, filename/body mismatch, legacy severity `CRITICAL`, and unknown status.
+**Fixture:** Plan supplies per-platform base/new identities, command/argv/tool,
+permissions/idempotency, backward/forward data/schema compatibility, backups/restores,
+operator/verifier, RTO/RPO, production-equivalent rehearsal, thresholds and kill switch.
 
-**Expected**
+**Expected behavior:** Produce deterministic `cgs.day-one-rollback-plan/v2`. A prose
+“revert commit,” runbook presence or no-rollback platform without authorized equivalent
+is not gate evidence.
 
-Only the canonical matching schema-1 record is accepted. Every legacy, duplicate,
-mismatched, or unknown-enum case blocks without mutation.
+**Assertions:**
 
-## Case 5: Bug lifecycle evidence
+- [ ] Irreversible operations and forward recovery are explicit
+- [ ] Automatic/manual stop point and safe terminal state are named
+- [ ] Message/channel content remains proposal only
 
-Variants for an included fix:
+---
 
-1. `Open`;
-2. `Fixed Pending Verification`;
-3. `Verified Fixed` with reproduction and automated regression PASS for new build;
-4. `Verified Fixed` with manual-only regression;
-5. `Closed` with current valid transition/evidence.
+## Case 5: Failed or stale rehearsal blocks gate
 
-**Expected**
+**Fixture:** Current rehearsal exceeds RTO/RPO, fails restore/data integrity, or uses
+wrong candidate/environment. Other variants are plan-only, partial or missing.
 
-Variant 1 is unresolved failure; variant 2 is `INCOMPLETE`; variants 3 and 5 may
-satisfy the bug gate; variant 4 is incomplete/invalid. Smoke or source inspection
-cannot replace either receipt. No status transition is written.
+**Expected behavior:** Current conclusive fail is BLOCKED/NEEDS_REPLAN; wrong/stale/
+partial/missing is INCOMPLETE. Only exact passing `cgs.day-one-recovery-rehearsal/v2`
+can satisfy the rollback gate.
 
-## Case 6: Old release evidence becomes stale
+**Assertions:**
 
-Gold master has a release PASS and smoke PASS. The patch candidate changes one config
-byte and has a different candidate/artifact hash but supplies no new release evidence.
+- [ ] Receipt binds base/new artifacts, platform/data/schema, commands, owner/verifier,
+  times, measured objectives, logs and hashes
+- [ ] A report filename/hash alone does not prove execution
 
-**Expected**
+---
 
-All build-specific old evidence is comparison-only and stale. Gate verdict is
-`INCOMPLETE`; no “already QA approved” shortcut exists.
+## Case 6: Actual diff outside owner/path/budget scope needs replan
 
-## Case 7: Default S1 hard block
+**Fixture:** External implementer changes an extra/prohibited path, exceeds line/file/
+binary budget, adds a feature/refactor/generated output, uses wrong owner, or performs
+round two.
 
-One canonical `S1-Critical` remains `Open` at gate (or was excluded from the emergency remediation plan), with no exception artifacts.
+**Expected behavior:** Gate returns NEEDS_REPLAN. It neither absorbs, edits nor reverts
+the diff and never grants broader authority.
 
-**Expected**
+**Assertions:**
 
-- `Workflow Status: BLOCKED`
-- `Patch Gate Verdict: BLOCKED` at gate, or `Plan Verdict: BLOCKED` when the S1 was not included
-- `S1 Disposition: HARD BLOCK`
-- original severity/status preserved
-- `Workflow Status: BLOCKED`, never `COMPLETE`
-- no QA PASS, readiness, deployment, or accepted-risk label.
+- [ ] Actual changed-path hashes are checked against every v2 item
+- [ ] One item/path approval cannot authorize another
+- [ ] Controller does not become implementation owner
 
-## Case 8: Narrow S1 exception is not QA PASS
+---
 
-Supply both a current platform-policy permission and independently signed human
-`day-one-s1-risk-acceptance`, bound to the exact S1/release/candidate/platform with
-expiry, impact, controls, monitoring, rollback, and communication plan.
+## Case 7: QA is an external receipt contract with timeout states
 
-**Expected**
+**Fixture:** Plan creates immutable test/repro/regression/smoke handoffs with exact
+producer, deadline/timeout, candidate/platform, tests, output schema/path and logs.
+Variants are timeout, cancelled, partial, error and late after frozen gate.
 
-Only `PROCEED WITH ACCEPTED S1 RISK — NOT QA PASS` is allowed, with
-`S1 Disposition: HUMAN ACCEPTED / PLATFORM ALLOWED`. The bug remains Open. Any
-missing, stale, unsigned, wrong-platform, expired, agent-authored, or prose-only
-artifact returns BLOCKED.
+**Expected behavior:** This workflow runs/delegates none. Gate records TIMEOUT/NOT_RUN/
+PARTIAL/UNAVAILABLE with owner/impact; required gaps yield INCOMPLETE/BLOCKED and late
+receipts cannot mutate a persisted result.
 
-## Case 9: Quick smoke uses stable IDs
+**Assertions:**
 
-Plan lists `QA-CHECK-COMBAT-001` and `QA-CHECK-SAVE-004`. The quick receipt is the
-canonical persisted report for the new candidate, exact current QA plan/test
-manifest, exact ordered IDs/scope hash, `Mode: quick`,
-`Verdict: TARGETED CHECK PASSED`, `Handoff Eligible: NO`,
-`Receipt State: COMPLETE`, and `Persistence: WRITTEN`.
+- [ ] No skip-and-pass or synthesized QA PASS
+- [ ] Every required receipt is immutable and candidate-bound
+- [ ] Quick/full smoke remain distinct requests
 
-**Expected**
+---
 
-It is accepted as targeted changed-area evidence only. A caller using `combat,save`
-affected-system names, unknown/duplicate IDs, a different order/scope hash, stale QA
-plan, or prior candidate is rejected.
+## Case 8: Quick smoke request uses stable IDs and exact build identity
 
-## Case 10: Quick success alone is incomplete
+**Fixture:** `cgs.day-one-smoke-request/v2` QUICK_TARGETED names ordered stable QA IDs,
+plan/item hashes, new candidate/build/artifact/source/platform, QA/test hashes, scope
+serialization/hash, timeout and exact output contract.
 
-All patch-item regression receipts and quick checks pass, but no sprint smoke exists.
+**Expected behavior:** Accept only matching persisted supported receipt. Free-form
+`combat,save`, unknown/duplicate/reordered IDs, wrong scope/build or stale QA plan is
+invalid. Quick remains targeted with Handoff Eligible NO.
 
-**Expected**
+**Assertions:**
 
-`Patch Gate Verdict: INCOMPLETE`. Quick's `Handoff Eligible: NO` is preserved and
-cannot authorize QA/release handoff.
+- [ ] No affected-system string translation occurs at gate
+- [ ] Every transitive automation/manual/log hash is revalidated
+- [ ] Quick PASS alone returns INCOMPLETE
 
-## Case 11: Full smoke receipt
+---
 
-Add a canonical persisted sprint receipt for the same new candidate with
-`Verdict: PASS`, `Handoff Eligible: YES`, `Receipt State: COMPLETE`,
-`Persistence: WRITTEN`, current QA plan, complete coverage, and no warnings.
+## Case 9: Full smoke is independently required
 
-**Expected**
+**Fixture:** Quick changed-area receipt passes. Full sprint receipt variants are absent,
+PASS/current/complete/persisted, FAIL, warning-bearing, partial, timeout or wrong build.
 
-The smoke portion may pass. A sprint FAIL takes precedence; incomplete, quick,
-warning-bearing, unpersisted, stale, or mismatched receipt cannot pass.
+**Expected behavior:** Only exact full current PASS with complete stable coverage and
+eligible handoff can satisfy full smoke. FAIL wins; all incomplete variants cannot make
+DAY_ONE_PATCH_READY.
 
-## Case 12: New build-candidate identity
+**Assertions:**
 
-Change one at a time: candidate manifest type/version, artifact hash, source commit,
-engine/runner version, platform matrix, QA-plan hash, test-manifest hash, or remote
-build receipt.
+- [ ] Quick result never authorizes full QA/release handoff
+- [ ] Request/receipt schema version is pinned by plan/policy
+- [ ] No smoke workflow is invoked by this skill
 
-**Expected**
+---
 
-Every mismatch is invalid/blocked before test evidence is consumed. A post-build byte
-change invalidates all receipts.
+## Case 10: v2 evidence manifest and stable findings are complete
 
-## Case 13: Fresh release checklist contract
+**Fixture:** Gate evidence contains implementation/diff, bug lifecycle, reproduction,
+automated regression, quick/full smoke, risk, rollback, platform and release records.
+One variant omits a receipt or uses a free-text claim without hash/finding ID.
 
-Use the exact
-`production/releases/<release-id>/<full-release-manifest-sha256>/release-checklist.md`
-with `Artifact Type: release-evidence-checklist`, schema 1, new candidate/release/
-policy identity, `Persistence: WRITTEN`, `Workflow Status: COMPLETE`, and
-`Gate Decision: NOT EVALUATED`.
+**Expected behavior:** Complete variant yields deterministic evidence snapshot/gate row
+hashes. Omission is INCOMPLETE; free text never substitutes. DOPF IDs preserve exact
+rule/source/owner and supersedes lineage.
 
-**Expected**
+**Assertions:**
 
-The report is accepted only as normalized evidence. The day-one gate independently
-applies policy; checklist existence or workflow completion is not permission. A
-shortened hash path, old candidate, PARTIAL report, failed persistence, or inferred
-gate decision blocks/is incomplete.
+- [ ] Every gate claim maps to item/finding and immutable evidence hashes
+- [ ] Same bytes yield same ordered rows/verdict/gate identity
+- [ ] Old candidate evidence is marked STALE comparison only
 
-## Case 14: Rollback rehearsal
+---
 
-Positive receipt binds every platform, base and patch artifacts, executable
-rollback/recovery argv, production-equivalent environment, operator/verifier,
-data/save compatibility and backup, start/end, RTO/RPO, result, logs/hashes,
-thresholds and kill switch.
+## Case 11: Partial, timeout and unavailable evidence cannot pass
 
-**Expected**
+**Fixture:** Cert receipt unreadable, risk check partial, smoke timeout, release row
+unknown and one platform omitted.
 
-Only current passing evidence satisfies rollback. Prose-only “revert commit”,
-unrehearsed plan, failed/partial/wrong-build receipt, or a no-rollback platform
-without a policy-authorized equivalent blocks.
+**Expected behavior:** Preserve every gap with owner/deadline/platform/dependency impact.
+Deterministic gate returns INCOMPLETE/BLOCKED, never ready/EVALUATED because loading
+finished superficially.
 
-## Case 15: Actual diff leaves the plan
+**Assertions:**
 
-An external implementer changes an extra file, exceeds line budget, adds a feature,
-or performs a second implementation round.
+- [ ] Required PARTIAL/UNKNOWN/STALE/MISSING/NOT_RUN/TIMEOUT/INVALID/UNAVAILABLE blocks
+- [ ] Conclusive FAIL is retained even when incomplete evidence also exists
+- [ ] No role recommendation converts evidence state
 
-**Expected**
+---
 
-`Patch Gate Verdict: NEEDS REPLAN`; the workflow neither absorbs nor reverts the
-change and never starts another implementation loop.
+## Case 12: Fresh Schema2 release checklist is normalized input only
 
-## Case 16: Partial, timeout, and agent error
+**Fixture:** P1 release checklist report path contains full candidate/checklist hashes,
+Schema Version 2, exact new identities/dependencies, recorder CREATED, Gate Decision
+NOT_EVALUATED and authority NONE. Variants use Schema1 gold-master path, old candidate,
+partial report, altered row or inferred decision.
 
-A cert receipt is unreadable, one risk check times out, and a read-only advisor is
-cancelled.
+**Expected behavior:** Re-hash valid report and independently apply policy. Variants are
+STALE/INCOMPLETE/BLOCKED. Checklist existence, counts, PASS rows and waivers grant no
+patch/deployment authority.
 
-**Expected**
+**Assertions:**
 
-All appear with owner/deadline/dependency impact. Required evidence yields
-`INCOMPLETE` or `BLOCKED`; no skip/pass option exists. A checkpoint preserves loaded
-evidence and resume re-hashes the predecessor chain.
+- [ ] New build always gets fresh release normalization
+- [ ] Every checklist row/dependency hash is verified
+- [ ] Day-one gate owns only patch evidence verdict
 
-## Case 17: Human approval boundary
+---
 
-QA lead, producer, and release-manager agents all recommend deployment.
+## Case 13: S1 hard block and narrow exception remain non-passing
 
-**Expected**
+**Fixture:** Open S1 without exception; then exact platform permission plus independent
+human risk acceptance bound to new candidate/platform/expiry/controls/rollback.
 
-All three authorization fields remain `NOT GRANTED`. No deployment time, platform
-submission, branch/tag/push, publication, patch-note send, or stakeholder message
-occurs. Role names and checkboxes are recommendations only.
+**Expected behavior:** First is BLOCKED/HARD_BLOCK. Second is only
+PROCEED_WITH_ACCEPTED_S1_RISK_NOT_QA_PASS; bug remains Open and no authorization field
+changes.
 
-## Case 18: Deployment and publication are separate
+**Assertions:**
 
-After `DAY-ONE PATCH READY`, provide deployment authorization but no publication
-authorization.
+- [ ] Unresolved S1 without pair never has EVALUATED/ready workflow state
+- [ ] Agent/producer/release role cannot waive S1
+- [ ] Exception is not QA PASS or deployment/publication permission
 
-**Expected**
+---
 
-This workflow still performs neither action. Its handoff distinguishes deployment
-candidate/action/idempotency/rollback/monitoring requirements from publication
-channel/message-digest/idempotency requirements. Deployment permission never carries
-to publication.
+## Case 14: Deployment observation has receipts, windows, automatic stops and a human gate
 
-## Case 19: No applicable issues
+**Fixture:** Gate verdict is DAY_ONE_PATCH_READY and agent roles recommend immediate
+multi-platform submission plus player notification.
 
-The exact bug/cert index loads completely and contains no applicable issue.
+**Expected behavior:** Return Deployment Decision NOT_RECORDED and all authorization
+fields NOT_GRANTED. Observation plan requires an immutable future deployment receipt
+with installed digest/result, rollout stage, minimum observation window, numeric
+thresholds, sample/cadence, owner/kill switch, automatic stop/rollback and terminal
+state, but performs no action.
 
-**Expected**
+**Assertions:**
 
-`Workflow Status: COMPLETE`, `Plan Verdict: NO PATCH`, optional empty evidence-based
-plan, no downstream workflow invocation, and no guess based on an empty directory.
+- [ ] User/separate gate names candidate/action/account/environment/time/idempotency
+- [ ] Deployment permission cannot authorize message/channel publication
+- [ ] DEPLOYED/STABILIZING are nonterminal; only evidence-bound STABILIZED,
+  POST_DEPLOY_DEGRADED or ROLLED_BACK closes the proposed observation state
+- [ ] No timing selection, submission, monitoring, rollback, bug closure or notification
 
-## Case 20: Persisted report and resume integrity
+---
 
-Authorize one exact plan or gate report CREATE, then interrupt after checkpoint.
+## Case 15: Immutable controller recording and resume
 
-**Expected**
+**Fixture:** Analyze-only returns plan/gate bytes. Recording variants pre-create target
+or drift inputs, owner registry, candidate/evidence, parent or output before commit;
+another resumes from an exact checkpoint.
 
-Inputs and target absence are re-hashed immediately before atomic write; read-back
-returns exact hash. `resume` verifies predecessor/manifests/bug/evidence/output hashes
-and continues only the first incomplete idempotent step. Existing output, drift, or
-missing predecessor blocks without overwrite/replay.
+**Expected behavior:** Analyze-only zero-write. Stable recording creates one full-hash
+target by no-replace CAS/read-back. Drift/existing target writes nothing; read-back
+mismatch RECOVERY_REQUIRED. Resume verifies predecessor chain and continues one legal
+idempotent step.
 
-## Protocol compliance
+**Assertions:**
 
-- [ ] Planning remains non-implementing and bounded.
-- [ ] Candidate evaluation is entirely new-build/hash-bound.
-- [ ] Canonical bug status/evidence semantics match staged bug-report.
-- [ ] Quick smoke stable IDs and non-handoff result match staged smoke-check.
-- [ ] Fresh release checklist identity and non-authority semantics are preserved.
-- [ ] S1, rollback, partial, timeout and wrong-build conditions fail closed.
-- [ ] Implementation, deployment and publication approvals are independent.
-- [ ] No agent recommendation becomes human approval.
-- [ ] Metadata describes planning/evidence gating rather than implementation.
+- [ ] No overwrite, second controller file, replay or conversation-memory recovery
+- [ ] Recorder cannot alter plan/gate content
+- [ ] All product/evidence/external artifacts remain immutable
+
+---
+
+## Protocol Compliance
+
+- [ ] Planning remains bounded, owner/path-scoped and non-implementing
+- [ ] Rollback and QA/smoke are versioned handoff/evidence contracts, not inline work
+- [ ] New candidate invalidates old release evidence and drives every gate hash
+- [ ] Stable item/finding/evidence identities replace free-text proof slots
+- [ ] S1 and required partial/timeout/rollback gaps fail closed
+- [ ] Human deployment/submission/publication authority stays independent
+- [ ] Controller creates at most one immutable CAS-protected artifact and stops
+
+---
+
+## Coverage Notes
+
+Cases 1–15 cover authoritative P1 findings DOP-005 through DOP-011, retain DOP-001..004
+safety (including the human deployment boundary), and never perform post-deploy work.
+Unchecked assertions are required behavior, not executed-result claims; catalog result
+fields remain unchanged.

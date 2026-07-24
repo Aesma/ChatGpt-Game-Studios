@@ -1,4 +1,4 @@
 interface:
   display_name: "Hotfix"
-  short_description: "Prepare a hash-bound local hotfix candidate"
-  default_prompt: "Use $hotfix with one explicit command to plan, patch, build, assess, or hand off a candidate; never merge, deploy, or publish implicitly."
+  short_description: "Prepare isolated rollback-safe hotfix evidence"
+  default_prompt: "Use one explicit $hotfix command to preflight an isolated worktree, apply a hash-bound patch, derive deterministic QA scope, assess rollback-safe local readiness, or observe an externally receipted deployment; never merge, deploy, roll back, or publish implicitly."

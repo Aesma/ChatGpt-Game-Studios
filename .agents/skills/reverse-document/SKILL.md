@@ -1,314 +1,316 @@
 ---
 name: reverse-document
-description: "Create a non-authoritative, provenance-bound observation report from bounded implementation evidence while separating observed behavior, attested intent, unknowns, and unimplemented proposals."
+description: Create a non-authoritative, provenance-bound observation report from bounded implementation evidence while separating observed facts, unverified inferences, user-attested intent, unknowns, and unimplemented proposals.
 ---
 
 # Reverse Document
 
-Reverse documentation records what selected implementation evidence demonstrates. It
-does not treat code, comments, tests, prototypes, bugs, workarounds, or experiments as
-approved product or architecture intent.
+Create one immutable, non-authoritative observation report from an exact bounded brownfield source inventory. Code, configuration, tests, comments, prototypes, generated output, and defects can show what exists in the checked bytes; they do not establish approved product or architecture intent.
 
-## Invocation contract
+## Invocation
 
-Invoke only as:
-
-`$reverse-document --manifest {reverse-document-request-path}`
-
-Validate arguments before reading sources, asking intent questions, delegating, or
-writing. With no manifest, show the usage line and stop with no reads, writes,
-delegates, or verdict. Reject unknown/duplicate flags, missing values, directories,
-unsafe IDs, unsupported schemas, path traversal, and symlink/junction escapes.
-
-The request manifest requires:
-
-- `Artifact Type: reverse-document-request` and `Schema Version: 1`;
-- stable artifact/run IDs and profile `observed-design-report`,
-  `observed-architecture-report`, or `observed-concept-report`;
-- mode `create` or `merge`, exact canonical output path, and expected target SHA-256
-  or `ABSENT`;
-- exact source-file inventory with normalized path, expected SHA-256, language/type,
-  expected size, inclusion reason, and optional stable build/source-tree/commit hash;
-- dependency edges and the maximum allowed dependency depth;
-- maximum file count, bytes, tokens, generated-file count, and per-file size;
-- actual observer task ID, recorder task ID, mutation authority, output owner,
-  maximum clarification rounds, and explicit non-writes;
-- expected inline profile ID and, when pinned, expected profile-source SHA-256.
-
-Directories are not implicit read scopes. A directory target is accepted only when
-the manifest already contains its exact deterministic file inventory and inventory
-hash. Resolve every real path under the repository root and accept regular readable
-files only. Do not follow undisclosed dependencies, glob the repository, or inspect
-omitted files.
-
-Canonical routing is unique:
-
-| Profile | Exact route |
-|---|---|
-| `observed-design-report` | `docs/reverse-document/design/{artifact-id}.md` |
-| `observed-architecture-report` | `docs/reverse-document/architecture/{artifact-id}.md` |
-| `observed-concept-report` | `docs/reverse-document/concept/{artifact-id}.md` |
-
-Reject an output path that does not match its profile. This workflow never writes
-directly to authoritative GDD, ADR, architecture, concept, source, prototype, or
-registry paths.
-
-## Versioned inline profile source
-
-The three schemas below are the canonical templates. Their profile ID is
-`reverse-document-profile-v1`; their source is this exact `SKILL.md`. At startup:
-
-1. read this file and compute its exact-byte SHA-256;
-2. verify the frontmatter name, profile ID, common header fields, selected profile
-   heading table, and stable section IDs are present exactly once;
-3. compare the hash with a manifest-pinned profile hash when supplied;
-4. record `profile_source_path` and `profile_source_sha256` in the report.
-
-If the profile source is missing, unreadable, malformed, duplicated, or hash-mismatched,
-return `Analysis Status: ERROR — TEMPLATE PROFILE UNAVAILABLE`, perform zero source
-analysis and zero writes, and emit no document verdict. Do not fall back to a guessed
-template or another artifact type.
-
-### Common machine-readable header
-
-Every report begins with:
-
-```markdown
----
-artifact-type: observed-design-report | observed-architecture-report | observed-concept-report
-schema-version: reverse-document-profile-v1
-authority: NON_AUTHORITATIVE_OBSERVATION
-artifact-id: <stable ID>
-run-id: <stable ID>
-status: OBSERVATION_DRAFT | OBSERVATION_PARTIAL | OBSERVATION_COMPLETE
-observer-task-id: <actual task that produced observations>
-source-inventory-sha256: <canonical inventory hash>
-provenance-manifest-sha256: <canonical embedded manifest hash>
-profile-source-path: .agents/skills/reverse-document/SKILL.md
-profile-source-sha256: <exact bytes hash>
-attestation-status: NONE | UNVERIFIED_IDENTITY | VERIFIED_IDENTITY
-attested-by: unverified | <identity supplied explicitly by the user>
-generated-at-utc: <ISO-8601 UTC>
----
+```text
+$reverse-document --manifest <request-path> --expect-manifest <sha256:...>
 ```
 
-Never emit `verified-by`. Never invent a person's name, account, role, or signature.
-An identity may be copied only from an explicit user-provided attestation field or
-answer and must be stored verbatim with its record hash.
+Both flags are required and may occur once. Reject unknown/repeated flags, missing values, directories, moving aliases such as `latest`, malformed SHA-256 values, traversal, or a manifest outside the repository. With no arguments, show only the usage line and stop with zero source reads, questions, writes, delegates, or verdicts.
 
-### Profile: observed-design-report
+The request must conform to `cgs.reverse-document-request/v2` and contain:
 
-| Stable ID | Exact H2 heading | Required content |
+- stable `artifact_id` and requested profile;
+- exact normalized repository-relative output artifact identity;
+- an exact source inventory of path, expected SHA-256, expected size, media/language type, generated/handwritten state, inclusion reason, priority, and dependency depth/edges;
+- optional exact build, source-tree, or commit identity as supporting context;
+- requested file, byte, parser-output, dependency-depth, and clarification budgets;
+- actual observer task ID, proposed recorder task ID, and output owner;
+- explicit non-writes;
+- optional prior immutable report path plus expected SHA-256 for lineage only;
+- expected profile ID and optional expected profile-source SHA-256.
+
+The expected manifest hash must equal its exact bytes before any source or prior report is read. A manifest is a scope request, not content approval, intent attestation, promotion approval, or write authorization.
+
+## Authority and mutation boundary
+
+All sources, configuration, builds, tests, prototypes, indexes, prior reports, and authoritative design/architecture artifacts are read-only evidence.
+
+The sole permitted mutation is creating one previously absent observation report after a complete byte-exact preview and explicit authorization. This workflow never:
+
+- edits, merges, overwrites, appends to, renames, moves, or deletes an existing report;
+- writes a GDD, concept, architecture specification, ADR, story, source file, test, prototype, registry, manifest, or status/configuration file;
+- converts a bug, workaround, experiment, comment, naming pattern, or test expectation into approved intent;
+- places unimplemented behavior into an as-is section;
+- invokes another project workflow or implements a proposal;
+- commits, pushes, publishes, or performs destructive cleanup.
+
+Content approval, intent attestation, output-write authorization, and downstream promotion are four separate decisions. One never implies another.
+
+## Versioned profile registry and unique routing
+
+The canonical profile registry is `reverse-document-profile-v2` embedded in this exact `SKILL.md`. At startup, hash the exact skill bytes and validate that the registry ID, header fields, route table, profile section tables, and stable section IDs each appear exactly once. When the request pins a profile-source hash, it must match.
+
+If the source is missing, malformed, duplicated, unreadable, or hash-mismatched, return `ERROR — PROFILE_UNAVAILABLE`, read no implementation source, ask no intent question, and write nothing. Do not search for or invent a replacement template.
+
+Each artifact type has exactly one profile and route pattern:
+
+| Profile / artifact type | Only legal output route |
+|---|---|
+| `observed-design-report` | `docs/reverse-document/design/<artifact-id>/<run-id>.md` |
+| `observed-architecture-report` | `docs/reverse-document/architecture/<artifact-id>/<run-id>.md` |
+| `observed-concept-report` | `docs/reverse-document/concept/<artifact-id>/<run-id>.md` |
+
+The route is create-only and run-specific. A prior run may be linked by exact path/hash but is never the output target. Reject an artifact type, profile, or route that does not match this table.
+
+### Common report header
+
+Every report begins with these machine-readable fields:
+
+```yaml
+artifact-type: observed-design-report | observed-architecture-report | observed-concept-report
+schema-version: reverse-document-profile-v2
+authority: NONAUTHORITATIVE_OBSERVATION
+artifact-id: <stable ID>
+run-id: <immutable run ID>
+status: OBSERVATION_DRAFT | OBSERVATION_PARTIAL | OBSERVATION_COMPLETE
+coverage-status: PARTIAL | COMPLETE
+request-path: <normalized path>
+request-sha256: <exact SHA-256>
+source-inventory-sha256: <canonical inventory SHA-256>
+observation-snapshot-sha256: <canonical checked/omitted snapshot SHA-256>
+provenance-schema: cgs.reverse-document-provenance/v2
+provenance-manifest-sha256: <canonical embedded manifest SHA-256>
+profile-source-path: .agents/skills/reverse-document/SKILL.md
+profile-source-sha256: <exact SHA-256>
+attestation-status: NONE | UNVERIFIED_IDENTITY | USER_SUPPLIED_IDENTITY
+attested-by: unverified | <verbatim identity explicitly supplied by user>
+prior-report-path: NOT_SUPPLIED | <normalized immutable path>
+prior-report-sha256: NOT_SUPPLIED | <exact SHA-256>
+generated-at-utc: <ISO-8601 UTC>
+```
+
+Never emit `verified-by`, `approved-by`, or `VERIFIED_IDENTITY`. An explicitly supplied identity is self-reported provenance, not a cryptographic signature.
+
+### Observed design profile
+
+| Stable ID | Exact H2 heading | Content boundary |
 |---|---|---|
-| RDD-01 | Scope & Provenance | bounded scope, hashes, coverage, omissions, tools |
-| RDD-02 | Observed Behavior | source-cited runtime/code behavior only |
-| RDD-03 | Observed Rules, Values & Formulas | exact expressions/constants and execution conditions |
-| RDD-04 | Observed State, Data & Events | implemented state transitions, ownership and events |
-| RDD-05 | Observed Dependencies | evidenced calls/data/resource relationships |
-| RDD-06 | User-Attested Intent | only exact attested claims and record IDs |
-| RDD-07 | Unknowns & Contradictions | unresolved meaning, suspected defects/workarounds, conflicting evidence |
-| RDD-08 | Gaps & Proposals — UNIMPLEMENTED | missing cases/improvements marked not observed/not implemented |
-| RDD-09 | Promotion Requirements | decisions/evidence needed for an authoritative design owner |
+| RDD-01 | Scope & Provenance | exact snapshot, budgets, tools, included/omitted/unsupported scope |
+| RDD-02 | Observed Behavior | source-cited behavior only |
+| RDD-03 | Observed Rules, Values & Formulas | exact expressions/constants and conditions |
+| RDD-04 | Observed State, Data & Events | evidenced states/transitions/ownership/events |
+| RDD-05 | Observed Dependencies | evidenced calls/data/resources |
+| RDD-06 | User-Attested Intent | exact attested claims and record hashes only |
+| RDD-07 | Unknowns, Inferences & Contradictions | unverified interpretation and conflicting/insufficient evidence |
+| RDD-08 | Gaps & Proposals — UNIMPLEMENTED | missing/recommended behavior, never as-is |
+| RDD-09 | Promotion Requirements | user decisions and authoritative design-owner evidence needed |
 
-### Profile: observed-architecture-report
+### Observed architecture profile
 
-| Stable ID | Exact H2 heading | Required content |
+| Stable ID | Exact H2 heading | Content boundary |
 |---|---|---|
-| RDA-01 | Scope & Provenance | bounded scope, hashes, coverage, omissions, tools |
+| RDA-01 | Scope & Provenance | exact snapshot, budgets, tools, included/omitted/unsupported scope |
 | RDA-02 | Observed Components & Interfaces | implemented modules/types/contracts |
-| RDA-03 | Observed Dependency, Data & Control Flow | source-cited relationships and lifecycle |
-| RDA-04 | Observed Constraints & Trade-off Evidence | measured/encoded constraints, not assumed decisions |
-| RDA-05 | User-Attested Intent | exact attested rationale and record IDs only |
-| RDA-06 | Unknowns & Contradictions | ambiguous rationale, defects, legacy/workaround candidates |
-| RDA-07 | Decision Candidates — NOT ADRs | proposed choices with no accepted status |
-| RDA-08 | Promotion Requirements | user decision and ADR-owner requirements |
+| RDA-03 | Observed Dependency, Data & Control Flow | evidenced relationships and lifecycle |
+| RDA-04 | Observed Constraints & Trade-off Evidence | measured/encoded constraints, not inferred decisions |
+| RDA-05 | User-Attested Intent | exact attested rationale and record hashes only |
+| RDA-06 | Unknowns, Inferences & Contradictions | ambiguous rationale, legacy/defect/workaround candidates |
+| RDA-07 | Decision Candidates — NOT ADRs | alternatives/proposals without ADR status |
+| RDA-08 | Promotion Requirements | explicit user decision and ADR-owner requirements |
 
-An observed pattern is not an architecture decision. This workflow never creates an
-ADR or assigns Accepted/Proposed/Rejected ADR status. Even an attested rationale stays
-in this non-authoritative report until the decision authority and ADR owner create a
-properly numbered `adr-NNNN-slug.md` under their own authorization.
+This profile is an observed architecture report, never an ADR. It cannot allocate an ADR number, write `adr-NNNN-slug.md`, or assign Proposed/Accepted/Rejected/Superseded status. A decision candidate remains non-authoritative until the user explicitly chooses a decision and an independently authorized ADR owner records it under the canonical ADR schema. Even user-attested rationale in this report is not an ADR decision receipt.
 
-### Profile: observed-concept-report
+### Observed concept profile
 
-| Stable ID | Exact H2 heading | Required content |
+| Stable ID | Exact H2 heading | Content boundary |
 |---|---|---|
-| RDC-01 | Scope & Provenance | prototype/build/source hashes, coverage, omissions, tools |
+| RDC-01 | Scope & Provenance | exact prototype/build/source snapshot and coverage |
 | RDC-02 | Observed Prototype Behavior | source/build/playtest-cited behavior only |
-| RDC-03 | Observed Mechanics & Loop | implemented inputs, states, outcomes and reset loop |
+| RDC-03 | Observed Mechanics & Loop | evidenced inputs/states/outcomes/reset loop |
 | RDC-04 | Observed Feasibility Evidence | actual technical results/limits, not forecasts |
-| RDC-05 | User-Attested Intent & Player Fantasy | exact attested intent/feel claims and record IDs |
-| RDC-06 | Unknowns & Contradictions | unknown fun/feel, bugs, exploits, incomplete evidence |
+| RDC-05 | User-Attested Intent & Player Fantasy | exact attested claims and record hashes only |
+| RDC-06 | Unknowns, Inferences & Contradictions | unknown feel/fun, defects, exploits, incomplete evidence |
 | RDC-07 | Gaps & Proposals — UNIMPLEMENTED | experiments/features/edge cases not evidenced as present |
-| RDC-08 | Promotion Requirements | evidence and decisions needed for concept ownership |
+| RDC-08 | Promotion Requirements | decisions/evidence needed for concept ownership |
 
-Claims that something worked, felt good, was fun, or represented a player fantasy
-require playtest/telemetry evidence or explicit user attestation. Otherwise classify
-them as Unknown.
+Claims about feel, fun, success, player behavior, or fantasy require exact runtime/playtest/telemetry evidence or explicit user attestation. Otherwise they remain Unknown or an inference.
 
-## Classification contract
+## Safe target and source validation
 
-Every fact-table row has a stable ID and exactly one class:
+Normalize paths to repository-relative `/`, Unicode NFC, and case-preserving text. Resolve each path and every existing parent segment. Reject:
 
-- `OBSERVED`: directly supported by cited source bytes/ranges, tests, serialized
-  configuration, build/prototype output, or declared runtime evidence;
-- `USER_ATTESTED_INTENT`: exact intent statement explicitly confirmed by the user and
-  bound to an attestation record;
-- `UNKNOWN`: rationale, intended behavior, ownership, correctness, or completeness is
-  not established;
-- `PROPOSED_CHANGE_UNIMPLEMENTED`: an edge case, desired behavior, alternative,
-  fix, consolidation, or future improvement not evidenced in current implementation.
+- paths outside the repository or containing traversal;
+- symlinks, junctions, reparse points, mount escapes, special devices, sockets, pipes, or non-regular source files;
+- output paths whose existing parent chain resolves outside the repository or whose final target already exists;
+- duplicate or case-colliding paths;
+- manifest-declared type/size/hash that differs from the actual file;
+- archives, executables, object files, or binaries without an explicitly registered safe read-only adapter;
+- a source inventory whose canonical identity is ambiguous.
 
-No row may combine classes. Code structure, naming, constants, comments, tests, and
-commit messages may prove what text or behavior exists, but not why it was chosen or
-whether it remains desired. A comment that says `temporary`, `intentional`, or `fix`
-is an observed comment, not user-attested intent. Bugs, exploits, inconsistent tests,
-legacy paths, and workarounds remain Observed plus Unknown/Contradiction findings;
-never normalize them into intended rules.
+Do not follow symlinks or dependencies not present in the exact manifest. Directories are never source bodies. A directory may only be a descriptive scope label; every readable source must be an individually declared regular file.
+
+Validate the output route, target nonexistence, profile, request schema/hash, inventory structure, and hard budgets before reading any source body.
+
+## Hard observation budgets
+
+Request budgets may only lower, never raise, these per-invocation ceilings:
+
+| Resource | Hard ceiling |
+|---|---:|
+| request manifest bytes | 256 KiB |
+| declared inventory entries validated | 256 |
+| source bodies read | 32 |
+| individual source body | 256 KiB |
+| total source bytes read | 1 MiB |
+| parsed text retained | 512 KiB |
+| dependency depth | 3 |
+| dependency edges traversed | 128 |
+| generated-file bodies read | 8 |
+| prior report bytes | 512 KiB |
+| clarification rounds | 3 |
+| output report bytes | 512 KiB |
+
+The effective budget is `min(requested, hard ceiling)` for each field. Missing or non-positive requested values use the hard ceiling; an unparseable value is `ERROR`.
+
+Process the canonical inventory in `(priority, dependency_depth, normalized_path, expected_hash)` order. Dependency order selects which declared bodies are observed first; it never expands the inventory. Stop before the next read when any ceiling would be exceeded.
+
+For every unprocessed entry, retain path, expected hash, size, type, dependency relation, and exact omission reason. Entries beyond the validation ceiling receive `OMITTED_INVENTORY_BOUND`; unsupported types/adapters receive `UNSUPPORTED`; safe but body-budget-excluded entries receive `OMITTED_BUDGET`; declared dependency depth/edge overflow receives `OMITTED_DEPENDENCY_BOUND`. Never silently sample or present an unvalidated manifest entry as a checked path.
+
+If at least one safe supported source was checked, budget or unsupported omissions yield `coverage-status: PARTIAL`, `status: OBSERVATION_PARTIAL`, and primary verdict `PARTIAL`. If no essential source can be checked safely, return `ERROR` and write nothing. `OBSERVATION_COMPLETE` is forbidden whenever an entry is omitted, unsupported, unreadable, hash-mismatched, or changed during the run.
+
+## Claim and inference classification
+
+Build a fact table before narrative prose. Every row has a stable ID and exactly one class:
+
+- `OBSERVED`: a bounded fact directly supported by exact checked source/build/test/configuration bytes or declared runtime evidence;
+- `USER_ATTESTED_INTENT`: an exact intent statement explicitly confirmed by the user and linked to an immutable attestation record;
+- `UNKNOWN`: rationale, correctness, completeness, ownership, reachability, intent, or an inference not established by available evidence;
+- `PROPOSED_CHANGE_UNIMPLEMENTED`: a desired behavior, edge case, fix, refactor, alternative, consolidation, or experiment not evidenced as implemented.
+
+No row combines classes. An inference is never an `OBSERVED` fact: record it as `UNKNOWN` with `statement-kind: INFERENCE_UNVERIFIED`, its cited observed premises, and the evidence required to resolve it. Narrative sentences that include interpretation must link the Unknown ID and carry the same label.
 
 Use stable IDs:
 
-- `OBS-{artifact-id}-{source-hash-prefix}-{range}-{kind}` for observations;
-- `ATT-{artifact-id}-{sequence}` for attestations;
-- `UNK-{artifact-id}-{stable-check}` for unknowns/contradictions;
-- `PROP-{artifact-id}-{stable-slug}` for unimplemented proposals.
+- `OBS-<artifact-id>-<source-hash8>-<normalized-range>-<kind>`;
+- `ATT-<artifact-id>-<canonical-question-hash8>-<answer-hash8>`;
+- `UNK-<artifact-id>-<stable-check-or-inference-hash8>`;
+- `PROP-<artifact-id>-<stable-proposal-hash8>`.
 
-Each row records class, claim, source path/hash/range or attestation ID, parser/tool
-version, build/source identity when applicable, confidence limited to evidence
-quality, and affected sections. Never use confidence to promote an inference into
-intent.
+Every row records claim text, class, statement kind, source path/hash/range or attestation record, parser/adapter/tool identity and version, build/tree identity if applicable, confidence basis, and affected profile sections. Confidence never promotes an inference into fact or intent.
 
-## Phase 1: Validate scope and build bounded inventory
+Code structure, names, constants, comments, tests, commit messages, and recognized patterns may establish only their observed content. Comments containing `intentional`, `temporary`, or `fix` remain observed comments. Bugs, exploits, inconsistent tests, legacy paths, and workarounds remain observations plus Unknown/Contradiction rows; do not normalize them into desired rules.
 
-Validate profile and output route before source reads. Recompute every source and
-inventory hash; reject missing/unreadable files, file-type mismatch, changed bytes,
-duplicates, outside-root paths, special devices, archives/binaries without a declared
-safe adapter, and oversized individual files.
+Static inspection does not prove runtime reachability, performance, player behavior, fun, correctness, completeness, or production readiness.
 
-Order the exact inventory by manifest priority, then dependency depth and normalized
-path. Process within file/byte/token/generated-file budgets. Record every omitted path,
-hash, size, dependency reason, and omission reason. Budget exhaustion yields
-`Coverage Status: PARTIAL` and prevents `OBSERVATION_COMPLETE`; do not claim the
-omitted code agrees with sampled evidence.
+## Procedure
 
-Generated code is evidence only when explicitly included and marked generated with
-generator path/hash/version. It cannot establish product intent. Unsupported formats
-produce a stable Unknown or ERROR when essential.
+### 1. Freeze request, profile, inventory, and sampling plan
 
-## Phase 2: Produce source-bound observations
+Record request path/expected/actual hash, request schema, project-root identity, selected profile, profile-source path/hash, exact canonical source inventory, effective budgets, tool/adapter availability, target path/ABSENT precondition, and optional prior-report identity.
 
-Read only the validated inventory. Extract exact implemented mechanics, formulas,
-conditions, state/data/event flows, interfaces, calls, resources, configuration and
-tests appropriate to the selected profile. Cite every material claim to exact path,
-SHA-256 and line/range or serialized key.
+Recompute every source hash that fits the inventory-validation ceiling and compute the canonical inventory hash before body reads. Entries beyond that ceiling remain explicitly unvalidated/omitted. A VCS commit or branch may be supporting context but is not a substitute for file hashes.
 
-Build the fact table before narrative prose. Separate contradictory sources rather
-than choosing one. If a value is magic or a pattern resembles a known architecture,
-record the value/structure as Observed and its rationale as Unknown.
+If a prior report is supplied, validate its exact hash, profile-v2 schema, authority, project/artifact identity, immutable run ID, provenance hash, and final report hash receipt when present. Use it only to show lineage/deltas. Never merge into it or inherit its facts/attestations without revalidating their exact current evidence.
 
-Static inspection does not prove runtime reachability, performance, player behavior,
-fun, correctness, completeness, or production readiness. State the evidence boundary.
+### 2. Observe the bounded dependency sample
 
-## Phase 3: Collect explicit intent attestations
+Read only supported inventory entries that fit the effective budgets, in deterministic dependency order. Revalidate each exact hash immediately before use. Record adapter/parser/tool name and version for each observation.
 
-Present observations and Unknowns to the user without embedding a preferred answer.
-Ask only bounded questions needed to distinguish current approved intent from defect,
-legacy behavior, experiment, or unresolved choice.
+Extract profile-relevant implemented mechanics, values, formulas, conditions, state/data/events, interfaces, dependencies, configuration, and declared runtime evidence. Cite every material fact to exact path, SHA-256, and normalized line/range or serialized key. Preserve contradictions as separate rows; do not choose a preferred source.
 
-For each confirmed claim, create an immutable attestation record containing the exact
-question, displayed options if any, exact answer, linked observation/unknown IDs,
-identity supplied explicitly by the user or `unverified`, UTC timestamp, and canonical
-record hash. Do not infer identity from account, filesystem, repository, or context.
+If bytes change, mark that entry `CHANGED_DURING_RUN`, invalidate dependent observations, and return at most `PARTIAL`. Retry no source automatically.
 
-If the user confirms intent but supplies no identity, set
-`attestation-status: UNVERIFIED_IDENTITY`, `attested-by: unverified`, and preserve the
-claim in User-Attested Intent with its limitation. If the user does not answer or does
-not explicitly confirm, leave it Unknown. Attestation never changes observed bytes or
-authorizes a design/architecture change.
+After the bounded reads finish, freeze the observation snapshot as the SHA-256 of the canonical manifest containing every declared entry and its final checked, omitted, unsupported, unreadable, unvalidated, or changed disposition. Mint the run ID only now:
 
-## Phase 4: Route unimplemented behavior safely
+```text
+RDOC-RUN-<UTC-basic-milliseconds>-<snapshot8>-<profile8>
+```
 
-Any missing edge case, safer behavior, revised formula, desired balance, refactor,
-new feature, architectural alternative, or prototype improvement is a
-`PROPOSED_CHANGE_UNIMPLEMENTED`. Put it only in `Gaps & Proposals — UNIMPLEMENTED` or
-`Decision Candidates — NOT ADRs`.
+Derive the exact canonical output route from the artifact ID and this run ID, revalidate its parent chain, and require the target to be absent. A collision is `BLOCKED`; mint and preview a new run rather than overwriting.
 
-Each proposal records source observation/unknown IDs, `implementation-status:
-NOT_OBSERVED_OR_UNIMPLEMENTED`, `decision-status: PROPOSED_ONLY`, proposed owner,
-affected implementation/test/docs, risks, and the evidence needed to validate it.
-Never place it in Observed Behavior, current rules/formulas, acceptance criteria,
-current architecture, or attested intent. Never state that it exists.
+### 3. Ask for bounded intent attestations
 
-This workflow does not implement proposals, create stories/ADRs, tune values, modify
-source/tests, or promote them into authoritative design.
+Present the observation IDs and Unknowns before asking questions. Ask neutral, bounded questions only where the answer distinguishes approved intent from defect, workaround, legacy behavior, experiment, or unresolved choice. Stop at the clarification-round ceiling; unanswered items remain Unknown.
 
-## Phase 5: Draft one non-authoritative report
+Each attestation record conforms to `cgs.reverse-document-attestation/v1` and includes exact question, displayed options, exact answer, linked observation/unknown IDs, UTC timestamp, and canonical record SHA-256.
 
-Render the selected inline profile in scratch. Embed a canonical provenance manifest
-covering:
+Copy an identity only when the user explicitly provides it for this attestation. Preserve it verbatim and set `attestation-status: USER_SUPPLIED_IDENTITY`. Do not infer identity from account metadata, repository authorship, filesystem user, email, OS login, task owner, or prior conversations. If intent is confirmed without an identity, use `UNVERIFIED_IDENTITY` and `attested-by: unverified`. If no intent is confirmed, use `NONE`.
 
-- request/profile source path/hash, artifact/run/observer IDs and UTC time;
-- every included/omitted source path/hash/size/type/range, build/tree/commit identity,
-  inventory order, dependency edges and budgets consumed;
-- parser/adapter/tool names and versions;
-- every observation, attestation, unknown and proposal ID with evidence links;
-- coverage and attestation status, target route/base hash, and explicit authority
-  `NON_AUTHORITATIVE_OBSERVATION`.
+Attestation establishes only what the user stated. It does not prove implementation, correctness, signature authenticity, organizational approval, or permission to change/write anything.
 
-Compute the canonical embedded provenance hash and put it in the header. Show the full
-candidate, classification summary, coverage/omissions, attestations and target path to
-the user. Content approval is not file authorization.
+### 4. Isolate proposals and architecture decisions
+
+Any behavior not evidenced in the checked implementation is `PROPOSED_CHANGE_UNIMPLEMENTED`. Put it only in `Gaps & Proposals — UNIMPLEMENTED` or `Decision Candidates — NOT ADRs`, with:
+
+- linked observation/unknown IDs;
+- `implementation-status: NOT_OBSERVED_OR_UNIMPLEMENTED`;
+- `decision-status: PROPOSED_ONLY`;
+- proposed owner and affected code/tests/docs;
+- risks and validation evidence required.
+
+Never place it in Observed Behavior, current rules/formulas, current architecture, acceptance criteria, or User-Attested Intent. A user may attest the desired outcome, but that changes only the attestation row; implementation status remains unimplemented.
+
+For architecture, present decision candidates neutrally. Only the user or designated decision authority can choose one. A choice still requires a separate canonical ADR owner, numbered route, schema, review, and authorization. This workflow records the handoff requirement and stops.
+
+### 5. Embed immutable provenance
+
+Before rendering prose, create a canonical `cgs.reverse-document-provenance/v2` manifest containing:
+
+- request path/schema/expected/actual hash;
+- project root, artifact ID, run ID, selected profile, profile source path/hash;
+- output route and `ABSENT` baseline;
+- canonical inventory and observation snapshot hashes;
+- every included, omitted, unsupported, unreadable, or changed source path/hash/size/type/generated state/ranges/disposition/reason;
+- build/source-tree/commit identity when supplied, clearly marked supporting context;
+- dependency edges/order/depth and requested/effective/consumed budgets;
+- parser, adapter, observation tool, and skill/profile names and versions; unavailable version fields are explicit `UNAVAILABLE` and cap dependent claims at Unknown/Partial;
+- every observation, attestation, Unknown/inference, contradiction, and proposal ID with evidence links/hashes;
+- attestation status, verbatim supplied identity or `unverified`, and record hashes;
+- prior-report path/hash and validated lineage/delta, or `NOT_SUPPLIED`;
+- coverage/status, authority `NONAUTHORITATIVE_OBSERVATION`, and limitations.
+
+Canonicalize and hash the manifest, then embed it unchanged. The final report SHA-256 is an external write receipt and must not be placed inside bytes whose hash it would circularly change.
+
+### 6. Render and authorize one immutable report
+
+Render every stable profile section exactly once. A material statement must resolve to fact-table or attestation IDs. Show the complete candidate, fact-class summary, unsupported/omitted scope, provenance manifest/hash, target path, and limitations.
 
 Completion semantics:
 
-- `OBSERVATION_COMPLETE`: all declared sources and required profile sections are
-  covered, every claim is classified/evidenced, and no essential parse conflict or
-  identity gap remains;
-- `OBSERVATION_PARTIAL`: budget omissions, unsupported essential evidence, unresolved
-  merge conflict, or critical Unknown prevents full coverage;
-- `OBSERVATION_DRAFT`: read-only candidate exists but content/attestation questions
-  remain.
+- `OBSERVATION_COMPLETE`: every declared entry is supported and checked, every material claim is classified/evidenced, every profile section is present, and no essential conflict/Unknown prevents the bounded observation from being complete;
+- `OBSERVATION_PARTIAL`: a safe report exists but omissions, unsupported/unreadable/changed evidence, unavailable tool provenance, or essential Unknowns limit coverage;
+- `OBSERVATION_DRAFT`: the complete read-only candidate exists but bounded user attestation/content questions remain.
 
-Even `OBSERVATION_COMPLETE` remains non-authoritative and is not an approved GDD,
-concept, architecture specification, or ADR.
+Even COMPLETE is non-authoritative.
 
-## Phase 6: Authorize and write exactly one artifact
+Writing is optional. Before a write, present one exact mutation manifest:
 
-Writing is optional. Before the first write, present one mutation manifest containing
-operation `CREATE` or `MERGE`, exact target, expected base hash or `ABSENT`, complete
-candidate hash, source/provenance/profile hashes, output owner, single recorder,
-maximum bytes, and explicit non-writes. Obtain explicit mutation authorization.
+- operation `CREATE`;
+- exact run-specific target and `must_not_exist` precondition;
+- byte-for-byte candidate, byte length, and SHA-256;
+- request/profile/inventory/snapshot/provenance hashes;
+- output owner and one recorder;
+- `files_to_create: 1`, `files_to_modify: 0`, `files_to_delete: 0`;
+- explicit non-writes.
 
-For `create`, the target must remain absent. For `merge`, require a current compatible
-reverse-document profile and base hash. Merge by stable observation/attestation/
-unknown/proposal IDs; preserve unchanged sections and prior provenance. Surface
-same-ID/different-evidence, classification, attestation, or schema conflicts for user
-resolution. Never overwrite an existing target, replace unrelated bytes, or convert
-an authoritative document into a reverse report.
+Ask the user to authorize exactly this create. If content, hash, route, owner, recorder, or evidence snapshot changes, preview again. Content approval or attestation is not write authorization.
 
-Immediately before writing, re-hash source inventory, profile, attestations, candidate,
-and target base. On drift, stop with `BLOCKED`; prior approval is stale. The one
-recorder writes atomically where supported, enumerates changed paths, rejects any path
-outside the manifest, reads the target back, validates schema/class boundaries, and
-records final SHA-256. Scope expansion requires a new manifest and authorization.
+Immediately before writing, revalidate request, profile, all included source hashes, observation snapshot, attestation records, candidate hash, parent-path safety, and target absence. On any drift, return `BLOCKED` and write nothing. Otherwise create the exact bytes atomically where supported, read back, validate schema/class boundaries, record the final SHA-256 externally, and enumerate the one changed path.
 
-## Output and recovery
+## Outcomes and recovery
 
-Malformed request/profile/source/adapter returns `Analysis Status: ERROR` and zero
-writes. Budget/coverage/merge limitations return `Verdict: PARTIAL`; authorization,
-target collision, ownership, or CAS drift returns `Verdict: BLOCKED`. A fully covered,
-authorized, read-back verified observation report may return `Verdict: COMPLETE`, but
-must state `Authority: NON_AUTHORITATIVE_OBSERVATION` beside it.
+Return exactly one primary outcome:
 
-Final output includes artifact/run/profile/status, target path/hash or `NOT WRITTEN`,
-profile/inventory/provenance hashes, included/omitted coverage, fact-class counts,
-attestation status/identity/record hashes, Unknowns, unimplemented proposals, mutation
-authorization, and exactly one next action.
+- `COMPLETE`: complete bounded observation and, if authorized, exact verified report creation;
+- `PARTIAL`: a safe observation exists but coverage/evidence/tool support is incomplete;
+- `DRAFT`: read-only candidate exists and bounded questions remain;
+- `BLOCKED`: authorization, route collision, target ownership, or compare-and-swap precondition failed;
+- `ERROR`: request/profile/scope/path/adapter validation prevented trustworthy observation.
 
-On interruption, resume only from a request-declared checkpoint/candidate. Re-hash
-profile, sources, inventory, attestations, output base and candidate; invalidate all
-dependent observations on drift. Do not reuse stale intent, approval, or provenance.
+Every outcome includes run/artifact/profile identity, authority, request/profile/inventory/snapshot/provenance hashes, target path/hash or `NOT_WRITTEN`, exact budgets consumed, coverage and included/omitted/unsupported lists, class counts and IDs, attestation status/record hashes, Unknowns/inferences, unimplemented proposals, prior lineage, write authorization state, and `auto_executed: false`.
 
-The sole next action resolves a named evidence/attestation/coverage conflict, or hands
-the final non-authoritative report to the proper design/concept/architecture decision
-owner for an independently authorized promotion decision. Do not invoke another
-workflow or perform downstream implementation.
+On interruption, resume only from the same exact request/profile/source/prior/candidate hashes. Drift invalidates dependent observations, attestations about displayed evidence, and authorization. Never reuse stale content or approval.
+
+Return at most one next action: resolve one named evidence/attestation/coverage issue, or hand the immutable non-authoritative report to the appropriate design/concept/architecture decision owner for an independently authorized promotion decision. Do not invoke it.
+
+End every result with this meaning:
+
+> This immutable report is a bounded, non-authoritative observation of exact checked evidence. Observed facts, unverified inferences, user-attested intent, unknowns, and unimplemented proposals remain separate. Omitted and unsupported scope is explicit. It is not an approved GDD, concept, architecture specification, ADR, implementation, or runtime-completeness claim.

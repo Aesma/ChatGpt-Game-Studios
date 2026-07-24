@@ -1,256 +1,689 @@
 # Skill Test Spec: $asset-audit
 
-## Purpose
+## Skill Summary
+
+`$asset-audit` is a strictly read-only, bounded analyzer for asset-rule
+compliance, provenance, license-policy evidence, reference integrity, and
+consumed production state. It uses one immutable manifest, deterministic rule
+precedence, registered versioned adapters, stable asset/rule/finding IDs, and
+exact raw-byte hashes. It returns a `cgs.review-evidence/v1` envelope with a
+`cgs.asset-audit-report/v1` extension under contract `cgs.asset-audit/v3`.
+
+The analyzer owns asset compliance and reference integrity. It never claims that
+a GDD content requirement shipped; that comparison belongs to content-audit.
+Unsupported, stale, failed, unknown, or over-limit evidence cannot produce
+`COMPLIANT`.
+
+Every non-error result must state `allowed_project_write_set: []`,
+`report_persisted: false`, `recorder_invoked: false`, and
+`mutation_authorized: false`.
+
+This specification is a repaired catalog candidate and is **NOT EXECUTED**.
+Static inspection or contract editing must not populate catalog `last_*`, pass,
+or tested fields without immutable runner receipts bound to the exact candidate
+hashes.
+
+## Contract Sources
+
+- `.agents/skills/asset-audit/SKILL.md`
+- `.agents/skills/asset-audit/references/evidence-contracts-v1.md`
+- `.agents/skills/asset-audit/references/continued-workflow.md`
+- `.agents/skills/asset-audit/agents/openai.yaml`
+
+---
+
+## P1 Remediation Trace
+
+The root remediation task names these seven rows `AA-004..AA-010`; the repository
+audit source names the same ordered P1 rows `ASA-002..ASA-008`.
+
+| Task ID | Repository audit ID | Required behavior | Primary cases |
+|---|---|---|---|
+| AA-004 | ASA-002 | Root-to-target instructions and domain rule sources use explicit precedence | 5, 6 |
+| AA-005 | ASA-003 | Orphan decisions use complete engine/build reference graphs, not string search | 10, 11, 12 |
+| AA-006 | ASA-004 | Registered engine resolvers enumerate supported syntaxes and normalized IDs/locations | 11, 13 |
+| AA-007 | ASA-005 | Stable rule severity and deterministic verdict aggregation | 3, 4, 18 |
+| AA-008 | ASA-006 | Closed category grammar, project-root confinement, and no-follow symlink behavior | 1, 7 |
+| AA-009 | ASA-007 | One-pass indexes, fixed budgets, bounded rows/digests, and explicit failure coverage | 8, 9, 17 |
+| AA-010 | ASA-008 | Static/behavioral spec matches v3; real binary/adapter/mutation fixtures are required | all |
+
+---
+
+## Static Assertions (Structural)
+
+- [ ] Frontmatter contains only `name` and a non-empty `description`; name matches
+      the skill directory.
+- [ ] Both private reference links resolve and their invocation, bounds, resolver,
+      verdict, read-only, and persistence contracts agree with the SKILL.
+- [ ] Declares `cgs.asset-audit/v3`, `cgs.review-evidence/v1`,
+      `cgs.asset-audit-report/v1`, and registered receipt/graph/provenance/license
+      schemas.
+- [ ] Invocation requires exactly one project-relative `--manifest`, accepts the
+      closed category enum and optional presentation-only `--summary`, and rejects
+      positional/duplicate/unknown arguments, URLs, globs, regexes, escapes,
+      directories, symlinks, and junctions.
+- [ ] Declares strict read-only behavior and forbids edits, imports, cache writes,
+      fixes, report persistence, approval prompts, gates, delegation, and
+      downstream skill invocation.
+- [ ] Adapters require an OS-level project-read-only sandbox, argv arrays, exact
+      executable hashes/versions, no shell string/network, bounded scratch,
+      structured receipts, timeouts, and output caps.
+- [ ] Reads and hashes all applicable root-to-target `AGENTS.md` files.
+- [ ] Defines explicit rule precedence across instructions, technical preferences,
+      art direction, provenance/license policy, and advisory manifest fallbacks.
+- [ ] Cross-domain contradictions become `RULE_CONFLICT`/`UNVERIFIED` rather than
+      a silent override.
+- [ ] Rules have stable IDs, source artifact/path/hash/locator, domain, authority,
+      typed applicability/operator, adapter requirement, severity, and owner.
+- [ ] Defines fixed candidate, asset, byte, rule, receipt, reference-edge,
+      provenance, license, output, and time limits that a manifest may only lower.
+- [ ] Hashes the complete candidate identity sequence while retaining bounded
+      detailed rows and exact overflow counts/boundary keys/digests.
+- [ ] Scope comes from a hash-bound inventory and registered completeness receipt,
+      not undeclared recursive discovery or per-asset repository rescans.
+- [ ] Every applicable type/rule uses a registered versioned adapter; metadata is
+      verified from signature/container/structured output, never extension alone.
+- [ ] JSON/YAML/binary validation requires exact parser and schema identity.
+- [ ] `PASS` and conclusive `FAIL` require a valid current
+      `cgs.asset-adapter-receipt/v1`; unsupported/parse/timeout/mutation-risk states
+      are `UNVERIFIED` and incomplete.
+- [ ] Provenance and license-policy records bind stable IDs, exact asset bytes,
+      source receipts, policy/rule hashes, target scope, obligations, and
+      derivation parent chains.
+- [ ] Missing/unsupported/conflicting provenance or license evidence fails closed;
+      prohibited/expired or conclusively unmet HARD obligations are HARD failures.
+- [ ] License-policy output is evidence under the named policy and not legal advice.
+- [ ] Engine references require a versioned resolver and
+      `cgs.asset-reference-graph/v1` receipt covering declared static, dynamic,
+      UID/addressable, packed, serialized, remap, and registry mechanisms.
+- [ ] String absence cannot confirm orphan status; unsupported syntax cannot
+      confirm a missing asset; unknown/incomplete graph coverage is `PARTIAL`.
+- [ ] `UNREFERENCED_CONFIRMED` becomes a failure only under an exact applicable
+      rule, and no automatic deletion is recommended.
+- [ ] Asset-audit owns compliance/provenance/license/reference integrity while
+      content-audit exclusively owns requirement-to-build inclusion.
+- [ ] Asset PASS never emits `SHIPPED_VERIFIED` or proves content completeness.
+- [ ] Stable `AAF-...` findings exclude paths, wording, hashes, values, severity,
+      status, run identity, timestamps, and recommendation from identity.
+- [ ] Coverage is recorded per candidate/channel/check with explicit
+      `COMPLETE | PARTIAL | FAILED | NOT_APPLICABLE` states.
+- [ ] Verdict precedence is deterministic: execution error, conclusive HARD
+      failure, incomplete coverage, advisory failure, then fully proven compliance.
+- [ ] Emits a recomputable hash-bound envelope; summary mode preserves all machine
+      semantics and hashes.
+- [ ] Returns at most one owner-routed recommendation and never executes it.
+- [ ] Metadata describes adapter-backed, read-only, provenance/license/reference,
+      fail-closed behavior and the content-audit ownership boundary.
 
-Verify that `$asset-audit` issues COMPLIANT only from complete executable-adapter,
-rule, reference and external-status evidence for one immutable asset snapshot.
-Unsupported, failed, stale or partial evidence must fail closed, and the workflow must
-remain strictly read-only.
+---
 
-## Fixtures
+## Director Gate Checks
 
-Fixtures provide exact bytes and SHA-256 values for the audit manifest, inventory,
-assets/import metadata, build/dependency manifests, adapter registry/executables and
-receipts, rules/AGENTS/technical preferences/art direction, engine resolver, asset
-manifest/specifications and expected canonical packet.
+None. Asset-audit is a read-only analyzer. It never invokes a director,
+technical-artist consultation, remediation agent, recorder, or downstream
+workflow in any category or verdict path.
 
-Tests snapshot every project file before/after and simulate adapter timeout, malformed
-binary metadata, LFS pointers, dynamic references, budgets and concurrent source
-changes.
+---
 
-## Static assertions
+## Required Fixture Contract
 
-- [ ] Frontmatter contains only `name` and non-empty `description`; name matches directory.
-- [ ] Invocation requires exact manifest/run ID and validates category enum/path confinement.
-- [ ] The workflow is project-read-only and never offers delete/rename/import/fix actions.
-- [ ] Scope comes from one hash-bound inventory, not undeclared recursive discovery.
-- [ ] Rules have stable IDs, source hashes/locators, domains, precedence, operators, severity and adapter requirements.
-- [ ] Root-to-target AGENTS precedence, technical preferences and art-direction domains are deterministic.
-- [ ] Cross-domain rule conflicts become UNVERIFIED rather than silent override.
-- [ ] Every asset type requires a versioned executable adapter with argv, tool identity, timeout, structured schema and receipt.
-- [ ] Missing/unsupported/failed/timed-out/parse-error adapter state is UNVERIFIED and coverage INCOMPLETE.
-- [ ] Metadata is verified from binary/container/structured output, never extension alone.
-- [ ] JSON/YAML data validation requires exact schema path/hash/version.
-- [ ] Engine reference decisions require versioned resolver/build graph evidence.
-- [ ] String-search absence cannot produce confirmed orphan; unsupported syntax cannot produce confirmed missing.
-- [ ] POSSIBLY_ORPHANED/UNKNOWN makes reference coverage incomplete.
-- [ ] Asset-spec statuses exactly include DRAFT, BLOCKED_NOT_FOR_PRODUCTION and READY_FOR_PRODUCTION.
-- [ ] BLOCKED_NOT_FOR_PRODUCTION is a hard production blocker and cannot be upgraded by local PASS/risk acceptance.
-- [ ] READY_FOR_PRODUCTION must be transaction/hash/validation-current and does not itself imply COMPLIANT.
-- [ ] Asset compliance and GDD content completeness have separate owners.
-- [ ] The output uses schema asset_audit/v2 and binds target/build/input/evidence hashes.
-- [ ] Conversation output is not durable external evidence without an independently persisted receipt.
-- [ ] Verdict aggregation is deterministic and incomplete coverage can never be COMPLIANT.
-- [ ] Budgets and source drift produce visible PARTIAL coverage.
-- [ ] Stable findings include rule/asset/evidence/adapter IDs and hashes.
-- [ ] No director gate or downstream workflow is invoked.
-- [ ] Metadata describes adapter-backed, read-only, fail-closed behavior.
+Behavioral fixtures provide exact bytes and expected SHA-256 values for the audit
+manifest, inventory and completeness receipt, assets/import metadata, adapter and
+resolver registries, executable identities and receipts, build/dependency data,
+rules/instructions/technical preferences/art direction, provenance/license
+records and policy, production-state inputs, and expected canonical envelope.
 
-## Case 1: Complete image adapter PASS
+Binary tests use real minimal PNG and audio/container bytes plus corrupt variants;
+data tests use exact JSON/YAML bytes and schemas. Mutation tests snapshot every
+project path and import/cache location before and after. Adapter, resolver, and
+time behavior is injected deterministically; test harnesses do not infer results
+from extensions or role prose.
 
-A PNG fixture has verified signature/header, exact dimensions/color/alpha/compression
-and import metadata. The image adapter receipt and all HARD rules match.
+The exact typed schemas under test are `cgs.asset-adapter-receipt/v1`,
+`cgs.asset-reference-graph/v1`, `cgs.asset-provenance/v1`, and
+`cgs.asset-license/v1`.
 
-**Expected**
+---
 
-Every row binds asset/rule/adapter hashes and PASS. If all other coverage dimensions
-are complete and production state is current READY_FOR_PRODUCTION, COMPLIANT is
-eligible.
+## Test Cases
 
-## Case 2: Missing image adapter
+### Case 1: Exact invocation and immutable target lock
 
-The inventory contains a texture but the registry has no compatible image adapter.
+Fixture:
 
-**Expected**
+- A valid project-relative manifest uses `cgs.asset-audit-manifest/v1` and binds
+  one stable target/build/platform/configuration plus every declared input hash.
+- Invalid variants use an absolute path, URL, glob, regex, dot segment, duplicate
+  flag, positional category, directory, symlink, junction, or unknown category.
 
-Adapter state UNSUPPORTED, check UNVERIFIED, adapter coverage INCOMPLETE, verdict
-PARTIAL. Filename `.png` and visual inspection cannot produce PASS or COMPLIANT.
+Inputs:
 
-## Case 3: Corrupt image metadata
+```text
+$asset-audit --manifest audit/asset-audit.yaml
+$asset-audit --manifest audit/asset-audit.yaml --category audio --summary
+```
 
-The image adapter starts but reports a structured parse error.
+Expected behavior:
 
-**Expected**
+1. The first defaults to `all`; the second scopes to `audio` and compacts only
+   the human projection.
+2. Valid runs lock one exact target snapshot.
+3. Every invalid variant returns `ERROR — INVALID INVOCATION` or
+   `ERROR — INVALID AUDIT MANIFEST` before adapters run, with no verdict or
+   evidence envelope.
 
-PARSE_ERROR/UNVERIFIED/PARTIAL, not a format FAIL unless the adapter contract provides
-a conclusive valid violation result.
+Assertions:
 
-## Case 4: Audio metadata
+- [ ] Closed categories include art, audio, model, animation, vfx, shader, data,
+      provenance, license, reference, and all.
+- [ ] Asset-family categories run all applicable channels for that family;
+      provenance/license/reference categories run that channel across inventory
+      assets with only its required prerequisites.
+- [ ] No path is resolved outside the project or through a symlink/junction.
+- [ ] Nothing is selected by “latest”, editor state, or modification time.
 
-A receipt binds exact audio bytes and reports container/codec/sample rate/channels/
-bit depth/duration. One HARD sample-rate rule fails.
+---
 
-**Expected**
+### Case 2: Complete binary image adapter PASS
 
-NON-COMPLIANT with expected/actual/unit/rule source and receipt hash. Extension alone
-is never evaluated.
+Fixture:
 
-## Case 5: Data schema validation
+- Real minimal PNG bytes have a valid signature and registered image-adapter
+  receipt for exact dimensions, color, alpha, compression, mip, and import data.
+- Every applicable HARD rule and rule source hash matches.
+- All other required art-scope coverage channels are independently complete.
 
-JSON and YAML fixtures use exact parser and schema path/hash/version.
+Input: `$asset-audit --manifest audit/asset-audit.yaml --category art`
 
-**Expected**
+Expected behavior:
 
-Valid data may PASS. Missing schema, unsupported YAML feature, parser timeout or
-truncated receipt is UNVERIFIED/PARTIAL. A conclusive schema validation failure is
-NON-COMPLIANT.
+1. The adapter validates the file signature rather than `.png`.
+2. Per-rule rows bind asset, import, rule, executable, adapter, receipt, and target
+   hashes.
+3. Each applicable rule is `PASS` and `COMPLIANT` is eligible only because every
+   required scoped coverage channel is complete.
 
-## Case 6: Rule precedence
+Assertions:
 
-Root AGENTS provides a naming baseline, nested AGENTS overrides the same key,
-technical preferences supplies texture budget, and art direction supplies palette.
+- [ ] Extension and visual inspection are not evidence.
+- [ ] Receipt schema, parser, argv digest, sandbox policy, and logs are validated.
+- [ ] No import metadata or cache bytes change.
 
-**Expected**
+---
 
-The effective rows cite exact winning source hashes/locators. Domain-specific rules
-coexist; overridden rules are listed. A technical/art contradiction becomes
-RULE_CONFLICT/UNVERIFIED.
+### Case 3: Missing or corrupt adapter fails closed
 
-## Case 7: Invalid input path or symlink
+Fixture variants:
 
-Manifest contains traversal, external symlink, duplicate normalized path or
-asset-hash mismatch.
+- An image has no compatible adapter.
+- The adapter executable hash differs from the registry.
+- A valid executable emits malformed/truncated output.
+- A mutating adapter cannot run with a project-read-only mount.
 
-**Expected**
+Expected behavior:
 
-ERROR/BLOCKED before adapters run. No external or aliased asset is inspected.
+1. States are respectively `UNSUPPORTED`, `INVALID_RECEIPT` or `NOT_RUN`, and
+   `PARSE_ERROR`/`INVALID_RECEIPT` as contract evidence dictates.
+2. Every affected check is `UNVERIFIED` and adapter coverage is incomplete.
+3. Verdict is `PARTIAL`, not `FAIL`, `NON-COMPLIANT`, or `COMPLIANT` unless
+   separate current evidence proves a HARD failure.
 
-## Case 8: Budget exhaustion
+Assertions:
 
-The exact inventory has 1,000 items but manifest caps inspection at 200.
+- [ ] Parse failure is not a conclusive format violation.
+- [ ] No human guess or fallback parser is synthesized.
+- [ ] Mutation-risk adapters are not executed.
 
-**Expected**
+---
 
-The first deterministic 200 are evaluated, 800 IDs are listed uninspected, coverage
-INCOMPLETE and verdict PARTIAL unless an inspected current hard FAIL yields
-NON-COMPLIANT.
+### Case 4: Audio and data conclusive failures
 
-## Case 9: LFS pointer and unreadable asset
+Fixture:
 
-One inventory path contains only an LFS pointer and another is permission denied.
+- Real audio-container bytes produce a valid receipt with codec, sample rate,
+  channels, bit depth, duration, streaming, and mix metadata.
+- A HARD sample-rate rule fails.
+- JSON and YAML fixtures bind exact parser and schema path/hash/version; one has a
+  conclusive schema violation, while another lacks a supported YAML feature.
 
-**Expected**
+Expected behavior:
 
-Both are UNVERIFIED with explicit state/owner; no adapter PASS is synthesized and
-verdict cannot be COMPLIANT.
+1. Current conclusive HARD violations are stable `RULE_FAIL` findings and verdict
+   `NON-COMPLIANT`.
+2. Unsupported YAML produces `UNVERIFIED` coverage rather than a fabricated fail.
+3. If conclusive HARD failures and other coverage gaps coexist,
+   `NON-COMPLIANT` takes precedence and all gaps remain visible.
 
-## Case 10: Complete engine reference graph
+Assertions:
 
-Current resolver/build evidence covers every declared mechanism and proves an asset
-has no inbound edge or build inclusion.
+- [ ] Findings include expected/actual/units, exact rule evidence, receipt digest,
+      and owner.
+- [ ] Extension alone is never evaluated.
+- [ ] The deterministic first-match verdict order is used.
 
-**Expected**
+---
 
-Reference state may be UNREFERENCED_CONFIRMED. It becomes NON-COMPLIANT only when the
-hash-bound policy classifies that state HARD; no deletion is performed/recommended
-without separate manual/VCS/build review.
+### Case 5: Root-to-target instruction precedence
 
-## Case 11: Dynamic UID/addressable reference
+Fixture:
 
-An asset has no source-code path string but a current UID/addressable/runtime-registry
-edge exists.
+- Root `AGENTS.md` declares naming rule `asset.naming.case`.
+- A nested applicable `AGENTS.md` overrides that exact rule key.
+- Technical preferences supplies texture budgets; art direction supplies palette
+  constraints; the license policy supplies redistribution obligations.
 
-**Expected**
+Expected behavior:
 
-REFERENCED. Text absence cannot downgrade it or create an orphan finding.
+1. Both instruction sources are loaded root-to-target and exact hashes reported.
+2. The closest applicable instruction wins the same governance rule key.
+3. Technical, art, and license rules coexist in their own domains.
+4. Effective and overridden rules appear in `rule_precedence`.
 
-## Case 12: Incomplete dynamic coverage
+Assertions:
 
-No edge is found, but one dynamic loading registry was not inspected.
+- [ ] No built-in naming/format default overrides a project rule.
+- [ ] Technical preferences and art direction are not interchangeable.
+- [ ] Role memory or consultation is not a rule source.
 
-**Expected**
+---
 
-POSSIBLY_ORPHANED, reference coverage INCOMPLETE, verdict PARTIAL, not a confirmed
-orphan.
+### Case 6: Cross-domain contradiction remains unresolved
 
-## Case 13: Confirmed missing reference
+Fixture:
 
-The resolver parses an exact scene/resource location and normalized asset ID; complete
-inventory/build evidence proves it absent.
+- Current technical and art sources make incompatible authoritative demands for
+  the same material setting.
+- No applicable instruction explicitly resolves the conflict.
 
-**Expected**
+Expected behavior:
 
-MISSING_CONFIRMED with location/resolver hashes and NON-COMPLIANT.
+1. Neither domain silently overrides the other.
+2. A stable `RULE_CONFLICT` finding cites both exact sources.
+3. The check is `UNVERIFIED`, rule coverage is incomplete, and verdict is
+   `PARTIAL` absent a separate conclusive HARD failure.
 
-## Case 14: Unsupported reference syntax
+Assertions:
 
-A data file uses a reference syntax absent from the resolver registry.
+- [ ] Art direction cannot relax technical safety or license obligations.
+- [ ] A generic manifest fallback cannot resolve the conflict.
+- [ ] The analyzer does not ask a specialist to decide product truth.
 
-**Expected**
+---
 
-UNKNOWN/PARTIAL. It cannot become MISSING_CONFIRMED or be ignored.
+### Case 7: Invalid inventory identity, hash, or materialization
 
-## Case 15: Asset-spec blocked state
+Fixture variants:
 
-Manifest/spec pair has matching hashes/transaction but status
-BLOCKED_NOT_FOR_PRODUCTION with a current blocker list.
+- Duplicate asset ID or normalized path.
+- Asset real path escapes the project through a symlink.
+- Recorded bytes mismatch the current SHA-256.
+- Inventory row points to an LFS pointer instead of materialized content.
+- A declared asset is unreadable.
 
-**Expected**
+Expected behavior:
 
-Production eligibility remains BLOCKED_NOT_FOR_PRODUCTION and verdict
-NON-COMPLIANT for a production target, even if every local adapter check passes.
-User acceptance cannot upgrade it.
+1. Identity/path/hash violations that invalidate scope return
+   `ERROR — INVALID AUDIT MANIFEST` before adapters run.
+2. A valid manifest whose specific selected asset is an LFS pointer or becomes
+   unreadable records `LFS_POINTER`/`UNREADABLE`, `UNVERIFIED`, incomplete
+   coverage, and `PARTIAL`.
+3. No aliased/external bytes are inspected.
 
-## Case 16: Asset-spec READY mismatch
+Assertions:
 
-Manifest says READY_FOR_PRODUCTION but spec has another transaction ID, stale source
-hash, NOT_RUN validation or `production_eligible: false`.
+- [ ] Exact raw-byte hashes, not mtime/Git labels, determine currentness.
+- [ ] No adapter PASS is synthesized for absent bytes.
+- [ ] Every failure is represented in manifest and coverage rows.
 
-**Expected**
+---
 
-Production eligibility UNKNOWN, external coverage INCOMPLETE and verdict PARTIAL.
-The label alone is not trusted.
+### Case 8: Fixed budget and bounded overflow behavior
 
-## Case 17: Fully verified asset-spec READY
+Fixture:
 
-Manifest/spec transaction/status/hashes agree, all validations are current PASS and
-inferences confirmed.
+- The complete inventory identity stream has 1,000 items.
+- The effective selected-asset limit is 200 and is no greater than the fixed cap.
+- A manifest attempts to raise another fixed limit.
 
-**Expected**
+Expected behavior:
 
-Production eligibility may be READY_FOR_PRODUCTION but COMPLIANT still requires every
-local HARD rule, adapter, reference and coverage dimension to pass.
+1. The manifest cannot raise the fixed limit.
+2. The complete identity sequence is hashed; 200 deterministic detailed rows are
+   retained; exact omitted count, first/last sort keys, and omitted digest are
+   reported.
+3. Omitted assets are not inspected or partially judged.
+4. One aggregate `OVER_LIMIT` coverage row names all affected checks and verdict
+   is `PARTIAL` absent a known HARD failure.
 
-## Case 18: Content-audit boundary
+Assertions:
 
-A content-completeness consumer receives the canonical packet for the same target.
+- [ ] No 800-row unbounded output is required.
+- [ ] A sample or bounded prefix cannot yield `COMPLIANT`.
+- [ ] Rule, receipt, edge, provenance, license, finding, byte, and time limits use
+      the same fail-closed principle.
 
-**Expected**
+---
 
-Asset PASS does not become SHIPPED_VERIFIED, content inclusion does not become asset
-compliance, and BLOCKED_NOT_FOR_PRODUCTION remains visible. Without an independently
-persisted packet path/hash/producer receipt, the conversation packet is UNVERIFIED.
+### Case 9: Inventory completeness receipt prevents false compliance
 
-## Case 19: Strict read-only mutation guard
+Fixture:
 
-An adapter attempts to generate import cache or modify metadata; another run suggests
-deleting a confirmed orphan.
+- Every listed asset passes its rules.
+- The inventory-completeness receipt is missing, stale, has an unknown generator
+  adapter, or does not bind declared roots/exclusions and output digest.
 
-**Expected**
+Expected behavior:
 
-The mutating adapter is NOT_RUN, hashes remain unchanged, deletion is not performed,
-and audit verdict reflects incomplete coverage. No changeset prompt appears.
+1. Listed asset PASS rows remain visible.
+2. Inventory coverage is incomplete.
+3. Verdict is `PARTIAL`, never `COMPLIANT`.
 
-## Case 20: Deterministic verdict matrix
+Assertions:
 
-Assert first-match results:
+- [ ] A clean subset is not treated as the whole asset scope.
+- [ ] The analyzer does not recursively discover undeclared roots as a fallback.
+- [ ] A proven empty inventory may be complete only with a valid completeness
+      receipt for the exact bounded scope.
 
-- invalid manifest/target -> ERROR;
-- current HARD failure, confirmed missing, policy-hard confirmed orphan, production
-  DRAFT/BLOCKED_NOT_FOR_PRODUCTION -> NON-COMPLIANT;
-- otherwise any unsupported/partial/stale/unknown/not-run/parse/timeout/coverage gap
-  -> PARTIAL;
-- otherwise advisory failures -> WARNINGS;
-- otherwise complete current PASS/N-A coverage and verified production READY ->
-  COMPLIANT.
+---
 
-Known failures and every coverage gap remain visible regardless of precedence.
+### Case 10: Complete engine graph confirms an unreferenced asset
 
-## Protocol compliance
+Fixture:
 
-- [ ] Every result is bound to one immutable target snapshot.
-- [ ] Unsupported adapters and parse failures cannot produce COMPLIANT.
-- [ ] Reference integrity uses engine/build graph evidence.
-- [ ] Asset-spec production state is consumed without upgrading it.
-- [ ] Content completeness remains a separate concern.
-- [ ] The workflow performs zero project mutation.
+- A current `cgs.asset-reference-graph/v1` receipt covers every declared static,
+  dynamic, UID/addressable, packed, remap, serialized, registry, and build
+  mechanism.
+- It proves asset `texture.unused-banner` has no inbound, dynamic, or build edge.
+- Policy marks confirmed unused assets ADVISORY.
+
+Expected behavior:
+
+1. Reference state is `UNREFERENCED_CONFIRMED`.
+2. One advisory rule failure may produce `WARNINGS` when all coverage is complete.
+3. No deletion is performed or automatically recommended.
+
+Assertions:
+
+- [ ] Complete graph evidence, not string absence, supports the state.
+- [ ] A HARD/non-HARD consequence comes only from the exact policy rule.
+- [ ] Human/VCS/build review and separate authorization remain required for any
+      later removal.
+
+---
+
+### Case 11: Dynamic UID/addressable edge defeats a false orphan
+
+Fixture:
+
+- No source file contains the asset's path string.
+- A current engine receipt contains an exact normalized UID/addressable/runtime
+  registry edge to the asset.
+
+Expected behavior:
+
+1. Reference state is `REFERENCED`.
+2. The exact edge, source location, resolver version, target/build, and hashes are
+   reported.
+3. Text absence has no classification effect.
+
+Assertions:
+
+- [ ] Dynamic registries and engine-native IDs are first-class mechanisms.
+- [ ] Display path and normalized asset ID are not conflated.
+- [ ] Reference PASS does not imply GDD content inclusion.
+
+---
+
+### Case 12: Incomplete graph is only possibly orphaned
+
+Fixture:
+
+- No verified edge is found.
+- One declared dynamic loading root and one packed-asset syntax were not covered
+  by the resolver.
+
+Expected behavior:
+
+1. Reference state is `POSSIBLY_ORPHANED`, not
+   `UNREFERENCED_CONFIRMED`.
+2. Unsupported mechanisms are explicit resolver coverage gaps.
+3. Verdict is `PARTIAL` absent a separate HARD failure.
+
+Assertions:
+
+- [ ] Unknown engine/version/syntax/packed formats cannot be ignored.
+- [ ] A code-string search cannot fill graph coverage.
+- [ ] The packet explains that `PARTIAL` is non-exhaustive.
+
+---
+
+### Case 13: Confirmed missing and unsupported reference syntax
+
+Fixture variants:
+
+- A supported scene syntax parses an exact source location and normalized asset
+  ID that current inventory/build evidence proves absent.
+- Another data file uses a syntax absent from the resolver registry.
+
+Expected behavior:
+
+1. The supported broken edge is `MISSING_CONFIRMED`, a HARD
+   `REFERENCE_FAIL`, and produces `NON-COMPLIANT`.
+2. The unsupported syntax is `UNKNOWN`, a `REFERENCE_GAP`, and incomplete
+   coverage; it cannot be called missing.
+3. Both locations and evidence channels remain visible when the HARD failure takes
+   verdict precedence.
+
+Assertions:
+
+- [ ] Resolver syntax support is exact and versioned.
+- [ ] Reference locations and normalized IDs are hash-bound.
+- [ ] New content requirements are not invented.
+
+---
+
+### Case 14: Provenance chain and generated/derived assets
+
+Fixture:
+
+- An internal original asset has a valid creation receipt.
+- A commissioned asset has an exact provider/acquisition record.
+- A generated asset records policy-required generator/model/tool identity and
+  creation receipt.
+- A derived asset has an exact acyclic parent chain to covered assets.
+- Variants include a missing record, hash mismatch, unknown schema, cycle, and
+  conflicting provider records.
+
+Expected behavior:
+
+1. Valid rows become provenance-verified only for exact asset bytes.
+2. Invalid variants are `PROVENANCE_UNVERIFIED` or
+   `PROVENANCE_CONFLICT`, make coverage incomplete, and yield `PARTIAL` absent a
+   separate HARD failure.
+3. No origin or rights are inferred from filenames, URLs, or project location.
+
+Assertions:
+
+- [ ] Every parent and record uses stable IDs and exact hashes.
+- [ ] Derived cycles are detected deterministically.
+- [ ] Generated provenance requirements come from policy, not model memory.
+
+---
+
+### Case 15: License-policy evidence and obligations
+
+Fixture variants:
+
+- An allowed license has exact policy and receipt hashes.
+- An allowed-with-obligations license has current attribution evidence.
+- Another lacks required attribution evidence.
+- Other records are prohibited, expired, unknown, conflicting, or outside the
+  permitted target/platform/territory.
+
+Expected behavior:
+
+1. `ALLOWED` and fully satisfied `ALLOWED_WITH_OBLIGATIONS` may pass.
+2. `PROHIBITED`, `EXPIRED`, and conclusively unmet HARD obligations are HARD
+   failures and produce `NON-COMPLIANT`.
+3. Unknown/missing/unsupported/conflicting records produce `UNVERIFIED` or
+   `LICENSE_CONFLICT`, incomplete coverage, and `PARTIAL` absent a separate HARD
+   failure.
+4. Results are explicitly evidence under the named policy, not legal advice.
+
+Assertions:
+
+- [ ] The analyzer never chooses the newest or most permissive record.
+- [ ] `NOT_APPLICABLE` requires an exact policy rule.
+- [ ] Scope, expiration, derivative/redistribution rights, and obligations are
+      evaluated only by a registered policy adapter.
+
+---
+
+### Case 16: Content-audit has exclusive completeness ownership
+
+Fixture:
+
+- All asset checks, provenance, license, and references pass for the target.
+- The target build-inclusion manifest omits one stable GDD requirement.
+- A content-audit consumer receives the exact asset-audit envelope.
+
+Expected behavior:
+
+1. Asset-audit may be `COMPLIANT` for its exact asset scope but does not emit
+   `SHIPPED_VERIFIED` or decide the missing GDD requirement.
+2. Content-audit alone owns requirement-to-build comparison.
+3. The consumer may display current asset evidence only after recomputing the
+   recognized envelope, producer/extension, target/build/manifest, artifact, and
+   payload hashes.
+4. Asset compliance does not substitute for build inclusion, and build inclusion
+   does not substitute for compliance.
+
+Assertions:
+
+- [ ] There is no overlapping missing-content owner.
+- [ ] Asset compliance PASS does not prove content inclusion or requirement
+      coverage.
+- [ ] File counts and paths remain advisory in both directions.
+- [ ] Neither analyzer invokes the other.
+
+---
+
+### Case 17: Frozen snapshot mutation and strict read-only guard
+
+Fixture:
+
+- A rule source changes bytes after manifest lock.
+- A new inventory candidate appears under a declared root.
+- A malicious adapter attempts to write import metadata/cache data.
+- A finding concerns a confirmed unused asset.
+
+Expected behavior:
+
+1. Final re-enumeration/re-hashing records added and stale inputs and discards
+   conclusions from old bytes.
+2. The malicious adapter is not run when sandbox policy is validated; any actual
+   detected project mutation is an execution `ERROR` with no evidence envelope.
+3. Other unaffected evidence may appear only in non-evidence diagnostics after an
+   execution error.
+4. No deletion, fix, reimport, report write, or mutation approval prompt occurs.
+
+Assertions:
+
+- [ ] Project and import/cache snapshots remain byte-identical in every valid run.
+- [ ] Stale or mixed snapshots never yield `COMPLIANT`.
+- [ ] The analyzer never attempts automatic cleanup.
+
+---
+
+### Case 18: Deterministic verdict and summary matrix
+
+Evaluate these independent subfixtures:
+
+| Current evidence | Expected result/verdict |
+|---|---|
+| invalid invocation/manifest, actual mutation, or untrustworthy packet | `ERROR`, no verdict/evidence |
+| conclusive current HARD failure plus any coverage state | `NON-COMPLIANT` |
+| no HARD failure, but any required coverage/check is incomplete or unverified | `PARTIAL` |
+| complete coverage with advisory failures only | `WARNINGS` |
+| complete coverage, all applicable checks PASS/valid N/A, no blocker | `COMPLIANT` |
+
+Assertions:
+
+- [ ] The first matching rule is applied mechanically.
+- [ ] Known failures and every coverage gap remain visible regardless of
+      precedence.
+- [ ] `COMPLIANT` is impossible from a subset, empty search, unknown evidence,
+      missing adapter/schema/resolver, stale record, or unsupported type/syntax.
+- [ ] `--summary` retains identical machine target, manifest, rule precedence,
+      coverage, state sets, finding IDs, verdict, limitations, and hashes.
+
+---
+
+### Case 19: Stable finding identity and evidence recomputation
+
+Fixture:
+
+- Run A has one HARD format finding for stable asset/rule/target IDs.
+- Run B moves the asset path, changes wording, actual bytes, line location,
+  severity display, and evidence timestamp without changing the logical issue.
+- Run C changes the stable rule ID.
+
+Expected behavior:
+
+1. Runs A and B retain the same `AAF-...` finding ID while artifact/manifest/
+   payload/record hashes change.
+2. Run C gets a different fingerprint and finding ID.
+3. Incompatible evidence under one fingerprint is a coverage conflict and forces
+   `PARTIAL` absent a separate HARD finding.
+
+Assertions:
+
+- [ ] Finding identity uses stable project/asset/rule/target/record IDs and
+      platform/configuration.
+- [ ] Paths, names, wording, line numbers, hashes, values, severity, status, run
+      ID, timestamp, and recommendation are excluded.
+- [ ] Every artifact, manifest, extension payload, and envelope hash recomputes.
+
+---
+
+## Protocol Compliance
+
+- [ ] Invocation, project identity, target/build/platform, applicable
+      instructions, and every source are exact and hash-bound.
+- [ ] Rule precedence is explicit, domain-aware, and reports winners, overrides,
+      and conflicts.
+- [ ] Scope uses a registered inventory completeness receipt and fixed bounded
+      limits with complete candidate/overflow digests.
+- [ ] Registered adapters/resolvers are versioned, sandboxed read-only, typed,
+      receipt-bound, and fail closed.
+- [ ] Binary/container/schema checks use actual fixture bytes and registered
+      parsers rather than extensions.
+- [ ] Provenance and license-policy evidence is stable-ID/hash-bound and unknown
+      states prevent compliance.
+- [ ] Reference classifications use a complete engine/build graph and supported
+      exact syntaxes; text search is advisory only.
+- [ ] Content completeness remains exclusively owned by content-audit.
+- [ ] Stable findings and coverage rows preserve exact evidence and limitations.
+- [ ] Verdict aggregation is deterministic and incomplete coverage can never
+      become `COMPLIANT`.
+- [ ] Full and summary paths are project-read-only and invoke no gate, specialist,
+      recorder, or downstream workflow.
+- [ ] Output conforms to `cgs.review-evidence/v1` plus
+      `cgs.asset-audit-report/v1` under `cgs.asset-audit/v3`.
+
+---
+
+## Coverage Notes
+
+Fixtures must distinguish adapter `FAIL` from `PARSE_ERROR`, unsupported syntax
+from a parsed missing reference, advisory string matches from engine graph edges,
+policy prohibition from missing license evidence, and incomplete inventory from a
+proven-empty scope. Exact hashes and stable IDs are mandatory for every expected
+conclusion.
+
+Report persistence belongs to a separate recorder contract and is outside this
+analyzer specification. The catalog entry points to this file, and its `last_*`
+fields remain blank until an authorized test workflow actually executes every
+case. Editing the contract/spec or running structural probes alone is not a test
+pass and must not create a catalog result claim.

@@ -1,175 +1,381 @@
 ---
 name: patch-notes
-description: "Create traceable local patch-note drafts only from an exact approved candidate and its verified production deployment receipt; never publish."
+description: "Create one traceable local patch-note draft from an exact approved candidate and matching verified production deployment, with net-change provenance, privacy-safe localization, embargo controls, and optional create-only CAS persistence."
 ---
 
-## Invocation and execution
+# Patch Notes
 
-Invoke this workflow as $patch-notes.
+Produce player-facing patch-note draft bytes only for the exact approved candidate that
+has actually been deployed successfully to the declared production target. A Git
+range is not a candidate, a candidate is not a deployment, a deployment is not public
+availability, and a local draft is never publication.
 
-Arguments: [release-id] [--style brief|detailed|full]. A release-id is required. Style changes presentation only and defaults to detailed.
+## Invocation and strict request
 
-This workflow may generate a local draft after its evidence requirements pass. It never deploys or publishes, never posts to a store, website, forum, email, chat, or social channel, and never treats local-write authorization as public-publish approval.
+Invoke only as:
 
-Before the first local file change, present one complete changeset containing the single canonical target, its expected content hash, and the intended write. Obtain one explicit authorization for that local write. Do not re-prompt file by file. If the boundary expands, stop and obtain a new authorization.
+`$patch-notes --request <path> --expect-request <sha256>`
 
-Do not invoke another project skill, a director gate, a deployment, or a publication workflow.
+Require both flags exactly once. With missing/invalid flags or unknown arguments, show
+that usage and stop before project reads, Git access, output, delegation, or writes.
+Reject directories, traversal, globs, moving request aliases, symlink/junction/reparse
+escape, unsupported schemas, unknown/repeated fields, and expected/actual hash drift.
 
----
+The request is strict `cgs.patch-notes-request/v3` and contains:
 
-## Phase 1 — Validate release identity and exact candidate
+- stable `release_id`, `run_id`, source locale, exactly one output locale, and style
+  `brief`, `detailed`, or `full` (presentation only);
+- immutable repository identity; `from_ref`, `to_ref`; expected full `from_commit`,
+  `to_commit`, `from_tree`, `to_tree`, merge-base, ancestry result, object format, and
+  approved range identity;
+- one versioned `EXTERNAL_BOUNDARY` `cgs.approved-release-change-manifest/v2` at its
+  canonical path with exact raw hash, `APPROVED` state, authority-registry/hash,
+  signer/signature verification, currentness fields and exact approved item inventory;
+- exact candidate ID, artifact digest, source commit/tree, platform/configuration,
+  build receipt path/hash, approval boundary and candidate identity hash;
+- one canonical `cgs.release-action-receipt/v2` path/raw hash with exactly
+  `action: DEPLOY`, `result: SUCCESS`, a production environment, configured-authority
+  identity/signature verification, and intended production targets;
+- exact classification, public-redaction, embargo, and locale policy paths, schema/
+  version/hash, plus exact source/verification/quote/disclosure/locale evidence
+  inventories;
+- for non-source output, the canonical sanitized source-draft path/hash, exact
+  `cgs.localization-manifest/v2` and catalog identities, one immutable
+  `cgs.localization-package/v1` path plus literal `package_id`,
+  `package_payload_sha256`, separate `raw_file_sha256`, and literal
+  `manifest.path`/`manifest.sha256`, current target-locale revision bytes/hash,
+  `cgs.translation-delivery/v1` and distinct `cgs.locale-review/v1` receipts;
+- operation `analyze-only` or `create-draft`; and
+- for `create-draft`, one normalized target path, `expected_target: ABSENT`, maximum
+  bytes, creator, mutation authority/expiry, create-new capability, and non-writes.
 
-1. Validate release-id against the project release-ID schema. Reject separators, traversal tokens, absolute paths, control characters, ambiguous aliases, and unversioned labels.
-2. Load one approved change manifest for that exact release ID. Do not fall back to HEAD, the working tree, an inferred tag, an arbitrary Git range, or the newest changelog.
-3. Require this manifest contract:
+Validate release/locale/target IDs as constrained slugs or canonical locale tags before
+using them in a path. Do not search for latest/current manifests, tags, receipts,
+deployments, translations, or policies. Do not infer HEAD, a release range, source or
+target locale, version, date, link, platform, rollout state, owner, approval, or
+publication authority.
 
-    schema_version
-    release_id
-    manifest_id
-    manifest_hash
-    approval_receipt_id
-    approval_status: APPROVED
-    from_ref
-    to_ref
-    candidate_digest
-    target_platforms
-    change_items
+## Authority and non-writes
 
-4. Require every change item to contain:
+Analysis is read-only. `create-draft` authorizes only the exact approved bytes at one
+absent local target. It never authorizes append, update, revision, overwrite,
+normalization, deletion, directory creation, a second copy, index mutation, build,
+deploy, rollout, store/site/forum/email/chat/social activity, or publication.
 
-    change_id
-    disposition: INCLUDE or EXCLUDE
-    player_visible: true or false
-    category
-    approved_player_fact
-    source_ids
-    verification_ids
-    sensitive_classification
-    manifest_item_hash
+The external release authority owns and signs the approved change-manifest boundary;
+no project skill owns, produces, repairs or countersigns it. The build producer owns
+candidate evidence. The configured deployment authority owns canonical release action receipts. Security,
+privacy, legal, embargo, localization, community/content, and publication approvals
+remain separate human/organizational authorities. The model may validate receipts but
+cannot issue, repair, waive, or self-approve them.
 
-5. Verify that from_ref and to_ref resolve exactly as declared, form the approved bounded range, and that to_ref/candidate_digest identify the candidate under review. A local HEAD may be observed only to detect mismatch; it must never widen the candidate.
-6. Capture a single evidence snapshot with release ID, manifest hash, candidate digest, resolved refs, and source hashes. If any required field is missing, ambiguous, stale, unverifiable, or inconsistent, return BLOCKED before drafting prose.
+Never invent facts, player impact, causality, quotes, developer voice, dates, links,
+translations, mitigations, deployment coverage, sensitive-content decisions, or
+approvals. Do not invoke another workflow.
 
-Only INCLUDE items that are player_visible and belong to the exact approved manifest may enter the claim table. Changelogs, Git commits, sprint data, retrospectives, design documents, balance proposals, bug trackers, and QA records cannot add claims. Manifest-linked records may corroborate an approved_player_fact but may not expand or strengthen it.
+## Hard bounds and partial results
 
----
+The request may lower but never raise these per-invocation limits:
 
-## Phase 2 — Verify production deployment authority
+| Resource | Hard limit |
+|---|---:|
+| output locales | 1 |
+| approved manifest items | 500 |
+| linked source/verification records | 1,000 |
+| linked files | 128 |
+| linked file bytes total | 16 MiB |
+| canonical net-diff bytes | 64 MiB |
+| review findings | 500 |
+| bounded prose revision rounds | 1 |
+| total elapsed time | 15 minutes |
 
-Load one immutable deployment receipt from the configured production deployment authority. The receipt must contain:
+Read only the explicit inventory. If a limit, timeout, missing item, parser failure, or
+unsupported binary prevents complete candidate-wide merge/revert/dedup validation,
+return PARTIAL with completed/omitted counts, hashes, reason and an identity-bound
+resume cursor. Produce no player prose or file from sampled/truncated evidence.
 
-    schema_version
-    receipt_id
-    receipt_hash
-    release_id
-    environment: production
-    deployment_status: SUCCEEDED
-    candidate_digest
-    manifest_hash
-    deployed_artifact_digest
-    deployed_targets
-    deployed_at
-    issuer
-    verification_status: VERIFIED
+## Canonical identities and states
 
-The receipt is valid only when release_id, candidate_digest, and manifest_hash exactly match Phase 1; the environment is production; status is SUCCEEDED; the receipt is verified by the configured authority; and every claimed target is included in deployed_targets.
+Use strict schema parsers. Canonical serialization is UTF-8/LF/NFC, lowercase hex
+SHA-256, schema field order, sorted set arrays, and exact source bytes retained by hash.
 
-A local hotfix branch, hotfix plan, hotfix approval, tag, merge, build success, QA pass, release-checklist result, release readiness, staging deployment, canary result, scheduled rollout, or user assertion is not proof of production deployment. These signals must never authorize released, deployed, live, available now, fixed, or shipped language.
+```text
+range_identity_sha256 = sha256(repository + from/to commits/trees + merge-base +
+  ancestry + ordered commit-list hash + final net-diff hash)
+manifest_identity_sha256 = sha256(external-boundary schema + canonical path + exact raw
+  hash + release/candidate/build + approved range + ordered change-row hashes +
+  authority-registry hash + signer/signature + issued/expiry/revocation/currentness)
+candidate_identity_sha256 = sha256(candidate/build/artifact + source commit/tree +
+  platform/configuration + result + approval boundary/receipt hashes)
+deployment_identity_sha256 = sha256(canonical action receipt + action DEPLOY + result
+  SUCCESS + production environment + release/candidate/build/artifact/manifest/range +
+  production targets + rollout/deployed-at + authority/signature/evidence/raw hashes)
+claim_identity_sha256 = sha256(release + candidate + sorted surviving net-hunk hashes +
+  sorted manifest-item hashes + exact approved player fact hash + qualifiers)
+source_draft_identity_sha256 = sha256(manifest + candidate + deployment + claim-table +
+  redaction/embargo policy/results + deterministic rendered source bytes)
+locale_draft_identity_sha256 = sha256(source draft + locale identity + translation
+  revision + reviewer receipt + localized rendered bytes)
+```
 
-If the production receipt is absent, unverified, non-production, unsuccessful, stale, for another target, or bound to another candidate or manifest, return BLOCKED with an evidence table. Do not generate player-facing release narrative, not even as a speculative draft. A claim is eligible only when both its exact approved candidate item and the matching production receipt are valid.
+Report independently:
 
----
+- `range_status`: `VERIFIED` or `MISMATCH`;
+- `manifest_status`: `APPROVED_VERIFIED` or `MISMATCH`;
+- `candidate_status`: `APPROVED_CANDIDATE_VERIFIED` or `MISMATCH`;
+- `deployment_status`: `PRODUCTION_ACTION_VERIFIED` or `MISMATCH`;
+- `embargo_status`: `NOT_EMBARGOED`, `ACTIVE`, `LIFT_VERIFIED`, or `MISMATCH`;
+- `locale_status`: `SOURCE_VERIFIED`, `LOCALIZATION_REVIEWED`, `PARTIAL`, or
+  `MISMATCH`;
+- `review_status`: `CLEAN`, `BLOCKERS_REMAIN`, or `PARTIAL`;
+- `artifact_status`: `DRAFTED`, `CREATED`, `PARTIAL`, `BLOCKED`, or
+  `RECOVERY_REQUIRED`; and
+- `publication_status`: always `NOT_AUTHORIZED`.
 
-## Phase 3 — Build and review the claim table
+No path returns COMPLETE. Production deployment does not lift an embargo, approve a
+translation, approve community wording, or publish patch notes.
 
-Create one deterministic row per eligible change_id:
+## Phase 1 — Pin release, Git range, manifest, and candidate
 
-    claim_id
-    change_id
-    category
-    exact_player_fact
-    candidate_digest
-    manifest_id
-    manifest_item_hash
-    source_ids
-    verification_ids
-    deployment_receipt_id
-    deployment_receipt_hash
-    deployed_targets
-    sensitivity
-    disclosure_state
-    draft_text
-    status
+Strictly parse the request, policies, manifest and receipts. Confirm the Git work tree
+and object availability. Resolve/peel refs to full commits/trees and compare expected
+IDs. Verify `from_commit` is an ancestor of `to_commit`, the exact merge base, and the
+range `from_commit..to_commit` (from excluded, to included). Record repository object
+format, current HEAD/branch, worktree/index hash and submodule/LFS state; these may
+detect drift but never widen the range. Dirty/untracked bytes are outside evidence.
 
-Rules:
+### Versioned approved-change EXTERNAL_BOUNDARY
 
-- Preserve the approved_player_fact. Rewrite for clarity and tone only when the meaning, scope, causality, platform coverage, numbers, and certainty do not change.
-- Never infer implementation from a design document, intent from a retrospective, player impact from a technical refactor, or deployment from readiness evidence.
-- Never turn fixed a null reference into fixed a player crash unless the approved fact and verification evidence explicitly establish that behavior.
-- Preserve exact before/after values, platform qualifiers, rollout boundaries, and known limitations.
-- Purely internal or EXCLUDE items remain in an exclusions table and never enter prose.
-- Every sentence or bullet in the draft maps to one or more claim IDs. No untraced title, highlight, reason, availability promise, or known issue is allowed.
-- Tone guides and templates may shape wording and layout but cannot introduce facts, promises, quotations, dates, links, or scope.
+No project skill in this repository produces `cgs.approved-release-change-manifest/v2`.
+Treat it as a formally versioned external input, never as a missing workflow to invoke
+or an artifact this skill may create, repair, approve or sign. Its only canonical path
+is:
 
-Sensitive classes include SECURITY, ANTI_CHEAT, PRIVACY, EXPLOIT, LEGAL, EMBARGOED, and any project-defined restricted class. Default to OMIT when a claim is sensitive. Include it only with a separate verified public-disclosure approval bound to the claim ID, candidate digest, approved text boundary, audience, and expiry. The model cannot self-approve disclosure.
+```text
+production/releases/{release-id}/{candidate-identity-sha256}/change-manifests/
+  {manifest-identity-sha256}.yaml
+```
 
-Do not invent developer commentary, first-person team voice, quotations, motives, lessons, or opinions. Full style may include developer commentary only when supplied verbatim in an approved quote record containing speaker, exact text, claim IDs, candidate digest, public-use approval, and provenance. Otherwise omit the section and record NO_APPROVED_QUOTE.
+Require strict schema/version and the request-pinned exact path/raw-byte SHA-256;
+release ID/identity, candidate ID/identity, build ID/identity, source/range and artifact
+bindings; complete ordered `cgs.release-change-item/v2` rows and row hashes; approval
+state; authority-registry path/hash/version; signer identity/key ID/scope; signature
+algorithm/value and successful verification over the exact canonical signed payload;
+issued/effective/expiry/revocation/currentness data and trusted-time evidence. Recompute
+the manifest identity and require the digest encoded in the path. Missing boundary,
+unknown schema, noncanonical path, raw drift, incomplete rows, identity mismatch,
+untrusted/expired/revoked authority, invalid signature or stale currentness is BLOCKED
+before claims or player prose. A changelog, Git tag, release checklist, candidate,
+deployment receipt, conversation approval or another project skill cannot substitute,
+produce, endorse or countersign this boundary.
 
-Assign stable review findings for unsupported, overstated, sensitive, contradictory, or untraceable text. Perform at most one bounded revision against those same findings. Any unresolved blocker returns BLOCKED and no prose artifact is written.
+The approved manifest must bind release ID, exact range identity, candidate identity,
+build identity, artifact digest, external authority/signature/currentness, intended production targets,
+and every ordered item. Each `cgs.release-change-item/v2` contains stable item ID,
+INCLUDE/EXCLUDE disposition, player-visible flag, exact approved player fact, fixed
+category, surviving commit/path/patch/hunk hashes, source/verification IDs and hashes,
+platform/rollout qualifiers, sensitive class, embargo class, localization eligibility,
+and item hash.
 
----
+Candidate build receipt must report success and bind the same artifact,
+`to_commit/to_tree`, platform/configuration and approval boundary. Any missing,
+expired, unapproved, mismatched, or stale identity is BLOCKED before prose.
 
-## Phase 4 — Draft and optionally write one canonical artifact
+## Phase 2 — Verify exact production deployment
 
-When all evidence and review checks pass, present:
+The immutable input must parse as canonical `cgs.release-action-receipt/v2`, its exact
+raw bytes must match the request hash, and its canonical receipt-identity hash and
+signature must verify under the pinned authority registry. Require exactly
+`action: DEPLOY`, `result: SUCCESS`, a production environment and completed observed
+state. Re-hash and require the same release ID/identity, manifest/range, approved
+candidate ID/identity, build ID/identity, artifact digest, source commit/tree,
+deployment ID/identity, target set, rollout boundary, deployed-at time, request,
+authorization path/hash/issuer/scope/expiry, checkpoint/predecessor chain, evidence and
+raw payload hashes. Every availability/platform/region/channel claim must be a subset
+of those verified deployed targets and rollout boundary.
 
-- the local draft
-- the claim-to-source table
-- excluded items with reasons
-- sensitive omissions without exploitable detail
-- manifest and production receipt identities/hashes
-- the canonical target
-- publication_state: NOT_AUTHORIZED
+An isolated `cgs.production-deployment-receipt/v2`, provider payload, tag, merge, Git
+commit, build success, QA pass, release checklist, readiness record, hotfix branch/plan,
+staging/canary deployment, schedule, schema rename or assertion is not the canonical
+production action receipt and grants no authority. Such provider evidence is usable
+only when hash-bound inside the canonical receipt's verified chain. Missing, failed,
+non-production, stale, mismatched, unsigned, unauthorized or non-canonical input returns
+BLOCKED and no player narrative, including speculative prose.
 
-Use the selected style, but do not create empty or invented sections. Title, date, platform list, and links require explicit manifest or receipt evidence. The resulting document includes machine-readable provenance for release_id, candidate_digest, manifest_hash, and deployment_receipt_hash.
+## Phase 3 — Reconcile topology, reverts, and duplicate items
 
-The only canonical local target is:
+Enumerate the complete approved range without commit-count truncation and compute the
+final from/to tree diff with stable patch/hunk identities. Claims follow surviving net
+change, not commit messages or the sum of commits.
 
-    production/releases/[validated-release-id]/patch-notes.md
+- Merge commits remain provenance but do not duplicate a surviving hunk or claim.
+- Revert messages are hints until patch/hunk relationships verify them.
+- Fully reverted changes are `EXCLUDED_NET_ZERO`; preserve internal original/revert
+  trace and create no player claim.
+- Partial reverts retain only surviving hunks and link original/revert commits.
+- Fixup/squash commits remain provenance while final surviving semantics control.
+- Deduplicate first by exact surviving hunk identity, then by
+  `claim_identity_sha256`; combine supporting item/commit IDs, never distinct facts,
+  platform qualifiers, rollout boundaries, or mitigations merely because prose matches.
 
-Do not also write a docs copy. Any public-site or documentation representation must be a downstream generated projection that cites the canonical artifact hash.
+An INCLUDE manifest item that has no matching surviving net evidence, or surviving
+player-visible evidence absent from the approved manifest, is
+`MANIFEST_NET_MISMATCH` and BLOCKED. Context documents cannot repair it. Recompute
+range/net/item/claim hashes before output and before create.
 
-If no local-write authorization is requested or granted, return status DRAFTED and stop. If the user explicitly authorizes the exact one-file changeset, write only the canonical artifact, verify its hash, return status WRITTEN, and stop.
+## Phase 4 — Build the player-facing claim provenance table
 
-DRAFTED and WRITTEN describe local artifact state only. Neither means publicly approved, publicly posted, or successfully published. This workflow must not perform any external publication action.
+Create deterministic `cgs.patch-notes-claim/v3` rows sorted by
+`claim_identity_sha256`. Each row contains claim/item IDs and hashes, candidate and
+deployment identities, exact approved fact hash, surviving commit/path/patch/hunk
+hashes, source/verification record hashes, category, platforms/targets/rollout,
+sensitive/embargo/locale states, exact draft sentence IDs, exclusions, and finding IDs.
 
----
+Only INCLUDE + player-visible + net-surviving + deployed items are eligible. Preserve
+meaning, causality, certainty, numbers, before/after values, platform/region/channel,
+rollout state and known limitations. Clarity/style edits cannot strengthen evidence.
+Every title, subtitle, date, link, highlight, bullet, limitation, known issue and
+availability statement maps to claim/release/deployment evidence. Template and tone
+guidance never introduce a fact, promise, date, link, quote, section, or scope.
 
-## Phase 5 — Return status and handoff
+Git/changelog/sprint/GDD/retro/issue/bug/QA records outside the item inventory cannot
+add claims. Linked records corroborate only their exact manifest fact. Never infer
+implementation from design, player impact from technical change, or deployment from
+readiness.
 
-Return patch_notes/v2:
+Do not invent first-person team voice, developer commentary, quotations, motives,
+lessons or opinions. A quote may appear only verbatim from `cgs.approved-public-quote/v1`
+binding speaker, exact bytes/hash, claim IDs, candidate/deployment, locale, audience,
+public-use approval and expiry. Otherwise record `NO_APPROVED_QUOTE` and omit it.
 
-    schema_version: patch_notes/v2
-    status: DRAFTED | WRITTEN | BLOCKED
-    release_id
-    candidate_digest
-    manifest_id
-    manifest_hash
-    production_receipt_id
-    production_receipt_hash
-    deployed_targets
-    claim_table
-    exclusions
-    sensitive_omissions
-    review_findings
-    canonical_target
-    canonical_hash
-    publication_state: NOT_AUTHORIZED
-    blocker_codes
-    next_owner
+## Phase 5 — Enforce security, privacy, known-issue, and embargo policy
 
-Use BLOCKED when exact candidate authority, production deployment authority, evidence coverage, sensitive disclosure, or final traceability is insufficient. Do not report COMPLETE.
+Classify `SECURITY`, `ANTI_CHEAT`, `PRIVACY`, `EXPLOIT`, `LEGAL`, `EMBARGOED`, and
+project restricted classes as default-deny. A sensitive claim needs a separate
+verified `cgs.public-disclosure-approval/v2` bound to claim, exact approved text hash,
+candidate/deployment, locale, audience/targets, policy, approver, time and expiry.
+Known issues additionally need approved safe scope, non-exploitable mitigation wording,
+verification, owner and disclosure boundary. Without all of them, omit or BLOCK as the
+policy directs; never leak reproduction steps or unsafe workarounds.
 
-Return at most one next-owner handoff. A local content reviewer may approve or reject the draft as a separate decision. Public publishing requires a separate explicit approval and a separate publishing workflow outside this skill. Never imply that a release checklist, hotfix readiness, community review, local write, or this status packet grants publication authority.
+Apply the frozen redaction policy and deterministic scans to claim fields and rendered
+bytes for credentials/tokens/keys/secrets, high-entropy values, personal/player data,
+developer identities, internal IDs/paths/hosts/IPs/domains/logs/infrastructure, build
+and deployment internals, vulnerabilities/exploits, anti-cheat/abuse detection,
+embargoed content, legal/privacy data and unsafe instructions. Ambiguity is deny, not
+speculative generalization.
 
-Stop after returning the packet. Do not invoke the handoff.
+`cgs.patch-notes-redaction/v1` records only input/claim hashes, policy/rule/version,
+action/reason, scanner result and output hash—never removed sensitive bytes. Re-scan
+final bytes; any unresolved finding yields BLOCKED and no player artifact.
+
+Embargo policy/receipt binds release/claim IDs, exact text/candidate/deployment hashes,
+audience, locale, region/channel/target, starts/lifts, authority, status and receipt
+hash. Wall-clock passage alone never lifts an embargo: require a verified lift receipt
+and trusted time evidence named by policy. ACTIVE/MISMATCH embargo yields no player
+bytes for that audience and target, even though production deployment succeeded.
+
+## Phase 6 — Bind exactly one locale
+
+Generate one locale per invocation. For the source locale, the sanitized claim table
+and source rendering define `source_draft_identity_sha256`.
+
+For a non-source locale, never translate or fall back automatically. The localization
+adapter accepts the actual localize producer contract `cgs.localization-package/v1`,
+not an isolated patch-notes locale schema. Strictly read literal `package_id`,
+`package_payload_sha256`, and nested `manifest.schema`, `manifest.path` and
+`manifest.sha256`. Recompute the canonical payload digest excluding both
+`package_payload_sha256` and the derived `package_id`, then derive `package_id` as
+`LOCPKG-` plus the first 20 lowercase
+payload-digest characters, and separately compute the exact path-bound raw-file
+SHA-256. Require all three values and the manifest path/raw hash to equal the
+request-pinned values; none may be renamed, inferred or substituted for another.
+Then require exact `cgs.localization-manifest/v2`, catalog/source/keyset/per-key,
+source-locale, target-locale/locale-identity, plural/placeholder, stable key-page and
+owner bindings. Require matching current target translation-revision bytes/hash,
+`cgs.translation-delivery/v1` from the translator/vendor and a distinct locale-qualified
+`cgs.locale-review/v1` over that revision.
+
+Bind that unchanged producer chain in memory to this exact current release, candidate,
+build, sanitized source-draft hash and claim/sentence IDs. Preserve the complete parsed
+package, source path/raw hash and field-source mapping in the internal localization view;
+do not rewrite or persist a renamed package. This lossless normalization is data
+compatibility only and grants no translation, review, mutation, release or publication
+authority. Any manifest/catalog/release/candidate/build/locale/path/hash drift is
+PARTIAL/BLOCKED. Validate structure, claim marker, numeric/unit, product-name, link,
+placeholder, platform/rollout qualifier and omission parity. Translation cannot add
+facts, promises, quotes, targets or dates; remove limitations; reintroduce redacted/
+embargoed material; or weaken safety text.
+
+Run locale-specific privacy/security/embargo scans on final localized bytes. Missing,
+self-reviewed, stale, partial, source-mismatched or policy-mismatched localization is
+PARTIAL/BLOCKED with no locale artifact. Source-locale bytes cannot silently substitute
+for a requested locale.
+
+The source-locale artifact is the sole semantic source of truth. A localized artifact
+is a derivative with source-draft and locale-revision hashes, never a duplicate
+canonical source. Documentation/store/site representations are downstream projections
+outside this workflow.
+
+## Phase 7 — Deterministic render and bounded review
+
+Render fixed section/category order from eligible claims only; within each section sort
+by claim identity and sentence ID. Omit empty optional sections with a fixed omission
+token in provenance. Identical request/evidence bytes yield identical draft bytes and
+hash; generated-at is supplied evidence metadata or excluded from the hashed body.
+
+Create stable finding ID
+`PNF-{release-id}-{locale}-{claim-or-document-id}-{rule-id}` for unsupported,
+overstated, contradictory, sensitive, embargoed, unlocalized, untraceable or malformed
+content. Deduplicate by finding ID. One bounded prose revision may address only those
+frozen findings; then rerun every rule. Never silently discard, downgrade or self-waive
+a finding. Any blocker or new blocker yields BLOCKED; limit/time gaps yield PARTIAL.
+
+The draft header says `LOCAL PATCH-NOTE DRAFT — NOT PUBLISHED`, names exact release,
+candidate, deployment target/canonical action receipt, source/output locale and embargo state, and
+includes machine-readable range/manifest/candidate/deployment/claim/source-draft/
+locale/policy hashes. `DRAFTED` means returned locally in conversation, not approved or
+published.
+
+## Phase 8 — Optional single-target create-only CAS
+
+`analyze-only` writes nothing. `create-draft` can create one absent immutable file only.
+The authorized target must be inside the allowed release root, its parent must already
+exist, and it must remain ABSENT during validation, preview, authorization and commit.
+No second docs/production copy, alias, symlink, manifest, index, latest pointer, or
+directory is created or updated.
+
+Preview one mutation manifest containing request/range/manifest/candidate/deployment/
+claim/redaction/embargo/source-draft/locale hashes, exact target and expected ABSENT,
+candidate bytes/hash, parent identity, creator, create-new primitive, maximum bytes,
+authority/expiry and non-writes. Content approval is not mutation authority.
+
+Immediately before create, CAS all input bytes and identities, Git refs/objects and
+repository state, policies/receipts, source/locale package, candidate bytes, parent and
+target ABSENT state. Use an atomic no-replace/create-new primitive; if unavailable or
+anything drifts, write nothing and return BLOCKED. Flush, close, strictly parse, read
+back and hash the created file. A post-create mismatch is RECOVERY_REQUIRED with exact
+expected/actual hashes; never overwrite or silently delete evidence.
+
+## Phase 9 — Terminal packet and stop
+
+Return `cgs.patch-notes-result/v3` with release/run/style/source/output locale; exact
+range/manifest/candidate/deployment/source-draft/locale/policy identities; complete
+net/revert/dedup counts; claim provenance/exclusions; redaction, sensitive and embargo
+results without protected bytes; frozen/rechecked findings; target/candidate/final
+hashes or NOT_WRITTEN; all independent statuses; explicit non-writes; blockers; and
+exactly one legal next action/owner.
+
+Use only:
+
+- `Artifact Status: DRAFTED` — verified local draft returned, zero writes;
+- `Artifact Status: CREATED` — one absent local draft created and read-back verified;
+- `Artifact Status: PARTIAL` — bounded evidence/localization analysis is incomplete
+  and no player artifact is claimed complete;
+- `Artifact Status: BLOCKED` — evidence, disclosure, embargo, review or CAS prevents a
+  safe draft/create; or
+- `Artifact Status: RECOVERY_REQUIRED` — exclusive create happened but read-back
+  verification failed and requires owner-directed recovery.
+
+`publication_status` remains `NOT_AUTHORIZED`. Stop after the packet. Never publish,
+send, upload, invoke a publishing workflow, or invoke the next owner.

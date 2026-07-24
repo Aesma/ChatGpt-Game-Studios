@@ -1,4 +1,4 @@
 interface:
   display_name: "Milestone Review"
-  short_description: "Review milestone readiness with explicit unknowns"
-  default_prompt: "Use $milestone-review to review one stable milestone ID from verified progress, bug, test, performance, and risk evidence without treating accepted risk as objective readiness."
+  short_description: "Hash-bound milestone readiness and immutable review reports"
+  default_prompt: "Use $milestone-review to review one stable milestone with bounded source hashes, deterministic metrics, separate delivery, quality, risk, evidence, decision, and write states, a same-draft producer review, user-owned scope and risk decisions, and an optional authorized immutable report."

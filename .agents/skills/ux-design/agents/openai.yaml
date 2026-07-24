@@ -1,4 +1,4 @@
 interface:
   display_name: "UX Design"
-  short_description: "Author versioned screen, HUD, and pattern UX artifacts"
-  default_prompt: "Use $ux-design with a bounded request manifest to author one versioned UX artifact, preserve stable screen and section identities, separate product decisions from one exact write authorization, and stop at hash-bound READY_FOR_REVIEW."
+  short_description: "Author one evidence-bound versioned UX artifact"
+  default_prompt: "Use $ux-design with a cgs.ux-design-request/v2 manifest to author one screen, HUD, or interaction-pattern artifact through content-profile checks, bounded evidence, decision provenance, CAS writes, immutable checkpoints, and a hash-bound review handoff."

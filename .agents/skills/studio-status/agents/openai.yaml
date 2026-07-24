@@ -1,4 +1,4 @@
 interface:
   display_name: "Studio Status"
-  short_description: "Report the current game-production stage and active Epic..."
-  default_prompt: "Use $studio-status to report the current production stage and active focus."
+  short_description: "Current canonical stage packet and active focus summary"
+  default_prompt: "Use $studio-status to validate one complete current cgs.project-stage-detection/v2 packet, report declared and detected stage, confidence, hashes, contradictions, blockers, and independent active focus without recalculating stage or writing files."

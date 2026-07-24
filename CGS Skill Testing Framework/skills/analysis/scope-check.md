@@ -2,282 +2,500 @@
 
 ## Skill Summary
 
-`$scope-check` is a read-only comparator for one explicit immutable approved baseline
-and one current scope manifest. It identifies additions, removals, and semantic
-modifications using stable Scope IDs and content hashes. It may attach compatible
-estimate, capacity, dependency, test, and decision evidence from one bounded allowlist
-manifest. It never infers scope from code, uses raw item counts as a health score,
-chooses Cut/Keep/Defer, mutates a plan, or re-baselines.
+`$scope-check` is a strictly read-only comparator for one exact immutable approved
+baseline and one exact current scope manifest. Inputs use `path@sha256`; versioned
+schemas and stable Scope IDs produce deterministic semantic deltas; independent
+decision records determine whether additions/removals/modifications are allowed;
+separate evidence receipts support effort/schedule/quality/integration statements.
 
-Canonical results are `ERROR`, `INPUT REQUIRED`, `INSUFFICIENT EVIDENCE`, `PARTIAL`,
-`NO SCOPE DELTA`, and `SCOPE DELTA FOUND`.
+Canonical results are `ERROR`, `INPUT REQUIRED`, `INSUFFICIENT EVIDENCE`,
+`PARTIAL`, `NO SCOPE DELTA`, and `SCOPE DELTA FOUND`. None grants product,
+schedule, quality, planning, gate, mutation, or re-baseline authority.
 
-## Static assertions
+---
 
-- [ ] YAML frontmatter contains only `name` and non-empty `description`
-- [ ] Metadata describes an explicit, immutable, read-only comparison
-- [ ] `compare` requires both `--baseline` and `--current`
-- [ ] No feature-name, filename-similarity, or repository-scan baseline inference
-- [ ] Scope classification uses stable IDs and semantic hashes
-- [ ] Raw item counts and percentages cannot produce a result or impact claim
-- [ ] Missing approval, baseline linkage, stable IDs, or completeness blocks
-      `NO SCOPE DELTA`
-- [ ] Product options are neutral and require a user/product-owner decision
-- [ ] No file, Git, gate, delegation, workflow, or re-baseline mutation
-- [ ] Canonical result vocabulary matches this specification exactly
-- [ ] Report includes exact artifact paths, hashes, coverage, deltas, unknowns, and
-      the read-only statement
+## Static Assertions
 
-## Director gate checks
+- [ ] Frontmatter contains exactly `name: scope-check` and a non-empty description
+- [ ] `compare` and `inspect` require baseline/current
+      `path@sha256:<64-lowercase-hex>`; inspect also requires one exact evidence
+      identity
+- [ ] `discover` and no-argument behavior cannot choose or compare active scope
+- [ ] Baseline/current contracts require exact schema/artifact IDs/versions,
+      revisions, parent/timebox, completeness, stable Scope IDs, and compatible
+      normalization schema
+- [ ] Baseline approval binds exact bytes to authorized product-owner authority,
+      timestamp, and immutable signature/record hash
+- [ ] Current scope comes only from the current manifest; Git/code/TODO/issue/
+      build evidence cannot create scope or approval
+- [ ] Delta and allowed classifications are exact enumerations with deterministic
+      tables
+- [ ] Stable Delta ID excludes byte hashes, title, row/line, timestamps, decision,
+      risk, and impact state
+- [ ] Change decision, risk acceptance, and re-baseline use separate versioned
+      authority schemas and never substitute for one another
+- [ ] Fixed numeric bounds cover artifact bytes/entries/semantic bytes,
+      allowlisted paths/bytes/commits, decisions/risks/receipts, dependency edges,
+      test mappings, and re-hash batches
+- [ ] Effort interval, schedule, quality, and integration algorithms are explicit;
+      no item-count percentage, intuitive Low/Medium/High, or overall risk score
+- [ ] Result precedence uses exactly the six canonical values
+- [ ] Output is `cgs.review-evidence/v1` plus `cgs.scope-check/v2`, exact-hash
+      bound, `NOT_PERSISTED`, gate-ineligible, and READ_ONLY
+- [ ] Skill never recommends/chooses/applies Cut/Keep/Defer, invokes another
+      workflow, mutates planning/Git/session state, or silently re-baselines
+- [ ] Metadata fully describes immutable pair, stable IDs, bounded evidence,
+      change/risk separation, and read-only behavior without truncation
 
-None. This skill has no director gate and cannot obtain product-scope authority from
-an agent recommendation.
+---
 
-## Test cases
+## Director Gate Checks
 
-### Case 1: Equal stable-ID semantics produce NO SCOPE DELTA
+None. Scope comparison is read-only and has no product decision authority. No
+agent, planner, producer, estimator, or gate is invoked.
 
-**Fixture**
+---
 
-- Approved baseline `B1/v3` has a trusted approval record, complete marker, parent
-  scope `M3`, and Scope IDs `COMBAT-01`, `AI-02`, `LEVEL-03`.
-- Current manifest declares the exact `B1/v3` hash, parent `M3`, completeness, and the
-  same IDs and normalized semantic entry hashes.
-- Current presentation order and heading formatting differ.
+## Test Cases
 
-**Input**
+### Case 1: Exact equal semantics produce NO SCOPE DELTA
 
-`$scope-check compare --baseline <baseline> --current <current>`
+Fixture: Exact baseline/current path@hash inputs have compatible schemas, current
+links the exact approved baseline, stable IDs/semantic hashes are identical, and
+only ordering/Markdown formatting differs.
 
-**Expected**
+Assertions:
 
-- Both artifacts are reported with exact path, version, byte length, and SHA-256.
-- Presentation-only changes do not create a delta.
-- Result is `NO SCOPE DELTA`.
-- The result explicitly does not mean schedule/quality approval.
-- No files or state are changed.
+- [ ] Exact paths, byte lengths, SHA-256, IDs, versions, revisions, parent/timebox,
+      approval, completeness, and normalizer are reported
+- [ ] Presentation changes create no delta
+- [ ] Result is `NO SCOPE DELTA`
+- [ ] Result explicitly grants no schedule/quality/product permission
 
-### Case 2: One large addition and many tiny additions are not count-weighted
+---
 
-**Fixture**
+### Case 2: Bare baseline path never identifies immutable bytes
 
-- Variant A adds one new network subsystem Scope ID.
-- Variant B adds ten small text Scope IDs.
-- Neither variant has compatible estimate evidence.
+Input: `$scope-check compare --baseline plans/m3.md --current plans/current.md@sha256:<hash>`
 
-**Expected**
+Assertions:
 
-- Both variants produce stable `ADDED` findings and `SCOPE DELTA FOUND`.
-- No percent bloat, count-derived severity, or effort comparison is emitted.
-- Both show `Effort Delta: UNVERIFIED`.
-- The model does not claim ten text items are larger than one network subsystem.
+- [ ] Returns `ERROR` for invalid exact identity syntax
+- [ ] Does not hash/select the bare path and continue implicitly
+- [ ] No similarly named/newer baseline is considered
+- [ ] No comparison verdict is emitted
 
-### Case 3: Row split and merge preserve semantic scope
+---
 
-**Fixture**
+### Case 3: Hash, approval, and ambiguity fail closed
 
-- Baseline and current artifacts retain the same stable IDs and normalized semantic
-  content, but render them as different checklist rows.
+Variants: invocation hash mismatch; two approval records; missing approver
+authority; baseline internal ID/version differs; current references another
+baseline hash; identical aliased pair paths.
 
-**Expected**
+Assertions:
 
-- Row count differences are display-only.
-- No addition or removal is inferred from row count.
-- Result is `NO SCOPE DELTA` when all other contract fields are complete.
+- [ ] Syntax/path alias failures are `ERROR`
+- [ ] Identity/approval/linkage failures are `INSUFFICIENT EVIDENCE`
+- [ ] No file is chosen by similarity, modification time, or active label
+- [ ] Actual/expected identities and safe remediation are exact
 
-### Case 4: Missing or ambiguous baseline blocks comparison
+---
 
-**Variants**
+### Case 4: Story/epic/sprint input needs explicit companion manifest
 
-- no `--baseline`;
-- two active-state baseline candidates;
-- fuzzy feature nickname only;
-- baseline lacks version or approval record;
-- baseline bytes no longer match the current manifest's declared hash.
+Fixture: A story points to one exact companion current manifest and approved epic
+baseline; a similarly named milestone also exists.
 
-**Expected**
+Assertions:
 
-- Missing input returns `INPUT REQUIRED`; invalid/ambiguous resolution returns
-  `ERROR`; identity or approval gaps return `INSUFFICIENT EVIDENCE`.
-- No candidate is selected by similarity or modification time.
-- No scope-health or delta verdict is produced.
+- [ ] Only exact path@hash links are followed
+- [ ] Parent/timebox and baseline identities must match
+- [ ] Similar milestone is ignored
+- [ ] Missing/ambiguous companion link is `INSUFFICIENT EVIDENCE`
 
-### Case 5: No-argument invocation only discovers candidates
+---
 
-**Fixture**
+### Case 5: Current manifest is the only current-scope authority
 
-- Active state points to exactly one milestone baseline and one sprint manifest.
+Fixture: Current manifest has stable IDs A/B; Git contains feature C, code contains
+D, and issue tracker/TODO mentions E.
 
-**Input**
+Assertions:
 
-`$scope-check`
+- [ ] Current scope set is exactly A/B
+- [ ] C/D/E do not become additions/removals/modifications
+- [ ] Compare mode does not scan Git/code/issues/TODOs
+- [ ] Evidence cannot silently amend current scope
 
-**Expected**
+---
 
-- The skill may display the exact suggested paths and hashes.
-- It returns `INPUT REQUIRED` and asks the user to confirm both.
-- It does not analyze or silently choose them in that invocation.
+### Case 6: Allowlisted Git/code evidence proves activity only
 
-### Case 6: Story comparison requires an explicit parent baseline
+Fixture: Inspect evidence manifest allowlists exact commit and code paths/hashes
+for delta A.
 
-**Fixture**
+Assertions:
 
-- Current story manifest explicitly references approved epic baseline path/hash `E7`.
-- A similarly named milestone also exists.
+- [ ] Evidence is labeled implementation activity
+- [ ] Commit author is not a product decision owner
+- [ ] Activity cannot create Scope ID, approval, justification, estimate, or risk
+      acceptance
+- [ ] Non-allowlisted neighboring history/files are not read
 
-**Input**
+---
 
-`$scope-check compare --baseline <E7> --current <story>`
+### Case 7: Silent deletion is conflict, not an inferred removal
 
-**Expected**
+Fixture: Baseline contains Scope ID X; current omits X and has no explicit removal
+row or decision link.
 
-- The story is checked against exactly `E7`, not the similarly named milestone.
-- Parent and baseline hashes must match.
-- A missing explicit parent link returns `INSUFFICIENT EVIDENCE`.
+Assertions:
 
-### Case 7: Git, code and TODO evidence cannot create scope
+- [ ] X is `CONFLICT`, not a clean `REMOVED`
+- [ ] No intent/owner is inferred
+- [ ] Complete result is blocked by `INSUFFICIENT EVIDENCE`
+- [ ] Adding an exact explicit removal row permits deterministic removal analysis
 
-**Fixture**
+---
 
-- Git contains a leaderboard commit and code contains an achievement TODO.
-- Neither has a Scope ID in the current manifest.
+### Case 8: Approved change requires an exact final decision record
 
-**Expected**
+Fixture: Inspect evidence allowlists one final `cgs.scope-change-decision/v1`
+record for addition A, binding
+operation, Scope/Delta IDs, exact pair/entry hashes, parent/timebox, authorized
+owner/authority, rationale, timestamp, signature, and no conflict.
 
-- `compare` does not scan them.
-- If exact evidence paths/commits are allowlisted for `inspect`, they are labeled
-  implementation evidence only.
-- They do not become additions, approvals, or justification records.
+Assertions:
 
-### Case 8: Change justification requires a bound decision record
+- [ ] Authority is `APPROVED_CHANGE`
+- [ ] Allowed classification is `ALLOWED_ADDITION`
+- [ ] Authorized delta still yields `SCOPE DELTA FOUND`
+- [ ] Approval does not prove low effort/risk or re-baseline
 
-**Fixture variants**
+---
 
-- A: an addition has a change record binding Scope ID, baseline/current hashes,
-  decision, owner, and timestamp.
-- B: only the implementer's Git author and prose explanation exist.
+### Case 9: Prose and implementer identity cannot justify change
 
-**Expected**
+Variants: Git author plus prose; issue assignee; file owner; agent recommendation;
+chat acknowledgment; external linked decision unavailable to compare; owner
+without authority record; proposed decision.
 
-- A is `APPROVED_CHANGE` only when every binding matches.
-- B is `NO_RECORD`, not “justified”.
-- Commit author is never treated as scope decision owner.
+Assertions:
 
-### Case 9: Product decision remains with user or designated owner
+- [ ] States include `NO_RECORD`, `UNVERIFIED_RECORD`, `UNAUTHORIZED_RECORD`, or
+      `PROPOSED_CHANGE` as applicable
+- [ ] None is `APPROVED_CHANGE`
+- [ ] Added/removed/modified classification remains unapproved
+- [ ] No person/justification is inferred from Git metadata
 
-**Fixture**
+---
 
-- Three additions and one removal have complete evidence.
-- No product decision selects a remedy.
+### Case 10: Allowed-state matrix is exhaustive
 
-**Expected**
+Fixtures cover unchanged, approved/unapproved added, approved/unapproved removed,
+approved/unapproved modified, unmapped/conflict, and conflicting decision records.
 
-- Result is `SCOPE DELTA FOUND`.
-- Two or three unranked options show affected Scope IDs, known impacts, unknowns, and
-  owner/action requirements.
-- The skill does not recommend, rank, choose, apply, or label Cut/Keep/Defer.
-- No planner or producer agent is invoked.
+Assertions:
 
-### Case 10: Effort and risk remain unverified without compatible receipts
+- [ ] Results map exactly to ALLOWED_UNCHANGED/ADDITION/REMOVAL/MODIFICATION,
+      UNAPPROVED_ADDITION/REMOVAL/MODIFICATION, or CONFLICT
+- [ ] Authority and delta type remain separately visible
+- [ ] Risk state never changes this mapping
+- [ ] Same immutable inputs reproduce identical classifications
 
-**Fixture**
+---
 
-- Some changed IDs use hours, some use story points, and one has no estimate.
-- There is no capacity receipt, test-plan coverage, or dependency evidence.
+### Case 11: Accepted scope change and accepted risk are separate
 
-**Expected**
+Fixture: Delta A has approved change but no risk record; delta B has valid accepted
+schedule risk but no approved change.
 
-- No effort percentage is calculated.
-- Effort delta is `UNVERIFIED`.
-- Schedule, quality, and integration states are `UNVERIFIED` or `PARTIAL`, with exact
-  missing fields listed.
-- No intuitive Low/Medium/High rating appears.
+Assertions:
 
-### Case 11: Compatible evidence enables bounded impact reporting
+- [ ] A is allowed with risk state NO_RECORD
+- [ ] B remains an unapproved scope change despite risk reference
+- [ ] Risk reference changes no impact evidence state
+- [ ] Comparator creates/applies neither record
 
-**Fixture**
+---
 
-- All changed IDs have estimates using one calibrated unit/method and matching
-  baseline/current hashes.
-- Capacity, test-plan, and dependency receipts are complete and current.
+### Case 12: Invalid risk acceptance is rejected
 
-**Expected**
+Variants: expired, unsigned, wrong Delta/Scope ID, wrong pair/evidence hash,
+unverifiable owner authority, self-authored model/agent record, missing controls.
 
-- Absolute effort delta and uncertainty interval are reported.
-- Impact dimensions are `SUPPORTED` with receipt paths/hashes.
-- Impact evidence does not change delta types or make a product decision.
+Assertions:
 
-### Case 12: Evidence manifest enforces bounded context
+- [ ] Each has a deterministic invalid reason
+- [ ] Delta/authority/allowed/impact/result remain unchanged
+- [ ] Audit never renews or signs a record
+- [ ] Ordinary acknowledgment is not accepted risk
 
-**Variants**
+---
 
-- an allowlisted path hash mismatches;
-- a supporting path is outside the allowlist;
-- the path, byte, or commit budget is exceeded.
+### Case 13: Effort delta uses compatible interval arithmetic
 
-**Expected**
+Fixture: All changed IDs have exact pair-bound estimates in the same calibrated
+unit/method/confidence policy; variant mixes units and omits one estimate.
 
-- The skill never expands the allowlist or scans for related files.
-- Valid core deltas are preserved, but result is `PARTIAL` and affected impacts are
-  `UNVERIFIED`.
-- Unexamined entries and budget limits are explicit.
+Assertions:
 
-### Case 13: Immutable baseline survives repeat checks
+- [ ] Complete variant computes `[C_low-B_high, C_high-B_low]` and aggregates
+      compatible intervals only
+- [ ] Mixed/incomplete variant is `Effort Delta: UNVERIFIED`
+- [ ] No conversion, item-count proxy, or percentage growth is emitted
+- [ ] Effort changes no delta/authority/result state
 
-**Fixture**
+---
 
-- Run 1 compares baseline hash `H1` with current `C1`.
-- A planner file later changes to hash `H2` without an approved re-baseline decision.
-- Run 2 still supplies `H1`; variant Run 3 supplies the changed path whose bytes are
-  `H2` while current manifest still cites `H1`.
+### Case 14: Schedule exposure uses interval comparison
 
-**Expected**
+Fixtures: effort upper ≤ capacity lower; effort lower > capacity upper; intervals
+overlap; stale/missing capacity; zero changed IDs.
 
-- Run 2 remains reproducible against immutable `H1` if bytes are available.
-- Run 3 returns `INSUFFICIENT EVIDENCE — BASELINE MISMATCH`.
-- The skill never treats the edited plan as an improved or replacement baseline.
+Assertions:
 
-### Case 14: Inputs changing during analysis invalidate conclusions
+- [ ] States are respectively SUPPORTED_NO_EXPOSURE, SUPPORTED_EXPOSURE,
+      INDETERMINATE, UNVERIFIED, and NOT_APPLICABLE
+- [ ] Units/method/pair/evidence hashes must match
+- [ ] No Low/Medium/High or intuitive schedule score appears
+- [ ] Accepted risk reference cannot change the state
 
-**Fixture**
+---
 
-- Baseline or current bytes change after initial hashing and before final reporting.
+### Case 15: Quality exposure uses changed acceptance denominator
 
-**Expected**
+Fixtures: every changed acceptance ID mapped/current; complete evidence proves one
+missing mapping; complete conflicting sufficiency; incomplete denominator; no
+acceptance change.
 
-- Final re-hash detects the change.
-- Result is `INSUFFICIENT EVIDENCE — INPUT CHANGED DURING CHECK`.
-- All earlier conclusions are discarded and no partial healthy result is shown.
+Assertions:
 
-### Case 15: Delta findings are deterministic and reproducible
+- [ ] States follow the five-state quality algorithm exactly
+- [ ] Header/test-file existence alone is not coverage
+- [ ] Denominator and mapping rows are stable-ID/hash bound
+- [ ] Zero denominator is NOT_APPLICABLE, not 100%
 
-**Fixture**
+---
 
-- The same immutable baseline/current/evidence bytes are provided twice.
+### Case 16: Integration exposure uses exact dependency/interface graphs
 
-**Expected**
+Fixtures: no changed edges; all changed edges have owner/contract/consumer/test;
+complete evidence proves broken edge; graphs conflict; graph missing; no
+dependency-bearing change.
 
-- Stable Delta IDs, sorted findings, coverage, optional metrics, and result are
-  identical in both runs.
-- Each finding contains both artifact hashes and its Scope ID/delta type.
+Assertions:
 
-## Protocol compliance
+- [ ] States follow the five-state integration algorithm exactly
+- [ ] Commit/code prose does not substitute for graph/contract evidence
+- [ ] Dependency edge budget/unchecked rows are explicit
+- [ ] No combined overall risk rating is produced
 
-- [ ] Reads only explicit baseline/current artifacts and evidence-manifest allowlist
-- [ ] Re-hashes every consumed artifact before reporting
-- [ ] Never uses item counts or percentages as scope-health or effort metrics
-- [ ] Missing evidence cannot yield `NO SCOPE DELTA`
-- [ ] Never makes a product decision or silently re-baselines
-- [ ] Never writes files, mutates Git, invokes gates, delegates, or launches follow-ups
-- [ ] Result is exactly one canonical value from the shared result table
+---
 
-## Audit remediation coverage
+### Case 17: No arguments and discover require confirmation
 
-- Cases 2–3 close SCP-001: heterogeneous items and presentation splits cannot drive
-  magnitude or verdicts.
-- Case 9 closes SCP-002: the skill presents neutral options and waits for the actual
-  product owner.
-- Cases 1 and 4–6 close SCP-003: inputs, default behavior, single-story mode, artifact
-  identity, and result vocabulary share one contract with the skill and metadata.
-- Cases 4–8 and 10–15 cover baseline routing, source evidence, justification, risk,
-  bounded context, immutable re-checks, stable findings, and owner boundaries.
+Fixture: Active state has one candidate pair, then multiple candidate pairs.
+
+Assertions:
+
+- [ ] No arguments returns `INPUT REQUIRED`
+- [ ] `discover` lists exact path@hash identities only and returns INPUT REQUIRED
+- [ ] Even one pair is not analyzed in the same invocation
+- [ ] Multiple candidates are never ranked or auto-selected
+
+---
+
+### Case 18: Error, insufficient, and partial are distinct
+
+Variants: invalid syntax/path/schema; stale/missing core approval/link/ID; valid
+core pair with declared inspect evidence hash mismatch/unsupported/overflow.
+
+Assertions:
+
+- [ ] Results are respectively ERROR, INSUFFICIENT EVIDENCE, and PARTIAL
+- [ ] Partial preserves valid stable core deltas
+- [ ] Missing evidence cannot yield NO SCOPE DELTA
+- [ ] Exact blocked conclusions and unchecked identities are shown
+
+---
+
+### Case 19: Evidence manifest is a closed exact allowlist
+
+Fixture: Valid evidence manifest binds exact pair and includes exact path@hash/
+purpose/source IDs plus exact Git IDs; neighboring relevant files also exist.
+
+Assertions:
+
+- [ ] Only allowlisted exact identities are read
+- [ ] Globs/directories/fuzzy hints are invalid
+- [ ] Neighboring files/history are ignored
+- [ ] Git evidence remains implementation-only
+
+---
+
+### Case 20: Evidence budgets fail visibly
+
+Variants exceed 40 paths, 2 MiB, 100 commits, 256 decisions/risks/receipts, or
+4096 edges/test mappings.
+
+Assertions:
+
+- [ ] Effective limit is min(declared, fixed)
+- [ ] Every discoverable overflow identity is `UNCHECKED_LIMIT`
+- [ ] Inspect result is PARTIAL and dependent impacts are UNVERIFIED
+- [ ] No denominator shrinks or read silently truncates
+
+---
+
+### Case 21: Core entry/byte overflow cannot look healthy
+
+Fixtures exceed per-artifact bytes, 4096 Scope IDs, or semantic byte budget.
+
+Assertions:
+
+- [ ] Identity impossible to establish is INSUFFICIENT EVIDENCE
+- [ ] Meaningful bounded subset plus unchecked entries is PARTIAL
+- [ ] No complete NO SCOPE DELTA/SCOPE DELTA FOUND is emitted
+- [ ] Every unchecked Scope ID/count is explicit
+
+---
+
+### Case 22: Repeated checks retain immutable baseline identity
+
+Fixture: Run 1 uses baseline B/v3/H1 and current C1; later plan path bytes become
+H2 without re-baseline; Run 2 still supplies exact H1 bytes; Run 3 supplies path
+with H2 while current still cites H1.
+
+Assertions:
+
+- [ ] Run 2 reproduces comparison against B/v3/H1
+- [ ] Run 3 is INSUFFICIENT EVIDENCE — BASELINE MISMATCH
+- [ ] Edited/newer plan is never substituted
+- [ ] Prior “improvement” or cuts do not alter baseline identity
+
+---
+
+### Case 23: Re-baseline requires a separate authorized record
+
+Variants: valid `cgs.scope-rebaseline/v1`; proposed record; edited plan; newer
+modification time; prior scope-check result.
+
+Assertions:
+
+- [ ] Only valid record can support a future new baseline input/version
+- [ ] Current run never creates/applies the record
+- [ ] Other variants do not re-baseline
+- [ ] Comparing new baseline is a new exact comparison identity
+
+---
+
+### Case 24: Input changes during check invalidate the right layer
+
+Variants: baseline/current changes; approval/normalizer changes; optional estimate/
+decision/risk/test evidence changes.
+
+Assertions:
+
+- [ ] Core change discards deltas and yields INSUFFICIENT EVIDENCE
+- [ ] Approval/normalizer change invalidates core identity
+- [ ] Optional evidence change preserves core deltas but yields PARTIAL
+- [ ] Re-hash processing uses batches of at most 64 paths without dropping inputs
+- [ ] No changed input is repaired, restored, or adopted
+
+---
+
+### Case 25: Stable Delta IDs survive unrelated byte changes
+
+Fixture: Same baseline ID/version, parent, Scope ID, and MODIFIED delta remains
+while presentation/current hash/line/title/decision/risk/impact changes.
+
+Assertions:
+
+- [ ] Fingerprint and Delta ID remain stable
+- [ ] Exact artifact/entry hashes expose current staleness separately
+- [ ] Changing delta type or baseline version creates a new identity
+- [ ] Two identical immutable runs sort/output the same deltas
+
+---
+
+### Case 26: One large item, ten small items, and row splits are not magnitude
+
+Fixture: One network subsystem addition; ten text additions; presentation-only
+row split/merge; no compatible estimates.
+
+Assertions:
+
+- [ ] Each actual stable-ID change is classified without relative magnitude claim
+- [ ] Row split/merge with equal stable semantic hashes is unchanged
+- [ ] Effort remains UNVERIFIED
+- [ ] No bloat/creep/item-count/file-count percentage verdict appears
+
+---
+
+### Case 27: Canonical result precedence is deterministic
+
+Fixtures cover syntax error, discovery, stale core identity, partial evidence,
+complete equal semantics, complete authorized delta, complete unapproved delta,
+and unmapped/conflict.
+
+Assertions:
+
+- [ ] Results are ERROR, INPUT REQUIRED, INSUFFICIENT EVIDENCE, PARTIAL,
+      NO SCOPE DELTA, SCOPE DELTA FOUND, SCOPE DELTA FOUND, and INSUFFICIENT
+      EVIDENCE respectively
+- [ ] Authorized versus unapproved classification never changes delta result
+- [ ] Result vocabulary contains no PASS/FAIL/creep verdict
+- [ ] Missing evidence never produces a healthy conclusion
+
+---
+
+### Case 28: Output is read-only evidence with neutral options
+
+Fixture: Inspect finds approved addition, unapproved removal, valid and invalid
+risk refs, partial impact evidence, and unchanged input hashes.
+
+Assertions:
+
+- [ ] Generic envelope and v2 extension contain exact identities, normalizer,
+      deltas, authority/allowed/risk/impact, coverage, unchecked, re-hashes,
+      comparison/stale keys, result, and producer version
+- [ ] `NOT_PERSISTED`, gate-ineligible, and READ_ONLY are explicit
+- [ ] Two or three options are unranked and name Scope/Delta IDs, unknowns,
+      decision owner/action, and separate transaction
+- [ ] Skill never recommends/chooses Cut/Keep/Defer, delegates, writes, mutates
+      Git/session/plans, or starts re-baselining
+
+---
+
+## Protocol Compliance
+
+- [ ] Reads only exact immutable pair plus validated evidence allowlist
+- [ ] Scope and semantic identity use stable IDs/versioned normalizer, not fuzzy
+      text or counts
+- [ ] Every delta binds both artifact/entry hashes while retaining stable identity
+- [ ] Added/removed/modified and allowed/unapproved/conflict classifications are
+      deterministic and separate
+- [ ] Change, risk, and re-baseline authority are distinct and independently
+      verified
+- [ ] Impact statements use exact receipts and fixed algorithms or UNVERIFIED
+- [ ] Budget/rehash gaps are explicit and fail closed
+- [ ] Result follows the canonical six-state precedence
+- [ ] Output is hash-bound, non-persisted, gate-ineligible, and strictly read-only
+- [ ] Product decisions and mutations remain with authorized external owners
+
+---
+
+## Coverage Notes
+
+- SCP-004: Cases 1–4.
+- SCP-005: Cases 5–7.
+- SCP-006: Cases 8–10.
+- SCP-007: Cases 11–16.
+- SCP-008: Cases 17–18 and 27.
+- SCP-009: Cases 19–21.
+- SCP-010: Cases 22–24.
+
+Cases 25–28 additionally verify stable findings, count-independent semantics,
+deterministic results, exact re-hashing, neutral ownership, and read-only evidence.

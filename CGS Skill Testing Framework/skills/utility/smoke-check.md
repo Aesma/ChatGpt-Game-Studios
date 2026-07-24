@@ -1,261 +1,614 @@
 # Skill Spec: $smoke-check
 
+> **Spec ID**: smoke-check-v2
+> **Spec Schema**: cgs-skill-spec/v2
 > **Category**: utility
 > **Priority**: low
 > **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-$smoke-check consumes an exact build-candidate manifest, an exact effectively CURRENT QA plan, and its verified test manifest. It produces build-bound automated and explicit manual evidence under production/qa/evidence/smoke/{candidate-id}/{run-id}/. Only a verified persisted sprint receipt with formal PASS and Handoff Eligible: YES can authorize QA hand-off. FAIL, INCOMPLETE, quick-mode targeted success, stale evidence, and non-persisted results are never hand-off eligible.
-
----
+`$smoke-check` consumes one `cgs-smoke-run-manifest/v1`, validates exact build, QA-plan, regression-selection, and test-runner bindings, then produces `cgs-smoke-check-receipt/v2`. Only a verified immutable sprint PASS authorizes handoff. Quick success, product failure, infrastructure incompleteness, missing manual evidence, and unpersisted results do not.
 
 ## Static Assertions
 
-- [ ] YAML frontmatter contains only name and a non-empty description; name is smoke-check
-- [ ] Supported sprint and quick argument schemas require candidate, QA-plan, and unique run IDs
-- [ ] The workflow rejects unknown positional arguments and flags before executing or writing
-- [ ] It consumes the QA-plan manifest, verifies its raw hash, and recomputes effective CURRENT state from captured source bytes
-- [ ] Automated evidence requires candidate/build/source/platform/runner/argv/exit/log/hash provenance
-- [ ] Manual rows require explicit PASS, FAIL, NOT RUN, or N-A plus observer/build/platform/timestamp/evidence provenance
-- [ ] Silence and unselected choices become UNKNOWN rather than PASS
-- [ ] The verdict table includes automated, manual, platform, data-integrity, performance, warning, parser, and coverage states
-- [ ] Quick mode can emit TARGETED CHECK PASSED but is never hand-off eligible
-- [ ] The canonical receipt path includes candidate ID and run ID, and prior receipts are immutable
-- [ ] The workflow follows bounded changeset authorization and transactional verification
-- [ ] The final phase recommends a next action without invoking another workflow
+- **SC-STA-001**: Frontmatter contains only `name` and non-empty `description`; name is `smoke-check`.
+- **SC-STA-002**: Exactly two invocation forms exist and both require `--run-manifest`.
+- **SC-STA-003**: Positional affected-system and loose candidate/plan/check arguments are rejected.
+- **SC-STA-004**: The run manifest schema is `cgs-smoke-run-manifest/v1`.
+- **SC-STA-005**: The QA plan schema is `cgs-qa-plan/v2`.
+- **SC-STA-006**: The regression selection schema is `cgs-regression-selection-manifest/v2`.
+- **SC-STA-007**: Build candidate, build receipt, artifact, source, engine, platform, and configuration are cross-bound.
+- **SC-STA-008**: Exact argv arrays, cwd, runner identity, environment allowlist, parser, and exit map are required.
+- **SC-STA-009**: Wall-clock, inactivity, output, result, record, and cleanup budgets are required.
+- **SC-STA-010**: Timeout, partial, parser, truncation, and cleanup states force INCOMPLETE.
+- **SC-STA-011**: Coverage is keyed by stable requirement, acceptance, Coverage Unit, Test, and Smoke Check IDs.
+- **SC-STA-012**: Sprint and quick selection rules are deterministic and scope-hashed.
+- **SC-STA-013**: Manual silence is UNKNOWN and unapproved substitution cannot pass an automated Test ID.
+- **SC-STA-014**: Manual and platform rows bind device, OS, runtime, build, observer, method, and evidence.
+- **SC-STA-015**: Verbatim free text is excluded from persisted receipts and bounded redaction metadata is required.
+- **SC-STA-016**: The canonical evidence root is `production/qa/evidence/smoke/{candidate-id}/{run-id}/`.
+- **SC-STA-017**: The unified receipt schema is `cgs-smoke-check-receipt/v2`.
+- **SC-STA-018**: Observed verdict, persistence state, and handoff eligibility are independent.
+- **SC-STA-019**: Publication uses absent-target CAS, atomic directory publish, and read-back verification.
+- **SC-STA-020**: Only a persisted sprint PASS is handoff eligible.
 
----
+## Protocol Assertions
 
-## Director Gate Checks
-
-- **Full mode**: N/A; smoke-check never invokes a director gate.
-- **Lean mode**: N/A; smoke-check never invokes a director gate.
-- **Solo mode**: N/A; smoke-check never invokes a director gate.
-- **Consumer gate**: QA hand-off is allowed only from an exact, current, persisted sprint PASS receipt; this is not a director verdict.
-
----
+- **SC-PRO-001**: Hash raw authority bytes before parsing and reject duplicate keys.
+- **SC-PRO-002**: Reject missing, stale, partial, invalid, conflicting, or hash-mismatched authorities before execution.
+- **SC-PRO-003**: Never infer coverage from files or discover tests at execution time.
+- **SC-PRO-004**: Never build a shell command or fall back to an undeclared runner.
+- **SC-PRO-005**: Terminate the full process tree after timeout or output overflow.
+- **SC-PRO-006**: Preserve complete bounded records and label missing or trailing records partial.
+- **SC-PRO-007**: Require an exact current plan contract before manual substitution.
+- **SC-PRO-008**: Never publish new smoke evidence to a legacy evidence root.
+- **SC-PRO-009**: Apply the exhaustive verdict table in priority order.
+- **SC-PRO-010**: A declined or failed write preserves the observed verdict but removes handoff eligibility.
+- **SC-PRO-011**: Downstream consumers receive and re-hash the exact receipt path and hash.
+- **SC-PRO-012**: The workflow never edits product, test, plan, selection, build, or shared workflow artifacts.
 
 ## Test Cases
 
-### Case 1: Happy path — current full sprint PASS
+### Case 1 — Exact runner argv and build binding
 
-**Fixture**:
-- A candidate manifest binds build CAND-42, build artifact hash, source commit, platform matrix, QA-plan path/hash, and test-manifest path/hash.
-- The QA plan says CURRENT; all captured source bytes still match; stable smoke IDs map one-to-one to AC IDs.
-- The allowed runner produces a complete PASS receipt and untruncated log.
-- Every required manual/platform row is explicitly PASS or valid N-A with observer, build, device, time, and evidence hashes.
-- The run ID is unused and the bounded request authorizes persistence.
+#### Fixture
 
-**Expected behavior**:
-1. The skill verifies candidate, build, QA-plan, source, test-manifest, scope, and evidence hashes.
-2. It applies verdict-table row 4.
-3. It atomically writes and re-reads the exact run directory.
-4. It returns PASS, Persistence: WRITTEN, and Handoff Eligible: YES.
+A current sprint run manifest binds build `build-a`, artifact hash `a` repeated 64 times, Godot 4.6.3, Windows debug configuration, runner row `RUN-01`, and an ordered argv array. The local project also contains a convenient but different runner command.
 
-**Assertions**:
-- [ ] Report header names exact candidate/build/commit/plan/test-manifest/scope identities and hashes
-- [ ] Automated and manual rows use stable QA-plan IDs
-- [ ] Receipt path is production/qa/evidence/smoke/CAND-42/{run-id}/report.md
-- [ ] Only after read-back verification may the response say QA hand-off is allowed
+#### Input
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+Invoke `$smoke-check sprint --run-manifest fixtures/smoke/run-a.yaml`.
+
+#### Expected reads
+
+The exact run manifest and its hash-bound build candidate, build receipt, QA plan, regression selection, test layout, validator manifest, execution manifest, artifact metadata, and runner binary identity.
+
+#### Expected writes
+
+Only a preview until authorization; after authorization, the immutable run root declared by the manifest.
+
+#### Expected non-writes
+
+No product source, tests, authority manifests, live skill files, legacy evidence roots, or existing run directory.
+
+#### Expected behavior
+
+The workflow validates engine version, build/configuration identity, runner identity, cwd, ordered argv, environment allowlist, parser, exit map, and test IDs. It executes only `RUN-01`; the convenient local command is ignored.
+
+#### Assertions
+
+SC-STA-007, SC-STA-008, SC-PRO-001, SC-PRO-004, SC-PRO-012.
+
+#### Case Verdict
+
+PASS only when every exact binding matches and the pinned argv row produces a complete conclusive receipt; otherwise INCOMPLETE.
+
+### Case 2 — Timeout, output cap, cleanup, and partial parsing
+
+#### Fixture
+
+A runner emits two complete structured records, begins a third record, exceeds the output cap, and leaves one child process alive until terminated.
+
+#### Input
+
+Run the pinned automated row with its declared wall-clock, inactivity, output, record, and cleanup budgets.
+
+#### Expected reads
+
+The run manifest, exact execution manifest, parser contract, and expected result-count mapping.
+
+#### Expected writes
+
+Bounded stdout/stderr captures, automated receipt, partial-result metadata, and final report only within the declared immutable run root after authorization.
+
+#### Expected non-writes
+
+No unbounded log, retry manifest, altered argv, changed seed, or result outside the run root.
+
+#### Expected behavior
+
+The full process tree is terminated; complete records are preserved; the trailing record and missing expected rows are PARTIAL; output hashes and cleanup result are recorded; no retry changes execution controls.
+
+#### Assertions
+
+SC-STA-009, SC-STA-010, SC-PRO-005, SC-PRO-006.
+
+#### Case Verdict
+
+INCOMPLETE with `Execution: PARTIAL`; never PASS or product FAIL solely because of timeout or truncation.
+
+### Case 3 — Stable coverage blocks an unmapped high-risk requirement
+
+#### Fixture
+
+The QA plan contains high-risk requirement `TR-SEC-07`, but no Coverage Unit, Test ID, runner row, or manual contract maps to it. A file named `test_sec_07.gd` exists.
+
+#### Input
+
+Invoke sprint mode with a manifest whose expected scope includes `TR-SEC-07`.
+
+#### Expected reads
+
+The exact current QA plan, regression selection, and their stable-ID coverage matrices.
+
+#### Expected writes
+
+A preview or authorized report identifying the stable coverage gap.
+
+#### Expected non-writes
+
+No generated mapping, modified QA plan, modified test file, or handoff receipt claiming PASS.
+
+#### Expected behavior
+
+The filename is ignored as coverage evidence. The missing stable mapping sets `Scope: INCOMPLETE` and blocks execution or handoff as applicable.
+
+#### Assertions
+
+SC-STA-011, SC-PRO-003, SC-PRO-012.
+
+#### Case Verdict
+
+INCOMPLETE.
+
+### Case 4 — Current QA-plan and regression-selection hashes are mandatory
+
+#### Fixture
+
+The run manifest pins QA plan hash `plan-old` and selection revision 4. The files now contain a different QA plan hash and selection revision 5.
+
+#### Input
+
+Invoke either mode with the stale run manifest.
+
+#### Expected reads
+
+Raw bytes and identity fields for the run manifest, QA plan, regression selection, and their bound sources.
+
+#### Expected writes
+
+No evidence files; a conversation result may explain the mismatch.
+
+#### Expected non-writes
+
+No refreshed manifest, no execution receipt, no inferred newest selection, and no authority edits.
+
+#### Expected behavior
+
+The workflow detects the hash/revision mismatch before execution, marks the corresponding axes stale or invalid, and refuses to substitute the newer files.
+
+#### Assertions
+
+SC-STA-004, SC-STA-005, SC-STA-006, SC-PRO-001, SC-PRO-002.
+
+#### Case Verdict
+
+INCOMPLETE.
+
+### Case 5 — Manual text is previewed, bounded, and redacted
+
+#### Fixture
+
+A tester submits a long observation containing an access token, email address, and relevant gameplay result. The run manifest permits a manual row and declares a raw-reference retention record.
+
+#### Input
+
+Provide the observation for stable Check ID `SC-MAN-04`.
+
+#### Expected reads
+
+The manual contract, redaction rules, evidence reference metadata, and exact build/platform identity.
+
+#### Expected writes
+
+Only the approved bounded redacted summary, its hash, redaction rule IDs, and raw-reference path/hash/size/media-type/retention/owner record.
+
+#### Expected non-writes
+
+No token, email address, verbatim free text, copied raw attachment bytes, or unrelated personal data.
+
+#### Expected behavior
+
+The workflow presents a normalized preview, permits editing, removes secrets and unnecessary personal data, and persists only bounded redacted fields.
+
+#### Assertions
+
+SC-STA-015, SC-PRO-012.
+
+#### Case Verdict
+
+PASS only if no prohibited raw text or secret reaches rendered evidence; otherwise INCOMPLETE with `Evidence: INVALID`.
+
+### Case 6 — Unified stable-check evidence schema
+
+#### Fixture
+
+A run contains one automated, one manual, and one platform check with complete evidence.
+
+#### Input
+
+Render the candidate receipt and report.
+
+#### Expected reads
+
+Frozen stable-check ledger, authority hashes, execution outcomes, manual rows, platform matrix, and evidence hashes.
+
+#### Expected writes
+
+One `cgs-smoke-check-receipt/v2`, authority index, report, and declared evidence members under the canonical run root.
+
+#### Expected non-writes
+
+No ad hoc second receipt schema, ID-less checklist, unbound evidence path, or legacy report.
+
+#### Expected behavior
+
+Every row includes stable Check ID and the relevant requirement, Test, candidate, build, runner, platform, and evidence hashes. The report exposes the same identities and status axes.
+
+#### Assertions
+
+SC-STA-011, SC-STA-016, SC-STA-017, SC-PRO-008.
+
+#### Case Verdict
+
+PASS when all unified schema fields and member hashes validate; otherwise INCOMPLETE.
+
+### Case 7 — Declined persistence does not rewrite the observed verdict
+
+#### Fixture
+
+All complete sprint checks pass, but the user declines the proposed evidence write.
+
+#### Input
+
+Finalize the run after presenting the bounded changeset preview.
+
+#### Expected reads
+
+The complete in-memory result and rendered preview hashes.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No run root, receipt, report, partial staging publication, or authority mutation.
+
+#### Expected behavior
+
+The workflow returns observed verdict PASS, records `Persistence: DECLINED` in conversation, and reports `Handoff Eligible: NO`.
+
+#### Assertions
+
+SC-STA-018, SC-PRO-010.
+
+#### Case Verdict
+
+Observed PASS; persistence DECLINED; handoff NO.
+
+### Case 8 — Platform evidence requires device and OS identity
+
+#### Fixture
+
+A mobile check says only `platform: mobile` and `status: PASS`; device ID, model, OS version, runtime, configuration, input method, and observer are absent.
+
+#### Input
+
+Ingest the manual platform row.
+
+#### Expected reads
+
+The QA-plan platform matrix and exact manual evidence contract.
+
+#### Expected writes
+
+An authorized report may record the row as UNKNOWN and list missing fields.
+
+#### Expected non-writes
+
+No fabricated device or OS values and no PASS platform row.
+
+#### Expected behavior
+
+Generic platform text is insufficient. The workflow marks the row UNKNOWN and the Platform or Evidence axis incomplete.
+
+#### Assertions
+
+SC-STA-014, SC-PRO-002.
+
+#### Case Verdict
+
+INCOMPLETE.
+
+### Case 9 — Automated NOT_RUN needs an explicit permitted substitute
+
+#### Fixture
+
+Automated Test ID `TEST-SAVE-03` is NOT_RUN. A manual observer supplies a PASS observation, but the current QA plan has no substitution contract for that Test ID.
+
+#### Input
+
+Attempt to use the manual observation as substitute evidence.
+
+#### Expected reads
+
+The exact QA-plan substitution table, stable-check ledger, build identity, manual row, and evidence hash.
+
+#### Expected writes
+
+A separate substitution-attempt row may be persisted; the automated row remains NOT_RUN.
+
+#### Expected non-writes
+
+No automated PASS, no synthesized substitution contract, and no handoff authorization.
+
+#### Expected behavior
+
+The workflow records the manual observation separately, records the absent contract, preserves automated NOT_RUN, and classifies the run incomplete. If the observation itself is absent, its row is UNKNOWN.
+
+#### Assertions
+
+SC-STA-013, SC-PRO-007.
+
+#### Case Verdict
+
+INCOMPLETE.
+
+### Case 10 — Canonical immutable evidence root
+
+#### Fixture
+
+A valid run manifest declares `production/qa/evidence/smoke/candidate-a/run-42/`. A writable legacy directory `production/qa/tests/evidence/` also exists.
+
+#### Input
+
+Authorize report persistence.
+
+#### Expected reads
+
+The declared destination, target-absence precondition, authority index, and rendered member hashes.
+
+#### Expected writes
+
+Only the complete canonical candidate/run directory.
+
+#### Expected non-writes
+
+No new file in the legacy directory and no overwrite or merge into another run.
+
+#### Expected behavior
+
+All receipt members are rendered and indexed under the canonical root. The legacy location remains read-only and is never accepted as standalone handoff evidence.
+
+#### Assertions
+
+SC-STA-016, SC-PRO-008.
+
+#### Case Verdict
+
+PASS only after canonical-root read-back verification; otherwise INCOMPLETE.
+
+### Case 11 — Registered spec is structurally complete and fail-closed
+
+#### Fixture
+
+The registered spec file under `CGS Skill Testing Framework/skills/utility/smoke-check.md`.
+
+#### Input
+
+Run static registration validation for `cgs-skill-spec/v2`.
+
+#### Expected reads
+
+The entire spec and candidate skill.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No spec repair during validation and no live catalog mutation.
+
+#### Expected behavior
+
+Cases are contiguous from 1 through 16. Every case contains Fixture, Input, Expected reads, Expected writes, Expected non-writes, Expected behavior, Assertions, and Case Verdict. Dangerous NOT_RUN, UNKNOWN, timeout, partial, stale, and unpersisted states are expected to block PASS or handoff.
+
+#### Assertions
+
+SC-STA-001 through SC-STA-020; SC-PRO-001 through SC-PRO-012.
+
+#### Case Verdict
+
+PASS only when all structural and fail-closed expectations are present; otherwise FAIL validation.
+
+### Case 12 — Unsupported affected-system invocation is rejected
+
+#### Fixture
+
+A day-one-patch caller attempts `$smoke-check inventory` and another attempts `$smoke-check quick --checks SC-INV-01`.
+
+#### Input
+
+Parse both invocations.
+
+#### Expected reads
+
+The invocation grammar only.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No run manifest, evidence root, QA-plan edit, inferred scope, or execution.
+
+#### Expected behavior
+
+Both invocations are rejected. The caller is instructed to nominate a valid `cgs-smoke-run-manifest/v1` containing exact stable IDs and authority hashes.
+
+#### Assertions
+
+SC-STA-002, SC-STA-003, SC-PRO-012.
+
+#### Case Verdict
+
+INCOMPLETE input; no test verdict or handoff.
+
+### Case 13 — Deterministic selection and scope hash
+
+#### Fixture
+
+The QA plan lists stable checks in reverse order and includes duplicate prose labels. The run manifest pins a canonical selected-scope hash and quick requests three exact Smoke Check IDs.
+
+#### Input
+
+Build the quick stable-check ledger twice.
+
+#### Expected reads
+
+The exact current QA-plan coverage matrix, regression selection, requested stable IDs, and canonicalization version.
+
+#### Expected writes
+
+At most a selected-scope snapshot in the authorized run root.
+
+#### Expected non-writes
+
+No filesystem-discovered tests, prose-filtered rows, affected-system expansion, or reordered authority file.
+
+#### Expected behavior
+
+Both runs filter only declared versioned fields, sort by the documented bytewise key, reject duplicate stable keys, and produce identical selected-scope bytes and SHA-256.
+
+#### Assertions
+
+SC-STA-011, SC-STA-012, SC-PRO-003.
+
+#### Case Verdict
+
+TARGETED CHECK PASSED only after all exact selected checks pass; deterministic mismatch is INCOMPLETE and handoff remains NO.
+
+### Case 14 — Exhaustive verdict and strict handoff
+
+#### Fixture
+
+Four outcome sets are provided: product FAIL plus parser issue; no FAIL but one UNKNOWN; all quick checks pass; and a complete sprint pass.
+
+#### Input
+
+Apply the verdict table to each set in order.
+
+#### Expected reads
+
+All per-check outcomes, status axes, mode, warnings, and evidence completeness.
+
+#### Expected writes
+
+A rendered receipt/report preview for each set; only an authorized complete run may publish.
+
+#### Expected non-writes
+
+No boolean-only summary and no handoff claim for FAIL, INCOMPLETE, or quick success.
+
+#### Expected behavior
+
+Results are respectively FAIL/no handoff, INCOMPLETE/no handoff, TARGETED CHECK PASSED/no handoff, and PASS/provisional handoff pending verified persistence.
+
+#### Assertions
+
+SC-STA-018, SC-STA-020, SC-PRO-009.
+
+#### Case Verdict
+
+PASS only if all four outcomes and handoff decisions match the exhaustive table.
+
+### Case 15 — Immutable CAS detects authority drift and target conflict
+
+#### Fixture
+
+The preview is valid, then the QA plan changes before publish and another actor creates the final run root.
+
+#### Input
+
+Authorize the previewed write.
+
+#### Expected reads
+
+Every authority a second time, final-root absence, rendered member bytes, and internal index references.
+
+#### Expected writes
+
+Private same-filesystem staging only; no final publication after conflict detection.
+
+#### Expected non-writes
+
+No overwrite, merge, partial final directory, reused run ID, or authority rollback.
+
+#### Expected behavior
+
+The changed hash and appeared target fail CAS. The workflow preserves the observed verdict, sets persistence CONFLICT, forces handoff NO, and requires a new run ID.
+
+#### Assertions
+
+SC-STA-019, SC-PRO-010, SC-PRO-012.
+
+#### Case Verdict
+
+Observed result preserved; persistence CONFLICT; handoff NO.
+
+### Case 16 — Complete sprint happy path and downstream verification
+
+#### Fixture
+
+All authorities are current and hash-matched; deterministic selection is complete; exact runner rows and permitted manual rows conclusively pass; the canonical target is absent.
+
+#### Input
+
+Invoke sprint mode, authorize persistence, then hand the exact receipt path and hash to a downstream consumer.
+
+#### Expected reads
+
+All pinned authorities, execution evidence, manual/platform evidence, rendered bytes, and post-publication read-back bytes.
+
+#### Expected writes
+
+One atomically published immutable canonical run root containing the indexed `cgs-smoke-check-receipt/v2` and report.
+
+#### Expected non-writes
+
+No authority changes, legacy evidence, quick receipt, unindexed member, or mutable latest pointer.
+
+#### Expected behavior
+
+The workflow verifies every binding, applies rule 4, CAS-publishes, reads back every member, sets `Persistence: VERIFIED`, and returns the exact receipt path/hash with candidate/build/artifact identities. The consumer re-hashes the receipt and every indexed member before accepting handoff.
+
+#### Assertions
+
+SC-STA-001 through SC-STA-020; SC-PRO-001 through SC-PRO-012.
+
+#### Case Verdict
+
+PASS with Handoff Eligible YES only after verified immutable publication and consumer hash verification.
 
 ---
 
-### Case 2: Automated tests were not run
+## Authoritative P1 audit traceability
 
-**Fixture**:
-- Candidate and QA plan are current.
-- The runner is unavailable and no verifiable exact-build CI receipt is supplied.
-- Manual checks otherwise pass.
-
-**Expected behavior**:
-1. Automated status is NOT_RUN.
-2. Verdict-table row 2 produces INCOMPLETE.
-3. Handoff Eligible is NO and the output says BLOCKED FOR HANDOFF.
-
-**Assertions**:
-- [ ] NOT_RUN is never PASS or a warning-only hand-off
-- [ ] Manual confirmation cannot replace structured automated evidence
-- [ ] No ready-for-QA statement appears
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 3: Empty manual response is UNKNOWN
-
-**Fixture**:
-- Automated evidence passes.
-- The manual input UI returns no selected failures, no explicit rows, or an unanswered item.
-
-**Expected behavior**:
-1. Every unanswered row becomes UNKNOWN.
-2. The report identifies missing observer/build/platform/time/evidence fields.
-3. Verdict is INCOMPLETE and hand-off is blocked.
-
-**Assertions**:
-- [ ] Silence is not expanded into PASS rows
-- [ ] Every required row has one explicit allowed status
-- [ ] UNKNOWN remains visible in the receipt
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 4: Quick targeted success cannot satisfy formal hand-off
-
-**Fixture**:
-- Invocation is quick with two valid stable IDs.
-- All evidence for those IDs is current and passes.
-
-**Expected behavior**:
-1. The scope contains exactly the two selected stable IDs.
-2. Verdict-table row 3 returns TARGETED CHECK PASSED.
-3. Handoff Eligible is NO because full sprint scope was not evaluated.
-
-**Assertions**:
-- [ ] The result never says PASS or ready for QA/release
-- [ ] Coverage outside the targeted IDs is not implied
-- [ ] A missing or unknown selected row changes the result to INCOMPLETE
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 5: Director gate — none
-
-**Fixture**:
-- Any valid sprint or quick invocation.
-
-**Expected behavior**:
-1. No director agent or gate is invoked.
-2. The smoke evidence verdict is calculated locally from the deterministic table.
-
-**Assertions**:
-- [ ] No CD-, TD-, AD-, or PR-gate controls the result
-- [ ] No director skip message is required
-- [ ] QA hand-off eligibility is not represented as a director approval
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 6: Old build or stale QA plan is rejected
-
-**Fixture**:
-- A historical XML/log says PASS for another build, or the supplied QA-plan bytes/source bytes no longer match their captured hashes.
-
-**Expected behavior**:
-1. The workflow refuses most-recent-file selection.
-2. The old build receipt is INVALID_RECEIPT or the QA plan is effectively STALE.
-3. No tests execute against a stale plan; verdict is INCOMPLETE.
-
-**Assertions**:
-- [ ] Candidate ID, build hash, source commit, platform, plan hash, and scope hash must all match
-- [ ] PARTIAL or STALE plans cannot supply smoke IDs
-- [ ] Handoff Eligible is NO
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 7: Any platform or Batch-3-equivalent failure fails overall
-
-**Fixture**:
-- Automated tests pass.
-- One platform row reports FAIL, or a data-integrity/performance row reports save corruption, data loss, or a critical performance failure.
-- Other rows pass.
-
-**Expected behavior**:
-1. The failure is retained with its stable ID and provenance.
-2. Verdict-table row 1 returns FAIL regardless of batch or platform.
-3. Handoff is blocked.
-
-**Assertions**:
-- [ ] Platform failures are not averaged away
-- [ ] Data-integrity and performance failures participate in the single verdict function
-- [ ] Failures plus incomplete rows still yield FAIL while listing both
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 8: Runner crash, timeout, parse error, or truncated log
-
-**Fixture**:
-- Candidate and QA plan are current.
-- The runner crashes, exceeds its deadline, returns an unparseable result, or hits the output cap.
-
-**Expected behavior**:
-1. Process cleanup follows the test manifest.
-2. Status is TIMEOUT, INFRA_ERROR, or INVALID_RECEIPT.
-3. Verdict is INCOMPLETE and hand-off is blocked.
-
-**Assertions**:
-- [ ] Infrastructure errors cannot become test PASS
-- [ ] Log truncation is explicit
-- [ ] Exit code, parser state, and log hash are preserved when available
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 9: Warning truth table is exhaustive
-
-**Fixture**:
-- Matrix A has all required evidence passing and no warning.
-- Matrix B has all required evidence passing but one unresolved warning or coverage gap.
-- Matrix C has one valid test failure plus one incomplete row.
-
-**Expected behavior**:
-1. Matrix A in sprint mode returns PASS.
-2. Matrix B returns INCOMPLETE; there is no hand-off-capable PASS WITH WARNINGS.
-3. Matrix C returns FAIL by precedence and also lists the incomplete row.
-
-**Assertions**:
-- [ ] Each matrix selects exactly one verdict-table row
-- [ ] Warning count zero and nonzero are both defined
-- [ ] FAIL precedence is deterministic
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-### Case 10: Exact-build external CI receipt may substitute locally
-
-**Fixture**:
-- Local execution is unavailable.
-- A CI receipt and log are verifiable and bind the exact candidate/build/commit/platform/test-manifest/QA-plan/scope IDs and hashes.
-
-**Expected behavior**:
-1. The workflow re-hashes available receipt/log artifacts and validates issuer/job/timestamps/argv/results.
-2. A complete exact-build CI PASS can supply the automated PASS row.
-3. A missing remote artifact, mismatched field, untrusted issuer, or truncated log becomes INVALID_RECEIPT.
-
-**Assertions**:
-- [ ] A generic user statement that CI passed is insufficient
-- [ ] A historical CI success for another candidate is stale
-- [ ] Local and CI evidence use the same receipt schema
-
-**Case Verdict**: PASS / FAIL / PARTIAL
-
----
-
-## Protocol Compliance
-
-- [ ] Treats an explicit bounded request as authorization for all in-scope execution and writes
-- [ ] If no bounded authorization exists, previews one complete changeset and asks once before the first write
-- [ ] Does not re-prompt within an authorized changeset
-- [ ] Returns observed verdict even if persistence is declined, while marking the receipt non-consumable
-- [ ] Executes only verified argv allowlists with timeout, output cap, redaction, and process-tree cleanup
-- [ ] Does not auto-fix code/tests or modify the candidate manifest, QA plan, session state, or source artifacts
-- [ ] Does not invoke director gates or downstream workflows
-- [ ] Downstream hand-off requires an exact receipt path and candidate-manifest identity, never newest-file discovery
-
----
-
-## Coverage Notes
-
-This is a behavioral specification, not an executed test result. Runtime fixtures must cover argv execution, process-tree timeout cleanup, output truncation, symlink escape, build/plan/test-manifest hash mutation, explicit manual-row collection, multi-platform aggregation, quick scope, CI receipt validation, transactional persistence, and downstream stale-receipt rejection. team-qa, day-one-patch, the workflow catalog, and the workflow guide must independently migrate to the exact receipt/candidate consumer contract.
+| Audit ID | Implemented clause | Concrete case and assertion cells |
+|---|---|---|
+| `SC-005` | `SKILL.md` Phase 3 exact project runner validation | Case 1 “Exact runner argv and build binding”; `SC-STA-007`; `SC-STA-008`; `SC-PRO-004` |
+| `SC-006` | `SKILL.md` Phase 4 bounded execution, cleanup, and partial parsing | Case 2 “Timeout, output cap, cleanup, and partial parsing”; `SC-STA-009`; `SC-STA-010`; `SC-PRO-005`; `SC-PRO-006` |
+| `SC-007` | `SKILL.md` Phase 2 stable-ID coverage ledger and high-risk blocker | Case 3 “Stable coverage blocks an unmapped high-risk requirement”; `SC-STA-011`; `SC-PRO-003` |
+| `SC-008` | `SKILL.md` Phase 1 current QA-plan/selection/candidate authority binding | Case 4 “Current QA-plan and regression-selection hashes are mandatory”; `SC-STA-004`; `SC-STA-005`; `SC-STA-006`; `SC-PRO-001`; `SC-PRO-002` |
+| `SC-009` | `SKILL.md` Phase 5 bounded redacted manual evidence | Case 5 “Manual text is previewed, bounded, and redacted”; `SC-STA-015`; `SC-PRO-012` |
+| `SC-010` | `SKILL.md` Phase 2 ledger plus Phase 7 unified receipt | Case 6 “Unified stable-check evidence schema”; `SC-STA-011`; `SC-STA-016`; `SC-STA-017`; `SC-PRO-008` |
+| `SC-011` | `SKILL.md` Phase 8 independent observed verdict/persistence/handoff axes | Case 7 “Declined persistence does not rewrite the observed verdict”; `SC-STA-018`; `SC-PRO-010` |
+| `SC-012` | `SKILL.md` Phase 5 device/platform evidence matrix | Case 8 “Platform evidence requires device and OS identity”; `SC-STA-014`; `SC-PRO-002` |
+| `SC-023` | `SKILL.md` Phase 5 explicit per-check substitute collection | Case 9 “Automated NOT_RUN needs an explicit permitted substitute”; `SC-STA-013`; `SC-PRO-007` |
+| `SC-024` | `SKILL.md` Phase 7 canonical immutable evidence root and receipt | Case 10 “Canonical immutable evidence root”; `SC-STA-016`; `SC-PRO-008` |
+| `SC-025` | Dedicated spec's complete fixtures and exhaustive fail-closed verdict contract | Case 11 “Registered spec is structurally complete and fail-closed”; `SC-STA-001`; `SC-STA-010`; `SC-PRO-009` |
+| `SC-026` | `SKILL.md` invocation schema rejects positional affected-system calls | Case 12 “Unsupported affected-system invocation is rejected”; `SC-STA-002`; `SC-STA-003`; `SC-PRO-012` |

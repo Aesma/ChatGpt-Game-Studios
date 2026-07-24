@@ -1,421 +1,274 @@
-# Skill Test Spec: $team-combat
-
-## Skill Summary
-
-`$team-combat` implements one combat story only after an independent hash-bound
-GDD approval, Accepted governing ADRs, and a current final READY story are
-proven. Planning is read-only. Before any writer starts, the workflow freezes
-interfaces and obtains one approval for an exact path/operation/owner/base-hash
-manifest. Only disjoint manifest owners may write concurrently; shared paths
-have one integration owner. Timeouts, late results, partial work, checkpoint
-recovery, and tests use explicit state. COMPLETE requires actual current test
-evidence, never a proposed or narrated result.
-
-## Static Assertions
-
-- [ ] Frontmatter contains `name: team-combat` and a non-empty description
-- [ ] Implementation invocation requires a concrete story, design-review
-      evidence, readiness evidence, and approved GDD SHA-256
-- [ ] GDD/ADR/story/approval artifacts are never authored or promoted by this skill
-- [ ] Zero mutations are permitted before exact manifest approval
-- [ ] Manifest rows contain path, operation, sole owner, and base hash/ABSENT
-- [ ] Delegation and retries do not enlarge file authorization
-- [ ] Every writable path has one owner; shared paths belong only to the named
-      integration owner
-- [ ] Concurrency is capped and limited to disjoint frozen-interface tasks
-- [ ] Per-task deadline, cancellation, one-retry maximum, and late-result
-      quarantine are defined
-- [ ] Checkpoint includes hashes, manifest, task state, deadlines, and next step
-- [ ] Test results require actual commands, exit codes, counts, environment,
-      evidence paths, and evidence hashes
-- [ ] Verdicts include COMPLETE, NEEDS WORK, PARTIAL, and BLOCKED
-- [ ] Orchestrator is read-only while authorized subagents may write only exact
-      approved manifest rows
-- [ ] Metadata describes implementation side effects and prerequisites; it does
-      not claim the whole workflow is read-only
-
----
-
-## Test Cases
-
-### Case 1: Approved-input gate blocks free text and self-approved design
-
-**Fixture variants:**
-
-1. input is only `parry and riposte system`;
-2. `--approved-gdd-hash` is missing;
-3. review evidence is advisory, partial, not independent, or names another hash;
-4. a governing ADR is Proposed;
-5. story status says Ready but final readiness evidence is missing/stale;
-6. acceptance criteria or test-evidence destinations are incomplete.
-
-**Input examples:**
-
-```text
-$team-combat parry and riposte system
-$team-combat production/epics/combat/story-001-parry.md --design-review review.md
-```
-
-**Expected behavior:**
-
-1. The workflow identifies every missing or stale prerequisite.
-2. It reports `BLOCKED — APPROVED INPUTS NOT PROVEN`.
-3. It does not create/update a GDD, ADR, story, review record, or implementation
-   file.
-4. It spawns no implementation writer.
-5. It does not treat user confirmation, story status text, or Accepted Risk as
-   formal approval.
-
-**Assertions:**
-
-- [ ] Zero mutations
-- [ ] Zero implementation writer launches
-- [ ] Current and expected paths/hashes/statuses are reported
-- [ ] No programmer is asked to invent missing product rules
-- [ ] Upstream workflows are handoffs only and are not auto-invoked
-
----
-
-### Case 2: Valid approved inputs produce read-only planning only
-
-**Fixture:**
-
-- the GDD's current raw SHA-256 equals `--approved-gdd-hash`
-- independent review evidence says APPROVED for that exact path/hash
-- every governing ADR is Accepted
-- final readiness evidence says READY for the exact current story hash
-- acceptance criteria, control-manifest snapshot, QA plan, engine, and pinned
-  version are current
-
-**Input:**
-
-```text
-$team-combat production/epics/combat/story-001-parry.md \
-  --design-review design/gdd/reviews/parry-review.md \
-  --readiness-evidence production/qa/readiness/parry.md \
-  --approved-gdd-hash sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-```
-
-**Expected behavior:**
-
-1. All current raw-byte hashes are recorded.
-2. Requirements, implementation, engine, and QA planners return proposals only.
-3. A frozen interface contract and exact file manifest are produced.
-4. No file is changed before manifest approval.
-
-**Assertions:**
-
-- [ ] Input snapshot names story/GDD/ADR/review/readiness hashes
-- [ ] Planning agents have an explicit no-write contract
-- [ ] Interface disagreements block implementation
-- [ ] Mutation audit remains empty through manifest presentation
-
----
-
-### Case 3: Exact manifest authorization cannot expand
-
-**Fixture:**
-
-- planning proposes three exact files: one gameplay file, one test file, and
-  `production/session-state/active.md`
-- current bytes/base hashes are known
-- user approves the canonical manifest hash
-- a writer later requests a fourth file
-
-**Expected behavior:**
-
-1. Manifest rows show exact path, create/update operation, sole owner, base
-   SHA-256/ABSENT, purpose, and acceptance criteria.
-2. The fourth path receives `SCOPE_CHANGE_REQUEST` and is not written.
-3. Execution stops before dependent work.
-4. A revised complete manifest requires a new user approval.
-
-**Assertions:**
-
-- [ ] No globs or directory-wide authorization
-- [ ] Approval binds exact manifest and input/interface hashes
-- [ ] New path, operation, owner, or base hash invalidates authorization
-- [ ] Delegated agents do not inherit broader write authority
-- [ ] Unauthorized scope is never approved retroactively
-
----
-
-### Case 4: Overlapping writers are not launched concurrently
-
-**Fixture:**
-
-- gameplay and AI proposals both request `src/combat/combat_controller.*`
-- gameplay owns a separate core file
-- AI owns a separate behavior file
-- interface contract is frozen
-
-**Expected behavior:**
-
-1. Ownership analysis detects the shared requested path.
-2. The shared path is assigned only to the integration owner.
-3. Gameplay and AI may concurrently write only their disjoint private paths.
-4. Both return read-only proposals for the shared path.
-5. If unique ownership cannot be resolved before approval, verdict is BLOCKED.
-
-**Assertions:**
-
-- [ ] Exactly one manifest owner for every path
-- [ ] No overlapping write sets in a concurrent batch
-- [ ] Real dependencies are serialized
-- [ ] Workspace audit detects a non-owner shared-file write as BLOCKED
-
----
-
-### Case 5: Integration has one explicit owner and hash guard
-
-**Fixture:**
-
-- all required private-domain tasks are COMPLETE
-- `lead-programmer` is the declared integration owner
-- shared files and their approved base hashes are listed in the manifest
-- domain agents provide proposals for shared wiring
-
-**Expected behavior:**
-
-1. Only `lead-programmer` receives shared manifest rows.
-2. The integration owner rechecks each base hash before writing.
-3. It applies compatible proposals in dependency order.
-4. Domain writers and orchestrator do not touch shared files.
-5. Every integrated path receives a verified post hash.
-
-**Assertions:**
-
-- [ ] Integration owner is selected before authorization
-- [ ] Shared paths are exclusive to that owner
-- [ ] Base mismatch produces zero writes to the conflicting path and BLOCKED
-- [ ] Integration never begins after a required partial/timeout/late result
-- [ ] Integration result lists pre/post hashes
-
----
-
-### Case 6: Bounded parallel batch succeeds
-
-**Fixture:**
-
-- gameplay, AI, VFX, and audio are explicit story dependencies
-- each has a disjoint approved path set
-- all consume the same frozen input/interface hashes
-- configured subagent limit is at least four
-
-**Expected behavior:**
-
-1. Four stable task IDs, deadlines, cancellation tokens, and manifest subsets are
-   created.
-2. All four tasks in the eligible batch are launched before awaiting results.
-3. No task consumes another task's output.
-4. The workflow waits for the complete batch before integration.
-5. Returned path hashes and ownership are audited.
-
-**Assertions:**
-
-- [ ] Concurrency never exceeds four or the repository limit
-- [ ] Only disjoint tasks share a batch
-- [ ] Result schema includes input/interface and pre/post hashes
-- [ ] Integration waits for all required COMPLETE audited results
-
----
-
-### Case 7: Timeout, cancellation, late result, and partial report
-
-**Fixture:**
-
-- gameplay completes
-- VFX exceeds its approved deadline
-- cancellation is issued
-- VFX returns a patch after cancellation
-- retry safety cannot be proven
-
-**Expected behavior:**
-
-1. VFX is marked TIMED_OUT and CANCELED.
-2. The late patch is marked LATE and quarantined.
-3. It is not written, merged, integrated, or treated as evidence.
-4. Gameplay's verified result appears in a partial report.
-5. Dependent integration does not start.
-6. Overall verdict is PARTIAL or BLOCKED, never COMPLETE.
-
-**Assertions:**
-
-- [ ] At most one retry and only after safe path-state verification
-- [ ] No concurrent attempts own the same path
-- [ ] Late result cannot update checkpoint post hashes
-- [ ] Completed independent work is not discarded
-- [ ] Timeout cannot be accepted as risk into COMPLETE
-
----
-
-### Case 8: Unauthorized writer mutation fails closed
-
-**Fixture:**
-
-- AI owns `src/ai/parry_behavior.*`
-- during execution it also changes a shared combat controller
-- the controller is owned by the integration owner
-
-**Expected behavior:**
-
-1. Post-batch workspace inventory detects both changes.
-2. The AI result is rejected as scope/ownership violation.
-3. Exact unauthorized path, writer, and observed hash are reported.
-4. Integration and dependent testing stop.
-5. Overall verdict is BLOCKED.
-
-**Assertions:**
-
-- [ ] Unauthorized mutation is not silently retained
-- [ ] User cannot retroactively waive it into the old manifest
-- [ ] No other agent overwrites the path to conceal the violation
-- [ ] Partial report retains only verified in-scope results
-
----
-
-### Case 9: Checkpoint resume is hash-bound and idempotent
-
-**Fixture variants:**
-
-- a valid checkpoint records Phase 4 complete gameplay post hashes and VFX still
-  PLANNED;
-- a checkpoint's story or manifest hash differs from current bytes;
-- a checkpoint names a canceled attempt that later returned.
-
-**Expected behavior:**
-
-1. Valid resume verifies run/input/interface/manifest/file/evidence hashes.
-2. It does not rerun a COMPLETE task whose post hashes still match.
-3. It continues only the next safe incomplete task.
-4. Stale checkpoint state returns BLOCKED.
-5. Canceled/superseded/late results are never revived.
-6. Only the integration owner writes the approved checkpoint path.
-
-**Assertions:**
-
-- [ ] Resume is idempotent
-- [ ] Checkpoint includes task deadlines/retries/cancellation state
-- [ ] Repeated checkpoint updates follow one verified post-hash-to-next-base chain
-- [ ] Path or owner changes require revised manifest approval
-- [ ] Orchestrator does not edit the checkpoint
-
----
-
-### Case 10: Tests cannot be claimed without execution evidence
-
-**Fixture variants:**
-
-1. qa-tester only inspects code and proposes a command;
-2. command runs but evidence log is missing;
-3. evidence was generated for different integration post hashes;
-4. tests run with failures/skips/not-run criteria;
-5. tests run successfully and record all required fields.
-
-**Expected behavior:**
-
-1. Proposed or narrated commands are reported NOT RUN.
-2. Missing/stale evidence cannot support a passing criterion.
-3. Actual execution records command, working directory, engine/platform/version,
-   timestamps, exit code, counts, integrated hashes, evidence path/hash, and
-   acceptance-criteria mapping.
-4. Performance is unproven without numeric budget, measurement command, and
-   captured result.
-5. COMPLETE is possible only for variant 5 when all other gates pass.
-
-**Assertions:**
-
-- [ ] No fabricated `passed`, `validated`, or performance claim
-- [ ] Evidence is bound to current integrated bytes
-- [ ] Failures produce NEEDS WORK or BLOCKED
-- [ ] Partial/skipped/not-run required tests prevent COMPLETE
-- [ ] Evidence writer stays inside exact manifest paths
-
----
-
-### Case 11: Happy path — approved story to verified combat implementation
-
-**Fixture:**
-
-- every Phase 0 input is current and approved
-- planners freeze one consistent engine-validated interface
-- user approves a complete non-overlapping manifest
-- test contract is materialized before implementation
-- every required domain writer and integration owner completes on time
-- all mutation audits pass
-- actual build/tests pass and evidence covers every acceptance criterion
-
-**Expected behavior:**
-
-1. Input and interface hashes are frozen.
-2. Exact manifest and integration owner are approved once.
-3. Eligible domain writers execute in bounded disjoint batches.
-4. The sole integration owner wires shared files.
-5. Independent QA runs the approved commands and hashes evidence.
-6. Final revalidation finds no stale input, scope violation, timeout, blocker, or
-   uncovered criterion.
-7. Verdict is COMPLETE.
-
-**Assertions:**
-
-- [ ] No design/ADR/story lifecycle file changed
-- [ ] Every changed file has approved owner and pre/post hashes
-- [ ] Every acceptance criterion maps to current passing evidence
-- [ ] Final report names commands, evidence hashes, manifest, checkpoint, and
-      integration owner
-- [ ] COMPLETE is deterministic rather than agent self-report
-
----
-
-### Case 12: No argument
-
-**Input:** `$team-combat`
-
-**Expected behavior:**
-
-1. The workflow prints implementation usage with all approval arguments.
-2. It explains that free text is insufficient.
-3. It reads no project files and spawns no agent.
-4. It performs no write and emits no success verdict.
-
-**Assertions:**
-
-- [ ] Clear story-path usage
-- [ ] Zero file reads beyond invocation parsing
-- [ ] Zero agents and mutations
-- [ ] No silent story selection
-
----
-
-## Verdict Matrix
-
-| Condition | Maximum verdict |
+# Skill Test Spec: `$team-combat`
+
+## Purpose
+
+Verify the complete P1 remediation set TCB-006 through TCB-015. `$team-combat` must
+consume durable reviewed architecture, use independent platform-budget performance
+evidence, derive completion from a complete identity-bound schema, represent useful
+partial work honestly, bound every assignment and context, recover idempotently, block
+implementation without an engine, and freeze tests before implementation followed by
+independent evidence review.
+
+This specification is static and fixture-driven. It does not invoke the skill, agents,
+builds, tests, profilers, upstream design/architecture workflows, Team QA or release.
+
+## Fixtures and harness rules
+
+Positive fixtures contain exact raw bytes and full lowercase SHA-256 for:
+
+- `cgs.team-combat-request/v2` and `cgs.combat-context-manifest/v2`;
+- GDD, independent P1 design review and approved target identity;
+- Accepted ADR lifecycle ledger and approved `cgs.combat-tech-spec/v2` review;
+- persisted story-readiness READY record and recorder receipt;
+- control manifest, P1 QA plan, Test-ID ownership and engine profile/version;
+- frozen combat interface and pre-implementation test contracts;
+- exact file-ownership manifest, authorization and immutable checkpoints;
+- writer/integrator results and mutation audits;
+- functional runner, performance capture/result/recorder and evidence-review receipts.
+
+Negative variants change exactly one fact unless stated otherwise. Every case asserts no
+undeclared GDD, ADR, story/readiness, QA-plan, source, test, evidence, checkpoint,
+tracker, release or external mutation. Staging documentation does not populate catalog
+execution fields.
+
+## Structural assertions
+
+- [ ] Frontmatter contains only `name` and non-empty `description`; name is `team-combat`.
+- [ ] Invocation is exactly `$team-combat --request <path> --expect-request <sha256>`.
+- [ ] PREFLIGHT, EXECUTE, STATUS and RESUME are explicit operations.
+- [ ] Implementation requires exact approved GDD review, Accepted ADRs, reviewed tech spec, persisted READY evidence, control/QA and engine identities.
+- [ ] Proposed ADR/architecture sketch/session summary cannot authorize implementation.
+- [ ] Zero mutation occurs before exact file-ownership manifest approval.
+- [ ] Every path has one owner; shared paths belong only to the integration owner.
+- [ ] Context is manifest-bound and capped by files, bytes, depth, interface rows, agents, response and time.
+- [ ] No full/lean/solo review mode exists; roles derive from explicit dependency rows.
+- [ ] Tasks have deadlines, cancellation tokens, one retry maximum and late-result quarantine.
+- [ ] Checkpoints are immutable, predecessor-linked and never use shared active session state.
+- [ ] Missing engine blocks EXECUTE and permits only an engine-neutral read-only gap plan.
+- [ ] Test contract is frozen before implementation and cannot be edited by implementation writers.
+- [ ] QA captures actual commands/results and independent review checks all closure axes.
+- [ ] Performance uses exact platform budgets and the three-part `cgs.performance-report/v1` + `cgs.review-evidence/v1` + independent `cgs.performance-report-recorder-receipt/v1` chain.
+- [ ] Completion record contains all identities, task/mutation/evidence counts and AC rows.
+- [ ] Verdicts are COMPLETE, NEEDS_WORK, PARTIAL_NEEDS_WORK and BLOCKED with deterministic precedence.
+- [ ] Local COMPLETE is not story closure, Team QA approval, release GO or deployment authority.
+- [ ] Terminal output is `cgs.team-combat-result/v2` with one legal next action.
+
+## P1 traceability
+
+| Audit ID | Primary case |
 |---|---|
-| Missing/stale approval, ADR, READY evidence, engine, or manifest | BLOCKED |
-| Unauthorized/overlapping write or integration conflict | BLOCKED |
-| Required task partial, timed out, canceled, late, skipped, or unavailable | PARTIAL |
-| Integrated code has current failing tests/non-blocking defects | NEEDS WORK |
-| Required test/evidence missing, stale, skipped, or not run | BLOCKED or NEEDS WORK; never COMPLETE |
-| All inputs/tasks/integration/evidence current and passing | COMPLETE |
+| TCB-006 | Case 1 |
+| TCB-007 | Case 2 |
+| TCB-008 | Case 3 |
+| TCB-009 | Case 4 |
+| TCB-010 | Case 5 |
+| TCB-011 | Case 6 |
+| TCB-012 | Case 7 |
+| TCB-013 | Case 8 |
+| TCB-014 | Case 9 |
+| TCB-015 | Case 10 |
 
-## Protocol Compliance
+## Case 1 — Durable ADR/tech-spec authority, not a session sketch — TCB-006
 
-- [ ] Approved inputs are proven before implementation planning
-- [ ] Proposal phase is mutation-free
-- [ ] Exact manifest approval precedes all writers
-- [ ] One writer per path and one named integration owner
-- [ ] Parallelism is disjoint, dependency-aware, and capped
-- [ ] Timeout/retry/cancel/late-result behavior is deterministic
-- [ ] Checkpoint recovery is hash-bound and idempotent
-- [ ] Actual test execution and current evidence gate COMPLETE
-- [ ] PARTIAL is always reported when launched work is incomplete
-- [ ] Side effects stated by SKILL, metadata, and spec are consistent
-- [ ] Authorization is never broadened by delegation, retry, or resume
+Test planned changes classified as module boundary, local interface detail and
+non-architectural. Provide: Proposed ADR only; Accepted ADR without lifecycle/review;
+chat architecture sketch; reviewed tech spec for another story; and complete exact
+architecture package.
 
-## Coverage Notes
+**Expected**
 
-- The workflow does not test upstream design-review, ADR acceptance, or
-  story-readiness correctness; it validates their supplied evidence and current
-  hashes.
-- Shared workflow-guide/catalog wording and cross-skill owner handoffs require a
-  separately authorized shared update.
+- significant choices require exact Accepted ADR decision locator, lifecycle record and
+  independent architecture-review evidence;
+- P1 architecture-decision authoring output remains Proposed and blocks EXECUTE;
+- bounded implementation detail requires persisted `cgs.combat-tech-spec/v2` plus an
+  independent exact-hash APPROVED review;
+- NOT_ARCHITECTURAL needs the contract reason and governing source;
+- missing authority produces stable blocker and exact upstream question, with zero
+  writes and no local ADR/spec authoring or acceptance;
+- only the complete package permits freezing the derived interface contract.
+
+## Case 2 — Performance belongs to a measurement owner and budget — TCB-007
+
+The story requires 60-fps frame budget and combat-response latency across two platform
+profiles. Test: no numeric budget; qa-tester prose; proposed capture command; one missing
+cell; mismatched build; CONCERNS; OVER BUDGET; and complete WITHIN BUDGET evidence.
+
+**Expected**
+
+- performance-analyst, not qa-tester, owns capture/analysis;
+- exact `cgs.performance-request/v2` binds numeric rules, metrics/units, profiles,
+  hardware, scenarios, integrated build and approved tools/adapters;
+- result requires actual capture command/environment/window/sample/repetition data,
+  raw hashes, canonical `cgs.performance-report/v1`, matching
+  `cgs.review-evidence/v1` and independent
+  `cgs.performance-report-recorder-receipt/v1`;
+- all three artifacts and their raw hashes bind the current candidate/build/platform/
+  budget/input/report identity; the recorder proves unchanged persisted/read-back bytes
+  with `decision.evidence_persistence: RECORDED` and
+  `decision.gate_evidence_eligible: true` without being the producer or an implementation writer;
+- only complete requested-cell coverage with policy verdict WITHIN BUDGET passes;
+- missing/invalid recorder receipt, unpersisted bytes or non-gate-eligible evidence is
+  NOT PROVEN and prevents COMPLETE when performance is required;
+- all other variants are NOT PROVEN and prevent COMPLETE when required;
+- no inspection, static estimate, QA prose or candidate-only result becomes measurement.
+
+## Case 3 — Deterministic completion record — TCB-008
+
+Start from all passing inputs. Change one fact per variant: GDD hash; one timed-out task;
+one unowned mutation; missing build receipt; one skipped AC; absent performance row;
+nonclosure evidence review; open blocker; and fully passing graph.
+
+**Expected**
+
+- `cgs.combat-completion-record/v2` contains every source/architecture/interface/test/
+  engine/context/manifest/authorization/checkpoint identity;
+- task status counts, mutation pre/post ownership, command/receipt counts, full AC/Test
+  matrix, review axes and blocker ledger are explicit;
+- strict precedence selects BLOCKED, PARTIAL_NEEDS_WORK, NEEDS_WORK or COMPLETE from
+  exact conditions rather than agent summaries/count heuristics;
+- only the fully passing graph yields COMPLETE;
+- even COMPLETE returns Merge/Closure Eligible NO.
+
+## Case 4 — Useful partial output is PARTIAL / NEEDS WORK — TCB-009
+
+Gameplay and audio complete on disjoint paths, VFX returns a valid partial result and AI
+is unavailable. No unsafe mutation occurs and integration has not begun.
+
+**Expected**
+
+- verified independent gameplay/audio paths and hashes remain in the report;
+- VFX/AI rows retain exact PARTIAL/unavailable state, dependencies and owners;
+- dependent integration and testing do not run;
+- verdict is `PARTIAL_NEEDS_WORK`, displayed `PARTIAL / NEEDS WORK`, never COMPLETE;
+- partial output cannot be merged, published, used to close the story or accepted as
+  release/QA evidence;
+- a fully invalid prerequisite remains BLOCKED rather than partial.
+
+## Case 5 — Timeout, retry, cancel and late-patch quarantine — TCB-010
+
+One implementation task times out after possibly writing, another is cancelled before
+dispatch, and a timed-out attempt returns later. Test safe no-mutation retry, ambiguous
+mutation, changed base and two simultaneous attempts.
+
+**Expected**
+
+- each task has stable attempt, deadline, cancellation token and retry budget at most one;
+- timeout triggers cancel and read-only path-state reconciliation;
+- retry occurs only when no mutation/unknown state exists and exact bases/authority remain;
+- ambiguous mutation or changed base blocks and requires revised manifest;
+- simultaneous attempts for the same path are prohibited;
+- canceled/superseded late result is LATE_IGNORED and never applied, merged, written or
+  treated as evidence;
+- every outcome enters checkpoint and partial report deterministically.
+
+## Case 6 — Review mode is absent; staffing comes from dependencies — TCB-011
+
+Test requests with `--review full`, `lean`, `solo`, no AI dependency, and explicit AI/
+VFX/audio/performance dependencies. Make the performance owner unavailable.
+
+**Expected**
+
+- all review-mode inputs are rejected with zero side effects;
+- gameplay and engine validation are routed by exact manifest/engine profile;
+- AI, VFX, audio and performance roles appear only for explicit story/tech-spec rows;
+- unavailable required role stays nonconclusive and produces PARTIAL_NEEDS_WORK or
+  BLOCKED based on dependency impact;
+- orchestrator cannot impersonate reviewer/test/performance owners;
+- no named-agent result is fabricated.
+
+## Case 7 — Bounded interface context, never full repository copy — TCB-012
+
+The context manifest lists 40 files while ceilings permit 32/2 MiB/depth 2. One required
+interface closure exceeds the byte budget; an undeclared similar combat controller has
+newer mtime.
+
+**Expected**
+
+- only declared paths, first-order dependencies, interface spans and target bases load;
+- whole closures are admitted deterministically; none is silently truncated;
+- complete selected/loaded/missing/unreadable/invalid/omitted/unprocessed ledger and
+  budget consumption are returned;
+- required omission blocks EXECUTE;
+- delegate receives minimal excerpts/hashes/target diff context and bounded response,
+  not full source tree;
+- undeclared/newer file is ignored and budget above hard ceiling is rejected.
+
+## Case 8 — Immutable checkpoint chain and idempotent resume — TCB-013
+
+Interrupt after test contract, one writer batch and integration. Resume exact checkpoints,
+then vary predecessor, story/interface/manifest hash, completed output bytes, unknown
+writer state and next-target collision.
+
+**Expected**
+
+- each milestone creates a new hash-addressed `cgs.combat-checkpoint/v2` with predecessor,
+  all identities, assignment/writer/evidence states and one legal next action;
+- no shared `production/session-state/active.md` is read or written;
+- valid resume re-hashes the chain and never reruns matching COMPLETE tasks;
+- ambiguous outcome is reconciled before continuing and cannot be replayed;
+- drift/broken chain/collision blocks without editing history;
+- STATUS validates read-only and never repairs state.
+
+## Case 9 — Missing or ambiguous engine blocks implementation — TCB-014
+
+Test absent engine, absent pinned version, ambiguous engine profile, unsupported adapter,
+and exact configured engine/version/specialist/profile.
+
+**Expected**
+
+- EXECUTE returns BLOCKED before ownership manifest approval or any writer when engine
+  identity/routing is not exact;
+- the workflow never invents engine APIs, language, paths, build/test commands or
+  specialist;
+- PREFLIGHT may return only `ENGINE_NEUTRAL_PLAN_ONLY / IMPLEMENTATION_BLOCKED`, with
+  architecture gaps and no implementation authority/writes;
+- configured valid fixture binds engine/version/profile to tech spec, interface, tasks,
+  test contract and evidence;
+- engine change invalidates dependent planning and authorization.
+
+## Case 10 — Test contract before code, execution and independent review after — TCB-015
+
+Test: no pre-implementation contract; programmer-edited test contract; proposed test
+commands; current functional PASS but stale performance; unpersisted review; review
+Workflow COMPLETE with TARGETED scope; and full current closure evidence.
+
+**Expected**
+
+- reviewed `cgs.combat-test-contract/v2` maps every AC/Test ID, fixtures, negative/
+  boundary/integration/performance scope, exact commands and evidence targets before
+  implementation authorization;
+- implementation writers cannot edit it; authorized test sources/fixtures materialize
+  before dependent code;
+- actual functional receipts include command/argv, runner/tool/environment, times,
+  exit/counts/per-row results, integrated hashes and raw evidence hashes;
+- performance follows Case 2 when required;
+- independent persisted P1 evidence review must simultaneously be COMPLETE, ADEQUATE,
+  ADMISSIBLE, PASS, CURRENT, COMPLETE execution, FULL scope and Closure Eligible YES;
+- only the full current fixture can contribute to COMPLETE.
+
+## Shared integration assertions
+
+- [ ] P1 architecture-decision output is Proposed until a separate owner records Accepted.
+- [ ] P1 design-review APPROVED and persisted story-readiness READY are admission evidence only.
+- [ ] P1 QA plan Schema 2 remains Gate Evidence NO and is not execution.
+- [ ] Team-combat receipts may feed Team QA, but local COMPLETE is not QA_APPROVED.
+- [ ] Dev-story/story lifecycle ownership stays separate; team-combat never writes Done/Complete.
+- [ ] Release-checklist/team-release require their own exact candidate gates and gain no GO/deploy/publish authority here.
+
+## Required P0 regression matrix
+
+Retain these prior safety properties:
+
+1. missing approved GDD hash/review, Accepted ADR or persisted READY evidence blocks
+   with zero implementation writers/writes;
+2. proposal phase is mutation-free and exact ownership manifest approval precedes all
+   writes;
+3. every writable path has one owner, shared paths one integration owner, and overlap
+   prevents concurrency;
+4. interface dependencies are frozen and real producer/consumer edges are serialized;
+5. unauthorized mutation fails closed and cannot be retroactively waived;
+6. only integration owner writes shared files and verifies bases/post hashes;
+7. actual functional execution evidence is required; proposed/narrated tests are NOT_RUN;
+8. GDD/ADR/story/readiness/control/QA/release lifecycle artifacts are never rewritten;
+9. spec, metadata and SKILL all describe manifest-authorized implementation side effects;
+10. catalog result/timestamp fields remain blank without a real authorized execution.

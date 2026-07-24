@@ -1,4 +1,4 @@
 interface:
   display_name: "Regression Suite"
-  short_description: "Maintain selection; verify receipts separately"
-  default_prompt: "Use $regression-suite to maintain an ID-keyed, hash-bound test selection manifest without executing tests or claiming release results."
+  short_description: "Report or CAS-maintain deterministic regression selection"
+  default_prompt: "Use an explicit $regression-suite report, update, or audit subcommand with one exact scope manifest to compute change-impact and coverage-unit selection, preserve tombstones and unknowns, and keep build-bound execution receipts separate from manifest operation status."

@@ -1,359 +1,592 @@
 # Skill Test Spec: $team-level
 
-## Skill Summary
+## Candidate status
 
-`$team-level` designs or revises exactly one level. It coordinates bounded,
-read-only domain specialists, routes every proposal to one destination, and
-permits one transaction writer to write only the level source and its recovery
-checkpoint. BLOCKING accessibility findings are non-waivable. An independent,
-read-only, hash-bound `level-review` profile—not `$design-review`—must approve
-the current level file before a COMPLETE verdict or implementation handoff.
+`NOT EXECUTED` — this P1 candidate reconstructs the full test structure and
+defines assertions only. It does not claim static/spec/category execution,
+subagent behavior, writes, review, QA evidence, design approval, or catalog
+`last_*` results.
 
-The workflow may return `COMPLETE — DESIGN APPROVED`, `PARTIAL — NOT
-APPROVED`, `ACCEPTED RISK / NOT APPROVED`, or `BLOCKED — PRODUCT DECISION
-REQUIRED`. A file existing does not establish approval.
+## Skill summary
+
+`$team-level` designs or revises one level specification. It validates one level
+ID before reads, ignores generic review mode, builds bounded context/adjacency
+manifests, coordinates deterministic read-only jobs with deadlines and partial
+states, routes every proposal to one destination, and gives one authorized writer
+the exact level/checkpoint paths. Independent accessibility and level-review
+evidence precede QA planning against the final current source hash. COMPLETE is
+an explicit hash-bound evidence matrix, not file production.
+
+The only workflow verdicts are:
+
+```text
+COMPLETE — DESIGN APPROVED
+PARTIAL — NOT APPROVED
+ACCEPTED RISK / NOT APPROVED
+BLOCKED — PRODUCT DECISION REQUIRED
+```
+
+## Contract sources
+
+- `.agents/skills/team-level/SKILL.md`
+- `.agents/skills/team-level/references/team-level-contract-v1.md`
+- `.agents/skills/team-level/references/continued-workflow.md`
+- `.agents/skills/team-level/agents/openai.yaml`
+
+All candidate-local relative links must resolve inside the candidate package.
+The shared catalog remains outside this candidate write boundary.
+
+## Authoritative P1 traceability
+
+| Audit ID | Required closure | Structural/behavioral coverage |
+|---|---|---|
+| `TLD-006` | Missing/invalid single target fails before reads/delegation/verdict | Static 4; Cases 2–3 |
+| `TLD-007` | Ask only product/risk/final-write/final-acceptance decisions, not routine transitions | Static 5; Cases 4–5 |
+| `TLD-008` | Review mode is removed; no solo/director contradiction or hidden quality downgrade | Static 6; Case 6 |
+| `TLD-009` | Bounded context manifest, one-hop dependencies, excerpt/hash prompts, no verbatim context | Static 7–8; Cases 7–8 |
+| `TLD-010` | Job deadline/state/timeout and coherent PARTIAL behavior are deterministic | Static 9–10; Cases 9–10 |
+| `TLD-011` | COMPLETE binds target hash, blockers, dependencies, jobs, independent review, QA, acceptance, checkpoint | Static 11; Cases 11–12 |
+| `TLD-012` | QA runs only after final integrated/reviewed current level hash and becomes stale on change | Static 12; Cases 13–14 |
+| `TLD-013` | Adjacency uses stable directional interfaces and planned/authored/broken/conflict states with reverse validation | Static 13; Cases 15–16 |
+| `TLD-014` | Every phase has checkpoint state; hash-bound resume is idempotent and avoids duplicate work | Static 14; Cases 17–19 |
+| `TLD-015` | Spec structure is complete and catalog remains blank until real evidence | Static 15–16; Case 20 |
+
+Exactly these ten IDs are authoritative P1 scope. P0 preservation cases are
+regressions, not additional P1 findings.
 
 ---
 
-## Static Assertions
+## Static assertions
 
-- [ ] YAML frontmatter contains only `name` and a non-empty `description`;
-      `name` matches the skill directory
-- [ ] Has at least two numbered phase headings
-- [ ] Contains the four exact workflow verdicts
-- [ ] Explicitly forbids `$design-review` for level documents
-- [ ] Defines a read-only level-review profile covering critical path, softlock,
-      pacing, adjacency, navigation, accessibility, and encounter contracts
-- [ ] BLOCKING accessibility findings have no waive/acknowledge-and-proceed path
-- [ ] Initial finding IDs remain stable through at most one verification
-      re-review; no recursive review/rewrite loop exists
-- [ ] Every proposal has exactly one destination and verbatim aggregation is
-      forbidden
-- [ ] All specialists and reviewers are read-only; one transaction writer owns
-      the exact level and checkpoint paths
-- [ ] Approval is bound to exact paths, operations, owner, hashes, scope, and a
-      deterministic plan hash
-- [ ] Concurrency and agent deadlines are bounded
-- [ ] Partial writes, timeouts, checkpoint fields, raw-hash resume checks, and
-      rollback proof are explicit
-- [ ] QA output is labeled planned; unexecuted tests or missing hashes are never
-      reported as passing evidence
-- [ ] Implementation is forbidden until the current level hash is independently
-      reviewed and DESIGN APPROVED
-- [ ] Metadata describes the single reviewed/hash-bound level-spec boundary
+1. [ ] Frontmatter contains only `name` and non-empty `description`; name equals
+   `team-level`.
+2. [ ] Both private relative references exist and are fully linked.
+3. [ ] All four exact workflow verdicts are present; file production and risk
+   acceptance are explicitly insufficient for COMPLETE.
+4. [ ] Invocation requires exactly one safe level ID before any project read or
+   delegation; invalid input emits no verdict.
+5. [ ] User prompts are limited to enumerated operation/context/product/risk/
+   blocker/write/final-acceptance decisions; routine transitions auto-continue.
+6. [ ] Review mode is explicitly inapplicable, its file is unread, and full/lean/
+   solo cannot remove, substitute, or downgrade required roles/evidence.
+7. [ ] Context limits cover files, aggregate/excerpt/prompt bytes, explicit first-
+   level references, and one-hop adjacency; over-limit required choices are shown
+   rather than silently truncated.
+8. [ ] Job prompts use manifest identity, selected excerpt hashes, and structured
+   predecessor records, never all source documents or outputs verbatim.
+9. [ ] Every job has stable ID, role, required flag, input/output hashes/schema,
+   deadline, one bounded follow-up, status, result payload/hash, and dependency
+   IDs; concurrency/jobs/result sizes are bounded.
+10. [ ] Required timeout/invalid/missing result prevents COMPLETE, preserves valid
+    independent results, and returns coherent PARTIAL only with an exact resume
+    point.
+11. [ ] `TL-COMPLETE/v1` lists all twelve predicates including target hash, agent
+    completion, blockers, dependency state, independent current-hash review,
+    current-hash QA, user acceptance, writer identity, and COMPLETE checkpoint.
+12. [ ] QA input is the final persisted/reviewed level hash; any later level byte
+    change stales review and QA and no QA file/PASS evidence is produced here.
+13. [ ] Adjacency records have stable directional IDs/endpoints/reverse refs and
+    exactly `PLANNED|AUTHORED|UNRESOLVED|BROKEN_LINK|INTERFACE_CONFLICT`; file
+    existence is insufficient.
+14. [ ] `cgs.team-level-checkpoint/v2` is constructed after every phase, stores
+    bounded job payloads/hashes and monotonic sequence, and resumes from the
+    earliest stale dependency without duplicate dispatch/write/review/QA.
+15. [ ] This spec has Candidate status, summary, sources, P1 trace, static
+    assertions, director/profile section, complete numbered cases with fixtures/
+    expected behavior/assertions, protocol compliance, and verification boundary.
+16. [ ] Candidate remains `NOT EXECUTED`; it neither mutates shared catalog nor
+    claims/populates any `last_*` field.
+17. [ ] `$design-review` is forbidden for level documents; private
+    `cgs.level-review/v1` is independent/read-only/current-hash-bound.
+18. [ ] BLOCKING findings are non-waivable, stable across one verification
+    re-review, and stop after observation two if still open.
+19. [ ] Every proposal/finding routes once; reducer allowlist excludes lore,
+    production art, formulas/tuning, QA bodies, backlog, review transcripts, and
+    raw outputs.
+20. [ ] Exactly one transaction writer owns the two planned paths and all other
+    roles are read-only.
+
+## Review profile checks
+
+No system-GDD director gate is invoked. The private `cgs.level-review/v1`
+profile checks critical-path continuity, sequence breaks/softlocks/recovery,
+pacing, bidirectional adjacency compatibility, navigation/wayfinding,
+accessibility, and encounter interface/dependency boundaries. Reviewer identity
+must differ from every author and the transaction writer.
 
 ---
 
-## Director Gate Checks
-
-No system-GDD director gate is invoked. Level review is an independent,
-read-only document-type profile inside this workflow. The author/transaction
-writer cannot act as reviewer.
-
----
-
-## Test Cases
-
-### Case 1: Happy path — one destination-routed level reaches DESIGN APPROVED
+## Case 1: Happy path reaches hash-bound DESIGN APPROVED
 
 **Fixture:**
-- Input is `forest-dungeon`
-- Game concept, pillars, art bible, accessibility requirements, relevant system
-  GDD, and direct adjacency sources fit within the context budget
-- The target level source and checkpoint are absent
-- Narrative, world, art, layout, systems, and accessibility agents complete
-  within their deadlines
-- Accessibility returns zero BLOCKING findings
-- User resolves all genuine product choices
-- The exact two-path write plan is approved
-- The transaction writer writes the approved draft and verifies its raw hash
-- A fresh independent reviewer returns zero BLOCKING findings against that hash
-- qa-tester returns a planned QA-case set bound to the same hash
+
+- `forest-dungeon` is a valid absent target; CREATE is unambiguous.
+- Required sources fit bounds; adjacency interfaces validate.
+- Every applicable job completes before deadline with valid result hashes.
+- Routing/reducer allowlists pass and accessibility has zero blockers.
+- The user authorizes the exact two-path plan; writer verifies both writes.
+- Independent level-review passes the current raw level hash.
+- QA returns PLANNED cases bound to that same hash/review result.
+- User accepts the exact final packet and authorizes its exact COMPLETE-
+  checkpoint candidate; that separate compare-and-set verifies.
 
 **Input:** `$team-level forest-dungeon`
 
-**Expected behavior:**
-1. Builds and hashes a bounded context manifest
-2. Runs only read-only specialists with at most three live agents
-3. Routes every proposal to exactly one destination
-4. Reduces only LEVEL SOURCE material into the draft
-5. Previews and obtains one hash-bound write authorization
-6. Uses one transaction writer for the exact level/checkpoint paths
-7. Runs independent level-review against the verified current hash
-8. Labels QA cases PLANNED and records no fabricated execution evidence
-9. Requests final design acceptance as a product decision
-10. Returns `COMPLETE — DESIGN APPROVED`
+**Expected behavior:** all twelve `TL-COMPLETE/v1` predicates are true and the
+only verdict is `COMPLETE — DESIGN APPROVED`.
 
 **Assertions:**
-- [ ] Normal artifact set contains only
-      `design/levels/forest-dungeon.md`
-- [ ] Checkpoint is
-      `production/session-state/team-level-forest-dungeon.yaml`
-- [ ] Writer and reviewer are different agents
-- [ ] Level-review and QA evidence bind to the final raw level hash
-- [ ] No code, assets, tests, lore file, art brief, system GDD, or QA file is
-      written
-- [ ] No routine phase-transition approval is requested
+
+- [ ] Only level and checkpoint paths are mutated
+- [ ] Every specialist/reviewer/QA job remains read-only
+- [ ] Review, QA, acceptance, level, plan, context, and checkpoint hashes agree
+- [ ] Final acceptance does not authorize implementation
 
 ---
 
-### Case 2: TLD-001 — level docs never enter the system-GDD reviewer
+## Case 2: Missing level ID stops before every project read
 
-**Fixture:**
-- A valid level file is written and hashes to H1
-- A tool spy records every workflow invocation and agent prompt
+**Fixture:** arbitrary project content and agent availability.
 
-**Expected behavior:**
-1. Runs the inline level-review profile with H1
-2. Checks critical path, sequence breaks/softlocks, pacing, adjacency,
-   navigation, accessibility, and encounter contracts
-3. Keeps the reviewer read-only and independent from the writer
-4. Does not invoke `$design-review` or apply system-GDD section requirements
+**Input:** `$team-level`
+
+**Expected behavior:** usage and safe examples; `run_status: ERROR`; no project
+read, subagent, user prompt, write, or workflow verdict.
 
 **Assertions:**
-- [ ] Invocation count for `$design-review` is zero
-- [ ] Missing Formulas/Tuning/Economy sections are not level-review defects
-- [ ] Review evidence names H1 and exact level sections
-- [ ] A hash change makes H1 review evidence stale
-- [ ] No reviewer writes the level source
+
+- [ ] No AGENTS/GDD/level/session file is read
+- [ ] No target paths are inferred from an empty string
+- [ ] No verdict is emitted
 
 ---
 
-### Case 3: TLD-002 — accessibility blockers cannot be acknowledged away
+## Case 3: Invalid/extra target input is a zero-read error
 
-**Fixture:**
-- Accessibility review returns `AX-forest-dungeon-001` as BLOCKING because the
-  critical path distinguishes toxic water only by color
+**Variants:** traversal, path separator, drive/device prefix, Unicode lookalike,
+whitespace, repeated/edge hyphen, wildcard/regex, and two positional IDs.
 
-Run two variants:
-
-| Variant | User choice | Expected |
-|---|---|---|
-| 3a | asks to document and continue | refuse continuation; remain BLOCKED |
-| 3b | authorizes a bounded redesign | run one separate author revision and one verification re-review |
+**Expected behavior:** same boundary as Case 2. Ambiguous normalization is
+rejected instead of silently creating another slug.
 
 **Assertions:**
-- [ ] No acknowledge/proceed option is offered for a BLOCKING finding
-- [ ] QA planning, design approval, and implementation handoff do not occur
-      while AX-forest-dungeon-001 is OPEN
-- [ ] If the user stops, verdict is
-      `BLOCKED — PRODUCT DECISION REQUIRED`
-- [ ] Non-blocking accepted risk requires finding ID, bounded risk, owner,
-      deadline, approved_by, and approved_at
-- [ ] Any accepted-risk branch ends
-      `ACCEPTED RISK / NOT APPROVED`, never COMPLETE
+
+- [ ] Project read and agent-dispatch counts are zero
+- [ ] No invalid value reaches either target path
+- [ ] No workflow verdict is emitted
 
 ---
 
-### Case 4: TLD-003 — review/revision converges or stops
+## Case 4: Routine phase transitions never prompt
 
-**Fixture:**
-- Initial review creates `AX-forest-dungeon-001`
-- User approves an exact revision brief
-- A separate author task changes only the approved scope
-- Verification re-review observes the same blocker still open
+**Fixture:** valid deterministic happy path with no product conflict, context
+overflow, blocker, write boundary, or final acceptance yet.
 
-**Expected behavior:**
-1. Preserves the original finding ID and first-review evidence
-2. Re-review checks only that ID plus regressions caused by the diff
-3. Stops after the second observation
-4. Returns `BLOCKED — PRODUCT DECISION REQUIRED`
-5. Starts no third author or reviewer task
+**Expected behavior:** target validation → context → proposals → author → systems/
+art → accessibility → routing/reduction transitions automatically. No “approve
+the summary/continue to next step?” question occurs.
 
 **Assertions:**
-- [ ] Stable finding IDs are not regenerated per round
-- [ ] Each author/reviewer task gets one bounded pass
-- [ ] At most one verification re-review occurs
-- [ ] New unrelated subjective scope cannot enter during verification
-- [ ] No recursive review → rewrite → review loop exists
+
+- [ ] Routine prompt count is zero
+- [ ] Read-only prerequisites still execute in order
+- [ ] Absence of a routine confirmation is not recorded as approval
 
 ---
 
-### Case 5: TLD-004 — destination routing prevents document contamination
+## Case 5: Every permitted question has a stable decision boundary
 
-**Fixture:**
-- Agents return:
-  - dialogue and faction history → NARRATIVE / LORE
-  - asset inventory, palette, and VFX list → ART BRIEF
-  - loot formula and enemy tuning → SYSTEM GDD
-  - test cases → QA PLAN
-  - critical path, landmark function, and encounter interface IDs → LEVEL SOURCE
-  - review discussion → REVIEW ONLY
+**Variants:** existing-target operation choice; context over-budget selection;
+cross-domain product alternatives; non-blocking risk; blocker revision/stop;
+write plan; changed-plan replacement; final packet acceptance.
 
-**Expected behavior:**
-1. Records each proposal ID once in the routing ledger
-2. Passes only LEVEL SOURCE fields to the reducer
-3. Uses references for external destinations
-4. Produces separate report handoffs without writing those destinations
+**Expected behavior:** each question names stable IDs, exact choices/effects and
+default non-mutating outcome. No response is inferred. A material plan change
+invalidates old authorization. Final product acceptance binds the exact final
+checkpoint candidate and authorizes only that transition.
 
 **Assertions:**
-- [ ] Level source contains no dialogue/lore prose, production asset list,
-      system formula/tuning table, QA cases, or review transcript
-- [ ] No `all outputs verbatim` instruction exists
-- [ ] Duplicate facts are referenced, not pasted
-- [ ] External destination files remain unchanged
-- [ ] The level file remains the authority only for level rules
+
+- [ ] Every prompt maps to one enumerated condition
+- [ ] Product and write decisions remain distinct
+- [ ] Unanswered prompts cause no mutation or acceptance
 
 ---
 
-### Case 6: TLD-005 — mutation guard, unique writer, and fixed authorization
+## Case 6: Review mode cannot alter behavior
 
-**Fixture:**
-- All proposals are ready
-- Exact plan P1 names the level path, checkpoint path, one transaction writer,
-  create operations, ABSENT baselines, context/draft hashes, and write conditions
-- User approves P1
+**Fixture:** full, lean, solo, malformed, and absent review-mode files in separate
+runs; one run also passes `--review solo`.
 
-Run these variants:
-
-| Variant | Event | Expected |
-|---|---|---|
-| 6a | an expert attempts to write | reject the write; expert remains read-only |
-| 6b | writer requests an art-brief path | stop; P1 does not authorize it |
-| 6c | owner changes | invalidate P1 and require a complete new plan |
-| 6d | target/source hash changes before mutation | cancel P1 with zero writes |
-| 6e | unchanged P1 writes both exact targets | no per-file re-prompt |
+**Expected behavior:** files are never read and normal runs select the same
+required roles/evidence. The option-bearing invocation is rejected before project
+reads; solo cannot suppress an independent reviewer or create a self-review.
 
 **Assertions:**
-- [ ] One and only one transaction writer owns both paths
-- [ ] Every normal/recovery path is exact before approval
-- [ ] Authorization does not expand by implication
-- [ ] Unlisted narrative, art, system, QA, backlog, implementation, test, and
-      asset paths cannot be written
-- [ ] Compare-and-swap preflight uses raw SHA-256 hashes
+
+- [ ] Review-mode read count is zero
+- [ ] Required-role matrix is identical across filesystem variants
+- [ ] Unsupported review option fails before project evidence
 
 ---
 
-### Case 7: Bounded concurrency, timeout, partial write, and checkpoint resume
+## Case 7: Context budget and dependency depth fail closed
 
-Run these variants:
+**Fixture:** 21 candidate files, more than 250 KiB raw text, oversized excerpts,
+and a cycle across adjacent levels beyond one hop.
 
-| Variant | Event | Expected |
-|---|---|---|
-| 7a | one required expert reaches its deadline | mark TIMED OUT; return PARTIAL, not COMPLETE |
-| 7b | writer changes the level file and then fails; byte restoration is unsafe | preserve actual state, write PARTIAL checkpoint if possible, do not claim rollback |
-| 7c | every changed byte is restored and hashes equal baselines | rollback may be reported |
-| 7d | resume hashes match checkpoint | reuse only completed results whose input/output hashes match |
-| 7e | resume hash differs | stop and revalidate; do not duplicate spawn or write |
+**Expected behavior:** exact included/omitted candidates and exceeded limits are
+shown for user prioritization before delegation. Cycle is recorded once; no
+recursive crawl or silent truncation occurs.
 
 **Assertions:**
-- [ ] At most three agents are live
-- [ ] At most one narrowed follow-up occurs before each deadline
-- [ ] No indefinite wait or replacement loop occurs
-- [ ] Checkpoint contains plan/context/source/baseline/current hashes, decisions,
-      findings, agent states/deadlines, review round, write sets, and safe resume
-- [ ] PARTIAL artifacts are never DESIGN APPROVED
+
+- [ ] No job starts before a bounded manifest freezes
+- [ ] Adjacency depth never exceeds one hop
+- [ ] User selection binds both included and omitted rows
 
 ---
 
-### Case 8: Tests and evidence are never fabricated
+## Case 8: Agent prompts receive excerpts and references, not full context
 
-**Fixture:**
-- qa-tester proposes five cases but executes none
-- Independent review completed successfully
+**Fixture:** a large lore document, system GDD, art bible and prior proposals;
+prompt recorder captures every dispatched payload.
 
-**Expected behavior:**
-1. Reports the five cases as PLANNED
-2. Does not claim PASS, executed coverage, or playtest completion
-3. Requires a real timestamp, exit/result, and raw log/evidence hash before
-   labeling future evidence executed
+**Expected behavior:** each prompt remains within 96 KiB, binds context/excerpt/
+predecessor hashes, and contains only task-relevant excerpts/structured records.
+No full-project dump or accumulated verbatim transcript appears.
 
 **Assertions:**
-- [ ] Agent prose alone is not test evidence
-- [ ] Missing/timeout QA proposal prevents COMPLETE
-- [ ] `$qa-plan` is a separate handoff and no QA file is written here
-- [ ] No invented command, exit code, timestamp, or hash appears
+
+- [ ] Every excerpt has a source section and hash
+- [ ] Prompt byte limit is enforced before dispatch
+- [ ] Prior agent output is structured, not transcript concatenation
 
 ---
 
-### Case 9: Design approval and implementation are hash-gated
+## Case 9: Deadline and failure state are deterministic
 
-**Fixture:**
-- Level-review approved file hash H1
-- The level file is later changed and now hashes to H2
+**Variants:** result before deadline; one narrowed follow-up; no result by exact
+deadline; late result; malformed/over-limit result; duplicate differing results.
 
-**Expected behavior:**
-1. Marks H1 review and QA proposal stale
-2. Does not retain DESIGN APPROVED for H2
-3. Requires fresh independent evidence bound to H2
-4. Does not invoke `$dev-story`, an implementation agent, or asset production
+**Expected behavior:** COMPLETE, same-deadline follow-up, TIMED_OUT, recorded-late
+but not complete, INVALID, and INVALID respectively. No deadline extension,
+unbounded wait, forged result, or replacement loop occurs.
 
 **Assertions:**
-- [ ] A filename or prior approval cannot substitute for current hash evidence
-- [ ] COMPLETE requires zero open blockers and matching checkpoint/evidence hash
-- [ ] Implementation stories must capture the approved hash and pass their own
-      readiness gate before a separate dev-story run
-- [ ] Every non-COMPLETE verdict recommends only resolution/resume work
+
+- [ ] One job ID/input hash persists through the permitted follow-up
+- [ ] Late/duplicate output cannot become valid COMPLETE evidence
+- [ ] At most three jobs are live and at most sixteen exist in the run
 
 ---
 
-### Case 10: Missing or invalid target fails before project reads
+## Case 10: Core evidence can return PARTIAL without pretending COMPLETE
 
-**Fixture:**
-- Any project state
+**Fixture:** context identity and coherent level draft exist; an applicable
+required systems proposal times out while independent completed results remain
+valid.
 
-Run empty input, path traversal, drive prefix, control character, and ambiguous
-slug variants.
-
-**Expected behavior:**
-1. Prints the required argument and safe examples
-2. Stops before project-file reads or delegation
-3. Performs no write and emits no verdict
+**Expected behavior:** preserve completed payloads/hashes, mark required job
+TIMED_OUT, return `PARTIAL — NOT APPROVED`, and identify the exact checkpoint
+resume phase. If no coherent draft exists, return BLOCKED instead.
 
 **Assertions:**
-- [ ] No subagent is spawned
-- [ ] No GDD, level, or session-state file is read
-- [ ] Existing target is never overwritten under create mode
-- [ ] Invalid IDs cannot escape `design/levels/`
+
+- [ ] Valid independent results are not discarded or forged
+- [ ] Required timeout always makes the COMPLETE predicate false
+- [ ] Resume action identifies one earliest phase
 
 ---
 
-### Case 11: Context and adjacency traversal remain bounded
+## Case 11: COMPLETE matrix blocks every missing predicate
 
-**Fixture:**
-- More than 20 candidate sources exist
-- Two adjacent levels reference each other
-- One authored neighbor disagrees on interface direction
+**Fixture:** run twelve variants, making exactly one `TL-COMPLETE/v1` predicate false or
+unknown in each.
 
-**Expected behavior:**
-1. Stops at one adjacency hop and records the cycle
-2. Surfaces the context-budget choice instead of silently truncating
-3. Classifies the neighbor `INTERFACE CONFLICT`
-4. Does not auto-run another team-level workflow or invent the neighbor
+**Expected behavior:** none emits COMPLETE or asks final acceptance while a
+precondition is missing. Output names predicate ID and evidence gap; once all are
+true/current, the final packet may be accepted.
 
 **Assertions:**
-- [ ] Maximum manifest is 20 files and 250 KiB unless the user explicitly
-      narrows the selection
-- [ ] Cycles do not recurse or crash
-- [ ] File existence alone is not AUTHORED compatibility
-- [ ] Interface conflict blocks approval until resolved
+
+- [ ] All twelve predicates are individually observed
+- [ ] False and unknown are both fail-closed
+- [ ] Final acceptance is bound to the all-true matrix hash
 
 ---
 
-## Protocol Compliance
+## Case 12: A produced file or accepted risk is never approval
 
-- [ ] User input is reserved for product decisions, accepted risk, final design
-      acceptance, and exact write authorization
-- [ ] Routine transitions do not re-prompt
-- [ ] All expert/reviewer tasks are read-only
-- [ ] Exactly one writer owns the two pre-approved paths
-- [ ] All parallel batches respect the three-agent cap and deadlines
-- [ ] BLOCKING findings are non-waivable
-- [ ] Destination routing precedes reduction
-- [ ] Level-review evidence is independent, read-only, and current-hash-bound
-- [ ] Partial/timeout state is reconstructable from the checkpoint
-- [ ] No test, review, hash, or completion evidence is fabricated
-- [ ] No implementation begins before DESIGN APPROVED
-- [ ] Verdict is one of the four declared states
+**Variants:** source write succeeds before review; non-blocking risk is accepted;
+checkpoint says COMPLETE but current level hash differs.
+
+**Expected behavior:** respectively PARTIAL, `ACCEPTED RISK / NOT APPROVED`, and
+STALE/PARTIAL. None is `COMPLETE — DESIGN APPROVED`.
+
+**Assertions:**
+
+- [ ] File existence is not an approval predicate substitute
+- [ ] Accepted risk cannot waive a blocking or COMPLETE predicate
+- [ ] Checkpoint prose cannot override current raw bytes
 
 ---
 
-## Coverage Notes
+## Case 13: QA is generated after final integrated source and review
 
-The catalog entry remains unchanged because shared catalog mutation is outside
-this remediation boundary. No last-test fields are populated: these are static
-candidate checks, not executed workflow results.
+**Fixture:** initial draft H0 is integrated/written as H1; accessibility closes;
+independent level-review passes H1.
 
-The inline level-review profile is intentionally specified here because there is
-no separately authorized `level-review` skill in this changeset. Creating a
-shared skill/profile and aligning other team workflows remain rollout tasks.
+**Expected behavior:** qa-tester first dispatch occurs only after H1 persistence
+and review PASS, and inputs bind H1 plus review/finding hashes. Cases are PLANNED;
+no QA file, test execution, PASS, or coverage claim appears.
+
+**Assertions:**
+
+- [ ] QA dispatch sequence follows current-hash review PASS
+- [ ] Every QA case references H1 sections/entities
+- [ ] QA write and execution counts are zero
+
+---
+
+## Case 14: Post-QA source change stales review and QA
+
+**Fixture:** review/QA bind H1; source changes to H2 before final acceptance.
+
+**Expected behavior:** both evidence sets become STALE; COMPLETE is impossible;
+workflow returns to fresh independent review of H2 and then fresh QA. Reducer
+cannot silently patch H1 after QA freezes.
+
+**Assertions:**
+
+- [ ] H1 evidence is never applied to H2
+- [ ] Review precedes regenerated QA
+- [ ] Final packet cannot retain stale hashes
+
+---
+
+## Case 15: PLANNED and AUTHORED adjacency use explicit contracts
+
+**Variants:** absent target with current roadmap interface/owner/reverse contract;
+two authored levels with matching forward/reverse IDs/endpoints/direction/state.
+
+**Expected behavior:** states PLANNED and AUTHORED respectively with stable
+interface/source hashes. Filename presence or absence alone does not decide.
+
+**Assertions:**
+
+- [ ] PLANNED names roadmap declaration and owner
+- [ ] AUTHORED validates both directions and revisions
+- [ ] Stable interface identity excludes volatile prose
+
+---
+
+## Case 16: Broken and conflicting adjacency block approval
+
+**Variants:** declared authored target missing; missing reverse reference;
+direction mismatch; endpoint mismatch; traversal-state mismatch; revision
+conflict; missing undecided declaration.
+
+**Expected behavior:** BROKEN_LINK, BROKEN_LINK, INTERFACE_CONFLICT variants, and
+UNRESOLVED. Required cases prevent COMPLETE, record owner/action, stop one-hop
+traversal, and never auto-run another team-level workflow.
+
+**Assertions:**
+
+- [ ] Every state follows the deterministic interface matrix
+- [ ] Required unresolved states make dependency predicate false
+- [ ] Downstream workflow invocation count is zero
+
+---
+
+## Case 17: Every phase produces a monotonic checkpoint snapshot
+
+**Fixture:** happy path through context, batches, author, accessibility, reducer,
+write, review, QA, and final acceptance.
+
+**Expected behavior:** in-memory/persisted snapshots increment `state_seq`, bind
+phase/source/target/job/result/decision/finding hashes, and retain one exact safe
+resume action. Pre-authorization snapshots cause zero project writes.
+
+**Assertions:**
+
+- [ ] Sequence is strictly monotonic with no duplicate accepted transition
+- [ ] Stored job results include bounded payload and matching hash
+- [ ] Only planned checkpoint transitions persist after authorization
+
+---
+
+## Case 18: Resume reuses exact completed work once
+
+**Fixture:** valid persisted checkpoint with matching context/target hashes and
+stored bounded COMPLETE job payloads/results; run stopped before level review.
+
+**Expected behavior:** completed proposals/write/decisions are reused without
+redispatch/rewrite; resume begins at review. Job IDs, observation count and write
+receipts are not duplicated.
+
+**Assertions:**
+
+- [ ] Reused job input/payload/result hashes all verify
+- [ ] Existing target bytes equal checkpoint current hash
+- [ ] Dispatch and write counts remain unchanged for reused work
+
+---
+
+## Case 19: Stale checkpoint returns to earliest affected phase
+
+**Variants:** changed context source; corrupted stored job payload; changed target
+bytes; stale review hash; missing QA payload with matching claimed hash.
+
+**Expected behavior:** dependent records become STALE and resume starts at
+context/job/write/review/QA respectively. Prose-only claims are rejected and no
+valid earlier independent result is unnecessarily rerun.
+
+**Assertions:**
+
+- [ ] Earliest stale dependency determines resume phase
+- [ ] Independent still-valid records retain their hashes/status
+- [ ] No prose-only or missing payload is reusable evidence
+
+---
+
+## Case 20: Rebuilt spec structure and catalog evidence boundary
+
+**Fixture:** static parser inspects this candidate and shared catalog entry remains
+with blank `last_*` values.
+
+**Expected behavior:** all required top-level sections exist; Cases 1–25 are
+unique/contiguous and contain Fixture, Expected behavior, and Assertions blocks;
+P1 table contains exactly TLD-006..TLD-015. Candidate reports NOT EXECUTED and
+does not edit/claim catalog results.
+
+**Assertions:**
+
+- [ ] Case headings are unique and contiguous
+- [ ] Every case has all three required blocks
+- [ ] Shared catalog bytes and blank result fields remain unchanged
+
+---
+
+## Case 21: Level document never enters system-GDD design review
+
+**Fixture:** current level hash H1 exists and invocation recorder is active.
+
+**Expected behavior:** private `cgs.level-review/v1` reviews H1 with correct level
+criteria. `$design-review` invocation count is zero; missing Formula/Tuning/
+Economy sections are not defects; reviewer cannot write.
+
+**Assertions:**
+
+- [ ] Reviewer identity differs from authors/writer
+- [ ] Result binds H1 and exact level sections
+- [ ] System-GDD review/gate invocation count is zero
+
+---
+
+## Case 22: Accessibility blocker cannot be acknowledged away
+
+**Fixture:** `AX-forest-dungeon-*` BLOCKING finding identifies a color-only
+critical-path cue.
+
+**Expected behavior:** only exact author revision or stop is offered. QA, design
+acceptance and implementation handoff remain forbidden while OPEN. A request to
+“document and continue” returns `BLOCKED — PRODUCT DECISION REQUIRED`.
+
+**Assertions:**
+
+- [ ] BLOCKING has no accepted-risk record
+- [ ] Open blocker count remains positive until verified closure
+- [ ] No QA, acceptance, or implementation job starts while open
+
+---
+
+## Case 23: Destination routing and single-writer guard
+
+**Fixture:** proposals contain dialogue, asset palette/VFX list, loot formula,
+test cases, backlog item, review discussion, and spatial level constraints; an
+expert attempts to write an art brief.
+
+**Expected behavior:** every item routes once; only spatial allowlist enters level
+source; external content is referenced, not pasted; expert write is rejected.
+Only the permanent writer can touch the exact level/checkpoint paths.
+
+**Assertions:**
+
+- [ ] Routing ledger cardinality equals unique proposal/finding cardinality
+- [ ] Forbidden bodies are absent from canonical level bytes
+- [ ] External destination and specialist write sets are empty
+
+---
+
+## Case 24: Review convergence stops after observation two
+
+**Fixture:** original accessibility or level-review blocker remains open after one
+authorized scoped revision and verification re-review.
+
+**Expected behavior:** original stable ID persists, diff regressions link to it,
+second observation stops `BLOCKED — PRODUCT DECISION REQUIRED`, and no third
+author/reviewer is dispatched.
+
+**Assertions:**
+
+- [ ] Original fingerprint/ID is unchanged across observations
+- [ ] Re-review scope contains only original IDs and diff regressions
+- [ ] Observation count never exceeds two
+
+---
+
+## Case 25: Compare-and-set write and partial recovery are honest
+
+**Variants:** source changes before first write; CREATE target collision; level
+write succeeds but checkpoint fails; all changed bytes restore; changed bytes do
+not restore.
+
+**Expected behavior:** first two write nothing; checkpoint failure prints bounded
+`RECOVERY CHECKPOINT NOT PERSISTED`; rollback is claimed only for byte-identical
+verified restoration; otherwise actual hashes and PARTIAL state are preserved.
+No unlisted path or replacement writer is used.
+
+**Assertions:**
+
+- [ ] Every write is covered by the exact plan hash and single owner
+- [ ] Compare-and-set occurs immediately before mutation
+- [ ] Partial/rollback claims match reread raw target bytes
+
+---
+
+## Protocol compliance
+
+- [ ] Input validation precedes all project reads and delegation.
+- [ ] Routine transitions continue without prompts.
+- [ ] Context/adjacency manifests precede jobs.
+- [ ] Every job is bounded, read-only, deadline-bound, and checkpointed.
+- [ ] Accessibility review precedes source authorization.
+- [ ] Destination routing/reducer allowlist precede source bytes.
+- [ ] One complete authorization precedes first mutation.
+- [ ] Independent current-hash level review precedes QA.
+- [ ] Final current-hash QA precedes design acceptance.
+- [ ] COMPLETE matrix and final compare-and-set precede the verdict.
+- [ ] No implementation, external destination, test execution, or shared catalog
+      mutation occurs.
+
+## Verification boundary
+
+Static inspection can verify structure, exact P1 trace, invocation/gate/mode
+contracts, limits, schemas, state machines, ordering, relative links, write
+boundaries, and defined cases. It cannot claim agent deadlines, concurrency,
+filesystem compare-and-set/rollback, reviewer independence, QA generation,
+catalog results, or DESIGN APPROVED behavior in a real run. All behavioral cases
+remain `NOT EXECUTED` pending separate authorized testing with immutable receipts.
+
+## Integration notes
+
+- `cgs.level-review/v1` is a private inline profile in this candidate; there is
+  no separately installed/shared `$level-review` skill here.
+- Shared catalog `last_*` fields must remain blank until static/spec/category
+  tests actually run and their immutable receipts are reviewed.
+- Pre-authorization phase snapshots are in-memory only so unknown future bytes
+  are not pre-authorized; rollout must not claim crash-resume durability until
+  the first exact checkpoint candidate has been authorized and persisted.
+- A rollout must copy the skill, both private references, metadata, and spec as
+  one hash-reviewed unit; copying only `SKILL.md` leaves required links missing.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Playtest Report"
-  short_description: "Create traceable playtest protocols and reports"
-  default_prompt: "Use $playtest-report to create a protocol, ingest session evidence, or finalize a build-bound report."
+  short_description: "Validate immutable sessions and derive recorder-bound reports"
+  default_prompt: "Use $playtest-report in one explicit read-only mode to validate an immutable protocol/session/evidence bundle, keep raw observations and inferences separate, report participant-level denominators and uncertainty, and require an independent recorder receipt before gate eligibility."

@@ -1,380 +1,801 @@
-# Skill Test Spec: $regression-suite
+# Skill Test Spec: regression-suite
+
+> **Spec ID**: regression-suite-v2
+> **Spec Schema**: cgs-skill-spec/v2
+> **Category**: utility
+> **Priority**: high
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$regression-suite` owns only `tests/regression-suite.md`, an ID-keyed selection
-manifest. It does not author or execute tests and cannot declare release success
-from selection alone.
+regression-suite consumes one cgs-regression-scope/v1 and operates in explicit
+report, update or audit mode. It owns only tests/regression-suite.md, a
+cgs-regression-selection-manifest/v2. The manifest is a stable Test-ID selection
+artifact, not test execution, business-test implementation or release proof.
 
-Verified requirement coverage requires all of:
+Scope, QA plan, Test ID ownership, story/AC/Requirement Binding/Coverage Unit,
+verified-fixed bug, target build, change impact, test source, sensitivity,
+quarantine and optional execution evidence are exact path/hash bound. Selection
+uses deterministic coverage-unit set operations and a fixed lexicographic
+priority key under declared hard budgets.
 
-- an exact stable AC or BUG ID mapped to an exact stable test ID;
-- current raw-byte hashes for the QA plan, requirement source, and test source;
-- valid failure-sensitivity evidence bound to those IDs and hashes;
-- a passing result in a runner receipt bound to the exact current selection
-  manifest hash and target build.
-
-`update` and `audit` use per-ID upserts. They never reconstruct the full
-manifest. Retirement is an explicitly approved tombstone that preserves
-rationale, owner, and history.
+Update and audit use ID-keyed patches; retirement uses explicitly approved
+non-reusable tombstones. Report is read-only. This workflow never executes tests
+or writes build-bound receipts. Operation, scope, impact, selection, execution,
+persistence and coverage states remain independent.
 
 ---
 
 ## Static Assertions
 
-- [ ] YAML frontmatter contains only `name` and non-empty `description`; the name
-  matches the skill directory.
-- [ ] The only owned output is `tests/regression-suite.md`.
-- [ ] The skill states that file names, paths, comments, and keyword matches are
-  discovery hints, not coverage.
-- [ ] Stable AC, BUG, test, and selection IDs plus raw-byte SHA-256 provenance
-  are required.
-- [ ] Failure-sensitivity evidence and a current build-bound runner receipt are
-  both required for verified coverage.
-- [ ] Selection-manifest ownership is separated from runner receipt ownership.
-- [ ] `audit` explicitly forbids full-manifest reconstruction.
-- [ ] Deletion requires an approved tombstone with retained history.
-- [ ] Operation and coverage statuses are independent.
-- [ ] `report` is byte-preserving and cannot report “updated.”
+- [ ] **[RS-SA-001]** Frontmatter has exactly non-empty name and description and
+  name is regression-suite.
+- [ ] **[RS-SA-002]** cgs-regression-suite-workflow-contract/v1 declares exact
+  subcommands, v1 scope, v2 selection, change impact, output and no execution.
+- [ ] **[RS-SA-003]** Missing/unknown mode, positional scope, bracket token or
+  implicit write request fails before writes.
+- [ ] **[RS-SA-004]** Scope is exact manifest-bound and never scans all
+  GDDs/stories/tests or selects latest files.
+- [ ] **[RS-SA-005]** Hard budgets cover requirements, bugs, coverage units,
+  impact edges, tests, sources, receipts, bytes, duration, output and wall time.
+- [ ] **[RS-SA-006]** Bugs require VERIFIED_FIXED state, fix commit, pre/post
+  verification receipt and exact fixed-build compatibility.
+- [ ] **[RS-SA-007]** Coverage uses exact required-minus-mapped Coverage Unit ID
+  sets; unmapped branches and boundaries are MISSING.
+- [ ] **[RS-SA-008]** Scope, plan, requirement span, ownership, build, impact,
+  test, sensitivity, quarantine, selection and execution hashes drive stale.
+- [ ] **[RS-SA-009]** Calendar time, mtime, names, comments and prose never
+  establish freshness, mapping, sensitivity or coverage.
+- [ ] **[RS-SA-010]** Quarantine distinguishes REQUESTED, APPROVED, APPLIED and
+  later runner-VERIFIED state with exact config/build/Test ID hashes.
+- [ ] **[RS-SA-011]** Operation and coverage states are independent; critical
+  gaps cannot be hidden by successful manifest persistence.
+- [ ] **[RS-SA-012]** Report is read-only, has Persistence NOT_APPLICABLE and
+  never says updated, audited, written or complete.
+- [ ] **[RS-SA-013]** The registered spec uses cgs-skill-spec/v2 with contiguous
+  complete cases and unique stable IDs.
+- [ ] **[RS-SA-014]** Missing business tests are handed to the story/test-
+  authoring owner, never test-helpers.
+- [ ] **[RS-SA-015]** Change impact binds baseline/current hashes, exact changed
+  IDs/symbols and sourced graph edges.
+- [ ] **[RS-SA-016]** Prioritization is a fixed lexicographic key with mandatory
+  critical selection and explicit budget omissions.
+- [ ] **[RS-SA-017]** Selection header and entries bind manifest/revision/scope/
+  plan/build/ownership/impact/requirement/test/sensitivity hashes.
+- [ ] **[RS-SA-018]** Tombstones retain history, approval and ownership forever;
+  Selection IDs are never removed, recycled or rebound.
+- [ ] **[RS-SA-019]** Keyed publication revalidates every authority and entry,
+  parses the candidate, and uses one-file CAS plus read-back.
+- [ ] **[RS-SA-020]** Selection and execution are separate artifacts; any changed
+  manifest has Execution NOT_RUN and Coverage AWAITING RUN.
 
 ---
 
-## Case 1: Same-name empty test file is not coverage
+## Test Cases
 
-### Fixture
+### Case 1 [RS-C01]: Exact bounded scope replaces repository-wide traversal
 
-- A current QA plan maps `AC-S001-01` to `TC-combat-S001-AC01`.
-- `tests/unit/combat/damage_test.gd` exists, has a matching-looking file name,
-  but contains no stable test ID, no assertions, and no sensitivity evidence.
-- Record raw bytes/hashes for every fixture file and the existing selection
-  manifest.
+#### Fixture
 
-### Input
+- Repository contains multiple QA plans, stories, GDDs and tests.
+- One cgs-regression-scope/v1 binds stable operation/scope/manifest/revision IDs,
+  exact current qa-plan v2 path/hash, ownership snapshot, build, requirement
+  units, bugs, change-impact and preimage manifest.
+- Negative variants exceed a hard budget or contain omitted/unreadable closures.
 
-`$regression-suite audit scope: production/qa/qa-plan-combat-2026-07-22.md`
+#### Input
 
-The user declines any write so the evidence evaluation can be inspected alone.
+- Invoke report with the exact scope-manifest path.
 
-### Expected writes
+#### Expected reads
 
-- None.
+- Scope manifest and only declared whole authority closures admitted in canonical
+  stable-ID order.
 
-### Expected non-writes
+#### Expected writes
 
-- Test source, QA plan, selection manifest, receipts, and all other files remain
-  byte-for-byte unchanged.
+- None in report mode.
 
-### Expected behavior and verdict
+#### Expected non-writes
 
-1. The file appears only as a discovery candidate.
-2. `AC-S001-01` is a `GAP`; the candidate is `UNMAPPED` or
-   `SELECTED_UNVERIFIED`.
-3. No `COVERED`, `ELIGIBLE`, or `VERIFIED COVERAGE` claim is made.
-4. Operation is `DECLINED`; coverage is `GAPS FOUND`.
+- Selection manifest, QA plan, sources, tests, receipts and repository state.
 
-### Assertions
+#### Expected behavior
 
-- [ ] File existence and matching names never establish coverage.
-- [ ] No stable ID or evidence is inferred from the path.
-- [ ] No file changes occur.
+- Canonicalize and reject duplicate IDs/paths and scope disagreements.
+- Never scan all project requirements/tests or choose by latest/mtime.
+- Enforce requirements/bugs/tests/files/receipts/bytes/units/edges/duration/
+  output/wall-time ceilings.
+- Record selected, loaded, missing, unreadable, invalid, omitted and unprocessed
+  rows with stable reasons.
+- Any required omission makes Scope PARTIAL and cannot yield verified coverage.
+
+#### Assertions
+
+- [ ] Directory order cannot change the admitted set.
+- [ ] No undeclared file becomes coverage evidence.
+- [ ] Whole closures are admitted or omitted.
+- [ ] Ledger counts reconcile to scope declaration.
+
+#### Case Verdict
+
+PASS for exact deterministic bounded scope and fail-closed partiality; unbounded
+traversal is FAIL.
 
 ---
 
-## Case 2: BUG ID in a comment does not prove failure sensitivity
+### Case 2 [RS-C02]: Closed or Fixed labels do not prove a verified repair
 
-### Fixture
+#### Fixture
 
-- `BUG-042` is an in-scope stable bug artifact with a recorded raw-byte hash.
-- A test source contains the comment “regression for BUG-042” and always passes.
-- No receipt proves baseline-pass plus injected-failure fail behavior.
-- A current runner receipt may show the always-passing test passed.
+- Bug variants are Closed, Fixed, merged, assigned, fix-commit-only,
+  VERIFIED_FIXED with stale receipt, VERIFIED_FIXED on another build, and fully
+  verified fixed on the target-compatible build.
+- Target candidate/build identity is exact and current.
 
-### Input
+#### Input
 
-`$regression-suite report scope: production/qa/qa-plan-combat-2026-07-22.md`
+- Evaluate bug eligibility and priority.
 
-### Expected writes
+#### Expected reads
+
+- Bug artifact, original reproduction, fix commit/source identity, verification
+  receipt and build dependencies.
+
+#### Expected writes
+
+- Report rows only in report mode.
+
+#### Expected non-writes
+
+- Bugs, commits, builds, receipts, tests and selection manifest.
+
+#### Expected behavior
+
+- Only VERIFIED_FIXED with receipt proving original failure on pre-fix build and
+  pass on fixed target-compatible build is eligible.
+- Closed/Fixed prose, merge and commit alone remain UNKNOWN gaps.
+- Receipt or build mismatch is STALE/UNKNOWN.
+- Eligible verified-fixed critical bug enters the mandatory priority class.
+
+#### Assertions
+
+- [ ] Exact bug ID/source hash and reproduction ID are required.
+- [ ] Fix commit does not replace build verification.
+- [ ] Build artifact/source/platform/configuration compatibility is checked.
+- [ ] Ineligible bug remains visible.
+
+#### Case Verdict
+
+PASS when only fully verified target-compatible repair is eligible; label-based
+acceptance is FAIL.
+
+---
+
+### Case 3 [RS-C03]: AC branch and boundary coverage is exact set arithmetic
+
+#### Fixture
+
+- QA plan AC has root, two branch, three boundary and one recovery Coverage Unit
+  IDs.
+- Selected tests map a proper subset; another candidate uses only the AC root.
+- All hashes and sensitivity evidence for mapped units are current.
+
+#### Input
+
+- Compute unit, AC and aggregate coverage.
+
+#### Expected reads
+
+- QA-plan coverage/dependency matrix, Test ID ownership, exact test mappings,
+  sensitivity and optional execution receipt.
+
+#### Expected writes
+
+- None in report mode.
+
+#### Expected non-writes
+
+- QA plan, mappings, tests, selection and receipts.
+
+#### Expected behavior
+
+- Required set includes every root/branch/boundary/recovery ID.
+- Mapped set is the exact union of selected Test ID claims.
+- Required minus mapped units are MISSING and GAP.
+- A proper verified subset never upgrades the AC.
+- AC is VERIFIED only when every required unit has eligible sensitivity and
+  current build-bound PASS.
+
+#### Assertions
+
+- [ ] No model judgment labels a partial subset covered.
+- [ ] Missing unit IDs are listed exactly.
+- [ ] Root-only mapping cannot cover branches/boundaries.
+- [ ] Aggregate counts reconcile to required units.
+
+#### Case Verdict
+
+PASS for deterministic set difference and all-units aggregation; subjective
+PARTIAL/COVERED classification is FAIL.
+
+---
+
+### Case 4 [RS-C04]: Content hashes, not age, drive stale state
+
+#### Fixture
+
+- Current plan, requirement spans, ownership, build, impact, test, sensitivity,
+  quarantine, selection and execution sources are captured.
+- Variants change one byte in each source while preserving names and timestamps.
+- Another variant changes only calendar age while bytes stay identical.
+
+#### Input
+
+- Revalidate mappings and evidence.
+
+#### Expected reads
+
+- Every captured raw source and declared dependency.
+
+#### Expected writes
+
+- None in report mode.
+
+#### Expected non-writes
+
+- All source/evidence/selection artifacts.
+
+#### Expected behavior
+
+- Any dependency byte or identity mismatch makes affected mapping STALE.
+- Stable names, IDs and timestamps do not override mismatch.
+- Identical old bytes remain current if all identity/freshness rules otherwise
+  pass.
+- Unavailable/unsupported verifier produces UNKNOWN, not current.
+
+#### Assertions
+
+- [ ] No day-count drift heuristic is used.
+- [ ] Requirement raw span and file hashes both revalidate.
+- [ ] Prior green execution cannot cure stale selection.
+- [ ] Exact changed dependency is reported.
+
+#### Case Verdict
+
+PASS when byte/identity change alone drives stale and age alone does not;
+otherwise FAIL.
+
+---
+
+### Case 5 [RS-C05]: Quarantine needs applied and later verified runner state
+
+#### Fixture
+
+- Stable Test ID has proposal, approval, application and later runner receipts in
+  different combinations.
+- Application receipt binds changed config hash and expiry.
+- Runner variants use wrong config, build, selection or Test ID; another explicitly
+  records the exact Test ID skipped under current applied config.
+
+#### Input
+
+- Classify quarantine and coverage.
+
+#### Expected reads
+
+- Proposal, approval, application, config, selection, target build and runner
+  receipts plus expiry authority.
+
+#### Expected writes
+
+- Report rows only.
+
+#### Expected non-writes
+
+- Registry, CI/config, test, receipts and selection manifest.
+
+#### Expected behavior
+
+- Proposal/registry text is QUARANTINE_REQUESTED.
+- Current application without later matching runner proof is
+  QUARANTINE_APPLIED_UNVERIFIED.
+- Only unexpired current application plus later exact runner skip is QUARANTINED.
+- Quarantined test never counts as PASS or verified coverage.
+- Expired/mismatched/unreadable evidence is STALE/UNKNOWN and release-blocking.
+
+#### Assertions
+
+- [ ] APPLIED is not inferred from proposal.
+- [ ] VERIFIED is not inferred from intended skip.
+- [ ] Exact applied config hash and Test ID are required.
+- [ ] Quarantine cannot hide a critical gap.
+
+#### Case Verdict
+
+PASS for exact state-machine classification and no coverage promotion; otherwise
+FAIL.
+
+---
+
+### Case 6 [RS-C06]: Manifest operation success cannot hide critical gaps
+
+#### Fixture
+
+- Audit has a valid keyed update.
+- One P0 Coverage Unit is missing and one noncritical item awaits execution.
+- Candidate publication succeeds and read-back verifies.
+
+#### Input
+
+- Audit and approve exact keyed changes.
+
+#### Expected reads
+
+- All current scope, selection and candidate patch authorities.
+
+#### Expected writes
+
+- Only tests/regression-suite.md keyed fields.
+
+#### Expected non-writes
+
+- Tests, plans, requirements, receipts, CI and release state.
+
+#### Expected behavior
+
+- Persistence is WRITTEN and Operation is AUDITED.
+- Critical missing unit makes Coverage CRITICAL GAPS.
+- Awaiting unit remains listed and Execution becomes NOT_RUN after manifest hash
+  changes.
+- No COMPLETE or release-ready statement appears.
+
+#### Assertions
+
+- [ ] Operation and coverage dimensions are both emitted.
+- [ ] Successful write does not change missing unit state.
+- [ ] Critical unit IDs are visible.
+- [ ] Release decision remains external.
+
+#### Case Verdict
+
+PASS for AUDITED plus CRITICAL GAPS and NOT_RUN; translating write success into
+coverage success is FAIL.
+
+---
+
+### Case 7 [RS-C07]: Explicit modes disclose side effects before work
+
+#### Fixture
+
+- Invocation variants include no mode, duplicate mode, unknown mode, positional
+  plan path, report, update and audit with exact scope manifest.
+- An execution receipt is passed to update in one negative variant.
+
+#### Input
+
+- Parse each invocation and mode contract.
+
+#### Expected reads
+
+- Invalid forms read no project scope.
+- Valid forms read only their literal scope manifest first.
+
+#### Expected writes
+
+- Report: none.
+- Update/audit: no write until exact keyed changeset authorization.
+
+#### Expected non-writes
+
+- All files for invalid forms and report mode.
+
+#### Expected behavior
+
+- No/duplicate/unknown/positional forms fail before writes.
+- Report is read-only; update is keyed upsert; audit adds approved tombstone
+  capability.
+- Update rejects execution receipt because changed selection requires a later run.
+- No mode is inferred from metadata/default prompt or conversation context.
+
+#### Assertions
+
+- [ ] Side-effect class is known from the subcommand.
+- [ ] No parameterless write-mode prompt occurs.
+- [ ] Report never asks for write approval.
+- [ ] Invalid mode emits no updated claim.
+
+#### Case Verdict
+
+PASS when subcommand determines exact read/write behavior; ambiguity is FAIL.
+
+---
+
+### Case 8 [RS-C08]: Registered specification matches the selection contract
+
+#### Fixture
+
+- Registered spec is parsed as cgs-skill-spec/v2.
+- Negative variants remove a case Fixture, Expected non-writes or Case Verdict;
+  create numbering gap; or duplicate stable IDs.
+
+#### Input
+
+- Run structural spec preflight.
+
+#### Expected reads
+
+- Exact spec bytes.
+
+#### Expected writes
 
 - None.
 
-### Expected non-writes
+#### Expected non-writes
+
+- Spec, skill, metadata, catalog and selection manifest.
+
+#### Expected behavior
+
+- Valid spec header, contiguous cases, required sections and unique static/
+  protocol IDs pass.
+- Missing section, numbering gap or duplicate ID fails.
+- Artifact path, modes, operation/coverage axes and verdicts match the v2
+  selection-manifest contract.
+- Static structure is not reported as behavioral execution.
+
+#### Assertions
+
+- [ ] Every case has explicit fixture and side-effect boundary.
+- [ ] No obsolete production/qa coverage-report output is expected.
+- [ ] No FULL COVERAGE legacy verdict replaces current statuses.
+- [ ] Catalog test results are not fabricated.
+
+#### Case Verdict
+
+PASS when valid and corrupted specs classify exactly; otherwise FAIL.
+
+---
+
+### Case 9 [RS-C09]: Missing business test goes to its authoring owner
+
+#### Fixture
+
+- One mandatory AC Coverage Unit has no candidate business test.
+- Test-helpers is available but its contract only creates helper libraries.
+- Story/QA plan names the implementation/test-authoring owner and required failure
+  condition.
+
+#### Input
+
+- Produce remediation handoff.
+
+#### Expected reads
+
+- AC/requirement binding, owner, dependency and expected failure evidence.
+
+#### Expected writes
+
+- None in report mode; a gap entry only if separately authorized in audit/update.
+
+#### Expected non-writes
+
+- Test source, helper source, QA plan, story and downstream workflow state.
+
+#### Expected behavior
+
+- Handoff names stable AC/Coverage Unit/expected Test IDs, story/test-authoring
+  owner, observable, failure condition and evidence needed.
+- It never routes business-test creation to test-helpers.
+- No test/helper workflow is auto-invoked.
+- Gap remains critical or noncritical according to exact severity.
+
+#### Assertions
+
+- [ ] Helper validation is not business coverage.
+- [ ] Handoff owner has authority to create the missing test.
+- [ ] No source file is scaffolded by regression-suite.
+- [ ] Coverage remains a gap until current evidence exists.
+
+#### Case Verdict
+
+PASS for correct owner/evidence handoff; recommending test-helpers as test author
+is FAIL.
+
+---
+
+### Case 10 [RS-C10]: Report mode never impersonates an update
+
+#### Fixture
+
+- Current selection manifest and scope evidence exist.
+- Record exact bytes/hash for the complete fixture tree.
+- Report contains both gaps and current entries.
+
+#### Input
+
+- Invoke explicit report mode with exact scope and optional receipt.
+
+#### Expected reads
+
+- Current in-scope evidence only.
+
+#### Expected writes
+
+- None.
+
+#### Expected non-writes
 
 - Entire fixture tree remains byte-for-byte unchanged.
 
-### Expected behavior and verdict
+#### Expected behavior
 
-1. The comment is discovery evidence only.
-2. The test is `SELECTED_UNVERIFIED` because sensitivity evidence is absent.
-3. `BUG-042` remains a gap even if the ordinary run receipt says PASS.
-4. Operation is `REPORTED`; coverage is `GAPS FOUND`.
+- Operation REPORTED and Persistence NOT_APPLICABLE.
+- Coverage reflects evidence independently.
+- Changeset is empty; no write authorization requested.
+- Output never says updated, audited, written, unchanged-write or COMPLETE.
 
-### Assertions
+#### Assertions
 
-- [ ] A BUG ID string match is not treated as a verified mapping.
-- [ ] A normal pass is not substituted for failure-sensitivity evidence.
-- [ ] Report mode never says the manifest was updated.
+- [ ] Manifest before/after bytes are identical.
+- [ ] No history/revision is added.
+- [ ] Actual mode is visible.
+- [ ] Coverage can be VERIFIED, gaps, stale, awaiting or indeterminate without
+  changing operation.
+
+#### Case Verdict
+
+PASS for exact read-only result vocabulary; any updated claim or write is FAIL.
 
 ---
 
-## Case 3: Exact mapping plus sensitivity and current run verifies coverage
+### Case 11 [RS-C11]: Change impact and priority are reproducible under budget
 
-### Fixture
+#### Fixture
 
-- A QA plan with raw-byte hash `sha256:[plan-hash]` is generation-state
-  `CURRENT` and remains effectively current after every captured source is
-  rehashed.
-- It maps `AC-S001-01` to `TC-combat-S001-AC01`.
-- The test source declares that exact stable test/AC mapping and has current
-  raw-byte hash `sha256:[test-hash]`.
-- A valid sensitivity receipt binds the same IDs, requirement hash, and test
-  hash; baseline passes and injected failure fails.
-- `tests/regression-suite.md` contains active
-  `RS-TC-combat-S001-AC01` and has hash `sha256:[manifest-hash]`.
-- A runner receipt binds the exact manifest hash, target build, test-source hash,
-  stable test ID, and PASS result.
+- cgs-change-impact/v1 binds baseline/current commits, changed source hashes,
+  requirement/bug/unit IDs, production symbols and sourced dependency edges.
+- Candidates span every obligation class, severity, distance and stable ID.
+- Duration budget cannot admit all nonmandatory tests.
+- Negative variants omit a changed edge or mandatory duration evidence.
 
-### Input
+#### Input
 
-`$regression-suite report scope: production/qa/qa-plan-combat-2026-07-22.md`
+- Build selection repeatedly from identical scope and impact bytes.
 
-### Expected writes
+#### Expected reads
+
+- Exact impact manifest/dependencies, QA plan, bugs, Test IDs, duration sources
+  and test/sensitivity evidence.
+
+#### Expected writes
+
+- Candidate manifest only until authorization.
+
+#### Expected non-writes
+
+- Impact, plan, tests, durations and execution evidence.
+
+#### Expected behavior
+
+- Validate impact schema/tool/baseline/current and edge source hashes.
+- Sort by fixed obligation class, P0-P3 severity, graph distance, Coverage Unit
+  ID, Test ID and source path.
+- Admit mandatory critical/fixed-bug tests first, then whole tests under every
+  budget.
+- Record full sort key, duration source/hash and omission reason.
+- Missing mandatory test/impact/severity/duration yields PARTIAL/UNKNOWN and
+  CRITICAL GAPS.
+
+#### Assertions
+
+- [ ] Repeated candidates have identical order/hash.
+- [ ] No model score or prose priority is used.
+- [ ] Mandatory item is never silently demoted.
+- [ ] Omitted list reconciles all candidates.
+
+#### Case Verdict
+
+PASS for deterministic selection and fail-closed mandatory gaps; otherwise FAIL.
+
+---
+
+### Case 12 [RS-C12]: Tombstone and keyed CAS preserve ownership and history
+
+#### Fixture
+
+- Selection manifest has managed entries with owner, rationale, comments, custom
+  fields and history.
+- One entry needs machine-field update; one retirement is approved with prior
+  entry hash; one retirement lacks approval.
+- Concurrent variant changes manifest or ownership snapshot after preview.
+
+#### Input
+
+- Audit, preview and authorize exact per-ID candidate.
+
+#### Expected reads
+
+- Manifest/header/entries, every proposed source, ownership snapshot and
+  tombstone approval.
+
+#### Expected writes
+
+- Clean variant changes only approved keyed fields/tombstone plus one revision and
+  history events.
+- Concurrent/conflict variant writes nothing.
+
+#### Expected non-writes
+
+- Human/unknown fields, unapproved retirement, concurrent bytes and all external
+  authorities.
+
+#### Expected behavior
+
+- Tombstone retains prior identity/history and permanent non-reuse marker.
+- Replacement uses new Selection ID with supersedes link.
+- Complete candidate is parsed for unique IDs/references and exact hash.
+- Rehash all authorities and entry preimages, then one-file CAS.
+- Read-back verifies exact candidate and preservation.
+
+#### Assertions
+
+- [ ] No physical deletion or ID recycling occurs.
+- [ ] Unapproved tombstone remains byte-identical.
+- [ ] Any preflight drift aborts all keyed changes.
+- [ ] Persistence failure cannot report update.
+
+#### Case Verdict
+
+PASS for exact keyed/tombstone CAS and preservation; overwrite or history loss is
+FAIL.
+
+---
+
+### Case 13 [RS-C13]: Selection change and execution are separate transactions
+
+#### Fixture
+
+- Existing execution receipt is current for old manifest/build.
+- Update changes one selection entry and manifest hash.
+- No runner invocation occurs in this workflow.
+- A later external runner receipt binds the new exact manifest and target build.
+
+#### Input
+
+- Update, then separately report against the later receipt.
+
+#### Expected reads
+
+- Update reads no receipt for post-write coverage.
+- Later report reads exact new selection and external execution receipt.
+
+#### Expected writes
+
+- Update writes only keyed selection manifest.
+- Report writes nothing.
+
+#### Expected non-writes
+
+- Runner config, test results, receipt, build and release state.
+
+#### Expected behavior
+
+- Immediately after changed update: Operation UPDATED, Execution NOT_RUN and
+  Coverage AWAITING RUN.
+- Selection manifest alone cannot create PASS.
+- Later report accepts receipt only when selection/build/plan/ownership/
+  requirement/test/parser/log hashes and every active Test ID match.
+- regression-suite never invokes or waits for the runner.
+
+#### Assertions
+
+- [ ] Old receipt becomes stale after manifest change.
+- [ ] No circular execution result is embedded in selection entries.
+- [ ] External runner owns the receipt.
+- [ ] Release decision remains outside this workflow.
+
+#### Case Verdict
+
+PASS for strict transaction separation and later exact receipt consumption;
+otherwise FAIL.
+
+---
+
+### Case 14 [RS-C14]: Complete current selection report can verify coverage only with execution
+
+#### Fixture
+
+- Scope, qa-plan v2, ownership, build, requirements, change impact, bugs, tests,
+  sensitivity, quarantine and selection hashes are current and complete.
+- All required units map to eligible active tests.
+- Matching external runner receipt binds exact current manifest/build and every
+  active Test ID passes.
+- Report mode is used.
+
+#### Input
+
+- Report with exact scope and execution receipt.
+
+#### Expected reads
+
+- Every declared current authority and receipt dependency.
+
+#### Expected writes
 
 - None.
 
-### Expected non-writes
+#### Expected non-writes
 
-- Entire fixture tree remains byte-for-byte unchanged.
+- Selection, tests, plans, receipts, CI/build/release/catalog and session state.
 
-### Expected behavior and verdict
+#### Expected behavior
 
-1. QA-plan provenance revalidates `CURRENT`.
-2. The selection entry is `ELIGIBLE`.
-3. The current receipt is accepted only because manifest, build, and source
-   hashes match.
-4. `AC-S001-01` is `VERIFIED`.
-5. Operation is `REPORTED`; coverage is `VERIFIED COVERAGE`.
+- Scope, Impact, Selection and Execution are CURRENT.
+- Operation REPORTED and Persistence NOT_APPLICABLE.
+- Required-minus-mapped set is empty and all units are VERIFIED.
+- Coverage is VERIFIED COVERAGE.
+- No release PASS or COMPLETE is emitted.
+- Exact selection and execution paths/hashes are handed to the external gate.
 
-### Assertions
+#### Assertions
 
-- [ ] Stable AC/test IDs match the qa-plan contract exactly.
-- [ ] All raw-byte hashes are checked.
-- [ ] Selection and execution remain separate artifacts.
-- [ ] No release PASS is emitted by this utility.
+- [ ] Report remains byte-preserving.
+- [ ] Sensitivity and ordinary execution are both required.
+- [ ] Any partial/stale/unknown predicate prevents verified coverage.
+- [ ] Selection success is not release success.
 
----
+#### Case Verdict
 
-## Case 4: QA-plan or source mutation makes mapping stale
-
-### Fixture
-
-- Start from Case 3.
-- Change one byte in a story, GDD, ADR, QA plan, requirement source, or test
-  source after the captured hash was recorded.
-
-### Input
-
-`$regression-suite report scope: production/qa/qa-plan-combat-2026-07-22.md`
-
-### Expected writes
-
-- None.
-
-### Expected non-writes
-
-- Validation does not mutate the QA plan, selection manifest, source, or
-  receipts.
-
-### Expected behavior and verdict
-
-1. Raw-byte revalidation detects the mismatch.
-2. The affected plan/mapping/selection is `STALE`.
-3. Old sensitivity and run receipts cannot make it current.
-4. Operation is `REPORTED`; coverage is `STALE`.
-
-### Assertions
-
-- [ ] Timestamps and “latest file” heuristics are not used.
-- [ ] A stale producer plan is rejected as consumer evidence.
-- [ ] Stable IDs aid regeneration but never override hash staleness.
-
----
-
-## Case 5: Selection manifest without matching run receipt is not release proof
-
-### Fixture
-
-- A current selection manifest contains only `ELIGIBLE` entries.
-- No runner receipt exists for the exact current manifest hash and target build,
-  or the only receipt binds a prior manifest/build.
-
-### Input
-
-`$regression-suite report scope: production/qa/qa-plan-combat-2026-07-22.md`
-
-### Expected writes
-
-- None.
-
-### Expected non-writes
-
-- No test result, runner receipt, release record, or manifest update is created.
-
-### Expected behavior and verdict
-
-1. The manifest is described as selection only.
-2. The old/missing receipt is rejected.
-3. Operation is `REPORTED`; coverage is `AWAITING RUN`.
-4. The response does not print a release run command as evidence and does not
-   declare release PASS.
-
-### Assertions
-
-- [ ] Selection alone cannot produce `VERIFIED COVERAGE`.
-- [ ] The exact manifest hash and build identity are required.
-- [ ] This skill never fabricates or writes a run receipt.
-
----
-
-## Case 6: Audit performs keyed upsert without losing human content
-
-### Fixture
-
-- `tests/regression-suite.md` contains:
-  - managed entry `RS-TC-combat-S001-AC01`;
-  - human Owner, Rationale, comments, and three History items;
-  - an unknown custom field;
-  - unrelated legacy prose before and after the managed block.
-- Current evidence changes only the test-source hash and selection-evidence
-  state.
-- Record exact pre-run bytes and manifest hash.
-
-### Input
-
-`$regression-suite audit scope: production/qa/qa-plan-combat-2026-07-22.md`
-
-The user approves the displayed per-ID changeset.
-
-### Expected writes
-
-- Modify only `tests/regression-suite.md`.
-- Patch only the approved machine-owned fields for the keyed entry and append
-  one History item.
-
-### Expected non-writes
-
-- Owner, Rationale, prior History, custom field, comments, and unrelated legacy
-  bytes remain unchanged.
-- Test source, receipts, QA plan, and all other files remain unchanged.
-
-### Expected behavior and verdict
-
-1. The preview names the exact selection ID and field changes.
-2. The pre-write manifest hash matches the previewed hash.
-3. Read-back verifies approved changes and preservation invariants.
-4. Operation is `AUDITED` or `UPDATED` as applicable.
-5. Coverage is computed independently; it may be `AWAITING RUN` because the
-   manifest hash changed.
-
-### Assertions
-
-- [ ] Audit never renders a replacement full manifest.
-- [ ] Human and unknown content is preserved.
-- [ ] The reported final hash equals the written raw bytes.
-- [ ] Operation success does not imply verified coverage.
-
----
-
-## Case 7: Retirement requires an approved tombstone
-
-### Fixture
-
-- A managed active entry is absent from the current candidate set.
-- The entry contains owner, rationale, and history.
-- The user approves ordinary upserts but does not approve retirement.
-
-### Input
-
-`$regression-suite audit scope: production/qa/qa-plan-combat-2026-07-22.md`
-
-### Expected writes
-
-- Approved unrelated upserts may be written.
-- The absent entry itself is not changed.
-
-### Expected non-writes
-
-- The absent entry is not deleted, shortened, or tombstoned without approval.
-- Its owner, rationale, and history remain byte-for-byte unchanged.
-
-### Expected behavior and verdict
-
-1. Drift is reported with a separate tombstone proposal.
-2. Ledger result for that selection ID is `not-approved`.
-3. If later explicitly approved, lifecycle changes to `TOMBSTONED` with reason,
-   approver, timestamp, and appended history; the prior entry is retained.
-4. Physical deletion never occurs.
-
-### Assertions
-
-- [ ] No audit full rewrite removes the entry.
-- [ ] Tombstone authorization is independent and explicit.
-- [ ] History and rationale survive retirement.
-
----
-
-## Case 8: Concurrent manifest edit aborts the patch
-
-### Fixture
-
-- A complete per-ID diff was approved against manifest hash
-  `sha256:[preview-hash]`.
-- Before write, another actor changes the manifest bytes.
-
-### Input
-
-Continue the approved `update` or `audit` operation.
-
-### Expected writes
-
-- None by `$regression-suite` after detecting the conflict.
-
-### Expected non-writes
-
-- The concurrent edit and every source file remain unchanged.
-
-### Expected behavior and verdict
-
-1. Immediate pre-write hash comparison detects the conflict.
-2. No keyed patch is applied.
-3. Operation is `FAILED` with expected and observed hashes.
-4. No “updated” or release-ready claim appears.
-
-### Assertions
-
-- [ ] Concurrent human edits are never overwritten.
-- [ ] Read-back success is not claimed when no write occurred.
-- [ ] Coverage status remains separate from operation failure.
+PASS only for exact all-current report evidence; otherwise fail closed.
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Coverage uses stable IDs, current hashes, sensitivity evidence, and a
-  matching current execution result.
-- [ ] QA-plan `PARTIAL` and effective `STALE` states are rejected.
-- [ ] Selection manifest and build-bound receipt ownership are distinct.
-- [ ] Update/audit change only keyed fields or append keyed entries.
-- [ ] Removal is an approved tombstone, never deletion.
-- [ ] Report mode preserves every file byte and returns `REPORTED`.
-- [ ] Operation status never stands in for coverage or release status.
-
----
+- [ ] **[RS-PC-001]** Exact explicit mode and scope manifest validate before
+  project discovery or writes.
+- [ ] **[RS-PC-002]** Stable scope, plan, build, ownership, requirement, impact,
+  bug, test and receipt identities are raw-hash bound.
+- [ ] **[RS-PC-003]** Budget admission and prioritization are deterministic and
+  fully ledgered.
+- [ ] **[RS-PC-004]** Coverage is exact Coverage Unit set arithmetic with no
+  filename/prose inference.
+- [ ] **[RS-PC-005]** Verified-fixed bugs and quarantines require their complete
+  independent receipt chains.
+- [ ] **[RS-PC-006]** PARTIAL, STALE and UNKNOWN states remain explicit and never
+  become current or verified.
+- [ ] **[RS-PC-007]** Report performs zero writes and mode-specific operation
+  vocabulary is truthful.
+- [ ] **[RS-PC-008]** Update/audit use keyed field patches only and preserve all
+  human/unknown bytes.
+- [ ] **[RS-PC-009]** Tombstones require exact approval, preserve history and
+  reserve IDs forever.
+- [ ] **[RS-PC-010]** Publication uses complete candidate validation, authority
+  rehash, one-file CAS and read-back.
+- [ ] **[RS-PC-011]** Runner/build receipt ownership and execution remain separate
+  from selection maintenance.
+- [ ] **[RS-PC-012]** No test/helper/CI/build/release/catalog/session workflow is
+  authored, mutated or invoked.
 
 ## Coverage Notes
 
-- The CGS catalog test-result fields remain unchanged because the staging scope
-  forbids shared catalog edits.
-- Workflow/release guides still need a consumer migration so their gates require
-  both the selection-manifest hash and a matching build-bound receipt.
-- Receipt storage and signing are runner/CI-owned; this spec validates the
-  consumer contract without allowing this skill to manufacture evidence.
+### Authoritative P1 audit traceability
+
+| Audit ID | Implemented clause | Concrete case and assertion cells |
+|---|---|---|
+| `RS-004` | `SKILL.md` Phase 1.2 QA-plan scope/provenance and contract-manifest budgets | `RS-C01`; “No undeclared file becomes coverage evidence”; “Ledger counts reconcile to scope declaration” |
+| `RS-005` | `SKILL.md` Phase 1.3 verified bug requirements | `RS-C02`; “Fix commit does not replace build verification”; “Build artifact/source/platform/configuration compatibility is checked” |
+| `RS-006` | `SKILL.md` Phase 2 stable inventory and Coverage computation exact set arithmetic | `RS-C03`; “No model judgment labels a partial subset covered”; “Missing unit IDs are listed exactly” |
+| `RS-007` | `SKILL.md` Phase 1.4 content-hash impact plus Phase 2 source-hash freshness | `RS-C04`; “No day-count drift heuristic is used”; “Requirement raw span and file hashes both revalidate” |
+| `RS-008` | `SKILL.md` Phase 1.5 quarantine registry/receipt validation | `RS-C05`; “APPLIED is not inferred from proposal”; “VERIFIED is not inferred from intended skip”; “Exact applied config hash and Test ID are required” |
+| `RS-009` | `SKILL.md` Phase 3 coverage verdict separated from Phase 5 operation result | `RS-C06`; “Operation and coverage dimensions are both emitted”; “Successful write does not change missing unit state” |
+| `RS-010` | `SKILL.md` Phase 1.1 explicit mode and Phase 5.2 authorization boundary | `RS-C07`; “Side-effect class is known from the subcommand”; “No parameterless write-mode prompt occurs”; “Report never asks for write approval” |
+| `RS-016` | Dedicated spec fixture/side-effect contract, current selection artifact, and verdict vocabulary | `RS-C08`; “Every case has explicit fixture and side-effect boundary”; “No obsolete production/qa coverage-report output is expected”; “No FULL COVERAGE legacy verdict replaces current statuses” |
+| `RS-017` | `SKILL.md` Phase 5.1 remediation handoff preserves test-authoring ownership and forbids helper substitution | `RS-C09`; “Helper validation is not business coverage”; “Handoff owner has authority to create the missing test” |
+| `RS-018` | `SKILL.md` Phase 5.3 mode-specific operation protocol | `RS-C10`; “Manifest before/after bytes are identical”; “No history/revision is added”; “Actual mode is visible” |
+
+`RS-C11` tests deterministic change impact/priority, `RS-C12` tests tombstone and
+keyed CAS preservation, `RS-C13` tests selection/execution separation, and
+`RS-C14` tests complete current coverage with exact execution. This is a written
+contract, not an executed runner or release result.

@@ -1,404 +1,236 @@
-# Skill Test Spec: $prototype
-
-## Skill Summary
+# Contract Specification: `prototype`
+
+## Purpose
+
+Validate `prototype` as one finite, isolated, reproducible experiment. Planning is read-only; execution, user routing decision, atomic publication, cleanup, and downstream work have independent authority. Evidence is bound to exact source/dependency/toolchain/build/run receipts, and only the user can select recoverable routing state.
+
+## Contract identity
+
+- Skill: `.agents/skills/prototype/SKILL.md`
+- Continuation contract: `.agents/skills/prototype/references/continued-workflow.md`
+- Metadata: `.agents/skills/prototype/agents/openai.yaml`
+- Run receipt: `cgs.prototype-run-receipt/v1`
+- Build receipt: `cgs.prototype-build-receipt/v1`
+- Play receipt: `cgs.prototype-play-receipt/v1`
+- Skip record: `cgs.prototype-skip/v1`
+- Consent record: `cgs.prototype-consent/v1`
+- Pivot record: `cgs.prototype-pivot/v1`
+- Graveyard event: `cgs.prototype-graveyard-event/v1`
+- Cleanup receipt: `cgs.prototype-cleanup-receipt/v1`
+
+## Invocation
+
+```text
+$prototype <concept-or-question> [--path html|engine|paper] [--spike]
+           [--pivot <pivot-record-path> --expect-pivot <sha256:...>]
+```
+
+A missing concept/question prints usage with zero project reads, agents, worktrees, directories, checkpoints, dependencies, or writes. Pivot path/hash must be supplied together and identify one exact immutable record; moving aliases are rejected.
+
+## P0 invariants retained
+
+1. No persistent write—including worktree/temp/root/checkpoint/dependency/cache—occurs before exact execution authorization.
+2. All experiment mutations remain under one new authorized isolated root and cannot contaminate production source/assets/tests/design/state.
+3. Iteration, command, failure, time, file, byte, dependency-resolution, and play-session budgets are monotonic and necessarily terminate.
+4. Agents/reviewers emit advisory recommendations only. `USER_DECISION` requires explicit user selection.
+5. Execution authorization never grants publication, cleanup beyond its exact manifest, product/design approval, or downstream authority.
+6. REPORT/index/DECISION/pivot/graveyard publish as one CAS-guarded all-or-none transaction or remain non-authoritative.
+7. `run_status: COMPLETE` means only bounded experiment/evidence protocol completion; `product_approval: NOT_GRANTED` remains true.
+
+## P1 requirements
+
+### A. No unsupported success probability — PROTO-P1-001
+
+1. HTML, engine, paper, and spike modes are compared by evidence capabilities and limitations, not generic probability.
+2. No inherited, anecdotal, or generic numeric success rate may guide selection without exact dataset path/hash, sample/outcome definition/count, period, uncertainty, and applicability to the current hypothesis.
+3. Without applicable measurement, record `mode_success_probability: NOT_ESTABLISHED`.
+4. Recommendation confidence is evidence quality/limitations, not an invented probability.
 
-`$prototype` runs one finite throwaway experiment inside
-`prototypes/throwaway/<prototype-id>/` or an explicitly approved isolated
-worktree containing that root. The planning phase is read-only. Before any
-checkpoint, worktree, code, asset, dependency, build output, or evidence write,
-the user approves the exact execution changeset and hard budget. Build/play
-claims require actual current-run evidence. The agent emits an advisory
-RECOMMENDATION; the user owns the decision. Report/index/decision publication is
-a separate all-or-none changeset and never authorizes downstream design or
-production work.
+### B. Dependency lock, version, build, and dirty-worktree identity — PROTO-P1-002
 
-## Static Assertions
+1. Read-only preflight records repository/root/VCS/commit/branch/Git/submodule identity; pre-existing dirty/untracked path inventory and canonical hash; exact context hashes; OS/architecture; engine/runtime/SDK/compiler/build/package-manager versions and executable hashes where available.
+2. Dependency manifest, lockfile, registry/source, cache/offline state, build config, environment allowlist, and generated-output boundaries are explicit and hash-bound.
+3. `latest`, floating ranges, mutable URLs, global installs/caches, and unlocked dependency resolution cannot support reproducible build claims.
+4. A needed lockfile may be created only inside the prototype root after execution authorization, from an exact pinned dependency manifest/source. Production/global dependencies and lockfiles are unchanged.
+5. `build_identity_sha256` binds prototype/run, source manifest, dependency manifest/lock, toolchain, build config, exact command/arguments, and environment allowlist.
+6. `cgs.prototype-build-receipt/v1` records exact command/working directory/times/exit/result, identity hashes, toolchain versions, artifacts/log/generated-manifest hashes, and outside-root mutations.
+7. PASS requires actual execution, zero exit, expected current artifacts, matching identity, and zero unapproved outside mutation.
 
-- [ ] Frontmatter contains `name: prototype` and a non-empty description
-- [ ] All experiment mutations are bounded to one new throwaway root
-- [ ] Checkpoint/worktree/directory creation occurs only after execution approval
-- [ ] Exact authored paths and bounded generated subtrees are previewed
-- [ ] Production source/assets and prototype code cannot import/load each other
-- [ ] Iteration, command, failure, elapsed-time, file-count, and byte budgets are
-      explicit and monotonic
-- [ ] Actual build receipt contains command, environment/version, exit code,
-      source hash, artifact/log paths, and hashes
-- [ ] Actual play evidence contains build ID, participant/session protocol,
-      observations, measurements, and evidence hashes
-- [ ] MODEL_SIMULATION and source inspection cannot be reported as real play/build
-- [ ] RECOMMENDATION and USER_DECISION are distinct fields
-- [ ] PROCEED never grants concept/GDD/production approval
-- [ ] Execution authorization never grants publication or downstream authority
-- [ ] REPORT/index/decision/graveyard publish as one CAS-guarded atomic group or
-      none of them becomes authoritative
-- [ ] Main SKILL requires the continued-workflow evidence/publication contract
-- [ ] Metadata describes isolated evidence-driven execution, not a final product
-      verdict
+### C. Isolation fallback and original-worktree protection — PROTO-P1-003
 
----
+1. Preferred Git worktree path/base/metadata actions are exact and execution-authorized.
+2. If unavailable, no silent fallback occurs. User chooses `isolated_temp_root`, `current_workspace_bounded_root`, or `CANCEL` after a regenerated preview.
+3. Every fallback uses a new absent exact root, validates parent/symlink/junction/reparse boundaries, redirects caches/temp/build/user data, and enforces bidirectional production/prototype isolation.
+4. Original dirty-worktree manifest is compared before/after every command. Unexpected change is BLOCKED, logged with hashes, never reverted or retroactively authorized.
+5. Uncontainable tools do not run.
+6. Retention is explicitly `RETAIN`, `CLEAN_AFTER_RECEIPT`, or `CLEAN_LATER`. Cleanup is never implied by KILL/completion.
+7. Cleanup may target only the exact newly created root/worktree after receipt preservation and explicit destructive authorization; otherwise retain it with `CLEANUP_REQUIRED`.
+8. Cleanup emits a hash-bound receipt and never deletes pre-existing/user/production data.
 
-## Test Cases
+### D. Run receipt and source-hash provenance — PROTO-P1-004
 
-### Case 1: Planning and authorization order produce zero early writes
+1. Every run finalizes immutable `RUN-RECEIPT.yaml` as `cgs.prototype-run-receipt/v1`.
+2. It binds prototype/run/hypothesis/pivot, skill/continuation-contract paths and hashes, execution authorization, isolation/cleanup, source/dirty manifests, dependency manifest/lock, toolchain/build config/environment/generated outputs, checkpoint chain, commands, build/play/skip/consent/redaction/evidence hashes, budgets/status, draft/proposal, and cleanup receipt.
+3. Debrief, recommendation, REPORT, DECISION, index, pivot, and graveyard facts cite the exact run-receipt path/hash and relevant source/build/play hashes.
+4. Missing/stale/inconsistent receipt prevents current fact publication and caps recommendation at INCONCLUSIVE.
+5. Run receipt and prior receipts are immutable; continuation revalidates exact bytes rather than copying narrative.
 
-**Fixture:**
+### E. Typed skip taxonomy — PROTO-P1-005
 
-- no matching prototype root exists
-- an isolated worktree is available
-- hypothesis/path/budget planning completes
-- user has not approved the execution changeset
+Every unexecuted/inapplicable planned step emits `cgs.prototype-skip/v1` with step ID, taxonomy, reason, current evidence/hash, actor/source, time, scope, affected signal/claim, recommendation ceiling, and recovery condition.
 
-**Expected behavior:**
+Allowed taxonomy is exactly:
 
-1. The workflow performs read-only planning.
-2. It previews the worktree action, new throwaway root, every authored path,
-   bounded generated subtree, owner/operation/base state, commands, dependencies,
-   and hard budget.
-3. It does not create the worktree, root, checkpoint, manifest, dependency cache,
-   code, assets, logs, or evidence.
-4. Declining approval ends with zero persistent changes.
+- `NOT_APPLICABLE`
+- `USER_ACCEPTED_RISK`
+- `ENVIRONMENT_BLOCKED`
+- `DEPENDENCY_UNAVAILABLE`
+- `BUDGET_EXHAUSTED`
+- `CONSENT_WITHHELD`
+- `UNSUPPORTED_MODE`
+- `NOT_REQUESTED`
+- `FAILED_PRECONDITION`
 
-**Assertions:**
+Free-text skip is invalid. NOT_APPLICABLE requires a false applicability predicate and evidence. USER_ACCEPTED_RISK needs an exact explicit user response and cannot waive safety, containment, privacy, authorization, destructive-action, identity, or evidence integrity. A skip is never PASS/MET/OBSERVED/evidence of absence. Essential build/play/consent skips force INCONCLUSIVE for affected claims.
 
-- [ ] Checkpoint is not an authorization exception
-- [ ] Worktree creation is not an authorization exception
-- [ ] Filesystem before/after snapshots are identical
-- [ ] Publication paths are explicitly excluded from execution authority
+### F. Correct design routing — PROTO-P1-006
 
----
+1. PROCEED is never routed directly to `design-review design/gdd/game-concept.md`.
+2. Prototype does not recreate stage heuristics; it uses explicit current artifacts/receipts or reports routing state unknown.
+3. Advisory routing is:
+   - absent/draft/disputed/unapproved concept → concept owner / brainstorm-class concept authoring or revision;
+   - explicitly approved/frozen concept without reviewed systems index → map-systems-class owner;
+   - reviewed systems index with missing system GDD → design-system-class owner;
+   - complete exact system GDD → `design-review <exact-system-gdd>` owner;
+   - technical-only evidence → bounded technical owner handoff.
+4. Every route is descriptive only and needs a separate exact task/authorization. No downstream workflow runs automatically.
+5. PROCEED does not freeze a concept, approve GDD/architecture/assets, create epics/stories/sprints, or authorize production work.
 
-### Case 2: Throwaway boundary prevents production contamination
+### G. Pivot lineage — PROTO-P1-007
 
-**Fixture:**
+1. PIVOT selection creates no new run or authorization.
+2. `cgs.prototype-pivot/v1` binds pivot ID, parent prototype/run/hypothesis/run-receipt/source/build/play hashes, previous threshold/evidence, retained facts, invalidated/unknown assumptions, changed variable(s), new falsifiable hypothesis/threshold/mode, changed scope/exclusions, dependency/toolchain/privacy changes, new hard budget/isolation proposal, and duplication check.
+3. Record begins `authorization_state: NOT_AUTHORIZED`, `next_run_id: NOT_CREATED`.
+4. It publishes only with the atomic group.
+5. A future `--pivot` run requires exact path/hash and validates parent lineage before planning; it receives new IDs/root/budget/changeset.
+6. Evidence carries forward only by exact hashes, never copied narrative. Invalid/missing lineage cannot silently repeat the experiment.
 
-- execution manifest authorizes
-  `prototypes/throwaway/PT-grapple-001/`
-- a prototyper proposes one source file in `src/gameplay/`
-- a prototype source imports a production controller
-- a production file is modified to load the prototype
+### H. Privacy and consent — PROTO-P1-008
 
-**Expected behavior:**
+1. Before participant feedback, recording, telemetry, personal logs, direct quotes, or identifiers, show purpose, participant type, data categories/method, recording types, storage/access/recipients, retention/cleanup, quote/anonymization, decline/withdrawal, and excluded sensitive data.
+2. Consent is explicit per participant and data category in `cgs.prototype-consent/v1`; silence is no consent.
+3. Feedback consent does not imply recording, quote, publication, or identity-disclosure consent.
+4. Minors/vulnerable participants require an applicable owner-approved policy and necessary guardian/organizational consent; otherwise `CONSENT_WITHHELD`.
+5. Secrets/credentials/private keys are never persisted. Collection is minimized and participants are pseudonymized.
+6. Raw personal/sensitive evidence is quarantined in an authorized restricted root or not written, never published/indexed, and remains BLOCKED until an authorized redaction receipt exists.
+7. Withdrawal stops collection and marks evidence `WITHDRAWN_NOT_USABLE`; deletion/retention follows explicit authority.
+8. Play receipts bind pseudonymous participant, consent, build/run/source, protocol/facts/reports/measurements/redaction/evidence and keep observed fact, participant report, model inference, and not observed separate.
 
-1. Only the throwaway root is eligible for execution writes.
-2. The `src/gameplay/` proposal is rejected before write.
-3. Both import/load directions fail the boundary audit.
-4. Unexpected outside mutation is BLOCKED, not retroactively authorized.
-5. Prototype code/assets remain disposable and are never promoted in place.
+### I. Recoverable explicitly confirmed KILL — PROTO-P1-009
 
-**Assertions:**
+1. KILL recommendation, initial user selection, explicit KILL confirmation, graveyard publication authorization, cleanup, and reopening are separate actions.
+2. Confirmation is bound to exact prototype/run/run-receipt and states non-deletion, retained evidence, proposed graveyard/index state, reopen semantics, and separate publication approval.
+3. Only unambiguous affirmative confirmation produces `USER_DECISION: KILL` and state `USER_KILLED_RECOVERABLE`; otherwise decision remains PENDING and no graveyard event is written.
+4. `cgs.prototype-graveyard-event/v1` binds exact evidence/confirmation hashes, reason, what worked, retained/reusable evidence, privacy limits, reopen prerequisites, and `destructive_cleanup_authorized: false`.
+5. KILL never deletes source/prototype/evidence/report/branch/worktree and is never forced by pivot/iteration count.
+6. REOPEN requires future explicit user confirmation plus a separate atomic publication transaction, appends a linked event, preserves history, and starts no prototype automatically.
 
-- [ ] One new unique prototype root
-- [ ] No production source, assets, tests, design, docs, or state mutation
-- [ ] Tool caches/build outputs remain inside approved generated subtrees
-- [ ] PROTOTYPE — NOT FOR PRODUCTION marker and IDs are present
+## Evidence and recommendation contract
 
----
+The continuation reference is mandatory and its previewed SHA-256 is revalidated before use. It validates the entire current run packet and excludes stale, withdrawn, consent-restricted, differently hashed, or mixed-contract evidence.
 
-### Case 3: Isolated worktree unavailable requires explicit fallback choice
+Draft sections separate experiment/receipt identity, observed facts, participant reports, build/play results, typed skips/unsupported scope, not-run/not-observed/withdrawn items, model inferences, and recommendation.
 
-**Fixture:**
+Recommendation values are `PROCEED | PIVOT | KILL | INCONCLUSIVE`. An optional reviewer is advisory only. No reviewer/director can change receipts, select a user decision, or mutate publication.
 
-- requested isolated worktree cannot be created
-- current workspace is writable
+User routing values are `PROCEED | PIVOT | KILL | DEFER | MORE_EVIDENCE | PENDING`. Exact response/options/receipt/time/record hash are retained; the selection itself writes nothing.
 
-**Expected behavior:**
+## Execution authorization and finite loop
 
-1. The workflow does not silently write current workspace.
-2. It offers the exact current-workspace throwaway root as a bounded alternative.
-3. User approval is required for the revised isolation action/manifest.
-4. Decline means zero writes and BLOCKED/CANCELED.
+The complete execution preview includes exact isolation actions, authored paths, local locks, receipts, consent paths, generated subtrees, commands, dependency sources, toolchain/build/environment identity, source/dirty snapshots, budgets/deadline, privacy/retention/cleanup, operations/owners/base hashes/byte ceilings, non-writes, and excluded publication paths.
 
-**Assertions:**
+Any expansion or drift requires a new preview/authorization. Counters increment before work; limit exhaustion stops tools and does not reset/extend in place. Checkpoint resume verifies the hash chain and all source/lock/toolchain/build/evidence/consent/pivot/dirty identities.
 
-- [ ] No implicit fallback
-- [ ] Same throwaway/import boundary applies
-- [ ] Existing prototype roots are not overwritten, moved, extended, or deleted
+## Atomic publication contract
 
----
+After a valid explicit user decision, the proposed group contains final REPORT, DECISION, exact index change, PIVOT-NOTE for PIVOT, graveyard event only for confirmed KILL, and authorized transaction paths. Every member shares transaction ID, run-receipt/source/lock/toolchain/build/play hashes, skip/privacy state, recommendation, exact decision record, scope `EXPERIMENT ROUTING ONLY — NOT PRODUCT APPROVAL`, and recovery lineage.
 
-### Case 4: Hard budget terminates repeated build failure
+Execution authorization, consent, recommendation, user selection, and content approval do not authorize publication. Preview exact paths/operations/owners/base hashes/content and recovery mechanics, then obtain publication authorization.
 
-**Fixture:**
+Before commit, CAS all targets and evidence identities, stage/cross-validate, and prove atomic apply or safe rollback. Any failure modifies no final target and returns `PARTIAL — PUBLICATION_NOT_COMMITTED`. Read-back inconsistency is BLOCKED and is never presented as authoritative.
 
-- max iterations is 3
-- max commands is 12
-- max consecutive failures is 2
-- first two engine build commands fail
-- no valid playable build exists
+## Behavioral cases
 
-**Expected behavior:**
+### Case 1 — No generic success-rate guidance
 
-1. Counters increment before each command.
-2. After the second consecutive failure, no more implementation/build command is
-   issued.
-3. Current errors/evidence are checkpointed within approved paths.
-4. Result is PARTIAL — BUDGET EXHAUSTED or BLOCKED.
-5. The workflow does not increase/reset the budget or continue "until playable."
+No applicable dataset exists. Mode options show capabilities/limitations and `mode_success_probability: NOT_ESTABLISHED`; no percentage appears. A dataset-backed percentage includes every required provenance/applicability field.
 
-**Assertions:**
+### Case 2 — Dirty worktree and reproducible build
 
-- [ ] Loop necessarily terminates
-- [ ] Resume preserves consumed counters and absolute deadline
-- [ ] More work requires a new user decision and authorization
-- [ ] No PROCEED recommendation based on the failed build
+Pre-existing user changes are frozen by path/hash. Build uses pinned engine/toolchain and prototype-local lock. Actual receipt binds exact source/lock/config/command/artifacts. A changed outside-root file blocks the run and is not reverted.
 
----
+### Case 3 — Worktree fallback
 
-### Case 5: Successful build has reproducible evidence
+Requested worktree cannot be created. Zero writes occur until the user explicitly chooses temp, bounded current root, or cancel and approves a regenerated changeset. Temp retention/cleanup and original-tree postchecks are explicit.
 
-**Fixture:**
+### Case 4 — Receipt-bound publication facts
 
-- approved HTML or engine prototype source exists
-- an actual build/load command runs successfully
-- expected artifacts and raw logs exist
+A build/debrief exists but RUN-RECEIPT hash is stale. Recommendation becomes INCONCLUSIVE and no report/index fact publishes as current. Revalidation with matching receipt enables a proposal.
 
-**Expected behavior:**
+### Case 5 — Skip taxonomy
 
-1. Receipt records build/prototype IDs, source-manifest hash, exact command,
-   working directory, environment/runtime/engine version, timestamps, exit code,
-   result, artifact hashes, and log hash.
-2. PASS requires exit code zero and current expected artifacts.
-3. Mutation audit confirms outputs remain inside the root.
-4. A source-only claim without command execution is NOT_RUN.
+Environment lacks the pinned engine. Record ENVIRONMENT_BLOCKED with current evidence and affected claim; do not mark pass. User risk acceptance cannot waive the missing executable or privacy boundary.
 
-**Assertions:**
+### Case 6 — Correct PROCEED routing
 
-- [ ] Build evidence is bound to current source bytes
-- [ ] Proposed/mock command never becomes PASS
-- [ ] Stale build cannot support later play evidence
-- [ ] Successful build alone does not prove fun/player feel
+Concept is a draft and no system GDD exists. Advisory route is concept authoring/revision, not `design-review game-concept.md`; nothing executes. When a complete exact system GDD exists, only that GDD may be named for design review.
 
----
+### Case 7 — Bound PIVOT
 
-### Case 6: Real play evidence and no fabricated observations
+The user selects PIVOT. Record parent receipt/failure evidence, one changed assumption, new threshold, exclusions/budget, and duplication check. The next run fails closed without exact pivot path/hash and always uses new IDs/root/authorization.
 
-**Fixture variants:**
+### Case 8 — Consent and withdrawal
 
-- user actually plays build BUILD-1 and reports observations;
-- no human plays;
-- paper path contains a model-written simulated play cycle;
-- external tester evidence contains unredacted personal information.
+An external participant accepts text feedback but rejects recording/publication. Only consented minimized feedback is usable; no recording/quote publication occurs. Later withdrawal marks linked evidence unusable and lowers the recommendation ceiling without silent deletion.
 
-**Expected behavior:**
+### Case 9 — KILL pending/confirmed/reopened
 
-1. Real session records session/build IDs, participant type, consent/redaction,
-   times, protocol, observations, measurements, signal, and evidence hashes.
-2. No-play variant records PLAY NOT RUN.
-3. Model simulation is labeled MODEL_SIMULATION and cannot count as human play.
-4. Sensitive evidence is redacted or blocked.
-5. Fun/player-feel conclusions are INCONCLUSIVE without real current-build play.
+Agent recommends KILL; user is silent: PENDING and no graveyard. User explicitly confirms exact KILL: recoverable event is proposed, evidence retained, no deletion. Publication requires separate approval. Later REOPEN appends history after explicit confirmation and launches nothing.
 
-**Assertions:**
+### Case 10 — P0 authorization and bounded-loop regression
 
-- [ ] No invented participant, quote, timestamp, action, or metric
-- [ ] Observed fact, participant report, inference, and not-observed are separated
-- [ ] Play evidence references the exact build/source hash
-- [ ] Paper document validation is not play evidence
+Before execution approval, filesystem is unchanged. Two consecutive failures at the limit stop commands. No agent chooses a final decision. Publication CAS conflict leaves no half-authoritative report/index/decision/graveyard.
 
----
+## Negative assertions
 
-### Case 7: Recommendation cannot become final product decision
+Any of these is a contract failure:
 
-**Fixture variants:**
+- unsupported numeric success-rate guidance;
+- executable build without exact dependency lock/toolchain/source identity;
+- silent isolation fallback, global install/cache, production-lock mutation, or automatic revert of dirty worktree;
+- debrief/index fact without exact run receipt/source hashes;
+- free-text or pass-equivalent skip;
+- direct PROCEED route to concept-file design review;
+- pivot without exact parent failure evidence and changed hypothesis/threshold;
+- recording, quote, personal data, or publication without category-specific consent/redaction;
+- forced, agent-owned, destructive, unconfirmed, or irreversible KILL;
+- cleanup implied by KILL;
+- execution approval treated as publication/downstream authority.
 
-- evidence supports RECOMMENDATION: PROCEED;
-- optional reviewer recommends KILL;
-- three prior pivots exist;
-- user has not selected an option.
+## Remediation traceability
 
-**Expected behavior:**
-
-1. Agent/reviewer output remains advisory.
-2. No USER_DECISION is written until explicit user selection.
-3. Pivot count never forces KILL.
-4. Without a decision, outcome is DECISION PENDING.
-5. Creative director or another agent cannot override the user.
-
-**Assertions:**
-
-- [ ] RECOMMENDATION and USER_DECISION remain separate
-- [ ] No agent verdict is final
-- [ ] Silence/risk acceptance is not a decision
-- [ ] No graveyard entry without explicit user KILL plus publication approval
-
----
-
-### Case 8: User PROCEED is not concept or production approval
-
-**Fixture:**
-
-- current evidence supports PROCEED
-- user explicitly chooses PROCEED
-
-**Expected behavior:**
-
-1. Decision scope states EXPERIMENT ROUTING ONLY — NOT PRODUCT APPROVAL.
-2. Concept, GDD, architecture, assets, stories, sprints, and production code
-   remain unapproved/unauthorized.
-3. No downstream workflow runs automatically.
-4. At most one next legal action is described.
-5. That action requires its own task scope and authorization.
-
-**Assertions:**
-
-- [ ] PROCEED cannot bypass design/concept gates
-- [ ] Code/asset authorization does not carry downstream
-- [ ] No automatic design-review, gate-check, map-systems, or design-system call
-
----
-
-### Case 9: Publication is a separate atomic changeset
-
-**Fixture:**
-
-- execution is complete and REPORT-DRAFT is non-authoritative
-- user selected PIVOT
-- final REPORT, DECISION, index row, and PIVOT-NOTE paths are known
-- none is publication-authorized yet
-
-**Expected behavior:**
-
-1. Workflow previews exact final paths/operations/owners/base hashes/full content
-   and transaction ID.
-2. It obtains separate publication approval.
-3. All candidates are staged and cross-validated.
-4. Final targets change as one all-or-none group.
-5. Every committed file contains the same evidence hashes, recommendation, user
-   decision, decision scope, and transaction ID.
-
-**Assertions:**
-
-- [ ] Execution approval is insufficient
-- [ ] User decision is insufficient filesystem authority
-- [ ] REPORT cannot publish before index/decision group readiness
-- [ ] Reviewer cannot rewrite recommendation/decision after publication
-
----
-
-### Case 10: Publication CAS conflict exposes no half-authoritative state
-
-**Fixture:**
-
-- final publication group is approved
-- another actor changes `prototypes/index.md` after preview
-- REPORT and DECISION final targets remain unchanged
-
-**Expected behavior:**
-
-1. Pre-commit CAS detects the index mismatch.
-2. No final target is modified.
-3. REPORT-DRAFT stays visibly non-authoritative.
-4. Result is PARTIAL — PUBLICATION NOT COMMITTED with recovery conflicts.
-5. A new preview/approval is required.
-
-**Assertions:**
-
-- [ ] No report/index/decision split commit
-- [ ] No overwrite of concurrent changes
-- [ ] Atomic/rollback inability also blocks final publication
-- [ ] Temporary candidates are never presented as authoritative
-
----
-
-### Case 11: KILL remains user-owned and recoverable
-
-**Fixture:**
-
-- recommendation is KILL
-- user explicitly chooses KILL
-- publication group includes exact GRAVEYARD update
-
-**Expected behavior:**
-
-1. Prototype/evidence files are retained.
-2. No deletion occurs.
-3. Graveyard entry records USER_DECISION, evidence hashes, reason, what worked,
-   and recoverable REOPENED semantics.
-4. Graveyard/report/index/decision commit atomically.
-5. A future reopen requires explicit user authorization.
-
-**Assertions:**
-
-- [ ] No forced KILL
-- [ ] No destructive cleanup
-- [ ] Graveyard authorization is separate from experiment code/assets
-- [ ] Model cannot reopen or kill autonomously
-
----
-
-### Case 12: Happy path remains an experiment, not an approval
-
-**Fixture:**
-
-- one falsifiable hypothesis and exact threshold
-- isolated execution changeset approved
-- prototype builds and receives real play evidence
-- budget is not exceeded
-- recommendation is PROCEED
-- user chooses PROCEED
-- atomic publication group commits
-
-**Expected behavior:**
-
-1. All writes stay within authorized boundaries.
-2. Current build/play evidence supports the recommendation.
-3. Publication records recommendation and user decision separately.
-4. Run status is COMPLETE, publication COMMITTED, product approval NOT_GRANTED.
-5. No downstream workflow or production implementation starts.
-
-**Assertions:**
-
-- [ ] COMPLETE describes evidence protocol completion only
-- [ ] Product approval remains NOT_GRANTED
-- [ ] Hashes/IDs/commands/evidence/transaction are reproducible
-- [ ] Next action is advisory and separately authorized
-
----
-
-### Case 13: No argument
-
-**Input:** `$prototype`
-
-**Expected behavior:**
-
-1. Usage is shown.
-2. No project file is read.
-3. No agent is spawned.
-4. No worktree, root, checkpoint, or file is created.
-
-**Assertions:**
-
-- [ ] Zero side effects
-- [ ] No silent concept selection
-
----
-
-## Outcome matrix
-
-| Evidence/run condition | Recommendation/verdict ceiling |
+| Finding | Closure evidence |
 |---|---|
-| No valid build for executable claim | BUILD NOT RUN/FAIL; no playable claim |
-| No current real play for feel/fun claim | INCONCLUSIVE |
-| Budget exhausted with partial evidence | PARTIAL |
-| Agent recommendation without user choice | DECISION PENDING |
-| User PROCEED | Experiment routing only; product approval NOT_GRANTED |
-| Publication conflict/unsafe atomicity | PUBLICATION NOT COMMITTED |
-| Complete bounded run and current evidence | Run COMPLETE; still not product approval |
+| PROTO-P1-001 | Section A removes generic percentages and requires measured dataset provenance/applicability |
+| PROTO-P1-002 | Section B pins lock/toolchain/build/source/dirty/generated identities and receipt semantics |
+| PROTO-P1-003 | Section C defines explicit fallback choices, original-worktree guards, retention and cleanup receipts |
+| PROTO-P1-004 | Section D makes immutable run receipt/source hashes mandatory for all downstream facts |
+| PROTO-P1-005 | Section E defines exclusive typed skip taxonomy and claim ceilings |
+| PROTO-P1-006 | Section F maps concept → systems → system GDD → review correctly and forbids direct concept-file review |
+| PROTO-P1-007 | Section G binds each pivot to parent failure evidence, changed hypothesis/criteria, and new-run identity |
+| PROTO-P1-008 | Section H defines consent categories, minimization, redaction, withdrawal, retention, and receipt binding |
+| PROTO-P1-009 | Section I separates recommendation/confirmation/publication/cleanup/reopen and preserves recoverable history |
 
-## Protocol Compliance
+## Final outcome fields
 
-- [ ] Approval precedes every persistent execution side effect
-- [ ] Throwaway root and production import boundary are enforced
-- [ ] Hard budgets make loops finite
-- [ ] Build/play evidence is actual, current, and hash-bound
-- [ ] Recommendations are advisory; user owns decisions
-- [ ] PROCEED does not approve product/design/production state
-- [ ] Execution, publication, and downstream authority are separate
-- [ ] Final report/index/decision publish atomically or not at all
-- [ ] Shared project files remain unchanged until separately authorized publication
-
-## Coverage Notes
-
-- Shared workflow catalog/guide, prototype report template, and consumers of
-  `prototypes/index.md` need a separately authorized migration to the new
-  recommendation/user-decision/product-approval schema.
+Every result independently reports run/build/play/recommendation/user-decision/decision-record/run-receipt/publication/cleanup status, exact evidence identities, `product_approval: NOT_GRANTED`, and `auto_executed_downstream: false`.

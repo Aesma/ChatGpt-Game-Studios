@@ -1,4 +1,4 @@
 interface:
   display_name: "Sprint Status"
-  short_description: "Fast sprint status check for game-studio projects"
-  default_prompt: "Use $sprint-status to run the Sprint Status game-studio workflow."
+  short_description: "Read-only revision-checked sprint health with explicit unknowns"
+  default_prompt: "Use $sprint-status to inspect one stable sprint without writes or gates, validate tracker and story hashes, classify missing status as UNKNOWN, read staleness and risk thresholds from project configuration, and keep data_status DATA_CONFLICT separate from the priority-, estimate-, and dependency-aware health_status enum."

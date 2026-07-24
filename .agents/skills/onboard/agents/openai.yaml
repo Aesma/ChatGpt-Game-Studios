@@ -1,4 +1,4 @@
 interface:
   display_name: "Onboard"
-  short_description: "Read-only, bounded, source-cited project orientation"
-  default_prompt: "Use $onboard to return a role-aware onboarding summary with bounded sources, visibility controls, provenance, and explicit partial/error states."
+  short_description: "Bounded, visibility-safe, source-cited repository orientation"
+  default_prompt: "Use $onboard to return a read-only onboarding_context/v2 summary that applies root and nested instructions, fixed context/Git budgets, pre-read sensitive-data denial, and optional current canonical stage/help evidence without inventing hierarchy, project facts, or actions."

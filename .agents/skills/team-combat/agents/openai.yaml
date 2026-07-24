@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Combat"
-  short_description: "Implement an approved combat story with verified tests"
-  default_prompt: "Use $team-combat with a Ready story path and hash-bound approval evidence to plan and execute a manifest-authorized combat implementation."
+  short_description: "Implement one approved combat story with reviewed evidence"
+  default_prompt: "Use $team-combat with one exact v2 request, persisted design/architecture/readiness evidence, an engine-bound ownership manifest, and independent functional/performance verification."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Architecture Review"
-  short_description: "Hash-bound read-only architecture traceability gate"
-  default_prompt: "Use $architecture-review to review explicit owner-approved requirement, ADR, engine, story, and current test-run evidence against one hashed target manifest; return exactly PASS, BLOCKED, or PARTIAL and do not modify project truth sources."
+  short_description: "Bounded, hash-bound architecture traceability gate"
+  default_prompt: "Use $architecture-review full to review one bounded exact-hash target manifest under cgs.architecture-review-rules/v1. Admit only explicit owner-approved requirement IDs, require exact ADR/story/test-run evidence, run only the profile-capped reviewers, expose missing and NOT_APPLICABLE input classes, and return exactly PASS, BLOCKED, or PARTIAL. Do not modify project truth; write at most one new immutable report only after exact-path approval."

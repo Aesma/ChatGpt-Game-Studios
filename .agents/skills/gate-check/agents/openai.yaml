@@ -1,4 +1,4 @@
 interface:
   display_name: "Gate Check"
   short_description: "Read-only, hash-bound phase-transition assessment"
-  default_prompt: "Use $gate-check with an exact transition ID to assess readiness without changing project stage."
+  default_prompt: "Use $gate-check with an exact transition ID to assess readiness against current hash-bound producer evidence without changing project stage."

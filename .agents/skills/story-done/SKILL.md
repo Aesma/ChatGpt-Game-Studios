@@ -1,423 +1,325 @@
 ---
 name: story-done
-description: "Fail-closed end-of-story completion review. Verifies every required acceptance criterion with current hash-bound automated or manual evidence, enforces story-type evidence, preserves readiness and dev-story provenance, and only then closes the story."
+description: "Fail-closed end-of-story closure evaluator. Validates immutable story requirements, current tracker IN_REVIEW state, exact dev-story lifecycle receipts and test/review/QA evidence, then requests the unique tracker recorder to commit a tracker-only done transition."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as $story-done [story-file-path] [--review full|lean|solo].
-The story path is optional only for story selection.
-
-Before the first file mutation, present one complete changeset preview listing
-every target path and intended change and obtain one explicit approval. Existing
-bounded authorization may satisfy this requirement when it already names the
-same complete write set. Any new path or material change invalidates the preview
-and requires a revised approval. Never ask again per file inside an unchanged
-approved changeset.
 
 # Story Done
 
-This workflow is the sole owner of the In Review -> Complete transition. It
-consumes the provenance and test handoff produced by $dev-story, revalidates the
-current story and implementation, and computes a fail-closed completion verdict.
+## Invocation, authority, and outcomes
 
-A story is closable only when every required acceptance criterion has a concrete
-PASS result on the current verification tree and every evidence requirement for
-the declared story type is satisfied. File existence, symbol names, keyword
-searches, numeric scans, and a conversational Yes are findings, not acceptance
-evidence.
+Invoke as `$story-done [story-file-path] [--review full|lean|solo]`. The path is optional only for bounded selection from the canonical active sprint tracker. Resolve review mode once from the argument, then `production/review-mode.txt`, then `lean`.
 
-Outputs:
+This workflow owns closure evaluation and the exact request for the tracker-row `in_review -> done` transition. It does not own story author bytes, the sprint plan, planning hashes, or the tracker file. The tracker-declared `lifecycle_recorder: cgs.sprint-tracker/v2` is the sole canonical lifecycle writer. `$dev-story` ends at a verified tracker row `in_review`; reject any dev result or transaction claiming Complete/Done.
 
-- COMPLETE, COMPLETE WITH NOTES, or BLOCKED;
-- a per-criterion evidence table;
-- a provenance and freshness report;
-- on an approved closable verdict, the updated story and normal status/session
-  projections; and
-- the next ready story or sprint close-out sequence.
+Return exactly one verdict:
 
----
+- `COMPLETE`: every required criterion, type obligation, source/readiness check, QA check, and required code review passes on current hashes, and the tracker lifecycle recorder returns a verified `COMMITTED` closure receipt with the row exactly `done`.
+- `COMPLETE WITH NOTES`: the same closure conditions hold, with only predeclared optional items, a valid review waiver, or non-blocking findings remaining.
+- `BLOCKED`: any required input, evidence, owner decision, current binding, gate, recorder capability, CAS precondition, commit, or receipt is absent, invalid, stale, partial, failed, or ambiguous.
 
-## Phase 0: Resolve mode and select the story
+A closable evidence verdict is not a lifecycle transition. Report completion only after the unique tracker lifecycle recorder returns a verified `COMMITTED` receipt. Before mutation, present the exact tracker-only proposal, tracker preimage hash/revision/event, requested owned row fields, preserved planning tuple, receipt destination, authorization binding, and rollback contract. One explicit approval covers that unchanged request. A different path, byte sequence, precondition, or material intent requires a new preview.
 
-Resolve review mode once:
+## Versioned contracts
 
-1. Use --review when supplied.
-2. Otherwise read production/review-mode.txt.
-3. Otherwise default to lean.
+The workflow consumes and emits these explicit schemas:
 
-When a path is supplied, read exactly that file. With no path, check
-production/session-state/active.md, then the newest current sprint file for an In
-Review story. If more than one candidate exists, ask the user to select one. If
-none exists, request a path.
+- `cgs.dev-story-result/v2`
+- `cgs.dev-story-plan/v2`
+- `cgs.dev-story-status-transition-proposal/v2`
+- `cgs.dev-story-status-transaction/v2` (recorder result/receipt)
+- `cgs.dev-story-checkpoint/v2`
+- `cgs.dev-story-test-execution/v2`
+- `cgs.sprint-tracker/v2`
+- `cgs.story/v2` (immutable author artifact)
+- `cgs.story-readiness-record/v1`
+- `cgs.story-readiness-recorder-receipt/v1`
+- `cgs.manual-evidence/v1`
+- `cgs.team-qa-result/v2`
+- `cgs.team-qa-signoff/v2`
+- `cgs-test-evidence-review-report/v2`
+- `cgs.story-review-policy/v1`
+- `cgs.review-evidence/v1`
+- `cgs.code-review/v2`
+- `cgs.code-review-recorder-receipt/v1`
+- `cgs.review-waiver/v1`
+- `cgs.design-equivalence-decision/v1`
+- `cgs.story-closure-transaction/v1` (tracker-only closure proposal)
+- `cgs.story-closure-receipt/v1` (lifecycle-recorder receipt)
 
-Read the selected story in full before delegation or mutation. Record the SHA-256
-of its raw bytes as story_baseline_hash. The expected lifecycle state is In
-Review. A story in Ready, In Progress, Draft, Blocked, Complete, or an
-unrecognized state is BLOCKED for closure. When production/sprint-status.yaml
-exists, its story projection must identify the same story and be in_review;
-otherwise report the mismatch as BLOCKED.
+Schema identity, canonical path, and raw-byte SHA-256 are mandatory whenever a contract is consumed. Unknown versions are `BLOCKED`; do not coerce them. All SHA-256 values use `sha256:` followed by exactly 64 lowercase hexadecimal characters.
 
----
+Stable IDs are required. Preserve explicit story and AC IDs. Test IDs, evidence IDs, QA finding IDs, review IDs, owner-decision IDs, and transaction IDs must be unique within the story and must not be generated from timestamps or prose alone. When a legacy story lacks an AC ID, use `AC-{ordinal}@{plan_hash}` only as a run-local identity bound to the exact approved criterion mapping. Do not fuzzy-match by wording.
 
-## Phase 1: Load and revalidate the implementation handoff
+## Phase 0: Select and freeze the closure subject
 
-### 1.1 Required dev-story handoff
+When a path is supplied, read exactly that immutable story file. Otherwise read the canonical active `cgs.sprint-tracker/v2` and select only an unambiguous row with status `in_review`; multiple candidates require user selection. Session prose may be a non-authoritative navigation hint only and cannot select or prove lifecycle state.
 
-Read the implementation handoff recorded in the story by $dev-story. Accept
-Markdown or structured YAML presentation, but require unambiguous values for:
+Read the story in full and record its raw `story_baseline_hash`. Require a stable story ID/path and immutable requirement core matching the tracker row and dev-story result. The canonical tracker row, not story frontmatter or prose, must be exactly `in_review`. Any other or unknown state is `BLOCKED`.
 
-- plan_hash in sha256:<64 lowercase hexadecimal> form;
-- each implementation and test/evidence path and its post-write raw SHA-256;
-- source-context paths and the raw SHA-256 values used for implementation;
-- every test command, working directory, start/end timestamp, exit code, raw log
-  SHA-256, and recorded PASS/FAIL/BLOCKED result;
-- acceptance-criterion coverage from the approved plan;
-- manifest provenance state, implemented_against_hash, the then-current manifest
-  hash, and any manifest waiver ID; and
-- dependency waiver IDs, when present.
+Resolve and hash the complete input set before evaluating evidence:
 
-Missing, malformed, ambiguous, or duplicate fields are BLOCKED. A prose claim
-that tests passed is not a substitute for the handoff.
+1. immutable story bytes, `cgs.dev-story-result/v2`, its exact `cgs.dev-story-plan/v2`, the final `cgs.dev-story-status-transition-proposal/v2`, and verified `cgs.dev-story-status-transaction/v2` result/receipt;
+2. the canonical sprint plan and `cgs.sprint-tracker/v2`, including raw tracker hash, `tracker_revision`, `event_id`, sprint identity/state, `lifecycle_owner`, `lifecycle_recorder`, and frozen `plan_file`/`plan_sha256`/`plan_revision`/`story_set_hash`;
+3. the current control manifest, active TR registry entries, governing Accepted ADRs, GDDs, Definition-of-Done profile, review policy, and all additional sources named by the story, plan, or result;
+4. the persisted readiness record and recorder receipt, test-execution/manual evidence, Team QA result/signoff, optional persisted evidence-review report, code-review envelope/extension and recorder receipt or waiver, and owner decision records; and
+5. every implementation, test, config, runtime-input, log, screenshot, build, and artifact path referenced by those records.
 
-Hash every listed implementation and test/evidence file now. Each current hash
-must equal its recorded post-write hash. A missing file or mismatch makes all
-evidence depending on that file stale and blocks closure.
+Reject path aliases such as `latest`, ambiguous duplicates, mutable external links without a content hash, missing files, malformed schemas, and any recorded/current hash mismatch. Freeze the story raw hash and planning tuple; closure must preserve them byte-for-byte.
 
-Compute verification_tree_hash as SHA-256 over canonical UTF-8 lines sorted by
-normalized path:
+## Phase 1: Require current readiness
 
-    plan_hash=<plan_hash>
-    <normalized implementation, automated-test, config, or runtime-input path>\tsha256:<current raw hash>
+Require one persisted `cgs.story-readiness-record/v1` and its matching immutable
+`cgs.story-readiness-recorder-receipt/v1`. The record must identify the exact
+current story ID/path/raw hash, have final verdict `READY`,
+`evaluation_state: COMPLETE`, `persistence_status: PERSISTED`, zero unknown
+required evidence, and `implementation_gate_eligible: true`. Its complete stale
+key must name every story, GDD, systems-index, TR registry/entry, ADR,
+control-manifest, dependency, asset, AC/Test/QA-plan, sprint/context,
+review-mode, reviewer, checker, and ruleset identity used by readiness.
 
-Exclude the story, status/session files, raw logs, screenshots, and the manual
-evidence record itself; hash those evidence artifacts separately. This avoids a
-self-referential evidence hash while binding the exact executable/tested inputs.
-Use lowercase hexadecimal hashes and LF separators. Record the resulting
-sha256:<64hex> value in the completion report and closure record. This value is
-the current subject-tree binding for manual evidence.
+The recorder receipt must have result `RECORDED` or `ALREADY_RECORDED`, identify
+the same record, candidate, readiness key, story raw hash, registry path, and
+verified final registry hash, and bind its own raw-byte hash. Independently
+reread and hash the record, receipt, registry, story, and every stale-key source.
+The persisted registry entry must equal the consumed record bytes and the
+receipt's final identity. A prior READY claim, direct candidate, changed story,
+non-READY record, false/missing `implementation_gate_eligible`, stale key,
+registry mismatch, or other recorder terminal is `BLOCKED`.
 
-### 1.2 Readiness and source provenance
+`STRUCTURED_ACCEPTED_RISK`, `STALE / ACCEPTED-RISK`, and a persisted
+`NEEDS_WORK` record may explain a dev-story result but are not closure
+readiness. They must return to the readiness owner for a current persisted READY
+record before story-done can close the story.
 
-Independently re-read and hash the sources required by the staged
-$story-readiness/$dev-story contract:
+Do not refresh provenance or run a readiness authoring workflow here. Route
+stale inputs to their owner.
 
-- docs/architecture/tr-registry.yaml;
-- docs/architecture/control-manifest.md;
-- every governing ADR;
-- every GDD or additional source named in the story or dev-story handoff; and
-- any Definition-of-Done profile that changes the default evidence matrix.
+## Phase 2: Validate the dev-story result and exact executions
 
-Verify exact active TR-IDs, Accepted ADR status, the current raw manifest hash,
-the story Manifest Version and Manifest Hash, and the Source Snapshot manifest
-entry. A prior story-readiness report may be consumed as provenance only when its
-recorded source hashes equal the current hashes; it never replaces this
-revalidation.
+Require one immutable `cgs.dev-story-result/v2` at its canonical path and raw hash. Only outcome `IMPLEMENTED` is admissible. The result must bind the exact workflow/request/plan/authorization hashes, immutable story identity/hash, readiness record and receipt, owner domains, planned and actual write sets with per-file pre/post hashes, AC coverage, Test-ID executions, lifecycle transaction evidence, checkpoint identity `NONE`, mutation snapshot, and canonical result hash.
 
-For normal provenance, the story header and Source Snapshot must match the
-current manifest, and the dev-story source-context hashes must still match all
-current sources.
+Require its exact `cgs.dev-story-plan/v2`. Each plan test row must contain stable Test ID and mapped AC IDs; kind; exact argv-token array; normalized cwd; environment allowlist; positive bounded timeout; runner/tool name, version, and executable hash or structured not-applicable reason; source/build identity; expected exit/result/assertion contract; and raw-log path, preimage, derivation-contract hash, and byte limit. No Test ID may appear twice under conflicting definitions, every required AC must have deterministic evidence, and free-form shell text or a closure-time replacement command is invalid.
 
-For a staged dev-story result labeled STALE / ACCEPTED-RISK, preserve that label
-and validate the structured manifest waiver:
+For every planned Test ID require one immutable `cgs.dev-story-test-execution/v2` with the same invocation/source/build fields plus start/end RFC-3339 UTC timestamps, timeout state, exit code or exact unavailable reason, raw-log byte count/hash, assertion observations, normalized `PASS|FAIL|BLOCKED` result, canonical path, and raw record hash. Recompute the Test-ID-sorted result-set hash named by the dev-story result and lifecycle transaction. Only current-transaction PASS records that exactly match the plan, finish within timeout, provide complete current logs, and meet the expected contract support an AC. Missing, unrun, timed-out, nonzero, malformed, stale, hashless, truncated, changed, `FAIL`, or `BLOCKED` execution is closure-blocking.
 
-- waiver_id is present;
-- implemented_against_hash equals the story's captured Manifest Hash and Source
-  Snapshot hash;
-- the waiver current_hash equals both the current manifest hash observed by
-  dev-story and the manifest hash observed now; and
-- every non-manifest readiness/source check passes.
+Require the final `cgs.dev-story-status-transition-proposal/v2` and `cgs.dev-story-status-transaction/v2` result/receipt to prove the tracker recorder committed `in_progress -> in_review`. Independently rehash and reread the canonical tracker. Require matching proposal hash, lifecycle owner/recorder identities, exact tracker pre/post hashes, revision/event increment, result `COMMITTED`, final row `in_review`, unchanged immutable story bytes, and byte-for-byte preservation of `plan_file`, `plan_sha256`, `plan_revision`, `story_set_hash`, all unowned row fields, and every other tracker row. A referenced or discoverable unresolved checkpoint, ambiguous/partial receipt, non-`IN_REVIEW` row, or terminal-state claim by dev-story is `BLOCKED`.
 
-A valid branch may continue but can produce at most COMPLETE WITH NOTES. It must
-never be relabeled READY or CURRENT. A missing or inconsistent waiver, a second
-manifest change, or any other source hash change is BLOCKED.
+Compute `verification_tree_hash` as SHA-256 over UTF-8 LF canonical lines, sorted by normalized path:
 
-Do not refresh story provenance inside this workflow. Route stale normal
-provenance back through the owning story update workflow, final
-$story-readiness, and $dev-story.
+    plan_hash={sha256 plan hash}
+    dev_story_result_hash={sha256 result hash}
+    dev_story_plan_hash={sha256 plan hash}
+    dev_story_transition_receipt_hash={sha256 receipt hash}
+    test_execution_set_hash={sha256 Test-ID-sorted execution set hash}
+    {normalized subject path}\tsha256:{raw subject hash}
 
----
+Bind the immutable story and canonical tracker raw hashes separately and recheck them immediately before closure. Every automated and manual record must name the exact verification tree or its declared equivalent binding.
 
-## Phase 2: Resolve acceptance criteria and evidence
+## Phase 3: Resolve criteria and story-type evidence
 
-### 2.1 Required versus optional criteria
+Every acceptance criterion is required unless its optional/non-blocking
+classification existed before plan approval and is bound by the unchanged story,
+  Definition-of-Done profile, dev-story result, and plan hashes. A closure-time
+request cannot downgrade a criterion.
 
-Read every acceptance criterion verbatim and retain its order. Every criterion
-is required by default.
+For each AC emit `PASS`, `FAIL`, `UNTESTED`, `DEFERRED`, or `STALE`.
+`COVERED` is only a mapping state. A required AC passes only through direct,
+current automated evidence from Phase 2 or a valid
+`cgs.manual-evidence/v1` record containing:
 
-A criterion is optional/non-blocking only when the story explicitly declared it
-that way before the approved dev-story plan, the plan coverage records the same
-classification, and the declaration is covered by an unchanged hashed
-Definition-of-Done profile or story source. A runtime request to defer, accept,
-or downgrade a required criterion is invalid.
+- stable evidence ID and exact AC ID;
+- tested tree hash and optional packaged-build path/hash;
+- reproducible steps and observed result;
+- explicit `PASS`;
+- tester identity, ISO-8601 session timestamp, and session ID;
+- artifact and sign-off IDs with paths/hashes; and
+- dev-story result, story, plan, producer, canonical path, and evidence hashes.
 
-Use the story's explicit stable AC ID when present. Otherwise use
-AC-<ordinal>@<plan_hash> as a run-local identifier bound to the approved plan's
-exact criterion mapping. Do not match evidence by similar wording.
+A conversational confirmation, checklist, filename, symbol, keyword, numeric
+scan, static inspection, or name similarity is a finding only. It never marks an
+AC `PASS`, `COVERED`, or `VERIFIED`. A changed tree, build, artifact, story,
+plan, result, or execution-set hash makes dependent evidence `STALE`.
 
-For each criterion record one of PASS, FAIL, UNTESTED, DEFERRED, or STALE.
-COVERED is a mapping state, not a passing result.
+Apply the blocking default evidence matrix unless an unchanged, predeclared
+Definition-of-Done profile supplies a stricter or explicitly approved method.
 
-### 2.2 Evidence that can produce PASS
-
-A required criterion may PASS only from one or more current evidence records that
-directly exercise its observable behavior.
-
-Automated evidence must include:
-
-- criterion ID and test/evidence ID;
-- exact test locator or scenario;
-- exact command and working directory;
-- start and end timestamps;
-- exit code 0;
-- recorded result PASS;
-- raw log SHA-256;
-- the approved plan mapping; and
-- current file hashes equal to the dev-story post-write hashes.
-
-The dev-story handoff format described in Phase 1 is valid automated evidence
-when all these values are present and unchanged. An unrun command, missing log
-hash, nonzero exit, FAIL/BLOCKED result, or ambiguous criterion mapping cannot
-PASS a criterion.
-
-Manual evidence must be a record in the declared evidence artifact and include:
-
-- evidence_id and exact criterion_id;
-- tested_tree_hash equal to the current verification_tree_hash;
-- optional build artifact path and raw build_hash, when a packaged build was
-  tested;
-- reproducible steps;
-- observed result;
-- explicit PASS result;
-- tester identity or stable tester handle;
-- ISO-8601 session timestamp; and
-- artifact links sufficient for the declared story type.
-
-A conversational Yes/No/Not tested answer, an unsigned checklist, or a sign-off
-without steps and observations is not manual evidence. If the tree or build hash
-changes, the record is STALE. Capture of a newly completed manual record may be
-proposed as an evidence-file write, but it cannot count until all fields and
-artifacts exist and its exact path is included in the approved changeset.
-
-Static inspection may produce findings only:
-
-- file or dependency existence;
-- symbol, function, class, number, or string searches;
-- hardcoded-value/localization scans; and
-- name similarity between a criterion and a test.
-
-Never use these findings alone to mark PASS, COVERED, or VERIFIED.
-
-### 2.2a Optional test-evidence-review receipt
-
-If a durable `$test-evidence-review` report is supplied, treat it only as a
-hash-bound summary of the evidence below. Require its exact canonical report
-path and hash, its exact review-manifest path/hash, and revalidate every captured
-QA-plan, story/AC, candidate/build, test source, smoke/playtest/manual artifact,
-attestation, and receipt hash. It can support closure only when all axes say:
-
-- `Workflow Status: COMPLETE`;
-- `Overall Evidence Quality: ADEQUATE`;
-- `Overall Execution Status: PASS`;
-- required `Execution Scope: FULL`;
-- `Closure Eligible: YES`; and
-- verified durable persistence with no stale binding.
-
-`ADEQUATE` alone never means tests ran. `PASS` without adequate evidence, a
-targeted execution scope, conversation-only output, missing review manifest, or
-any `UNKNOWN`, `STALE`, `UNAVAILABLE`, `INCOMPLETE`, or hash mismatch blocks
-closure. A supplied review does not waive the per-criterion checks in this
-phase; direct evidence may be used instead when no review is supplied.
-
-### 2.3 Blocking evidence matrix by story type
-
-Apply the strict default matrix. A predeclared, hash-bound Definition-of-Done
-profile may replace a row only when it was already part of the story and approved
-dev-story plan; no closure-time simplification is allowed.
-
-| Story Type | Blocking type evidence |
+| Story Type | Blocking evidence |
 |---|---|
-| Logic | Current passing automated unit-test evidence; every required logic criterion must map to a passing automated test unless the predeclared profile names another method. |
-| Integration | Current passing integration-test evidence or a current hash-bound manual end-to-end session for every required integration criterion. |
-| Visual/Feel | Current hash-bound manual session, required screenshots/artifacts, and all required sign-offs. |
-| UI | Current hash-bound manual walkthrough with artifacts or a passing automated interaction test, plus any sign-off required by the declared profile. |
-| Config/Data | Current passing smoke-check evidence bound to the changed data/tree. |
+| Logic | Current passing automated unit-test evidence for every required logic AC |
+| Integration | Current passing integration evidence or a current hash-bound manual end-to-end session for every required integration AC |
+| Visual/Feel | Current hash-bound manual session, declared screenshots/artifacts, and all required sign-offs |
+| UI | Current manual walkthrough with artifacts or passing automated interaction evidence, plus declared sign-offs |
+| Config/Data | Current passing smoke evidence bound to the exact tree/data hashes |
 
-A missing or unknown Story Type is BLOCKED. Missing files, pending sign-offs,
-missing artifacts, stale hashes, or evidence that does not directly cover every
-required criterion are BLOCKED for every type. They are never advisory.
+Missing/unknown Story Type, evidence, artifact, or sign-off is `BLOCKED`.
+Every required AC must PASS. An optional AC may be `DEFERRED` only under its
+predeclared classification and must appear in Completion Notes.
 
-All required criteria must be PASS. A required FAIL, UNTESTED, DEFERRED, or
-STALE criterion blocks closure even if only one criterion is affected. An
-optional criterion may be DEFERRED only under its predeclared classification and
-must appear in Completion Notes.
+## Phase 4: Enforce QA coverage and risk-based code review
 
----
+### QA coverage
 
-## Phase 3: Design, QA, and code-review findings
+Require an exact current `cgs.team-qa-result/v2` and its named immutable
+`cgs.team-qa-signoff/v2`. Both must bind the same request, run, scope,
+candidate/build/artifact/source, QA-plan, frozen evidence-manifest, independent
+review, and signoff identities and hashes. Independently rehash both artifacts
+and every referenced authority. The result must be terminal and persisted; the
+signoff must state `QA_APPROVED` and `Gate Eligible: YES`, with every required
+denominator row passing, all findings dispositioned, all required roles present,
+and zero conditions or gaps.
 
-Compare the implementation and evidence against the current TR requirement, GDD
-rules, Accepted ADRs, control-manifest constraints, and the approved file scope.
+`QA_APPROVED_WITH_CONDITIONS`, `QA_NOT_APPROVED`, `QA_INCOMPLETE`, Gate Eligible
+NO, an unpersisted/stale/mismatched signoff, or any required `FAIL`, `BLOCKED`,
+`NOT_RUN`, `UNKNOWN`, `STALE`, `INVALID`, missing, `PARTIAL`, `TIMEOUT`,
+`CANCELLED`, or `LATE_IGNORED` row is closure-blocking. Team QA remains evidence
+only: even current `QA_APPROVED` never grants closure, release, deployment, or
+publication authority and never replaces direct per-AC evidence.
 
-Static searches may help locate a possible deviation, but neither presence nor
-absence of a keyword proves behavioral conformance. A design rule is satisfied
-only by the criterion evidence assembled in Phase 2. Record hardcoded-value,
-localization, dependency, and out-of-scope scans as findings.
+An optional durable evidence-review summary must be the producer's actual
+`cgs-test-evidence-review-report/v2`, not its request manifest. Consume it only
+from its exact canonical path/hash with `Persistence: WRITTEN`, Workflow Status
+COMPLETE, Structural Quality ADEQUATE, Evidence Admissibility ADMISSIBLE,
+Execution Result PASS, Execution Currency CURRENT, Execution Completeness
+COMPLETE, Execution Scope FULL, Closure Eligible YES, and exact current
+scope/candidate/build/artifact/input-set joins. It may summarize underlying
+evidence but never substitutes for Team QA signoff or direct AC checks.
 
-Use the existing project review-mode contract for QL-TEST-COVERAGE and
-LP-CODE-REVIEW:
+### Code review
 
-- full invokes the applicable gates;
-- lean and solo follow their configured skip/prompt behavior; and
-- record exact gate results or skips.
+Resolve `cgs.story-review-policy/v1` from the unchanged Definition-of-Done
+profile or a canonical project policy captured by the story, approved plan, and
+dev-story result. The policy records policy ID/version/path/hash, story risk class,
+Story Type, required reviewer roles, waiver authority, and whether waiver is
+permitted.
 
-Apply any existing blocking QA or code-review result as BLOCKED. Retain advisory
-gate findings in Completion Notes. These gates cannot turn missing or stale
-acceptance evidence into PASS and cannot override any Phase 1 or Phase 2 blocker.
+The fail-closed default is:
 
----
+- Logic and any story classified high risk require a current code review in
+  every mode, including lean and solo.
+- Other stories follow their predeclared policy; absent or ambiguous policy is
+  `BLOCKED`, not an invitation to choose at closure.
+- `No`, `skip`, missing reviewer, or a mode-based skip is `BLOCKED` when
+  review is required.
 
-## Phase 4: Compute and present the verdict
+Require the producer's exact `cgs.review-evidence/v1` envelope with its embedded
+`cgs.code-review/v2` extension. It must bind the complete target manifest and
+raw hashes, rule chains/ledger, Accepted ADRs, tool evidence, reviewer
+plan/results and roles, coverage gaps, stable findings, mutation guards, stale
+key, producer identity, canonical path/raw hash, and verdict `APPROVED`. Complete
+coverage, all required reviewers, unchanged before/after target hashes, zero
+open BLOCKING/WARNING findings, and current inputs are mandatory.
 
-Compute the verdict deterministically before any write.
+The producer record alone is deliberately `gate_evidence_status: NOT_PERSISTED`
+and `gate_evidence_eligible: false`; it cannot satisfy closure. Require an
+independent external `cgs.code-review-recorder-receipt/v1` that names the exact
+envelope path/raw hash and extension schema, independently rehashes every stale-
+key input, and records result `RECORDED|ALREADY_RECORDED`, persistence status
+`PERSISTED`, `gate_evidence_eligible: true`, recorder/authority identities,
+registry path/base/final hashes and revision, lock/CAS/atomicity/read-back
+evidence, timestamp, canonical receipt path, and receipt raw hash. Missing,
+stale, unpersisted, mismatched, non-APPROVED, recorder-failed, or gate-ineligible
+review evidence is `BLOCKED`.
 
-BLOCKED when any of the following is true:
+A review waiver is accepted only when the predeclared policy permits it and a
+current `cgs.review-waiver/v1` binds waiver ID, authorized risk owner,
+policy/story/plan/result/tree hashes, exact skipped review, rationale,
+conditions, expiry, signature/attestation path/hash, and waiver hash. It yields
+at most `COMPLETE WITH NOTES`. A conversational risk acceptance is invalid.
 
-- lifecycle/tracker preconditions fail;
-- the dev-story handoff, plan hash, file hash, test-log evidence, or source hash
-  is missing, malformed, or stale;
-- normal readiness provenance is not current, or an accepted-risk waiver is
-  invalid;
-- Story Type is missing/unknown or its blocking type evidence is incomplete;
-- any required criterion is FAIL, UNTESTED, DEFERRED, STALE, or lacks direct
-  evidence; or
-- a blocking deviation or gate result remains.
+QA and code review cannot manufacture PASS acceptance evidence or override any
+readiness, source, type, or AC blocker.
 
-COMPLETE when every required criterion is PASS on the current verification tree,
-all blocking type evidence passes, provenance is CURRENT, and no blocking or
-advisory item remains.
+## Phase 5: Enforce design conformance and owner decisions
 
-COMPLETE WITH NOTES only when the complete conditions hold and all remaining
-items are non-blocking by a pre-existing rule, such as a predeclared optional
-criterion, a valid STALE / ACCEPTED-RISK manifest waiver, or an advisory review
-finding. It never accommodates a required evidence gap.
+Compare the current implementation/evidence against exact active TRs, GDD rules,
+Accepted ADRs, control-manifest constraints, and approved scope. Give each
+deviation a stable finding ID and bind the source ID/path/locator/hash, subject
+path/hash, evidence IDs, severity, owner, and status.
 
-Present:
+Any mismatch is blocking by default. The workflow, model, implementer, reviewer,
+or user conversation must not label a mismatch "functionally equivalent" from
+subjective inspection.
 
-    ## Story Done: [story ID] — [verdict]
-    Story: [path]
-    Story baseline: sha256:[hash]
-    Dev plan: sha256:[hash]
-    Verification tree: sha256:[hash]
-    Manifest provenance: [CURRENT or STALE / ACCEPTED-RISK]
-    Implemented against: sha256:[hash]
-    Current manifest: sha256:[hash]
+An equivalence exception exists only through a current
+`cgs.design-equivalence-decision/v1` authored by the designated product or
+architecture owner. It binds:
 
-    ### Acceptance evidence
-    | AC ID | Required | Evidence IDs | Method | Freshness | Result |
-    |---|---:|---|---|---|---|
-    | ... | yes/no | ... | automated/manual | current/stale | PASS/... |
+- stable decision ID, owner identity/role, authority source path/hash, and
+  signature/attestation path/hash;
+- exact TR/GDD/ADR/control rule IDs, paths, locators, and hashes;
+- exact implementation paths/hashes and affected AC IDs;
+- compared semantics, accepted equivalence scope, constraints, non-goals,
+  residual risks, and required regression evidence IDs;
+- story, dev-story plan/result, execution-set, and verification-tree hashes;
+- decision timestamp, expiry/revocation state, canonical path, and record hash.
 
-    ### Story-type evidence
-    - [required item] — [evidence ID/path/hash] — [PASS/BLOCKED]
+The decision applies only to its exact scope and hashes. Missing authority,
+ambiguous scope, stale bytes, expired/revoked status, or uncovered residual risk
+is `BLOCKED`. An owner decision may resolve the named design mismatch; it
+cannot waive missing behavior evidence, QA, review, or type obligations.
 
-    ### Sources and gates
-    - [path/gate] — [hash/result]
+## Phase 6: Compute the evidence verdict
 
-    ### Findings and notes
-    - [finding or None]
+Compute before any mutation.
 
-    ### Verdict
-    [COMPLETE / COMPLETE WITH NOTES / BLOCKED]
+The evidence verdict is `BLOCKED` when any required schema, ID, path, hash,
+source, current readiness check, AC result, Story Type obligation, QA result,
+required review, owner decision, or recorder prerequisite fails.
 
-If BLOCKED, make no file mutation, do not offer a completion override, and list
-the exact evidence or revalidation needed. A user's acceptance of risk cannot
-convert a required evidence blocker into a closable verdict.
+The evidence verdict is `COMPLETE` when all required checks pass, provenance
+is `READY`, and there are no valid non-blocking notes.
 
----
+The evidence verdict is `COMPLETE WITH NOTES` only when complete conditions
+hold and all remaining notes come from predeclared optional ACs, a valid review
+waiver, or advisory findings affecting no
+required obligation.
 
-## Phase 5: Record an approved closure
+Present the story baseline, dev-story result/plan/status transaction, persisted
+readiness record/recorder receipt, execution set, verification tree, QA,
+review/waiver, owner decisions, and proposed transaction
+hashes. List every AC with required flag, evidence IDs, method, freshness, QA
+finding IDs, and result. List type evidence and every finding. For
+`BLOCKED`, write nothing and name the exact owner/evidence needed. No
+close-anyway branch exists.
 
-Only COMPLETE or COMPLETE WITH NOTES may enter this phase.
+## Phase 7: Close through the tracker lifecycle recorder
 
-Present the complete write set once and ask whether to apply it. The ordinary
-closure set is:
+Only a closable evidence verdict may prepare `cgs.story-closure-transaction/v1`. It is a tracker-only lifecycle proposal. Story-done never writes the tracker, story, sprint plan, session state, planning hashes, or evidence artifacts directly.
 
-- the selected story;
-- production/sprint-status.yaml, when it exists;
-- production/session-state/active.md; and
-- docs/tech-debt-register.md only when the user chooses to log existing advisory
-  findings.
+The proposal contains:
 
-If a newly captured manual evidence record is part of the run, its exact evidence
-path must also appear in this preview before any write.
+- schema, transaction ID, story/dev-result/plan/readiness/dev-transition/execution-set/tree/QA/review/waiver/owner-decision identities and hashes;
+- exact canonical tracker path, external raw preimage hash, expected `tracker_revision`, `event_id`, sprint identity/state, lifecycle owner, and `lifecycle_recorder: cgs.sprint-tracker/v2`;
+- the requested transition for exactly one matching row, `in_review -> done`, plus only tracker-declared lifecycle-owned completion timestamp/provenance fields;
+- the frozen `plan_file`, `plan_sha256`, `plan_revision`, and `story_set_hash` as preservation assertions, never recomputed proposed values;
+- immutable story path/raw hash and assertions that story bytes/Revision, every unowned tracker field, and every other tracker row remain byte-for-byte unchanged;
+- receipt create-only destination, recorder implementation/version/capability identity, rollback contract, and authorization identity bound to the exact proposal hash.
 
-Rehash every target immediately before the first write. If the story no longer
-matches story_baseline_hash or any other target changed since preview, stop and
-recompute the report and changeset.
+Invoke only the tracker-declared lifecycle recorder. Require compare-and-swap on the exact tracker raw hash, revision, event, sprint identity, lifecycle owner, planning tuple, and story-row preimage. The recorder must stage the exact tracker replacement and immutable receipt, verify hashes, commit both or restore the complete tracker preimage, support crash recovery, and reject an existing non-identical receipt destination. No last-writer-wins retry or silent replacement transaction is allowed.
 
-When the sprint tracker exists, first validate its `sprint_id`,
-`active_sprint_id`, `plan_revision`, `story_set_hash`, and `updated_at` with the
-exact `$sprint-status` contract and capture its raw-byte preimage hash. An
-invalid/conflicting tracker blocks closure. Preserve sprint identity and
-`plan_revision`; never repair them by inference.
+Immediately before commit, rehash every read/source/evidence input, immutable story, plan, and tracker preimage. Any mismatch aborts with zero committed canonical changes. After commit, independently reread the tracker, story, plan, and receipt.
 
-Update the story to Status: Complete, set Last Updated, and append an immutable
-Completion Record containing:
+Accept only `cgs.story-closure-receipt/v1` with transaction/proposal/authorization/recorder IDs and hashes; result `COMMITTED`; timestamp and recovery state `NOT_REQUIRED`; tracker pre/post/read-back raw hashes; exact revision/event increment; observed row transition `in_review -> done`; the precise lifecycle-owned field set; unchanged planning tuple, unowned fields, other rows, story bytes/Revision, and plan bytes; and receipt path/hash.
 
-- closure_transaction_id;
-- completion timestamp;
-- story_baseline_hash and plan_hash;
-- verification_tree_hash;
-- manifest provenance state, implemented_against_hash, current manifest hash,
-  and waiver IDs;
-- source-context hashes;
-- every criterion ID, required/optional classification, result, and evidence ID;
-- every automated command/cwd/exit/timestamp/log hash;
-- every manual evidence record path, tested tree/build hash, tester, timestamp,
-  and artifact links;
-- story-type evidence result;
-- QA/code-review result or skip; and
-- final verdict and advisory notes.
+`ABORTED`, `ROLLED_BACK`, `RECOVERY_REQUIRED`, receipt failure, read-back mismatch, CAS conflict, unowned change, planning-hash change, or ambiguous/partial recorder result means no successful closure. Preserve or restore the tracker row to `in_review`, emit exact recovery evidence, and do not mint a replacement transaction silently.
 
-Update the matching sprint tracker entry to done/completed and append the session
-extract using the same closure_transaction_id. Do not modify implementation files
-or rewrite source provenance. If a write fails, report exactly which projections
-were and were not updated and do not claim closure succeeded.
+Only after a verified `COMMITTED` receipt and independent read-back may the final verdict be `COMPLETE` or `COMPLETE WITH NOTES`.
 
-Because the story bytes change to `Complete`, recompute tracker
-`story_set_hash` from the complete current story set using sorted
-`ID<TAB>path<TAB>raw-byte-hash` records and set a timezone-qualified
-`updated_at` in the same closure transaction. Re-read the story, tracker, and
-session projection; verify the shared transaction ID, tracker preimage CAS,
-unchanged `plan_revision`, and recomputed story-set hash before reporting
-closure.
+## Phase 8: Handoff
 
-Suggest a commit command, but never commit, push, or publish without a separate
-user instruction.
-
----
-
-## Phase 6: Surface the next story
-
-After a successful closure, read the current sprint and surface up to three Must
-Have or Should Have stories whose recorded state and dependency state make them
-candidates. Recommend $story-readiness [path] before $dev-story.
-
-When all Must Have stories are complete, present the existing sprint close-out
-sequence: smoke check, team QA, retrospective, gate check after QA approval, and
-the next sprint plan. Do not execute those workflows automatically.
-
----
+After successful tracker closure, re-read the same current tracker and surface up to three dependency-ready Must Have or Should Have rows. Recommend `$story-readiness [path]`. Do not rewrite the story or sprint plan, recompute planning hashes, update session prose, execute another workflow, commit, push, publish, or modify implementation/source files automatically.
 
 ## Non-negotiable rules
 
-- Static presence or keyword checks never PASS an acceptance criterion.
-- Every required criterion needs direct current PASS evidence.
-- Every story type's declared evidence is blocking.
-- Manual evidence is identity-, session-, artifact-, and tree/build-hash bound.
-- Changed story/source/tree/build hashes make dependent evidence stale.
-- A required gap can never be hidden in COMPLETE WITH NOTES.
-- Accepted risk preserves its provenance label and never means READY/CURRENT.
-- BLOCKED cannot be overridden into closure.
-- Only this workflow may write Complete/Done for the story lifecycle.
+- Static presence or keyword checks never PASS an AC.
+- Every required AC and Story Type obligation needs direct current PASS evidence.
+- Test execution consumes the exact hash-bound dev-story plan and immutable `cgs.dev-story-test-execution/v2` records.
+- Required QA gaps are blocking.
+- Logic/high-risk review cannot disappear in lean or solo mode.
+- Readiness requires a current persisted READY record, matching recorder receipt, and `implementation_gate_eligible: true`.
+- Design equivalence belongs only to a current authorized owner decision.
+- `cgs.story/v2` bytes and Revision are immutable during implementation and closure.
+- `plan_file`, `plan_sha256`, `plan_revision`, and `story_set_hash` remain immutable; story-done never recomputes them.
+- Canonical lifecycle exists only in the matching `cgs.sprint-tracker/v2` row, and only its declared lifecycle recorder may change owned lifecycle fields.
+- Dev-story ends at `in_review`; story-done may request but never directly write `done`.
+- No required gap can be hidden in notes or overridden conversationally.

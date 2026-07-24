@@ -1,273 +1,185 @@
-# Setup Engine — Required workflow continuation
+# Setup Engine continuation: installation, health, refresh, upgrade, and recovery
 
-This continuation is mandatory after research and decision. It never treats a file,
-installer, version declaration, or static source scan as proof of a working engine.
+This continuation is mandatory and hash-bound. Revalidate its previewed SHA-256 before use. It never treats a version declaration, downloaded file, source scan, or old receipt as proof of a working engine.
 
-## Phase 3: Plan or perform installation
+## 3. Download and installation transaction
 
-First inspect only the exact authorized installation path/search roots. Discovery
-records candidates but does not verify them. If no matching installation exists,
-prepare an install plan from the selected official download/package evidence.
+Inspect only exact authorized installation paths/search roots. Discovery finds candidates but does not verify them. If no matching installation exists, build an install plan from the exact selected official release/download/checksum/signature claims.
 
-Before any download, package-manager call, installer execution, archive extraction,
-PATH/registry/environment change, SDK installation, privilege elevation, or cleanup,
-present the exact external-install manifest and obtain explicit installation
-authorization. Include:
+Before any network artifact download, package-manager operation, installer, archive extraction, privilege elevation, PATH/registry/environment mutation, SDK/template/module install, overwrite, uninstall, or cleanup, show an exact external-install manifest and obtain installation authorization. Include:
 
-- official URL/package ID, exact version/edition/channel/platform/architecture;
-- expected checksum or signature verification method and official source;
-- commands/arguments, destination, privileges, environment mutations, maximum
-  download/unpacked size, timeout, logs, rollback and retained artifacts;
-- unique installer runner identity and explicit non-actions.
+- product/edition/version/channel/platform/architecture and official claim IDs/hashes;
+- initial/final URL, frozen allowlist rule, permitted redirect chain, artifact filename/size, official checksum/signature source and expected identity;
+- exact command/argv or installer options, working directory, destination, privileges, environment changes, cache/temp/quarantine/log paths;
+- byte/time/retry limits, partial-download policy, retained artifacts, rollback/recovery and cleanup actions;
+- runner/recorder identity and explicit non-actions.
 
-Use no interactive/default installer choices absent from the manifest. Verify the
-download before execution. A missing/mismatched checksum, invalid signature,
-unexpected privilege request, redirect to an ineligible domain, destination drift,
-timeout, partial extraction, or installer failure is `BLOCKED`/`PARTIAL`. Do not
-continue to project configuration.
+Do not use interactive/default installer choices that are absent from the manifest. Download first to the exact authorized quarantine path; compute its SHA-256 and byte length; validate the official checksum/signature before extraction/execution. An unexpected redirect/host, missing/mismatched checksum, invalid signature, different size/name/platform/architecture, new privilege request, or destination drift is BLOCKED.
 
-Persist an install receipt only in an authorized evidence path. It records exact
-artifact bytes/hash, signature result, command/exit code, destination, changed machine
-state, logs/hashes, rollback result, and installed candidate paths. Download or
-installer success alone does not yield `INSTALLATION_VERIFIED`.
+Every attempt emits `cgs.engine-download-install-receipt/v1` with official claims/allowlist, request/response/redirect identity, bytes received/expected, partial-file hash, ETag/Last-Modified/range support, checksum/signature result, command/exit/time, changed machine state, logs/hashes, destination inventory, rollback status, and terminal state.
 
-If the user declines installation, return an exact plan and `PARTIAL`; do not claim
-configuration. Never uninstall, overwrite another installation, or change global
-defaults without separately naming and authorizing that destructive scope.
+Download/install success alone is not `INSTALLATION_VERIFIED`. Declined authority returns PARTIAL and an exact plan. Never overwrite/uninstall another installation or change global defaults without an exact destructive manifest and separate approval.
 
-## Phase 4: Verify real engine identity
+## 4. Executable and toolchain health receipt — ENGINE-P1-005
 
-Use the exact candidate executable, never whichever binary appears first on PATH.
-Before execution, resolve its real path and record file metadata, SHA-256, platform
-signature when available, size, and modification time. Derive stable installation ID:
+Use one exact candidate executable, never the first binary on PATH. Resolve real path without following an unauthorized escape. Record requested/resolved path, file type/size/mtime, SHA-256, platform code signature/notarization/certificate when available, owner/permissions, installation root, and source install receipt.
 
-`ENGINST-{engine}-{normalized-version}-{binary-sha256-prefix}`.
+Derive:
 
-Execute the manifest-declared version command with exact argv, working directory,
-timeout, and environment allowlist. Capture:
+```text
+installation_id = ENGINST-<engine>-<normalized-version>-<binary-sha8>
+health_identity_sha256 = sha256(
+  installation_id + binary_sha256 + version_command_receipt_sha256 +
+  toolchain_lock_sha256 + toolchain_receipt_set_sha256 +
+  modules_templates_plugins_manifest_sha256 + project_health_receipt_sha256)
+```
 
-- executable requested/resolved paths and binary SHA-256;
-- command/argv, start/end UTC, working directory, OS/architecture, runner identity;
-- sanitized environment allowlist hash;
-- exit code/signal/timeout, exact stdout/stderr bytes and hashes;
-- parsed engine product, edition, semantic/build version, channel, and build ID;
-- comparison with decision, official download evidence, and expected version/hash.
+Execute the manifest-declared version command using exact executable/argv, working directory, sanitized environment allowlist, and timeout. Capture start/end UTC, runner identity, OS/architecture, exit/signal/timeout, exact stdout/stderr bytes/hashes, parser ID/version, parsed product/edition/semantic and build version/channel/build ID, and comparison to official claim/decision/download identity.
 
-Run required SDK/compiler/runtime/package commands similarly. Pin their versions and
-hashes where the project language/build requires them. Do not infer toolchain health
-from directory existence.
+Run every required SDK/compiler/runtime/package manager/export-template/module command similarly. Each tool entry records real executable path/hash, exact version output/hash, lock/manifest path/hash, required vs actual version, command receipt, health state, and incompatibility reason. Directory presence never proves health.
 
-Then run a non-mutating or isolated project-load/health command with the exact binary.
-If an engine necessarily imports or rewrites project files, use only the declared
-isolated validation copy/cache and enumerate resulting mutations. Capture load/import
-result, project identity/hash, required modules/export templates/packages/plugins,
-serialization/import warnings, exit code, logs and hashes.
+Run a bounded non-mutating project-load/health command with the exact engine binary. If import/cache/project rewrites are unavoidable, use only an authorized isolated copy/cache and enumerate every mutation. Record project/config/source hash, plugin/package/native extension/export-template/module manifests, import/serialization warnings, command result/log hash, and generated-output manifest.
 
-`INSTALLATION_VERIFIED` requires all declared commands to exit successfully, parsed
-identity to match official evidence and selected version, binary hash/signature to
-match policy, required toolchains/modules to be present, and receipts to be complete
-and read back. A pre-existing VERSION.md, executable name, folder, project file, or
-old receipt cannot satisfy the gate.
+Emit immutable `cgs.engine-health-receipt/v1` containing all identities above, official-claim/research/decision/install hashes, framework-consistency receipt/hash, command receipts, and status:
 
-Timeout is capped by the manifest and never above 15 minutes per command or 30 minutes
-for the phase. At most one retry is allowed with the same input hashes after proving
-the prior attempt did not mutate authoritative project/machine state. Revoke late
-attempt tokens; quarantine late logs or patches.
+- `HEALTHY` — every required current command/lock/module/project check matches;
+- `DEGRADED` — optional capability absent while required configure scope remains valid and limitation is explicit;
+- `UNHEALTHY` — required mismatch/failure;
+- `NOT_RUN` — current execution evidence missing;
+- `STALE` — binary/toolchain/project/config bytes changed after receipt.
 
-## Phase 5: Build candidate project configuration
+`INSTALLATION_VERIFIED` requires HEALTHY (or manifest-permitted DEGRADED only for explicitly optional capabilities), matching binary/checksum/signature/version/support identity, complete required toolchain locks/receipts, valid project health, current framework state, read-back receipt hash, and zero outside mutation. File/folder/VERSION existence and prior stdout do not count.
 
-Only after `INSTALLATION_VERIFIED`, construct all candidate project bytes in scratch.
-The minimum authoritative identity is:
+Each command is at most 15 minutes; health phase at most 30 minutes. Permit one retry with identical input hashes only after proving the prior attempt made no unauthorized mutation. Revoke tokens and quarantine late output.
 
-- engine product/edition and exact parsed version/build ID;
-- stable installation ID, resolved executable path and binary SHA-256;
-- execution-receipt path/SHA-256 and project-validation receipt path/SHA-256;
-- required SDK/toolchain identities/hashes;
-- project lock/config path/hash and supported platforms/language;
-- research-manifest and decision-record hashes.
+## 5. Build directly effective project configuration
 
-Write this short identity directly into the root `AGENTS.md` Technology Stack or its
-existing effective fields. Never add an `@file` directive: this repository does not
-expand it. A normal Markdown link may aid humans, but all agent-critical engine and
-receipt identity must appear directly in effective instructions.
+Only after INSTALLATION_VERIFIED, render candidates in scratch. Active identity includes product/edition, parsed exact version/build/channel, installation ID, resolved executable/hash/signature, engine-health/execution/project-validation receipt paths/hashes, SDK/toolchain locks/identities, project engine lock/config hash, framework catalog/config reference and consistency status, supported platforms/language, and research/decision hashes.
 
-Update only the declared engine/language/build/asset fields in technical preferences
-and project locks. Preserve unrelated preferences. Reference documents separate:
+Write required short identity directly into the root AGENTS Technology Stack/effective fields. Never add an `@file` directive; links are supplementary only. Preserve unrelated technical preferences and config fields.
 
-- `Active Engine Identity`, bound to real installation and receipts;
-- `Available/Researched Versions`, bound to official source snapshots;
-- dated license/platform/support claims with region/scope/source IDs;
-- no LLM training-cutoff risk score and no unsupported `latest` claim.
+Engine reference separates:
 
-Do not edit specialist agent descriptions. Route engine-specific work through direct
-effective project configuration; owner-specific instruction improvements are
-proposals only. Do not choose a testing framework or duplicate its name.
+- `Active Engine Identity` bound to real HEALTHY receipts;
+- `Researched/Available Candidates` bound to official snapshots, not active;
+- support/lifecycle claims with channel/as-of/retrieved-at/source hashes;
+- license/platform claims with exact region/date/version/currency/threshold applicability;
+- offline/stale/unresolved limitations.
 
-## Phase 6: Authorize and commit the project transaction
+Do not edit role/specialist descriptions. Do not name/choose a testing framework; reference only the authoritative testing config identity or UNCONFIGURED state.
 
-Present the complete project mutation manifest with every candidate hash, base hash,
-owner approval, writer, record path, non-write, and rollback hash. Obtain one explicit
-project-configuration authorization after all owners have approved. Installation or
-decision consent cannot substitute for it.
+## 6. Cross-owner CAS transaction — ENGINE-P1-007
 
-Before commit:
+Before project writes, present one complete mutation manifest with every exact path, operation, owner approval, base hash/ABSENT, candidate bytes/hash, unique writer, maximum bytes, commit order, rollback bytes/hash, receipt path, and non-write. Obtain configuration authorization only after all owners approve.
 
-1. re-hash executable, receipts, official evidence, instruction chain, all base files,
-   and all candidate bytes;
-2. validate that active version equals the parsed real engine version;
-3. validate every destination's schema and cross-reference;
-4. stage candidate and rollback bytes in the authorized transaction area;
-5. prove every unique writer owns a disjoint path set.
+Role/specialist files are outside the allowed mutation set. If owner proposals are emitted, they contain target owner, exact base hash, suggested candidate/hash, rationale, and `authorization_state: NOT_AUTHORIZED`; setup-engine does not apply them.
 
-Commit sequentially with compare-and-swap guards and atomic same-volume replacement
-where supported. On any failure, stop and restore every already changed path from the
-recorded exact rollback bytes, then read back and hash all restored paths. If rollback
-is incomplete, return `BLOCKED — RECOVERY REQUIRED`, list exact divergent paths, and
-never claim configuration. Do not silently discard unrelated concurrent user changes.
+Immediately before commit:
 
-After a successful commit, enumerate all changed paths and reject any outside the
-manifest. Read back every file and write a mutation receipt bound to the installation
-and final project-config set hash.
+1. rehash binary/health/framework receipts, official source/license manifests, skill/reference contract, and all bases/candidates;
+2. verify active declaration equals parsed HEALTHY engine/toolchain identity;
+3. validate schemas and cross-references;
+4. ensure disjoint writer ownership;
+5. stage exact candidate/rollback bytes in authorized same-volume transaction paths.
 
-## Phase 7: Prove configuration visibility and consistency
+Use CAS and atomic replacement where supported. Precommit drift changes nothing and returns BLOCKED. On mid-commit failure, stop and restore every changed path from exact rollback bytes, then read back all restored hashes. Never overwrite/revert an unrelated concurrent edit.
 
-Spawn a fresh independent read-only probe that did not author the candidate files.
-It must read root `AGENTS.md` as effective plain text without expanding `@file`, then
-report the directly visible engine product/version/build ID, installation ID,
-executable path/hash, receipt path/hash, language, build system, and project lock.
+If full rollback succeeds, emit `ROLLED_BACK` and retain a recovery receipt. If incomplete, return `RECOVERY_REQUIRED`, list exact expected/actual/divergent paths/hashes, freeze all configuration/refresh/upgrade work, and require an explicit recovery plan/authority. Never claim configured while split state exists.
 
-Independently re-run the exact executable version command and a bounded project health
-command, then compare:
+After success, reject outside-manifest mutations, read back every file, and emit a mutation receipt bound to installation/health/framework and final project-config-set hash.
 
-- fresh-probe identity;
-- current executable binary hash and parsed version;
-- execution/project-validation receipts;
-- root instructions, technical preferences, engine reference, and project lock;
-- final project-config set hash.
+## 7. Independent visibility and framework consistency
 
-Persist the hash-bound visibility/consistency receipt through the evidence recorder.
-`CONFIGURED` requires all values to agree, all files/receipts to be current and
-read-back verified, no outside mutation, and rollback material recorded. File
-existence, text search, or the author's own reread is insufficient.
+Use a fresh independent read-only probe that did not author candidates. It reads root AGENTS as literal effective text without expanding `@file` and reports visible product/version/build/channel, installation ID, executable/hash, health receipt/hash, language/build system, project lock/config, and authoritative testing-config reference/hash.
 
-## Phase 8: Refresh official reference evidence
+Re-run exact version and bounded project-health commands, and when required run the authoritative testing catalog's discovery/canary command. Recompute `cgs.engine-framework-consistency-receipt/v1`; setup-engine never changes the selected framework.
 
-`refresh` reads the currently verified active identity and only its declared official
-sources. It preserves citations and previous snapshot hashes, retrieves new official
-snapshots, records conflicts, and proposes exact reference/evidence changes.
+Compare root instructions, technical preferences, engine reference, project lock/config, health receipt, binary/toolchain locks, framework config/receipt, and final config-set hash. Persist `cgs.engine-project-visibility-receipt/v1`.
 
-Refresh must not change active engine/version, executable path/hash, project lock,
-toolchain identity, root Technology Stack, source code, binaries, or machine state.
-A newly available release is reported as a candidate, not activated. Authorized
-reference writes use their own exact mutation manifest, owner, CAS, read-back, and
-rollback. Success is `REFERENCE_REFRESHED`, not engine configured/upgraded.
+CONFIGURED requires all required values to agree, current HEALTHY execution evidence, framework status MATCH or explicitly scoped UNCONFIGURED, read-back verified transaction, no outside mutation, and viable rollback/recovery receipts. Text search/file existence/author self-review is insufficient.
 
-Offline access, source conflict, missing official data, or retrieval timeout yields
-`PARTIAL`/`BLOCKED` and retains the prior evidence unchanged. Never update only a
-`Last verified` date when underlying evidence was not successfully retrieved.
+## 8. Reference refresh with frozen source allowlist and CAS — ENGINE-P1-006
 
-## Phase 9: Upgrade plan, migration, validation, and activation
+Refresh begins from an exact active identity/reference/research snapshot. Freeze `cgs.engine-official-allowlist/v1` containing exact HTTPS scheme, eligible publisher, exact host or safely delimited subdomain rule, permitted path/API template, source role, product/edition/channel/platform applicability, allowed redirects, retrieval byte/time limits, and ownership evidence.
 
-Upgrade begins from a current `CONFIGURED` receipt. Re-hash the active binary,
-receipts, project config, project locks, plugins/packages, source/content set, build
-inputs, and instruction chain. A stale or missing active identity blocks upgrade.
+Do not broaden the allowlist during retrieval. A newly discovered host/URL is an unresolved proposal requiring a new manifest/authority; it cannot support the current refresh. Reject downgrade to HTTP, deceptive suffix hosts, URL shorteners, mirror/CDN not explicitly authorized, authentication/token-bearing URLs, and cross-host redirects outside rules.
 
-### 9.1 Research and verify target installation
+Retrieve each prior claim only from its frozen allowed source role. Preserve prior snapshot bytes/hashes/citations and create a superseding claim linked by previous claim/source hash; never rewrite history or drop a conflicting citation. Compare publication/effective/retrieved dates, ETag/content hash, scope, support channel, platform/region, checksum/signature, and license thresholds.
 
-Research the exact target with current official sources. Record lifecycle, supported
-upgrade path, migration guides, platform/toolchain/plugin requirements, serialization
-and import changes, and license applicability. Obtain a new product decision if target
-facts or scope differ.
+Before any reference/evidence write, show exact sources/results, conflict matrix, candidate/base/rollback hashes, owner/writer, and one reference-only transaction. CAS all reference and evidence bases immediately before commit; read back and hash after. Refresh may not change active engine/version/build, executable/hash, installation/health/toolchain/framework identity, root Technology Stack, project lock, source, binary, or machine state.
 
-Install/download the target only through a separate target-install authorization and
-verify it through Phase 4. The old active installation/configuration remains unchanged.
-State is at most `UPGRADE_PLANNED`.
+An available new release is `CANDIDATE_ONLY`. A conflict, offline source, missing mandatory response, timeout, stale cached source, ineligible redirect, or CAS drift leaves prior reference unchanged and returns PARTIAL/BLOCKED/OFFLINE_EVIDENCE_ONLY. Never update a “last verified” date without successful eligible retrieval and persisted source hash. Successful reference-only transaction returns REFERENCE_REFRESHED, never configured/upgraded COMPLETE.
 
-### 9.2 Audit and authorize isolated migration
+## 9. Upgrade coverage — ENGINE-P1-003
 
-Static deprecated-API search is one input only; it never proves low risk. The audit
-must also cover project/asset serialization, import/cache changes, plugins/packages,
-native extensions, SDK/compiler/runtime, build/export templates, rendering/physics
-defaults, platform manifests, save/data compatibility, and build/test infrastructure.
+Upgrade starts only from current CONFIGURED/health/visibility receipts. Rehash active binary, toolchain/framework receipts, project config/lock, plugins/packages/native extensions, source/assets/content/serialization inputs, build/test infrastructure, and instruction chain. Stale active identity blocks upgrade.
 
-Build an exact migration manifest for an isolated candidate workspace. Include source
-snapshot/tree hash, operations, unique owners/writers, expected base hashes, candidate
-workspace/output paths, build/test commands, evidence paths, non-writes, time/size
-limits, and disposal/rollback plan. Obtain owner approvals and separate migration
-authorization before creating or changing that workspace. Never migrate the active
-project in place under a planning authorization.
+### 9.1 Research and verify target
 
-### 9.3 Execute migration and real validation
+Research exact target release/support/download/checksum/license/platform claims under current allowlist policy. Record official supported upgrade path and migration guides. Verify target installation through Sections 3–4 under separate authority. Old active identity remains unchanged; state at most UPGRADE_PLANNED.
 
-Only named writers apply authorized candidate changes. Enforce CAS and mutation
-allowlists. Using the exact target executable/hash, run in the isolated candidate:
+### 9.2 Comprehensive isolated audit
 
-1. project load/import and resource/serialization validation;
-2. compile/build/export for every declared platform/configuration;
-3. required automated unit/integration/smoke/regression suites from the authoritative
-   project test configuration;
-4. plugin/package/native-extension compatibility checks;
-5. declared manual or hardware validation, or mark it `NOT RUN` and block activation.
+Static deprecated-API search is one limited input and cannot produce a low-risk or compatibility conclusion. The audit matrix includes:
 
-Each receipt binds command/runner/time, candidate source/config hash, target
-installation ID/binary hash, platform/config, exit code, exact logs/hashes, produced
-build/artifact hash, tests passed/failed/skipped, and warnings. `UNKNOWN`, `NOT RUN`,
-timeout, failure, missing receipt, or stale hash blocks activation.
+- source/API/compiler changes;
+- project and asset/resource serialization/import/cache changes;
+- plugins/packages/native extensions and their locks;
+- SDK/compiler/runtime/export templates/modules;
+- rendering/physics/audio/input/network defaults;
+- platform manifests, signing/export/packaging;
+- save/data/network compatibility;
+- build/test infrastructure and authoritative framework consistency;
+- manual/hardware/platform validation required by scope.
 
-### 9.4 Authorize activation last
+Every row has applicability predicate, owner, input hash, target version/toolchain, planned command/check, expected receipt, and mandatory/optional state. UNKNOWN, unsupported, missing owner, or no safe check remains unresolved and blocks activation when mandatory.
 
-Only after every migration/build/regression row passes on the same final candidate
-hash may the workflow prepare an activation transaction. It includes applying the
-approved candidate diff plus root instructions, technical preferences, reference
-identity, project locks, receipts, and checkpoints as one cross-owner transaction.
-Show exact operations/base/candidate/rollback hashes and obtain separate activation
-authorization.
+### 9.3 Isolated migration and validation
 
-Commit with Phase 6 CAS/rollback rules. Then repeat Phase 7 visibility and consistency
-checks using the target binary and run the required post-activation health/build/smoke
-checks. Only fully current evidence yields `UPGRADE_VERIFIED` and
-`Verdict: COMPLETE`.
+Render exact candidate-workspace migration manifest with source snapshot/tree hash, paths/operations/base/candidate hashes, owners/writers, target executable/toolchain/framework identity, build/test commands, evidence paths, time/size limits, non-writes, disposal and rollback. Obtain separate migration authority before workspace creation/write. Never migrate active project in place.
 
-If any target install, migration, import, build, regression, activation, visibility,
-or rollback step fails, the active version declarations must remain old or be fully
-restored. Return `UPGRADE_PLANNED`, `PARTIAL`, or `BLOCKED`; never update VERSION.md
-to the target as if active and never describe the project as upgraded.
+On one final candidate hash, run target project load/import/serialization; each platform/config build/export; authoritative unit/integration/smoke/regression; plugin/package/native compatibility; and declared manual/hardware checks. Receipts bind command/runner/time, source/config hash, target installation/binary/toolchain/framework, platform/config, exit/result, logs/artifacts hashes, pass/fail/skipped/warnings.
 
-## Phase 10: Recovery and resume
+`NOT_RUN`, `UNKNOWN`, skip of mandatory coverage, timeout, failure, stale hash, unsupported serializer/plugin/platform, or missing receipt blocks activation. Static absence of deprecated APIs never overrides these states.
 
-Write an immutable checkpoint after research, decision, installation, execution,
-candidate generation, authorization, transaction, visibility, each upgrade validation
-wave, and activation. Record input/output hashes, state, authorities, owners/writers,
-attempt tokens, mutations, rollback material/status, receipts, blockers, and the exact
-next legal transition.
+### 9.4 Activate last
 
-On `--resume`, validate the checkpoint chain, request/mode/engine/install IDs,
-official-source freshness policy, binary/toolchain hashes, active/candidate project
-hashes, authorizations, ownership, transaction state, rollback state, and late writes.
-Resume only at the recorded transition. Drift makes dependent evidence stale; a
-half-committed or failed rollback requires recovery before any new work.
+Only every mandatory row PASS on the same final hash permits an activation preview. It atomically applies candidate diff plus root instructions, preferences, reference identity, locks/config, framework reference, receipts/checkpoints. Obtain separate activation authority after evidence exists.
 
-## Phase 11: Deterministic output
+Commit under Section 6, then repeat Section 7 and required post-activation health/build/smoke checks. Only current evidence yields UPGRADE_VERIFIED/COMPLETE. Any failure retains/restores old active declarations and returns UPGRADE_PLANNED/PARTIAL/BLOCKED/RECOVERY_REQUIRED; never advance version documents alone.
 
-Every result includes request/run/mode, precise state, selected and active engine
-identities, installation IDs, executable paths/hashes, parsed version outputs,
-official claim/source hashes, receipt paths/hashes, project-config set hash, owner and
-authorization IDs, mutation/rollback status, build/regression matrix when applicable,
-blockers, checkpoint path/hash, and exactly one legal next action.
+## 10. Offline, partial download, timeout, and recovery — ENGINE-P1-009
+
+### Offline research
+
+When network is unavailable or denied, use only exact cached official snapshots named by path/hash and validate their original URL/publisher/document version/retrieved-at/freshness deadline. Mark each `OFFLINE_CACHED` or `STALE`. Do not say current/latest and do not silently fall back to memory/nonofficial sources.
+
+If cached evidence satisfies the request's freshness/applicability policy, return OFFLINE_EVIDENCE_ONLY with explicit claim ceiling. Missing/expired mandatory release/support/checksum/license/platform evidence blocks decision/install/refresh. Offline refresh writes nothing and preserves dates/hashes.
+
+### Partial download/install
+
+A partial artifact stays in the authorized quarantine path and is never extracted/executed. Receipt records bytes expected/received, partial SHA-256, ETag/Last-Modified, range support, URL/allowlist, timeout/error, destination state, and whether safe resume is vendor/protocol supported.
+
+Recovery offers exact options: resume only with same artifact identity/ETag/range/checksum policy; restart into a new authorized quarantine file; retain for diagnosis; or delete via separate exact cleanup authorization. Do not append when identity changed, execute partial bytes, or call partial install verified.
+
+### Checkpoint and terminal recovery
+
+After each research, decision, download/install attempt, health check, candidate generation, authorization, transaction step, visibility check, refresh, migration wave, activation, rollback, and recovery, create an immutable authorized checkpoint with all input/output hashes, authorities, attempt tokens, state, mutations, rollback material/status, blockers, and exact next legal transition.
+
+On resume validate the entire checkpoint chain, request/mode/IDs, contract hashes, allowlist/source freshness, binary/toolchain/framework/project identities, bases/candidates, authorities, partial artifacts, late outputs, and rollback state. Resume only at the recorded transition. Drift invalidates dependent receipts and authorization.
+
+A failed/half transaction or rollback enters RECOVERY_REQUIRED. Before new research/config/refresh/upgrade, present exact divergences and a recovery manifest with owner, operation, expected current hash, desired restore/complete hash, evidence preservation, rollback and verification; obtain recovery authorization. Never guess, delete partial state, or continue configuration around it.
+
+## 11. Deterministic output
+
+Every result includes request/run/mode, exact state/verdict, selected/active identities, official claim/license/allowlist/research hashes, installation/binary/toolchain/framework/health/project/config identities, command and receipt paths/hashes, owner/authority IDs, mutation/rollback/recovery/partial-artifact states, upgrade coverage matrix, checkpoint hash, limitations, and exactly one legal next action.
 
 Completion gates:
 
-- configure: `CONFIGURED` plus current official evidence, real execution/project
-  receipts, successful authorized transaction, fresh visibility probe, and consistent
-  final hashes → `Verdict: COMPLETE`;
-- upgrade: `UPGRADE_VERIFIED` plus target receipts, final candidate migration/import/
-  build/regression evidence, authorized activation, post-activation visibility and
-  health evidence → `Verdict: COMPLETE`;
-- incomplete but preserved safe evidence → `Verdict: PARTIAL`;
-- authority/evidence/identity/CAS/rollback failure prevents progress →
-  `Verdict: BLOCKED`.
+- configure → CONFIGURED plus current official/license evidence, HEALTHY execution/toolchain/project receipts, framework consistency, authorized transaction, independent visibility, matching hashes;
+- upgrade → UPGRADE_VERIFIED plus target official/health receipts, complete final-hash migration/import/build/regression matrix, authorized activation, post-activation visibility/health;
+- safe incomplete evidence → PARTIAL or OFFLINE_EVIDENCE_ONLY;
+- authority/evidence/identity/policy/CAS failure → BLOCKED;
+- half mutation or failed rollback → RECOVERY_REQUIRED.
 
-Research, decision, and refresh return their explicit named states and stop without a
-configuration completion verdict. Do not auto-start another workflow, install an
-unapproved component, change source code outside an authorized migration, commit,
-push, or publish.
+Do not auto-start another workflow, install an unapproved component, mutate outside an exact transaction, commit, push, or publish.

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Ux Review"
-  short_description: "Validates a UX spec, HUD design, or interaction pattern..."
-  default_prompt: "Use $ux-review to run the Ux Review game-studio workflow."
+  display_name: "UX Review"
+  short_description: "Hash-bound UX quality gate with bounded coverage"
+  default_prompt: "Use $ux-review to perform a read-only, profile-aware review of an exact UX artifact or bounded UX selector, returning hash-bound findings and a non-persisted evidence record."

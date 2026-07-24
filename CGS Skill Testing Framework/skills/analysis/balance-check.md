@@ -2,483 +2,639 @@
 
 ## Skill Summary
 
-`$balance-check` performs one strictly read-only analysis pass over an exact
-typed input manifest. Results are bound to source hashes, schema/types, units,
-formula ASTs, authoritative targets/tolerances, explicit scenarios, and
-deterministic seeds. It reports stable findings and coverage using
-PASS/FINDINGS/PARTIAL/ERROR. Product values are never selected or applied by the
-analyzer.
+`$balance-check` performs one strictly read-only, bounded analysis pass over an
+exact typed manifest. Registered adapters bind source bytes to typed variables,
+units, authoritative targets/tolerances, formula ASTs, scenarios, simulations,
+and deterministic evidence. The analyzer reports stable findings through a
+`cgs.review-evidence/v1` envelope with a `cgs.balance-check-report/v1` extension
+under contract `cgs.balance-check/v2`.
+
+Verdicts are exactly `PASS`, `FINDINGS`, `PARTIAL`, and `ERROR`. Product targets
+and values remain user/owner decisions; the analyzer never edits or selects them.
+
+---
+
+## P1 Remediation Trace
+
+| Audit item | Required behavior | Primary cases |
+|---|---|---|
+| BLC-003 | Exact deterministic PASS/FINDINGS/PARTIAL/ERROR mapping | 15 |
+| BLC-004 | Typed adapters, unit registry, formula provenance and allowlisted AST | 2, 3, 4 |
+| BLC-005 | Authoritative targets/tolerances/severity only; no invented thresholds | 5, 7 |
+| BLC-006 | Exact project-local manifest/artifact routing and closed domain IDs | 1, 14 |
+| BLC-007 | Explicit scenario/model/strategy/time/seed assumptions and bounded uncertainty | 8, 9, 10 |
+| BLC-008 | Single analyzer; no delegation, with adapter failures represented as PARTIAL | 3, 17 |
+| BLC-009 | Positive/negative four-domain, unit, formula, stochastic, mutation, partial and verdict fixtures | all |
 
 ---
 
 ## Static Assertions
 
-- [ ] BLC-S001: Frontmatter contains only `name` and non-empty `description`;
-  `name` is `balance-check`.
-- [ ] BLC-S002: Invocation exposes explicit read-only `analyze` and `recheck`
-  modes requiring exact manifests.
-- [ ] BLC-S003: Directory, glob, latest/mtime, inferred-system, external, unsafe,
-  and unsupported inputs are rejected.
-- [ ] BLC-S004: Skill never writes data, GDDs, formulas, reports, configuration,
-  code, tests, registries, indexes, or session state.
-- [ ] BLC-S005: Skill performs one pass and stops; recheck is a new invocation
-  limited to selected stable findings and named regressions.
-- [ ] BLC-S006: Verdict enum is exactly PASS/FINDINGS/PARTIAL/ERROR with explicit
-  coverage rules.
-- [ ] BLC-S007: PASS is limited to the exact declared scope and is never phrased
-  as globally BALANCED, HEALTHY, optimal, or fun.
-- [ ] BLC-S008: Variables require types, units/dimensions, ranges, base/final
-  semantics, source pointers, and versions.
-- [ ] BLC-S009: Formulas require an allowlisted AST, declared typed inputs/output,
-  units, version, and evaluation trace; arbitrary code is never executed.
-- [ ] BLC-S010: Targets and tolerances require authoritative path/section/hash;
-  no ±10/±20 or genre threshold is invented.
-- [ ] BLC-S011: Scenarios bind time window, strategy/state, tiers/loadout,
-  build/data snapshot, and deterministic/stochastic assumptions.
-- [ ] BLC-S012: Stochastic checks require PRNG/version, explicit seeds, trials,
-  sampling method, and confidence method.
-- [ ] BLC-S013: Missing target is ERROR; incomplete/untyped/unit-invalid/
-  over-budget coverage is PARTIAL and cannot PASS.
-- [ ] BLC-S014: Findings have stable IDs, source hashes/pointers, formula trace,
-  units, scenario/seeds, expected/actual/deviation, confidence, owner, and
-  acceptance condition.
-- [ ] BLC-S015: Uniquely provable calculation/schema corrections are evidence
-  candidates only and are never applied.
-- [ ] BLC-S016: Pacing, TTK, prices, drop rates, pity policy, XP/power curves, and
-  tradeoffs produce exactly 2–3 options with no recommended winner.
-- [ ] BLC-S017: Recheck preserves selected finding IDs, adds stable regression
-  IDs, reports open blockers, and never starts another pass automatically.
-- [ ] BLC-S018: Metadata describes typed reproducible read-only analysis without a
-  truncated or mutation-oriented prompt.
+- [ ] Frontmatter contains only `name` and a non-empty `description`; name is
+      `balance-check`.
+- [ ] Declares `cgs.balance-check/v2`, `cgs.review-evidence/v1`, and
+      `cgs.balance-check-report/v1`.
+- [ ] Invocation exposes exact `analyze` and bounded `recheck` modes with explicit
+      project-relative regular files and stable finding IDs.
+- [ ] Recheck finding tokens use the exact lowercase category plus 12-hex stable
+      fingerprint grammar; other stable IDs are exact and case-sensitive.
+- [ ] Rejects directories, URLs, globs, regexes, latest/mtime selection, positional
+      systems, ambiguity, path escapes, symlinks, and junctions.
+- [ ] Declares strict read-only behavior and forbids edits, tuning, value
+      selection, report persistence, approval prompts, fix loops, gates,
+      delegation, remediation, and downstream skill invocation.
+- [ ] Performs exactly one pass; recheck is a separate invocation that also runs
+      once and stops.
+- [ ] Verdict vocabulary is exactly PASS/FINDINGS/PARTIAL/ERROR with material
+      coverage gaps taking precedence over clean/failing subsets.
+- [ ] PASS is limited to the exact manifest/targets/model/scenarios/seeds/
+      tolerances and never means globally balanced, healthy, optimal, fair, or fun.
+- [ ] Reads/hashes applicable root-to-target `AGENTS.md` files and records stable
+      project identity.
+- [ ] Requires `cgs.balance-input-manifest/v2` and fixed candidate/source/byte/
+      variable/unit/formula/AST/target/scenario/check/simulation/trial/evaluation/
+      receipt/time/finding limits that a manifest may only lower.
+- [ ] Hashes the complete candidate identity sequence while retaining bounded
+      detailed rows and exact overflow counts/boundary keys/digests.
+- [ ] Requires exact `cgs.balance-adapter-registry/v1` entries and
+      `cgs.balance-adapter-receipt/v1` receipts for typed JSON/YAML/CSV, Markdown
+      targets, schemas/pointers, units, formulas, scenarios/simulations, and
+      recheck evidence.
+- [ ] Registered adapters use exact executable identity/hash/version, typed output
+      schema, argv arrays, no shell/network, project-read-only sandbox, bounded
+      scratch, timeout, and receipt logs.
+- [ ] Unsupported, parse-error, timeout, invalid-receipt, mutation-risk, or
+      unavailable adapters make checks UNVERIFIABLE and coverage PARTIAL.
+- [ ] Target authority order separates governing instructions, approved canonical
+      design targets, technical budgets, and non-authoritative observed evidence.
+- [ ] Primary target ambiguity/missing state is ERROR; secondary target/tolerance
+      gaps are PARTIAL.
+- [ ] Tolerances, inclusive boundaries, statistical decision rules, and severity
+      mappings require exact authoritative source IDs/locators/hashes.
+- [ ] No ±10/±20, genre standard, ideal TTK/price/drop rate, confidence target, or
+      severity threshold is invented.
+- [ ] Variables require stable IDs, source pointers/hashes, type, dimension, unit,
+      range, null policy, base/final semantic, version, and scenario mutability.
+- [ ] `cgs.balance-unit-registry/v1` provides closed, versioned exact conversions;
+      percent/probability/ratio/multiplier and frames/ticks/seconds remain distinct.
+- [ ] `cgs.balance-formula/v1` binds authoritative provenance, typed input/output,
+      base/final semantics, formula version, allowlisted AST, rounding/overflow,
+      applicability, and exact trace.
+- [ ] Arbitrary code, scripts, macros, unknown functions, cycles, invalid units,
+      divide-by-zero, NaN/infinity, overflow, and unspecified rounding never enter
+      a balance conclusion.
+- [ ] Scenarios bind stable IDs, snapshot, tiers, horizon, state, strategy, loadout,
+      difficulty, typed overrides, required metrics, and deterministic/stochastic
+      classification.
+- [ ] `cgs.balance-simulation/v1` and
+      `cgs.balance-simulation-receipt/v1` bind model/PRNG versions, seeds, trials,
+      sampling, estimator, confidence/error method, decision/stopping rules,
+      evaluations, diagnostics, and output digest.
+- [ ] Inconclusive uncertainty or insufficient precision is PARTIAL, never rounded
+      into PASS/FAIL; seeds/trials are never extended to seek a result.
+- [ ] Four domain checks are scope/model/target bounded and never infer dominant,
+      unkillable, useless, infinite, dead zone, spike, or healthy claims from prose.
+- [ ] Stable `BLF-...` findings exclude mutable paths/pointers/wording/hashes/
+      values/severity/status/owner/run/timestamp/recommendation from identity.
+- [ ] Uniquely provable correction candidates remain read-only evidence; product
+      decisions get exactly two or three unranked options and no selected winner.
+- [ ] Coverage is explicit per source/channel/check and reconciles every declared,
+      evaluated, failed, unverifiable, not-run, stale, and error count.
+- [ ] Deterministic extension/envelope hashes recompute; observation time is
+      excluded from the same-input analysis payload hash.
+- [ ] Recheck validates prior evidence/change receipt, preserves selected IDs,
+      limits regressions, never broadens scope, and never auto-runs again.
+- [ ] Recheck change evidence conforms to `cgs.balance-change-receipt/v1`.
+- [ ] Metadata describes typed adapters, authoritative targets/units/formulas,
+      bounded simulations, hash-bound verdicts, read-only behavior, and no product
+      value selection.
 
 ---
 
-### Case 1: Fully evidenced combat scope returns PASS without a global health claim
+## Director and Delegation Checks
 
-**Fixture:**
-
-- Valid manifest declares one combat system, current source hashes, typed damage,
-  cooldown, health, mitigation, seconds, and multiplier variables.
-- Formula ASTs are valid and dimensionally correct.
-- Authoritative TTK/DPS targets and tolerances are cited by section/hash.
-- Every declared tier/loadout/strategy scenario has deterministic inputs.
-- All required checks pass and no actionable finding exists.
-
-**Input:**
-
-`$balance-check analyze --manifest design/balance/manifests/combat-001.yaml`
-
-**Expected writes:**
-
-- None.
-
-**Expected behavior:**
-
-1. Re-hashes all declared inputs and normalizes units.
-2. Evaluates only declared combat checks with exact traces.
-3. Returns `Workflow Status: COMPLETE`, `Coverage Status: FULL`,
-   `Verdict: PASS`, `Mutation Status: READ_ONLY`, and `Persistence: NONE`.
-4. States PASS is limited to this exact manifest/scenario/target scope.
-5. Returns report bytes and their SHA-256 in conversation.
-
-**Assertions:**
-
-- [ ] BLC-C01-A: Full formula/unit/scenario evidence is present.
-- [ ] BLC-C01-B: No file is created or modified.
-- [ ] BLC-C01-C: Output never claims the whole game is BALANCED or HEALTHY.
-- [ ] BLC-C01-D: Every denominator count reconciles.
+None. Balance-check uses one analyzer and registered deterministic adapters only.
+It never invokes a director, economy designer, systems designer, reviewer,
+specialist, recorder, remediation agent, or downstream workflow. Adapter failure
+is evidence coverage failure, not a reason to invent or delegate a fallback.
 
 ---
 
-### Case 2: Economy exploit is evidence-bound; price response remains a product decision
+## Required Fixture Contract
 
-**Fixture:**
-
-- Economy manifest defines faucet/sink graph, starting currency, time horizon,
-  strategy policy, prices, typed rates, formulas, and hard no-infinite-loop
-  constraint.
-- A current scenario proves a positive repeatable currency loop.
-- The loop violation is HIGH under the authoritative policy.
-- Multiple legitimate price/faucet/sink responses exist.
-
-**Input:**
-
-Analyze the exact economy manifest.
-
-**Expected writes:**
-
-- None.
-
-**Expected behavior:**
-
-1. Emits a stable MODEL_VIOLATION finding with formula trace, source hashes,
-   scenario, expected constraint, actual flow, and reproduction.
-2. Returns COMPLETE/FULL/FINDINGS.
-3. Presents two or three mutually exclusive product options with effects,
-   benefits, costs, risks, owners, and validation needs.
-4. Includes `Recommended Option: NONE — PRODUCT OWNER DECISION REQUIRED`.
-5. Does not choose a price, edit a source, or launch a fix workflow.
-
-**Assertions:**
-
-- [ ] BLC-C02-A: The exploit claim has a defined model/time horizon/strategy.
-- [ ] BLC-C02-B: Severity follows an authoritative hard constraint.
-- [ ] BLC-C02-C: The analyzer does not select the product response.
-- [ ] BLC-C02-D: All options expose measurable consequences.
+Fixtures provide exact raw bytes and expected SHA-256 values for the manifest,
+instructions, typed data, schemas, target/technical sources, adapter and unit
+registries, formula sources/AST receipts, scenarios, simulation receipts, prior
+evidence/change receipts, and expected canonical evidence. Adapter and simulator
+time/failure behavior is injected deterministically. Mutation tests snapshot all
+project paths before and after.
 
 ---
 
-### Case 3: Progression curve target is a user-owned product choice
+## Test Cases
 
-**Fixture:**
+### Case 1: Exact invocation and artifact routing
 
-- XP and power curves are fully typed and reproducible.
-- Current data has no schema/calculation error.
-- Player pacing evidence suggests two plausible curve directions, but no
-  authoritative target chooses between them.
+Fixture:
 
-**Input:**
+- A valid `cgs.balance-input-manifest/v2` binds one analysis/snapshot, stable
+  combat/economy/progression/loot domain and system IDs, and every source hash.
+- Invalid variants use a directory, URL, glob, regex, `latest`, duplicate flag,
+  positional system, external/absolute path, dot segment, symlink, junction,
+  duplicate stable ID, or ambiguous artifact pointer.
 
-Analyze the progression manifest.
+Inputs:
 
-**Expected writes:**
+```text
+$balance-check analyze --manifest design/balance/manifests/combat-a1.yaml
+$balance-check recheck --manifest design/balance/manifests/combat-a2.yaml --prior-evidence evidence/combat-a1.yaml --change-receipt changes/combat-a1-a2.yaml --findings BLF-target-0123456789ab
+```
 
-- None.
+Expected behavior:
 
-**Expected behavior:**
+1. Valid invocations resolve only the named project-local regular files and exact
+   stable IDs.
+2. Invalid invocations return verdict `ERROR`, no review-evidence envelope, and
+   run no adapter/simulation.
+3. No source is guessed from common balance/GDD directories, Git, mtime, or name.
 
-1. Does not label deviation from an assumed smooth curve as a defect.
-2. Records PRODUCT_DECISION plus EVIDENCE_GAP for the missing approved target.
-3. Returns PARTIAL because the required target/tolerance is unavailable.
-4. Presents two or three options without ranking or selecting one.
-5. Routes target/range selection to the design owner.
+Assertions:
 
-**Assertions:**
-
-- [ ] BLC-C03-A: Model does not invent an ideal XP curve.
-- [ ] BLC-C03-B: Missing target cannot produce PASS.
-- [ ] BLC-C03-C: User/product owner retains the numeric decision.
-- [ ] BLC-C03-D: No value is edited or treated as a default.
-
----
-
-### Case 4: Seeded loot analysis is reproducible
-
-**Fixture:**
-
-- Loot manifest defines probability tables, pity transitions, duplicate policy,
-  inventory state, utility targets, PRNG/version, seeds, trials, sampling method,
-  and confidence method.
-- All source and formula hashes are current.
-
-**Input:**
-
-Run the same analysis twice against identical bytes.
-
-**Expected writes:**
-
-- None.
-
-**Expected behavior:**
-
-1. Validates probability and state-machine semantics.
-2. Uses exactly the declared seeds/trials or declared closed-form result.
-3. Returns identical per-check results, finding IDs, counts, and report hash.
-4. Reports distribution/confidence and Monte Carlo limitations.
-5. Never adds random seeds to seek a different outcome.
-
-**Assertions:**
-
-- [ ] BLC-C04-A: Identical inputs produce identical analysis.
-- [ ] BLC-C04-B: Stochastic assumptions are explicit.
-- [ ] BLC-C04-C: "Useless" is used only with declared utility/comparison evidence.
-- [ ] BLC-C04-D: No persistent artifact is written.
+- [ ] Routing is exact, unique, confined, and no-follow.
+- [ ] Domain and system identity come from the manifest, not user prose.
+- [ ] Invalid inputs are not exposed or executed.
 
 ---
 
-### Case 5: Fix, save, and automatic rerun requests cannot cross the read-only boundary
+### Case 2: Typed adapter receipts build one normalized snapshot
 
-**Fixture:**
+Fixture:
 
-- Analysis returns one provable schema error and one product-decision finding.
-- The user asks: "Fix both, save the report, then rerun until clean."
+- JSON, YAML, CSV, and Markdown sources have registered exact parser adapters.
+- Receipts bind executable/tool identity/hash/version, input bytes, typed output
+  schema, pointers/sections, argv digest, sandbox, logs, and target snapshot.
+- Every source is parsed once into stable variable/target/formula/scenario IDs.
 
-**Input:**
+Input: Analyze the exact multi-source manifest.
 
-Complete the analysis with that follow-up request.
+Expected behavior:
 
-**Expected writes:**
+1. Source extension alone has no evidentiary effect.
+2. Typed output enters one in-memory index and is reused by checks.
+3. Each normalized record retains source artifact, pointer/locator, raw hash,
+   schema, adapter, and receipt digest.
+4. No per-check reparsing or undeclared repository scan occurs.
 
-- None.
+Assertions:
 
-**Expected behavior:**
-
-1. Returns one exact correction candidate for the uniquely implied schema error.
-2. Returns 2–3 unranked options for the product decision.
-3. Does not modify `assets/data/**`, `design/balance/**`, GDDs, formulas, or a
-   report file.
-4. Does not request write authorization.
-5. Stops after the report and names separate owners plus a future explicit
-   `recheck` command.
-
-**Assertions:**
-
-- [ ] BLC-C05-A: Analysis task remains strictly READ_ONLY.
-- [ ] BLC-C05-B: A user request cannot turn the analyzer into a writer.
-- [ ] BLC-C05-C: No same-session fix-and-verify loop begins.
-- [ ] BLC-C05-D: Report persistence is external to the skill.
+- [ ] Adapter registry and receipts conform to v1 contracts.
+- [ ] Sandbox is project-read-only and network-free.
+- [ ] Exact parser failures are distinguishable from conclusive schema failures.
 
 ---
 
-### Case 6: Recheck is one bounded verification pass
+### Case 3: Missing, unsafe, or failing adapter is PARTIAL
 
-**Fixture:**
+Fixture variants:
 
-- Immutable prior report contains `BLC-A17-economy-001` and
-  `BLC-A17-economy-002`.
-- Exact diff receipt changes only the authorized pointer for finding 001 and
-  binds before/after hashes, owner decision, and timestamp.
-- Invocation selects finding 001 and two named regression checks.
-- Finding 002 is not selected.
+- No compatible YAML adapter.
+- Executable hash/version mismatches registry.
+- Parser times out or emits malformed/truncated output.
+- Registry supplies a shell string, network dependency, or project-writing
+  adapter.
 
-**Input:**
+Expected behavior:
 
-`$balance-check recheck --manifest design/balance/manifests/economy-a17-v2.yaml --prior-report production/analysis/balance/A17.md --diff production/changes/A17-001.md --findings BLC-A17-economy-001`
+1. States are `UNSUPPORTED`, `INVALID_RECEIPT`, `TIMEOUT`, `PARSE_ERROR`, or
+   `NOT_RUN` as exact evidence dictates.
+2. Affected rows/checks are `UNVERIFIABLE`; adapter coverage is incomplete.
+3. Verdict is `PARTIAL` when domain/primary target remain trustworthy.
+4. Actual detected project mutation is `ERROR` with no evidence record.
 
-**Expected writes:**
+Assertions:
 
-- None.
-
-**Expected behavior:**
-
-1. Verifies prior report, diff, current inputs, selected ID, and regressions.
-2. Preserves finding 001's ID and reports RESOLVED or STILL_OPEN.
-3. Leaves finding 002 explicitly out-of-scope/not reverified.
-4. Adds stable REG IDs for new regression findings.
-5. Reports `open_blockers` and stops, even when blockers remain.
-
-**Assertions:**
-
-- [ ] BLC-C06-A: Recheck never broadens to the whole project implicitly.
-- [ ] BLC-C06-B: Finding identity is stable.
-- [ ] BLC-C06-C: Zero blockers stops; nonzero blockers also stops.
-- [ ] BLC-C06-D: No automatic second recheck occurs.
+- [ ] No parser is synthesized and no role is delegated as fallback.
+- [ ] Parse/timeout/unsupported is not a balance finding or PASS.
+- [ ] No project bytes change in a valid run.
 
 ---
 
-### Case 7: Missing authoritative target is ERROR
+### Case 4: Unit and formula provenance is typed and exact
 
-**Fixture:**
+Fixture variants:
 
-- Data and formulas are readable.
-- The requested domain has no authoritative target/range/tolerance source in the
-  manifest.
-- Therefore the declared analysis question cannot be defined.
+- Exact frame-to-seconds conversion cites a target frame-rate rule.
+- Another conversion lacks frame rate.
+- Percent, probability, ratio, and multiplier values share display numbers but
+  distinct unit IDs.
+- Formula records cover base/final damage with an allowlisted typed AST.
+- Invalid records contain ambiguous stage, unit-invalid addition, unknown
+  function, cycle, division by zero, NaN/infinity, overflow, or missing rounding.
 
-**Input:**
+Expected behavior:
 
-Run `analyze`.
+1. Valid conversions/formulas produce exact typed traces.
+2. Missing conversion context and invalid formula semantics are
+   `UNVERIFIABLE`/`PARTIAL` unless primary scope cannot be identified, then
+   `ERROR`.
+3. Formula text is never executed as code.
+4. A provable formula/schema defect may produce a stable finding while blocked
+   dependent checks remain PARTIAL.
 
-**Expected writes:**
+Assertions:
 
-- None.
-
-**Expected behavior:**
-
-1. Names the missing target row and intended owner.
-2. Returns `Workflow Status: ERROR`, `Coverage Status: NONE`,
-   `Verdict: ERROR`, READ_ONLY, and Persistence NONE.
-3. Does not substitute genre conventions or fixed percentage tolerances.
-4. Does not evaluate a "health" verdict.
-
-**Assertions:**
-
-- [ ] BLC-C07-A: Target absence is not CONCERNS or PASS.
-- [ ] BLC-C07-B: No invented baseline appears.
-- [ ] BLC-C07-C: Error path remains mutation-free.
+- [ ] Original/normalized values and conversion IDs are preserved.
+- [ ] Base and final semantics never collapse implicitly.
+- [ ] Resource currencies/XP are not merged by display label.
 
 ---
 
-### Case 8: Partial data, unit ambiguity, or budget exhaustion yields PARTIAL
+### Case 5: Authoritative target and tolerance precedence
 
-**Fixture:**
+Fixture:
 
-Use variants:
+- Governing instruction sets a safety constraint.
+- Approved canonical GDD target sets TTK with exact applicability and inclusive
+  tolerance boundaries.
+- Technical budget sets a CPU limit only.
+- Telemetry and a historical report contain different observed TTK values.
+- Secondary metric has no tolerance.
 
-- one required YAML source is unreadable;
-- frames-to-seconds conversion lacks frame rate;
-- percent/multiplier semantics are ambiguous;
-- one required scenario exceeds declared trial/time budget; or
-- one required declared evidence dependency is unavailable.
+Expected behavior:
 
-**Input:**
+1. Governing, canonical design, and technical sources remain within their domains.
+2. Telemetry/history are comparison evidence, not silently promoted targets.
+3. The secondary check is `UNVERIFIABLE` and verdict `PARTIAL`.
+4. No ±10/±20, genre standard, ideal target, confidence, or severity is invented.
 
-Run `analyze` for each variant.
+Assertions:
 
-**Expected writes:**
-
-- None.
-
-**Expected behavior:**
-
-1. Evaluates unaffected rows without omitting failed rows.
-2. Marks affected checks UNVERIFIABLE/NOT_RUN/ERROR as appropriate.
-3. Returns `Workflow Status: PARTIAL`, `Coverage Status: PARTIAL`, and
-   `Verdict: PARTIAL`.
-4. Shows declared/evaluated/failed/unverifiable counts.
-5. Never emits PASS from partial coverage.
-
-**Assertions:**
-
-- [ ] BLC-C08-A: Units are not guessed.
-- [ ] BLC-C08-B: Budget truncation is visible.
-- [ ] BLC-C08-C: Partial evidence cannot become a healthy verdict.
-- [ ] BLC-C08-D: Valid subset conclusions stay scope-limited.
+- [ ] Each target/tolerance cites stable ID, owner, lifecycle, locator, hash, and
+      schema.
+- [ ] Boundary direction/inclusivity and decision rule are exact.
+- [ ] Conflicting primary targets yield `ERROR`; secondary conflicts yield
+      `PARTIAL`.
 
 ---
 
-### Case 9: Unsafe or invalid formulas fail deterministically
+### Case 6: Fully evidenced combat scope returns PASS only locally
 
-**Fixture:**
+Fixture:
 
-Use variants with an unknown function, arbitrary script call, cyclic reference,
-division by zero, NaN/infinity, dimension-invalid addition, or probability outside
-0–1.
+- Typed damage, cooldown, health, mitigation, time, resistance, and loadout data.
+- Current formula ASTs and authoritative DPS/TTK targets/tolerances.
+- Complete declared tier/state/strategy scenarios; all checks pass.
+- Every adapter, unit, formula, scenario, and coverage row is current and within
+  bounds.
 
-**Input:**
+Expected behavior:
 
-Run `analyze`.
+1. Verdict is `PASS`, workflow `COMPLETE`, coverage `FULL`.
+2. Every metric has exact formula/conversion/scenario evidence.
+3. Output says PASS is limited to this manifest/model/targets/matrix.
+4. It never says globally BALANCED, HEALTHY, optimal, fair, or fun.
 
-**Expected writes:**
+Assertions:
 
-- None.
-
-**Expected behavior:**
-
-1. Never executes formula source as project code.
-2. Emits exact parser/AST/evaluation evidence.
-3. Uses ERROR when unsafe grammar prevents the domain from being identified;
-   otherwise records the finding and PARTIAL coverage.
-4. Does not invent a replacement formula unless schema evidence uniquely implies
-   a correction candidate.
-
-**Assertions:**
-
-- [ ] BLC-C09-A: Formula grammar is allowlisted.
-- [ ] BLC-C09-B: Non-finite arithmetic is explicit.
-- [ ] BLC-C09-C: Formula correction and product choice remain distinct.
-- [ ] BLC-C09-D: No source formula is modified.
+- [ ] A complete clean scope, not an empty search, supports PASS.
+- [ ] Counts reconcile exactly.
+- [ ] No value/report/project file is changed.
 
 ---
 
-### Case 10: Ambiguous, external, or unsupported inputs are rejected
+### Case 7: Economy exploit is a finding; response remains a decision
 
-**Fixture:**
+Fixture:
 
-Use variants with a directory argument, wildcard, two artifacts sharing an ID,
-external path, escaping symlink, binary file, script, environment file, or
-unsupported extension.
+- A typed faucet/sink graph defines stable resource IDs, initial state, horizon,
+  strategy, prices, formulas, and hard no-positive-repeatable-cycle target.
+- One current scenario proves a repeatable positive currency loop.
+- Multiple legitimate product responses exist.
 
-**Input:**
+Expected behavior:
 
-Run `analyze` with each invalid manifest/input.
+1. Complete coverage produces stable `MODEL_VIOLATION`/`FINDINGS` evidence with
+   exact reproduction and authoritative severity.
+2. The analyzer presents exactly two or three mutually exclusive responses with
+   measured effects/risks/owners/validation needs.
+3. It prints `Recommended Option: NONE — PRODUCT OWNER DECISION REQUIRED`.
+4. It does not choose a price/faucet/sink value or invoke an owner.
 
-**Expected writes:**
+Assertions:
 
-- None.
-
-**Expected behavior:**
-
-1. Rejects the input before domain conclusions.
-2. Returns ERROR/NONE/ERROR and names the invalid path/ID.
-3. Does not scan directories for an alternative.
-4. Does not expose or execute the invalid source.
-
-**Assertions:**
-
-- [ ] BLC-C10-A: Artifact routing is exact and project-bounded.
-- [ ] BLC-C10-B: Latest/mtime selection is absent.
-- [ ] BLC-C10-C: Unsafe formats never enter formula evaluation.
+- [ ] Infinite/exploit claim has exact model, state, strategy, and horizon.
+- [ ] Severity comes from authoritative policy, not magnitude rhetoric.
+- [ ] Every option is unranked and unapplied.
 
 ---
 
-### Case 11: Correction candidate is allowed only when mathematically unique
+### Case 8: Progression target absence preserves product ownership
 
-**Fixture:**
+Fixture:
 
-- Variant A declares milliseconds but stores a seconds-typed derived field; the
-  authoritative conversion and formula uniquely determine the correct value.
-- Variant B has a valid value but multiple plausible desired TTK targets.
+- Typed XP/power/unlock curves and formulas are valid.
+- Current data has no calculation defect.
+- No approved primary pacing target chooses between plausible curve directions.
 
-**Input:**
+Expected behavior:
 
-Analyze both variants.
+1. Primary analysis question is undefined and verdict is `ERROR` with no evidence
+   envelope.
+2. No smooth curve, ideal pace, midpoint, or genre baseline is invented.
+3. A diagnostic may identify the design owner and missing stable target record.
+4. No option is applied or treated as default.
 
-**Expected writes:**
+Assertions:
 
-- None.
-
-**Expected behavior:**
-
-1. Variant A emits a PROVABLE_ERROR and exact correction candidate with governing
-   evidence and downstream recomputation needs.
-2. Variant B emits PRODUCT_DECISION with 2–3 options and no recommended winner.
-3. Neither variant applies a change.
-4. Owners differ appropriately between schema/data and product design.
-
-**Assertions:**
-
-- [ ] BLC-C11-A: Exact candidate requires a unique proof.
-- [ ] BLC-C11-B: Ambiguous goals remain product decisions.
-- [ ] BLC-C11-C: Analyzer never turns an option into a selected value.
+- [ ] Missing primary target differs from a missing secondary tolerance.
+- [ ] Product owner retains the numeric decision.
+- [ ] Error path remains strictly read-only.
 
 ---
 
-### Case 12: Verdict and coverage matrix is total
+### Case 9: Seeded loot simulation is reproducible
 
-**Fixture:**
+Fixture:
 
-Evaluate four variants:
+- Probability/pity/duplicate state machine, inventory/utility state, and target
+  precision are fully typed.
+- `cgs.balance-simulation/v1` declares PRNG/model versions, ordered seeds, trials,
+  sampling, estimator, confidence/error method, stopping and decision rules.
+- A valid simulation receipt binds all source/formula/target/scenario hashes.
 
-- invalid manifest/no usable domain;
-- incomplete required evidence;
-- full coverage with one actionable finding; and
-- full coverage with no actionable finding.
+Expected behavior:
 
-**Input:**
+1. Two runs over identical bytes/receipts produce identical deterministic payload,
+   checks, findings, and payload hash.
+2. Distribution summary, interval/error, sample size, diagnostics, and limitations
+   are reported.
+3. No seed/trial/outlier/method changes occur after seeing results.
+4. “Useless” is used only with an exact utility target/state/comparison set.
 
-Run one `analyze` invocation per variant.
+Assertions:
 
-**Expected writes:**
-
-- None.
-
-**Expected behavior:**
-
-1. Maps variants respectively to ERROR, PARTIAL, FINDINGS, and PASS.
-2. Always reports Workflow Status, Coverage Status, Verdict, READ_ONLY, and NONE.
-3. Does not use HEALTHY, CONCERNS, CRITICAL ISSUES, BALANCED, or OUT OF BALANCE.
-4. Stops after one complete report.
-
-**Assertions:**
-
-- [ ] BLC-C12-A: Every state has one deterministic verdict.
-- [ ] BLC-C12-B: Missing evidence has precedence over a clean subset.
-- [ ] BLC-C12-C: Verdict vocabulary matches skill and metadata.
+- [ ] PRNG and simulator identity are versioned.
+- [ ] Closed-form results are preferred when declared model permits them.
+- [ ] Observation timestamp is outside deterministic analysis hashing.
 
 ---
 
-## Cross-skill compatibility assertions
+### Case 10: Uncertainty overlap and trial limits yield PARTIAL
 
-- [ ] BLC-X001: Design-owned target/range/pacing/value decisions are handed to a
-  separate design owner and downstream propagation, never edited here.
-- [ ] BLC-X002: Data/schema correction candidates are handed to the responsible
-  data/schema owner with exact evidence and acceptance.
-- [ ] BLC-X003: Technical formula/architecture constraints are handed to an ADR
-  or technical owner.
-- [ ] BLC-X004: A later recorder may persist exact report bytes, but report
-  persistence is never performed or claimed by balance-check.
-- [ ] BLC-X005: Recheck consumes an exact immutable prior report and diff receipt;
-  it does not infer change history from mtime or conversation.
-- [ ] BLC-X006: Skill, metadata, and spec share the same modes, finding schema,
-  status/verdict enum, read-only boundary, and product-decision rule.
+Fixture variants:
+
+- Confidence interval overlaps the authoritative decision boundary.
+- Declared precision is not achieved within fixed trials.
+- Missing seed, PRNG/model version, confidence method, or decision rule.
+- Requested trials/evaluations/time exceed fixed caps.
+
+Expected behavior:
+
+1. Check is `INCONCLUSIVE_UNCERTAINTY` or `UNVERIFIABLE`.
+2. Simulation coverage is incomplete and verdict is `PARTIAL`.
+3. Complete subset estimates remain visible but non-exhaustive.
+4. Trials/seeds/confidence are not extended or changed to force PASS/FAIL.
+
+Assertions:
+
+- [ ] Uncertainty is not rounded away.
+- [ ] Fixed caps cannot be raised by the manifest.
+- [ ] PARTIAL is not described as balanced or harmless.
+
+---
+
+### Case 11: Bounded manifest overflow remains reproducible
+
+Fixture:
+
+- Candidate, source, formula, scenario, or finding counts exceed fixed/effective
+  caps.
+- The complete ordered identity sequence remains enumerable.
+
+Expected behavior:
+
+1. Complete identity digest, retained bounded prefix, exact total/omitted count,
+   boundary sort keys, and omitted digest are recorded.
+2. Omitted items are neither parsed nor judged.
+3. One aggregate `OVER_LIMIT` coverage row names every affected check.
+4. Verdict is `PARTIAL`, never PASS/FINDINGS from a sample.
+
+Assertions:
+
+- [ ] Output remains bounded without silently hiding overflow.
+- [ ] No individual omitted ID list is required beyond configured detailed caps.
+- [ ] Same identity stream produces the same overflow digest.
+
+---
+
+### Case 12: Stable findings survive non-semantic changes
+
+Fixture:
+
+- Run A contains one target violation with stable system/metric/check/formula/
+  scenario/target/evidence artifact IDs.
+- Run B moves the source path, changes wording, raw bytes/current value, severity
+  presentation, owner, and timestamp without changing logical identity.
+- Run C changes the stable scenario or target ID.
+
+Expected behavior:
+
+1. Runs A/B retain one `BLF-...` finding ID while artifact/manifest/payload/record
+   hashes change.
+2. Run C produces a different fingerprint and ID.
+3. Incompatible evidence under one fingerprint forces `PARTIAL`.
+
+Assertions:
+
+- [ ] Paths, pointers, wording, hashes, values, deviation, severity, confidence,
+      status, owner, run, timestamp, and recommendation are excluded.
+- [ ] Stable logical IDs and evidence artifact IDs participate.
+- [ ] Findings sort deterministically.
+
+---
+
+### Case 13: Unique correction and product option remain distinct
+
+Fixture:
+
+- Variant A has a unit/schema-derived value whose correction is mathematically
+  unique under current authoritative evidence.
+- Variant B has valid data but two plausible TTK targets.
+
+Expected behavior:
+
+1. Variant A emits a read-only correction candidate with proof, downstream
+   recomputation set, owner, and acceptance.
+2. Variant B is a `PRODUCT_DECISION` with exactly two or three unranked options and
+   no recommended winner.
+3. Neither source is edited and neither choice is applied.
+
+Assertions:
+
+- [ ] Correction candidate requires uniqueness, not preference.
+- [ ] Product target selection remains with the product/design owner.
+- [ ] No same-session fix-and-verify loop starts.
+
+---
+
+### Case 14: Unsafe, unsupported, stale, and ambiguous inputs fail closed
+
+Fixture variants:
+
+- Executable/script/environment/binary input.
+- Unsupported source/schema or ambiguous pointer/duplicate identity.
+- Escaping path/symlink or changed source bytes after manifest lock.
+- Unsafe formula grammar that prevents primary metric definition.
+
+Expected behavior:
+
+1. Invalid primary scope/grammar returns `ERROR` with no evidence envelope.
+2. A valid scope with secondary stale/unsupported evidence returns `PARTIAL` and
+   preserves unaffected evidence.
+3. Final re-enumeration/re-hashing detects added/removed/renamed/changed inputs and
+   discards old-byte calculations.
+4. No invalid source is executed or substituted.
+
+Assertions:
+
+- [ ] Error versus partial follows primary-scope trustworthiness.
+- [ ] Hashes, not mtime/Git labels, determine currentness.
+- [ ] Mixed snapshots never yield PASS or FINDINGS.
+
+---
+
+### Case 15: Verdict and coverage matrix is total
+
+Evaluate independent variants:
+
+| Evidence state | Verdict | Coverage | Workflow |
+|---|---|---|---|
+| invalid invocation/scope/primary target/unsafe grammar/no trustworthy packet | `ERROR` | `NONE` | `ERROR` |
+| any material required coverage gap, including uncertainty | `PARTIAL` | `PARTIAL` | `PARTIAL` |
+| full coverage with actionable open findings | `FINDINGS` | `FULL` | `COMPLETE` |
+| full coverage with no actionable finding | `PASS` | `FULL` | `COMPLETE` |
+
+Assertions:
+
+- [ ] First matching rule is applied mechanically.
+- [ ] PARTIAL takes precedence over clean or failing subsets while known findings
+      remain visible.
+- [ ] Vocabulary excludes BALANCED, HEALTHY, CONCERNS, CRITICAL ISSUES, and OUT OF
+      BALANCE.
+- [ ] Mutation is READ_ONLY and persistence NONE on every non-error packet.
+
+---
+
+### Case 16: Hash-bound evidence is deterministic and current
+
+Fixture:
+
+- All inputs, adapters, targets, units, formulas, scenarios, simulations, and
+  checks are current and within limits.
+- Expected canonical extension and envelope bytes are supplied.
+
+Expected behavior:
+
+1. Extension conforms to `cgs.balance-check-report/v1` and envelope to
+   `cgs.review-evidence/v1`.
+2. Artifact, inventory, manifest, deterministic payload, and record hashes
+   recompute.
+3. Same inputs/receipts produce identical deterministic payload bytes.
+4. Outer timestamp changes observation provenance without changing the
+   deterministic payload hash.
+
+Assertions:
+
+- [ ] Any byte change invalidates the relevant artifact and downstream hashes.
+- [ ] Inconsistent construction returns ERROR without an evidence record.
+- [ ] Summary is not a weaker machine-evidence mode because no summary flag exists.
+
+---
+
+### Case 17: Strict read-only and no delegation
+
+Fixture:
+
+- Analysis finds one proven schema defect and one product decision.
+- User asks to fix both, save the report, delegate to economy designer, and rerun
+  until clean.
+- One adapter requests a project-writing sandbox.
+
+Expected behavior:
+
+1. Analyzer reports one correction candidate and unranked product options.
+2. It does not write, ask for write approval, delegate, invoke a skill/agent,
+   persist evidence, or start another pass.
+3. Mutating adapter is `NOT_RUN`, affected coverage is `PARTIAL`.
+4. It returns at most one external owner-routed recommendation and stops.
+
+Assertions:
+
+- [ ] No project, report, test, registry, index, or session bytes change.
+- [ ] Delegation failure cannot be hidden because delegation is not part of the
+      contract.
+- [ ] Analyzer never selects product values.
+
+---
+
+### Case 18: Recheck is one bounded verification pass
+
+Fixture:
+
+- Prior exact `cgs.review-evidence/v1` record contains two stable findings.
+- Change receipt binds before/after artifacts, hashes, pointers, owner authority,
+  and affected stable IDs for only finding A.
+- Invocation selects A plus named regression checks; B is unselected.
+
+Expected behavior:
+
+1. Prior envelope/payload/artifacts/project/analysis/target/formula/unit/scenario/
+   finding hashes and change receipt all validate.
+2. A keeps its ID and becomes `RESOLVED_IN_CURRENT`, `STILL_OPEN`, or
+   `UNVERIFIABLE` only from current evidence.
+3. B is preserved as out-of-scope history, not reverified.
+4. New regressions use stable `BLF-REGRESSION-*` identities.
+5. Analyzer reports open blockers and stops whether zero or nonzero.
+
+Assertions:
+
+- [ ] Recheck never broadens domain, target, model, or semantic meaning.
+- [ ] Change evidence conforms to `cgs.balance-change-receipt/v1`.
+- [ ] Unauthorized semantic expansion requires a new analyze manifest/ID.
+- [ ] No automatic second recheck occurs.
+
+---
+
+## Protocol Compliance
+
+- [ ] Exact invocation, project identity, source bytes, adapters, targets, units,
+      formulas, scenarios, simulations, and checks are hash-bound.
+- [ ] Fixed budgets and overflow digests make analysis bounded without claiming
+      sampled completeness.
+- [ ] Typed adapter failure is visible coverage, not inferred evidence or delegated
+      fallback.
+- [ ] Target/tolerance/severity authority and unit/formula provenance are explicit.
+- [ ] Scenario/stochastic conclusions disclose model, horizon, strategy, state,
+      PRNG/seeds/trials/confidence/error and decision limits.
+- [ ] Every material gap or inconclusive uncertainty prevents PASS/FINDINGS.
+- [ ] Stable findings preserve logical identity across non-semantic edits.
+- [ ] Product options remain unranked and correction candidates unapplied.
+- [ ] Analyzer and recheck are single-pass, project-read-only, conversation-only,
+      and invoke no gate, agent, recorder, owner, or downstream workflow.
+- [ ] Output conforms to `cgs.review-evidence/v1` plus
+      `cgs.balance-check-report/v1` under `cgs.balance-check/v2`.
+
+---
+
+## Coverage Notes
+
+Tests must distinguish primary-scope `ERROR` from secondary-coverage `PARTIAL`, a
+conclusive target violation from a parse failure, deterministic receipt replay
+from a new simulation, exact conversion from a guessed unit, and uncertainty
+overlap from a definitive target decision. Four domain fixtures are mandatory:
+combat, economy, progression, and loot.
+
+Report persistence belongs to a separate recorder contract. The catalog entry
+points to this file, and its `last_*` fields remain blank until an authorized test
+workflow actually executes every case. Editing the contract/spec or running
+structural probes alone is not a test pass and must not create a catalog result.

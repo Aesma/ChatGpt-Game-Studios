@@ -1,4 +1,4 @@
 interface:
   display_name: "Changelog"
-  short_description: "Build local changelog entries from exact Git-range evidence"
-  default_prompt: "Use $changelog with an explicit from/to range manifest to compute net committed changes, keep version/candidate/deployment states separate, sanitize any player draft, and persist only a history-preserving keyed entry."
+  short_description: "Draft local changelog candidates from an exact Git range"
+  default_prompt: "Use $changelog with a hash-pinned v2 request to derive deterministic source-bound net-change claims, keep version/date/target/candidate/deployment states separate, sanitize any player projection, and remain read-only unless one absent output target has explicit create-only CAS authority. Never revise history or publish."
