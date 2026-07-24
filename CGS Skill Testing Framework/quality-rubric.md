@@ -1,214 +1,139 @@
-# Skill Quality Rubric
+# Skill Quality Rubric v2
 
-Used by `$skill-test category [name|all]` to evaluate skills beyond structural compliance.
-Each category defines 4–5 binary PASS/FAIL metrics specific to the skill's job.
+Schema: `cgs-skill-quality-rubric/v2`<br>
+Applies to: `$skill-test` static, behavioral, category, and compatibility evaluation
 
-A metric is PASS when the skill's written instructions clearly satisfy the criterion.
-A metric is FAIL when the instructions are absent, ambiguous, or contradictory.
-A metric is WARN when the instructions partially address the criterion.
+## Evidence model
 
----
+Quality has separate axes. A result MUST NOT collapse them into one “works” claim.
 
-## Skill Categories
+| Axis ID | Axis | Valid evidence | Invalid shortcut |
+|---|---|---|---|
+| QR-STRUCT | Structural conformance | exact candidate/spec bytes validated against `cgs-skill-spec/v2` | presence of a spec file |
+| QR-SEMANTIC | Semantic consistency | stable contradiction checks and exact clause references | keyword occurrence alone |
+| QR-STATIC | Instruction-level behavior | stable static assertions against bounded bytes | claiming runtime success |
+| QR-RUNTIME | Runtime behavior | current execution receipt, inputs, environment, outputs, logs, and hashes | prose, simulation, or stale run |
+| QR-SIDEFX | Side effects | pre/post state manifests for files and external systems | “read-only” wording alone |
+| QR-RECOVERY | Timeout/recovery | bounded timeout/interruption/rollback/idempotency executions | a recovery paragraph alone |
+| QR-COMPAT | Contract compatibility | caller/callee/shared-schema matrix with exact versions and hashes | checking the callee in isolation |
+
+Each assertion verdict is `PASS`, `FAIL`, `WARN`, `NOT_RUN`, or `NOT_APPLICABLE`. `PASS` requires the evidence type declared by its axis. `NOT_RUN` is not PASS. Any required assertion with missing, stale, ambiguous, oversized, or unreadable evidence is `FAIL` or the skill's declared fail-closed verdict.
+
+## Universal gates
+
+Every skill is evaluated by these stable IDs before category metrics:
+
+| Metric | PASS criteria |
+|---|---|
+| QR-U01 — Spec schema | Dedicated spec declares `cgs-skill-spec/v2`, unique Spec ID, category, priority, date, summary modes/owned outputs/non-writes/verdicts, and all required sections. |
+| QR-U02 — Case structure | Cases are numbered contiguously from 1, have unique stable Case IDs, and each contains Fixture, Input, Expected reads, Expected writes, Expected non-writes, Expected behavior, stable Assertions, and Case Verdict. |
+| QR-U03 — Interface reality | Every advertised command/mode/flag has a real handling path or fail-closed usage behavior; no inert interface exists. |
+| QR-U04 — Ownership | Producer, reviewer, recorder, and canonical owner boundaries are explicit; no role self-approves or crosses write ownership. |
+| QR-U05 — Typed evidence | Exact schema versions, paths, raw hashes, identities, currentness, supersession, and coverage are required where evidence is consumed. |
+| QR-U06 — Bounded operation | Reads, waits, recursion, retries, writes, and external actions have limits and declared consequences. |
+| QR-U07 — Transaction safety | Mutating paths specify authorization, compare-and-swap/preimage checks, atomicity, rollback, idempotency, and persisted receipt as applicable. |
+| QR-U08 — Verdict honesty | Static, runtime, side-effect, and recovery conclusions stay separate; aggregation cannot upgrade unknown or not-run evidence. |
+| QR-U09 — Traceability | Every audit/requirement ID maps to a concrete SKILL clause and at least one dedicated-spec case assertion. |
+| QR-U10 — Compatibility | Changed producers/consumers/shared schemas/metadata/specs are enumerated, and exact output/input versions agree. |
+
+## Category metrics
+
+Category metrics supplement, never replace, universal gates. A skill is evaluated only against its declared category and explicit capabilities.
 
 ### `gate`
 
-**Skills**: gate-check
+| Metric | PASS criteria |
+|---|---|
+| QR-G01 — Read-only gate | Gate analysis cannot write canonical stage or source artifacts. |
+| QR-G02 — Stage authority | Versioned stage authority, transition, gate profile, target commit/ref, dirty state, current evidence, and recorder receipt are exact and hash-bound. |
+| QR-G03 — Mode scope | Only declared consumers implement review mode. For `gate-check`, all four phase gates run in full and lean; solo contributes `N/A`. |
+| QR-G04 — No skipped safeguards | Mode never skips required QA, accessibility, security, evidence validation, separation, or non-waivable blockers. |
+| QR-G05 — No auto-advance | Eligibility is distinct from separately authorized stage advancement by the unique recorder. |
 
-Gate skills control phase transitions. They must enforce correctness without
-auto-advancing stage and must respect the three review modes.
+### `review` and `analysis`
 
 | Metric | PASS criteria |
 |---|---|
-| **G1 — Review mode read** | Skill reads `production/session-state/review-mode.txt` (or equivalent) before deciding which directors to spawn |
-| **G2 — Full mode: all 4 directors spawn** | In `full` mode, all 4 Tier-1 directors (CD, TD, PR, AD) PHASE-GATE prompts are invoked in parallel |
-| **G3 — Lean mode: PHASE-GATE only** | In `lean` mode, only `*-PHASE-GATE` gates run; inline gates (CD-PILLARS, TD-ARCHITECTURE, etc.) are skipped |
-| **G4 — Solo mode: no directors** | In `solo` mode, no director gates spawn; each is noted as "skipped — Solo mode" |
-| **G5 — No auto-advance** | Skill never writes `production/stage.txt` unless the bounded task already authorizes that update or the skill previews the complete changeset and obtains one explicit confirmation. |
-| **A3 — Retrofit mode** | Skill detects if the target file already exists and offers to update specific sections rather than overwriting the whole document. Lightweight skills (quick-design) that always create new files are exempt. |
-| **A4 — Director gate at correct tier** | If a director gate is defined for this skill (e.g., CD-GDD-ALIGN, TD-ADR), it runs at the correct mode threshold (full/lean) — NOT in solo |
-| **A5 — Skeleton-first** | Full authoring skills create a file skeleton with all section headers before filling content, to preserve progress on session interruption. Lightweight skills are exempt. |
+| QR-A01 — Read-only reviewer | Review/analysis does not mutate reviewed sources or authoritative state. |
+| QR-A02 — Bound findings | Findings have stable IDs, severity, exact source locations/hashes, and reproducible evidence. |
+| QR-A03 — Independent persistence | When durable evidence is needed, a distinct recorder persists unchanged result bytes and a hash-bound receipt. |
+| QR-A04 — Coverage honesty | Coverage, exclusions, unreadable inputs, and unsupported environments remain explicit. |
+| QR-A05 — No remediation inference | Findings or suggested patches do not claim applied/verified status without a separate authorized execution. |
 
-> **Full authoring skills** (must pass all 5 metrics): `design-system`, `ux-design`, `art-bible`
-> **Lightweight authoring skills** (A1, A2, A5 use single-draft pattern; A3 exempt for new-file-only skills): `quick-design`, `architecture-decision`, `create-architecture`
-> **Review-mode skill** (evaluated against review metrics): `ux-review`
+### `authoring`
 
----
+| Metric | PASS criteria |
+|---|---|
+| QR-AU01 — Decision ownership | Open design decisions follow Question → Options → Decision → Draft → Approval. |
+| QR-AU02 — Stable partial state | Skeleton/checkpoint strategy preserves stable IDs and source hashes when interruption recovery is supported. |
+| QR-AU03 — Retrofit safety | Existing target bytes are classified and changed only through an authorized bounded transaction. |
+| QR-AU04 — Review separation | Author cannot be the independent reviewer/approval recorder of the same candidate. |
+| QR-AU05 — Canonical receipt | Authoring success is bound to exact output bytes and an owning recorder receipt when required. |
 
 ### `readiness`
 
-**Skills**: story-readiness, story-done
-
-Readiness skills validate stories before or after implementation. They must produce
-multi-dimensional verdicts and integrate correctly with director gate mode.
-
 | Metric | PASS criteria |
 |---|---|
-| **RD1 — Multi-dimensional check** | Skill checks ≥3 independent dimensions (e.g., Design, Architecture, Scope, DoD) and reports each separately |
-| **RD2 — Three verdict levels** | Verdict hierarchy is clearly defined: READY/COMPLETE > NEEDS WORK/COMPLETE WITH NOTES > BLOCKED |
-| **RD3 — BLOCKED requires external action** | BLOCKED verdict is reserved for issues that cannot be fixed by the story author alone (e.g., Proposed ADR, unresolvable dependency) |
-| **RD4 — Director gate at correct mode** | QL-STORY-READY or LP-CODE-REVIEW gate spawns in `full` mode, skips in `lean`/`solo` with a noted skip message |
-| **RD5 — Next-story handoff** | After completion, skill surfaces the next READY story from the active sprint |
-
----
+| QR-RD01 — Dimensions | Independent requirement, architecture, implementation, test/QA, and lifecycle dimensions are reported separately as applicable. |
+| QR-RD02 — Fail-closed aggregation | A blocking/unknown required dimension cannot be averaged away or upgraded by advisory evidence. |
+| QR-RD03 — Immutable inputs | Readiness/closure cannot rewrite requirement cores or planning hashes owned upstream. |
+| QR-RD04 — Lifecycle ownership | Canonical status changes occur only through the unique tracker/state recorder with CAS, rollback, and receipt. |
+| QR-RD05 — Next route | Any next-work suggestion is derived from exact current tracker/catalog evidence and has no implicit mutation. |
 
 ### `pipeline`
 
-**Skills**: create-epics, create-stories, dev-story, create-control-manifest, propagate-design-change, map-systems, vertical-slice
-
-Pipeline skills produce artifacts that other skills consume. They must write files
-with correct schema, respect layer/priority ordering, and gate before applying a not-yet-authorized changeset.
-
 | Metric | PASS criteria |
 |---|---|
-| **P1 — Correct output schema** | Each produced file follows the project template (EPIC.md, story frontmatter, etc.); skill references the template path |
-| **P2 — Layer/priority ordering** | Skills that produce epics or stories respect layer ordering (core → extended → meta) and priority fields |
-| **P3 — Bounded changeset authorization** | A multi-file output is previewed and authorized once as one bounded changeset; the skill does not re-prompt per file or section unless scope materially expands |
-| **P4 — Director gate at correct tier** | In-scope gates (PR-EPIC, QL-STORY-READY, LP-CODE-REVIEW, etc.) run in `full`, skip in `lean`/`solo` with noted skip |
-| **P5 — Reads before writes** | Skill reads the relevant GDD/ADR/manifest before producing artifacts to ensure alignment |
-
----
-
-### `analysis`
-
-**Skills**: consistency-check, balance-check, content-audit, code-review, tech-debt,
-scope-check, estimate, perf-profile, asset-audit, security-audit, test-evidence-review, test-flakiness
-
-Analysis skills scan the project and surface findings. They are read-only during
-analysis and must ask before recommending any file writes.
-
-| Metric | PASS criteria |
-|---|---|
-| **AN1 — Read-only scan** | Analysis phase performs only repository inspection and search; it does not mutate files during the scan |
-| **AN2 — Structured findings table** | Output includes a findings table or checklist (not prose only) with severity/priority per finding |
-| **AN3 — No auto-write** | Suggested writes use existing bounded task authorization or one complete changeset preview and confirmation before mutation |
-| **AN4 — No director gates during analysis** | Analysis skills do not spawn director gates; they produce findings for human review |
-
----
+| QR-P01 — Source provenance | Every output is bound to exact approved upstream artifacts, requirements, decisions, and hashes. |
+| QR-P02 — Stable identities | Output IDs, membership, ordering, and cross-links are deterministic and collision-checked. |
+| QR-P03 — Bounded changeset | The complete authorized changeset has exact destinations, preimages, schemas, and rollback behavior. |
+| QR-P04 — Consumer compatibility | Every produced schema/version/path exactly matches registered consumers; changed shared schemas trigger impact analysis. |
+| QR-P05 — No presence completion | Downstream readiness is proven by typed current receipts, not files, prose, count, or “latest”. |
 
 ### `team`
 
-**Skills**: team-combat, team-narrative, team-audio, team-level, team-ui, team-qa,
-team-release, team-polish, team-live-ops
-
-Team skills orchestrate multiple specialist agents for a department. They must
-spawn the right agents, run independent ones in parallel, and surface blocks immediately.
-
 | Metric | PASS criteria |
 |---|---|
-| **T1 — Named agent list** | Skill explicitly names which agents it spawns and in what order |
-| **T2 — Parallel where independent** | Agents whose inputs don't depend on each other are spawned in parallel (single message, multiple Codex subagent delegations) |
-| **T3 — BLOCKED surfacing** | If any spawned agent returns BLOCKED or fails, skill surfaces it immediately and halts dependent work — never silently skips |
-| **T4 — Collect all verdicts before proceeding** | Dependent phases wait for all parallel agents to complete before proceeding |
-| **T5 — Usage error on no argument** | If required argument (e.g., feature name) is missing, skill outputs usage hint and stops without spawning agents |
-
----
+| QR-T01 — Bounded delegation | Agent roles, inputs, outputs, ownership, and non-writes are explicit; delegation is permitted by the controlling contract. |
+| QR-T02 — Dependency scheduling | Independent work may run in parallel; dependent work waits for exact prerequisite results. |
+| QR-T03 — Failure collection | All launched work reaches a terminal result or bounded timeout; failures are surfaced without silent substitution. |
+| QR-T04 — Integration owner | Exactly one integration/recorder owner applies authorized writes; reviewers remain read-only. |
+| QR-T05 — Workflow-specific scope | The team does only its declared work; e.g. `team-audio` is spec-only and later implementation/QA are separate. |
 
 ### `sprint`
 
-**Skills**: sprint-plan, sprint-status, milestone-review, retrospective, changelog, patch-notes
-
-Sprint skills read production state and produce reports or planning artifacts.
-They have a PR-SPRINT or PR-MILESTONE gate at specific mode thresholds.
-
 | Metric | PASS criteria |
 |---|---|
-| **SP1 — Reads sprint/milestone state** | Skill reads `production/sprints/` or `production/milestones/` before producing output |
-| **SP2 — Correct sprint gate** | PR-SPRINT (for planning) or PR-MILESTONE (for milestone review) gate runs in `full` mode, skips in `lean`/`solo` |
-| **SP3 — Structured output** | Output uses a consistent structure (velocity table, risk list, action items) rather than free prose |
-| **SP4 — No unauthorized write** | Skill writes sprint files or milestone records only within an already-authorized bounded task, or after one complete changeset preview and confirmation |
-
----
+| QR-SP01 — Canonical planning identity | Plan revision/hash, story-set membership/hash, tracker schema, and active sprint identity are explicit and current. |
+| QR-SP02 — Planning ownership | Only the planning owner changes plan/story-set hashes; lifecycle updates are tracker-only. |
+| QR-SP03 — Advisory mode | PR-SPRINT/PR-MILESTONE runs only in full for the declared consumer; lean/solo skip it without skipping mandatory evidence. |
+| QR-SP04 — Measured claims | Velocity, completion, capacity, and forecast claims cite reproducible source rows and formulas. |
+| QR-SP05 — Recorder transaction | Canonical sprint/tracker changes use one owner, CAS, rollback, idempotency, and a persisted receipt. |
 
 ### `utility`
 
-**Skills**: start, help, brainstorm, onboard, adopt, hotfix, prototype, localize,
-launch-checklist, release-checklist, smoke-check, soak-test, test-setup, test-helpers,
-regression-suite, qa-plan, bug-triage, bug-report, playtest-report, asset-spec,
-reverse-document, project-stage-detect, setup-engine, skill-test, skill-improve, studio-status,
-day-one-patch, and any other skills not in categories above
-
-Utility skills pass the 7 standard static checks. If they happen to spawn director
-gates, the gate mode logic must also be correct.
-
 | Metric | PASS criteria |
 |---|---|
-| **U1 — Passes all 7 static checks** | `$skill-test static [name]` returns COMPLIANT with 0 FAILs |
-| **U2 — Gate mode correct (if applicable)** | If the skill spawns any director gate, it reads review-mode and applies full/lean/solo logic correctly |
+| QR-UT01 — Capability declaration | The skill declares its actual read/write/external behavior and is not granted implicit gate or mode behavior. |
+| QR-UT02 — Domain contract | Utility-specific schemas, verdicts, side effects, timeout/recovery, and handoffs are tested with stable IDs. |
+| QR-UT03 — Safe fallback | Missing optional capability never causes an untracked substitute, fabricated evidence, or unauthorized action. |
 
----
+## Compatibility impact record
 
-## Agent Categories
+A change to an invocation, verdict, path, schema, owner, completion rule, timeout, side effect, or recovery behavior requires a compatibility record with:
 
-Used to validate the 49 agent specs under `CGS Skill Testing Framework/agents/`
-against their auto-discovered `.codex/agents/**/*.toml` definitions.
+1. changed producer clauses and exact candidate hashes;
+2. every direct caller and callee;
+3. every shared schema/catalog/guide reference;
+4. required metadata and dedicated-spec updates;
+5. old/new field and verdict mapping;
+6. negative tests for stale/old/ambiguous evidence;
+7. runtime execution status and remaining unverified effects.
 
-### `director`
+Framework catalog `last_*` fields are execution history. Static repair or spec authoring MUST leave them empty; only the owning verified-run recorder may update them.
 
-**Agents**: creative-director, technical-director, art-director, producer
+## Overall verdict
 
-| Metric | PASS criteria |
-|---|---|
-| **D1 — Correct verdict vocabulary** | Returns APPROVE / CONCERNS / REJECT (or domain equivalent: REALISTIC/CONCERNS/UNREALISTIC for producer) |
-| **D2 — Domain boundary respected** | Does not make binding decisions outside its declared domain |
-| **D3 — Conflict escalation** | When two departments conflict, escalates to correct parent (creative-director or technical-director) rather than unilaterally deciding |
-| **D4 — Runtime inheritance** | TOML contains no per-role model or reasoning override; the director inherits the parent Codex session while `developer_instructions` describes the required synthesis behavior |
-
-### `lead`
-
-**Agents**: lead-programmer, qa-lead, narrative-director, audio-director, game-designer,
-systems-designer, level-designer
-
-| Metric | PASS criteria |
-|---|---|
-| **L1 — Domain verdict** | Returns a domain-specific verdict (e.g., FEASIBLE/INFEASIBLE for lead-programmer, PASS/FAIL for qa-lead) |
-| **L2 — Escalates to shared parent** | Out-of-domain conflicts escalate to creative-director (design) or technical-director (tech) |
-| **L3 — Runtime inheritance** | TOML contains no per-role model or reasoning override; the lead inherits the parent Codex session while `developer_instructions` describes the required domain behavior |
-
-### `specialist`
-
-**Agents**: gameplay-programmer, ai-programmer, technical-artist, sound-designer,
-engine-programmer, tools-programmer, network-programmer, security-engineer,
-accessibility-specialist, ux-designer, ui-programmer, performance-analyst, prototyper,
-qa-tester, writer, world-builder
-
-| Metric | PASS criteria |
-|---|---|
-| **S1 — Stays in domain** | Explicitly scopes itself to its declared domain; defers out-of-domain requests |
-| **S2 — No binding cross-domain decisions** | Does not unilaterally decide matters owned by another specialist |
-| **S3 — Defers correctly** | Out-of-domain requests are redirected to the correct agent, not refused silently |
-
-### `engine`
-
-**Agents**: godot-specialist, godot-gdscript-specialist, godot-csharp-specialist,
-godot-shader-specialist, godot-gdextension-specialist, unity-specialist, unity-ui-specialist,
-unity-shader-specialist, unity-dots-specialist, unity-addressables-specialist,
-unreal-specialist, ue-blueprint-specialist, ue-gas-specialist, ue-umg-specialist,
-ue-replication-specialist
-
-| Metric | PASS criteria |
-|---|---|
-| **E1 — Version-aware** | References engine version from `docs/engine-reference/` before suggesting API calls; flags post-cutoff risk |
-| **E2 — File routing** | Routes file types to the correct sub-specialist (e.g., `.gdshader` → godot-shader-specialist, not godot-gdscript-specialist) |
-| **E3 — Engine-specific patterns** | Enforces engine-specific idioms (e.g., GDScript static typing, C# attribute exports, Blueprint function libraries) |
-
-### `qa`
-
-**Agents**: qa-tester, qa-lead, security-engineer, accessibility-specialist
-
-| Metric | PASS criteria |
-|---|---|
-| **Q1 — Produces artifacts not code** | Primary output is test cases, bug reports, or coverage gaps — not implementation code |
-| **Q2 — Evidence format** | Test cases follow the project's test evidence format (unit/integration/visual/UI per coding-standards.md) |
-| **Q3 — No scope creep** | Does not propose new features; flags gaps for humans to decide |
-
-### `operations`
-
-**Agents**: devops-engineer, release-manager, live-ops-designer, community-manager,
-analytics-engineer, economy-designer, localization-lead
-
-| Metric | PASS criteria |
-|---|---|
-| **O1 — Domain ownership clear** | Agent description clearly states what it owns (pipeline, releases, economy, etc.) |
-| **O2 — Defers implementation** | Does not write game logic or engine code; delegates to appropriate specialist |
-| **O3 — Operational capability semantics** | TOML `developer_instructions` describes the operational role's domain, file boundaries, and needed semantic capabilities without treating instructions as tool grants |
+- `COMPLIANT`: all required structural, semantic, category, and compatibility assertions pass; runtime-dependent claims are either currently proven or explicitly scoped out without being claimed.
+- `CONCERNS`: no contradiction or safety failure, but optional or non-authorizing evidence is incomplete.
+- `NONCOMPLIANT`: any required structure is missing, an interface is inert, ownership conflicts, old/new contracts disagree, a mandatory safeguard is skippable, or an unexecuted/static claim is presented as runtime proof.

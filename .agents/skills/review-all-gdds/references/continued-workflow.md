@@ -1,215 +1,306 @@
 # Review All GDDs — Required workflow continuation
 
-This file contains required phases of `$review-all-gdds`. Read it in full when
-the main `SKILL.md` reaches its Required continuation section, then execute the
-phases in order. The frozen public contract in `SKILL.md` governs every phase.
+This file contains the remaining required phases. The frozen public contract,
+mode matrix, and `cgs.cross-gdd-rules/v1` ruleset in the main `SKILL.md` govern
+every step.
 
-## Phase 4: Cross-System Scenario Walkthrough
+## Phase 4: Risk-scored cross-system scenario sample
 
-Walk through the game from the player's perspective to find problems that only
-appear at the interaction boundary between multiple systems. This phase is part
-of the declared review coverage; it is not a third verdict vocabulary or a
-license to edit source documents.
+Run this phase only when the mode matrix marks it `REQUIRED`. In `consistency`
+mode it is `NOT_APPLICABLE`: do not generate candidates, spawn a scenario
+worker, or emit experiential observations.
 
-### 4a: Identify Key Multi-System Moments
+### 4a. Generate the complete candidate ledger
 
-Scan the hashed input manifest and identify the 3–5 most important player-facing
-moments where multiple systems activate simultaneously. Look specifically for:
+Use the typed event, state, dependency, resource, formula, and ownership graph
+to generate, fingerprint, score, sort, and select candidates exactly as defined
+by `cgs.cross-gdd-rules/v1`. Do not begin walkthroughs before the complete
+candidate ledger exists.
 
-- **Combat + Economy overlap:** rewards, spending, death, and respawn state
-- **Progression + Difficulty overlap:** level changes, unlocks, and scaling
-- **Narrative + Gameplay overlap:** choices, state changes, and interruptions
-- **3+ system chains:** an event flowing through three or more systems
+Record for every candidate:
 
-List each selected scenario and why it was selected. Also state that this is a
-sample, not exhaustive scenario coverage.
+- stable scenario ID and normalized trigger;
+- ordered system IDs and typed edges;
+- evidence paths, sections, and hashes;
+- each risk-score component and total score; and
+- selection state: `SELECTED` or `UNSELECTED_SAMPLE_SCOPE`.
 
-### 4b: Walk Through Each Scenario
+Select the deterministic top five, or every candidate when fewer than five
+exist. Normal unselected candidates are declared sampling scope rather than
+hidden coverage. If candidate generation, normalization, or scoring is
+incomplete, list the missing graph scope and force `PARTIAL`.
 
-For each scenario, step through:
+### 4b. Walk every selected scenario
 
-1. **Trigger** — the player action or game event
-2. **Activation order** — the systems and their sequence
-3. **Data flow** — outputs, inputs, units, and ranges
-4. **Player experience** — visible or audible outcomes
-5. **Failure modes** — race conditions, feedback loops, broken transitions,
-   contradictory messaging, compounding spikes, reward conflicts, or undefined
-   combined behavior
+Assign selected scenarios to bounded workers using the standard
+`cgs.cross-gdd-worker/v1` result. A worker receives only the scenario's graph
+slice and exact-hash GDD inputs within the shard limits. For each scenario,
+trace:
 
-Every claim must cite canonical input paths, sections, and the manifest hashes
-used. A missing combined-state rule is a coverage gap or concern; it is not
-automatically proof that runtime behavior is broken.
+1. trigger and preconditions;
+2. activation order and state transitions;
+3. data/resource flow, ownership handoffs, units, and ranges;
+4. player-visible or audible outcome; and
+5. declared failure or recovery behavior.
 
-### 4c: Classify Scenario Evidence
+Every claim cites stable system IDs, canonical paths, sections, and exact input
+hashes. Verify the worker hash echo and account for every selected scenario. A
+worker error, hash mismatch, budget overflow, or unchecked selected scenario is
+a required coverage gap and forces `PARTIAL`.
 
-- **BLOCKER:** only a reproducible contradiction or violation of an explicit
-  anti-pillar, owner-approved invariant, or owner-approved threshold. Cite the
-  exact conflicting rules and hashed inputs.
-- **WARNING:** a non-blocking deterministic gap or compatibility concern.
-- **HYPOTHESIS / ADVISORY:** an inferred experience, balance, load, or strategy
-  risk. Include assumptions, a counterexample, and a validation plan.
-- **INFO:** ordering or messaging notes without demonstrated conflict.
+### 4c. Classify only under the active mode
 
-If required scenarios cannot be completed, record the unchecked scope and use
-the overall verdict `PARTIAL`. Do not turn uncertainty into a blocker.
+In `full` and `since-last-review`, apply the scenario rules from the matrix:
+
+- `RAG.SCENARIO.EXPLICIT_CONTRADICTION` may be a blocker only when every
+  deterministic proof condition holds;
+- `RAG.SCENARIO.UNDEFINED_COMBINED_STATE` is a warning; and
+- inferred balance, load, pacing, or strategy effects are advisory hypotheses.
+
+In `design-theory`, deterministic consistency classification is forbidden.
+Return only `HYPOTHESIS / ADVISORY` or `INFO`, with assumptions, a plausible
+counterexample, and a validation plan. If a possible contradiction is noticed,
+record it as an out-of-mode follow-up candidate without severity; do not inspect
+it further or use it to change the verdict.
 
 ---
 
-## Phase 5: Build the Review Report
+## Phase 5: Build one machine-consumable review report
 
-The report must use the following evidence envelope and sections:
+The report has one authoritative machine block followed by human-readable
+projections. The block is a fenced `gate-evidence` document so existing gate
+consumers can parse the generic envelope; producer-specific data lives under
+the versioned extension. Do not create a sidecar.
 
-```yaml
-schema: cgs.cross-gdd-review/v1
-run_id: [UTC timestamp]-[manifest digest prefix]
-project_id: [canonical repository root + repository identity]
-generated_at_utc: [ISO-8601]
-mode: [full | consistency | design-theory | since-last-review]
-verdict: [PASS | CONCERNS | FAIL | PARTIAL]
-source_revision:
-  commit: [commit ID or null]
-  input_state: [clean | dirty | includes-untracked-inputs]
-manifest_sha256: [SHA-256 of ordered input manifest]
-coverage_status: [COMPLETE | PARTIAL]
-supersedes_run_id: [run ID or null]
+```gate-evidence
+schema: cgs.review-evidence/v1
+record_id: sha256:<canonical-record-payload>
+artifact_id: system-gdd-set:<project-id-digest>:<manifest-prefix>
+artifacts:
+  - path: <canonical repository-relative path>
+    sha256: <lowercase SHA-256 of exact bytes>
+    role: system-gdd | game-concept | pillars | systems-index | approval-evidence | consistency-evidence
+    system_id: <stable system ID or null>
+reviewer: review-all-gdds:<run-id>
+verdict: PASS | CONCERNS | FAIL | PARTIAL
+timestamp: <ISO-8601 UTC>
+finding_ids: [<stable XGDD IDs>]
+producer:
+  tool: review-all-gdds
+  version: sha256:<ordered main/continuation/ruleset bundle digest>
+extension:
+  schema: cgs.cross-gdd-review/v2
+  run_id: <UTC timestamp>-<manifest prefix>
+  project_id: <canonical root plus repository identity>
+  requested_mode: full | consistency | design-theory | since-last-review
+  effective_scope: full | impact-closure
+  source_revision:
+    commit: <commit ID or null>
+    input_state: clean | dirty | includes-untracked-inputs
+  ruleset_id: cgs.cross-gdd-rules/v1
+  ruleset_sha256: <exact ruleset bytes hash>
+  skill_bundle_sha256: <ordered main/continuation/ruleset bytes digest>
+  manifest_sha256: <ordered manifest digest>
+  stale_key: <project/ruleset/mode/sorted-artifact-set digest>
+  coverage_status: COMPLETE | PARTIAL
+  limits:
+    max_system_gdds: <effective value>
+    max_typed_edges: <effective value>
+    max_exact_input_bytes: <effective value>
+    max_selected_scenarios: <effective value>
+  approval_summary:
+    approved_current: <count>
+    provisional: <count>
+    stale: <count>
+    unbound_or_missing: <count>
+  baseline:
+    requested: <path or run ID or null>
+    validated_run_id: <run ID or null>
+    effective_fallback: <none or reason>
+    changed_system_ids: []
+    impact_system_ids: []
+  consistency_evidence:
+    path: <path or null>
+    sha256: <hash or null>
+    producer_verdict: <PASS | FINDINGS | PARTIAL | ERROR | null>
+    currentness: CURRENT | STALE | UNBOUND | MISSING | NOT_APPLICABLE
+  coverage:
+    - check_id: <stable check ID>
+      shard_id: <stable shard ID or null>
+      status: DONE | PARTIAL | ERROR | NOT_APPLICABLE
+      checked_scope: []
+      unchecked_scope: []
+      reason: <none or bounded reason>
+  scenarios:
+    candidates_total: <count>
+    selected_ids: []
+    unselected:
+      - id: <scenario ID>
+        score: <integer>
+        reason: UNSELECTED_SAMPLE_SCOPE
+  findings:
+    - id: <stable XGDD ID>
+      fingerprint_sha256: <hash>
+      rule_id: <versioned rule ID>
+      evidence_class: DETERMINISTIC | HYPOTHESIS | COVERAGE
+      severity: BLOCKER | WARNING | ADVISORY | INFO | COVERAGE_GAP
+      disposition: OPEN | ADVISORY | RESOLVED_IN_INPUT
+      summary: <bounded summary>
+      targets: []
+      producer_finding_ids: []
+      assumptions: []
+      counterexamples: []
+      validation_plan: <text or null>
+      accepted_risk_record_ids: []
+  accepted_risk_refs:
+    - record_id: <separate verified record ID>
+      path: <path>
+      sha256: <hash>
+      finding_ids: []
+      scope: <bounded scope>
+      owner: <owner identity>
+      signature: <verifiable signature/identity evidence>
+      expires_at: <timestamp>
+      status: CURRENT | EXPIRED | STALE | UNBOUND
 ```
 
-### Input Manifest
+### 5a. Canonical record identity
 
-| Canonical input path | SHA-256 | Role |
-|---|---|---|
-| [path] | [hash] | [system-gdd / pillars / systems-index / registry / other] |
+Compute `record_id` as SHA-256 over canonical JSON of the complete
+`gate-evidence` object with `record_id` omitted. Sort object keys
+lexicographically. Preserve array semantics, but first sort:
 
-### Coverage
+- `artifacts` by path, role, then system ID;
+- `finding_ids` and all ID-only arrays lexicographically;
+- `coverage` by check ID then shard ID; and
+- `findings` by finding ID.
 
-| Required phase/check | Status | Checked scope | Unchecked scope / reason |
-|---|---|---|---|
-| [check] | DONE / PARTIAL / ERROR / NOT_APPLICABLE | [paths/rules] | [none or gap] |
+Use UTF-8, lowercase hexadecimal hashes, no insignificant whitespace, and JSON
+`null` rather than omitted required fields. Recompute the digest after final
+verdict and coverage are known. The human-readable projection is not part of
+the canonical record payload.
 
-### Consistency Issues
+### 5b. Accepted-risk references
 
-Separate deterministic blockers from non-blocking warnings. Each issue must cite
-the exact paths, sections, rules, and hashes involved.
+Default `accepted_risk_refs` to an empty list. Include a reference only when a
+separate record is project-local, owner-signed, names this exact run or finding
+IDs, has bounded scope and expiry, and its exact hash and currentness can be
+verified. Missing, expired, stale, or unbound records confer no exception.
 
-### Game Design Hypotheses
+Never create, sign, or repair a risk record. Never set a finding disposition to
+accepted risk. A referenced risk does not change this review's finding,
+severity, coverage, or verdict; only a downstream gate applies its own policy.
 
-Every theory item is labeled `HYPOTHESIS / ADVISORY` and contains evidence,
-assumptions, a plausible counterexample or compensating mechanic, and a
-validation plan. A theory item may move to Blocking only when it demonstrates a
-current, reproducible violation of an explicit anti-pillar, owner-approved
-invariant, or owner-approved threshold in the manifest.
+### 5c. Human-readable projection
 
-### Cross-System Scenario Issues
+After the machine block, render all of these sections from the same normalized
+data:
 
-List scenarios walked, deterministic issues, advisory hypotheses, and unchecked
-scenario scope.
+1. **Run Identity** — project, run, requested mode, effective scope, source
+   revision, ruleset, manifest digest, stale key, and verdict.
+2. **Input and Approval Manifest** — every included/excluded system, exact hash,
+   approval record/currentness, priority, and role.
+3. **Incremental Scope** — baseline validation, deltas, graph-closure members,
+   tombstones, or the exact full-fallback reason.
+4. **Coverage and Shards** — every planned check/shard, worker status, checked
+   and unchecked scope, and `NOT_APPLICABLE` mode rows.
+5. **Deterministic Findings** — stable IDs, rule IDs, exact evidence, severity,
+   disposition, producer IDs, and acceptance conditions.
+6. **Game-Design Hypotheses** — evidence, assumptions, counterexamples,
+   validation plans, and `NEEDS_MEASUREMENT` markers.
+7. **Scenario Candidate Ledger and Walkthroughs** — total, score breakdown,
+   selected results, and every unselected candidate/reason.
+8. **Accepted-Risk References** — verified records or `None`; explicitly state
+   that they do not rewrite the verdict.
+9. **Staleness Contract** — exact recomputation rule and the statement that a
+   stale record is not gate evidence.
+10. **Verdict** — one formal run verdict and the mechanical reason.
 
-### GDDs Referenced by Findings
-
-This is evidence only. It does not authorize changing a GDD or its lifecycle
-status.
-
-| GDD | Finding summary | Evidence class | Severity |
-|---|---|---|---|
-| [path] | [summary] | Deterministic / Hypothesis | Blocking / Warning / Advisory |
-
-### Staleness Contract
-
-This report is current only while `project_id` and the complete canonical
-path/SHA-256 manifest match the project. Any input addition, removal, rename, or
-content-hash change makes it `STALE`. A stale report, including a stale
-`PASS`, is not gate evidence and must not authorize architecture.
-
-### Verdict: [PASS / CONCERNS / FAIL / PARTIAL]
-
-- **PASS:** all required checks for the selected mode completed; no blocking or
-  non-blocking issues remain.
-- **CONCERNS:** all required checks completed; no blockers, but warnings or
-  advisory hypotheses remain.
-- **FAIL:** all required checks completed and one or more deterministic blocking
-  violations remain.
-- **PARTIAL:** required input or coverage is missing, a worker failed, hashes do
-  not match, or evidence conflicts remain unresolved. `PARTIAL` must never be
-  represented as `PASS`.
-
-A `FAIL` verdict is immutable for this run. It cannot be waived, renamed, or
-rewritten as `PASS`. If project governance permits proceeding, a separate
-owner-signed `ACCEPTED_RISK` record must name the run ID, exact findings,
-scope, owner identity/signature, and expiry. The reviewer never signs it for the
-owner, and the separate record does not change this report's verdict.
+The machine block and projection must agree exactly. Any mismatch discovered
+before delivery is an evidence conflict and forces `PARTIAL` until corrected in
+the same in-memory report.
 
 ---
 
-## Phase 6: Deliver or Persist Only the Review Report
+## Phase 6: Compute the verdict mechanically
+
+Apply the verdict precedence in `cgs.cross-gdd-rules/v1` only after all
+required-mode checks, shards, workers, scenario candidates, and merges have a
+coverage status.
+
+- `PARTIAL` takes precedence over proven blockers. Preserve those blockers in
+  the report, but do not present the lower-priority `FAIL` as the run verdict.
+- With complete coverage, one `BLOCKER / OPEN` produces `FAIL`.
+- With complete coverage and no blocker, any warning, advisory hypothesis, or
+  validation item produces `CONCERNS`.
+- `PASS` requires complete applicable coverage and no blocker, warning,
+  advisory hypothesis, or unresolved validation item.
+
+An invalid invocation or fewer than two reviewable GDDs ended before this phase
+and has no run verdict.
+
+---
+
+## Phase 7: Deliver or persist only the report
 
 Always render the complete report in conversation first.
 
 If the user asks to persist it, preview exactly one new path and obtain explicit
-approval before writing. Use a unique immutable path such as:
+approval before writing:
 
-`design/gdd/reviews/gdd-cross-review-[UTC timestamp]-[manifest-prefix].md`
+`design/gdd/gdd-cross-review-<UTC timestamp>-<manifest-prefix>.md`
 
-The path must not already exist. Never overwrite or amend a prior report; a
-correction creates a new report with `supersedes_run_id`. After approval,
-write only that report and verify its saved manifest digest. If the user declines
-or does not authorize the write, perform zero file mutations.
+The path must not exist. Refuse overwrite. Do not silently select a replacement
+path after a collision; generate a new run/path proposal and obtain new
+approval. A correction is a new immutable report whose extension names
+`supersedes_run_id`; it never edits the prior report. After the authorized write,
+read it back, parse the `gate-evidence` block, recompute `record_id`, manifest
+digest, and saved file hash, then report verification.
 
-Under all outcomes, do **not** modify or create:
-
-- any source GDD;
-- `design/gdd/systems-index.md` or any lifecycle/status field;
-- an entity registry or consistency baseline;
-- `production/session-state/active.md` or any session/state file;
-- sign-off, approval, waiver, or accepted-risk records.
-
-Status transitions and accepted-risk records belong to independent,
-owner-authorized recorders that consume the immutable review evidence.
+Write no sidecar. Under every outcome, do not modify or create source GDDs,
+systems index, registry, session state, lifecycle status, approval/sign-off,
+accepted-risk records, or any other report. Declining persistence causes zero
+file mutations.
 
 ---
 
-## Phase 7: Handoff and Stop
+## Phase 8: One handoff and stop
 
-Offer one separate next workflow; do not edit source content inside this review.
+Offer exactly one separate next action, then include `Stop here`:
 
-- `FAIL`: recommend the owner choose a remediation workflow for the highest
-  priority deterministic blocker, then rerun this review.
-- `PARTIAL`: recommend resolving the named evidence/coverage gap, then rerun.
-- `CONCERNS`: recommend owner review or the validation plan for the highest
-  priority concern; architecture may proceed only under the consuming gate's
-  policy and with a current report.
-- `PASS`: offer `$gate-check` or `$create-architecture` with the
-  current run ID and manifest digest.
+- `FAIL`: route the highest-priority deterministic finding ID to its artifact
+  owner for a separate remediation and fresh approval/review.
+- `PARTIAL`: restore the highest-priority named evidence or coverage gap, then
+  rerun this workflow.
+- `CONCERNS`: run the highest-priority validation plan or obtain the named owner
+  decision; a downstream gate decides advancement policy.
+- `PASS`: offer `$gate-check` or `$create-architecture` with the current
+  `record_id`, run ID, and stale key.
 
-Always include `Stop here`. The handoff is a recommendation, not permission
-for this reviewer to modify GDDs, indexes, session state, or governance records.
+The handoff is not permission to edit, advance stage, sign risk, or run another
+workflow automatically.
 
----
+## Error recovery protocol
 
-## Error Recovery Protocol
+If a worker is blocked, errors, returns mismatched hashes, exceeds a limit, or
+omits required checks:
 
-If any spawned agent is blocked, errors, returns mismatched hashes, or fails to
-complete:
+1. retain its raw status and reason;
+2. mark the exact shard/check/input as unchecked;
+3. continue only independent planned work;
+4. merge all completed evidence without inventing coverage;
+5. return `PARTIAL`; and
+6. recommend one bounded evidence-restoration action.
 
-1. Surface the worker status and reason.
-2. Record affected checks and inputs as unchecked.
-3. Continue only where independent evidence permits.
-4. Produce the available report with verdict `PARTIAL`.
-5. Offer retry with narrower scope, resolve the blocker, or stop.
+Never retry by widening a shard, passing the whole corpus, suppressing the
+failed check, or changing mode. Never produce `PASS` from incomplete work.
 
-Never hide missing coverage and never produce `PASS` from partial work.
+## Collaborative protocol
 
----
-
-## Collaborative Protocol
-
-1. **Read silently** — load and hash all inputs before presenting findings.
-2. **Show everything** — present consistency, theory, scenario, and coverage
-   evidence before asking whether to persist the report.
-3. **Distinguish deterministic from advisory** — unmeasured theory is a
-   hypothesis, not an architecture blocker.
-4. **Do not make product decisions** — surface evidence and validation options.
-5. **One optional write** — only an explicitly authorized new immutable report.
-6. **No lifecycle or session mutation** — reviewer and recorder roles remain
-   separate.
-7. **Be specific** — every deterministic finding cites exact paths, sections,
-   rules, and hashes.
+1. Hash and inventory before analysis.
+2. Keep product decisions with the owner.
+3. Keep deterministic evidence, hypotheses, and coverage gaps distinct.
+4. Expose all selected and unselected scope.
+5. Use one optional immutable report write only.
+6. Preserve reviewer/recorder/author separation.
+7. Stop after one evidence-based handoff.

@@ -1,405 +1,357 @@
 ---
 name: team-audio
-description: "Create and independently review one hash-bound audio specification through bounded read-only specialists, destination routing, and a single writer; never implement code, tests, or assets."
+description: "Create and independently review one bounded, hash-bound audio specification through read-only specialists, destination routing, non-waivable accessibility gates, and one writer; never implement code, tests, ADRs, or assets."
 ---
 
-## Invocation and execution
+# Team Audio
 
-Invoke this workflow as `$team-audio [artifact-id]`.
+Create or revise one authoritative player-facing audio specification. This skill
+ends at a reviewed and explicitly accepted spec hash. It never implements audio
+systems, gameplay wiring, tests, middleware configuration, import settings, or
+audio assets, and never claims implementation QA or playback occurred.
 
-Arguments: `[artifact-id]` identifies one feature or area. This workflow ends at
-an approved audio specification. It never implements audio systems, gameplay
-wiring, tests, middleware configuration, or assets.
+## Invocation and request contract
 
-The user decides sonic direction and other product choices. Routine transitions
-do not require approval. Before the first mutation, present one complete plan
-with every exact normal and recovery path, operation, unique owner, baseline
-hash, content scope, and write condition. Obtain one approval bound to a
-deterministic plan hash. A new path, owner change, operation change, or material
-scope expansion invalidates the approval and requires a new complete plan.
+Invoke only as:
 
-Valid outcomes are:
+    $team-audio --manifest <request-path> [--resume <checkpoint-path>]
+
+No manifest prints that usage and stops before repository discovery, project-file
+reads, delegation, decisions, approval, authorization, checkpoint writes, or
+verdicts.
+
+The manifest declares `contract: cgs.team-audio-request/v2` and:
+
+- stable lowercase `artifact_id`, unique `run_id`, and `operation: create | revise`;
+- exact feature/area GDD, optional sound bible, engine/version, accessibility,
+  platform, technical/ADR, audio-asset index/summary, and existing spec evidence
+  paths with expected raw SHA-256 or `ABSENT`;
+- canonical spec path `design/audio/audio-<artifact-id>.md` and operational path
+  `production/session-state/team-audio/<artifact-id>/<run-id>.yaml`, with expected
+  preimages/ABSENT;
+- named product authority, audio-spec plan approver, mutation authority, one
+  transaction writer, and independent reviewer identities;
+- checkpoint-record authorization ID/hash or instruction to collect one exact
+  bounded record authorization before its first write;
+- limits no larger than this contract, exact attempt/phase deadlines, and one
+  retry policy; and
+- explicit non-writes covering code, tests, ADRs, technical specs, performance
+  budgets, QA plans, assets, imports, and every other project path.
+
+Normalize artifact ID to ASCII `a-z`, `0-9`, and single hyphens. Reject separators,
+`..`, drive prefixes, controls, leading/trailing/repeated hyphens, ambiguous
+normalization, unknown/duplicate fields, unsafe/aliased paths, symlink/junction
+escape, raised limits, invalid hashes/roles, target/source aliasing, missing revise
+target, occupied create target, or any second audio-spec path. Never create or use
+`design/gdd/audio-<artifact-id>.md`.
+
+## Explicit state model
+
+Valid workflow verdicts are exactly:
 
 - `SPEC COMPLETE`;
 - `SPEC COMPLETE — ENGINE VALIDATION DEFERRED`;
 - `PARTIAL — NOT APPROVED`;
-- `ACCEPTED RISK / NOT APPROVED`; or
+- `ACCEPTED RISK — NOT APPROVED`;
+- `DEFERRED — NOT APPROVED`; or
 - `BLOCKED`.
 
-A written document is not proof of approval, implementation, QA, or playback.
+`SPEC COMPLETE` means the design specification only. It never means implemented,
+asset-complete, QA-passed, playback-approved, or implementation-ready.
 
----
+This workflow has no review-mode state. It never reads a session `review_mode`,
+`full`, `lean`, or `solo` flag. The fixed role/phase contract below is deterministic;
+required evidence cannot disappear because of a mode label.
 
-## Phase 0: Validate and freeze one artifact
+## Paths, ownership, and side-effect boundary
 
-Before reading project content or delegating:
+The only writable paths are the canonical audio spec and the one canonical
+checkpoint path. Exactly one `audio-spec transaction writer` owns both. Its
+identity is frozen before authorization and cannot change under an approved plan.
 
-1. Require exactly one non-empty artifact ID.
-2. Normalize it to a lowercase ASCII slug containing only `a-z`, `0-9`, and
-   single hyphens. Reject path separators, `..`, drive prefixes, control
-   characters, leading/trailing hyphens, and ambiguous normalization.
-3. Resolve exactly:
-   - audio specification: `design/audio/audio-[artifact-id].md`;
-   - recovery checkpoint:
-     `production/session-state/team-audio-[artifact-id].yaml`.
-4. If the specification exists, require explicit revise mode. Never overwrite it
-   under a create operation. If it is absent, use create mode.
-5. Capture raw SHA-256 hashes for both targets, or `ABSENT`.
+All specialist, author, accessibility, technical, engine, QA-planning, and review
+agents are read-only proposal producers. They receive prohibited paths and attempt
+tokens, cannot delegate again, and cannot write project or operational files.
 
-With no or invalid argument, print usage and examples and stop without reading
-project files, spawning agents, writing files, or emitting a verdict.
+Never spawn gameplay-programmer or any implementation writer. Never invoke
+`$dev-story` or another workflow. Suggestions for code, tests, integration,
+middleware, assets, budgets, ADRs, or QA route to owner handoffs only.
 
----
+## Phase 0: Validate request and authorize checkpoint recording
+
+Validate the manifest before other reads. Resolve the two canonical targets and
+their exact preimages. In create mode the spec must be ABSENT; in revise mode its
+current bytes/hash must match. The checkpoint may be ABSENT for a new run or match
+the declared existing run ID/hash for resume.
+
+The checkpoint is one bounded operational file for this exact run, updated
+atomically after each safe phase. A later run uses its own run-ID path and cannot
+overwrite or reuse this run's history. Before its first mutation, require
+`cgs.team-audio-record-authorization/v2` binding artifact/run IDs, exact checkpoint
+path/preimage, maximum 131072 bytes, schema, allowed transition fields/phases, one
+recorder/writer, and explicit non-writes. If absent, present that exact record plan
+once and obtain authorization. This record authority never covers the spec.
+
+Checkpoint transitions, attempts, cancellation, recovery, and CAS are normative in
+`references/execution-and-recovery.md`.
 
 ## Phase 1: Build a bounded context manifest
 
-Read the root and nearest applicable `AGENTS.md` files for both targets before
-planning writes. Mandatory instruction files do not count against the content
-budget.
+Read applicable AGENTS instructions, then enumerate only:
 
-Load only:
-
-1. the feature/area GDD explicitly matching the artifact;
-2. the existing audio specification in revise mode;
-3. `design/gdd/sound-bible.md`, if present;
-4. the configured engine and pinned version references;
-5. explicit first-hop audio, accessibility, technical, ADR, platform, and asset
+1. the exact feature/area GDD;
+2. the existing canonical spec in revise mode;
+3. the declared sound bible when present;
+4. configured engine/pinned version evidence;
+5. explicit first-hop audio, accessibility, platform, technical, ADR, and asset-
    index references named by those sources; and
-6. summaries or manifests for existing audio assets needed to avoid duplicate
-   event/asset IDs.
-
-Do not recursively scan whole design or asset trees and do not send full context
-to every agent. Set a limit of 20 files and 250 KiB of raw UTF-8 text. When the
-relevant candidates exceed a limit, present the omitted paths and ask the user
-which sources to prioritize. Never silently truncate.
-
-For every included source record path, byte length, relevant sections, reason,
-and raw `sha256:<64 lowercase hex>`. Detect cycles and stop after one explicit
-reference hop. Freeze a canonical context-manifest hash. Each agent receives
-only that manifest, the relevant excerpts, and required structured predecessor
-results.
-
-A missing sound bible is an explicit input gap, not invented context. It may
-permit a feature-local direction, but the report must identify the missing
-project-wide constraint and its destination/owner.
-
----
-
-## Roles, concurrency, and ownership
-
-All proposal producers and reviewers are read-only.
-
-| Role | Responsibility | May write? |
-|---|---|---:|
-| audio-director author | sonic direction and adaptive behavior proposals | No |
-| sound-designer | event, SFX, mix-intent, and asset proposals | No |
-| accessibility-specialist | independent accessibility findings | No |
-| technical-artist | middleware/bus/streaming/performance proposals | No |
-| configured engine specialist | engine validation proposal | No |
-| qa-tester | planned validation/playback matrix bound to the current spec hash | No |
-| independent audio reviewer | hash-bound audio-spec review | No |
-| audio-spec transaction writer | approved spec plus checkpoint | Yes, exact planned paths only |
-
-Choose exactly one transaction writer before authorization. Normally use a fresh
-audio-spec writer acting under the audio-director contract. If unavailable, the
-current agent may take that responsibility, but the plan must name it.
-Ownership cannot change under an existing approval.
-
-Use at most three live subagents. Dispatch independent work as one bounded batch
-before waiting. Every job receives an input hash, output schema, and ISO-8601
-deadline. Unless the user supplied a smaller bound, the deadline is 10 minutes
-after dispatch. Allow at most one narrowed follow-up before the deadline. At the
-deadline mark `TIMED OUT`; never wait indefinitely, invent output, or start an
-unbounded replacement loop. Missing required output yields PARTIAL or BLOCKED,
-never a COMPLETE state.
-
-No gameplay-programmer or implementation writer is part of this workflow.
-
----
-
-## Phase 2: Collect structured audio proposals
-
-Every agent returns only this schema:
-
-| Field | Requirement |
-|---|---|
-| proposal_id | stable role-prefixed ID |
-| source_role | exactly one role |
-| source_refs | paths, sections, and raw hashes |
-| destination | exactly one allowed destination |
-| audio_spec_constraint | concise player-facing rule or `NONE` |
-| required_decision | one explicit product/technical decision or `NONE` |
-| owner | destination owner |
-| acceptance | testable closure condition |
-| dependencies | stable IDs |
-| status | `PROPOSED`, `BLOCKED`, or `TIMED OUT` |
-
-Allowed destinations are:
-
-- `AUDIO SPEC`;
-- `AUDIO ASSET BRIEF`;
-- `TECHNICAL ADR / SPEC`;
-- `PERFORMANCE BUDGET`;
-- `QA PLAN`;
-- `BACKLOG / STORY`; or
-- `REVIEW ONLY`.
-
-### 2.1 Sonic direction
-
-Run one read-only audio-director author. It proposes sonic identity, emotional
-tone, palette, music/adaptive-state intent, mix priorities, and player-facing
-audio rules. Present two or three options only where a genuine product decision
-exists; record the selected decision ID.
-
-### 2.2 Sound design and accessibility
-
-After the direction is selected, run sound-designer and
-accessibility-specialist in one two-agent batch against the direction hash.
-
-The sound-designer proposes stable audio event IDs, trigger conditions,
-priority, spatial behavior, variation intent, mix/ducking behavior, captions,
-and asset needs. Detailed asset-production instructions route to AUDIO ASSET
-BRIEF.
-
-The accessibility-specialist independently checks:
-
-- critical gameplay information has visual or tactile equivalence;
-- captions/subtitles identify source and critical meaning;
-- spatial-only cues have a non-audio directional alternative;
-- sudden/loud/high-frequency behavior has sensitivity controls; and
-- silence, overlapping cues, or mix priority cannot hide critical feedback.
-
-Findings use stable `AXA-[artifact-id]-NNN` IDs with severity, exact evidence,
-required outcome, owner, and `OPEN`/`CLOSED` status.
-
-A BLOCKING finding—especially a critical gameplay state communicated only by
-audio—is non-waivable. The user may authorize an exact sound/UI/haptic design
-revision or stop BLOCKED. There is no skip, acknowledge-and-proceed, or
-implementation branch.
-
-A user may accept only a non-blocking risk by recording finding ID, bounded risk,
-owner, deadline, `approved_by`, and `approved_at`. That path ends `ACCEPTED RISK
-/ NOT APPROVED` and cannot authorize implementation.
-
-One separate read-only author revision and one finding-ID-preserving,
-diff-limited verification re-review are allowed. If the same blocker remains on
-the second observation, stop BLOCKED. Never recurse.
-
-### 2.3 Technical and engine validation
-
-After the player-facing audio draft is stable, run technical-artist and the one
-configured engine specialist in parallel. They return destination-tagged,
-read-only proposals.
-
-Middleware choice, engine component/node patterns, bus topology, streaming
-strategy, and technical architecture route to TECHNICAL ADR / SPEC. Memory,
-voice-count, CPU, streaming, and platform limits route to PERFORMANCE BUDGET.
-Implementation files and integration work route to BACKLOG / STORY. None of
-these are silently promoted into AUDIO SPEC.
-
-If no engine is configured, do not spawn an engine specialist and do not guess
-an engine pattern. Record `ENGINE VALIDATION DEFERRED` with the configuration
-source hash and revalidation trigger. The engine-neutral specification may later
-be `SPEC COMPLETE — ENGINE VALIDATION DEFERRED`, but it cannot hand off to
-implementation until current engine validation is added.
-
-Any proposed technical decision requiring an ADR remains a referenced open
-dependency until the ADR is Accepted. This workflow does not write ADRs.
-
----
-
-## Phase 3: Route and reduce one authoritative audio specification
-
-Create a ledger containing every proposal/finding ID and exactly one
-destination. Deduplicate by stable ID and reference; never merge all agent output
-verbatim. Cross-domain conflicts go to the shared parent: creative/audio
-direction conflicts require a product decision, and technical conflicts require
-the technical owner. The reducer never guesses.
-
-The AUDIO SPEC may contain only:
-
-- artifact identity, purpose, scope, and source snapshot references;
-- approved sonic direction and emotional/player-feedback goals;
-- stable audio-event contracts: trigger, priority, player-facing result,
-  spatial behavior, variation intent, and abstract mix/ducking behavior;
-- adaptive music states and transition rules without implementation;
-- required visual/tactile alternatives, captions, sensitivity controls, and
-  resolved accessibility finding IDs;
-- references to asset, technical, budget, QA, and backlog proposal IDs;
-- dependencies, accepted product decisions, engine-validation state, and open
-  blockers; and
-- testable design acceptance criteria.
-
-It must exclude middleware selection, engine node/component classes, concrete
-bus graphs, memory/CPU/streaming budgets, code or implementation paths, unit
-tests, QA/playback results, asset-production instructions, and review
-transcripts. Those stay in their destination proposals and are handed to owning
-workflows; this run writes none of them.
-
-After genuine product decisions are resolved, form the exact UTF-8 draft and
-compute its raw hash. If required proposals timed out or blocked, the optional
-written draft must visibly say `PARTIAL — NOT APPROVED` and cannot become an
-implementation source.
-
----
-
-## Phase 4: Authorize and execute one write transaction
-
-Before any mutation, present:
-
-- exact specification and checkpoint paths;
-- create/modify operation for each;
-- single transaction writer;
-- baseline raw hashes or `ABSENT`;
-- context-manifest and source hashes;
-- destination ledger and exact draft hash;
-- engine-validation state and open blocker count;
-- success, rollback, partial-write, and checkpoint conditions; and
-- canonical deterministic `plan_hash`.
-
-Ask once for approval. Authorization never covers code, tests, ADRs, technical
-specs, performance budgets, QA plans, audio assets, import settings, or any
-unlisted path. Any new path, owner, operation, or material draft change requires
-a complete new plan and approval.
-
-Immediately before writing, rehash every source and target. Any mismatch cancels
-the plan before mutation.
-
-The transaction writer writes the exact audio specification bytes, verifies the
-raw hash against the approved draft hash, and updates only the exact checkpoint
-with:
-
-- artifact ID/path and create/revise mode;
-- plan, context-manifest, source, baseline, draft, and current hashes;
-- decision, proposal, and finding IDs;
-- agent completion/BLOCKED/TIMED OUT states and deadlines;
-- engine-validation state and open blockers;
-- planned and actual write sets;
-- last verified phase and exact safe resume point; and
-- state `ACTIVE`, `PARTIAL`, `BLOCKED`, or `COMPLETE`.
-
-If a write fails, claim rollback only after every affected path is restored
-byte-for-byte and matches its baseline raw hash. Otherwise preserve the actual
-partial state, persist the checkpoint, and return PARTIAL. If checkpoint writing
-also fails, print the complete intended payload as `RECOVERY CHECKPOINT NOT
-PERSISTED`, list every unverified path/hash, and do not claim safe resumability.
-
-Resume only after current raw hashes match the checkpoint. Reuse agent output
-only when its input and output hashes still match. Never repeat a successful
-write or delegation based on prose alone.
-
----
-
-## Phase 5: Independent audio-spec review
-
-After a verified specification write, compute its current raw hash and run a
-fresh independent audio reviewer. The reviewer cannot be an author or
-transaction writer, is strictly read-only, and binds every finding to that hash.
-
-The review profile checks:
-
-1. sonic-direction coherence and scope;
-2. completeness and uniqueness of audio-event contracts;
-3. critical-feedback redundancy and accessibility;
-4. abstract mix priority, ducking, and cue-conflict behavior;
-5. adaptive music states, transitions, interruption, and recovery;
-6. destination hygiene and absence of technical/QA/implementation pollution;
-7. dependency, engine-validation, and acceptance-criteria clarity.
-
-Findings use stable `AR-[artifact-id]-NNN` IDs with severity, exact evidence,
-required outcome, owner, and status. BLOCKING findings cannot be waived. Permit
-one fresh read-only author revision and exactly one verification re-review
-limited to OPEN IDs and diff regressions. The same blocker remaining on the
-second observation ends BLOCKED. Reviewer evidence is stale immediately when
-the specification hash changes.
-
-A revision requires a new exact draft, fresh baselines, new plan hash, and user
-approval; the same transaction writer applies it. Neither reviewer writes.
-
----
-
-## Phase 6: Planned QA/playback matrix and final acceptance
-
-After zero BLOCKING accessibility and review findings remain, a read-only
-qa-tester may propose a validation matrix bound to the current specification
-hash. Route it to QA PLAN; do not write it here.
-
-Each proposed case is `PLANNED` and may cover event triggers, priority/ducking,
-adaptive transitions, caption/fallback behavior, silence/overlap, platform
-routing, performance budgets, and playback sessions. This workflow has no
-implementation or produced audio to execute, so it normally reports
-`QA NOT RUN` and `PLAYBACK NOT RUN`.
-
-Never claim a QA case, listening session, playback, mix review, or accessibility
-check passed unless it actually ran and records:
-
-- exact spec and build/asset hashes;
-- command or playback-session protocol and environment;
-- device/platform and relevant audio settings;
-- start/end timestamps and duration;
-- exit/result and named observer when manual;
-- raw log, capture, or signed evidence hash; and
-- PASS/FAIL/BLOCKED outcome.
-
-Agent prose, planned cases, filenames, waveforms not listened to, or absent logs
-are not execution evidence.
-
-Present the current spec hash, review evidence IDs, engine state, open
-dependencies, and planned QA IDs for final user acceptance.
+6. bounded audio-asset summaries needed to avoid duplicate event/asset IDs.
+
+Content hard limits are 20 files, 256000 exact UTF-8 bytes, one explicit reference
+hop, eight source groups, 128 asset-summary rows, 128 audio-event IDs, and 64
+dependency IDs. Mandatory applicable AGENTS files are recorded separately and do
+not consume the content budget. The request may lower, never raise, a limit.
+
+Inventory size/count before full-read; never truncate. Detect cycles and duplicate/
+ambiguous IDs. Exceeding any limit yields `PARTIAL — NOT APPROVED`, exact loaded/
+omitted identities, and one deterministic request-split action. A user may choose a
+smaller new scope, but the truncated run cannot claim complete context or SPEC
+COMPLETE.
+
+Create canonical `cgs.team-audio-context-manifest/v2` with ordered source group,
+normalized path, selected locator, exact byte count/raw SHA-256, relevant-section
+digest, reason, dependency edges, owner, loaded/omitted state, and failure. Compute
+its digest. Each agent receives only required excerpts and structured predecessor
+results, never the full context set by default.
+
+A missing sound bible is an explicit feature-local constraint gap with destination,
+owner, and acceptance condition; never invent project-wide direction.
+
+## Fixed roles, concurrency, and attempt limits
+
+The role set is fixed:
+
+| Role | Responsibility | Required state | Write scope |
+|---|---|---|---|
+| audio-director author | direction/adaptive-rule proposal | required | none |
+| sound-designer | event/SFX/mix/asset proposal | required | none |
+| accessibility-specialist | independent accessibility findings | required | none |
+| technical-artist | engine-neutral technical routing | required | none |
+| configured engine specialist | configured-engine validation | required only when engine configured | none |
+| qa-tester | planned QA/playback matrix | required after reviewed spec | none |
+| independent audio reviewer | current-hash spec review | required | none |
+| audio-spec transaction writer | checkpoint and exact authorized spec | required | two canonical paths only |
+
+Use at most three live agents. Every attempt uses
+`cgs.team-audio-agent-attempt/v2`, exact input/output hashes, unique token, allowed
+proposal/finding IDs, prohibited paths, start/deadline, and retry ordinal. Maximum
+per-attempt deadline is 10 minutes, maximum multi-agent phase deadline 20 minutes,
+and maximum total delegate attempts per run 9. The request may lower these limits.
+
+On failure/timeout/cancel/invalid output/side effect, revoke the token, cancel
+dependents, quarantine late results, and compare prohibited/target preimages. One
+narrowed retry is allowed only after proving the failed attempt wrote nothing; it
+uses a new token and the same or smaller input scope. A second failure is PARTIAL or
+BLOCKED. Never wait indefinitely or substitute the coordinator's invented output.
+
+## Phase 2: Propose and decide sonic direction
+
+The read-only audio-director author returns
+`cgs.team-audio-proposal/v2` rows with:
+
+- stable proposal ID, source role, input/context hashes, exact source references;
+- exactly one destination, concise audio-spec constraint or `NONE`;
+- required product/technical decision or `NONE`;
+- owner, acceptance condition, dependencies, and status
+  `PROPOSED | BLOCKED | TIMED_OUT | CANCELED`; and
+- attempt identity/token/deadline/output hash.
+
+Allowed destinations are exactly `AUDIO_SPEC`, `AUDIO_ASSET_BRIEF`,
+`TECHNICAL_ADR_OR_SPEC`, `PERFORMANCE_BUDGET`, `QA_PLAN`, `BACKLOG_OR_STORY`, and
+`REVIEW_ONLY`.
+
+Direction proposals cover sonic identity, emotional tone, palette, adaptive-music
+intent, abstract mix priorities, and player-facing audio goals. Present two or
+three mutually exclusive choices only for genuine product decisions. Record
+`cgs.audio-product-decision/v2` with decision ID, options/evidence hashes, choice,
+rationale, authority, and timestamp. Routine derivation needs no repeated approval.
+
+Unresolved creative direction returns DEFERRED/BLOCKED and prevents dependent
+proposal dispatch.
+
+## Phase 3: Collect sound and accessibility proposals
+
+After direction is frozen, run sound-designer and accessibility-specialist together
+against the exact direction/context hashes.
+
+The sound-designer proposes stable event IDs, trigger/priority/player result,
+spatial behavior, variation, abstract mix/ducking, captions, and asset needs.
+Production instructions route to AUDIO_ASSET_BRIEF and are not copied into the spec.
+
+The accessibility specialist independently checks critical-feedback redundancy,
+captions/source identification, spatial alternatives, loud/sudden/high-frequency
+controls, silence/overlap, and cue-priority masking. Use
+`cgs.audio-accessibility-finding/v2` with stable `AXA-<artifact-id>-<fingerprint>`,
+severity, event ID, exact evidence/path/hash, required outcome, owner, deadline,
+status `OPEN | ROUTED | RESOLVED`, and resolution evidence.
+
+A BLOCKING finding, especially critical game state communicated only by audio, is
+non-waivable. Only an exact sound/visual/haptic design revision followed by one
+finding-ID-preserving verification re-review may close it. The same blocker on the
+second observation ends BLOCKED. No skip, acknowledge-and-proceed, accepted-risk
+completion, or implementation branch exists.
+
+Only non-blocking risk may be accepted, with exact finding ID/risk/owner/deadline/
+approver/time. The verdict is `ACCEPTED RISK — NOT APPROVED`; it cannot reach SPEC
+COMPLETE or implementation.
+
+## Phase 4: Route technical and engine validation
+
+After the player-facing draft is stable, run technical-artist and the configured
+engine specialist in parallel. They are read-only and destination-tag every row.
+
+- Middleware, bus/streaming architecture, and engine component/node patterns route
+  to TECHNICAL_ADR_OR_SPEC.
+- CPU, memory, voice-count, streaming, and platform thresholds route to
+  PERFORMANCE_BUDGET.
+- Implementation/integration work routes to BACKLOG_OR_STORY.
+- Only player-facing rules and abstract design constraints may route to AUDIO_SPEC.
+
+This skill writes none of those external destinations. Decisions requiring an ADR
+remain owner-routed dependencies until an external Accepted ADR exists.
+
+If engine evidence declares no configured engine, do not call an engine specialist
+or guess engine/middleware patterns. Record `ENGINE_VALIDATION_DEFERRED` with
+configuration path/hash, affected proposal/dependency IDs, owner, and exact trigger:
+engine selected/configured or pinned version changed. Engine-neutral design may
+later reach `SPEC COMPLETE — ENGINE VALIDATION DEFERRED`, but it is never
+implementation-ready and cannot produce an implementation handoff.
+
+## Phase 5: Reduce one authoritative audio-spec candidate
+
+Build `cgs.team-audio-destination-ledger/v2`: every proposal/finding ID appears
+exactly once with source hash, destination, owner, acceptance, dependency, and
+status. Deduplicate by stable identity/evidence. Creative conflicts route to product
+authority; technical conflicts route to technical owner. The reducer never guesses
+or concatenates all agent prose.
+
+Render exactly one UTF-8 candidate at
+`design/audio/audio-<artifact-id>.md` using the schema in
+`references/audio-spec-schema.md`. It contains only player-facing audio direction,
+event/adaptive contracts, abstract mix behavior, accessibility alternatives,
+design acceptance criteria, source hashes, and references to external destination
+IDs. It excludes implementation, concrete technical architecture, budgets, tests/
+QA results, asset production, and review transcripts.
+
+If required output is missing/timed out/blocked or context is partial, an optional
+candidate must visibly say `PARTIAL — NOT APPROVED`, list exact gaps, and cannot be
+accepted or handed to implementation.
+
+## Phase 6: Approve and write the exact candidate
+
+After all genuine product choices, render complete bytes and create
+`cgs.team-audio-write-plan/v2` with:
+
+- artifact/run IDs, create/revise operation, exact spec/checkpoint paths;
+- one transaction writer, source/context/decision/ledger hashes;
+- target preimages/ABSENT, complete spec candidate byte count/raw SHA-256;
+- engine state, destination/open-blocker counts, deterministic write order;
+- checkpoint transition candidate/hash, partial/recovery rules; and
+- explicit non-writes.
+
+Present the complete spec bytes/diff and plan hash. Obtain content approval bound to
+that hash, then one separate `cgs.team-audio-mutation-authorization/v2` for only the
+spec candidate and exact checkpoint transition. A new byte/path/operation/owner/
+source/engine/blocker state invalidates approval and authorization.
+
+Immediately before writing, run source/context, spec/checkpoint target, identity/
+ownership, decision/ledger, attempt-token, approval/authorization, and role CAS in
+one read-only pass. Any mismatch yields zero spec writes and fresh planning.
+
+The single writer writes the spec with atomic single-file replacement where
+supported and immediate read-back/hash verification, then atomically updates the
+checkpoint. Multi-file atomicity is not claimed. A spec success plus checkpoint
+failure is PARTIAL and not safely resumable; preserve actual hashes, never delete
+or overwrite for rollback, and print the complete recovery payload.
+
+## Phase 7: Independent current-hash review
+
+After verified spec write, run a fresh, read-only reviewer whose identity/token
+differs from audio-director author and transaction writer. Review only the exact
+current spec bytes/hash using `references/audio-spec-schema.md` and emit
+`cgs.audio-spec-review/v2`.
+
+Review covers direction coherence, event identity/completeness, accessibility,
+abstract mix/cue conflicts, adaptive-state transitions/interruption/recovery,
+destination hygiene, dependencies/engine state, and acceptance criteria.
+Findings use stable `AR-<artifact-id>-<check>-<fingerprint>` with severity, evidence
+locator/hash, owner, required outcome, status, and resolution.
+
+BLOCKING findings are non-waivable. Permit one exact author revision with a new
+candidate/plan/approval/authorization, followed by exactly one fresh verification
+re-review over stable OPEN IDs and diff regressions. The same blocker remaining on
+the second observation is BLOCKED. Any spec hash change stales prior review, QA
+plan proposal, and user acceptance.
+
+## Phase 8: Plan future independent QA; do not execute it
+
+After zero BLOCKING accessibility/review findings, a read-only qa-tester proposes
+`cgs.audio-qa-plan-proposal/v2` bound to the current spec hash. Cases may cover event
+triggers, priority/ducking, adaptive transitions, caption/alternative cues,
+silence/overlap, platform routing, performance-budget references, and playback.
+
+Every case status is `PLANNED`. This skill has no implementation/build/produced
+audio and must report `IMPLEMENTATION NOT PRESENT`, `QA NOT RUN`, and `PLAYBACK NOT
+RUN`. It writes no QA plan and never treats agent prose, filenames, unplayed
+waveforms, or missing logs as execution evidence.
+
+Future implementation acceptance requires independent QA outside this skill. Such
+evidence must bind spec/build/asset hashes, protocol/environment/device/settings,
+timestamps/duration, result/observer, raw log/capture/signature hash, and
+PASS/FAIL/BLOCKED. This workflow neither produces nor consumes that evidence as a
+completion requirement for design.
+
+## Phase 9: Final evidence-bound acceptance
+
+Present the current spec hash, context/decision/ledger hashes, accessibility/review
+findings, engine/ADR dependencies, planned QA IDs, agent attempt states, and exact
+checkpoint candidate. The product authority may accept only that exact packet.
 
 Emit `SPEC COMPLETE` only when:
 
-- every required agent completed within its deadline;
-- target raw hash matches the approved draft/revision;
-- zero BLOCKING accessibility/review findings remain;
-- no accepted-risk record leaves the spec NOT APPROVED;
-- all required product dependencies are resolved;
-- independent review evidence and planned QA matrix bind to the current hash;
+- context coverage is complete and every fixed required agent completed in bounds;
+- current spec bytes/hash match the approved and authorized candidate;
+- zero BLOCKING accessibility/review findings and zero accepted-risk state remain;
+- every product decision is resolved and every external technical/asset/QA/backlog
+  item is destination-routed with owner/acceptance;
 - engine validation is current;
-- the user explicitly accepts that same hash/evidence packet; and
-- after final compare-and-swap, the same writer records matching hashes,
-  evidence IDs, acceptance, and COMPLETE state in the checkpoint.
+- independent review and planned QA proposal bind the current spec hash;
+- product authority accepts that exact hash/evidence packet; and
+- final CAS and verified checkpoint update record state COMPLETE.
 
-When all conditions except engine validation pass, emit
-`SPEC COMPLETE — ENGINE VALIDATION DEFERRED` and preserve the exact revalidation
-trigger. This is not implementation-ready. Declined/deferred acceptance remains
-NOT APPROVED.
+When every condition except engine validation passes, emit
+`SPEC COMPLETE — ENGINE VALIDATION DEFERRED` with the exact trigger and no
+implementation handoff. Declined/postponed acceptance is `DEFERRED — NOT APPROVED`.
+Any safe but incomplete work is `PARTIAL — NOT APPROVED`; a decision, conflict,
+non-waivable blocker, invalid checkpoint, or unsafe drift may be BLOCKED.
 
----
+The final report and checkpoint include artifact/run IDs, exact spec path/hash,
+context/decision/ledger/plan/authorization hashes, proposal/finding counts by
+destination, agent attempt/deadline/result states, reviewer/result hash, engine/ADR
+state, planned-versus-executed QA/playback labels, open blockers, last verified
+phase, safe resume point, and exactly one verdict/next action.
 
-## Output and handoff
+Read and follow `references/execution-and-recovery.md` in full for checkpoint
+transitions, resume, partial evidence, and terminal receipt rules.
 
-Report:
+## Handoff boundary
 
-- artifact ID, exact path, raw hash, and context-manifest hash;
-- proposal/finding counts by destination;
-- agent completion/BLOCKED/TIMED OUT states;
-- accessibility and audio-review evidence IDs and bound hash;
-- engine-validation and ADR dependency states;
-- checkpoint state and safe resume point;
-- planned QA/playback separately from executed evidence; and
-- exactly one workflow verdict.
+This skill never invokes an implementation workflow. A later implementation request
+is legal only when the current spec hash is accepted, engine validation is current,
+every required technical decision has an Accepted ADR, one story binds the exact
+spec hash and acceptance criteria, and story readiness passes. Implementation and
+independent runtime QA belong to separate user-authorized workflows.
 
-This workflow never invokes `$dev-story`. A later implementation may begin only
-when the current specification hash is accepted, engine validation is current,
-every required technical decision has an Accepted ADR, a story captures the
-exact spec hash and testable acceptance criteria, and that story passes its own
-readiness gate. Implementation then belongs to a separate user-authorized
-`$dev-story [story-path]` run.
-
-For non-COMPLETE outcomes, give only the blocking decision or safe resume action.
+For non-COMPLETE outcomes, return only the highest-priority product decision,
+dependency, accessibility fix, context split, checkpoint recovery, or resume action.
 Do not recommend code or asset production.
-
----
-
-## Non-negotiable rules
-
-- Never spawn gameplay-programmer or write/review implementation in this skill.
-- Never write code, tests, ADRs, technical specs, budgets, QA plans, import
-  settings, or audio assets.
-- Never allow more than one transaction writer or expand approved paths.
-- Never let proposal agents or reviewers write.
-- Never merge all agent outputs into the audio specification.
-- Never waive a BLOCKING accessibility or review finding.
-- Never fabricate QA, playback, mix-review, hash, or completion evidence.
-- Never call a partial/deferred/unreviewed specification implementation-ready.

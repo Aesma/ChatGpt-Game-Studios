@@ -1,307 +1,811 @@
-# Skill Test Spec: $test-setup
+# Skill Test Spec: test-setup
+
+> **Spec ID**: test-setup-v2
+> **Spec Schema**: cgs-skill-spec/v2
+> **Category**: testing
+> **Priority**: high
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$test-setup` semantically audits or scaffolds engine-specific test infrastructure,
-creates a real deterministic canary plus a setup-only failure fixture, emits an
-argv-array execution manifest, and verifies discovery and exit-code sensitivity.
-File existence is never enough. `Verdict: COMPLETE` requires a trusted build-bound CI
-receipt for the same candidate, test-manifest, runner, parser, workflow, log, and
-test-source hashes.
+test-setup audits, scaffolds, verifies, or performs ID-keyed repair of
+engine-specific test infrastructure. It binds an owner-approved structured engine
+manifest, repository policy, canonical layout manifest, argv-only execution
+manifest, reviewed dependency lock, deterministic pass/failure canaries, and
+current hash-bound local and CI receipts.
 
-The canonical durable result is
-`production/qa/evidence/test-setup/<candidate-id>/<setup-run-id>/report.md`.
-No director gate applies.
+Owned writes are limited to authorized managed test infrastructure, the managed
+cgs-tests workflow job, and immutable evidence below
+production/qa/evidence/test-setup. Audit is read-only. Instruction files, engine
+and repository authorities, project descriptors, shared QA/gate contracts,
+unmanaged workflow jobs, and human-authored tests are non-writes.
+
+Workflow statuses are COMPLETE, PARTIAL, BLOCKED, and ERROR. A missing,
+unreadable, timed-out, unsupported, stale, unverifiable, or partially covered
+required check is never PASS. Gate eligibility requires every verification rung
+through CI_VERIFIED for the same current hashes.
 
 ---
 
 ## Static Assertions
 
-- [ ] YAML frontmatter contains only `name` and a non-empty `description`; name matches the skill directory
-- [ ] Has at least two phase headings
-- [ ] Defines audit, scaffold, verify, and repair modes plus invalid-input behavior
-- [ ] Reads the full applicable AGENTS chain before planning tests
-- [ ] Uses test function naming from the closest `tests/AGENTS.md`
-- [ ] Routes manual visual/UI evidence to `production/qa/evidence/`
-- [ ] Creates unit, integration, performance, and playtest layout records
-- [ ] Creates a deterministic pass canary and a setup-only intentional failure fixture
-- [ ] `tests/test-execution-manifest.json` uses argv arrays, environment allowlists, timeout/output caps, parser rules, cleanup, log fields, and trusted-CI rules
-- [ ] Automated receipts bind candidate/build/test-manifest/test-source/runner/argv/log/parser details
-- [ ] COMPLETE requires nonzero discovery, pass canary exit zero, failure probe nonzero, isolated post-probe pass, and trusted CI receipt
-- [ ] Unity requires both valid `.asmdef` files and nonzero discovery
-- [ ] Godot completion/exit propagation and Unreal project/runner identity are version-resolved
-- [ ] Active CI contains no unresolved placeholders or major-only third-party action tags
-- [ ] Missing plugin/license/self-hosted runner/secret/CI receipt yields SETUP_PENDING
-- [ ] Existing infrastructure is parsed semantically and repair is ID-keyed, not a full overwrite
-- [ ] No director gate applies
+- [ ] **[TSU-SA-001]** Frontmatter contains exactly non-empty name and description,
+  and name is test-setup.
+- [ ] **[TSU-SA-002]** A normative cgs-test-setup-contract/v1 declares modes,
+  authorities, owned outputs, non-writes, receipt schema, and hash algorithm.
+- [ ] **[TSU-SA-003]** Audit is read-only and no mode auto-invokes a gate, skill,
+  commit, or publication.
+- [ ] **[TSU-SA-004]** Existing infrastructure is parsed semantically; path
+  existence cannot establish validity.
+- [ ] **[TSU-SA-005]** Repair operations are stable-ID keyed, hash-preconditioned,
+  diff-bound, backed up, compare-and-set, and preserve unmanaged content.
+- [ ] **[TSU-SA-006]** The full root-to-target AGENTS chain is hashed and closest
+  applicable rules control every target.
+- [ ] **[TSU-SA-007]** Manual evidence routes only to production/qa/evidence and
+  never to tests/evidence.
+- [ ] **[TSU-SA-008]** One versioned layout manifest owns unit, integration,
+  performance, playtest, setup-canary, and evidence-route declarations.
+- [ ] **[TSU-SA-008A]** The three downstream manifests expose exactly `cgs-test-layout/v1`, `cgs-test-validator-manifest/v1`, and `cgs-test-execution-manifest/v1` through matching `artifact_type`, integer `manifest_version: 1`, and `schema`; every consumer binding includes canonical path and raw SHA-256.
+- [ ] **[TSU-SA-008B]** Legacy producer identities `cgs-test-layout-manifest` and `cgs-test-setup-validator-manifest` are rejected rather than aliased.
+- [ ] **[TSU-SA-009]** Structured engine authority agrees with actual descriptor,
+  version, language, project root, and module or assembly identity.
+- [ ] **[TSU-SA-010]** Repository policy owns trunk/default/PR branches, paths,
+  cache, timeout, concurrency, runner labels, and least privilege.
+- [ ] **[TSU-SA-011]** CI validation targets the exact cgs-tests job and exact
+  manifest-bound argv, not workflow or job-name presence.
+- [ ] **[TSU-SA-012]** Verification advances monotonically from audit through
+  static, discovery, canary, failure sensitivity, determinism, and trusted CI.
+- [ ] **[TSU-SA-013]** Static validators, runners, parsers, manifests, sources,
+  logs, and receipts carry exact version and raw SHA-256 bindings.
+- [ ] **[TSU-SA-014]** Deterministic controls are frozen before execution and pass
+  semantic projections must match without post-result retries.
+- [ ] **[TSU-SA-015]** Partial, unavailable, timeout, unsupported, stale, or
+  invalid evidence forces Gate Eligible NO.
+- [ ] **[TSU-SA-016]** Every third-party action has a reviewed source, immutable
+  full commit SHA, license/security disposition, and review-receipt hash.
+- [ ] **[TSU-SA-017]** COMPLETE requires nonzero discovery, pass, intentional
+  conclusive fail, isolated equal post-probe pass, and current trusted CI proof.
+- [ ] **[TSU-SA-018]** cgs-test-setup-receipt/v2 binds every authority, manifest,
+  dependency, source, tool, execution, log, diff, and freshness result.
 
 ---
 
-## Case 1: Scaffold alone is not COMPLETE
+## Test Cases
 
-**Fixture:**
+### Case 1 [TSU-C01]: Existing paths receive semantic audit and bounded repair
 
-- Engine/project/version identity is valid
-- Approved adapter templates and dependencies are available
-- No candidate manifest is supplied, so no build-bound execution can run
-- The bounded change authorizes safe scaffold files
+#### Fixture
 
-**Input:** `$test-setup scaffold --setup-run-id setup-001`
+- The tests tree and tests workflow already exist.
+- The execution manifest points at a stale runner hash.
+- The managed cgs-tests job omits receipt upload.
+- Human jobs and human-authored tests are present.
 
-**Expected behavior:**
+#### Input
 
-1. The skill creates the planned layout, required engine files, real canary sources,
-   and valid execution manifest.
-2. It performs static validation but cannot create build-bound canary receipts.
-3. It returns `Setup Status: SCAFFOLDED`, `Verdict: SCAFFOLDED`,
-   `Gate Eligible: NO`.
+- Mode is audit first, followed by separately authorized repair.
+- Exact engine, repository-policy, dependency-lock, and run identities are supplied.
 
-**Assertions:**
+#### Expected reads
 
-- [ ] No COMPLETE, VERIFIED, or CI-wired claim appears
-- [ ] Changed-path list matches actual files
-- [ ] Manual evidence route is not under tests/evidence
+- Every managed artifact in full, its schema, references, stable IDs, and raw hash.
+- Existing cgs-tests YAML subtree and all unmanaged sibling identities.
+- Applicable validators and their pinned versions and hashes.
 
----
+#### Expected writes
 
-## Case 2: Pass and failure canaries prove runner sensitivity
+- Audit writes nothing.
+- Repair writes only authorized managed fields plus immutable audit, repair-plan,
+  preimage backup, exact diff, changed-files, and repair receipt artifacts.
 
-**Fixture:**
+#### Expected non-writes
 
-- Candidate manifest/build/test manifest and all hashes verify
-- Framework/plugin and runner are installed at pinned versions
-- Pass and failure stable IDs each resolve to one discovered test
-- Execution is authorized
+- Unmanaged workflow jobs, human tests, instruction files, shared QA contracts,
+  and unrelated files.
 
-**Input:** `$test-setup verify --candidate production/builds/candidate-17.json --setup-run-id setup-002`
+#### Expected behavior
 
-**Expected behavior:**
+- Path existence never yields VALID.
+- Each expected artifact gets a semantic outcome and validator evidence.
+- Repair operations carry stable ID, bounded pointer or anchor, preimage hash,
+  before/after value hashes, patch hash, and all-file compare-and-set.
+- A preimage mismatch writes no managed target.
 
-1. Pass canary is discovered once, passes, and runner exits zero.
-2. Intentional failure fixture is discovered once, fails, and runner exits with the
-   declared nonzero test-failure code.
-3. Pass canary reruns with the failure fixture excluded and passes.
-4. All three logs and structured receipts are hash-bound.
+#### Assertions
 
-**Assertions:**
+- [ ] Stale runner semantics are reported despite every path existing.
+- [ ] Legacy force behaves exactly as bounded repair.
+- [ ] Backups are recovery evidence and never overwrite divergent current bytes.
+- [ ] Partial audit coverage prevents repair and gate eligibility.
 
-- [ ] Failure-probe exit zero yields `Failure Sensitivity: NOT_SENSITIVE`
-- [ ] Timeout/runner crash/parse failure cannot count as the expected nonzero failure
-- [ ] Every receipt contains candidate/build/source/runner/argv/time/count/log/parser/test-source fields
-- [ ] Failure fixture is excluded from ordinary suite selection
+#### Case Verdict
 
----
-
-## Case 3: Deterministic example test satisfies gate prerequisite only after execution
-
-**Fixture:**
-
-- The pass canary source exists and follows
-  `test_[system]_[scenario]_[expected_result]`
-- Its stable ID/source hash appears in the execution manifest
-- Current build-bound pass receipt verifies
-- Failure sensitivity and CI receipt also verify
-
-**Expected behavior:**
-
-- The example-test prerequisite is verified, not inferred from a README or path.
-- Discovery count is greater than zero.
-- The exact setup receipt may be gate eligible.
-
-**Assertions:**
-
-- [ ] Source, test ID, AC ID, function identity, and raw hash are recorded
-- [ ] A seed file without a current pass receipt is only SCAFFOLDED/AWAITING verification
-- [ ] A gate must consume exact setup-receipt and candidate hashes
+PASS when audit is complete and repair preserves unmanaged bytes with verified
+preimage, diff, postimage, and read-back hashes; otherwise PARTIAL, BLOCKED, or
+FAIL with Gate Eligible NO.
 
 ---
 
-## Case 4: Godot runner must wait and propagate failure
+### Case 2 [TSU-C02]: Closest instruction chain controls every target
 
-**Variants:**
+#### Fixture
 
-- A: Approved version-matched official entrypoint/wrapper waits for completion and
-  maps pass to zero and failure to nonzero
-- B: A runner starts tests and immediately quits zero
-- C: Required GdUnit4/addon bytes are absent
+- Root AGENTS and a nearer tests AGENTS define different naming details.
+- A workflow target and multiple test-source target directories are planned.
+- One variant makes a target-parent instruction unreadable.
 
-**Expected behavior:**
+#### Input
 
-- Only A can advance through canary verification.
-- B is `INCOMPLETE` with `Failure Sensitivity: NOT_SENSITIVE` or invalid completion.
-- C is `SETUP_PENDING`, not a wired framework.
+- Audit or scaffold with the complete proposed target list.
 
-**Assertions:**
+#### Expected reads
 
-- [ ] Completion signal and failure count are parsed
-- [ ] Timeout terminates the runner process tree
-- [ ] No fallback runner command is synthesized
+- The repository-root-to-parent instruction chain for every proposed target.
+- Raw bytes and SHA-256 of each selected instruction file.
 
----
+#### Expected writes
 
-## Case 5: Unity creates valid assemblies and proves discovery
+- On complete coverage, only the authorized scaffold and evidence.
+- On unreadable applicable instructions, no write beneath the affected subtree.
 
-**Fixture:**
+#### Expected non-writes
 
-- Unity version and project assemblies are known
-- Pinned Unity Test Framework is installed
-- Both asmdef paths are initially absent
+- All AGENTS files and other instruction authorities.
 
-**Expected behavior:**
+#### Expected behavior
 
-- Skill creates valid JSON at `tests/EditMode/EditModeTests.asmdef` and
-  `tests/PlayMode/PlayModeTests.asmdef`.
-- Exact project assembly references and test-assembly optional references validate.
-- Compilation succeeds and pass canary discovery count is greater than zero.
+- Precedence is resolved separately per target and the closest rule wins.
+- Effective naming, evidence, isolation, cleanup, and engine rules record their
+  source path and hash.
+- The current repository naming example is not used as a fallback elsewhere.
 
-**Assertions:**
+#### Assertions
 
-- [ ] README text alone cannot satisfy asmdef requirement
-- [ ] Missing/unresolved assembly reference yields INCOMPLETE
-- [ ] Unity license/CI receipt absence yields SETUP_PENDING even after local pass
+- [ ] Generated names follow the closest tests rule.
+- [ ] Selected, loaded, unreadable, and omitted instruction paths are explicit.
+- [ ] An unreadable applicable rule yields Audit Coverage PARTIAL.
+- [ ] No write occurs before instruction resolution completes.
 
----
+#### Case Verdict
 
-## Case 6: Unresolved active CI never becomes COMPLETE
-
-**Variants:**
-
-- Godot engine version or addon dependency is unresolved
-- Unity license-secret presence is unverified
-- Unreal project name, editor path, namespace, or self-hosted runner is unresolved
-- Third-party actions use major tags instead of approved immutable SHAs
-
-**Expected behavior:**
-
-- No unresolved active `cgs-tests` job is created or described as wired.
-- Every missing prerequisite is listed.
-- `CI Status: SETUP_PENDING` or `INVALID`, `Gate Eligible: NO`.
-
-**Assertions:**
-
-- [ ] Template sentinels and unresolved project values block activation
-- [ ] External license/runner provisioning is not automated
-- [ ] Static YAML validity alone never means CI VERIFIED
+PASS only with a complete hash-bound chain and correct per-target precedence;
+otherwise BLOCKED with Gate Eligible NO.
 
 ---
 
-## Case 7: Existing paths with wrong semantics do not early-exit
+### Case 3 [TSU-C03]: Evidence routing has one canonical owner
 
-**Fixture:**
+#### Fixture
 
-- `tests/` and `.github/workflows/tests.yml` exist
-- Workflow job invokes a different runner string and has no receipt/log upload
-- Failure fixture is missing
-- No trusted CI receipt exists
+- Coding policy routes evidence to production/qa/evidence.
+- An existing README routes visual evidence to tests/evidence.
+- The proposed layout manifest declares the canonical route.
 
-**Input:** `$test-setup audit --candidate production/builds/candidate-17.json`
+#### Input
 
-**Expected behavior:**
+- Audit or repair of test infrastructure.
 
-- Skill parses files and reports exact semantic gaps.
-- It does not say configuration is verified.
-- Audit performs no write.
+#### Expected reads
 
-**Assertions:**
+- Instruction chain, coding policy, current layout manifest, README, execution
+  manifest, and relevant consumer references.
 
-- [ ] Existing directory/workflow presence is insufficient
-- [ ] Setup status is INCOMPLETE or SETUP_PENDING
-- [ ] Repair proposal, if requested separately, is keyed to managed IDs
+#### Expected writes
 
----
+- Authorized managed README/layout fields and immutable repair evidence only.
 
-## Case 8: Repair preserves unmanaged workflow content
+#### Expected non-writes
 
-**Fixture:**
+- QA plans, review skills, gate skills, and external consumer contracts.
 
-- Workflow contains managed job `cgs-tests` plus human jobs `lint` and `package`
-- Managed job has stale manifest hash and action SHA
-- User authorizes the exact repair patch
+#### Expected behavior
 
-**Expected behavior:**
+- tests/evidence is classified CONFLICTING.
+- Manual evidence and setup automation evidence resolve from one versioned layout
+  manifest path and hash.
+- Conflicting external consumers produce an owner handoff rather than an inferred
+  local rewrite.
 
-- Only managed fields under `cgs-tests` change.
-- Human jobs and unrelated test sources remain byte/logically preserved.
-- Before/after hashes and exact diff are recorded.
+#### Assertions
 
-**Assertions:**
+- [ ] No generated text routes visual or UI proof under tests.
+- [ ] README and execution manifest bind the exact layout-manifest hash.
+- [ ] Shared consumers are never silently edited.
+- [ ] Conflicting routes prevent COMPLETE.
 
-- [ ] Legacy `force` behaves like keyed repair, not regeneration
-- [ ] No whole-workflow/tree overwrite occurs
-- [ ] A changed test manifest invalidates prior execution/CI receipts
+#### Case Verdict
 
----
-
-## Case 9: Trusted CI receipt must match every execution binding
-
-**Fixture:**
-
-- Local static/discovery/pass/failure checks all verify
-- Active workflow is semantically valid
-- Supplied CI receipt has one variant mismatch: prior build, prior test-manifest
-  hash, changed canary source, different argv, truncated log, untrusted issuer, old
-  workflow hash, or failure-probe exit zero
-
-**Expected behavior:**
-
-- Each mismatch yields `CI Status: INVALID`, `Setup Status: INCOMPLETE`,
-  `Gate Eligible: NO`.
-- No CI-wired or COMPLETE claim appears.
-
-**Assertions:**
-
-- [ ] Receipt binds candidate/build/test sources/runner/parser/workflow/action SHA/log/per-test results
-- [ ] Dates or newest-file selection cannot establish currentness
-- [ ] Remote artifact unavailability is not PASS
+PASS when every managed route derives from the current layout manifest and no
+forbidden route remains; otherwise BLOCKED or INCOMPLETE.
 
 ---
 
-## Case 10: Fully verified setup may return COMPLETE
+### Case 4 [TSU-C04]: Layout and implementation share one versioned manifest
 
-**Fixture:**
+#### Fixture
 
-- All scaffold semantics and dependency hashes pass
-- Candidate/build/test sources are current
-- Static validation and discovery pass
-- Baseline pass, intentional failure, and isolated post-probe pass receipts verify
-- Active CI job is placeholder-free and pinned
-- Trusted CI receipt proves the same sequence and bindings
-- Durable setup report write and read-back succeed
+- Required directory IDs are unit, integration, performance, playtest, and
+  setup-canary.
+- An old tree contains unit, integration, smoke, and evidence directories.
+- Empty directories have no tracked manifest or README.
 
-**Expected behavior:**
+#### Input
 
-- `Setup Status: VERIFIED`
-- `CI Status: VERIFIED`
-- `Verdict: COMPLETE`
-- `Gate Eligible: YES`
+- Scaffold or repair with an approved layout manifest.
 
-**Assertions:**
+#### Expected reads
 
-- [ ] Setup report header contains all required machine-readable fields
-- [ ] Completion receipt lists every source/config/log/receipt hash
-- [ ] COMPLETE is withheld if persistence or any revalidation fails
-- [ ] No downstream workflow is invoked automatically
+- Existing tree, README, layout manifest, execution manifest, and consumer
+  references within scope.
+
+#### Expected writes
+
+- Nonempty managed records for each required directory and the exact current
+  layout manifest.
+
+#### Expected non-writes
+
+- Human test sources and legacy directories not explicitly authorized for change.
+
+#### Expected behavior
+
+- The implementation derives directory creation and reporting from stable layout
+  IDs rather than duplicated prose.
+- Legacy smoke and evidence directories do not satisfy performance or playtest.
+- Playtest contains adapters or fixtures, not manual evidence.
+
+#### Assertions
+
+- [ ] Every required directory ID resolves to one contained path.
+- [ ] Changed-path claims match actual tracked files.
+- [ ] The execution manifest binds the layout-manifest hash.
+- [ ] No empty-path or directory-existence claim implies completion.
+
+#### Case Verdict
+
+PASS when one current layout manifest governs the complete tracked layout;
+otherwise INCOMPLETE with Gate Eligible NO.
 
 ---
 
-## Director Gate Checks
+### Case 5 [TSU-C05]: Structured engine authority must match project reality
 
-None. `$test-setup` is an infrastructure verification utility.
+#### Fixture
+
+- A cgs-test-setup-engine-manifest/v1 identifies engine, aliases, exact version,
+  language, project root, descriptor hash, and module or assembly.
+- Actual project descriptor and version authority are available.
+- Variants contain an alias not listed, a second project root, or a version,
+  language, descriptor-hash, or module mismatch.
+
+#### Input
+
+- Any mode with the exact engine-manifest path.
+
+#### Expected reads
+
+- Engine manifest, technical preferences, engine version authority, project
+  descriptor, package/runtime data, and runner/framework configuration.
+
+#### Expected writes
+
+- Audit evidence only when identity conflicts.
+- No scaffold or workflow activation for a conflicted identity.
+
+#### Expected non-writes
+
+- Engine manifest, project descriptor, version authority, and package manifests.
+
+#### Expected behavior
+
+- Only enumerated aliases normalize.
+- Project root containment and descriptor raw hash are verified.
+- Free-text engine labels cannot establish identity.
+- Every conflict is explicit and fail-closed.
+
+#### Assertions
+
+- [ ] No engine, language, version, project name, module, or assembly is guessed.
+- [ ] Multiple roots and symlink escapes are rejected.
+- [ ] Exact framework and adapter compatibility is checked.
+- [ ] Identity conflict yields BLOCKED.
+
+#### Case Verdict
+
+PASS for one fully consistent structured identity; otherwise BLOCKED with no
+target write.
+
+---
+
+### Case 6 [TSU-C06]: Repository policy controls reviewable CI behavior
+
+#### Fixture
+
+- A cgs-test-setup-repository-policy/v1 supplies default/trunk/PR branch policy,
+  path filters, cache inputs and restore scope, timeout, concurrency, runner
+  labels, and permissions.
+- Variants omit a field, disagree with verified VCS default branch, or contain a
+  hard-coded main branch.
+
+#### Input
+
+- Scaffold, audit, verify, or repair of active CI.
+
+#### Expected reads
+
+- Repository-policy bytes/hash, verifiable VCS branch reference when available,
+  dependency lock, workflow, and execution manifest.
+
+#### Expected writes
+
+- Only an authorized managed cgs-tests subtree and immutable evidence.
+
+#### Expected non-writes
+
+- Repository policy, VCS configuration, other workflow jobs, and branch settings.
+
+#### Expected behavior
+
+- CI generation derives every governed field from the policy.
+- Cache keys bind engine/framework/dependency/tool hashes; restored bytes are
+  rehashed before use.
+- Missing or conflicting policy leaves active CI unmodified and SETUP_PENDING.
+
+#### Assertions
+
+- [ ] No branch, path-filter, cache, timeout, or permission default is invented.
+- [ ] Cache hit never proves dependency validity.
+- [ ] Least privilege and concurrency are semantically checked.
+- [ ] Policy mismatch prevents CI VERIFIED.
+
+#### Case Verdict
+
+PASS when active CI exactly matches a current policy hash; SETUP_PENDING or
+INVALID otherwise.
+
+---
+
+### Case 7 [TSU-C07]: Exact managed CI job is parsed and patched without collateral edits
+
+#### Fixture
+
+- A workflow contains cgs-tests, lint, and package jobs.
+- Another workflow contains a job named test.
+- cgs-tests uses a wrong runner argv and stale execution-manifest hash.
+
+#### Input
+
+- Audit followed by an authorized ID-keyed repair.
+
+#### Expected reads
+
+- Complete parsed workflow trees, exact cgs-tests node, manifests, dependency
+  review receipts, and current runner argv/hash.
+
+#### Expected writes
+
+- Managed cgs-tests fields and immutable repair artifacts only.
+
+#### Expected non-writes
+
+- lint, package, other workflows, comments where parser round-trip supports them,
+  and all unrelated tests.
+
+#### Expected behavior
+
+- Presence of a workflow or generic test job provides no evidence.
+- The exact job ID, event policy, manifest hash, argv array, logs, receipts,
+  secrets, actions, timeout, cache, and runner prerequisites are validated.
+- Repair uses a structured pointer and all-file compare-and-set.
+
+#### Assertions
+
+- [ ] Wrong argv is found even if the workflow is syntactically valid.
+- [ ] Human job semantics remain unchanged.
+- [ ] Old setup and CI receipts become stale after workflow change.
+- [ ] Whole-workflow replacement is prohibited.
+
+#### Case Verdict
+
+PASS when exact-job semantics and preservation hashes verify; otherwise FAIL,
+PARTIAL, or BLOCKED.
+
+---
+
+### Case 8 [TSU-C08]: Verification ladder is explicit and fail-closed
+
+#### Fixture
+
+- Scaffold files can be created.
+- Variants make a static validator unavailable, discovery time out, one parser
+  unsupported, canary execution partial, or CI receipt remote log unavailable.
+
+#### Input
+
+- Scaffold or verify.
+
+#### Expected reads
+
+- Contract, all authority and manifest hashes, pinned validator manifest,
+  execution receipts, logs, and CI receipt dependencies.
+
+#### Expected writes
+
+- Immutable evidence for checks that actually ran and the final setup report when
+  persistence is authorized.
+
+#### Expected non-writes
+
+- Fabricated receipts, inferred results, newest-file substitutions, and any
+  downstream gate state.
+
+#### Expected behavior
+
+- The level advances only through AUDITED, CREATED, STATIC_VALIDATED,
+  DISCOVERY_VERIFIED, CANARY_PASS, FAILURE_SENSITIVE, and CI_VERIFIED.
+- A higher observed result cannot fill a missing lower rung.
+- Unavailable, timeout, unsupported, omitted, partial, stale, invalid, or
+  unverified evidence maps to PARTIAL or NOT_RUN and Gate Eligible NO.
+
+#### Assertions
+
+- [ ] File creation stops at CREATED.
+- [ ] Static parser success does not prove discovery.
+- [ ] Local green cannot prove trusted CI.
+- [ ] No incomplete branch emits COMPLETE or VERIFIED setup.
+
+#### Case Verdict
+
+PASS when the reported rung equals the last conclusively proven rung; any
+overclaim is FAIL.
+
+---
+
+### Case 9 [TSU-C09]: Dependencies and actions require immutable reviewed provenance
+
+#### Fixture
+
+- The dependency lock lists framework, parser, launcher, and CI actions.
+- Variants use a major tag, a full SHA without review, missing license or security
+  disposition, a stale review-receipt hash, or changed transitive lock bytes.
+
+#### Input
+
+- Audit, scaffold, repair, or verify.
+
+#### Expected reads
+
+- Dependency lock, source identities, immutable SHAs or digests, transitive locks,
+  review receipt paths/hashes, and installed bytes.
+
+#### Expected writes
+
+- Audit findings or an authorized managed dependency-lock patch plus repair
+  evidence; no external installation or review fabrication.
+
+#### Expected non-writes
+
+- External registries, licenses, review receipts, secrets, and runner provisioning.
+
+#### Expected behavior
+
+- Immutable identity and approval are independent required predicates.
+- Every installed or restored dependency is rehashed.
+- Any dependency or review change invalidates prior setup and CI receipts.
+- Missing external approval produces SETUP_PENDING.
+
+#### Assertions
+
+- [ ] Major tags fail immutable identity.
+- [ ] Full commit SHA alone does not prove review.
+- [ ] Reviewer identity, license, security/deprecation disposition, and receipt
+  hash are present.
+- [ ] Cache restore is checked against the lock.
+
+#### Case Verdict
+
+PASS only for reviewed immutable current provenance; otherwise SETUP_PENDING,
+INVALID, or BLOCKED with Gate Eligible NO.
+
+---
+
+### Case 10 [TSU-C10]: Deterministic pass and intentional failure prove the runner
+
+#### Fixture
+
+- Version-matched adapter, runner, parser, canary sources, and execution manifest
+  all hash-match.
+- Stable pass and setup-only failure IDs each discover exactly once.
+- Seed, order, locale, timezone, environment-name set, parallelism, timeout, and
+  normalization are frozen before execution.
+
+#### Input
+
+- Verify using only pinned argv-array entries.
+
+#### Expected reads
+
+- Current candidate/build/layout/execution manifests, sources, runner, parser,
+  deterministic controls, and dependency lock.
+
+#### Expected writes
+
+- Immutable pass, failure-probe, and post-probe logs and automated receipts.
+
+#### Expected non-writes
+
+- Ordinary suite selection, failure fixture state, shell scripts, and fallback
+  runner commands.
+
+#### Expected behavior
+
+- Pass returns zero with one pass.
+- Intentional assertion failure returns the declared conclusive nonzero failure.
+- Isolated post-probe pass returns zero.
+- First and last pass semantic projections match; timing fields are excluded from
+  equality and no retry policy changes after observation.
+
+#### Assertions
+
+- [ ] Timeout, crash, parse error, zero discovery, or truncated output is not a
+  conclusive intentional failure.
+- [ ] Failure fixture is excluded from ordinary execution.
+- [ ] Projection mismatch yields Determinism Status UNSTABLE.
+- [ ] Missing deterministic controls yields PARTIAL, never VERIFIED.
+
+#### Case Verdict
+
+PASS only for conclusive PASS, FAIL, equal isolated PASS and Determinism VERIFIED;
+otherwise INCOMPLETE with Gate Eligible NO.
+
+---
+
+### Case 11 [TSU-C11]: Engine-specific required artifacts are real and version matched
+
+#### Fixture
+
+- Variant A is Godot with a pinned addon and completion-aware wrapper.
+- Variant B is Unity with pinned Test Framework and project assemblies.
+- Variant C is Unreal with exact project, module, editor, automation filter, and
+  self-hosted runner labels.
+- Negative variants omit one required artifact or contain unresolved identity.
+
+#### Input
+
+- Scaffold or verify for exactly one structured engine identity.
+
+#### Expected reads
+
+- Engine authority, project descriptor, dependency lock and reviews, approved
+  adapter template, runner/parser, and existing engine artifacts.
+
+#### Expected writes
+
+- Only the authorized version-matched engine artifacts and evidence.
+
+#### Expected non-writes
+
+- Project descriptor, external plugin installation, license acquisition, and
+  runner provisioning.
+
+#### Expected behavior
+
+- Godot waits for suite completion and propagates exit class.
+- Unity creates and parses both EditMode and PlayMode asmdefs, compiles, and
+  discovers tests.
+- Unreal resolves every project/module/editor/filter/runner value.
+- Missing external prerequisites yield SETUP_PENDING, not wired CI.
+
+#### Assertions
+
+- [ ] No unresolved engine or project placeholder is active.
+- [ ] README claims cannot replace actual files or execution.
+- [ ] Unity discovery is greater than zero.
+- [ ] No fallback engine command is synthesized.
+
+#### Case Verdict
+
+PASS for complete version-matched engine semantics; SETUP_PENDING or INCOMPLETE
+otherwise.
+
+---
+
+### Case 12 [TSU-C12]: Receipt freshness is recomputed from every dependency
+
+#### Fixture
+
+- Local static, execution, setup, and CI receipts are supplied.
+- Variants have missing schema or signature, prior layout hash, changed source,
+  changed runner/parser/workflow/dependency review, unavailable remote log, or
+  complete current bindings.
+
+#### Input
+
+- Audit or verify with explicit receipt paths.
+
+#### Expected reads
+
+- Raw receipt bytes and every declared local or trusted remote dependency.
+
+#### Expected writes
+
+- Freshness findings and, if authorized and otherwise valid, one immutable setup
+  report.
+
+#### Expected non-writes
+
+- Existing receipts, remote artifacts, timestamps, badges, and prior run state.
+
+#### Expected behavior
+
+- Parse/signature failure is INVALID.
+- Any dependency mismatch is STALE.
+- Remote unavailable, timeout, unsupported verifier, or incomplete coverage is
+  UNVERIFIED and partial.
+- Only fully revalidated bytes are CURRENT.
+- Latest name, time, badge, or local green never substitutes for current proof.
+
+#### Assertions
+
+- [ ] Receipt schema, producer/tool hash, dependency set, and receipt hash or
+  signature are required.
+- [ ] Every local dependency is rehashed.
+- [ ] Partial and stale receipts cannot advance the ladder.
+- [ ] CI receipt binds deterministic controls and equal pass projections.
+
+#### Case Verdict
+
+PASS only when freshness classification exactly matches evidence; overclaiming
+CURRENT is FAIL.
+
+---
+
+### Case 13 [TSU-C13]: Concurrent repair change fails without partial overwrite
+
+#### Fixture
+
+- An authorized repair plan spans multiple managed files.
+- All preimage and backup hashes initially match.
+- One path changes after preview and before apply.
+
+#### Input
+
+- Repair with the frozen operation IDs and patch hash.
+
+#### Expected reads
+
+- Current bytes for every path immediately before any write, repair plan,
+  preimages, backup hashes, and exact diff.
+
+#### Expected writes
+
+- One immutable blocked receipt only.
+
+#### Expected non-writes
+
+- Every managed target path, divergent user bytes, and unrelated files.
+
+#### Expected behavior
+
+- All-file compare-and-set detects the changed path before the first write.
+- The repair returns BLOCKED — CONCURRENT CHANGE.
+- Recovery handoff describes a separately authorized three-way patch using
+  current/base/candidate hashes; it never recommends copying a backup over work.
+
+#### Assertions
+
+- [ ] Zero target files change.
+- [ ] First divergent path and observed hash are recorded.
+- [ ] Backup presence does not authorize restoration.
+- [ ] Replanning requires a new repair identity and approval boundary.
+
+#### Case Verdict
+
+PASS when concurrency produces a no-write blocked result with preserved external
+edits; any partial overwrite is FAIL.
+
+---
+
+### Case 14 [TSU-C14]: Fully current deterministic setup may become gate eligible
+
+#### Fixture
+
+- Instruction, engine, repository, layout, execution, dependency, source,
+  validator, runner, parser, workflow, and receipt hashes are current.
+- Audit coverage is complete.
+- Static validation and nonzero discovery pass.
+- Pass, intentional conclusive failure, and equal isolated post-probe pass verify.
+- Active cgs-tests CI matches policy and uses reviewed immutable actions.
+- Trusted current CI receipt proves the same bytes and sequence.
+- Durable report publish and read-back succeed.
+
+#### Input
+
+- Verify for one exact candidate, build, platform, configuration, and run ID.
+
+#### Expected reads
+
+- Every authority, manifest, implementation, log, receipt, signature, and
+  dependency declared by cgs-test-setup-receipt/v2.
+
+#### Expected writes
+
+- One immutable all-or-none run directory and current setup report.
+
+#### Expected non-writes
+
+- Live game/test sources, policies, shared consumers, gates, commits, and remote
+  systems.
+
+#### Expected behavior
+
+- Verification Level is CI_VERIFIED.
+- Audit Coverage and Static Validation are complete and PASS.
+- Determinism Status is VERIFIED and Receipt Freshness is CURRENT.
+- Setup Status is VERIFIED, Verdict COMPLETE, and Gate Eligible YES.
+- Downstream workflows are not invoked.
+
+#### Assertions
+
+- [ ] Report header contains all v2 machine-readable fields.
+- [ ] Changed, unchanged, unmanaged, rejected, backup, diff, and receipt hashes
+  are internally consistent.
+- [ ] A report persistence or read-back failure removes gate eligibility.
+- [ ] Every negative variant stops at the last proven rung.
+
+#### Case Verdict
+
+PASS only for the exact all-current happy path; otherwise fail closed with Gate
+Eligible NO.
+
+---
 
 ## Protocol Compliance
 
-- [ ] Bounded authorization covers exact writes and allowed execution argv arrays
-- [ ] Multi-file changes publish all-or-none
-- [ ] Runner execution never uses shell interpolation or arbitrary fallback commands
-- [ ] Secrets are allowlisted by name and values are excluded/redacted
-- [ ] Timeout kills the full process tree and incomplete evidence never passes
-- [ ] Catalog and workflow guide are not modified by this workflow
+- [ ] **[TSU-PC-001]** Exact mode, IDs, authority paths, candidate, and options are
+  validated before reads with side effects.
+- [ ] **[TSU-PC-002]** Bounded authorization covers exact writes and argv arrays.
+- [ ] **[TSU-PC-003]** Audit performs no write and no process execution.
+- [ ] **[TSU-PC-004]** Instruction, engine, repository, dependency, layout, and
+  execution authorities are raw-hash bound.
+- [ ] **[TSU-PC-005]** Semantic validator coverage is complete or explicitly
+  PARTIAL and fail-closed.
+- [ ] **[TSU-PC-006]** Multi-file repair uses all-file compare-and-set, backup,
+  full diff, read-back, and immutable receipt.
+- [ ] **[TSU-PC-007]** Runner execution uses pinned argv arrays without shell
+  interpolation or fallback commands.
+- [ ] **[TSU-PC-008]** Secrets are allowlisted by name and values are redacted and
+  never persisted.
+- [ ] **[TSU-PC-009]** Timeout terminates the full process tree and cannot count
+  as a conclusive failure probe.
+- [ ] **[TSU-PC-010]** Deterministic controls and semantic projections are frozen
+  before observation and never score-gamed with ad hoc retries.
+- [ ] **[TSU-PC-011]** Current receipt status is derived by dependency rehash and
+  signature verification, not name, date, badge, or mtime.
+- [ ] **[TSU-PC-012]** No catalog, shared QA contract, downstream skill, gate,
+  commit, push, or publication is mutated or invoked.
 
 ## Coverage Notes
 
-The cases close all four P0 failures: missing executed example test, unreliable
-Godot completion/exit status, absent Unity asmdefs, and unresolved CI placeholders or
-prerequisites falsely described as complete. They also encode the staged
-smoke-check/regression-suite/test-evidence-review execution-manifest and receipt
-bindings for candidate, build, test source, runner, timeout, log, parser, and CI
-currentness.
+### Authoritative P1 finding trace
+
+| Audit ID | SKILL clause | Case/assertion |
+|---|---|---|
+| `TSU-005` | Phase 2 semantic audit/repair | Case 1: stale semantics despite paths; partial coverage blocks repair/gate |
+| `TSU-006` | Phases 1/3 instruction authority and naming | Case 2: closest tests rule; unreadable rule yields PARTIAL |
+| `TSU-007` | Contract evidence route; Phase 3 layout | Case 3: no visual/UI proof under tests; no shared-consumer edit |
+| `TSU-008` | Phase 3 versioned manifest contract | Case 4: directory IDs resolve once; execution manifest binds layout hash |
+| `TSU-009` | Phase 1 engine/project authority | Case 5: no identity guessing; conflicts BLOCKED |
+| `TSU-010` | Phase 1 repository policy; Phase 5 CI | Case 6: no invented CI defaults; policy mismatch blocks VERIFIED |
+| `TSU-011` | Phase 5 exact managed job patch | Case 7: wrong argv detected; whole-workflow replacement prohibited |
+| `TSU-012` | Verification states; Phases 4/6/8 ladder | Case 8: parser is not discovery; incomplete never COMPLETE/VERIFIED |
+| `TSU-013` | Phase 5 dependency/action provenance | Case 9: major tags not immutable; commit SHA alone not reviewed |
+
+The matrix above replaces range-only coverage with one independent row for every
+exact P1 ID in the 2026-07-20 test-setup audit.
+
+Cases 10 through 14
+preserve the P0 canary, engine, receipt, concurrency, and complete-path guarantees
+while making determinism, partial validation, freshness, and all-file repair
+fail-closed. Candidate-root execution requires a separately pinned runner contract;
+this written specification alone does not claim engine, CI, or runtime execution.

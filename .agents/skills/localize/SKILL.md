@@ -1,482 +1,431 @@
 ---
 name: localize
-description: "Runs an owner-separated, hash-bound localization catalog and evidence workflow without treating templates, static checks, or QA plans as completed translation or release proof."
+description: Run a bounded, owner-separated localization catalog and locale-package workflow with stable keys, strict plural/placeholder schemas, privacy-safe human receipts, CAS imports/exports, and build-bound pseudo-localization or runtime evidence.
 ---
 
 # Localize
 
+Coordinate source catalog, translation package, review, freeze, and evidence records without treating templates, populated text, static scans, pseudolocalization, or QA plans as completed localization or release proof.
+
 ## Invocation
 
-Invoke one explicit subcommand:
+```text
+$localize <subcommand> --request <request-path> --expect-request <sha256:...>
+```
 
-`$localize scan`  
-`$localize extract`  
-`$localize validate <locale|--all>`  
-`$localize status`  
-`$localize brief <locale>`  
-`$localize cultural-review <locale-or-region>`  
-`$localize vo-pipeline <scan|script|validate|integrate> <locale>`  
-`$localize rtl-check <locale>`  
-`$localize freeze <call|lift|status>`  
-`$localize qa-plan <locale...>`  
-`$localize qa <locale...>`  
-`$localize evidence-review <evidence-manifest-path>`
+Supported subcommands are:
 
-`qa` is a compatibility alias for `qa-plan`. It creates a plan only and can never
-return a locale QA pass.
+- `scan`
+- `catalog-diff`
+- `catalog-apply`
+- `export`
+- `import`
+- `validate`
+- `status`
+- `brief`
+- `cultural-review`
+- `vo-scan | vo-script | vo-validate | vo-integrate`
+- `rtl-check`
+- `freeze-call | freeze-lift | freeze-status`
+- `qa-plan`
+- `evidence-review`
 
-If no subcommand or an invalid combination is provided, return usage and stop before
-delegating, reading project files, or writing. Do not infer a locale, table path,
-source language, build, reviewer, or approval.
+Request path/hash are required exactly once. With none or an invalid subcommand, show usage and stop before reading project sources, delegating, contacting anyone, or writing. Reject moving aliases, directories, traversal, symlink/junction/reparse escape, unknown/repeated flags, unsupported schema, and expected/actual hash mismatch.
 
-## Non-negotiable contract
+The request conforms to `cgs.localization-request/v2` and declares one subcommand, exact normalized locales, canonical localization-manifest path/hash, exact source/context/package/evidence inventory, format/parser/schema expectations, bounded key/locale/file/byte/time budgets, output paths/bases/owners/writers, privacy/consent policy, and explicit non-writes.
 
-1. **Owner separation** — Source authors own source meaning and application content;
-   the catalog recorder owns key/schema synchronization; a named human
-   translator/vendor owns target-locale values; a locale-qualified reviewer owns
-   language review; cultural, legal, ratings, and platform decisions remain with the
-   corresponding human authority; QA testers own runtime execution receipts. No role
-   may use another role's authority.
-2. **No self-certification** — The localization lead coordinates the pipeline and may
-   record catalog diffs or review evidence, but does not write actual translations,
-   impersonate a native reviewer, or close its own cultural/legal/platform candidate.
-   The translator for a locale revision cannot approve that same revision as its sole
-   language reviewer.
-3. **No placeholder completion** — An empty value, source-language copy, generated
-   skeleton, machine-translation draft, unchecked non-empty value, or file existence
-   is not a completed translation. Use `UNTRANSLATED`, `SOURCE_COPY_CANDIDATE`,
-   `MT_DRAFT`, `TRANSLATED_UNREVIEWED`, `REVIEWED`, or `STALE` per key/revision.
-4. **QA plan is not QA execution** — `qa` and `qa-plan` return only
-   `QA PLAN READY`. They never return `PASS`, `PASS WITH CONDITIONS`, a ship decision,
-   or test evidence. Runtime execution and evidence review are separate activities.
-5. **Freeze is hash-bound** — `ACTIVE` freezes one schema version, source locale,
-   source-table byte hash, keyset hash, and per-key hashes. While active, catalog
-   mutation is rejected by default. A warning or appended list is not permission to
-   change the source table.
-6. **Human high-impact decisions** — Automated cultural review produces
-   `REVIEW CANDIDATE` findings only. It cannot decide market suitability, disputed
-   territory treatment, legal/regulatory compliance, age/content rating, platform
-   certification, or locale shipping approval.
-7. **Evidence is immutable and scoped** — Any runtime or review claim is bound to
-   exact locale, build ID and build SHA-256, platform/configuration, source freeze
-   snapshot/hash, source-table hash, target-translation hash, and relevant
-   font/package/asset hashes. A mismatch or missing hash makes evidence `STALE` or
-   `PARTIAL`, never successful.
-8. **Authorization is exact** — Read-only modes require no changeset prompt. Before a
-   write, list exact normalized repository-relative paths, operation, unique writer,
-   and preimage SHA-256 or `ABSENT`. Existing bounded authorization applies only when
-   it covers that manifest. It does not authorize new paths, source-content changes,
-   translations, human sign-off, external vendor communication, release state, or
-   another subcommand.
-9. **Evidence honesty** — Never invent or infer a translation, reviewer identity,
-   human attestation, policy/legal conclusion, file hash, build, test run, screenshot,
-   vendor receipt, or write result. Use `UNKNOWN`, `UNAVAILABLE`, `NOT RUN`,
-   `UNVERIFIED`, `PARTIAL`, or `null`.
-10. **No generic completion** — Catalog synchronization, static validation, QA
-    planning, and evidence review have distinct verdicts. Never output
-    `LOCALIZATION COMPLETE` or bare `COMPLETE`.
+Do not infer source locale, target locale, table path, format, build, reviewer, translator, approver, vendor, or authority.
 
-## Authority and artifact matrix
+### Exact team-narrative input adapter
 
-| Domain | Decision owner | Unique writer | May not do |
-|---|---|---|---|
-| source meaning in code/narrative/UI | source content owner | assigned developer/writer | claim target-locale quality |
-| canonical source string table and schema | localization lead acting as catalog recorder | catalog recorder | change source meaning or target translation values |
-| target-locale translation revision | named translator/vendor | that translation owner | approve its own revision as sole reviewer |
-| locale language-quality review | locale-qualified human reviewer | review recorder only | silently edit translation or claim legal/platform authority |
-| cultural suitability | local cultural consultant | review recorder only | make legal, rating, or market-release decisions |
-| legal/regulatory or territory decision | named legal/compliance owner | governance recorder | delegate final decision to the model |
-| platform/rating decision | named platform/rating owner | governance recorder | infer certification from static content |
-| runtime localization QA | named QA tester | evidence recorder | claim translation authority |
-| evidence integrity review | localization lead or QA evidence reviewer | optional evidence-report recorder | manufacture missing execution or sign-off |
-
-An artifact has one writer per authorized transaction. Proposal agents are read-only.
-When the localization-lead role is unavailable, the primary agent may perform its
-catalog/coordination duties but must label the fallback and still cannot act as
-translator, native reviewer, legal owner, platform owner, or QA tester.
-
-## Canonical localization manifest
-
-All table-aware modes read
-`assets/data/strings/localization-manifest.yaml`. It declares:
+`cgs.localization-request/v2` contains exactly one `narrative_handoff` object:
 
 ```yaml
-schema_version: <integer>
-source_locale: <BCP-47 locale>
-source_table:
-  path: <repository-relative path>
-  format: json | csv | po
-  schema_version: <integer>
+narrative_handoff:
+  status: PRESENT | NONE
+  adapter: cgs.narrative-localization-handoff-v2-adapter/v1 | null
+  path: <canonical project-relative path or null>
+  sha256: <exact raw handoff hash or null>
+  handoff_id: <exact NLOC-* ID or null>
+  content_id: <exact team-narrative content ID or null>
+  run_id: <exact team-narrative run ID or null>
+  authority_id: <exact caller authority or null>
+```
+
+`NONE` requires every other field to be `null`. Any source-inventory entry whose
+declared origin is `TEAM_NARRATIVE` requires `PRESENT`; the adapter may not be
+selected from a path, filename, prose, or matching field names. `PRESENT` requires
+the exact schema/adapter shown above and a regular canonical file at the supplied
+path whose raw hash matches before any narrative source, catalog, package, or
+output is read.
+
+The adapter accepts only `cgs.narrative-localization-handoff/v2` with the literal
+producer fields defined by `$team-narrative`. Validate without aliases or defaults:
+
+1. recompute `payload_sha256` with exactly `payload_sha256` and derived
+   `handoff_id` omitted, re-derive `handoff_id`, and recompute the exact handoff
+   raw hash; require
+   path `production/narrative/team-narrative/<content_id>/<run_id>/handoffs/localization-<64-lowercase-payload-digest>.yaml`;
+2. require request `content_id`, `run_id`, and `authority_id` to equal the handoff;
+   require handoff request/contract authority IDs to equal each other;
+3. re-read the `cgs.localization-handoff-contract/v1` and recipient-availability
+   evidence at their exact paths/hashes; require recipient workflow `localize`,
+   request schema `cgs.localization-request/v2`, and this adapter ID;
+4. re-read every declared canon source, reproduce `canon_baseline_sha256`, and
+   reject an added, omitted, reordered, or stale canon row;
+5. re-read the exact `cgs.narrative-final-artifact-manifest/v2`, require its raw
+   hash and `final_artifact_set_sha256`, and require `story_artifacts` to equal its
+   ID/path/schema/raw-hash rows exactly;
+6. re-read `cgs.narrative-context-manifest/v2` and every source binding, reproduce
+   its current source set, and allow no undeclared narrative source;
+7. re-read `cgs.narrative-string-constraint-manifest/v2`, reproduce the ordered
+   string-ID digest, and require those IDs to be the exact narrative key scope;
+8. re-read `cgs.narrative-localization-review/v2`; require verdict
+   `LOCALIZATION_READY`, empty `blocking_finding_ids`, and empty
+   `unknown_required_finding_ids`;
+9. require both protected-content exclusion booleans `true`; and
+10. require source locale, destination owner/recorder, expected output preimages,
+    source/context inventory, and non-writes to equal the localization request and
+    current `cgs.localization-manifest/v2` transaction scope.
+
+The handoff supplies identity and bounded source authority only. It does not grant
+catalog, package, translation, vendor-contact, import, release, or deployment
+authority. Missing, malformed, stale, non-ready, authority-mismatched, scope-
+expanded, or conversation-only/unpersisted handoff evidence returns
+`BLOCKED: NARRATIVE_HANDOFF_INVALID` with zero source/catalog/package/translation
+writes and no fallback to inferred fields.
+
+## Authority and evidence boundaries
+
+- Source content owners own source meaning.
+- The catalog recorder owns mechanical key/schema synchronization, not source meaning.
+- A named human translator/vendor owns one exact target-locale revision.
+- A distinct locale-qualified reviewer owns language review of that revision. The translator cannot be its sole reviewer.
+- Cultural, legal, territory, rating, platform, and shipping decisions remain with the corresponding human owner.
+- QA testers own runtime execution receipts; evidence reviewers verify receipts but cannot manufacture execution.
+- Import/export recorders apply exact owner-authorized bytes but cannot author translations or approvals.
+
+One transaction has one writer per path. Proposal agents are read-only. Authorization for one subcommand/path/locale never authorizes another, external vendor communication, source meaning change, target translation creation, human sign-off, release state, or deployment.
+
+Never invent translations, identities, consent, attestations, hashes, builds, screenshots, runtime results, vendor receipts, or writes. Use UNKNOWN/UNAVAILABLE/NOT_RUN/UNVERIFIED/PARTIAL.
+
+## Canonical catalog and locale identities — LOC-005/007/013
+
+The hash-pinned localization manifest uses `cgs.localization-manifest/v2` and contains:
+
+```yaml
+project_id: <stable ID>
+catalog_schema: cgs.localization-catalog/v2
+source_locale: <canonical BCP-47 tag>
+source_table: { path: ..., format: json|csv|po|xliff, schema_version: ..., parser_id: ..., parser_version: ... }
+key_policy: { schema_version: ..., pattern: ..., max_bytes: ..., case_sensitive: ... }
+placeholder_policy: { syntax: icu|printf|named, parser_id: ..., parser_version: ... }
+plural_rules: { source_id: ..., version: ..., sha256: ... }
 target_locales:
-  <BCP-47 locale>:
-    path: <repository-relative path>
-    translation_owner_id: <stable human/vendor ID or null>
-    reviewer_owner_id: <distinct stable reviewer ID or null>
-fallback_chain: []
+  <BCP-47>:
+    path: ...
+    format: ...
+    schema_version: ...
+    translation_owner_id: <human/vendor ID or null>
+    reviewer_owner_id: <distinct ID or null>
+    fallback_chain: [...]
 ```
 
-Normalize and validate every locale and path before reading. Paths must be
-repository-relative, inside the workspace, unambiguous, and consistent with the
-manifest. Unknown formats or schema versions are `BLOCKED — UNSUPPORTED SCHEMA`.
-Malformed JSON/CSV/PO reports file, line/record, and parser detail and causes zero
-writes.
+Strictly parse the manifest and every table with its declared deterministic parser/schema. Malformed or unsupported JSON/CSV/PO/XLIFF reports exact file/record/line/column/parser detail and causes zero writes for that locale transaction. Never guess/fallback to another parser or directory.
 
-`scan` may run without the manifest because it examines source only. Every other
-table-aware mode requires the manifest. Do not default the source locale to English
-and do not search alternate directories as a fallback.
+For every load, record exact raw-byte hashes and compute:
 
-For each successful load, record raw-byte SHA-256 for the manifest and every input.
-Compute:
+```text
+manifest_sha256 = sha256(exact manifest bytes)
+source_table_sha256 = sha256(exact source table bytes)
+keyset_sha256 = sha256(canonical sorted active+deprecated key IDs and lifecycle)
+source_key_hash = sha256(key ID + source text AST + context + placeholder schema + plural/select metadata + source revision)
+catalog_identity_sha256 = sha256(manifest schema/version + source locale + source table hash + keyset hash + plural/placeholder policy hashes)
+locale_identity_sha256 = sha256(canonical locale + fallback chain + plural-rule source/version/hash + format/schema/parser + target path)
+translation_revision_sha256 = sha256(locale identity + catalog identity + exact target bytes + translation revision ID)
+```
 
-- `source_table_sha256` from exact source-table bytes;
-- `keyset_sha256` from canonical sorted key IDs;
-- per-key SHA-256 from canonical key ID, source value, context, placeholder schema,
-  plural metadata, and source revision;
-- `translation_sha256` from the exact target-locale file bytes.
+A build/runtime/review/import/export claim must name the exact manifest, catalog, source table, keyset, per-key source hashes, locale identity, translation revision, freeze snapshot, and applicable build/asset hashes. Any mismatch is STALE/PARTIAL.
 
-Do not claim a hash for an unreadable or absent file.
+## Stable keys, placeholders, and plurals — LOC-005
 
-## Subcommand side-effect and verdict table
+Key IDs are stable semantic identifiers, not hashes of mutable source text or line numbers. Enforce the manifest's key regex/length/case policy, Unicode NFC, uniqueness under declared case policy, and reserved namespace rules.
 
-| Subcommand | Side effect | Allowed verdicts |
-|---|---|---|
-| `scan` | read-only | `SCAN COMPLETE`, `SCAN PARTIAL`, `BLOCKED` |
-| `extract` | may write only canonical source table through catalog recorder | `CATALOG DIFF READY`, `CATALOG UPDATED — TRANSLATIONS STALE`, `BLOCKED` |
-| `validate` | read-only | `STATIC VALIDATION CLEAN`, `GAPS FOUND`, `PARTIAL`, `BLOCKED` |
-| `status` | read-only | `STATUS READY`, `PARTIAL`, `BLOCKED` |
-| `brief` | may write exact translator-brief path | `BRIEF READY`, `BLOCKED` |
-| `cultural-review` | read-only unless an exact candidate-report path is authorized | `REVIEW CANDIDATES READY`, `NO CANDIDATES OBSERVED`, `PARTIAL` |
-| `vo-pipeline scan/validate/integrate` | read-only | `VO STATIC REPORT READY`, `PARTIAL`, `BLOCKED` |
-| `vo-pipeline script` | may write exact script paths | `VO SCRIPT DRAFT READY`, `BLOCKED` |
-| `rtl-check` | read-only | `RTL STATIC CANDIDATES READY`, `PARTIAL` |
-| `freeze call/lift` | may write only freeze record | `FREEZE ACTIVE`, `FREEZE LIFTED FOR CHANGE`, `BLOCKED` |
-| `freeze status` | read-only | `FREEZE STATUS READY`, `BLOCKED` |
-| `qa` / `qa-plan` | read-only unless exact plan-report paths are authorized | `QA PLAN READY`, `PARTIAL PLAN`, `BLOCKED` |
-| `evidence-review` | read-only unless exact evidence-report paths are authorized | `QA EVIDENCE VERIFIED`, `QA EVIDENCE REJECTED`, `PARTIAL EVIDENCE`, `BLOCKED` |
+- Never recycle a removed/deprecated key for a new meaning.
+- A rename is a source-owner change request with old/new IDs, `supersedes_key`, affected locale hash set, and migration/retranslation scope; it is not an in-place identity mutation.
+- Source text change increments source revision and source-key hash while retaining key ID only when source owner confirms meaning continuity.
+- Orphan keys become `DEPRECATION_CANDIDATE`; deletion requires owner/change request and cannot silently erase translation history.
 
-No verdict in this table means release approval.
+Parse every source/target message into the declared placeholder/message AST. Validate placeholder name/type/multiplicity, escaping/nesting, select variables, and required locale plural categories. Required categories come only from the versioned plural-rule source/hash; do not assume singular/plural or copy source-locale branches. Extra/missing/renamed/type-changed placeholders or malformed branch syntax are BLOCKED and cannot be auto-fixed during import.
 
-## Phase 0: Validate request, inputs, and authorization boundary
+Per key use exactly `UNTRANSLATED | SOURCE_COPY_CANDIDATE | MT_DRAFT | TRANSLATED_UNREVIEWED | REVIEWED | STALE`. Empty/template/source copy without exemption/machine draft/unreviewed values never count complete.
 
-1. Parse exactly one subcommand and its required locale(s) or manifest path.
-2. Canonicalize target locale tags without changing the manifest's identity mapping.
-   Reject traversal, duplicate aliases, malformed tags, ambiguous files, directories,
-   and paths outside the repository.
-3. Load the localization manifest for table-aware modes, validate schema, and record
-   its raw hash.
-4. Load every required input completely. Record path, role, owner, raw-byte hash,
-   parser result, and byte count.
-5. If any required input is missing, unreadable, malformed, over a declared context
-   budget, or inconsistent, return `PARTIAL` or `BLOCKED` and make no write.
-6. For a mutating subcommand, build the complete write manifest before the first
-   mutation. Obtain one authorization unless the current bounded request already
-   covers exactly those paths and intended operations.
-7. Before every authorized write, recheck all preimage hashes. After a successful
-   write, report the actual raw-byte postimage hash. On mismatch, stop without
-   overwriting.
+## Bounded locale batches and source context — LOC-007/008/012
 
-File authorization never supplies a missing domain decision or owner attestation.
+Request budgets may lower but never raise these per-invocation ceilings:
 
-## Phase 1: Scan source — read-only
+| Resource | Hard ceiling |
+|---|---:|
+| target locales | 8 |
+| keys per locale batch | 250 |
+| catalog/translation bytes per file | 2 MiB |
+| linked context files | 16 |
+| linked context bytes total | 512 KiB |
+| VO files per locale | 64 |
+| read-only locale workers | 4 |
+| worker time per locale | 10 minutes |
+| total subcommand elapsed | 30 minutes |
 
-`scan` searches explicit project source roots for hardcoded player-facing strings,
-unsafe concatenation, positional placeholders, locale-insensitive dates/numbers/
-currency, embedded image text, LTR assumptions, and plural/gender assumptions.
+Sort locales by canonical tag and keys by stable key ID. Each locale/key page is anchored to `(catalog_identity_sha256, locale_identity_sha256, translation_revision_sha256, next_key_ordinal)`. Stop before exceeding any ceiling.
 
-Return file, line, observed code, rule, confidence, and source-file hash. Findings are
-static candidates; they do not prove runtime rendering failure. Do not edit source,
-source tables, or translation files.
+Return PARTIAL with exact completed/failed/omitted locale/key/file counts, paths/hashes, reasons, and resume cursor. A missing/timeout/late/partial worker result affects only its locale but prevents all-scope success. Revoke timed-out tokens; ignore/quarantine late output. Never silently sample, infer a missing locale, or claim other locale evidence covers it.
 
-## Phase 2: Extract and synchronize the source catalog
+VO subcommands require exact locale, character/speaker IDs, declared script/audio file inventory, byte/duration metadata ceilings, and consent/rights records where people/recordings are involved. No unbounded directory scan.
 
-`extract` separates semantic source ownership from mechanical catalog recording:
+## Translation and review separation — LOC-010/012
 
-1. Read localized references and their source-file hashes.
-2. Strictly parse the canonical source table declared by the manifest.
-3. Produce a deterministic diff of new, changed, and orphan candidates. Every new key
-   includes context, source location, placeholders, plural metadata, and source owner.
-4. Never invent source copy, change narrative/UI meaning, auto-translate, or edit a
-   target-locale file.
-5. Check the freeze record and its snapshot hashes before proposing any mutation.
-6. Present the catalog diff, exact affected-key hash set, preimage hash, owner, and
-   intended post-state.
-7. Only the catalog recorder may apply an authorized source-table diff.
+Every imported translation package has a `cgs.translation-delivery/v1` receipt containing translator/vendor ID, authority/contract reference, exact locale/catalog/source/keyset/package/file hashes, covered key range, translation revision, delivery time, tool/machine-assistance disclosure, and consent/privacy reference.
 
-If freeze is `ACTIVE`, source-table bytes and key hashes must match the snapshot.
-Reject every new or changed key with `BLOCKED — ACTIVE FREEZE`. Do not mutate and then
-append a warning.
+Every language review uses `cgs.locale-review/v1` with a distinct locale-qualified reviewer ID, role/qualification evidence reference, exact translation revision/hash and key range, findings/decisions, start/end time, and receipt hash.
 
-If an authorized catalog mutation succeeds, compute the new table/key hashes and mark:
+The same identity/organization may not be sole translator and sole reviewer for the same revision unless an explicit project policy allows an independently identified reviewer boundary; otherwise PARTIAL. The catalog recorder/evidence reviewer/model cannot substitute. Missing identity is `unknown`, never “user.” Reviewers do not silently edit translation bytes; corrections return to the translation owner as a new revision.
 
-- all evidence manifests bound to the old source-table hash as `STALE`; and
-- every affected target-locale key as requiring translation or re-review.
+Reviewer work is split per locale/page, uses the same hard worker limits, no child delegation, and no automatic retry. Partial/malformed/stale review never marks keys REVIEWED.
 
-Return `CATALOG UPDATED — TRANSLATIONS STALE`, not localization completion.
+## Privacy, consent, and external delivery — LOC-008/010/011
 
-## Phase 3: Static translation validation and status
+Before exporting content to or importing identity/feedback/VO from a translator, reviewer, vendor, performer, tester, or external service, require `cgs.localization-consent/v1` or an owner-approved contract/data-processing reference covering:
 
-`validate` strictly parses the source table and each requested translation file.
-Validate:
+- participant/vendor ID and authority;
+- exact data categories, purpose, locale/key/file scope, recipients and transfer region;
+- source/context confidentiality class and excluded secrets/personal data;
+- storage/access, retention/deletion, attribution/credit and publication rules;
+- for voice, recording/use/territory/platform/term, performer credit, derivative/synthetic/AI-training permissions or prohibitions, and withdrawal limits;
+- explicit consent/contract state and record hash.
 
-- missing or empty values;
-- placeholder name/type/count parity;
-- plural/select branches required by the locale;
-- encoding and declared locale identity;
-- source-revision and per-key source-hash bindings;
-- orphaned target keys;
-- `MT_DRAFT` or generated text markers;
-- source-identical values lacking an explicit proper-noun/do-not-translate
-  attestation;
-- reviewer identity and reviewed translation hash, when claimed.
+Do not send external messages or files automatically. Generate a proposed package only after minimization/redaction. Never export credentials, private keys, tokens, `.env` data, unrelated personal data, unreleased secrets outside authorized scope, or unapproved participant identities. Pseudonymize identities in catalog/status artifacts.
 
-Character counts, source scanning, font file presence, or translation file existence
-are static signals only. They cannot prove UI fit, glyph rendering, shaping, bidi,
-line breaking, contextual naturalness, VO sync, or platform behavior.
+Silence is no consent. Withdrawal/expired contract marks affected human/VO evidence `WITHDRAWN_OR_EXPIRED` and unusable; deletion/retention follows separate exact authority. An import with missing consent/contract/privacy receipt is BLOCKED.
 
-Per key, use only:
+## Subcommand contract
 
-- `UNTRANSLATED` — absent/empty/template value;
-- `SOURCE_COPY_CANDIDATE` — equals source without a valid exemption;
-- `MT_DRAFT` — machine/generated draft;
-- `TRANSLATED_UNREVIEWED` — populated but no matching locale-review receipt;
-- `REVIEWED` — distinct locale reviewer approved the exact translation hash;
-- `STALE` — source/freeze/translation revision no longer matches.
+### `scan` — read-only
 
-`STATIC VALIDATION CLEAN` means only that parsers and static invariants passed. It is
-not locale QA, runtime verification, cultural/legal approval, or release readiness.
+Inspect only exact request source roots/files for hardcoded player text, unsafe concatenation, positional placeholders, locale-insensitive date/number/currency, embedded image text, LTR assumptions, and plural/gender assumptions. Return path/hash/line/rule/confidence as static candidates, not runtime failure. No source/catalog edit.
 
-`status` reports separate counts for populated, untranslated, stale,
-translated-unreviewed, reviewed, and runtime-evidence-verified entries. Never combine
-these into a single misleading “localized” percentage. An empty template or populated
-unreviewed file cannot produce a completed-locale state.
+### `catalog-diff` / `catalog-apply` — source catalog owner boundary
 
-This workflow may generate a proposed empty locale skeleton as a catalog transfer
-artifact only when an exact path and `UNTRANSLATED TEMPLATE` status are authorized.
-It never fills target values. Once delivered, only the named translation owner may
-write target-locale values.
+Catalog-diff strictly parses exact source references and catalog, computes deterministic new/changed/deprecation candidates, placeholder/plural/context metadata, affected key/locale hash sets, and source-owner requirements. It never changes source meaning or target translations.
 
-## Phase 4: Translator brief
+Catalog-apply is allowed only with source-owner decisions, freeze LIFTED_FOR_CHANGE, exact change request, catalog-recorder ownership, and one CAS mutation manifest. Recheck source/manifest/freeze/catalog bases immediately before write, write exact authorized bytes, read back, and record new identities. Drift writes nothing. A successful change marks affected translations/reviews/QA evidence STALE.
 
-`brief <locale>` requires a valid target locale and bounded explicit context: game
-concept, tone, audience, glossary, source table, and directly linked narrative
-sources. Record all hashes and stop with `PARTIAL` if required context is omitted.
+### `export` — immutable locale package
 
-The brief states the source snapshot, locale, schema, keyset hash, placeholder rules,
-character-limit intent, glossary, do-not-translate attestations, delivery format, and
-translation owner. Placeholder contacts remain `UNKNOWN` until a human supplies
-them. The brief is not a translation and does not grant vendor communication or file
-delivery permission.
+Export creates no translation. It renders an immutable `cgs.localization-package/v1` containing exact catalog/source/keyset/per-key/locale/plural/placeholder identities, stable key page, source text/context/glossary/do-not-translate attestations, privacy classification, owner, and package hash.
 
-Only the catalog/coordination recorder may write the exact authorized brief path.
-
-## Phase 5: Cultural, regulatory, and platform review candidates
-
-`cultural-review` may delegate read-only analysis to localization-lead, but its output
-is a candidate register, not a market or compliance decision.
-
-Each candidate records:
+The package exposes these literal fields; consumers must not rename or infer them:
 
 ```yaml
-id: L10N-CAND-<NNN>
-locale_or_region: <exact scope>
-category: culture | representation | territory | religion | legal | rating | platform
-observed_content:
-  path: <path>
-  sha256: <hash>
-  location: <line/key/asset>
-risk_hypothesis: <why a human review may be needed>
-required_owner: local-cultural-consultant | legal-compliance-owner | platform-rating-owner
-status: NEEDS_HUMAN_REVIEW | RESOLVED | NOT_APPLICABLE
-decision_receipt: <path-and-hash-or-null>
+schema: cgs.localization-package/v1
+package_id: LOCPKG-<first-20-lowercase-payload-digest>
+locale: <canonical BCP-47 target locale>
+page: <stable page/range identity>
+manifest: {schema: cgs.localization-manifest/v2, path: <canonical path>, sha256: <exact raw hash>}
+catalog:
+  schema: cgs.localization-catalog/v2
+  path: <exact manifest source_table.path>
+  source_table_sha256: <exact raw catalog hash>
+  keyset_sha256: <canonical current keyset digest>
+  catalog_identity_sha256: <current derived catalog identity>
+locale_identity_sha256: <current derived locale identity>
+plural_policy_sha256: <current plural policy digest>
+placeholder_policy_sha256: <current placeholder policy digest>
+keys:
+  - {key_id: <stable ID>, source_key_hash: <current per-key digest>}
+context_sha256: <canonical exported context/glossary/do-not-translate digest>
+privacy_classification: <declared classification>
+owner_id: <exact package owner>
+package_payload_sha256: <canonical payload digest excluding package_payload_sha256 and package_id>
 ```
 
-The model may prioritize review but does not declare content legally compliant,
-certified, market-suitable, prohibited, or safe to ship. A candidate closes only when
-the required human owner supplies identity, role/authority, exact locale/region,
-content/source hashes, decision, rationale, UTC timestamp, and any expiry or
-jurisdiction limit. A locale language reviewer cannot substitute for legal/platform
-authority.
+Canonical package payload bytes use the same UTF-8 canonical JSON rules as the
+identity formulas: Unicode-code-point-sorted object keys, NFC strings, declared
+key-page array order, no insignificant whitespace, and no trailing newline. Omit
+exactly `package_payload_sha256` and the derived `package_id`; no placeholder value
+for `package_id` participates in the hash. `package_id` is derived from
+`package_payload_sha256` exactly as shown. Package
+raw-file SHA-256 remains a separate path-bound identity.
 
-When authoritative current law, rating, platform, or territory evidence is absent,
-return `NEEDS_HUMAN_REVIEW` or `UNKNOWN`. Do not fabricate rules from memory.
+The catalog/export recorder is the sole writer. Preview exact package/manifest paths, bases/ABSENT, candidate hashes, locale/page, owner and non-writes. CAS source/freeze/catalog/output before atomic create/update and read back. Export authority does not grant vendor contact or translation-file writes.
 
-## Phase 6: VO and RTL static analysis
+### `import` — per-locale owner/CAS transaction
 
-`vo-pipeline` always requires an explicit locale and bounded paths.
+Import never changes source catalog or another locale. Validate immutable package hash, exact locale/catalog/source/keyset/per-key hashes, key coverage, stable IDs, placeholder/plural AST parity, translation delivery/owner/consent receipt, format/schema/parser, and current freeze.
 
-- `scan` identifies dialogue keys and candidate audio mappings.
-- `script` produces recording-script drafts only; it does not synthesize, record,
-  approve, or integrate audio.
-- `validate` checks file/key/name/hash presence statically.
-- `integrate` checks static references and file existence only.
+For each locale, preview an independent atomic transaction containing exact target translation path and locale revision-ledger path, operations, translation owner approval, import recorder, base/candidate hashes, revision ID, package/delivery/review state, rollback bytes, and non-writes. CAS every base/source/package immediately before commit; write both or neither, read back and hash. One locale conflict yields PARTIAL without changing other locale transactions or claiming batch completion. Import does not mark REVIEWED without a distinct matching review receipt.
 
-Audio presence does not prove language accuracy, actor approval, pronunciation,
-timing, lip sync, loudness, or in-build playback. Those require tester/studio receipts
-bound to locale, build, source/translation hashes, audio asset hash, and test cases.
+### `validate` / `status` — read-only
 
-`rtl-check` produces static candidates for layout flags, string assembly, font assets,
-and directional icons. It never labels runtime layout `PASS` or a static finding as a
-final blocker. Actual fit, shaping, bidi, mirroring, glyph coverage, and mixed-script
-behavior require build-bound screenshots/video/logs and locale-qualified review in
-`evidence-review`.
+Validate parser/schema, stable keys/lifecycle, missing/empty values, exact placeholder/plural/select parity, encoding/locale identity, source revision/per-key binding, orphan keys, MT/source-copy markers, owner/delivery/review receipts, and stale identities.
 
-## Phase 7: Hash-bound freeze state machine
+Status reports separate untranslated/source-copy/MT/unreviewed/reviewed/stale/runtime-verified counts per exact locale revision/page. Never produce one misleading localized percentage.
 
-The freeze record is `production/localization/freeze-status.yaml` with:
+### `brief` / `cultural-review`
+
+Brief uses at most the bounded linked context and outputs no translation. Cultural review produces hash-bound REVIEW_CANDIDATE records only. Local cultural/legal/rating/platform human owners close their own records; the model cannot declare compliance, suitability, certification, or ship readiness.
+
+### VO and RTL static modes — LOC-008/009
+
+VO scan/script/validate/integrate operates on exact locale/character/file inventory. Script output is DRAFT, not recording/translation/performer approval. File presence cannot prove pronunciation, timing, lip sync, loudness, consent, rights, or in-build playback.
+
+RTL-check produces static candidates for directional assembly, layout flags, fonts and icons. Character counts, estimated expansion, font-file/atlas presence, or source scan cannot prove pixel fit, glyph coverage, shaping, bidi, mirroring, line break, input/IME, or mixed-script behavior.
+
+### Freeze state machine — LOC-010/011
+
+ACTIVE freeze binds exact manifest/catalog schema/source locale/source table/keyset/per-key hashes. Freeze-call requires explicit approver ID/authority; inferred identity or “user” is invalid. ACTIVE rejects catalog/source mutation before write.
+
+Freeze-lift requires `cgs.localization-change-request/v1` with owner/authority, reason, affected key IDs and frozen hashes, intended delta hash, impacted/retranslation locale identity+translation hash set, vendor notification proposal/receipt per affected external owner, privacy scope change, approval time/hash, and expiry. It only changes freeze state to LIFTED_FOR_CHANGE; catalog change occurs separately. Old snapshots/history remain immutable.
+
+### `qa-plan` — plan only
+
+Produce exact per-locale/page cases and expected evidence. Successful verdict is only QA_PLAN_READY; incomplete batches are PARTIAL_PLAN. Never execute a build, create screenshots, review language, or return PASS.
+
+### Pseudolocalization and runtime evidence — LOC-006/009/013
+
+Pseudolocalization is a generated test locale, never human translation. A pseudo artifact records algorithm/version/seed, expansion/bidi/diacritic/bracketing settings, exact catalog/source/keyset hashes, transformed key hashes, generated file hash, and `TEST_ONLY_NOT_TRANSLATION`.
+
+Static pseudo generation or validation cannot prove UI/font behavior. Runtime evidence must be bound to exact build ID/SHA-256, platform/configuration, viewport/DPI/input direction, locale/pseudo identity, manifest/freeze/catalog/source/keyset/translation hashes, font package/atlas hash, UI scene/screen ID, test-case ID, tester identity, timestamps, actual result, and screenshot/video/log hashes.
+
+Pseudo-loc runtime cases cover truncation/overflow/overlap, variable expansion, placeholders/plurals, glyph coverage, shaping/bidi/mirroring, line breaking, input/IME, accessibility, and font fallback. Real locale language quality still needs the distinct human reviewer.
+
+`evidence-review` consumes only `cgs.localization-evidence-manifest/v2`, recomputes all hashes/freshness/coverage, and returns QA_EVIDENCE_VERIFIED, QA_EVIDENCE_REJECTED, or PARTIAL_EVIDENCE per locale/build/page. Verified means receipt integrity/coverage only, not release/legal/platform/market approval. Downstream gates receive the immutable manifest path/hash, locale/build/catalog/source/translation identities, coverage, and expiry; never a bare report path.
+
+For a conclusive complete evidence review only, emit one non-persisted generic record
+whose producer is literally
+`localize/evidence-review@cgs.localize-evidence-review/v1`:
 
 ```yaml
-schema_version: 1
-state: UNFROZEN | ACTIVE | LIFTED_FOR_CHANGE
-snapshot_id: <stable-id>
-source_locale: <manifest source locale>
-source_table_path: <exact path>
-source_table_sha256: <raw-byte hash>
-catalog_schema_version: <integer>
-key_count: <integer>
-keyset_sha256: <canonical sorted key hash>
-key_hashes:
-  <key>: <canonical per-key hash>
-called_at_utc: <timestamp>
-called_by:
-  owner_id: <stable identity>
-  authority: <source-freeze authority>
-active_change_request: <id-or-null>
-history: []
+schema: cgs.review-evidence/v1
+record_id: sha256:<canonical-record digest with only record_id omitted>
+artifact_kind: localization-runtime-evidence-manifest
+artifact_identity: <request_id>/<build_id>/<locale_page_set_sha256>
+artifact_sha256: sha256:<exact raw cgs.localization-evidence-manifest/v2 hash>
+producer: localize/evidence-review@cgs.localize-evidence-review/v1
+run_id: <UUIDv4>
+generated_at_utc: <RFC3339 UTC>
+coverage: COMPLETE
+verdict: QA_EVIDENCE_VERIFIED | QA_EVIDENCE_REJECTED
+extension:
+  schema: cgs.localization-evidence-manifest/v2
+  path: <canonical project-relative evidence-manifest path>
+  sha256: sha256:<same exact raw manifest hash>
+persistence: NONE
+gate_evidence_candidate: true
+recorder_receipt: NONE
 ```
 
-### Freeze call
+Canonicalize the record as UTF-8 JSON with Unicode-code-point-sorted object keys,
+NFC strings, preserved array order, JSON number grammar, no insignificant
+whitespace and no trailing newline. `artifact_sha256` and `extension.sha256`
+are equal raw-file hashes, not a canonical-payload substitute. Emit no generic
+record for `PARTIAL_EVIDENCE`, an incomplete locale/page set, unknown/stale/not-run
+evidence, or an error. The generic record is a read-only candidate: its persistence
+and receipt fields remain `NONE` forever, and it is not durable gate evidence by
+itself.
 
-Require a completely parsed source table and a stable, explicitly supplied approver
-identity/authority. `Called by: user` or an inferred session identity is invalid.
-Record the manifest/table/schema/key hashes and write the authorized record through
-the freeze recorder. Re-read it and report its actual postwrite hash before returning
-`FREEZE ACTIVE`.
+### Independent localization evidence recorder contract
 
-If the current source bytes or per-key hashes later differ from the `ACTIVE` snapshot,
-return `FREEZE VIOLATION / BLOCKED`. Do not update the snapshot automatically.
+Only a separately authorized recorder may make the exact complete returned review
+durable. The compatible receipt is
+`cgs.localization-evidence-review-recorder-receipt/v1`. The recorder must receive
+the exact returned review bytes, recompute the embedded generic `record_id`, re-read
+the exact extension, and repeat the underlying bounded rows rather than relying on
+set digests alone. Evidence reviewer and recorder identities must differ.
 
-### Freeze lift
+Compute `localization_candidate_sha256` over canonical JSON containing the exact
+request ID/path/raw hash; localization-manifest path/raw hash; catalog path/raw
+hash/`catalog_identity_sha256`; ordered required package path/raw-hash/
+`package_id`/`package_payload_sha256` rows; ordered per-key source hashes; ordered
+locale/page identities and translation revisions; freeze snapshot; build ID and
+artifact hash; platform/configuration; font package/atlas, UI scene/screen and
+runtime test-case identities; ordered raw evidence hashes; expiry; native per-scope
+verdicts; extension path/raw hash; returned review raw hash; and generic record ID.
+Use the lowercase digest without `sha256:` in these exact create-only paths:
 
-A lift requires an authorized change request:
+```text
+production/qa/evidence/localization/<localization_candidate_sha256>/reports/<record_id_sha256>.md
+production/qa/evidence/localization/<localization_candidate_sha256>/receipts/<record_id_sha256>.yaml
+```
+
+The receipt is canonical UTF-8 YAML and contains at least these literal fields:
 
 ```yaml
-id: L10N-CR-<NNN>
-owner_id: <stable source owner>
-authority: <role/reference>
-reason: <specific reason>
-affected_keys:
-  - key: <key>
-    frozen_hash: <hash>
-intended_change_hash: <hash-or-null>
-retranslation_locales: []
-vendor_notification_receipts:
-  - locale: <locale>
-    path: <receipt>
-    sha256: <receipt-hash>
-approved_at_utc: <timestamp>
+schema: cgs.localization-evidence-review-recorder-receipt/v1
+receipt_id: sha256:<canonical receipt payload with receipt_id omitted>
+recorder: {identity: <independent ID>, version: <version>, implementation_sha256: sha256:<hash>}
+producer: localize/evidence-review@cgs.localize-evidence-review/v1
+source:
+  review_raw_sha256: sha256:<exact returned review hash>
+  review_bytes: <positive integer>
+  evidence_schema: cgs.review-evidence/v1
+  evidence_record_id: sha256:<hash>
+  extension_schema: cgs.localization-evidence-manifest/v2
+  extension_path: <canonical project-relative path>
+  extension_sha256: sha256:<exact raw manifest hash>
+  reviewer_persistence: NONE
+  reviewer_recorder_receipt: NONE
+identity:
+  localization_candidate_sha256: sha256:<hash>
+  request: {schema: cgs.localization-request/v2, id: <ID>, path: <canonical path>, sha256: sha256:<hash>}
+  localization_manifest: {schema: cgs.localization-manifest/v2, path: <canonical path>, sha256: sha256:<hash>}
+  catalog: {schema: cgs.localization-catalog/v2, path: <canonical path>, raw_file_sha256: sha256:<hash>, catalog_identity_sha256: sha256:<hash>, source_table_sha256: sha256:<hash>, keyset_sha256: sha256:<hash>}
+  packages:
+    - {schema: cgs.localization-package/v1, path: <canonical path>, raw_file_sha256: sha256:<hash>, package_id: <LOCPKG-*>, package_payload_sha256: sha256:<hash>, locale: <BCP-47>, page: <stable page/range>}
+  per_key_source_hashes: [{key_id: <stable ID>, source_key_hash: sha256:<hash>}]
+  locale_pages:
+    - {locale: <BCP-47>, page: <stable page/range>, locale_identity_sha256: sha256:<hash>, translation_revision_sha256: sha256:<hash>, native_verdict: QA_EVIDENCE_VERIFIED | QA_EVIDENCE_REJECTED}
+  freeze: {snapshot_id: <ID>, sha256: sha256:<hash>}
+  build: {id: <ID>, artifact_sha256: sha256:<hash>, platform: <ID>, configuration: <ID>}
+  runtime_set_sha256: sha256:<ordered font/UI/test/raw-evidence row digest>
+  expires_at_utc: <RFC3339 UTC>
+target:
+  report_path: production/qa/evidence/localization/<localization_candidate_sha256>/reports/<record_id_sha256>.md
+  receipt_path: production/qa/evidence/localization/<localization_candidate_sha256>/receipts/<record_id_sha256>.yaml
+  expected_report_preimage: ABSENT
+  expected_receipt_preimage: ABSENT
+  persisted_report_sha256: sha256:<same returned review hash>
+  persisted_report_bytes: <same byte count>
+write:
+  compare_and_set: CREATED
+  read_back: VERIFIED
+  read_back_sha256: sha256:<same returned review hash>
+decision:
+  coverage: COMPLETE
+  verdict: QA_EVIDENCE_VERIFIED | QA_EVIDENCE_REJECTED
+  evidence_persistence: RECORDED
+  gate_evidence_eligible: true
 ```
 
-Missing owner, affected-key hashes, retranslation scope, or required vendor receipt
-blocks the lift. An authorized lift changes state to `LIFTED_FOR_CHANGE`; it does not
-mutate the source table. After the catalog change, call freeze again to create a new
-snapshot. The old snapshot and history remain immutable.
+The underlying ordered package, per-key, locale/page, font/UI/runtime and raw
+evidence rows remain mandatory even when their set digests are present. The
+receipt is valid only if both targets were absent, CAS created both exact targets,
+read-back verified the returned bytes, every binding is current and unexpired,
+coverage is complete, and the decision verdict is unchanged. Eligibility means
+the record is admissible for a conclusive positive or negative gate decision; it
+does not turn `QA_EVIDENCE_REJECTED` into success. A mismatched path/hash/version,
+self-recording identity, reused target, partial scope, changed verdict, failed CAS,
+or unknown read-back makes the receipt invalid and gate-ineligible.
 
-## Phase 8: QA planning only
+## Import/export write and recovery protocol — LOC-005/011/013
 
-`qa` and `qa-plan` create a per-locale execution plan. Split locales explicitly and
-cap one plan at eight target locales; larger sets require separate batches. A missing
-locale input is an error.
+Every mutating subcommand shows one exact operation manifest before the first write: normalized paths, locale/page, owner approval, unique writer, base/ABSENT, candidate hash, size, source/package identities, rollback bytes/hash, and non-writes. Authorization is exact and non-transitive.
 
-For every locale, the plan records:
+Recheck all preimages and identity hashes immediately before write. Use atomic replacement/group commit with rollback. On conflict, write nothing for that locale; on midcommit failure, restore exact bases and verify. Failed rollback returns RECOVERY_REQUIRED with divergent paths/hashes and blocks further localization writes. Never overwrite concurrent edits or auto-resolve a translator/catalog conflict.
 
-- plan ID and plan document hash when written;
-- exact locale and translation owner/reviewer IDs;
-- intended build ID/hash/platform/configuration, or `UNKNOWN / NOT BUILT`;
-- manifest, freeze snapshot, source table, keyset, translation, font/package, VO, and
-  relevant asset hashes, using `null` when unavailable;
-- test cases for functional strings, UI overflow, pseudolocalization, placeholders,
-  plural/date/number/currency, input/IME, RTL/shaping where relevant, contextual
-  language review, cultural candidates, VO/subtitle timing, accessibility,
-  localization, and platform-specific text;
-- required tester identity, evidence types, and expected results.
+## Verdicts and output
 
-A plan may identify blockers or missing inputs, but it never executes a build, takes a
-screenshot, reviews a translation as a native speaker, or returns `PASS`. Its only
-successful verdict is `QA PLAN READY`. When any locale plan is incomplete, return
-`PARTIAL PLAN` with per-locale gaps; do not fill them with guesses.
+Use mode-specific verdicts only: SCAN_COMPLETE/PARTIAL; CATALOG_DIFF_READY; CATALOG_UPDATED_TRANSLATIONS_STALE; EXPORT_READY; IMPORT_COMMITTED/IMPORT_PARTIAL/NOT_IMPORTED; STATIC_VALIDATION_CLEAN/GAPS_FOUND/PARTIAL; STATUS_READY; BRIEF_READY; REVIEW_CANDIDATES_READY; VO_STATIC_REPORT_READY/VO_SCRIPT_DRAFT_READY; RTL_STATIC_CANDIDATES_READY; FREEZE_ACTIVE/FREEZE_LIFTED_FOR_CHANGE/FREEZE_STATUS_READY; QA_PLAN_READY/PARTIAL_PLAN; QA_EVIDENCE_VERIFIED/REJECTED/PARTIAL_EVIDENCE; BLOCKED; RECOVERY_REQUIRED.
 
-## Phase 9: Independent execution receipts and evidence review
+Never output LOCALIZATION_COMPLETE, bare COMPLETE, generic PASS, or release approval.
 
-QA execution happens outside `qa-plan` under a named QA tester and, for language
-quality, a distinct locale-qualified reviewer. This workflow may review supplied
-receipts through `evidence-review`; it does not manufacture or retroactively complete
-them.
-
-A runtime receipt contains:
-
-```yaml
-receipt_id: <stable-id>
-test_case_id: <plan-case-id>
-locale: <exact BCP-47 locale>
-build_id: <build-id>
-build_sha256: <build-hash>
-platform: <platform-and-configuration>
-manifest_sha256: <localization-manifest-hash>
-freeze_snapshot_id: <snapshot-id>
-freeze_record_sha256: <freeze-hash>
-source_table_sha256: <source-hash>
-keyset_sha256: <keyset-hash>
-translation_path: <exact path>
-translation_sha256: <translation-hash>
-font_package_sha256: <hash-or-null>
-vo_asset_set_sha256: <hash-or-null>
-tester:
-  owner_id: <stable identity>
-  role: <QA role>
-started_at_utc: <timestamp>
-finished_at_utc: <timestamp>
-actual_result: <observed result>
-outcome: PASS | FAIL | BLOCKED | NOT_RUN
-evidence:
-  - path: <screenshot-video-log-path>
-    sha256: <raw-byte-hash>
-```
-
-`evidence-review` verifies every receipt against one immutable evidence manifest and
-recomputes all readable hashes. It also requires:
-
-- a locale-qualified reviewer receipt for the exact translation hash;
-- resolution receipts from the required human owner for every in-scope cultural,
-  legal, rating, or platform candidate;
-- complete required test-case coverage for the exact locale/build/platform;
-- no `NOT_RUN`, `BLOCKED`, stale, unreadable, or mismatched required receipt.
-
-Per locale, return only:
-
-- `QA EVIDENCE VERIFIED` — all required receipts and owner decisions match;
-- `QA EVIDENCE REJECTED` — at least one supplied receipt fails validation or records a
-  failed test;
-- `PARTIAL EVIDENCE` — required evidence is absent, unreadable, not run, blocked, or
-  stale.
-
-`QA EVIDENCE VERIFIED` confirms receipt integrity and coverage for that immutable
-locale/build/source snapshot. It is not a release, legal, platform, or market
-approval. Never convert it to `PASS` merely for compatibility with another skill.
-
-## Phase 10: Output and next action
-
-Return:
-
-1. subcommand, operation status, mutation status, and exact scope;
-2. source locale and requested target locales;
-3. manifest/schema/freeze/source/keyset/translation/build hashes that actually exist;
-4. input load counters, parse errors, stale reasons, and omitted evidence;
-5. owner identities and missing-owner gaps;
-6. exact writes with preimage/postimage hashes, or `READ_ONLY_NO_CHANGES`;
-7. the subcommand-specific verdict from the contract table;
-8. one next action that resolves the current gap.
-
-Never auto-run another localization mode, contact a vendor, alter a translation,
-close a human review candidate, update a release gate, or invoke deployment. Any
-downstream gate must consume an immutable evidence manifest and independently verify
-locale, build, source, translation, freeze, receipt hashes, freshness, and coverage.
+Every result includes subcommand, exact locale/page scope, manifest/catalog/source/keyset/per-key/locale/translation/freeze/package/build/evidence identities that actually exist, parser/loads/budgets/omissions, owners/consent/privacy gaps, exact writes pre/post hashes or READ_ONLY_NO_CHANGES, partial/resume state, and one legal next action. Do not auto-run another mode, contact a vendor, alter translations outside import, close human review, update release gates, or deploy.

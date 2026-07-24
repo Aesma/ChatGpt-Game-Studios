@@ -1,297 +1,208 @@
-# Skill Test Spec: $setup-engine
-
-## Skill Summary
-
-`$setup-engine` uses a manifest-driven state machine that separates official-source
-research, engine selection, external installation, real execution verification,
-project configuration, reference refresh, and fully validated upgrade activation.
-Only exact current executable/toolchain receipts plus an authorized, rollback-safe,
-independently visible project transaction can establish `CONFIGURED`; upgrade also
-requires isolated migration, import, build, regression, and activation evidence.
-
----
-
-## Static Assertions (Structural)
-
-- [ ] Frontmatter contains only matching `name` and non-empty `description`
-- [ ] Invocation requires a manifest and validates it before reads, network, external
-  execution, decisions, delegation, writes, or verdict
-- [ ] Research, decision, installation, execution verification, configuration,
-  refresh, migration, and activation are distinct states and authorities
-- [ ] Mutable facts require first-party versioned sources with URL, publisher,
-  retrieved-at UTC, content hash, release/effective/support scope, region, and conflict
-  handling
-- [ ] User-provided versions undergo the same official existence/support/download/
-  license verification as discovered versions
-- [ ] Installation verification requires exact executable real path/hash/signature,
-  real version-command output/exit/log hashes, SDK/toolchain receipts, and project
-  health evidence
-- [ ] File/folder/project/VERSION.md existence and old receipts cannot satisfy a gate
-- [ ] Root instructions contain critical identity directly and prohibit `@file`
-  configuration
-- [ ] Every authoritative path has an owner, base hash, candidate hash, unique writer,
-  CAS, read-back, rollback, and exact authorization
-- [ ] Specialist instructions are proposal-only and testing framework selection stays
-  with the testing owner/catalog
-- [ ] Refresh cannot modify active engine identity
-- [ ] Upgrade keeps active version old until target migration/import/build/regression
-  pass and a separate activation transaction succeeds
-- [ ] `Verdict: COMPLETE` is restricted to `CONFIGURED` and `UPGRADE_VERIFIED`
-- [ ] Immutable checkpoints, bounded execution, timeout, retry, late-result, resume,
-  rollback, and deterministic output contracts are present
+# Contract Specification: `setup-engine`
+
+## Purpose
+
+Validate `setup-engine` as a manifest-driven state machine that separates official-source research, user engine decision, external installation, real executable/toolchain health, project configuration, reference refresh, isolated upgrade validation, activation, and recovery. Active declarations can never lead the exact verified environment.
+
+## Contract identities
+
+- Request: `cgs.engine-request/v2`
+- Official claim: `cgs.engine-official-claim/v2`
+- License claim: `cgs.engine-license-claim/v1`
+- Official allowlist: `cgs.engine-official-allowlist/v1`
+- Download/install receipt: `cgs.engine-download-install-receipt/v1`
+- Engine health receipt: `cgs.engine-health-receipt/v1`
+- Framework consistency: `cgs.engine-framework-consistency-receipt/v1`
+- Project visibility: `cgs.engine-project-visibility-receipt/v1`
+- Skill: `.agents/skills/setup-engine/SKILL.md`
+- Continuation: `.agents/skills/setup-engine/references/continued-workflow.md`
+
+## Invocation
+
+```text
+$setup-engine --manifest <path> --expect-manifest <sha256:...>
+              [--resume <path> --expect-resume <sha256:...>]
+```
+
+Required/optional path-hash pairs are inseparable. No arguments prints usage with zero network, execution, delegation, decision, or write. Reject moving aliases, directories, traversal, symlink/junction/reparse escapes, schema/hash mismatch, and unknown/repeated flags.
+
+## P0 invariants retained
+
+1. Research, decision, installation, health verification, configuration, refresh, migration, activation, and recovery are distinct states and authorities.
+2. Critical engine identity is directly visible in effective root instructions; `@file` expansion is never relied on.
+3. Documentation-only version edits cannot advance active identity or claim upgrade.
+4. Exact current binary/toolchain/project receipts plus an owner-approved CAS/rollback/read-back transaction are mandatory for CONFIGURED.
+5. Upgrade requires target health, isolated import/serialization/migration/build/regression, separate activation, and post-activation health on one final hash.
+6. Cross-owner transaction failure rolls back fully or enters RECOVERY_REQUIRED; split state is never complete.
+7. COMPLETE is legal only for CONFIGURED or UPGRADE_VERIFIED.
 
----
+## P1 requirements
 
-## Case 1: Fresh configure succeeds only with real receipts
-
-**Fixture:** A valid configure manifest selects an officially evidenced engine version,
-names an existing exact executable, SDK/toolchain commands, a project health command,
-authoritative config paths/owners/base hashes, and all authorities.
+### A. User version existence/support/download verification — ENGINE-P1-001
 
-**Expected behavior:**
+1. A user-entered version is a request, never evidence.
+2. Exact product/edition/release/build/channel must exist in the first-party release archive/API.
+3. Support/lifecycle status and horizon are evaluated as of retrieved-at for the exact channel.
+4. Exact platform/architecture download artifact, official URL, size/name, checksum/signature policy, and license applicability are confirmed.
+5. Unsupported/archived/unavailable/conflicted/unverifiable versions remain unresolved; the user authority chooses another evidenced candidate or stops.
+6. Nearby version/channel/edition substitution is forbidden.
 
-1. Official source claims and decision record are current and hash-bound.
-2. The exact executable path is resolved and hashed; its version command executes
-   successfully and parsed identity matches the selected official release.
-3. Required SDK/toolchain and isolated project health commands succeed with complete
-   receipts.
-4. After `INSTALLATION_VERIFIED`, candidate project bytes and a complete cross-owner
-   mutation manifest are shown and authorized.
-5. CAS/transaction/read-back succeeds; a fresh independent plain-text configuration
-   visibility probe and re-execution agree with every declaration.
-6. State is `CONFIGURED` and verdict is `COMPLETE` with all receipt hashes.
+### B. Versioned official-source provenance — ENGINE-P1-002
 
-**Assertions:**
+1. Every mutable external fact conforms to `cgs.engine-official-claim/v2` and comes from a frozen eligible first-party source.
+2. Claim records product/edition/version/build/channel/support/horizon, platform/architecture/locale/region, canonical URL, allowlist rule, publisher ownership, document/API version, publication/effective date, retrieved-at UTC, HTTP/final URL/redirects, ETag/Last-Modified, response hash, normalized finding, freshness, and conflicts.
+3. Download claims additionally bind artifact identity/size, checksum algorithm/value and official checksum source/hash, or exact signature/certificate/notarization verification policy.
+4. “Most recent” is scoped to one exact official archive snapshot/channel/platform/as-of time. Unqualified latest/supported/free/verified and fixed knowledge-cutoff prose are forbidden.
+5. Search snippets, mirrors, package indexes, aggregators, blogs/forums, model memory, and recollection cannot establish claims.
+6. Missing/mismatched checksum, invalid signature, ineligible redirect, artifact conflict, or unresolved support blocks install/dependent claims.
+7. Vendor-nonpublished checksum state is explicit and only an organization policy can permit a named signature/notarization substitute.
 
-- [ ] Stable installation ID derives from engine/version/binary hash
-- [ ] AGENTS, preferences, reference, and lock values equal parsed real identity
-- [ ] No claim relies only on an existing file or text search
-- [ ] All changed paths were declared and owner-approved
+### C. Upgrade risk needs comprehensive execution evidence — ENGINE-P1-003
 
----
+1. Static deprecated-API search is one limited input and cannot prove low risk/compatibility.
+2. Upgrade matrix covers source/compiler API, project/asset/resource serialization/import/cache, plugins/packages/native extensions, SDK/compiler/runtime/templates/modules, rendering/physics/audio/input/network defaults, platform/signing/export/packaging, save/data/network compatibility, build/test infrastructure/framework, and required manual/hardware/platform checks.
+3. Every row has applicability, owner, input hash, target identity, command/check, expected receipt, and mandatory/optional state.
+4. UNKNOWN, unsupported, NOT_RUN, timeout, stale hash, missing owner/receipt, skipped mandatory row, or failure blocks activation.
+5. Migration uses an authorized isolated candidate; active project/version remain unchanged until every mandatory row PASS on one final candidate hash and a separate activation succeeds.
 
-## Case 2: Effective configuration never relies on @file expansion
+### D. Authoritative testing-framework consistency — ENGINE-P1-004
 
-**Fixture:** Configuration candidate proposes root Technology Stack and engine
-reference identity.
+1. Setup-engine reads only the exact hash-pinned authoritative testing catalog/configuration or records UNCONFIGURED.
+2. It never chooses, recommends, or copies a framework name from memory/engine preference.
+3. Project config references stable testing-config ID/version/path/hash; health/test command comes from that source.
+4. `cgs.engine-framework-consistency-receipt/v1` binds engine/language/project hashes, testing catalog/config schema/hash, framework ID/version, adapter/runner command receipt, discovery result, and status MATCH/UNCONFIGURED/CONFLICT/NOT_RUN.
+5. CONFLICT blocks CONFIGURED/UPGRADE_VERIFIED. Required NOT_RUN blocks them. Explicitly out-of-scope UNCONFIGURED may allow engine configuration only with `test_readiness: NOT_CONFIGURED` visible.
+6. Framework conflict is routed to its testing owner; setup-engine does not repair it.
 
-**Expected behavior:** Critical engine/version/build/install/executable/receipt identity
-is written directly into effective root instructions. A fresh probe reads root
-`AGENTS.md` without expansion and reports exact values.
+### E. Executable/toolchain/project health receipt — ENGINE-P1-005
 
-**Assertions:**
+1. Candidate uses exact resolved executable path, file SHA-256/size/mtime/permissions and signature identity; PATH-first discovery is insufficient.
+2. Exact version argv runs with bounded working directory/environment/timeout; receipt captures time/runner/OS/architecture/exit/signal, stdout/stderr bytes/hashes, parser/version, parsed product/version/channel/build, and official-decision comparison.
+3. Required SDK/compiler/runtime/package/template/module tools each have real path/hash/version output/lock/command health receipts.
+4. Project-load/health uses the exact binary and exact project/config/source identity in non-mutating or isolated mode, recording import/serialization/plugin/package warnings and logs/mutations.
+5. `health_identity_sha256` binds installation/binary, version receipt, toolchain lock/receipt set, module/template/plugin manifest, and project-health receipt.
+6. `cgs.engine-health-receipt/v1` is HEALTHY/DEGRADED/UNHEALTHY/NOT_RUN/STALE; only required-current health can yield INSTALLATION_VERIFIED.
+7. File/folder/VERSION/old stdout/old receipt existence has zero verification value.
 
-- [ ] No `@docs/...` or other `@file` directive is added
-- [ ] A Markdown link, if present, is supplementary only
-- [ ] Fresh probe is independent from the configuration author
-- [ ] Probe output is bound to root/config/execution receipt hashes
-- [ ] Probe failure prevents `CONFIGURED`
+### F. Refresh allowlist, citation preservation, conflict and CAS — ENGINE-P1-006
 
----
+1. `cgs.engine-official-allowlist/v1` freezes HTTPS scheme, publisher, exact host/safely delimited subdomain rule, path/API template, source role, applicability, redirects, retrieval budgets, and ownership evidence.
+2. Refresh cannot broaden allowlist during retrieval. Newly discovered source is an unresolved proposal requiring a new manifest/authority.
+3. HTTP downgrade, deceptive suffix, URL shortener, unauthorized mirror/CDN/auth URL, and out-of-rule redirect are rejected.
+4. Prior source bytes/hashes/citations are preserved; new claims link superseded claim/source hashes. Conflicts remain explicit and are not resolved by recency alone.
+5. Refresh previews a reference-only transaction with owner/base/candidate/rollback hashes and CAS/read-back.
+6. It cannot change active engine/binary/toolchain/framework/root/project lock/source/machine state. New releases are CANDIDATE_ONLY.
+7. Offline/conflict/missing/timeout/stale/redirect/CAS failure leaves prior reference unchanged; last-verified dates never advance without successful eligible retrieval and persisted source hash.
 
-## Case 3: Documentation-only upgrade cannot advance active version
+### G. Per-file owner, snapshot, CAS and role protection — ENGINE-P1-007
 
-**Fixture:** Current verified engine is 4.A; target is 4.B. User authorizes only edits
-to VERSION/reference documentation, not target installation or migration.
+1. Every authoritative file has one owner approval, expected base/ABSENT, candidate hash, unique writer, rollback bytes/hash, size/commit order, CAS, read-back, and transaction receipt.
+2. Changed base/candidate, missing owner, writer overlap, or expanded path invalidates authorization.
+3. Precommit drift writes nothing. Midcommit failure fully restores exact rollback bytes or enters RECOVERY_REQUIRED.
+4. Concurrent unrelated edits are not silently overwritten or reverted.
+5. Specialist/role instruction files are outside setup-engine's mutation set. Proposals are NOT_AUTHORIZED and carry owner/base/candidate hashes only.
+6. Any later role-file workflow must independently enforce per-file owner/snapshot/CAS/read-back; no batch wildcard ownership exists.
 
-**Expected behavior:** Workflow may return an exact upgrade plan/reference proposal,
-but active VERSION, root instructions, preferences, and project lock remain 4.A.
-State is at most `UPGRADE_PLANNED`; verdict is PARTIAL/BLOCKED, never COMPLETE.
+### H. License region/date/version/threshold context — ENGINE-P1-008
 
-**Assertions:**
+1. Every license/platform claim conforms to `cgs.engine-license-claim/v1` and binds product/edition/version/channel plus official terms title/version/URL/hash/publisher/publication/effective/retrieved dates.
+2. It records applicable region/jurisdiction/locale, use/org/seat basis, commercial/education context, distribution/target platforms, threshold amount/currency/period/gross-net-funding basis/exclusions, royalty/fee rate/base, and tax treatment when applicable.
+3. User applicability facts have an attestation hash; sensitive amounts are minimized to a sufficient band when possible.
+4. Status is CONFIRMED_APPLICABLE/CONFIRMED_NOT_APPLICABLE/UNRESOLVED/NOT_PROVIDED with conflicts and next review date.
+5. Organization revenue/location/legal entity/platform eligibility is never inferred. Missing region/date/currency/threshold context stays unresolved.
+6. Output is source-bound information, not legal advice; risk acceptance cannot manufacture applicability.
 
-- [ ] Target version is never written into active identity fields
-- [ ] Documentation authorization is not installation/migration/activation authority
-- [ ] No `upgraded` or `verified` claim is emitted
-- [ ] Exactly one next action requests the missing legal authority/evidence
+### I. Offline, partial, timeout, checkpoint, and recovery — ENGINE-P1-009
 
----
+1. Offline mode uses only exact cached official snapshots with original URL/publisher/version/retrieved-at/hash/freshness; states OFFLINE_CACHED or STALE and never claims current/latest.
+2. Fresh enough cached evidence yields OFFLINE_EVIDENCE_ONLY with claim ceilings. Missing/expired mandatory evidence blocks dependent decision/install/refresh; offline refresh writes nothing.
+3. Partial downloads stay quarantined and are never executed/extracted. Receipt binds expected/received bytes, partial hash, ETag/Last-Modified/range support, allowlist URL, error, and destination state.
+4. Recovery options are identity-safe resume, new-file restart, retain, or separately authorized exact deletion. Changed identity cannot be appended/resumed.
+5. Each attempt/phase is bounded; only one proven non-mutating retry; timed-out/late tokens are revoked/quarantined.
+6. Immutable checkpoints exist after every transition and bind all sources/contracts/binaries/toolchains/framework/config/authority/partial-artifact/rollback identities.
+7. Resume revalidates the chain and exact next legal transition. Drift invalidates evidence/authorization.
+8. Half commit/failed rollback enters RECOVERY_REQUIRED and freezes other transitions until an owner-authorized recovery manifest restores/completes exact hashes and verifies them.
 
-## Case 4: Full upgrade requires target execution, migration, build, and regression
+## State and authority assertions
 
-**Fixture:** Verified old installation/config exists; target official evidence and
-installation are available; isolated migration is fully authorized.
+States are exactly RESEARCH_EVIDENCE_READY, DECISION_RECORDED, INSTALLATION_VERIFIED, CONFIGURED, REFERENCE_REFRESHED, UPGRADE_PLANNED, UPGRADE_VERIFIED, OFFLINE_EVIDENCE_ONLY, PARTIAL, BLOCKED, and RECOVERY_REQUIRED.
 
-**Expected behavior:** Target binary is independently verified. Candidate workspace
-undergoes project import/serialization, plugins/packages, SDK/toolchain, every declared
-platform build/export, automated tests, smoke/regression, and required manual/hardware
-checks. Only one final candidate hash with every row PASS may be activation-authorized.
+Evidence persistence, product decision, external install, command execution, project configuration, refresh, isolated migration, activation, and recovery/cleanup authorities are separate and non-transitive.
 
-**Assertions:**
+Root effective configuration directly contains short critical engine/receipt identity and never relies on `@file`. Active reference distinguishes actual installation from researched candidates and date/region-scoped support/license claims.
 
-- [ ] Static deprecated-API search alone cannot lower or close upgrade risk
-- [ ] UNKNOWN, NOT RUN, timeout, stale hash, skipped mandatory test, or build failure
-  blocks activation
-- [ ] Activation is separately authorized after evidence exists
-- [ ] Post-activation visibility/health is rerun on the target hash
-- [ ] COMPLETE requires `UPGRADE_VERIFIED`
+## Behavioral cases
 
----
+### Case 1 — User version unavailable
 
-## Case 5: Official source conflict or offline failure blocks dependent claims
+The requested release is absent for the declared edition/platform in the official archive. It remains UNRESOLVED; no nearby substitution/install/config candidate is created. User chooses another evidenced version or stops.
 
-**Fixture:** Vendor release archive and lifecycle page disagree, or mandatory official
-license/platform data cannot be retrieved before the deadline.
+### Case 2 — Current official release claim
 
-**Expected behavior:** Preserve both scoped source snapshots and hashes, mark stable
-claim IDs UNRESOLVED, report conflict/scope/date, and stop the dependent decision.
-Do not use snippets, aggregators, memory, or user confirmation as replacement proof.
+Archive/source records exact URL/publisher/document version/retrieved-at/content hash/channel/support horizon/artifact/checksum. “Most recent” is qualified to that snapshot. A missing checksum/signature blocks install.
 
-**Assertions:**
+### Case 3 — Static upgrade scan appears clean
 
-- [ ] No unqualified latest/supported/free claim is made
-- [ ] Prior reference evidence is unchanged on failed refresh
-- [ ] A date is not updated when no new evidence was retrieved
-- [ ] Result is PARTIAL/BLOCKED with one resolution action
+No deprecated APIs are found but a plugin, serialized asset and export template are incompatible. Upgrade stays UPGRADE_PLANNED because comprehensive mandatory rows fail; active declarations remain old.
 
----
+### Case 4 — Framework drift
 
-## Case 6: User-provided version is not trusted automatically
+Project/test catalog names one framework/config while an old setup recommendation names another. Receipt is CONFLICT; setup-engine changes neither and routes the exact conflict to testing owner. CONFIGURED is blocked if test readiness is required.
 
-**Fixture:** Manifest requests a specific engine version that is absent from the
-official release archive for the declared edition/platform.
+### Case 5 — Binary/toolchain identity mismatch
 
-**Expected behavior:** Report exact official evidence, keep the request unresolved,
-and ask the product authority to choose another evidenced candidate or stop. Do not
-substitute a nearby version or create configuration bytes.
+VERSION claims X but exact binary version output/hash or compiler lock differs. Health is UNHEALTHY/STALE; no project identity changes hide the mismatch.
 
-**Assertions:**
+### Case 6 — Refresh redirect and concurrent edit
 
-- [ ] Existence, support channel, official download, checksum/signature policy,
-  platform/architecture, and license scope are all checked
-- [ ] User input is a request, not proof
-- [ ] No install or project write starts
+Official page redirects outside allowlist and reference base changes after preview. Retrieval is rejected; CAS writes nothing; prior citations/dates/hashes remain unchanged.
 
----
+### Case 7 — Role-file batch proposal
 
-## Case 7: Installation and execution need separate exact authority
+Configure wants to update multiple specialist descriptions. All are excluded from mutation. Per-owner hash-bound proposals may be returned but are NOT_AUTHORIZED and not applied.
 
-**Fixture:** Research/decision are complete, but only project-file authorization was
-granted. Candidate engine is not installed.
+### Case 8 — License threshold ambiguity
 
-**Expected behavior:** Return an install manifest naming official artifact/hash,
-command, destination, privileges, environment changes, limits, cleanup and rollback;
-wait for explicit external-install authority. Project authorization does not permit
-download/install/execution.
+Terms differ by region/revenue period and user supplies no region/band. Claim is NOT_PROVIDED/UNRESOLVED; no unqualified free/royalty conclusion is made and install decision cannot rely on applicability.
 
-**Assertions:**
+### Case 9 — Offline and partial download recovery
 
-- [ ] No network download, package call, installer, PATH/registry change, or privilege
-  elevation occurs
-- [ ] Declined installation returns PARTIAL, not configured
-- [ ] Unexpected redirect/checksum/signature/privilege request blocks installation
+Cached lifecycle evidence is stale and a prior artifact is partially downloaded. Result is OFFLINE_EVIDENCE_ONLY/BLOCKED; partial bytes remain quarantined. Resume requires identical ETag/artifact/checksum/range identity or a separately authorized restart/delete.
 
----
+### Case 10 — P0 regression
 
-## Case 8: File presence and stale receipt are zero verification
+Documentation-only target version edit cannot upgrade. Root configuration never adds @file. Multi-owner CAS failure rolls back or enters RECOVERY_REQUIRED. Only real current receipts and independent visibility can yield CONFIGURED/UPGRADE_VERIFIED.
 
-**Fixture:** VERSION.md, project files, and a prior execution receipt claim version X,
-but the binary path is missing or its bytes now hash differently.
+## Negative assertions
 
-**Expected behavior:** Re-resolve and re-hash current binary. Missing/mismatched binary
-invalidates the receipt and returns BLOCKED before configuration or upgrade.
+Any of these is a contract failure:
 
-**Assertions:**
+- trusting a user version or claiming latest/support without official retrieved-at evidence;
+- downloading/executing an artifact without exact eligible URL and checksum/signature validation;
+- low-risk/compatible conclusion from static source search alone;
+- hardcoding or selecting a testing framework;
+- health based on directory/file/version-document existence;
+- refresh from an arbitrary web result, dropped prior citation, missing CAS, or active-version mutation;
+- wildcard/bulk role-file edit without per-file owner/snapshot/CAS;
+- license claim without version/region/effective date/currency/threshold basis;
+- treating offline cache or partial download as current/installed;
+- continuing past RECOVERY_REQUIRED or reusing stale authorization;
+- COMPLETE outside CONFIGURED/UPGRADE_VERIFIED.
 
-- [ ] Directory, executable name, VERSION.md, and project-file existence do not pass
-- [ ] Old stdout text without current binary hash does not pass
-- [ ] Active declarations are not rewritten to hide the mismatch
-- [ ] Output lists expected and observed paths/hashes
+## Remediation traceability
 
----
+| Finding | Closure evidence |
+|---|---|
+| ENGINE-P1-001 | Section A verifies requested version existence/support/download/checksum/license and forbids substitution |
+| ENGINE-P1-002 | Section B defines complete first-party version/support/checksum/retrieved-at claim provenance |
+| ENGINE-P1-003 | Section C requires broad final-hash migration/import/build/regression coverage beyond static API search |
+| ENGINE-P1-004 | Section D uses the authoritative testing config and emits a framework consistency receipt without choosing a framework |
+| ENGINE-P1-005 | Section E defines real binary/version/toolchain/project-health identity and receipt gates |
+| ENGINE-P1-006 | Section F freezes the source allowlist, preserves citations/conflicts, and uses reference-only CAS |
+| ENGINE-P1-007 | Section G enforces per-file owner/snapshot/writer/CAS/rollback and excludes role files |
+| ENGINE-P1-008 | Section H binds license/platform claims to region/date/version/currency/threshold context |
+| ENGINE-P1-009 | Section I defines offline/partial/timeout/checkpoint/resume/RECOVERY_REQUIRED terminals |
 
-## Case 9: Multi-owner CAS conflict rolls back the transaction
+## Deterministic output
 
-**Fixture:** Root instructions, preferences, reference, lock, and receipts are fully
-authorized; one base file changes after authorization but before commit, or the third
-replacement fails.
-
-**Expected behavior:** Preflight CAS stops before writes on drift. If commit has begun,
-restore every changed file from exact rollback bytes and read back hashes. If restore
-fails, return `RECOVERY REQUIRED` and never claim configured.
-
-**Assertions:**
-
-- [ ] Every file has one owner, one writer, expected base/candidate/rollback hash
-- [ ] No partial root configuration is published as success
-- [ ] Concurrent user changes are not silently overwritten/reverted
-- [ ] Outside-manifest mutations halt the workflow
-
----
-
-## Case 10: Refresh cannot activate a discovered release
-
-**Fixture:** Active engine X is verified; refresh discovers official release Y.
-
-**Expected behavior:** Source/reference evidence may be updated after exact reference
-authorization, but active engine identity, binary, project lock, root instructions,
-preferences, source, and machine state remain X. Result is `REFERENCE_REFRESHED`.
-
-**Assertions:**
-
-- [ ] Release Y is labelled candidate/available, not active
-- [ ] Refresh has no configured/upgraded COMPLETE verdict
-- [ ] Citations and prior snapshot hashes are preserved
-- [ ] Evidence conflict leaves prior files unchanged
-
----
-
-## Case 11: Testing framework and specialist instructions retain their owners
-
-**Fixture:** Configure mode needs technical preferences while test configuration and
-specialist instructions already exist.
-
-**Expected behavior:** Setup records a reference to the authoritative test config or
-UNCONFIGURED, never recommends/copies a framework name. It emits owner-routed proposals
-for specialist instruction changes and does not edit those files.
-
-**Assertions:**
-
-- [ ] No GUT/NUnit/other framework is selected here
-- [ ] Specialist files are outside the mutation manifest
-- [ ] Root effective engine routing does not depend on editing every role file
-
----
-
-## Case 12: Timeout, late output, checkpoint, and resume
-
-**Fixture:** An official-source probe or exact engine command times out and later
-returns output; a saved checkpoint is then resumed after the binary changes.
-
-**Expected behavior:** Revoke the attempt token, quarantine late output, permit at
-most one proven-safe retry, write PARTIAL checkpoint evidence, and on resume re-hash
-every source/binary/toolchain/config/authorization input. Binary drift makes dependent
-receipts stale and resumes from verification, not configuration.
-
-**Assertions:**
-
-- [ ] Read-only parallel probes are capped at three
-- [ ] Per-attempt and phase limits are at most 15 and 30 minutes
-- [ ] Late output cannot enter current evidence or trigger a write
-- [ ] Half-commit/failed rollback requires recovery first
-- [ ] Resume never reuses stale authorization or receipt evidence
-
----
-
-## Protocol Compliance
-
-- [ ] Official evidence, decision, install, execute, configure, refresh, migrate, and
-  activate scopes stay separate
-- [ ] Real current binary/toolchain/project receipts are mandatory
-- [ ] Root configuration is directly visible without unsupported imports
-- [ ] Cross-owner writes use exact owner approval, unique writers, CAS, rollback, and
-  independent read-back/visibility evidence
-- [ ] Active version never leads the actual verified environment
-- [ ] Upgrade cannot complete without current final-hash build/regression evidence
-- [ ] Results include precise states, hashes, receipts, authorities, blockers,
-  checkpoints, rollback status, and exactly one legal next action
-
----
-
-## Coverage Notes
-
-Cases 1–10 directly regress the four audited P0 failures: ineffective `@file`
-configuration, documentation-only false upgrades, unsourced mutable engine/licensing
-facts, and non-atomic cross-owner writes. Cases 11–12 cover the adjacent testing-owner,
-specialist-owner, timeout, checkpoint, and stale-evidence paths that could otherwise
-bypass the P0 gates.
+Every result reports request/run/mode, precise state/verdict, selected/active identities, official/license/allowlist hashes, installation/binary/toolchain/framework/health/config identities, receipts, owners/authorities, transaction/rollback/recovery/partial-artifact status, upgrade matrix, checkpoint, limitations, and exactly one legal next action. It invokes no downstream workflow and performs no unapproved commit/push/publish.

@@ -1,4 +1,7 @@
 interface:
   display_name: "Prototype"
-  short_description: "Run bounded prototypes with user-owned decisions"
-  default_prompt: "Use $prototype to run one isolated, budgeted experiment; prototype writes, evidence publication, and downstream work remain separately authorized."
+  short_description: "Run reproducible prototypes with recoverable user decisions"
+  default_prompt: "Use $prototype for one explicitly authorized isolated experiment with no unsupported success rates, pinned source/dependency/toolchain/build identity, immutable run receipts, typed skips, consent-safe evidence, hash-bound pivot lineage, correct concept-to-GDD routing, and non-destructive user-confirmed KILL/reopen semantics. Keep execution, decision, publication, cleanup, and downstream authority separate."
+
+policy:
+  allow_implicit_invocation: true

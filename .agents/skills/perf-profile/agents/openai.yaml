@@ -1,4 +1,4 @@
 interface:
   display_name: "Performance Profile"
-  short_description: "Plan captures or analyze hash-bound runtime profiler exports"
-  default_prompt: "Use $perf-profile in prepare-capture or analyze-export mode; emit budget verdicts only from complete runtime evidence bound to build, platform, hardware, scenario, budget, and input hashes."
+  short_description: "Validate bounded profiler exports against exact platform budgets"
+  default_prompt: "Use $perf-profile in one explicit mode to prepare a versioned capture matrix or read-only analyze validated runtime exports; preserve platform/build/scenario/profiler identity, report p50/p95/p99/max and spikes per cell, avoid causal claims, and never persist evidence or modify project files."

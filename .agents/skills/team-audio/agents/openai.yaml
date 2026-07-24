@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Audio"
-  short_description: "Create one reviewed audio spec; no code, tests, or assets"
-  default_prompt: "Use $team-audio with one artifact ID to coordinate read-only audio specialists and approve one hash-bound design/audio/audio-[artifact-id].md specification; do not implement code, tests, or assets."
+  short_description: "Create one bounded reviewed audio spec; never implementation"
+  default_prompt: "Use $team-audio with a versioned request manifest to route bounded read-only audio, accessibility, technical, engine, QA-planning, and review evidence into one approved design/audio/audio-<artifact-id>.md specification with one writer; do not write code, tests, ADRs, QA plans, or assets."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Art Bible"
-  short_description: "Versioned Art Bible drafts with current-hash approval"
-  default_prompt: "Use $art-bible to author an AB-1 Art Bible with skeleton-first persistence and independent hash-bound art-director approval."
+  short_description: "Author one evidence-bound AB-1 Art Bible"
+  default_prompt: "Use $art-bible with a cgs.art-bible-request/v2 manifest to author or revise one nine-section AB-1 artifact through bounded current evidence, explicit decision provenance, content-profile assertions, CAS writes, immutable authoring receipts, and an independent hash-bound review handoff."

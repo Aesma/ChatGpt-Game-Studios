@@ -1,6 +1,6 @@
 ---
 name: review-all-gdds
-description: "Report-only holistic review of the current, hash-bound system-GDD set. Checks cross-document consistency and records design-theory hypotheses without treating unmeasured heuristics as blockers. Returns exactly PASS, CONCERNS, FAIL, or PARTIAL; any persisted output is limited to one explicitly authorized immutable report. Run after all MVP GDDs are approved and before architecture begins."
+description: "Report-only, hash-bound holistic review of an approved system-GDD manifest. Uses bounded graph shards, imports current deterministic consistency evidence, records sampled design hypotheses, and returns PASS, CONCERNS, FAIL, or PARTIAL."
 ---
 
 ## Invocation and execution
@@ -11,482 +11,347 @@ This workflow is report-only. Render the complete report in conversation by
 default. If the user asks to persist it, present the exact, unique report path
 as the complete proposed changeset and obtain explicit approval before that one
 write. Never modify a GDD, `systems-index.md`, the entity registry, session
-state, lifecycle status, sign-off, or an existing review report. Remediation
-and lifecycle transitions belong to separate owner-authorized workflows.
+state, lifecycle status, sign-off, accepted-risk record, approval record, or an
+existing review report. Remediation and lifecycle transitions belong to
+separate owner-authorized workflows.
 
-Arguments: `[focus: full | consistency | design-theory | since-last-review]`. Treat bracketed values as optional unless the workflow says otherwise.
+Accepted argument grammar:
 
+```text
+[full | consistency | design-theory | since-last-review]
+[baseline:<repo-relative-report-path-or-run-id>]
+[consistency-report:<repo-relative-report-path>]
+```
+
+No mode is equivalent to `full`. `baseline:` is required only for
+`since-last-review` and is forbidden in other modes. `consistency-report:` is
+the explicit evidence input for every mode that runs the consistency phase; if
+it is omitted, the invocation remains valid but required evidence is missing
+and the run must return `PARTIAL`. Arguments may appear in any order, but each
+kind may appear at most once.
 
 # Review All GDDs
 
-This skill reads every system GDD simultaneously and performs two complementary
-reviews that cannot be done per-GDD in isolation:
+This skill reviews relationships across the current system-GDD set. It does not
+repeat a per-document `$design-review`, choose product truth, populate the
+entity registry, or author fixes.
 
-1. **Cross-GDD Consistency** — contradictions, stale references, and ownership
-   conflicts between documents
-2. **Game Design Holism** — issues that only emerge when you see all systems
-   together: dominant strategies, broken economies, cognitive overload, pillar
-   drift, competing progression loops
+Run it after all MVP system GDDs have independent approval evidence for their
+current hashes and before architecture begins. It may preserve useful findings
+from provisional inputs, but provisional, stale, or incomplete input evidence
+forces `PARTIAL` and can never authorize architecture.
 
-**This is distinct from `$design-review`**, which reviews one GDD for internal
-completeness. This skill reviews the *relationships* between all GDDs.
+## Frozen public contract
 
-**When to run:**
-- After all MVP-tier GDDs are individually approved
-- After any GDD is significantly revised mid-production
-- Before `$create-architecture` begins (architecture built on inconsistent GDDs
-  inherits those inconsistencies)
-
-**Argument modes:**
-
-**Focus:** the first provided argument (blank = `full`)
-
-- **No argument / `full`**: Both consistency and design theory passes
-- **`consistency`**: Cross-GDD consistency checks only (faster)
-- **`design-theory`**: Game design holism checks only
-- **`since-last-review`**: GDDs whose content hashes differ from an explicitly
-  identified prior report manifest, plus the dependencies already defined by
-  this workflow. If no trustworthy manifest exists, fall back to `full`; never
-  infer the baseline from report file modification time.
-
-### Frozen public contract
-
-- **Verdict vocabulary:** exactly `PASS`, `CONCERNS`, `FAIL`, or `PARTIAL`.
+- **Run verdicts:** exactly `PASS`, `CONCERNS`, `FAIL`, or `PARTIAL`.
+- **Invocation failure:** invalid arguments or fewer than two reviewable system
+  GDDs return `ERROR` with no review verdict and no report write.
 - **Report-only boundary:** conversation output is the default. The only
-  permitted file write is one new, explicitly authorized immutable review
-  report. Declining the write causes zero file mutations.
-- **Evidence identity:** every report binds its project, mode, source revision,
-  canonical input paths, SHA-256 content hashes, run ID, and coverage. Any
-  added, removed, renamed, or changed input makes that report stale.
-- **Incomplete work:** a worker error, unchecked required scope, missing input,
-  or unresolved evidence conflict produces `PARTIAL`; it can never produce
-  `PASS`.
-- **Blocking boundary:** a deterministic contradiction may block. A design-
-  theory observation is `HYPOTHESIS / ADVISORY` unless it reproducibly violates
-  an explicit anti-pillar, an owner-approved invariant, or an owner-approved
-  quantitative threshold present in the hashed inputs.
-- **Accepted risk:** `FAIL` is never relabeled. A gate may consume a separate,
-  owner-signed `ACCEPTED_RISK` record that names this run and exact findings,
-  scope, owner, and expiry; that record does not change the review verdict.
+  permitted mutation is one new, explicitly authorized immutable report.
+- **Evidence identity:** every report binds project identity, mode, source
+  revision, canonical input paths, exact-byte SHA-256 hashes, ruleset version,
+  run ID, planned shards, and coverage.
+- **Staleness:** any added, removed, renamed, or changed artifact in the bound
+  manifest, or a different ruleset version, invalidates the report's
+  `stale_key`. A stale report is not gate evidence.
+- **Incomplete work:** a provisional input, missing approval record, stale or
+  missing consistency report, worker error, unchecked required shard, input
+  budget overflow, hash mismatch, or unresolved merge conflict produces
+  `PARTIAL`; it can never produce `PASS` or `FAIL`.
+- **Blocking boundary:** design-theory observations are
+  `HYPOTHESIS / ADVISORY`. Only a rule in the versioned severity matrix applied
+  to reproducible current evidence can block.
+- **Accepted risk:** `FAIL` is never relabeled. A separate owner-signed,
+  hash-bound `ACCEPTED_RISK` record may be referenced, but the reviewer neither
+  creates it nor changes the run verdict.
+- **No hidden corpus:** every included and excluded system ID, supporting input,
+  shard, check, and scenario candidate is represented in the report.
+
+Before analysis, read
+[`references/rule-severity-matrix-v1.md`](references/rule-severity-matrix-v1.md)
+in full. Its ruleset ID, shard limits, risk scoring, finding schema, and verdict
+precedence are normative for this workflow.
+
+## Mode phase matrix
+
+| Phase | `full` | `consistency` | `design-theory` | `since-last-review` |
+|---|---|---|---|---|
+| Validate approved current manifest | REQUIRED | REQUIRED | REQUIRED | REQUIRED |
+| Validate/import consistency report | REQUIRED | REQUIRED | FORBIDDEN | REQUIRED |
+| Bounded design-theory shards | REQUIRED | FORBIDDEN | REQUIRED | REQUIRED on impact closure |
+| Risk-scored scenario sample | REQUIRED | FORBIDDEN | REQUIRED, advisory output only | REQUIRED on impact closure |
+| Optional immutable report write | ALLOWED | ALLOWED | ALLOWED | ALLOWED |
+
+`FORBIDDEN` phases must not read their phase-specific inputs, spawn workers, or
+emit findings. Report them as `NOT_APPLICABLE`; that status is not incomplete
+coverage. `since-last-review` uses the `full` phase set over a validated impact
+closure. Unknown modes, multiple modes, duplicate argument kinds, a misplaced
+`baseline:`, or extra text return `ERROR — INVALID INVOCATION`, show the exact
+grammar, emit no verdict, and stop with zero mutations.
 
 ---
 
-## Phase 1: Load Everything
+## Phase 1: Build the bounded current input manifest
 
-### Phase 1a — L0: Summary Scan (fast, low tokens)
+### 1a. Resolve canonical system identity
 
-Before reading any full document, search to extract `## Summary` sections
-from all GDD files:
+Read `design/gdd/systems-index.md` first. Its `System ID` is persistent identity
+and its `Depends On IDs` column is the single authoritative directed dependency
+edge: `A depends on B` means `A -> B`. Reverse dependents are always derived by
+graph traversal and are never required as handwritten declarations in B.
 
-```
-Search files matching `design/gdd/*.md` for `## Summary` and include 5 following lines of context.
-```
+Build the review set from:
 
-Display a manifest to the user:
-```
-Found [N] GDDs. Summaries:
-  • combat.md — [summary text]
-  • inventory.md — [summary text]
-  ...
-```
+1. every MVP row, whether its document is present or missing; and
+2. every non-MVP row whose lifecycle status is `Approved` and whose Design Doc
+   resolves to a direct child `design/gdd/<slug>.md`.
 
-For `since-last-review` mode: identify the baseline report by explicit run ID,
-or use the newest report whose embedded project ID and complete input manifest
-can be validated. Compare current SHA-256 hashes to that manifest. Do not use
-report timestamps or filesystem modification times as evidence. Show the user
-which GDDs changed before doing any full reads. Only proceed to L1 for those
-GDDs plus any GDDs listed in their "Key deps". If the baseline manifest cannot
-be validated, state that incremental scope is unsafe and run `full`.
+Record every other row as an exclusion with its system ID and reason. Do not
+discover additional authoritative systems from arbitrary Markdown files. If the
+systems index is missing or malformed, inventory direct-child candidate GDDs as
+`PROVISIONAL_DISCOVERY`, disclose that canonical scope is unavailable, and
+force `PARTIAL` if at least two candidates can be reviewed.
 
-### Phase 1b — Registry Pre-Load (fast baseline)
+Exclude `game-concept.md`, `game-pillars.md`, `systems-index.md`, templates,
+review reports, generated logs, and files outside the direct `design/gdd/`
+directory. A duplicate system ID, normalization collision, path shared by two
+IDs, unresolved required MVP path, or dependency target absent from both the
+current and explicitly planned system rows is a manifest finding or coverage
+gap under the ruleset; never silently repair identity.
 
-Before full-reading any GDD, check for the entity registry:
+If fewer than two system GDD files are reviewable, return:
 
-```
-Read `design/registry/entities.yaml` in full.
-```
+> `ERROR — Cross-GDD review requires at least two reviewable system GDDs.`
 
-If the registry exists and has entries, use it as a **pre-built conflict
-baseline**: known entities, items, formulas, and constants with their
-authoritative values and source GDDs. In Phase 2, search GDDs for registered
-names first — this is faster than reading all GDDs in full before knowing
-what to look for.
+Emit no run verdict, spawn no workers, write nothing, and stop.
 
-If the registry is empty or absent: proceed without it. Note in the report:
-"Entity registry is empty — consistency checks rely on full GDD reads only.
-Run `$consistency-check` after this review to populate the registry."
+### 1b. Validate current approval evidence
 
-### Phase 1c — L1/L2: Full Document Load
+For every review-set GDD, compute SHA-256 over its exact bytes and locate an
+independent `design-review` evidence record using an explicit link when one is
+present, otherwise an unambiguous project-local `cgs.review-evidence/v1` record
+whose producer is `design-review` and whose artifact path and hash exactly
+match. Validate the record hash before using it.
 
-Full-read the in-scope documents:
+Record, per system:
 
-1. `design/gdd/game-concept.md` — game vision, core loop, MVP definition
-2. `design/gdd/game-pillars.md` if it exists — design pillars and anti-pillars
-3. `design/gdd/systems-index.md` — authoritative system list, layers, dependencies, status
-4. **Every in-scope system GDD in `design/gdd/`** — read completely (skip
-   game-concept.md and systems-index.md — those are read above)
+- system ID, priority, declared lifecycle status, canonical path, and GDD hash;
+- approval record path, record hash, producer verdict, and reviewed artifact
+  hash; and
+- eligibility: `APPROVED_CURRENT`, `PROVISIONAL`, `STALE`, `UNBOUND`, or
+  `MISSING`.
 
-Report: "Loaded [N] system GDDs covering [M] systems. Pillars: [list]. Anti-pillars: [list]."
+Only an independent `APPROVED` verdict bound to the exact current GDD bytes is
+`APPROVED_CURRENT`. Filename, status text, directory placement, conversation
+memory, or a GDD's own sign-off is not approval evidence. Conflicting records
+are `UNBOUND`. Analyze readable provisional documents only to preserve useful
+evidence, mark their limitations, and force the overall verdict to `PARTIAL`.
 
-If fewer than 2 system GDDs exist, stop:
-> "Cross-GDD review requires at least 2 system GDDs. Write more GDDs first,
-> then re-run `$review-all-gdds`."
+### 1c. Build a compact typed graph before full reads
 
-### Phase 1d — Bind the Input Manifest
+Hash supporting inputs actually used: game concept, pillars, systems index,
+approval records, and the supplied consistency report. Do **not** read
+`design/registry/entities.yaml` directly. Registry validation and comparison
+belong to `$consistency-check`; this workflow consumes its bound result.
 
-Before analysis or delegation, build an ordered input manifest containing:
+From the systems index and bounded extraction of each GDD's `Summary`,
+`Dependencies`, `Cross-References`, `States and Transitions`, `Formulas`, and
+`Acceptance Criteria` sections, build a compact typed graph:
 
-- **Project ID:** canonical repository root plus repository identity (remote
-  identity when configured)
-- **Run ID:** UTC timestamp plus the first 12 characters of the SHA-256 digest
-  of the ordered manifest
-- **Mode:** the validated focus argument
-- **Source revision:** current commit ID, and whether tracked or untracked input
-  files differ from that revision
-- **Inputs:** canonical path and SHA-256 hash of every GDD and every supporting
-  document actually used, including pillars, systems index, and registry
-- **Planned coverage:** phases and checks that apply to the selected mode
+- nodes: stable system IDs and declared events/resources/formulas/invariants;
+- edges: authoritative dependency, data dependency, state trigger, rule
+  dependency, ownership handoff, and formula input/output;
+- edge evidence: path, section, exact hash, units/ranges when declared; and
+- unresolved tokens: aliases, targets, units, or scopes that could not be
+  normalized without guessing.
 
-Use hashes of the exact file bytes, not timestamps. Pass the manifest and run
-ID to every worker. At merge time, record each planned check as `DONE`,
-`PARTIAL`, `ERROR`, or `NOT_APPLICABLE` and list any unchecked paths or checks.
-The report is current only while its project ID and complete input path/hash set
-match the project. Any difference makes it **STALE**; a stale `PASS` or
-`CONCERNS` is not valid gate evidence.
+Only a GDD's outgoing dependency declaration may be compared with the systems
+index. Never require the target GDD to restate the reverse relationship.
+`DEPENDENCY_TARGET_MISSING` and `DEPENDENCY_DECLARATION_MISMATCH` use separate
+rules from the matrix; neither is called “asymmetry.”
 
----
+Hashing a file and extracting named sections does not authorize an unbounded
+whole-corpus prompt. Full document reads happen only inside the bounded shards
+that need them. If a required section cannot be extracted or a file cannot fit
+the single-shard byte limit, record the exact unchecked document/check and
+force `PARTIAL`.
 
-### Parallel Execution
+### 1d. Resolve incremental scope
 
-Phase 2 (Consistency) and Phase 3 (Design Theory) are independent — they read
-the same GDD inputs but produce separate reports. Delegate both phases to parallel Codex sub-agents simultaneously rather than waiting for Phase 2 to complete before
-starting Phase 3. Collect both results before writing the combined report.
+For `since-last-review`, require the explicit `baseline:` value. A path must
+resolve to one immutable report inside the project. A run ID may be resolved
+only when exactly one report embeds that ID; zero or multiple matches are not a
+trustworthy baseline. Validate the baseline's schema, record ID, project ID,
+ruleset ID, manifest digest, stable system IDs, and complete path/hash set. Do
+not use report modification time, Git `name-only`, or filename recency.
 
-**When spawning parallel Codex subagents for Phase 2 and Phase 3, always pass:**
-- The complete list of GDD file paths loaded in Phase 1 (explicit paths, not just counts)
-- The run ID and complete path/hash input manifest from Phase 1d
-- The full TR registry contents if loaded in Phase 1b (paste the registry text, not just a file path)
-- The specific checklist items assigned to that agent's phase (Phase 2 gets 2a–2f; Phase 3 gets 3a–3g)
-- The engine name and version from `.codex/docs/technical-preferences.md` and `docs/engine-reference/[engine]/VERSION.md`
+Compare baseline and current manifests by stable system ID and classify:
 
-Do not rely on the subagent to re-read these files — it has its own context window and cannot access Phase 1 results unless they are explicitly passed in the delegation prompt.
-Require each worker to echo the run ID and input hashes it used, identify the
-checks it completed, and enumerate unchecked scope. A missing/mismatched hash,
-worker error, or incomplete required phase makes the merged verdict `PARTIAL`.
+- added or removed system;
+- same ID with a renamed path;
+- same ID/path with changed exact-byte hash; or
+- unchanged.
 
----
+Build the union of the baseline and current typed graphs. Seed the impact set
+with every added, removed, renamed, or changed system, then traverse both
+outgoing and derived incoming edges transitively until a fixed point. Removed
+nodes remain baseline tombstones so their former dependents are not lost.
+Untracked and dirty current inputs participate through their current exact-byte
+hashes like every other input.
 
-## Phase 2: Cross-GDD Consistency
+If concept, pillars, systems index, ruleset, graph identity, or consistency
+evidence scope changed, the effect is global: set `effective_scope: full` and
+review the complete current set. If the baseline is absent, malformed,
+ambiguous, or cannot reproduce its graph, disclose why incremental scope is
+unsafe and fall back to `full`, not a guessed subset.
 
-Work through every pair and group of GDDs to find contradictions and gaps.
+### 1e. Bind run identity and planned coverage
 
-### 2a: Dependency Bidirectionality
+Create an ordered manifest and record:
 
-For every GDD's Dependencies section, check that every listed dependency is
-reciprocal:
-- If GDD-A lists "depends on GDD-B", check that GDD-B lists GDD-A as a dependent
-- If GDD-A lists "depended on by GDD-C", check that GDD-C lists GDD-A as a dependency
-- Flag any one-directional dependency as a consistency issue
+- project ID: canonical repository root plus repository identity;
+- run ID: UTC timestamp plus the first 12 characters of the ordered manifest
+  digest;
+- requested mode and effective scope;
+- source revision: commit ID or null plus `clean`, `dirty`, or
+  `includes-untracked-inputs`;
+- every system/supporting path, stable ID/role, exact SHA-256, approval state,
+  and baseline delta;
+- ruleset ID, exact ruleset SHA-256, skill-bundle SHA-256 over the ordered main
+  file, continuation, and ruleset bytes, and all active limits; and
+- every required check and planned shard ID.
 
-```
-⚠️  Dependency Asymmetry
-[system-a].md lists: Depends On → [system-b].md
-[system-b].md does NOT list [system-a].md as a dependent
-→ One of these documents has a stale dependency section
-```
-
-### 2b: Rule Contradictions
-
-For each game rule, mechanic, or constraint defined in any GDD, check whether
-any other GDD defines a contradicting rule for the same situation:
-
-Categories to scan:
-- **Floor/ceiling rules**: Does any GDD define a minimum value for an output? Does any other say a different system can bypass that floor? These contradict.
-- **Resource ownership**: If two GDDs both define how a shared resource accumulates or depletes, do they agree?
-- **State transitions**: If GDD-A describes what happens when a character dies,
-  does GDD-B's description of the same event agree?
-- **Timing**: If GDD-A says "X happens on the same frame", does GDD-B assume
-  it happens asynchronously?
-- **Stacking rules**: If GDD-A says status effects stack, does GDD-B assume
-  they don't?
-
-```
-🔴 Rule Contradiction
-[system-a].md: "Minimum [output] after reduction is [floor_value]"
-[system-b].md: "[mechanic] bypasses [system-a]'s rules and can reduce [output] to 0"
-→ These rules directly contradict. Which GDD is authoritative?
-```
-
-### 2c: Stale References
-
-For every cross-document reference (GDD-A mentions a mechanic, value, or
-system name from GDD-B), verify the referenced element still exists in GDD-B
-with the same name and behaviour:
-
-- If GDD-A says "combo multiplier from the combat system feeds into score", check
-  that the combat GDD actually defines a combo multiplier that outputs to score
-- If GDD-A references "the progression curve defined in [system].md", check that
-  [system].md actually has that curve, not a different progression model
-- If GDD-A was written before GDD-B and assumed a mechanic that GDD-B later
-  designed differently, flag GDD-A as containing a stale reference
-
-```
-⚠️  Stale Reference
-inventory.md (written first): "Item weight uses the encumbrance formula
-  from movement.md"
-movement.md (written later): Defines no encumbrance formula — uses a flat
-  carry limit instead
-→ inventory.md references a formula that doesn't exist
-```
-
-### 2d: Data and Tuning Knob Ownership Conflicts
-
-Two GDDs should not both claim to own the same data or tuning knob. Scan all
-Tuning Knobs sections across all GDDs and flag duplicates:
-
-```
-⚠️  Ownership Conflict
-[system-a].md Tuning Knobs: "[multiplier_name] — controls [output] scaling"
-[system-b].md Tuning Knobs: "[multiplier_name] — scales [output] with [factor]"
-→ Two GDDs define multipliers on the same output. Which owns the final value?
-  This will produce either a double-application bug or a design conflict.
-```
-
-### 2e: Formula Compatibility
-
-For GDDs whose formulas are connected (output of one feeds input of another),
-check that the output range of the upstream formula is within the expected
-input range of the downstream formula:
-
-- If [system-a].md outputs values between [min]–[max], and [system-b].md is
-  designed to receive values between [min2]–[max2], is the mismatch intentional?
-- If an economy GDD expects resource acquisition in range X, and the
-  progression GDD generates it at range Y, the economy will be trivial or
-  inaccessible — is that intended?
-
-Flag incompatibilities as CONCERNS (design judgment needed, not necessarily wrong):
-
-```
-⚠️  Formula Range Mismatch
-[system-a].md: Max [output] = [value_a] (at max [condition])
-[system-b].md: Base [input] = [value_b], max [input] = [value_c]
-→ Late-[stage] [scenario] can resolve in a single [event].
-  Is this intentional? If not, either [system-a]'s ceiling or [system-b]'s ceiling needs adjustment.
-```
-
-### 2f: Acceptance Criteria Cross-Check
-
-Scan Acceptance Criteria sections across all GDDs for contradictions:
-
-- GDD-A criteria: "Player cannot die from a single hit"
-- GDD-B criteria: "Boss attack deals 150% of player max health"
-These acceptance criteria cannot both pass simultaneously.
+The `manifest_sha256` is the SHA-256 of the canonical ordered manifest. The
+`stale_key` is the SHA-256 of canonical JSON containing project ID, ruleset ID,
+exact ruleset hash, requested mode, and the sorted complete path/hash artifact
+set. Never use a timestamp as either digest.
 
 ---
 
-## Phase 3: Game Design Holism
+## Phase 2: Import deterministic consistency evidence
 
-Review all GDDs together through the lens of game design theory and player
-psychology. These are issues that individual GDD reviews cannot catch because
-they require seeing all systems at once.
+Run this phase only where the mode matrix says `REQUIRED`.
 
-### Evidence and severity boundary for Phase 3
+In `full` and `since-last-review`, consistency-evidence validation and the first
+independent theory-shard batch may run in parallel after the Phase 1 manifest is
+locked. They consume disjoint slices, use the same run ID and hashes, and must
+both finish before scenario selection or verdict computation. Parallelism never
+changes the deterministic merge order.
 
-Phase 3 does not turn general design advice into architecture blockers. Record
-each observation as `HYPOTHESIS / ADVISORY` and include:
+Validate the explicitly supplied `consistency-report:` as
+`cgs.consistency-report/v1`. It must contain a valid record ID, the same project
+ID, exact current path/hash coverage for the complete review set, a coverage
+ledger, stable finding IDs, evidence locations, and verdict
+`PASS | FINDINGS | PARTIAL | ERROR`. Recompute all referenced current hashes.
+Registry content, when used by the producer, is evidence owned and validated by
+that report; do not separately load or reinterpret the registry here.
 
-1. the exact hashed GDD evidence;
-2. assumptions needed for the hypothesis to hold;
-3. at least one plausible counterexample or compensating mechanic;
-4. a concrete validation plan (simulation, telemetry, playtest, or owner review);
-5. the owner-approved invariant or threshold, if one actually exists.
+- Missing, malformed, `PARTIAL`, `ERROR`, hash-mismatched, or scope-incomplete
+  consistency evidence is a required coverage gap and forces this run to
+  `PARTIAL`.
+- `PASS` imports no deterministic findings.
+- `FINDINGS` imports each supported finding, maps its category through the
+  versioned rule matrix, and preserves the producer finding ID as provenance.
+- An imported severity label alone never proves a blocker. The matrix's
+  objective preconditions must be present in the imported evidence; otherwise
+  classify the item as a warning or coverage gap as specified there.
 
-Absent a reproducible violation of an explicit anti-pillar, owner-approved
-invariant, or owner-approved threshold in the input manifest, Phase 3 findings
-may contribute to `CONCERNS` but never `FAIL`. Missing measurement is reported
-as `NEEDS_MEASUREMENT`, not as proof of imbalance, overload, or dominance.
+In incremental mode, the consistency report must still bind the complete
+current review set. Report only imported findings with at least one target in
+the impact closure, but retain full-report identity as provenance. This phase
+never reruns registry comparison, fills the registry, selects a winning value,
+or modifies the consistency report.
 
-### 3a: Progression Loop Competition
+---
 
-A project may intend one dominant progression loop, several co-equal loops, or
-a deliberately open structure. Do not assume one model is universally correct.
-Compare the GDDs with the project's explicit pillars and owner-approved loop
-invariants; otherwise record loop competition only as a hypothesis to validate.
+## Phase 3: Run bounded design-holism shards
 
-Scan all GDDs for systems that:
-- Award the player's primary resource (XP, levels, prestige, unlocks)
-- Define themselves as the "core" or "main" loop
-- Have comparable depth and time investment to other systems doing the same
+Run this phase only where the mode matrix says `REQUIRED`.
 
-```
-💡 HYPOTHESIS / ADVISORY — Competing Progression Loops
-combat.md: Awards XP, unlocks abilities, is described as "the core loop"
-crafting.md: Awards XP, unlocks recipes, is described as "the primary activity"
-exploration.md: Awards XP, unlocks map areas, described as "the main driver"
-→ Hypothesis: overlapping claims may make progression intent unclear.
-  Assumption: the loops target the same players and session moments.
-  Counterexample: the game may intentionally support distinct play styles.
-  Validate: owner confirms the intended loop hierarchy, then playtest choice
-  distribution and abandonment before changing scope.
-```
+### 3a. Plan deterministic shards
 
-### 3b: Player Attention Budget
+Use the compact typed graph to produce:
 
-Count how many systems require active player attention simultaneously during
-a typical session. Each actively-managed system costs attention:
+1. domain node shards, grouping related systems without exceeding any ruleset
+   limit; and
+2. cross-domain edge shards covering every typed edge whose endpoints do not
+   occur together in a domain shard.
 
-- Active = player must make decisions about this system regularly during play
-- Passive = system runs automatically, player sees results but doesn't manage it
+Sort systems by normalized domain then stable system ID, and edges by edge type,
+source ID, target ID, then evidence path. Fill shards greedily in that order.
+Every in-scope node and edge must map to at least one planned shard. No worker
+receives the whole corpus unless the complete corpus itself fits one bounded
+shard. Pass only the shard's paths, exact hashes, compact graph slice, applicable
+checks, pillars/invariants needed by that slice, run ID, and ruleset excerpt.
+Do not pass the entity registry, unrelated engine details, or an unbounded
+conversation transcript.
 
-Do not apply a universal "3-4 systems" limit. Present the count, decision
-frequency, time pressure, UI support, audience, and any owner-approved attention
-budget. Without such a budget or player evidence, exceeding a heuristic count
-is an advisory hypothesis only:
+If one GDD alone exceeds the byte limit, a required edge cannot be placed, or
+available context cannot complete a planned shard, mark it unchecked and force
+`PARTIAL`; do not silently widen the limit or claim corpus-wide coverage.
 
-```
-💡 HYPOTHESIS / ADVISORY — Cognitive Load Risk
-Simultaneously active systems during [core loop moment]:
-  1. [system-a].md — [decision type] (active)
-  2. [system-b].md — [resource management] (active)
-  3. [system-c].md — [tracking] (active)
-  4. [system-d].md — [item/action use] (active)
-  5. [system-e].md — [cooldown/timer management] (active)
-  6. [system-f].md — [coordination decisions] (active)
-→ Hypothesis: six concurrent decision channels may exceed the intended audience's
-  attention budget.
-  Assumptions: all six demand frequent decisions under the same time pressure.
-  Counterexample: strong automation, pausing, or staged UI may keep load low.
-  Validate: measure decision frequency/errors in a representative playtest or
-  compare against an owner-approved attention budget.
-```
+### 3b. Analyze theory as hypotheses
 
-### 3c: Dominant Strategy Detection
+Within each shard, inspect progression-loop interaction, attention demands,
+strategy trade-offs, economic sources/sinks, difficulty curves, pillar
+alignment, and player-fantasy coherence. Full-read only the GDDs assigned to
+that shard and verify their hashes before and after analysis.
 
-A dominant strategy, if demonstrated in the intended play context, can make
-alternatives irrelevant. Look for evidence that could support or falsify that
-hypothesis:
+Each theory item is `HYPOTHESIS / ADVISORY` and must contain exact evidence,
+assumptions, a plausible counterexample or compensating mechanic, a validation
+plan, and `NEEDS_MEASUREMENT` when measurement is absent. It cannot become a
+blocker merely because a common heuristic was exceeded. An explicit approved
+invariant violation uses the separate deterministic invariant rule and all of
+its proof requirements.
 
-- **Resource monopolies**: One strategy generates a resource significantly
-  faster than all others
-- **Risk/reward evidence**: measured outcomes for strategies with different risk
-- **Trade-off evidence**: whether an option is superior across approved dimensions
-- **Choice evidence**: simulation, telemetry, or playtests showing alternatives
-  are consistently irrelevant
+### 3c. Require the standard worker result
 
-```
-💡 HYPOTHESIS / ADVISORY — Potential Dominant Strategy
-combat.md: Ranged attacks deal 80% of melee damage with no risk
-combat.md: Melee attacks deal 100% damage but require close range
-→ The damage values alone do not prove dominance.
-  Assumptions: safety is materially higher and no hidden costs or encounter
-  constraints compensate for it.
-  Counterexample: melee may provide AOE, stagger, mobility, or regeneration.
-  Validate: simulate encounter outcomes and compare strategy pick/win rates.
+Every delegated analysis returns exactly one result shaped as:
+
+```yaml
+schema: cgs.cross-gdd-worker/v1
+run_id: <run ID>
+worker_id: <stable worker ID>
+phase: theory | scenario | evidence-validation
+shard_id: <planned shard ID>
+status: DONE | PARTIAL | ERROR
+input_manifest:
+  - path: <canonical path>
+    sha256: <exact hash used>
+checks:
+  - check_id: <ruleset check ID>
+    status: DONE | PARTIAL | ERROR | NOT_APPLICABLE
+unchecked_scope: []
+findings: []
 ```
 
-### 3d: Economic Loop Analysis
+Workers never emit the overall review verdict. Run independent shards in
+parallel up to the available concurrency, then continue in deterministic
+batches; do not omit a shard because all workers cannot start simultaneously.
+The coordinator validates every echoed hash and accounts for the Cartesian set
+of planned shard/check pairs.
 
-Identify all resources across all GDDs (gold, XP, crafting materials, stamina,
-health, mana, etc.). For each resource, map its **sources** (how players gain
-it) and **sinks** (how players spend it).
+### 3d. Merge deterministically
 
-Record these as economic hypotheses unless dimension/range evidence and an
-owner-approved invariant make the violation reproducible:
+Normalize every finding using the ruleset. Its fingerprint is SHA-256 over
+`rule_id + normalized targets + sorted evidence path/hash/section tuples`; its
+stable ID derives from that fingerprint. Sort merged results by phase, rule ID,
+severity rank, fingerprint, then source worker ID.
 
-| Condition | Sign | Risk |
-|-----------|------|------|
-| **Infinite source, no sink** | Resource may accumulate over the modeled horizon | Validate whether surplus erodes intended choices |
-| **Sink, no source** | Resource may drain toward zero | Validate availability across intended sessions |
-| **Source >> Sink** | Modeled surplus may grow | Validate whether the resource loses decision value |
-| **Sink >> Source** | Modeled scarcity may persist | Validate frustration and gatekeeping risk |
-| **Positive feedback loop** | More resource may accelerate acquisition | Validate snowball magnitude and caps |
-| **No catch-up** | Deficit may accelerate | Validate recovery paths and terminal states |
-
-```
-💡 HYPOTHESIS / ADVISORY — Possible Unbounded Positive Feedback
-gold economy:
-  Sources: monster drops (scales with player power), merchant selling (unlimited)
-  Sinks: equipment purchase (one-time), ability upgrades (finite count)
-→ Hypothesis: after finite purchases, gold may accumulate without a meaningful
-  sink. Counterexample: capped runs, resets, or unlisted recurring sinks may
-  bound accumulation. Validate with a source/sink simulation across the intended
-  play horizon before recommending new sinks.
-```
-
-### 3e: Difficulty Curve Consistency
-
-When multiple systems scale with player progression, compare their directions,
-rates, units, domains, caps, and the project's approved difficulty targets.
-Curve differences are not defects by themselves.
-
-For each system that scales over time, extract:
-- What scales (enemy health, player damage, resource cost, area size)
-- How it scales (linear, exponential, stepped)
-- When it scales (level, time, area)
-
-Compare all scaling curves. Treat a mismatch as a hypothesis until units,
-domains, caps, encounter cadence, and an owner-approved target are verified:
-
-```
-💡 HYPOTHESIS / ADVISORY — Difficulty Curve Mismatch
-combat.md: Enemy health scales exponentially with area (×2 per area)
-progression.md: Player damage scales linearly with level (+10% per level)
-→ Hypothesis: the stated curves may widen the time-to-kill gap.
-  Counterexample: abilities, party size, caps, or area cadence may compensate.
-  Validate with unit-checked simulation against the owner-approved difficulty
-  target; do not infer inaccessibility from these two formulas alone.
-```
-
-### 3f: Pillar Alignment
-
-Check whether each system documents a relationship to the approved design
-pillars. A missing or ambiguous mapping is evidence for an owner clarification,
-not proof that the system is scope creep.
-
-For each GDD system, check its Player Fantasy section against the design pillars.
-When alignment is interpretive, record it as a hypothesis rather than a blocker:
-
-```
-💡 HYPOTHESIS / ADVISORY — Possible Pillar Drift
-fishing-system.md: Player Fantasy — "peaceful, meditative activity"
-Pillars: "Brutal Combat", "Tense Survival", "Emergent Stories"
-→ Hypothesis: the connection to an approved pillar is not documented.
-  Counterexample: fishing may create tense survival decisions through food,
-  exposure, or risk. Validate with the owner; do not recommend cutting solely
-  from a missing textual mapping.
-```
-
-Also check anti-pillars — flag any system that does what an anti-pillar
-explicitly says the game will NOT do:
-
-```
-🔴 Deterministic Anti-Pillar Violation
-Anti-Pillar: "We will NOT have linear story progression — player defines their path"
-main-quest.md: Defines a 12-chapter linear story with mandatory sequence
-→ This may block only when the anti-pillar is explicit and current, the
-  conflicting rule is quoted from a hashed input, and no scoped exception is
-  present. Otherwise downgrade it to an advisory clarification request.
-```
-
-### 3g: Player Fantasy Coherence
-
-Compare player fantasies with any explicit, owner-approved identity invariant.
-Different fantasies may be complementary, contextual, or intentionally
-contrasting; textual difference alone does not demonstrate identity confusion.
-
-```
-💡 HYPOTHESIS / ADVISORY — Player Fantasy Conflict
-combat.md: "You are a ruthless, precise warrior — every kill is earned"
-dialogue.md: "You are a charismatic diplomat — violence is always avoidable"
-exploration.md: "You are a reckless adventurer — diving in without a plan"
-→ Hypothesis: these identities may feel incoherent.
-  Counterexample: the intended fantasy may be a versatile character whose
-  identity changes by context. Validate against an explicit fantasy invariant
-  and representative player interpretation before treating this as a defect.
-```
+Deduplicate identical fingerprints while retaining every producer/worker
+provenance. If the same fingerprint carries incompatible facts, severity,
+disposition, or evidence hashes, do not choose one result: record an
+`EVIDENCE_CONFLICT`, list both results as unresolved, and force `PARTIAL`.
+Missing workers, mismatched hashes, missing planned checks, or non-empty
+unchecked required scope also force `PARTIAL` while preserving completed
+evidence.
 
 ---
 
 ## Required continuation
 
-Before continuing, read [references/continued-workflow.md](references/continued-workflow.md) in full. It contains the remaining required phases, output formats, recovery rules, and handoff instructions; execute them in order.
+Before continuing, read
+[`references/continued-workflow.md`](references/continued-workflow.md) in full.
+It defines risk-scored scenario sampling, machine-consumable report output,
+verdict computation, optional persistence, and the final handoff. Execute those
+phases in order under the frozen contract and mode matrix above.

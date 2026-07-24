@@ -1,434 +1,292 @@
 # Skill Test Spec: $team-qa
 
-## Skill Summary
-
-Orchestrates an evidence-bound QA cycle for one exact build candidate. The skill
-requires an exact current QA plan and canonical passing smoke handoff before any
-execution artifacts are created, consumes structured automated/manual/playtest/
-soak receipts, freezes an auditable evidence index, and derives signoff using
-separate Workflow Status and QA Verdict axes. It never allocates bug numbers in
-parallel.
-
----
-
-## Static Assertions (Structural)
-
-- [ ] TQA-S001: YAML frontmatter contains only `name` and a non-empty
-  `description`; `name` is `team-qa`.
-- [ ] TQA-S002: Invocation exposes explicit `start`, `ingest`, `status`, and
-  `finalize` modes with exact paths.
-- [ ] TQA-S003: The skill forbids "latest", "most recent", mtime selection, and
-  session-state inference.
-- [ ] TQA-S004: Missing, unknown, stale, quick, warning-bearing, or unpersisted
-  smoke evidence maps to `BLOCKED_AT_ENTRY`, `INCOMPLETE`, and
-  `SMOKE EVIDENCE REQUIRED`; no execution or signoff writes are allowed.
-- [ ] TQA-S005: Candidate, QA-plan, smoke, automated, manual, playtest, soak,
-  evidence-index, and review evidence all require exact build/hash binding.
-- [ ] TQA-S006: Automated PASS requires command/argv, runner/version, exit code,
-  per-test results/counts, logs/results hashes, stable IDs, and build provenance.
-- [ ] TQA-S007: Automated `NOT_RUN`, `STALE`, `INVALID`, and `UNKNOWN` are
-  explicitly nonconclusive and cannot become PASS.
-- [ ] TQA-S008: Manual evidence requires tester, timestamps, platform/device,
-  stable IDs, per-step actuals, attestation, and attachment/log hashes.
-- [ ] TQA-S009: A user's chat choice and an agent summary are explicitly not
-  execution evidence.
-- [ ] TQA-S010: `Workflow Status` and `QA Verdict` are independent axes;
-  `COMPLETE` never implies `APPROVED`.
-- [ ] TQA-S011: Required `BLOCKED` or `NOT_RUN` rows force `INCOMPLETE` unless
-  there is a hash-bound explicit exclusion approval.
-- [ ] TQA-S012: Denominator arithmetic reports declared, excluded, required,
-  pass, fail, blocked, not-run, stale, invalid, and unknown counts.
-- [ ] TQA-S013: Valid current failure takes precedence over incomplete evidence
-  as `NOT_APPROVED` while incomplete rows remain visible.
-- [ ] TQA-S014: The skill forbids scanning, reserving, incrementing, or writing
-  `BUG-NNN` and `production/qa/bugs/**`; it emits collision-resistant occurrence
-  IDs for a serialized `bug-report` owner.
-- [ ] TQA-S015: Finalize requires the exact staged `test-evidence-review` axes:
-  COMPLETE, ADEQUATE, PASS, FULL, Closure Eligible YES.
-- [ ] TQA-S016: Playtest `COMPLETED` and soak `COMPLETE` are not treated as PASS
-  without their gate, identity, execution, readiness, dimension, and hash checks.
-- [ ] TQA-S017: `Gate Eligible: YES` is possible only for persisted
-  `QA Verdict: APPROVED`.
-- [ ] TQA-S018: Metadata display name is `Team QA` and its prompt describes the
-  exact-candidate evidence contract.
+## Purpose
+
+Verify the complete P1 remediation set TQA-007 through TQA-017. `$team-qa` must
+resolve one exact scope and build, authorize only presently knowable writes, respect the
+actual agent budget, freeze Phase 1–5 evidence before signoff, checkpoint every phase,
+quarantine partial/late work, and expose unambiguous workflow and QA result axes.
+
+This specification is static and fixture-driven. It does not execute `$team-qa`,
+external tests, bug creation, release gates or deployment.
+
+## Fixtures and harness rules
+
+Positive fixtures contain exact raw bytes and full lowercase SHA-256 for:
+
+- `cgs.team-qa-request/v2` and `cgs.team-qa-scope-manifest/v2`;
+- stable sprint/scope/story/requirement/AC/Test IDs and ordered source hashes;
+- candidate, build receipt, artifact, source and target matrix;
+- P1 QA plan, smoke receipt, regression selection and runner receipts;
+- manual, playtest and soak evidence where required;
+- Phase 1–5 checkpoints and `cgs.team-qa-evidence-manifest/v2`;
+- independent P1 test-evidence-review request/report; and
+- configured `max_threads`, exact live-agent snapshots, assignments and deadlines.
+
+Negative variants change exactly one fact unless stated otherwise. The harness asserts
+no undeclared filesystem, Git, build, bug, session, catalog, release, deployment or
+publication mutation. Catalog execution fields remain blank because document staging is
+not a real test run.
+
+## Structural assertions
+
+- [ ] Frontmatter contains only `name` and non-empty `description`; name is `team-qa`.
+- [ ] Invocation is exactly `$team-qa --request <path> --expect-request <sha256>`.
+- [ ] The strict request exposes START, INGEST, FREEZE, FINALIZE, STATUS and RESUME.
+- [ ] There are exactly six phases; Phase 6 consumes only frozen Phase 1–5 evidence plus independent review.
+- [ ] Scope, candidate, build, QA plan, smoke, evidence, review and signoff use exact path/hash identities.
+- [ ] Controller write, test/manual execution, bug creation, evidence review and release/deployment authorities remain separate.
+- [ ] START cannot pre-authorize future evidence, bug or signoff paths.
+- [ ] Concurrency counts controller and nested agents and never exceeds actual available slots.
+- [ ] Assignments have exclusive paths, deadlines, bounded responses, at most one retry and late-result quarantine.
+- [ ] Workflow State and QA Verdict are always paired; no bare COMPLETE is emitted.
+- [ ] Generic session state is not written; canonical immutable checkpoints bind the unique run and build.
+- [ ] No review-mode branch alters denominator, staffing, evidence or signoff semantics.
+- [ ] Context loading obeys file/byte/story/receipt/depth/agent/response/time budgets and records omissions.
+- [ ] QA plan consumption matches `cgs-qa-plan` Schema 2; it remains Gate Evidence NO.
+- [ ] Smoke consumption matches `cgs-smoke-check-receipt/v2`; only persisted sprint PASS with handoff YES enters.
+- [ ] Regression selection Schema 2 is not treated as test execution.
+- [ ] Automated/manual/playtest/soak PASS requires current independently produced evidence.
+- [ ] Evidence review checks all independent P1 axes, not Workflow COMPLETE alone.
+- [ ] QA_APPROVED becomes Gate Eligible YES only after verified signoff persistence.
+- [ ] Team-QA signoff is QA evidence, never release GO or deployment/publication authority.
+- [ ] Terminal output is `cgs.team-qa-result/v2` with exactly one legal next operation.
+
+## P1 traceability
+
+| Audit ID | Primary case |
+|---|---|
+| TQA-007 | Case 1 |
+| TQA-008 | Case 2 |
+| TQA-009 | Case 3 |
+| TQA-010 | Case 4 |
+| TQA-011 | Case 5 |
+| TQA-012 | Case 6 |
+| TQA-013 | Case 7 |
+| TQA-014 | Case 8 |
+| TQA-015 | Case 9 |
+| TQA-016 | Case 10 |
+| TQA-017 | Case 11 |
+
+## Case 1 — Unique stable scope, never glob or mtime — TQA-007
+
+Provide exact scope `SPRINT-12` with one stable sprint manifest and ordered story
+hashes. Test these variants independently: two matching sprint files; a directory or
+glob instead of manifest; “latest sprint”; date-only scope/run ID; changed story hash;
+duplicate canonical story path; and exact valid scope.
+
+**Expected**
+
+- only the exact valid `cgs.team-qa-scope-manifest/v2` proceeds;
+- every ambiguous/multiple/unsafe/mismatched variant is
+  `WORKFLOW_BLOCKED_AT_ENTRY / QA_INCOMPLETE / Gate Eligible NO`;
+- no directory enumeration, mtime tie-break or automatic sprint choice occurs;
+- scope ID, ordered membership and scope identity hash appear in every later artifact;
+  and
+- a changed scope/build requires a new QA run ID.
+
+## Case 2 — Operation-scoped authorization for knowable writes — TQA-008
+
+START has exact manifest/strategy/case paths but failures and future evidence IDs are
+not yet known. Later, two evidence receipts and one unmatched finding arrive.
+
+**Expected**
+
+- START previews/creates only its exact known absent targets and checkpoint;
+- START authority does not cover later evidence, freeze, signoff or bug paths;
+- each INGEST, FREEZE and FINALIZE presents a new exact closed changeset only after its
+  IDs and bytes are known;
+- Team QA never writes `production/qa/bugs/**`; the exact occurrence/fingerprint/evidence
+  is handed to one serialized bug-report owner under separate authority;
+- expanded scope or changed output membership stops for a new request/authority;
+- no prose claims that all future files were pre-authorized.
+
+## Case 3 — Live-slot concurrency cap and exclusive batching — TQA-009
 
----
+Set `max_threads = 6`, request worker limit 4, and test live totals one, three and six,
+including nested agents. Provide ten story shards with distinct case destinations.
 
-### Case 1: Missing or UNKNOWN smoke evidence blocks at entry
+**Expected**
 
-**Fixture:**
+- dispatch slots are respectively four, three and zero;
+- the controller and nested agents count; children may not spawn without assigned slot;
+- invalid/missing config or live count falls back to serial execution;
+- shards run in batches no larger than dispatch slots and each owns disjoint proposal
+  paths;
+- every batch is gathered and recorded before the next;
+- no “one tester per story” unbounded dispatch occurs.
 
-- Exact candidate manifest and current QA plan are valid.
-- No canonical smoke report exists for the candidate, or the supplied report has
-  `Verdict: INCOMPLETE` with an UNKNOWN row.
-- No `production/qa/team-runs/tqa-run-001/` directory exists.
+## Case 4 — Phase 6 consumes only frozen Phase 1–5 inputs — TQA-010
 
-**Input:**
+Prepare complete checkpoints 01–05 and one frozen evidence-manifest identity. Provide
+qa-lead an input phrased as “Phases 4–6,” then the exact Phase 1–5 manifest/checkpoint.
+Attempt to include the Phase 6 signoff candidate in its own inputs.
 
-`$team-qa start sprint-12 --run-id tqa-run-001 --candidate production/builds/cand-12/manifest.md --qa-plan production/qa/qa-plan-sprint-12-2026-07-22.md --smoke-receipt production/qa/evidence/smoke/cand-12/smoke-001/report.md`
+**Expected**
 
-**Expected writes:**
+- ambiguous “Phases 4–6” and self-referential signoff input are rejected;
+- qa-lead receives only the exact frozen Phase 1–5 evidence manifest/checkpoint and
+  cannot change rows, counts or evidence;
+- independent evidence review is a separate exact input;
+- Phase 6 derives signoff deterministically without circular dependency;
+- the spec and skill expose the same six-phase order.
 
-- None.
+## Case 5 — Workflow completion is never QA approval — TQA-011
 
-**Expected non-writes:**
+Finalize three fully evaluated fixtures: all evidence passes, one current FAIL, and one
+required NOT_RUN. Test a downstream parser that sees only the word COMPLETE.
 
-- No team-run directory, manifest, strategy, cases, evidence index, signoff, bug,
-  session-state, or review-mode file.
+**Expected**
 
-**Expected behavior:**
+- output always contains paired machine axes plus an unambiguous rendered outcome;
+- the fixtures return respectively
+  `WORKFLOW_COMPLETED / QA_APPROVED`,
+  `WORKFLOW_COMPLETED / QA_NOT_APPROVED`, and
+  `WORKFLOW_COMPLETED / QA_INCOMPLETE`;
+- no standalone COMPLETE field may be consumed as quality success;
+- Gate Eligible is YES only for verified persisted QA_APPROVED;
+- the parser cannot infer pass from workflow completion.
 
-1. Reads only the exact candidate, plan, and supplied smoke path.
-2. Does not search for another report or select by mtime.
-3. Returns `Workflow Status: BLOCKED_AT_ENTRY`,
-   `QA Verdict: INCOMPLETE`, `Gate Eligible: NO`, and
-   `Reason: SMOKE EVIDENCE REQUIRED`.
-4. May show a draft strategy only in conversation.
-5. Does not delegate test execution or manual testing.
+## Case 6 — Unique run path and coherent checkpoint vocabulary — TQA-012
 
-**Assertions:**
+Start two runs on the same calendar date, test a date-only ID, and attempt to write
+`production/session-state/active.md` using legacy PASS/FAIL/CONCERNS values. Provide one
+valid UUID run with checkpoint/signoff hashes.
 
-- [ ] TQA-C01-A: UNKNOWN is never accepted as pass-with-warnings.
-- [ ] TQA-C01-B: No QA execution or signoff artifact is created.
-- [ ] TQA-C01-C: The response names the exact missing/nonconclusive smoke row.
+**Expected**
 
----
+- date-only or colliding run IDs are rejected;
+- no generic session-state file is read or written;
+- only the canonical unique run root and `cgs.team-qa-checkpoint/v2` store recovery
+  state;
+- checkpoints/signoff use the same Workflow State, QA Verdict, Gate Eligible, phase
+  and persistence enumerations;
+- every checkpoint binds build, evidence-manifest and report/signoff hashes or explicit
+  NONE, preventing path/date drift.
 
-### Case 2: A newer wrong-build report cannot replace the supplied receipt
+## Case 7 — Milestone checkpoints and exact resume — TQA-013
 
-**Fixture:**
+Interrupt after phases 1, 3 and 5. Resume each from its exact checkpoint. Then vary a
+predecessor hash, candidate byte, evidence receipt and already-existing next target.
 
-- Candidate `cand-a`, build hash `aaa...`, current QA plan, and canonical passing
-  smoke report `smoke-a/report.md` are supplied.
-- A later-mtime `smoke-b/report.md` exists for candidate `cand-b`, build hash
-  `bbb...`.
-- Variant A supplies `smoke-a/report.md` and all hashes match.
-- Variant B supplies `smoke-b/report.md` while the candidate remains `cand-a`.
+**Expected**
 
-**Input:**
+- phases 01–05 each have an immutable predecessor-linked checkpoint with inputs,
+  outputs, status axes, assignment ledger, budget use and legal next operation;
+- valid resume re-hashes the entire predecessor/input chain and continues only the
+  recorded next operation without replaying complete work;
+- changed/broken/ambiguous fixtures block and name the exact owner/action;
+- existing target or CAS drift never overwrites and writes nothing further;
+- STATUS validates the chain read-only and never repairs it.
 
-Run `start` for both variants with distinct run IDs.
+## Case 8 — Timeout, partial, cancel, retry and late-write rules — TQA-014
 
-**Expected writes:**
+Run four required assignments: one succeeds, one returns half a schema, one times out,
+and one is cancelled. Let the timeout return after Phase 5 freeze. Also test a retry
+whose candidate hash changed.
 
-- Variant A may create its authorized team-run manifest, strategy, and cases.
-- Variant B writes nothing.
+**Expected**
 
-**Expected non-writes:**
+- assignment IDs, deadlines, response limits, attempts and exact outcomes are recorded;
+- partial/timeout/cancelled work leaves required rows nonconclusive and QA_INCOMPLETE;
+- at most one retry is allowed before freeze with identical inputs/path/budget/authority;
+- changed retry inputs require new authority and cannot reuse the assignment;
+- Phase 5 cancels outstanding work; late output is `LATE_IGNORED` and cannot write,
+  amend or qualify the frozen run;
+- admitting late evidence requires a new evidence identity and QA run.
 
-- Neither variant edits either smoke report or selects a third report.
+## Case 9 — Review-mode removal and explicit role fallback — TQA-015
 
-**Expected behavior:**
+Supply legacy `full`, `lean` and `solo` flags; separately make qa-tester and qa-lead
+unavailable while all execution evidence remains external.
 
-1. Variant A consumes the exact supplied `smoke-a` report even if it is older.
-2. Variant B detects candidate/build/artifact/source/platform/QA-plan mismatch and
-   returns `BLOCKED_AT_ENTRY / INCOMPLETE / Gate Eligible: NO`.
-3. No filename date or modification time participates in selection.
+**Expected**
 
-**Assertions:**
+- legacy review flags are rejected and cannot alter evidence scope, denominator,
+  staffing or verdict;
+- qa-tester absence permits local case drafting only, still NOT_RUN;
+- qa-lead absence permits draft strategy/mechanical normalization only; a policy-
+  required assessment stays missing and forces QA_INCOMPLETE;
+- independent test-evidence-review can never be self-produced or waived;
+- fallback cannot attest execution, manual observation, playtest, soak or platform facts.
 
-- [ ] TQA-C02-A: Exact path and hash win over mtime.
-- [ ] TQA-C02-B: Wrong-build evidence is rejected as stale/mismatched.
-- [ ] TQA-C02-C: A changed build requires a new QA run ID.
+## Case 10 — Bounded context with complete omission ledger — TQA-016
 
----
+Provide 100 stories when the request allows 10 story shards and a byte limit that fits
+nine complete story authority closures. Include one tenth story whose dependency closure
+would cross the byte limit.
 
-### Case 3: Automated tests not run or stale cannot pass
+**Expected**
 
-**Fixture:**
+- only declared, deterministically ordered files are read; no full-directory scan occurs;
+- nine whole closures load and the tenth is omitted intact, never partially truncated;
+- selected/loaded/missing/unreadable/invalid/omitted/unprocessed rows and consumed
+  file/byte/dependency budgets are reported;
+- required omission makes workflow partial and QA_INCOMPLETE;
+- each delegate receives one bounded shard and returns schema rows plus bounded summary,
+  not the full corpus;
+- raising a request budget above hard ceilings is rejected.
 
-- A started QA run requires automated IDs `AT-001` and `AT-002`.
-- Receipt R1 has a zero exit code but omits runner version, per-test results, and
-  log/result hashes.
-- Receipt R2 is structurally complete for `AT-002` but is bound to the previous
-  build hash.
-- The regression selection manifest path is present but its recorded hash differs
-  from the current `tests/regression-suite.md`.
+## Case 11 — Complete aligned specification and QA/release integration — TQA-017
 
-**Input:**
+Run static structure lint and the adjacent-contract matrix.
 
-Ingest R1 and R2 with `--automated-receipt`.
+### QA-plan variants
 
-**Expected writes:**
+1. exact `cgs-qa-plan` Schema 2 with generation/current states CURRENT, complete
+   coverage, Build Binding BOUND and Gate Evidence NO;
+2. Schema 1, PARTIAL/UNKNOWN, unbound build, gaps or stale source.
 
-- At most immutable evidence records and a versioned evidence index describing the
-  rejected/nonconclusive receipts, if those CREATE paths were authorized.
+Only variant 1 may satisfy the plan authority; it never proves execution.
 
-**Expected non-writes:**
+### Smoke variants
 
-- No PASS rewrite, fabricated runner receipt, source-receipt edit, or signoff.
+1. exact canonical `cgs-smoke-check-receipt/v2`, sprint PASS, Persistence VERIFIED,
+   Handoff Eligible YES and matching selected-scope/member hashes;
+2. quick/targeted pass, wrong build, partial, warning/unknown, unpersisted or handoff NO.
 
-**Expected behavior:**
+Only variant 1 passes entry.
 
-1. R1 becomes `INVALID`, not PASS.
-2. R2 becomes `STALE`, not PASS.
-3. Uncovered required rows remain `NOT_RUN`.
-4. Returns `Workflow Status: RUNNING`, `QA Verdict: INCOMPLETE`, and
-   `Gate Eligible: NO`.
-5. Names the missing receipt fields and changed selection-manifest hash.
+### Regression, playtest, soak and review variants
 
-**Assertions:**
+- regression-selection-manifest Schema 2 without runner receipt remains NOT_RUN;
+- playtest requires `cgs.playtest-report/v2` plus independent recorder receipt and
+  `RECORDED COMPLETED — GATE ELIGIBLE`;
+- soak requires exact `cgs-soak-result/v2` plus completion receipt, verified persistence,
+  and explicit readiness/dimension evaluation; Handoff Eligible alone is not PASS;
+- evidence review closure requires COMPLETE, ADEQUATE, ADMISSIBLE, PASS, CURRENT,
+  COMPLETE execution, FULL scope, Closure Eligible YES and Persistence WRITTEN.
 
-- [ ] TQA-C03-A: Exit code alone is not execution evidence.
-- [ ] TQA-C03-B: Old-build and changed-selection evidence cannot be current PASS.
-- [ ] TQA-C03-C: All required automated IDs remain in denominator counts.
+### Release handoff variants
 
----
+1. verified QA_APPROVED signoff for the exact release candidate;
+2. QA_NOT_APPROVED, QA_INCOMPLETE, unpersisted signoff or wrong candidate;
+3. QA_APPROVED presented directly as release/deployment authority.
 
-### Case 4: Chat PASS is not manual evidence
+Variant 1 is QA evidence only. Release-checklist may normalize it through its exact
+Schema 2 evidence index while retaining Gate Decision NOT_EVALUATED and all authorities
+NONE. Team-release may consume it only through its exact release-gate request/receipt
+policy binding. Variants 2–3 cannot pass the release QA gate or authorize an action.
 
-**Fixture:**
+**Static completion expected**
 
-- Manual case `MC-017` requires three steps and a screenshot/log attachment.
-- The user says "PASS" in chat and describes the feature as looking correct.
-- No record contains tester ID, device/OS/input, timestamps, per-step actuals,
-  attestation, attachment path, or hash.
+- all eleven IDs TQA-007 through TQA-017 occur in SKILL and spec;
+- exactly eleven primary cases are present and each has explicit expected behavior;
+- phases, status axes, canonical paths and schemas match across skill, metadata and spec;
+- the formerly damaged Case 1 has a complete heading, fixture and expectations;
+- live files, shared/catalog state and old P0 staging are untouched;
+- catalog result/timestamp fields remain blank without real execution receipts.
 
-**Input:**
+## Required P0 regression matrix
 
-`$team-qa ingest tqa-run-004 --manual-evidence conversation-summary.md`
+The harness must retain these prior safety properties:
 
-**Expected writes:**
-
-- None, or an authorized immutable rejection record that remains
-  `Evidence Eligible: NO`.
-
-**Expected non-writes:**
-
-- No synthesized manual PASS receipt, no edited case status, no signoff, no bug.
-
-**Expected behavior:**
-
-1. Treats the chat selection as non-evidence.
-2. Classifies `MC-017` as `INVALID` or `UNKNOWN` and preserves it in the required
-   denominator.
-3. Returns `RUNNING / INCOMPLETE / Gate Eligible: NO`.
-4. Requests a canonical record with tester, environment, every step's actual
-   result, timestamps, attestation, and attachment hashes.
-
-**Assertions:**
-
-- [ ] TQA-C04-A: User self-report alone cannot establish PASS.
-- [ ] TQA-C04-B: qa-tester transcription cannot invent missing provenance.
-- [ ] TQA-C04-C: Manual evidence fields are checked individually.
-
----
-
-### Case 5: BLOCKED and NOT_RUN rows prevent approval
-
-**Fixture:**
-
-- The plan declares ten required rows.
-- One hash-bound approval receipt excludes one row, leaving required denominator
-  nine.
-- Seven rows PASS, one is BLOCKED, and one is NOT_RUN.
-- The evidence-review report is COMPLETE but its execution status is UNKNOWN and
-  closure eligibility is NO.
-
-**Input:**
-
-`$team-qa finalize tqa-run-005 --evidence-review production/qa/evidence/reviews/rev-005/report.md`
-
-**Expected writes:**
-
-- An authorized immutable `signoff.md` may be created with
-  `QA Verdict: INCOMPLETE` and `Gate Eligible: NO`.
-
-**Expected non-writes:**
-
-- No change to plan, receipts, exclusion approval, evidence review, or bugs.
-
-**Expected behavior:**
-
-1. Shows declared 10, excluded 1, required 9, pass 7, blocked 1, not-run 1.
-2. Does not omit the blocked/not-run rows or count the exclusion without verifying
-   its scope/plan/candidate hashes.
-3. Returns `Workflow Status: COMPLETE` and `QA Verdict: INCOMPLETE` as separate
-   axes.
-4. Does not recommend a downstream gate.
-
-**Assertions:**
-
-- [ ] TQA-C05-A: Required BLOCKED/NOT_RUN rows are never approval-neutral.
-- [ ] TQA-C05-B: COMPLETE review/workflow text does not imply PASS.
-- [ ] TQA-C05-C: Denominator arithmetic is explicit and consistent.
-
----
-
-### Case 6: Parallel failure findings do not collide on bug IDs
-
-**Fixture:**
-
-- Two qa-tester tasks independently find failures for `MC-020` and `MC-021` at
-  nearly the same time.
-- The canonical bug directory's highest current numeric ID is `BUG-042`.
-- Neither finding has an existing matching fingerprint.
-
-**Input:**
-
-Ingest both valid current failure receipts, then request finalize.
-
-**Expected writes:**
-
-- Distinct immutable evidence/finding records and evidence-index entries using
-  occurrence IDs derived from run ID, test/case ID, and evidence hash.
-- A `NOT_APPROVED` signoff may be written after evidence review.
-
-**Expected non-writes:**
-
-- No `BUG-043.md` or any other `production/qa/bugs/**` file.
-- No bug-number reservation file and no scan/increment operation.
-
-**Expected behavior:**
-
-1. Produces two distinct `TQA-OCC-...` IDs and normalized fingerprints.
-2. Sends both candidates to one serialized `bug-report` owner.
-3. Keeps `Gate Eligible: NO` until canonical bug receipts or approved dispositions
-   exist.
-4. Never lets parallel qa-testers allocate canonical bug IDs.
-
-**Assertions:**
-
-- [ ] TQA-C06-A: Occurrence IDs are collision-resistant and distinct.
-- [ ] TQA-C06-B: Team QA has no canonical bug-file write ownership.
-- [ ] TQA-C06-C: The single-owner handoff eliminates the read-max/increment race.
-
----
-
-### Case 7: Failure precedence preserves simultaneous evidence gaps
-
-**Fixture:**
-
-- One valid current automated receipt is FAIL.
-- One required manual row is NOT_RUN.
-- One required soak row is INCONCLUSIVE.
-- The exact evidence-review report evaluates the whole declared scope but reports
-  Overall Execution Status FAIL and Closure Eligible NO.
-
-**Input:**
-
-Finalize the run with the exact review report.
-
-**Expected writes:**
-
-- Authorized immutable signoff with `Workflow Status: COMPLETE`,
-  `QA Verdict: NOT_APPROVED`, and `Gate Eligible: NO`.
-
-**Expected non-writes:**
-
-- No relabeling of NOT_RUN or INCONCLUSIVE; no downstream gate artifact.
-
-**Expected behavior:**
-
-1. Applies current failure precedence and returns NOT_APPROVED.
-2. Separately lists the manual NOT_RUN and soak INCONCLUSIVE rows.
-3. Creates a collision-resistant occurrence for the failure and requires its bug
-   handoff/disposition.
-4. Reports exact counts without erasing incomplete evidence.
-
-**Assertions:**
-
-- [ ] TQA-C07-A: Failure precedence is deterministic.
-- [ ] TQA-C07-B: Incomplete rows remain visible under NOT_APPROVED.
-- [ ] TQA-C07-C: Gate eligibility remains NO.
-
----
-
-### Case 8: Canonical playtest and soak labels are interpreted semantically
-
-**Fixture:**
-
-- Playtest P1 is canonical and says `Status: COMPLETED` but
-  `Gate Eligible: NO`.
-- Soak S1 is canonical and says `Verdict: COMPLETE` but
-  `Readiness Result: INCONCLUSIVE` and Memory dimension `INCOMPLETE`.
-- Both otherwise match the candidate.
-
-**Input:**
-
-Ingest P1 and S1.
-
-**Expected writes:**
-
-- Optional authorized immutable evidence records reflecting their exact
-  nonconclusive statuses.
-
-**Expected non-writes:**
-
-- No PASS normalization and no APPROVED signoff.
-
-**Expected behavior:**
-
-1. Rejects P1 for required-row closure because its gate flag is NO.
-2. Rejects S1 for readiness because INCONCLUSIVE/INCOMPLETE is not PASS.
-3. Returns `RUNNING / INCOMPLETE / Gate Eligible: NO`.
-4. Explains that completion/finalization labels are independent of QA success.
-
-**Assertions:**
-
-- [ ] TQA-C08-A: Playtest COMPLETED alone is not PASS.
-- [ ] TQA-C08-B: Soak COMPLETE alone is not readiness PASS.
-- [ ] TQA-C08-C: Dimension and provenance hashes remain mandatory.
-
----
-
-### Case 9: Fully verified exact-candidate run is approved
-
-**Fixture:**
-
-- Exact candidate manifest, current QA plan, and persisted sprint-mode smoke
-  receipt all match and re-hash.
-- Every required automated/manual/playtest/soak row has structurally valid,
-  current, exact-candidate PASS evidence.
-- No unapproved exclusion, warning, finding, condition, or gap exists.
-- The frozen evidence index is current.
-- The exact evidence-review report has artifact type/schema, candidate/index
-  binding, `Workflow Status: COMPLETE`, `Overall Evidence Quality: ADEQUATE`,
-  `Overall Execution Status: PASS`, `Execution Scope: FULL`, and
-  `Closure Eligible: YES`.
-- The authorized signoff path does not exist.
-
-**Input:**
-
-`$team-qa finalize tqa-run-009 --evidence-review production/qa/evidence/reviews/rev-009/report.md`
-
-**Expected writes:**
-
-- Exactly `production/qa/team-runs/tqa-run-009/signoff.md`, transactionally,
-  followed by byte re-read and SHA-256 verification.
-
-**Expected non-writes:**
-
-- No source evidence edits, bugs, session state, review-mode, catalog, guide, or
-  director-gate file.
-
-**Expected behavior:**
-
-1. Re-hashes the entire frozen evidence graph immediately before signoff.
-2. Reports denominator totals with every required row PASS.
-3. Writes a signoff with `Workflow Status: COMPLETE`,
-   `QA Verdict: APPROVED`, `Gate Eligible: YES`, and
-   `Persistence: VERIFIED`.
-4. Reports the canonical signoff path and verified SHA-256.
-
-**Assertions:**
-
-- [ ] TQA-C09-A: APPROVED requires every closure condition simultaneously.
-- [ ] TQA-C09-B: Gate Eligible becomes YES only after verified signoff persistence.
-- [ ] TQA-C09-C: No unrelated or external-owner artifact is written.
-
----
-
-## Cross-skill compatibility assertions
-
-- [ ] TQA-X001: QA-plan currentness and stable ID rules match staged `qa-plan`.
-- [ ] TQA-X002: Smoke path, receipt identity, sprint PASS, and handoff rules match
-  staged `smoke-check`.
-- [ ] TQA-X003: Regression selection manifest and runtime receipt distinction
-  match staged `regression-suite`.
-- [ ] TQA-X004: Evidence-review dual axes and closure rule match staged
-  `test-evidence-review`.
-- [ ] TQA-X005: Canonical playtest result path and required fields match staged
-  `playtest-report`.
-- [ ] TQA-X006: Canonical soak result path plus execution/readiness/dimension
-  semantics match staged `soak-test`.
+1. missing/unknown/stale/wrong-build smoke blocks at entry with no execution/signoff;
+2. automated NOT_RUN/STALE/INVALID/UNKNOWN never becomes PASS;
+3. manual PASS requires tester/device/time/per-step actuals/attestation/attachment hash;
+4. required BLOCKED/NOT_RUN prevents QA_APPROVED and remains in denominator arithmetic;
+5. Team QA never allocates numeric bug IDs or writes canonical bug files;
+6. a current FAIL takes QA_NOT_APPROVED precedence while incomplete rows remain visible;
+7. playtest/soak completion labels are not readiness PASS; and
+8. only exact current complete evidence plus closure-eligible independent review and
+   verified signoff persistence can yield QA_APPROVED / Gate Eligible YES.

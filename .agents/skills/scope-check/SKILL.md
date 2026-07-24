@@ -1,328 +1,238 @@
 ---
 name: scope-check
-description: "Read-only comparison of one explicit immutable scope baseline with one current scope manifest, using stable scope IDs and evidence coverage without deciding product cuts or re-baselining."
+description: Compares one exact immutable approved scope baseline with one exact current scope manifest using stable Scope IDs, deterministic delta and authority classifications, bounded evidence, and strictly read-only hash-bound results.
 ---
 
 # Scope Check
 
-## Invocation and contract
+Compare two explicit scope artifacts without choosing product scope or changing
+any plan. Stable Scope IDs and schema-declared semantic hashes determine deltas;
+owner-authorized records determine whether a delta is allowed; compatible receipts
+determine impact support. These are separate questions.
 
-Invoke one read-only command:
+## Invocation
+
+Use one exact command:
 
 ```text
-$scope-check compare --baseline <path> --current <path>
-$scope-check inspect --baseline <path> --current <path> [--evidence <manifest-path>]
+$scope-check compare
+  --baseline <project-relative-path>@sha256:<64-lowercase-hex>
+  --current <project-relative-path>@sha256:<64-lowercase-hex>
+
+$scope-check inspect
+  --baseline <project-relative-path>@sha256:<64-lowercase-hex>
+  --current <project-relative-path>@sha256:<64-lowercase-hex>
+  --evidence <project-relative-path>@sha256:<64-lowercase-hex>
+
 $scope-check discover
 ```
 
-- `compare` is the normal operation and returns the canonical delta report.
-- `inspect` adds bounded implementation, estimate, dependency, test, or change-record
-  evidence named by one evidence manifest. It does not infer scope from code.
-- `discover` only lists exact active-state candidate paths and their hashes. It does
-  not choose a pair or produce a scope verdict.
+- `compare` reads the immutable pair plus only their exact mandatory
+  approval/authority/normalization identity records.
+- `inspect` additionally reads only paths and exact revisions allowlisted by one
+  immutable evidence manifest.
+- `discover` reads canonical active-state pointers only, lists exact candidate
+  `path@sha256` identities, and returns `INPUT REQUIRED`. It never chooses or
+  compares candidates.
 
-Both `--baseline` and `--current` are required for analysis. A path supplied without
-its counterpart, a feature name, sprint nickname, story nickname, or no arguments is
-not resolved by fuzzy matching. Return `INPUT REQUIRED` with the exact invocation
-needed. If active state exposes exactly one apparent pair, show it as a suggestion and
-ask the user to confirm both paths; do not analyze it in the same invocation.
+Reject missing/repeated/unknown options, positional artifacts, bare paths without
+hashes, non-SHA-256 identities, absolute/out-of-project/traversing paths, escaping
+links, identical/aliased pair members, unsupported artifact types/schemas, and
+fuzzy names. No arguments or one missing pair member returns `INPUT REQUIRED`;
+invalid or ambiguous resolution returns `ERROR`. Never infer by title, feature,
+sprint nickname, similar filename, modification time, or newest active artifact.
 
-This skill is strictly read-only. It does not create or edit plans, stories, scope
-manifests, decisions, estimates, reports, Git state, or session state. It invokes no
-director gate and delegates no product decision.
+## Read-only boundary
 
-## Non-negotiable rules
+The allowed write set is empty. Do not edit or create baselines, current manifests,
+stories, epics, sprints, milestones, evidence, decisions, estimates, reports,
+session state, Git state, or re-baseline records. Do not invoke gates, planners,
+estimators, producers, or follow-up workflows. Do not scan the repository for
+related scope, code, TODOs, commits, or issue text.
 
-1. **Explicit immutable comparison** — identify the baseline and current artifact by
-   canonical repository-relative path, byte length, SHA-256, schema/version, and their
-   declared parent scope. Capture the baseline approval/version and its source commit
-   or recorded timestamp. Re-read and re-hash both before the final result.
-2. **Stable identity, not item count** — compare stable `Scope ID` values and semantic
-   content hashes. Never derive scope health, effort growth, or a verdict from raw item
-   counts, checklist row counts, files, commits, TODOs, or percentages of those counts.
-   Splitting or merging presentation rows cannot change scope by itself.
-3. **Evidence before metrics** — effort, schedule, quality, and integration statements
-   require declared evidence with matching scope IDs and hashes. Missing evidence is
-   `UNVERIFIED`; it is never guessed from prose, commit authors, or model judgment.
-4. **Advisory, not decisional** — report additions, removals, semantic modifications,
-   coverage gaps, and neutral response options. Never label an item `Cut`, `Keep`,
-   `Defer`, justified, approved, or re-baselined without a cited decision/change
-   record. The user or designated producer owns the choice.
-5. **No implicit baseline** — active milestone/sprint state may suggest paths only.
-   Multiple matches, missing approval/version, a changed baseline hash, or an
-   ambiguous parent relationship blocks comparison.
-6. **No code-derived scope** — code, Git history, TODO/FIXME, issue text, or build
-   output can prove implementation activity only. None creates or changes approved
-   product scope.
-7. **Bounded reads** — read only the two scope artifacts and the exact supporting
-   paths/commits listed in the optional evidence manifest, subject to the budgets
-   below. Never scan the repository for “related” files.
-8. **Immutable re-checks** — re-running against the same baseline hash compares to the
-   same baseline. A new baseline requires an independently recorded product decision;
-   this skill neither creates nor applies it.
+Read [scope-rules-v1.md](references/scope-rules-v1.md) completely. It defines the
+artifact schemas, stable identities, semantic normalization, classifications,
+bounded evidence, authority records, impact algorithms, canonical results, and
+output evidence.
 
-## Authority and ownership boundaries
+Read [continued-workflow.md](references/continued-workflow.md) completely and
+execute its phases in order. Missing, unreadable, or inconsistent contract files
+are `ERROR`; no comparison verdict is produced.
 
-| Concern | Owner | This skill may do |
-|---|---|---|
-| Detect scope delta | `scope-check` | Read and classify exact evidence |
-| Estimate effort | `$estimate` or recorded estimator | Consume a bound estimate receipt |
-| Choose cut/keep/defer or timeline tradeoff | User/designated producer | Present neutral options and request a choice |
-| Approve a scope change | User/designated product owner | Cite an existing decision/change record |
-| Apply sprint or milestone changes | `$sprint-plan update` or owning planner | Provide a read-only handoff after a decision |
-| Re-baseline | Product owner and owning planner | Compare a later approved baseline as a new version |
+## Freeze exact artifact identities
 
-Agent roles, model recommendations, conversational approval of the report, and a
-`NO SCOPE DELTA` result grant no mutation or product authority.
+Read exactly the supplied baseline/current paths. Before parsing, record canonical
+project-relative path, byte length, complete SHA-256, schema ID/version, artifact
+ID/version, source revision, parent scope/timebox, and completeness. The actual
+hash must equal the invocation hash.
 
-## Required artifact contracts
+The baseline must be immutable and approved: it cites one current immutable
+approval record with authorized product owner, authority source, decision,
+timestamp, signature/record hash, and exact baseline ID/version/hash. The current
+manifest must declare that same baseline ID/version/path/hash and the same parent
+scope/timebox. Multiple records, stale hashes, missing approval/authority, or a
+different baseline link returns `INSUFFICIENT EVIDENCE`.
 
-### Baseline scope artifact
+Never substitute newer bytes at the same path. A later baseline version is a
+different comparison identity and requires a separately authorized immutable
+re-baseline record; this skill neither creates nor applies it.
 
-The baseline must provide or be accompanied by:
+## Load stable scope entries
 
-- artifact kind and schema/version;
-- canonical path, byte length, SHA-256;
-- stable baseline ID and baseline version;
-- approval state, approver/decision owner, approval record path/hash, and timestamp;
-- source commit or immutable content revision;
-- parent scope ID and timebox/release identity;
-- complete ordered scope entries with unique stable `Scope ID`, title, description,
-  acceptance boundary, and status at approval time;
-- explicit exclusions/non-goals;
-- declared completeness marker.
+Both artifacts must declare complete unique stable `Scope ID` entries under a
+supported versioned schema. Do not synthesize IDs from titles, row positions,
+file paths, commits, or prose similarity. Normalize only semantic fields explicitly
+named by that schema, including scope boundary and acceptance semantics; exclude
+presentation ordering/formatting. Hash the canonical semantic payload per entry.
 
-If approval, version, stable IDs, uniqueness, parent identity, or completeness is
-missing, return `INSUFFICIENT EVIDENCE`. Do not synthesize IDs from titles or row
-positions.
+Presentation row splits/merges do not create deltas when stable IDs and semantic
+hashes remain identical. Duplicate/missing IDs, unsupported normalization, hidden
+deletions, conflicting parent identities, or incomplete manifests produce
+`UNMAPPED`/`CONFLICT` evidence and block a complete result.
 
-### Current scope manifest
+Current product scope comes only from the current manifest. Code, Git history,
+TODO/FIXME, issue text, build output, or implementation status may be allowlisted
+as implementation evidence but can never add/remove/modify scope, prove approval,
+or identify the product decision owner.
 
-The current artifact must provide:
+## Compute deterministic stable-ID deltas
 
-- artifact kind and schema/version;
-- canonical path, byte length, SHA-256 and current revision/commit if recorded;
-- current manifest ID and declared baseline ID/version/hash;
-- same parent scope and timebox/release identity as the baseline;
-- complete ordered scope entries with unique stable `Scope ID`, title, description,
-  acceptance boundary, state, and any linked change-record ID;
-- explicit removals or supersessions rather than silently deleting identities;
-- declared completeness marker.
-
-A story, epic, sprint, milestone, or feature file is valid only if it satisfies this
-manifest contract or points to a unique companion manifest that does. A story may be
-compared with its explicitly referenced approved parent epic baseline; the parent path
-may not be inferred by filename similarity.
-
-### Optional evidence manifest
-
-The evidence manifest is an allowlist, not a discovery hint. It contains:
-
-- its own path/hash/schema/version and the exact baseline/current hashes it covers;
-- exact supporting paths with purpose and expected hash;
-- exact Git commit IDs/range, if implementation evidence is needed;
-- estimate, dependency, test, and change-record receipts keyed by stable Scope ID;
-- total path, byte, and commit budgets.
-
-Defaults: at most 40 supporting paths, 2 MiB total text, and 100 commits. Exceeding a
-budget returns `PARTIAL` with the unexamined entries. Do not silently truncate and do
-not expand the allowlist.
-
-## Canonical delta schema
-
-Each finding has one stable `Delta ID`, deterministically derived from the baseline
-ID/version/hash, current manifest hash, Scope ID, and delta type:
-
-```yaml
-Delta ID: SCP-DELTA-<digest-prefix>
-Scope ID: <stable-id>
-Delta Type: ADDED | REMOVED | MODIFIED | UNCHANGED | UNMAPPED | CONFLICT
-Baseline:
-  Path: <path-or-NONE>
-  Artifact SHA-256: <hash>
-  Entry SHA-256: <hash-or-NONE>
-Current:
-  Path: <path-or-NONE>
-  Artifact SHA-256: <hash>
-  Entry SHA-256: <hash-or-NONE>
-Change Record: <path/hash/status or NONE>
-Decision State: APPROVED_CHANGE | PROPOSED_CHANGE | NO_RECORD | CONFLICTING_RECORD
-Effort Evidence: VERIFIED | UNVERIFIED | NOT_APPLICABLE
-Risk Evidence: VERIFIED | PARTIAL | UNVERIFIED | NOT_APPLICABLE
-Notes: <evidence-grounded summary>
-```
-
-Classification is set-based and hash-based:
-
-- ID only in current: `ADDED`;
-- ID only in baseline: `REMOVED`;
-- ID in both with different normalized semantic-entry hashes: `MODIFIED`;
-- ID and semantic hash equal: `UNCHANGED`;
-- missing/non-unique ID: `UNMAPPED`;
-- incompatible parent/baseline/change records: `CONFLICT`.
-
-Titles and ordering are display fields, never identity. A pure row split/merge may be
-recognized as presentation-only only when stable IDs and normalized semantic content
-prove equivalence; otherwise classify it `UNMAPPED`, not as an effort percentage.
-
-## Evidence coverage and optional metrics
-
-Report coverage before impact:
+Compare stable ID sets and semantic hashes:
 
 ```text
-Scope identity coverage = valid unique current Scope IDs / declared current entries
-Change-record coverage = changed IDs with matching records / changed IDs
-Effort coverage = changed IDs with compatible estimate receipts / changed IDs
-Risk coverage = changed IDs with dependency/test evidence / changed IDs
+ADDED | REMOVED | MODIFIED | UNCHANGED | UNMAPPED | CONFLICT
 ```
 
-Coverage ratios describe evidence availability only; they are not scope-health scores.
-If a denominator is zero, show `NOT APPLICABLE`, not 100%.
+For each ID emit one stable `SCP-DELTA-*` record. Its fingerprint uses baseline
+ID/version, parent scope, Scope ID, and delta type; it excludes baseline/current
+byte hashes, title, row/line, timestamp, or report wording. Store exact baseline/
+current artifact and entry hashes separately for reproducibility and staleness.
 
-Effort delta may be calculated only when every compared changed entry has estimates
-from the same calibrated unit, method, confidence policy, and baseline/current scope
-hashes. Report absolute values and uncertainty interval. Otherwise output:
-`Effort Delta: UNVERIFIED — incompatible or incomplete estimate evidence`.
+Classify authority separately:
 
-Risk dimensions use only these deterministic evidence tests:
-
-- `Schedule`: verified estimate delta plus documented capacity/timebox receipt;
-- `Quality`: changed acceptance boundary plus matching regression/test-plan coverage;
-- `Integration`: changed dependency/interface set plus matching dependency evidence.
-
-For each dimension output `SUPPORTED`, `PARTIAL`, `UNVERIFIED`, or `NOT APPLICABLE`
-with receipt paths/hashes. Do not translate these into Low/Medium/High by intuition.
-
-## Canonical result states
-
-Derive exactly one result:
-
-| Result | Conditions |
-|---|---|
-| `ERROR` | Invalid syntax, path escape, duplicate input, unreadable artifact, or multiple/fuzzy resolution |
-| `INPUT REQUIRED` | `discover`, no arguments, or one required input missing; no comparison performed |
-| `INSUFFICIENT EVIDENCE` | Baseline/current identity, approval, stable IDs, parent link, version, hash, or completeness is missing/stale/conflicting |
-| `PARTIAL` | Core artifacts are valid but an allowed evidence path is unavailable, hash-mismatched, or beyond declared budget |
-| `NO SCOPE DELTA` | Complete identity coverage; exact baseline linkage; no `ADDED`, `REMOVED`, `MODIFIED`, `UNMAPPED`, or `CONFLICT` findings |
-| `SCOPE DELTA FOUND` | Complete identity coverage and at least one evidence-backed `ADDED`, `REMOVED`, or `MODIFIED` finding |
-
-`NO SCOPE DELTA` means only “these two immutable artifacts have the same approved
-scope semantics.” It is not `PASS`, schedule approval, quality approval, or permission
-to proceed. `SCOPE DELTA FOUND` is descriptive; it does not declare “creep” or choose a
-remedy. Any `UNMAPPED` or `CONFLICT` forces `INSUFFICIENT EVIDENCE`.
-
-## Phase 0: Validate invocation without mutation
-
-1. Parse the exact command and reject unknown flags or repeated inputs.
-2. Canonicalize paths and require them to remain inside the repository.
-3. Reject identical baseline/current paths and symbolic/path aliases that resolve to
-   the same artifact.
-4. For `discover`, inspect only canonical active-state pointers and list their exact
-   candidate paths/hashes. Return `INPUT REQUIRED`; do not select or analyze.
-5. Confirm no output path, write, Git mutation, agent delegation, or gate is requested.
-
-## Phase 1: Load and freeze the comparison pair
-
-Read each input completely within the declared two-artifact budget. Record canonical
-path, byte length and SHA-256 before parsing. Validate both contracts, baseline
-approval/version/hash, current-to-baseline link, parent identity, and uniqueness of
-all Scope IDs.
-
-If the current artifact cites a different baseline hash/version than the supplied
-baseline, return `INSUFFICIENT EVIDENCE — BASELINE MISMATCH`. Never substitute a
-newer or similarly named plan.
-
-## Phase 2: Compute stable-ID deltas
-
-Normalize only schema-declared semantic fields; preserve source bytes and record the
-normalization rules. Build the ID set-difference and entry hashes. Emit one canonical
-finding per Scope ID in stable sort order.
-
-Do not scan code, Git, TODOs, design files, or neighboring plans. Do not count rows as
-effort. Do not infer who requested or justified a change.
-
-## Phase 3: Attach bounded evidence
-
-If `--evidence` is supplied, validate its own hash/bindings and enforce its allowlist
-and budgets. A change is `APPROVED_CHANGE` only when a matching record binds the
-Scope ID, baseline/current hashes, decision, owner, and timestamp. A commit author or
-implementer is not a decision owner.
-
-Attach compatible estimate, capacity, dependency, and test receipts. Mark every
-missing, stale, mismatched, or incompatible field explicitly. Evidence never changes
-the delta type; it changes coverage and impact support only.
-
-## Phase 4: Derive the result and neutral options
-
-Re-read and re-hash every consumed artifact. If any hash changed, return
-`INSUFFICIENT EVIDENCE — INPUT CHANGED DURING CHECK`.
-
-Derive one result from the table above. When a scope delta exists, show two or three
-neutral product options without choosing one:
-
-1. keep the approved baseline and remove/revert the proposed current delta;
-2. retain the delta and request compatible estimate/capacity evidence plus an explicit
-   product decision;
-3. move identified Scope IDs to a separately approved future scope, if applicable.
-
-For each option list affected Scope IDs, known impacts, unknown evidence, owner, and
-the independent workflow/action that would be required. Use `Decision Required`; do
-not write “recommended”, rank the options, or start another workflow.
-
-## Phase 5: Report and stop
-
-Output:
-
-```markdown
-# Scope Check
-
-Result: <canonical result>
-Operation: READ_ONLY
-
-## Compared artifacts
-| Role | ID/version | Path | SHA-256 | Approval/completeness |
-
-## Coverage
-| Dimension | Value | Evidence |
-
-## Scope deltas
-| Delta ID | Scope ID | Type | Decision state | Effort evidence | Risk evidence |
-
-## Impact evidence
-- Effort Delta: <value/range or UNVERIFIED>
-- Schedule: <state and receipts>
-- Quality: <state and receipts>
-- Integration: <state and receipts>
-
-## Decision options
-<none when no delta; otherwise two or three unranked options>
-
-## Unknowns and blocked conclusions
-<explicit list>
+```text
+APPROVED_CHANGE | PROPOSED_CHANGE | NO_RECORD | UNVERIFIED_RECORD |
+UNAUTHORIZED_RECORD | STALE_RECORD | HASH_MISMATCH |
+CONFLICTING_RECORD | NOT_APPLICABLE
 ```
 
-End with the exact baseline/current paths and hashes so a later run can reproduce the
-comparison. State that no file, Git state, decision, or baseline was changed.
+Then derive the allowed-state classification defined by the rules file:
 
-## Failure and stale-evidence behavior
+```text
+ALLOWED_UNCHANGED | ALLOWED_ADDITION | ALLOWED_REMOVAL |
+ALLOWED_MODIFICATION | UNAPPROVED_ADDITION | UNAPPROVED_REMOVAL |
+UNAPPROVED_MODIFICATION | CONFLICT
+```
 
-- Missing or ambiguous path: `ERROR`; show candidates only when exact active pointers
-  named them, never from fuzzy search.
-- Missing baseline approval/version/stable IDs/completeness: `INSUFFICIENT EVIDENCE`.
-- Current manifest points to another baseline: `INSUFFICIENT EVIDENCE`.
-- Unsupported file type/schema: `ERROR`.
-- Missing supporting evidence: preserve valid deltas, return `PARTIAL`, and mark the
-  affected impact conclusions `UNVERIFIED`.
-- Changed bytes during execution: discard conclusions and return
-  `INSUFFICIENT EVIDENCE — INPUT CHANGED DURING CHECK`.
-- Existing decision record proposes re-baselining: report it; do not treat the
-  baseline as changed until a separately approved immutable baseline exists.
+An addition/removal/modification is allowed only when one final immutable change
+decision binds the exact delta/Scope ID, baseline/current hashes, parent/timebox,
+authorized product owner, authority proof, rationale, timestamp, and signature.
+A commit author, implementer, agent recommendation, conversation acknowledgment,
+or prose justification is not decision authority.
 
-## Final invariants
+## Treat accepted change and accepted risk separately
 
-- No raw item-count or percentage verdict.
-- No inferred baseline, change justification, owner, estimate, or risk rating.
-- No automatic Cut/Keep/Defer choice.
-- No mutation, delegation, gate, or follow-on workflow execution.
-- Missing evidence never becomes `NO SCOPE DELTA`.
-- Re-running with identical immutable inputs produces identical deltas and result.
+A valid approved scope-change decision authorizes the named delta; it does not
+accept schedule, quality, or integration risk. A valid accepted-risk record may
+acknowledge one evidence-bound impact dimension; it does not authorize the scope
+delta, alter delta type, create a new baseline, or turn missing evidence into
+support.
+
+Risk acceptance must bind exact Delta IDs, baseline/current/evidence hashes,
+dimension and exposure, authorized product/risk owner plus authority proof,
+rationale, compensating controls, timestamp, signature, and expiry/review trigger.
+Expired, unsigned, self-authored, authority-unverifiable, or hash/scope-mismatched
+records are invalid. This skill cannot create, renew, sign, or apply either record.
+
+## Attach only bounded explicit evidence
+
+`inspect` validates one `cgs.scope-evidence-manifest/v1` bound to the exact pair.
+It is a closed allowlist, not a discovery hint. Read only exact `path@sha256`
+entries and exact Git commits/range named by it, subject to the fixed budgets in
+the rules file. Never expand the list.
+
+Evidence may describe implementation activity, change decisions/authority,
+estimates/capacity, dependencies/interfaces, test/regression coverage, or accepted
+risk. Every receipt must bind stable Scope/Delta IDs and exact baseline/current
+hashes. Missing, stale, incompatible, unreadable, over-budget, or unexamined
+declared evidence is explicit `UNVERIFIED` and makes `inspect` `PARTIAL`; preserve
+valid core deltas.
+
+## Derive impact evidence without intuition
+
+Never compute scope health, bloat, severity, or effort from item/file/commit/TODO
+counts or percentages. One large subsystem and ten text items remain incomparable
+without compatible estimate receipts.
+
+Effort delta requires one calibrated method/unit/confidence policy across every
+changed ID, bound to both artifacts. Report absolute interval arithmetic only.
+Schedule, quality, and integration use the fixed evidence algorithms in the rules
+file and return only:
+
+```text
+SUPPORTED_NO_EXPOSURE | SUPPORTED_EXPOSURE | INDETERMINATE |
+UNVERIFIED | NOT_APPLICABLE
+```
+
+Do not invent Low/Medium/High or an overall risk score. Impact states never change
+delta type, authority classification, or the canonical comparison result.
+
+## Enforce bounded completeness and input stability
+
+Apply the baseline/current entry/byte and evidence path/byte/commit/receipt/edge/
+test-map limits from the rules reference. Process input re-hashes in chunks no
+larger than the re-hash batch limit. List every unchecked identity on scope
+overflow and return `PARTIAL` after any meaningful core comparison. Never silently
+truncate denominators.
+
+Hash every consumed artifact before use and immediately before output. If
+baseline/current bytes change, discard delta conclusions and return
+`INSUFFICIENT EVIDENCE — INPUT CHANGED DURING CHECK`. If optional evidence changes,
+preserve core deltas, invalidate dependent classifications/impact, and return
+`PARTIAL`. The skill never repairs, reverts, or updates changed inputs.
+
+## Apply deterministic result precedence
+
+Use exactly one result:
+
+```text
+ERROR | INPUT REQUIRED | INSUFFICIENT EVIDENCE | PARTIAL |
+NO SCOPE DELTA | SCOPE DELTA FOUND
+```
+
+1. Invalid syntax/path/alias/schema/unreadable artifact -> `ERROR`.
+2. Discovery/no arguments/missing pair member -> `INPUT REQUIRED`; no comparison.
+3. Invalid/stale/conflicting baseline/current identity, approval, linkage,
+   completeness, stable IDs, normalization, or changed core bytes ->
+   `INSUFFICIENT EVIDENCE`.
+4. Core identity/diff meaningful but bounded core/evidence/re-hash coverage
+   incomplete -> `PARTIAL`.
+5. Complete core comparison with no ADDED/REMOVED/MODIFIED/UNMAPPED/CONFLICT ->
+   `NO SCOPE DELTA`.
+6. Complete core comparison with at least one ADDED/REMOVED/MODIFIED and no
+   UNMAPPED/CONFLICT -> `SCOPE DELTA FOUND`.
+
+`NO SCOPE DELTA` is not PASS, schedule/quality approval, implementation readiness,
+or permission to proceed. `SCOPE DELTA FOUND` is descriptive; an authorized delta
+still remains a delta.
+
+## Return read-only evidence and stop
+
+Return `cgs.review-evidence/v1` with a `cgs.scope-check/v2` extension as defined
+in the rules reference. Include exact immutable artifact identities, normalization
+schema/hash, stable sorted deltas, authorization/allowed/risk states, bounded
+evidence coverage, impact calculations, unchecked scope, final re-hashes, result,
+stale key, and input mutation guard.
+
+Direct output is conversation-only:
+
+```text
+gate_evidence_status: NOT_PERSISTED
+gate_evidence_eligible: false
+operation: READ_ONLY
+```
+
+When deltas exist, present two or three neutral unranked response options tied to
+affected Scope IDs, evidence unknowns, owner, and separate required decision/action.
+Do not recommend, choose, label Cut/Keep/Defer, launch a workflow, apply a change,
+or re-baseline. Stop after the report.

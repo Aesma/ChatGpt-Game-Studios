@@ -1,208 +1,327 @@
 ---
 name: help
-description: Provide one evidence-backed next-step recommendation from a complete current project-stage packet without inferring stages, treating artifact presence, user claims, and detector output as gate approval.
+description: "Read-only next-action recommender that consumes one current canonical project-stage packet and catalog-bound completion receipts, distinguishes claims and artifact presence from verified approval, and fails closed on conflicts or unreadable evidence."
 ---
 
 # Studio Help
 
-Provide concise, read-only orientation without allowing an artifact, status string, user claim, or stage diagnosis to substitute for a required approval or gate receipt.
+## Invocation and execution
 
-This workflow recommends one primary next action. It never writes files, invokes a skill, spawns a reviewer, changes project state, or decides that a gate passed.
-
-## Invocation
-
-`$help [question-or-recent-activity]`
-
-The optional argument is context only. Statements such as “I finished design-review” are claims to investigate, not completion evidence.
-
-## Hard boundaries
-
-1. **Read-only:** do not create, edit, migrate, approve, or register anything.
-2. **One primary action:** return one safest next action, with secondary context only when useful.
-3. **No local stage inference:** do not inspect artifact counts, source-file counts, directory names, `stage.txt`, sprint status, or user prose to derive a phase.
-4. **Detector is not a gate:** `project_stage_detection/v2` provides diagnostic stage context only. Its stage, confidence, status, evidence, or recommendation never counts as workflow approval.
-5. **Existence is not completion:** a matching file or status record is never `VERIFIED_PASS` by itself.
-6. **Claims are not receipts:** user prose and session notes remain `CLAIMED` until current evidence verifies them.
-7. **No unsafe advance:** never recommend a later required step or phase when an earlier required prerequisite is not `VERIFIED_PASS` under its catalog-declared completion policy.
-
-## Consume project stage only from project_stage_detection/v2
-
-The sole source of phase selection is one complete, current packet conforming to the producer-owned `project_stage_detection/v2` schema.
-
-Do not copy, summarize into executable rules, or reconstruct the detector’s phase heuristics. Validate against the producer schema itself; do not maintain a local list of required packet fields.
-
-### Complete packet
-
-A packet is complete only when:
-
-- its schema identifier is exactly `project_stage_detection/v2`;
-- validation against that schema succeeds with no missing, truncated, omitted, or partial required section;
-- it identifies the project and packet;
-- it contains the detector’s stage result, confidence, evidence, conflicts, unknowns, and read-error sections required by the schema;
-- it contains a snapshot/source manifest with content hashes or explicit absence markers;
-- it identifies the workflow-catalog version/hash used by the detector;
-- its completion marker is the schema-defined complete value.
-
-Do not consume individual fields from an invalid or partial packet. A producer verdict named `PASS`, `COMPLETE`, or similar does not relax schema validation.
-
-### Current packet
-
-A schema-valid packet is current only when:
-
-- its project identity matches the current project;
-- every path in its declared source manifest can be checked;
-- each current content hash or absence state matches the packet;
-- the current workflow catalog matches the packet’s declared catalog identity/hash;
-- no required source check has an access error;
-- no newer valid packet for the same project/snapshot lineage supersedes it.
-
-Timestamp age alone neither proves nor disproves currentness. Any source drift, catalog drift, project mismatch, supersession, or uncheckable required source makes the packet `STALE` or `UNKNOWN`.
-
-Use the validated packet’s stage result exactly as produced. If its conflict/unknown/read-error sections say stage selection is unresolved, do not choose a normal phase step; issue a diagnostic recommendation.
-
-### Packet failure behavior
-
-- Missing packet: `STAGE_CONTEXT_MISSING`.
-- Wrong schema or incomplete packet: `STAGE_PACKET_INVALID`.
-- Source/catalog drift: `STAGE_PACKET_STALE`.
-- Unresolved stage conflict or required read error: `STAGE_CONTEXT_CONFLICT`.
-
-For all four, do not fall back to local heuristics. Recommend obtaining or refreshing the diagnostic packet, but do not run `project-stage-detect` automatically.
-
-## Workflow catalog use
-
-Read the workflow catalog whose identity/hash is bound to the current packet. Use it only for:
-
-- ordered steps in the packet-selected phase;
-- required/optional/repeatable flags;
-- command or manual-action labels;
-- the completion policy and receipt schema declared for each step;
-- prerequisite relationships and phase-transition rules.
-
-Do not use catalog artifact globs as proof of completion. They may locate evidence, but a match begins at `PRESENT_UNVERIFIED`.
-
-If the catalog is unavailable, malformed, hash-mismatched, or lacks a completion policy needed for a required step, return a diagnostic recommendation. Do not invent a policy.
-
-## Evidence states
-
-Classify every relevant prerequisite into exactly one progress state while retaining all evidence records:
-
-| State | Meaning | May satisfy a required prerequisite? |
-|---|---|---|
-| `VERIFIED_PASS` | A current evidence bundle satisfies the catalog-declared completion policy; every required approval/gate receipt has verdict `PASS` and matches current sources/artifacts | Yes |
-| `CLAIMED` | User, session note, or unverified status source says the work is done | No |
-| `PRESENT_UNVERIFIED` | An artifact or record exists, but no valid current completion evidence proves it | No |
-| `STALE` | Receipt or artifact was valid for different source, artifact, catalog, or run hashes | No |
-| `BLOCKED` | Current authoritative receipt says `BLOCKED`, `FAIL`, `REJECTED`, or equivalent non-pass | No |
-| `MISSING` | Required artifact/evidence/receipt is absent | No |
-| `CONTRADICTORY` | Current evidence sources disagree in a way that affects completion | No |
-| `UNKNOWN` | Required evidence could not be read or interpreted safely | No |
-
-Never display `CLAIMED`, `PRESENT_UNVERIFIED`, or a detector conclusion with a completed/checkmark symbol.
-
-### Deterministic precedence
-
-For one prerequisite:
-
-1. conflicting current authoritative receipts → `CONTRADICTORY`;
-2. one current authoritative negative receipt with no conflicting current receipt → `BLOCKED`;
-3. one valid current `PASS` evidence bundle with no conflict → `VERIFIED_PASS`;
-4. only mismatched/outdated evidence → `STALE`;
-5. no valid receipt plus a user/session/status assertion → `CLAIMED`;
-6. no claim plus an artifact/status file that merely exists → `PRESENT_UNVERIFIED`;
-7. confirmed absence → `MISSING`;
-8. access, schema, or interpretation failure → `UNKNOWN`.
-
-When multiple non-authoritative signals exist, list all of them; do not upgrade the state.
-
-## Completion evidence
-
-For a required step, validate the exact completion policy declared by the packet-bound catalog. When approval or a gate is required, `VERIFIED_PASS` requires a receipt that binds at least:
-
-- receipt and run identity;
-- catalog step and gate/approval identity;
-- explicit `PASS` verdict;
-- authorized approver/authority evidence required by policy;
-- subject artifact identities and content hashes;
-- input/source snapshot hashes;
-- catalog identity/hash;
-- issue time and any expiry/supersession data.
-
-Re-hash current subject artifacts and declared sources. A receipt for an older revision, a different run, changed inputs, changed artifact bytes, or a rejected/blocked verdict cannot pass.
-
-A detector packet is not a completion receipt even if it contains the same paths or says the project is in a later stage.
-
-For repeatable work, use the latest non-superseded run receipt that matches the current inputs and requested scope. An arbitrary same-named file, previous run, or “last completed” prose is not sufficient.
-
-Treat `sprint-status.yaml`, session state, active task notes, and user statements as contextual claims unless the catalog completion policy explicitly declares their schema and they satisfy its current receipt requirements.
-
-## Recommendation algorithm
-
-1. Validate one full current `project_stage_detection/v2` packet.
-2. Validate and bind the exact workflow catalog referenced by that packet.
-3. Read the packet-selected phase and its ordered catalog steps without performing phase inference.
-4. Gather bounded evidence for relevant required prerequisites and the user’s question.
-5. Classify each prerequisite using the evidence-state contract.
-6. Surface all same-level prerequisite conflicts that affect the primary action.
-7. Select the first required step that is not `VERIFIED_PASS`:
-   - `CLAIMED` or `PRESENT_UNVERIFIED` → recommend the catalog-declared verification/review/receipt-producing action;
-   - `STALE` → recommend revalidation on current hashes;
-   - `BLOCKED` → recommend resolving the recorded blocker;
-   - `CONTRADICTORY` or `UNKNOWN` → recommend a diagnostic/reconciliation action;
-   - `MISSING` → recommend the catalog-declared creation or completion action.
-8. Recommend a later required step only when every earlier required prerequisite is `VERIFIED_PASS`.
-9. Optional actions may be mentioned as secondary context only when they do not imply bypassing the primary prerequisite.
-10. Never say a phase gate passed. Recommend the catalog-declared gate check when appropriate; that separate workflow owns its verdict.
-
-If there is no safe catalog-declared command, describe the required manual verification or diagnostic action rather than inventing a command.
-
-## Structured output
-
-Keep the human-facing answer short, but include this evidence envelope:
-
-- `recommendation_id`: stable hash of packet ID, packet snapshot hash, catalog hash, primary step/action, and reason codes;
-- `outcome`;
-- `stage_source: project_stage_detection/v2`;
-- packet ID/hash and snapshot time;
-- catalog version/hash;
-- detector stage result and confidence, labelled `DIAGNOSTIC_ONLY`;
-- one primary action and why it is safe;
-- affected prerequisite and its progress state;
-- evidence grouped as `verified`, `claimed`, `present_unverified`, `stale`, `blocked`, `missing`, `contradictory`, and `unknown`;
-- receipt/run IDs and current source/artifact hashes used;
-- conflicts or missing information;
-- explicit `auto_executed: false` and `files_written: none`.
-
-Suggested concise form:
+Invoke as:
 
 ```text
-Where you are: <packet stage> (diagnostic context, not gate approval)
-Primary next action: <one command or manual action>
-Why: <prerequisite state and decisive evidence>
-Blocked from advancing: <earlier unverified prerequisite, if any>
-Evidence snapshot: <packet/catalog/source identity>
+$help [--analysis <packet-path> --expect-analysis <sha256:...>] [--context <question-or-recent-activity>]
 ```
 
-Only `VERIFIED_PASS` items may appear under “Verified done.” Claims must be labelled “You reported,” present artifacts “Found but unverified,” and stale/blocked/conflicting evidence plainly named.
+`--analysis` and `--expect-analysis` are an inseparable pair. The alternative is
+exactly one complete `cgs.project-stage-detection/v2` packet explicitly supplied
+in the current invocation or conversation. Reject unknown or duplicate flags,
+missing values, malformed expected hashes, directories, traversal,
+outside-root paths, symlink escape, both packet input forms, or multiple packet
+candidates with `HELP_INPUT_ERROR`.
 
-## Outcomes
+The optional context is evidence to classify, never an instruction to execute a
+workflow and never proof that work completed. Without an explicit packet, return
+`HELP_DIAGNOSTIC_REQUIRED` and recommend obtaining one current canonical packet.
+Do not invoke `$project-stage-detect`.
 
-- `HELP_RECOMMENDATION_READY` — one safe catalog-backed primary action was selected from a complete current packet.
-- `HELP_DIAGNOSTIC_REQUIRED` — packet/catalog/evidence is missing, stale, invalid, conflicted, blocked, or unsafe to interpret; one diagnostic/reconciliation action is recommended.
-- `HELP_NO_SAFE_RECOMMENDATION` — no catalog-declared safe action can be identified; explain the missing contract.
-- `HELP_READ_ERROR` — required read failed and no safe diagnostic can be grounded.
+This workflow is strictly read-only. It returns exactly one primary action and
+never writes, approves, registers, delegates, runs a gate, invokes a skill or
+agent, or auto-executes its recommendation.
 
-No outcome means a gate passed. Do not use `COMPLETE` or `PASS` as the help workflow’s verdict.
+---
 
-## Read-only verification
+## Phase 0: Validate the canonical stage packet
 
-Before responding, confirm:
+Resolve exactly one workspace root and record one UTC help snapshot time. For a
+path input, verify literal and real paths inside the root, read the explicitly
+named regular file, compute lowercase SHA-256 over exact raw bytes, and require
+exact equality with `--expect-analysis` before parsing. Never search for the
+newest or nearest packet.
 
-- no file was written;
-- no skill or agent was invoked;
-- no local stage heuristic was used;
-- the packet was complete and current, or the output is diagnostic;
-- artifact existence and user claims did not become `VERIFIED_PASS`;
-- every skipped ordered prerequisite was `VERIFIED_PASS` on current hashes;
-- exactly one primary action is present;
-- the detector was not represented as a gate or approval authority.
+Validate the complete producer-owned `cgs.project-stage-detection/v2` contract.
+Require its exact schema/version/completion marker and every producer-required
+project, catalog, snapshot, result/resolution, stage/confidence, authority,
+receipt, evidence, contradiction, read-error, coverage-gap, blocking-reason,
+advisory, recommendation, and disclaimer field. Recompute `packet_id` exactly
+under the producer canonicalization rule; do not repair, default, normalize, or
+consume individual fields from an incomplete packet.
+
+Require `project.root_id` to match the canonical current root. Read and hash the
+exact packet-bound workflow catalog and require the same path/version/raw hash.
+Re-read each ordered packet snapshot entry and require its current raw hash or
+explicit source state to match the packet and its manifest canonicalization. A
+packet-declared `ABSENT` or `UNREADABLE` state may be current when the same state
+and linked reason remain reproducible; it blocks stage detection rather than
+making the complete diagnostic packet invalid. Timestamp age alone neither
+proves nor disproves currentness.
+
+Classify stage context as exactly one of:
+
+| Stage Context | Meaning |
+|---|---|
+| `CURRENT` | complete packet, project, catalog, packet ID, manifest, and current raw/source states agree |
+| `MISSING` | no packet supplied |
+| `INVALID` | wrong schema, incomplete fields, bad packet ID, malformed enum, or raw packet hash mismatch |
+| `STALE` | current catalog, raw bytes, source state, or manifest differs from the packet |
+| `PROJECT_MISMATCH` | packet root identity differs from the current project |
+| `UNREADABLE` | packet/catalog cannot be read, or a source declared PRESENT/ABSENT cannot now be checked |
+
+Only `CURRENT` permits any packet field to guide a recommendation. For every
+other context, use `detected_stage: UNKNOWN`, do not fall back to local
+inference, and return one diagnostic action with the exact context code.
+
+For a CURRENT packet, use its stage result exactly. A normal phase route is
+eligible only when packet `result` is `DETECTED`, `resolution_state` is `CLEAR`,
+and `detected_stage` is schema-valid. `UNKNOWN`, `CONFLICT`, or `ERROR` produces
+`HELP_DIAGNOSTIC_REQUIRED`; preserve declared stage, confidence, contradictions,
+read errors, coverage gaps, and blocking reasons in the output.
+
+The detector is diagnostic only. Its stage, authority receipt, confidence,
+result, resolution, evidence, or recommendation is never a workflow-step
+completion receipt, phase-gate approval, or execution authorization.
+
+---
+
+## Phase 1: Bind the exact workflow catalog
+
+Use only the catalog bytes bound to the CURRENT packet. To route safely, the
+catalog must have a supported schema/version and unique stable phase, transition,
+step, prerequisite, completion-policy, verification-action, and receipt-schema
+IDs. Each routable step must declare:
+
+- command or manual action and accepted/produced artifact types;
+- phase, ordered prerequisite IDs, and phase-transition dependencies;
+- required, optional, and repeatable semantics;
+- exact completion policy and accepted receipt schema/verdict vocabulary;
+- evidence locations or indexes, owner/approver policy, freshness/currentness,
+  target/source/artifact hash requirements, and supersession rules;
+- verification or receipt-producing action for non-verified evidence; and
+- deterministic evidence-read limits and safe behavior when evidence is unknown.
+
+If the catalog is missing, malformed, hash-mismatched, duplicated, unsupported,
+or lacks any policy needed for the earliest relevant required step, return
+`HELP_NO_SAFE_RECOMMENDATION` or `HELP_DIAGNOSTIC_REQUIRED`. Do not invent a
+command, completion rule, route, phase map, owner, receipt schema, or scan limit.
+
+Catalog artifact globs may locate bounded candidate artifacts only when the
+catalog explicitly permits them. A glob match starts as `PRESENT_UNVERIFIED` and
+never proves completion. Never count files or use `stage.txt`, directory names,
+source extensions, engine configuration, sprint state, or user prose to derive a
+phase. Never invoke project-stage-detect or duplicate its algorithm.
+
+---
+
+## Phase 2: Freeze bounded recommendation evidence
+
+Starting from the packet-selected phase and the user's context, build only the
+catalog-declared prerequisite and phase-transition closure needed to identify the
+earliest unsafe required step. Include all same-level evidence that can conflict
+with that step. Do not read unrelated later phases or optional work merely to
+offer more suggestions.
+
+Record normalized path, field/section, provenance, raw SHA-256 or explicit source
+state, snapshot time, expected hash, receipt/run ID, and validation reason for
+every item. Re-read and re-hash every readable item before responding. A mid-read
+change is `STALE`; never combine observations from different moments.
+
+Honor catalog read-entry, per-entry byte, and total-byte limits. A limit that
+would be exceeded produces `UNKNOWN` with `READ_BUDGET_EXCEEDED`; do not truncate
+the conflicting set or continue to a later recommendation.
+
+Evidence provenance is one of:
+
+- `COMPLETION_RECEIPT`;
+- `SUBJECT_ARTIFACT`;
+- `USER_CLAIM`;
+- `STATUS_CLAIM`;
+- `CATALOG_POLICY`;
+- `COVERAGE_GAP`.
+
+Preserve user wording as a bounded `USER_CLAIM` record with a stable evidence ID.
+Statements such as “I completed review” remain claims even when they name a real
+workflow or match an artifact.
+
+---
+
+## Phase 3: Classify prerequisite evidence
+
+Classify each relevant prerequisite into exactly one state:
+
+| State | Meaning | Satisfies required prerequisite? |
+|---|---|---|
+| `VERIFIED_PASS` | one current catalog-policy evidence bundle and every required approval/gate receipt validate against current target, source, and artifacts | Yes |
+| `CLAIMED` | user, session note, sprint status, or other unverified status source says work is done | No |
+| `PRESENT_UNVERIFIED` | artifact or record exists but lacks a valid current completion bundle | No |
+| `STALE` | receipt or artifact binds different catalog, target, run, source, input, or artifact bytes, or changed during this read | No |
+| `BLOCKED` | current authoritative receipt has a catalog-defined negative verdict such as BLOCKED, FAIL, or REJECTED | No |
+| `MISSING` | required artifact, evidence, or receipt is confirmed absent | No |
+| `CONTRADICTORY` | current authoritative evidence sources disagree in a way that affects completion | No |
+| `UNKNOWN` | required evidence cannot be read, parsed, bounded, or interpreted safely | No |
+
+Apply deterministic precedence for one prerequisite:
+
+1. conflicting current authoritative receipts → `CONTRADICTORY`;
+2. one current authoritative negative receipt with no current conflict → `BLOCKED`;
+3. one complete current PASS bundle with no conflict → `VERIFIED_PASS`;
+4. only mismatched, superseded, changed, or outdated evidence → `STALE`;
+5. no valid receipt plus a user or status assertion → `CLAIMED`;
+6. no claim plus a merely present artifact/status record → `PRESENT_UNVERIFIED`;
+7. confirmed absence → `MISSING`; and
+8. access, schema, budget, or interpretation failure → `UNKNOWN`.
+
+List every evidence record even when a higher-precedence state wins. Only
+`VERIFIED_PASS` may satisfy or be displayed as completed.
+
+### Completion receipt requirements
+
+A `VERIFIED_PASS` bundle must satisfy the exact catalog completion policy and
+bind at least receipt schema/ID, run ID when applicable, catalog step and policy
+IDs, accepted PASS verdict, authorized owner/approver, subject artifact paths and
+hashes, input/source/target snapshot hashes, catalog version/hash, issue time,
+freshness, and supersession/lineage data. Recompute every current hash.
+
+Empty templates, drafts, unchecked status text, receipt filenames, historical
+PASS strings, detector evidence, and user recollection remain non-verified.
+
+### Sprint and session status
+
+Treat `sprint-status.yaml`, session state, task notes, and similar sources as
+`STATUS_CLAIM`/`CLAIMED` unless the packet-bound catalog declares their exact
+schema/version, owner, updated-at/freshness rule, target/source hashes, allowed
+status vocabulary, and role in the completion policy. Even a valid status record
+does not become `VERIFIED_PASS` unless the full catalog receipt policy explicitly
+accepts it and every required receipt/hash also validates.
+
+Unknown, stale, malformed, unauthorized, or unsupported status values are
+`UNKNOWN`, `STALE`, or `PRESENT_UNVERIFIED`, never authoritative completion.
+
+### Repeatable steps
+
+For repeatable work, require an exact run ID, receipt ID, requested scope,
+current input/source IDs and hashes, subject artifact hashes, catalog hash,
+producer identity, verdict, timestamp, and supersession/lineage state. Select
+only the non-superseded receipt whose run and scope match the current requested
+inputs. Never choose by filename, modification time, directory order, or “last
+completed” prose. An R1 receipt for current R2 inputs is `STALE`.
+
+---
+
+## Phase 4: Select exactly one safe primary action
+
+Use this order:
+
+1. If packet context is not CURRENT, recommend obtaining, correcting, or
+   refreshing the exact canonical packet.
+2. If the current detector result is UNKNOWN, CONFLICT, or ERROR, recommend
+   resolving its first structured blocking reason or contradiction.
+3. Validate the packet-bound catalog and build the ordered prerequisite closure,
+   including required phase-transition receipts. A later detected phase never
+   waives an earlier catalog prerequisite.
+4. Classify all evidence for the earliest required prerequisite not
+   `VERIFIED_PASS` and retain every same-level conflict.
+5. Choose one catalog-declared action:
+   - `CLAIMED` or `PRESENT_UNVERIFIED` → verification/receipt-producing action;
+   - `STALE` → revalidation for current hashes/run;
+   - `BLOCKED` → resolve the recorded blocker;
+   - `CONTRADICTORY` → reconcile all conflicting current receipts;
+   - `UNKNOWN` → diagnose the read/schema/budget failure; or
+   - `MISSING` → catalog-declared creation/completion action.
+6. Recommend a later required step only when every earlier required prerequisite
+   and transition dependency is `VERIFIED_PASS` on the same current snapshot.
+
+Exactly one primary action is allowed. Display every conflict and blocker at the
+earliest affected level even when they share one reconciliation action. Optional
+or same-priority alternatives may appear only as non-executable context and must
+not imply bypass. If no safe catalog action exists, return
+`HELP_NO_SAFE_RECOMMENDATION` with the missing contract instead of inventing one.
+
+Never say that a gate passed unless a separate current receipt proves that exact
+catalog prerequisite; even then, help reports the receipt and does not own the
+verdict.
+
+---
+
+## Phase 5: Return one structured recommendation
+
+Outcomes are exactly:
+
+- `HELP_RECOMMENDATION_READY` — one catalog-backed action is safe to recommend;
+- `HELP_DIAGNOSTIC_REQUIRED` — packet, detector result, catalog, or evidence is
+  missing, stale, invalid, conflicted, blocked, or unknown;
+- `HELP_NO_SAFE_RECOMMENDATION` — no safe catalog-declared action exists; or
+- `HELP_READ_ERROR` — a global required read failed and no grounded diagnostic
+  action can be selected; or
+- `HELP_INPUT_ERROR` — invocation, root, path, or packet selection is invalid.
+
+Return this evidence envelope in conversation only:
+
+```yaml
+outcome: <enum>
+recommendation_id: sha256:<canonical-recommendation-core>
+help_snapshot_at: <UTC>
+stage_context: CURRENT | MISSING | INVALID | STALE | PROJECT_MISMATCH | UNREADABLE
+stage_source: cgs.project-stage-detection/v2
+packet:
+  id: <sha256-or-NONE>
+  source: <INLINE-or-path-or-NONE>
+  raw_sha256: <sha256-or-NOT_APPLICABLE-or-NONE>
+  project_root_id: <sha256-or-UNVERIFIED>
+  result: DETECTED | CONFLICT | UNKNOWN | ERROR | UNAVAILABLE
+  resolution_state: CLEAR | BLOCKED | UNAVAILABLE
+  declared_stage: <value-or-UNAVAILABLE>
+  detected_stage: <stage-or-UNKNOWN>
+  confidence: HIGH | MEDIUM | LOW
+  snapshot_manifest_sha256: <sha256-or-UNVERIFIED>
+catalog:
+  path: <path-or-UNVERIFIED>
+  version: <version-or-UNVERIFIED>
+  raw_sha256: <sha256-or-UNVERIFIED>
+primary_action:
+  catalog_step_id: <id-or-NONE>
+  command_or_manual_action: <one-action>
+  affected_prerequisite_id: <id-or-NONE>
+  state: VERIFIED_PASS | CLAIMED | PRESENT_UNVERIFIED | STALE | BLOCKED | MISSING | CONTRADICTORY | UNKNOWN | NOT_APPLICABLE
+  reason_codes: [<stable-code>]
+same_level_conflicts:
+  - prerequisite_id: <id>
+    evidence_ids: [<id>]
+    reason_code: <code>
+evidence:
+  verified: [<records>]
+  claimed: [<records>]
+  present_unverified: [<records>]
+  stale: [<records>]
+  blocked: [<records>]
+  missing: [<records>]
+  contradictory: [<records>]
+  unknown: [<records>]
+receipt_run_ids: [<receipt-id/run-id/current-hashes>]
+packet_diagnostics:
+  contradictions: [<packet contradiction IDs>]
+  read_errors: [<packet evidence ID/reason>]
+  coverage_gaps: [<packet evidence ID/reason/blocking>]
+  blocking_reasons: [<code>]
+auto_executed: false
+files_written: none
+disclaimer: RECOMMENDATION ONLY — NOT A GATE, APPROVAL, OR EXECUTION
+```
+
+Compute `recommendation_id` from canonical JSON containing packet ID, packet
+snapshot manifest hash, catalog hash, help evidence-snapshot hash, primary step
+and action, primary reason codes, and all displayed same-level conflict IDs.
+Identical inputs produce the same ID; any identity input change produces a new ID.
+
+Claims must be introduced as “You reported,” present artifacts as “Found but
+unverified,” and only `VERIFIED_PASS` records as “Verified done.” Never use a
+checkmark or completion wording for any other state.
+
+## Non-negotiable rules
+
+- Never write files, request write authorization, or persist the recommendation.
+- Never invoke a recommended workflow, detector, gate, recorder, skill, or agent.
+- Never infer stage locally or consume a partial/stale/mismatched packet.
+- Never treat artifact presence, user/status claims, or detector output as a
+  completion receipt.
+- Never hide same-level conflicts to keep the response short.
+- Never return more than one primary action.

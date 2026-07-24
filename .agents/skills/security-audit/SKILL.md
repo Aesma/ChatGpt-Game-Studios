@@ -1,327 +1,287 @@
 ---
 name: security-audit
-description: "Run a bounded, read-only, evidence-bound security assessment with redacted findings, explicit coverage gaps, traceable advisory data, and no ship-approval claim."
+description: Runs a bounded, strictly read-only security assessment with a hash-bound threat scope, redacted evidence, versioned tool receipts, explicit unsupported and partial coverage, stable findings, and no security or release-approval claim.
 ---
 
-## Invocation and execution
+# Security Audit
 
-Invoke this workflow as `$security-audit [full|network|save|input|quick]`.
+Assess one project snapshot without changing it. Establish the threat scope before
+choosing checks, bind every claim to exact target/tool/rule/advisory evidence,
+redact secret material, and fail closed when coverage is missing or unsupported.
+This is not a penetration test, security certification, or ship/release approval.
 
-No argument means `full`. Reject unknown, repeated, or combined profiles with
-`ERROR` before scanning. The workflow is read-only: it may execute approved
-non-mutating inspection/scanner commands, but it never writes a report, cache,
-dependency, build output, remediation, or risk acceptance.
+## Invocation
+
+Use this grammar exactly:
+
+```text
+$security-audit [full|network|save|input|quick]
+                [--prior-review <project-relative-record-path>]
+```
+
+- No profile argument means `full`.
+- Exactly one profile is allowed.
+- `--prior-review` is optional, may appear once, and enables a re-audit against
+  one immutable prior `cgs.security-audit/v2` record.
+- Reject unknown/repeated/combined profiles, unknown options, missing option
+  values, absolute/out-of-project/traversing paths, ambiguous roots, and an
+  invalid or unrelated prior record with `ERROR` before scanning.
 
 Valid outcomes are exactly:
 
-- `NO_FINDINGS_IN_SCANNED_SCOPE`;
-- `FINDINGS`;
-- `PARTIAL`; or
-- `ERROR`.
+```text
+NO_FINDINGS_IN_SCANNED_SCOPE | FINDINGS | PARTIAL | ERROR
+```
 
-These outcomes are not a penetration test, proof of security, certification, or
-release/ship approval.
+Never emit `SECURE`, `CLEAR TO SHIP`, `RELEASE READY`, or equivalent as an
+outcome. A zero finding count describes only the exact completed scanned scope.
 
----
+## Zero-write and secret-safe boundary
 
-## Phase 0: Establish authority and mutation boundary
+The allowed write set is empty. Do not write a report, cache, dependency, lockfile,
+SBOM, advisory database, build, patch, waiver, finding state, checkpoint, status,
+or session log. Do not install/update tools, fetch advisory data, build, package,
+run the game, rotate credentials, delete secrets, rewrite history, or request
+write permission for an ordinary audit.
 
-Before scanning:
+Execute only commands proven non-mutating under the exact configured invocation.
+Network access and any command that may download, update, cache, generate, build,
+or persist output require separate authority and therefore are not performed by
+this audit. Consume current immutable evidence when it exists; otherwise report
+`UNVERIFIED` or `UNSUPPORTED`.
 
-1. Resolve one workspace root and reject paths outside it, unresolved symlinks,
-   traversal, or ambiguous roots.
-2. Record the requested profile and its category matrix.
-3. Read applicable `AGENTS.md` and security/tooling instructions.
-4. Record current VCS identity using an actually executed read-only command:
-   commit/ref, dirty-state evidence, command, working directory, tool/version,
-   timestamps, exit code, and raw output hash. If VCS identity cannot be
-   established, mark target identity `UNVERIFIED`.
-5. Identify engine/language, target platforms, configured online/backend
-   features, release build configuration, export/package presets, and relevant
-   data classifications from explicit sources and raw hashes.
-6. Snapshot a read-only pre-audit workspace manifest for mutation detection.
+Never read a denied secret/environment source. Never place a credential value,
+source line, surrounding context, length, encoding, reversible representation,
+tool argument containing a secret, or volatile HMAC key in a prompt, reviewer
+packet, finding, log excerpt, evidence record, or conversation. Use only the
+secret-safe fields defined in the rules reference.
 
-Do not install tools, update advisory databases, fetch dependencies, create
-scanner caches in the workspace, build the project, or use network access unless
-the user separately authorizes that side effect. Lack of permission or tooling
-is a coverage gap, never evidence of absence.
+## Load the audit contract
 
-All security-engineer or specialist delegations are read-only. Their prose is
-not scan evidence. Every claim must trace to an executed command, a manually
-reviewed source/sink path, or an immutable supplied artifact.
+Read [audit-rules-v1.md](references/audit-rules-v1.md) completely. It defines
+profiles, fixed limits, threat scope, coverage states, tool/manual receipts,
+engine/platform routing, reviewer policy, severity/confidence, stable finding
+identity, risk boundaries, outcomes, and the evidence schema.
 
----
+Read [continued-workflow.md](references/continued-workflow.md) completely and
+execute its phases in order. If either contract file is missing, unreadable, or
+internally inconsistent, return `ERROR` without an audit outcome claim.
 
-## Phase 1: Build a threat model and exact scope manifest
+## Establish target identity and mutation evidence
 
-Define trust boundaries before choosing checks:
+Resolve one canonical repository root. Record current commit/ref and dirty state
+only from a successful read-only VCS receipt with executable/version/argv/cwd,
+timestamps, exit status, and redacted output hash. If VCS identity is unavailable
+but a meaningful source/build scope can still be identified, target identity is
+`UNVERIFIED` and the maximum outcome is `PARTIAL`; otherwise return `ERROR`.
 
-- client, authoritative server, backend/service, platform APIs, local storage,
-  mod/plugin boundary, build/release pipeline, and third-party supply chain;
-- assets/data classified as public, local-sensitive, credential, player/PII, or
-  monetization/competitive state;
-- attacker capabilities and applicable abuse goals; and
-- source → validation/authority boundary → sink flows.
+Create the before/after streaming mutation snapshots from the continued workflow
+with an empty allowed-write set. A changed or incomplete snapshot invalidates
+affected evidence and yields `PARTIAL` or `ERROR`. Report only secret-safe changed
+paths; do not repair, revert, clean, stage, or attribute concurrent changes
+without evidence.
 
-For each profile declare required categories:
+## Freeze the threat scope before checks
 
-| Profile | Required categories |
-|---|---|
-| full | save/serialization, network when configured, input, exposure/secrets, cheat/authority, dependency/supply chain, build/release |
-| network | network authority/authentication/validation/rate limits, exposure/secrets, relevant dependencies and release config |
-| save | save/serialization, path handling, integrity/authenticity, local secret/PII exposure |
-| input | player/external input sources through validators to file/log/network/backend/dynamic-code sinks |
-| quick | explicitly enumerated high-confidence checks only; never full/release evidence |
+Build one `cgs.security-threat-scope/v1` record from exact project evidence. It
+must identify:
 
-A category may be `NOT_APPLICABLE` only with positive evidence, such as a hashed
-project configuration proving no online feature. File-name absence or an agent's
-assumption is insufficient; otherwise use `UNVERIFIED`.
+- configured engine, language, engine version, target platforms, build/export
+  profiles, online/backend/platform services, mods/plugins, and supply chain;
+- protected assets classified as public, local-sensitive, credential, player/PII,
+  monetization, competitive/authority, or release-signing state;
+- external actors and attacker capabilities;
+- client, authoritative server, backend/service, platform API, local storage,
+  mod/plugin, build/release, and third-party trust boundaries when applicable;
+- entry points, authority/validation boundaries, sinks, and source→validator→sink
+  flows; and
+- abuse goals, assumptions, evidence paths/hashes, category applicability, and
+  unresolved questions.
 
-Enumerate the exact allowlisted files before scanning. Record normalized path,
-raw hash, byte size, language/type, category, inclusion reason, and accessibility.
-Exclude binary/generated/vendor paths only by explicit rule and list them.
-Denied, unreadable, oversized, parser-unsupported, timeout, or outside-root files
-remain coverage gaps. Never bypass a platform/project denial or read denied
-secret/environment files; record only a category-level permission gap without
-revealing a protected path or value. Never silently sample or substitute keyword hits for full
-coverage.
+The profile matrix selects required categories, but evidence selects
+applicability. A category is `NOT_APPLICABLE` only when current positive
+configuration and threat-scope evidence prove it is out of scope. Missing files,
+unconfigured engine/platform, or reviewer assumption is not N/A; use
+`UNVERIFIED` or `UNSUPPORTED`.
 
-Freeze:
+Hash the frozen normalized threat scope. If a required boundary, asset, authority,
+entry point, or platform/engine identity cannot be established, preserve known
+scope but return at most `PARTIAL`.
 
-- target commit/ref and dirty state;
-- canonical source-scope manifest hash;
-- relevant build/export configuration hashes;
-- supplied binary/build hash, if one actually exists; and
-- threat-model hash.
+## Build bounded source, build, and component manifests
 
-If no meaningful target identity or no eligible source/build evidence can be
-established, return ERROR. If some checks can run but any required category,
-build configuration, or in-scope file remains unverified, the maximum outcome is
-PARTIAL.
+Enumerate only authorized project roots declared by current configuration and
+applicable project rules. Record normalized path, type/language, size, SHA-256,
+category/reason, accessibility, and inclusion state for every candidate. Do not
+follow links outside root. Exclude generated/vendor/binary/build content only with
+current owner-approved classification evidence; keep each exclusion visible.
 
----
+Apply the fixed file/depth/byte/component/check limits in the rules reference.
+Denied, unreadable, oversized, parser-unsupported, adapter-unsupported, timed-out,
+or over-limit required entries remain explicit coverage gaps. Never silently
+sample, and never replace unsupported language/data-flow coverage with keyword
+hits.
 
-## Phase 2: Execute evidence-producing checks
+If no meaningful source, build, component, or target identity exists, return
+`ERROR`. When at least one meaningful check runs but required scope is incomplete,
+return `PARTIAL` even if confirmed findings exist.
 
-Use language-aware SAST, dependency/SBOM scanners, build-configuration
-inspection, and manual source→validator→sink review appropriate to the declared
-engine/language. A keyword search may locate candidates but cannot by itself
-create a vulnerability finding or a no-findings claim.
+## Route engine, platform, tools, and reviewers
 
-Before each command, record:
+Read and hash current technical preferences, engine-version reference, build/
+export presets, platform declarations, and an owner-approved security adapter
+registry when present. Route checks only through an adapter whose declared
+engine/version/language/platform/category capabilities match the frozen threat
+scope. Never infer a supported analyzer, platform behavior, server authority, or
+secure-storage API from a filename or engine brand.
 
-- stable check ID and category;
-- exact executable and argument vector, without secret values;
-- working directory;
-- scanner/tool version;
-- rulepack/config path and raw hash;
-- target paths and manifest subset hash;
-- expected side effects and deadline.
+An absent/incompatible adapter is `UNSUPPORTED`, not N/A and not evidence of
+safety. Engine/platform-specific manual checks use the exact configured Primary
+or specialist routing only when its role and scope are declared. Do not invent a
+Godot, Unity, Unreal, mobile, console, web, or backend specialist.
 
-After execution, record:
+Deterministic scanning and coverage remain local. For `full`, `network`, `save`,
+and `input`, one `security-engineer` review is required; a pre-dispatch unavailable
+role may be performed locally under the repository's explicit fallback rule and
+must emit the same target-bound manual-flow receipts. `quick` does not require a
+reviewer. At most one configured engine/platform specialist may additionally be
+required for unresolved platform semantics, for a total cap of two reviewers.
 
-- start/end ISO-8601 timestamps;
-- exit code or timeout;
-- eligible, scanned, excluded, failed, and parser-unsupported file counts/bytes;
-- raw stdout/stderr hash and separately redacted-output hash;
-- produced scanner result/SBOM hash, if supplied without workspace mutation; and
-- PASS/FAIL/PARTIAL/ERROR execution state.
+Dispatch required reviewers in one parallel batch with redacted, hash-bound
+packets and no raw secret/source context. Timeout, blocked, declined, error,
+malformed output, target/threat-scope mismatch, unsafe output, or required role
+overflow makes coverage `PARTIAL`. Reviewer prose is never scanner evidence and
+cannot decide the outcome or accept risk.
 
-A command that was not run, timed out, returned an unexplained nonzero exit,
-scanned zero eligible files, used an unknown rulepack, mutated the workspace, or
-lacks a log hash is not passing evidence. Mark its coverage `UNVERIFIED` and fail
-closed.
+## Require versioned evidence receipts
 
-Manual review evidence must name reviewer/role, exact files and raw hashes,
-source and sink symbols/locations, validation or authority boundary inspected,
-reasoning, timestamp, and confidence. Do not report generic keywords such as
-`load`, `token`, or `print(` as vulnerabilities without a concrete data flow and
-impact.
+Every executed check uses `cgs.security-tool-receipt/v1`. Record executable,
+tool/version, exact redacted argv, cwd, rulepack/config path and hash, adapter ID/
+version, target subset hash, start/end time, deadline, exit/timeout, scanned/
+excluded/unsupported counts and bytes, result hash, redacted log hash, and side
+effect status.
 
-For build/runtime claims, inspect only an existing identified build or run an
-explicitly authorized build/test command. Record the build command, exit code,
-config/preset hashes, artifact hash, platform, and log hash. If no current build
-evidence exists, label build/runtime behavior `UNVERIFIED`; source inspection
-cannot prove release-build behavior.
+Manual source→validator→sink review uses `cgs.security-manual-flow/v1` with exact
+reviewer, target hashes, symbols/locations, trust/authority boundary, validation,
+sink, reasoning, confidence, and timestamp. A keyword such as `load`, `token`,
+`password`, `secret`, or `print` may identify a candidate but cannot create a
+finding or no-findings claim without language-aware/source→sink evidence.
 
-Use a finite deadline per command and delegation. On timeout, stop that check,
-record it, and continue only with independent checks. Never retry indefinitely.
-A required timed-out check makes the overall outcome PARTIAL or ERROR.
+Unknown/missing tool or rule version, stale/incomplete input, incompatible
+adapter, parser rejection, timeout, unexplained nonzero exit, zero eligible files,
+unhashable result, unsafe secret output, or mutation yields `UNVERIFIED` or
+`UNSUPPORTED`. Preserve successful independent evidence; never infer a pass.
 
----
+Dependency advisories additionally require an exact hashed component inventory,
+supported ecosystem matcher, immutable advisory snapshot ID/hash/timestamp,
+freshness rule, version-range reasoning, and successful query receipt. Missing,
+stale, offline, unsupported, or incomplete advisory evidence never becomes
+“none” or “no known CVEs.”
 
-## Phase 3: Dependency and advisory evidence
+## Normalize secret-safe stable findings
 
-Create the component inventory only from actual hashed lockfiles, package
-manifests, vendor metadata, or an SBOM produced by an executed tool. Each
-component record needs name, exact version or digest, source path/hash, ecosystem,
-and match confidence.
+A finding must have concrete evidence, a stable fingerprint/ID, exact target and
+scope hashes, category and trust boundary, source→sink/authority path, confidence,
+reproducible project severity, owner, containment, remediation, and a testable
+closure condition. Findings begin `OPEN`.
 
-A CVE/advisory result is valid only when it records:
+Finding identity never includes a secret value/HMAC, title, prose wording, line
+number, byte hash, timestamp, reviewer, confidence, or severity. Secret findings
+use secret type plus a stable structural location. A per-run volatile HMAC may
+correlate the same matched secret inside that run only; it is truncated, never
+persisted as identity, and its key is destroyed without output.
 
-- scanner/provider and version;
-- advisory database or snapshot identifier, timestamp, and immutable hash;
-- exact query/scan command, timestamps, exit code, and log hash;
-- component-to-advisory match key and version-range reasoning; and
-- the project's explicit freshness policy and whether the snapshot satisfies it.
-  If no freshness policy exists, advisory freshness is UNVERIFIED.
+Use `CGS-SEC-IEX/v1`, not an invented CVSS score, for project triage. Impact,
+exploitability, and exposure have exact evidence-backed values; confidence is
+separate and never raises severity. Multiplayer or public exposure changes only
+the documented exposure factor and never blindly upgrades every HIGH finding to
+CRITICAL. If any required factor is unsupported, severity is `UNRATED` and the
+audit is `PARTIAL`.
 
-If there is no lockfile/SBOM, no supported ecosystem, no advisory snapshot,
-stale or unhashable data, denied network, timeout, or incomplete component match,
-set dependency vulnerability status to `UNVERIFIED`. Never write `none`,
-`no known CVEs`, or equivalent from missing/untraceable evidence.
+For an external advisory, preserve the provider's exact CVSS version/vector/score
+when supplied and label it advisory metadata. Do not fabricate missing CVSS,
+convert the internal IEX score to CVSS, or treat advisory severity as proof of
+project exploitability.
 
-When a complete, supported, fresh snapshot returns no matches, state only:
-`No advisories matched the inventoried components in [snapshot ID/hash] at
-[time].` This is scoped historical evidence, not proof that dependencies are
-safe.
+## Separate discovery, acceptance, persistence, and closure
 
----
-
-## Phase 4: Secret-safe detection and reporting
-
-Configure secret scanning so the command itself does not print matched values or
-surrounding source lines. Never echo, quote, store, summarize, or place a secret
-value in a prompt, finding, log excerpt, report, checkpoint, or tool argument.
-
-For a suspected credential, record only:
-
-- stable finding ID and secret type;
-- normalized path and line/column;
-- rule/scanner ID and source file raw hash;
-- a truncated HMAC-SHA-256 fingerprint made with a per-run volatile key that is
-  never printed or persisted;
-- validation state and confidence; and
-- required containment action.
-
-Do not record matched length or reversible encodings. Hash raw scanner output in
-memory before redaction; expose only the raw-log hash and a redacted log/result.
-If a tool cannot provide secret-safe output, do not display/persist its raw
-output and mark the evidence-handling check PARTIAL.
-
-A likely real credential triggers an immediate recommendation to revoke/rotate
-it, inspect repository history and downstream logs, and restrict further
-distribution. This skill does not rotate, delete, rewrite history, or patch it.
-
----
-
-## Phase 5: Normalize findings and coverage
-
-A finding requires concrete evidence. Record:
-
-- stable ID derived from rule ID plus normalized source/sink symbol and path
-  fingerprint—not title text;
-- target commit/dirty-state, source manifest hash, build hash when applicable,
-  tool/rule/snapshot evidence IDs, and timestamp;
-- category, affected trust boundary, source→sink or authority path;
-- impact, exploitability, exposure, confidence, and reproducible severity;
-- redacted locations and evidence;
-- initial state `OPEN`; and
-- recommended containment/remediation owner and testable closure condition.
-
-Do not mark findings RESOLVED or ACCEPTED RISK in discovery. Remediation is a
-separate, explicitly authorized implementation task. Risk acceptance is a
-separate owner decision and must contain finding ID, exact target/scope hash,
-approver identity/authority, rationale, compensating controls, expiry/review
-date, and signature/audit reference. The model, analyzer, reviewer, or recorder
+This audit cannot patch, set `RESOLVED`, create an accepted-risk record, sign a
+waiver, or persist its output. An existing risk acceptance affects neither
+finding existence nor audit outcome unless an independent gate contract says how
+to consume it. It is valid only with finding ID/fingerprint, exact target/scope
+hashes, authorized security/product owner, authority proof, rationale,
+compensating controls, signed timestamp, expiry/review trigger, and audit
+reference. The model, scanner, reviewer, recorder, or ordinary user acknowledgment
 cannot self-accept risk.
 
-Use a coverage matrix for every required category:
+Direct output is conversation-only `cgs.review-evidence/v1` with a
+`cgs.security-audit/v2` extension. Always state:
 
-| State | Meaning |
-|---|---|
-| CHECKED_WITH_FINDINGS | required evidence executed and findings exist |
-| CHECKED_NO_FINDINGS | required evidence executed and no findings in that exact scope |
-| UNVERIFIED | missing/failed/stale/unsupported/unauthorized evidence |
-| NOT_APPLICABLE | positive evidence proves category outside the threat model |
+```text
+gate_evidence_status: NOT_PERSISTED
+gate_evidence_eligible: false
+NOT A SHIP/RELEASE APPROVAL
+```
 
-Determine overall outcome in this order:
+A separate recorder would need new exact authorization and must independently
+revalidate redaction, record ID, target/scope/build/tool/advisory hashes, and
+finding lifecycle. This workflow does not invoke it.
 
-1. `ERROR` — no meaningful scan ran, target/scope identity is invalid, or
-   evidence integrity failed globally.
-2. `PARTIAL` — at least one meaningful check ran but any required category,
-   file, build/config, advisory source, command, or evidence field is UNVERIFIED;
-   also report whether confirmed findings exist.
-3. `FINDINGS` — required scope is complete and one or more findings exist.
-4. `NO_FINDINGS_IN_SCANNED_SCOPE` — required scope is complete and no findings
-   exist.
+## Re-audit stable IDs and current attack surface
 
-Never convert uncertainty into a vulnerability merely to be conservative.
-Record it as a coverage gap.
+When `--prior-review` is supplied, validate its generic/extension schemas,
+canonical record ID, immutable persistence identity, profile, target/scope hashes,
+stable finding fingerprints, evidence receipts, and relation to the current
+project. Invalid or unrelated prior input is `ERROR`.
 
----
+Evaluate every prior OPEN or owner-accepted-risk finding first against its exact
+closure condition, then inspect the exact prior→current diff and changed trust/
+authority/data flows for regressions and new attack surface. Reuse stable IDs for
+unchanged fingerprints and record `STILL_OPEN`, `CANDIDATE_RESOLVED`, `REGRESSED`,
+`SUPERSEDED`, or `UNVERIFIED`. The auditor never mutates lifecycle state.
 
-## Phase 6: Return a redacted read-only evidence packet
+Missing prior bytes/diff/current evidence makes re-audit coverage `PARTIAL`.
+A quick re-audit remains quick: it cannot close a full finding set, replace a
+full current audit, or satisfy a future release-security gate. Only a full current
+profile can produce full-profile evidence, still subject to separate persistence
+and lifecycle authority.
 
-Return in conversation only:
+## Coverage and outcome
 
-1. outcome plus `NOT A SHIP/RELEASE APPROVAL`;
-2. target commit/ref, dirty state, source/build/threat-model hashes;
-3. profile and exact included/excluded/failed scope;
-4. coverage matrix;
-5. executed command/manual-review evidence table;
-6. redacted findings and stable IDs;
-7. dependency/advisory snapshot evidence or UNVERIFIED reason;
-8. build/runtime evidence or UNVERIFIED reason;
-9. mutation check comparing pre/post workspace manifests;
-10. remediation-owner handoffs and separate risk-decision requirements; and
-11. exact re-audit scope.
+Each required category is exactly one of:
 
-Do not write `production/security/` or any other project file. Do not ask for a
-write approval because this skill has no write set. If the user separately asks
-to persist the packet, stop and route it to a recorder workflow with a new exact
-path/content/hash authorization and secret-safe review. That recorder action is
-outside this audit.
+```text
+CHECKED_WITH_FINDINGS | CHECKED_NO_FINDINGS | NOT_APPLICABLE |
+UNVERIFIED | UNSUPPORTED
+```
 
-A post-audit workspace-manifest difference not explained by external concurrent
-work is an evidence-integrity failure. Report ERROR or PARTIAL and list redacted
-changed paths; never silently accept scanner side effects.
+Apply outcome precedence:
 
----
+1. Invalid identity/scope or no meaningful check -> `ERROR`.
+2. At least one meaningful check plus any required `UNVERIFIED`/`UNSUPPORTED`,
+   unchecked file/flow/component, failed tool/reviewer, unsafe redaction, target
+   change, or incomplete mutation/re-audit evidence -> `PARTIAL`.
+3. Complete required scope plus one or more findings -> `FINDINGS`.
+4. Complete required scope and zero findings ->
+   `NO_FINDINGS_IN_SCANNED_SCOPE`.
 
-## Release and re-audit boundaries
+Under `PARTIAL`, preserve confirmed findings and explicitly say which required
+scope remains unknown. Never convert uncertainty into a vulnerability merely to
+sound conservative.
 
-This skill does not claim to be a required release-gate artifact because the
-shared gate/catalog does not currently establish that contract. A quick profile
-cannot satisfy a future full release-security requirement.
+## Return and stop
 
-If the project later adopts a release-security gate, acceptable evidence must be
-an immutable, independently recorded full-profile packet bound to the exact
-commit, dirty state, source manifest, build artifact/configuration, tool/rule
-versions, advisory snapshot, coverage matrix, and finding lifecycle records.
-Open CRITICAL/HIGH findings must have independently auditable remediation or
-owner-signed, unexpired acceptance records. This audit does not create either.
+Return the complete envelope defined in the rules reference: target/build/source/
+threat-scope hashes, bounded manifests, engine/platform/adapter routing, coverage,
+tool and manual receipts, redacted stable findings, advisory evidence, reviewer
+plan/results, risk references, re-audit dispositions, mutation guard, outcome,
+and stale key.
 
-A re-audit receives prior stable finding IDs, their original evidence hashes,
-the current target/scope hashes, and the exact diff. It verifies original
-closure conditions plus new/changed attack surface. A quick re-audit remains
-quick evidence and never upgrades or replaces a prior full profile.
+For a suspected live credential, expose only secret type, normalized allowed path,
+line/column, structural anchor, rule/tool ID, target hash, confidence, and volatile
+truncated HMAC. Recommend immediate revoke/rotate, restricted distribution, and
+authorized history/log inspection, but do not perform them.
 
----
-
-## Handoff boundaries
-
-For `FINDINGS` or `PARTIAL` with confirmed findings, provide containment and
-remediation requirements but make no patch. A separate implementation workflow
-must preview exact files/owners/operations/baseline hashes/tests, obtain explicit
-authorization, implement, and produce test evidence.
-
-For risk acceptance, route to the authorized security/product owner. Do not
-suggest that an ordinary acknowledgment closes the finding.
-
-For `NO_FINDINGS_IN_SCANNED_SCOPE`, recommend only the missing dynamic,
-penetration, platform, or release evidence appropriate to the threat model.
-Never say the game is safe or ready to ship.
-
----
-
-## Non-negotiable rules
-
-- Never output `SECURE` or `CLEAR TO SHIP` as an audit conclusion.
-- Never claim a check, build, test, CVE query, or file scope ran without command
-  and hash evidence.
-- Never print or persist a secret value.
-- Never invent `none` for unavailable advisory data.
-- Never patch findings or self-accept risk in this workflow.
-- Never write a report or mutate the workspace.
-- Never let a quick scan substitute for full release evidence.
+Provide evidence-bound containment/remediation ownership and stop. Never write a
+report, invoke remediation, self-accept risk, claim a finding closed, or present
+this audit as release approval.

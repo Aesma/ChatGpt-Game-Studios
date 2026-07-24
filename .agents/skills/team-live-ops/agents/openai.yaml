@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Live Ops"
-  short_description: "Plan live ops with ethics and ownership gates"
-  default_prompt: "Use $team-live-ops to create an ethics-reviewed live-ops plan; do not implement, publish, or deploy content."
+  short_description: "Create bounded ethics-gated live-ops plans only"
+  default_prompt: "Use $team-live-ops with one exact v2 request to create independently reviewed planning artifacts; never infer implementation, experiment, publication, deployment, or production readiness."

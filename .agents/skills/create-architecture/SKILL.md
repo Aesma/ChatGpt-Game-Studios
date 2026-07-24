@@ -1,403 +1,400 @@
 ---
 name: create-architecture
-description: "Authors a versioned DRAFT master architecture as a derived view of Accepted ADRs and confirmed design requirements. Supports new, resume, focus, and read-only audit profiles; preserves requirement provenance, records unresolved decisions without making them binding, and requires an independent current-hash architecture review plus a separate recorder before READY status."
+description: "Author one bounded DRAFT master architecture as an immutable derived view of current approved GDD requirements and current Accepted ADRs, with stable TR mapping, profile-safe CAS, and external review/READY ownership."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$create-architecture`.
-
-Arguments:
-
-`[profile: new | resume | focus | audit] [focus-area: layers | ownership | data-flow | api-boundaries | decision-ledger | requirements] [--review full | lean | solo]`
-
-If no profile is supplied, inspect `docs/architecture/architecture.md`:
-
-- Missing file → recommend `new`.
-- Existing file → recommend `resume`; never overwrite it implicitly.
-
-`focus` requires one `focus-area`. `audit` is strictly read-only. Resolve review
-mode once: explicit `--review`, then `production/review-mode.txt`, otherwise
-`lean`.
-
-Before the first write, use any existing bounded task authorization. Otherwise,
-preview the complete changeset (including the architecture skeleton and session
-checkpoint) and obtain one explicit approval. Once authorized, persist approved
-sections without asking again for each write. Ask again only if file scope expands.
-
-This workflow may delegate authoring research to `technical-director`, but the
-authoring agent and every authoring subagent are members of the **author side**.
-They cannot review, approve, sign, or promote their own artifact.
 
 # Create Architecture
 
-This workflow authors `docs/architecture/architecture.md`. The artifact is a
-versioned architecture view, not a second source of technical truth.
+## Invocation
 
-## Non-negotiable authority model
+```text
+$create-architecture <new | resume | focus | audit> [<focus-area>]
+  [--cross-gdd-evidence <path> --expect-cross-gdd <sha256:...>]
+  [--prior-review <path> --expect-prior-review <sha256:...>]
+```
 
-1. **Accepted ADRs own binding technical decisions.** Engine/API choices, module
-   ownership, cross-module contracts, data-flow mechanisms, threading models,
-   persistence formats, and similar choices are binding only when an Accepted ADR
-   owns them.
-2. **The master architecture is derived.** It aggregates the current results of
-   Accepted ADRs and links each binding statement to its ADR ID, status, and source
-   hash. It may also contain clearly marked non-binding proposals and decision gaps.
-3. **A proposal is not permission to implement.** A section lacking an Accepted
-   ADR uses a stable `DECISION-*` ID, is labeled `NON-BINDING PROPOSAL`, and names
-   the ADR needed to resolve it.
-4. **The author never self-signs.** User approval authorizes content and file
-   mutation; it does not constitute technical review or READY status.
-5. **READY is recorded, not authored.** A fresh independent `$architecture-review`
-   must review the exact current artifact hash. A recorder who is neither author
-   nor reviewer may promote the document only after validating the record and all
-   other READY conditions.
+Focus areas are exactly:
 
-## Status and verdict vocabulary
+```text
+requirements | decision-ledger | layers | ownership | data-flow | api-boundaries | engine
+```
 
-Architecture artifact status is exactly one of:
+`focus` requires exactly one focus area; other profiles reject one. Each evidence
+path requires its matching expected raw SHA-256 and vice versa. Reject duplicate/
+unknown flags, positional extras, directories, globs, traversal, outside-root or
+root-escaping symlink paths, malformed hashes, and both path plus inline forms of
+the same evidence.
 
-- `DRAFT` — usable for discussion; not an implementation authority.
-- `PARTIAL` — interrupted, input-incomplete, or review-incomplete draft.
-- `READY` — independently reviewed at the current hash and derived only from
-  Accepted ADRs for every binding/blocking decision.
+The user may explicitly supply one complete inline cross-GDD evidence record or
+one prior-review record instead of the corresponding path pair. Never search for
+the newest, nearest, highest-numbered, or most convenient evidence.
 
-Independent review verdict is exactly one of `PASS`, `CONCERNS`, or `FAIL`.
-Only `PASS` is eligible for READY. The author must never write an approval,
-technical-director sign-off, or equivalent endorsement into the architecture.
+Read
+[references/architecture-evidence-contract.md](references/architecture-evidence-contract.md)
+in full before processing. It is normative.
 
-## Profile contract
+## Ownership and hard stop
 
-| Profile | Preconditions | Allowed architecture mutation | Review behavior |
-|---|---|---|---|
-| `new` | Architecture file does not exist | Create the complete skeleton, then fill authorized sections incrementally | Review the completed DRAFT according to review mode |
-| `resume` | Existing DRAFT/PARTIAL file | Fill incomplete sections and update explicitly selected stale derived content; preserve all other bytes | Review only after the requested draft scope is complete |
-| `focus` | Existing file and one focus area | Change only the selected section plus Document Status/provenance fields required by that change | Review the resulting whole-file hash if promotion is requested |
-| `audit` | Existing file | None: no architecture, review record, ADR, catalog, or session-state writes | Report findings inline; never change status |
+This workflow is an author only. It may create or update exactly:
 
-If a profile precondition fails, stop and offer valid profiles. Do not silently
-convert profiles or rewrite an existing document.
+```text
+docs/architecture/architecture.md
+```
 
----
+It never writes session state, skeleton checkpoints, GDDs, ADRs, lifecycle
+records, registries, engine references, reviews, sign-off, READY state, gate
+records, catalogs, tests, or latest pointers. It never delegates to or impersonates
+an architecture reviewer, technical director, lead programmer, recorder, gate, or
+other workflow.
 
-## Phase 0: Establish the run boundary
+Accepted ADRs are the sole source of binding technical decisions; approved GDDs
+are the sole source of admitted product requirements. The architecture is
+`cgs.master-architecture/v3`, a derived view. New/changed bytes are always `DRAFT`
+or `PARTIAL`, never `READY`.
 
-1. Resolve the profile, focus area, review mode, target path, and current target
-   hash (or `ABSENT`).
-2. Enumerate the inputs needed for the selected profile. Do not treat every file
-   in a directory as approved merely because it exists.
-3. For `resume` and `focus`, read the existing document completely and record its
-   starting hash. Identify the exact sections eligible for mutation.
-4. For `audit`, declare the run read-only and skip all later write steps.
-5. Present the complete proposed changeset once when authorization is not already
-   present.
+Use these result fields:
 
-If the target changes after its starting hash is recorded, stop with `PARTIAL —
-CONCURRENT CHANGE`; do not overwrite the newer content.
-
----
-
-## Phase 1: Build an approved input manifest
-
-Read the pinned engine version and only the design/engine sources needed by the
-selected profile. For every design input, record:
-
-| Field | Required value |
+| Field | Values |
 |---|---|
-| Path | Repository-relative path |
-| Approval state | `APPROVED`, `PROVISIONAL`, or `UNKNOWN` from explicit artifact evidence |
-| Source revision | Source-declared revision when present |
-| SHA-256 | Hash of the exact bytes consumed |
-| Scope | Sections used by this run |
+| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED`, `STOPPED`, `ERROR` |
+| `Architecture Operation` | `CREATE`, `UPDATE`, `UNCHANGED`, `NOT_REQUESTED`, `DECLINED`, `CONFLICT`, `FAILED` |
+| `Profile` | `new`, `resume`, `focus`, `audit` |
+| `Context State` | `COMPLETE`, `PARTIAL`, `INVALID` |
+| `Cross-GDD State` | `CURRENT_PASS`, `CURRENT_CONCERNS`, `CURRENT_FAIL`, `CURRENT_PARTIAL`, `MISSING`, `STALE`, `UNBOUND`, `CONFLICT`, `UNKNOWN` |
+| `Independent Review` | `NOT_SUPPLIED`, `CURRENT_PASS`, `CURRENT_BLOCKED`, `CURRENT_PARTIAL`, `STALE`, `INVALID` |
+| `Route State` | `READY`, `BLOCKED`, `UNKNOWN`, `NO_ROUTE` |
 
-Only `APPROVED` inputs may support READY. `PROVISIONAL` or `UNKNOWN` inputs may be
-used for a DRAFT, but must be listed as blockers. Never infer approval from a
-filename, directory, or conversational description.
-
-Read the relevant engine reference provenance: engine/version, reference date,
-coverage, and missing or stale domains. An unsupported engine claim remains
-`UNVERIFIED` and cannot be represented as confirmed.
-
-### Technical requirement classification
-
-Extract requirements into two separate collections:
-
-#### A. Requirements baseline
-
-The baseline contains only:
-
-- `EXPLICIT_REQUIREMENT`: a normative statement present in an approved source; or
-- `CONFIRMED_REQUIREMENT`: a former inference explicitly confirmed by the user or
-  named technical owner during this run.
-
-Each row must preserve:
-
-| Requirement ID | Class | Requirement | Source path | Source locator | Source excerpt | Source SHA-256 | Confirmation evidence | Domain |
-|---|---|---|---|---|---|---|---|---|
-
-Prefer a source-owned requirement ID. If none exists, derive a stable ID from the
-source path, locator, and normalized statement fingerprint; do not renumber other
-requirements when a source is edited.
-
-#### B. Inferred candidates
-
-Anything implied rather than stated is an `INFERRED_CANDIDATE`. Keep candidates in
-a visibly separate table with rationale and source provenance. Candidates:
-
-- do not enter the baseline;
-- do not count toward coverage;
-- do not create binding ADR obligations;
-- do not appear as facts in the architecture; and
-- become baseline requirements only after explicit confirmation is recorded.
-
-Present each candidate requiring a product or technical choice with 2–3 meaningful
-options and tradeoffs. If confirmation is unavailable, leave it as a candidate and
-continue only as DRAFT/PARTIAL. Never call the extracted set "complete" merely
-because all available files were scanned.
+`COMPLETE` means only that this authoring/audit interaction completed honestly.
+It never means Architecture Complete, independently approved, READY, gate-ready,
+or safe to implement unresolved choices.
 
 ---
 
-## Phase 2: Build the ADR-derived decision ledger
+## Phase 0: Freeze root and bind the catalog
 
-Read the in-scope ADR headers and relevant decision sections. For each ADR record:
+Resolve exactly one repository root and one UTC snapshot. Read exact raw bytes and
+compute lowercase SHA-256.
 
-| ADR ID | Title | Status | ADR SHA-256 | Requirements | Architecture sections | Binding? |
-|---|---|---|---|---|---|---|
+Read `.codex/docs/workflow-catalog.yaml` first. Require unique phase/workflow IDs
+and exactly one `create-architecture` entry with:
 
-- `Accepted` → binding and eligible to populate the derived architecture view.
-- `Proposed`, `Superseded`, `Rejected`, missing, or ambiguous → not binding.
+- exact command identity;
+- one containing phase and required/optional semantics; and
+- one non-wildcard artifact path equal to
+  `docs/architecture/architecture.md`.
 
-Detect stale links by comparing stored ADR hashes with current bytes. Never resolve
-a conflict by choosing a winner in the architecture document. Create or retain a
-`DECISION-*` gap describing the conflict and route resolution to
-`$architecture-decision`.
+An unversioned catalog is `LEGACY_UNVERSIONED`; use only fields it declares and
+never infer a transition, receipt, READY recorder, evidence producer, prerequisite,
+or completion state from comments or artifact presence.
 
-For every planned statement in Layers, Module Ownership, Data Flow, or API
-Boundaries, classify it before writing:
+Catalog-only routing resolves:
 
-- `DERIVED — ADR-NNNN@<hash>` for an Accepted ADR result; or
-- `NON-BINDING PROPOSAL — DECISION-<stable-id>` when no Accepted ADR owns it.
+- missing/current cross-GDD evidence through the unique declared cross-GDD review
+  producer when available;
+- a `DECISION-*`/non-Accepted ADR gap through the unique declared ADR authoring or
+  lifecycle owner;
+- independent review through the unique declared architecture-review entry;
+- any READY recording, gate, or next-phase action only through an exact declared
+  owner, command, transition, evidence, and receipt contract.
 
-The second classification cannot be presented as a contract programmers may
-implement against.
+Do not copy or hardcode downstream commands, phase shorthand, UX prerequisites,
+gate profiles, transition IDs, minimum ADR counts, or file-presence completion
+rules. Missing, duplicated, incompatible, or underspecified route policy produces
+`UNKNOWN`/`BLOCKED` and `Stop`.
+
+A catalog conflict affecting target identity/path blocks all processing. A
+route-only gap does not invalidate an otherwise safe DRAFT/audit result but stays
+visible.
 
 ---
 
-## Phase 3: Create or validate the skeleton
+## Phase 1: Enforce the selected profile
 
-In `new`, create the complete skeleton immediately after changeset authorization,
-before inserting section content. In `resume` or `focus`, validate that the required
-headers exist; add missing headers only when they are inside the authorized mutation
-scope. The skeleton is:
+Read target source state and exact base hash before other authoring sources.
 
-```markdown
-# [Game Name] — Master Architecture
+| Profile | Required target state | Mutation |
+|---|---|---|
+| `new` | exact target ABSENT | one complete v3 DRAFT/PARTIAL CREATE |
+| `resume` | valid v3 DRAFT/PARTIAL target | selected incomplete/stale sections plus mechanically affected derived ledgers/status/history |
+| `focus` | valid v3 target and one focus area | only the reference contract's exact focus mutation closure |
+| `audit` | valid existing target | none |
 
-## Document Status
-- Schema Version: 2
-- Artifact Revision: 1
-- Status: DRAFT
-- Artifact Hash: PENDING UNTIL WRITE
-- Input Manifest Hash: [hash]
-- Last Independent Review: NONE
+Reject profile precondition mismatch. Do not silently switch profiles, overwrite an
+existing target in `new`, treat a legacy/malformed file as absent, or retrofit an
+unsupported schema. `BLOCKED_UNSUPPORTED_BASE` requires a separately authorized
+migration owner not defined here.
 
-## Input Manifest
+For `resume`, show incomplete/stale sections and ask the user to select one bounded
+batch of at most three sections. Dependencies mechanically required to keep the TR
+map/decision ledger/provenance internally consistent are disclosed before selection.
+Do not silently expand the batch.
 
-## Technical Requirements Baseline
+For `focus`, freeze the exact target section and allowable collateral fields before
+source loading. If a necessary change would affect another technical section, stop
+and offer `resume` or a new focus run; never expand mutation scope implicitly.
 
-## Inferred Candidates (Non-Binding)
+For `audit`, declare `Architecture Operation: NOT_REQUESTED`, skip candidate,
+approval, temporary-file and write phases, and return inline findings only.
 
-## Decision Ledger
+---
 
-## System Layer Map
+## Phase 2: Build the bounded source manifest
 
-## Module Ownership
+Apply the reference contract's exact classes, count/per-file/class/48-MiB limits,
+layered loading, direct-child boundaries, source states, ordering, and canonical
+`source_manifest_id`.
 
-## Data Flow
+Start from catalog, technical preferences, target/base, systems index, supplied
+cross-GDD envelope, ADR registry/catalog artifact declarations, and supplied prior
+review. Construct the complete intended manifest before reading full bodies.
 
-## API Boundaries
+Only read GDDs and per-GDD approval records named by the current cross-GDD manifest.
+When cross-GDD evidence is absent, use only bounded systems-index exact GDD paths
+and require the user to explicitly opt each exact path/hash into
+`PROVISIONAL_EXPLICIT` Draft input. Never read every GDD merely because it exists.
 
-## Engine Knowledge and Verification
+Only read ADRs from an exact registry/architecture link or the catalog's bounded
+direct-child ADR artifact declaration. Only read engine references pinned by
+technical preferences/version and linked by an admitted ADR claim. Never scan an
+engine library or browse for missing knowledge.
 
-## Required ADRs
+Any unreadable/ambiguous/oversize/changed/limit-exceeded required source is
+`Context State: PARTIAL|INVALID`. Stop before writing, name exact unchecked scope,
+and never sample it as complete.
 
-## Architecture Principles
+For audit/resume/focus, validate the base document's prior manifest and immutable
+provenance chain. A broken, reordered, removed, or rewritten event is
+`BLOCKED_INVALID_PROVENANCE`.
 
-## Open Questions and Blockers
+---
 
-## Revision History
+## Phase 3: Admit current GDD evidence
+
+Validate supplied cross-GDD evidence exactly as the reference contract requires:
+`cgs.review-evidence/v1` produced by `review-all-gdds`, extension
+`cgs.cross-gdd-review/v2`, complete manifest/coverage, internally valid record ID,
+and current source hashes.
+
+Recompute each GDD and per-GDD `design-review` approval record. Preserve exact
+source and Cross-GDD states; do not upgrade them from filenames, status text,
+systems-index rows, prose, or prior architecture claims.
+
+Only `APPROVED_CURRENT` GDD requirements can enter the approved derived TR map.
+`PROVISIONAL_EXPLICIT` input is isolated in the non-binding provisional section,
+excluded from approved coverage and READY eligibility, and disclosed in every
+result.
+
+Cross-GDD current PASS is a readiness precondition, not a source of product truth.
+CONCERNS keeps findings visible and blocks READY; FAIL blocks affected projection;
+PARTIAL/missing/stale/unbound/conflict/unknown cannot be described as current
+complete evidence.
+
+If the user declines provisional use when current approval evidence is unavailable,
+return `STOPPED`/`BLOCKED` with the unique catalog-derived evidence action or Stop.
+
+---
+
+## Phase 4: Build the stable derived TR map
+
+Extract exact normative requirements only from admitted source sections. Maintain
+three separate collections:
+
+1. `EXPLICIT_REQUIREMENT` — stable normative source requirement;
+2. `CONFIRMED_REQUIREMENT` — a separately evidenced confirmation satisfying the
+   reference contract; and
+3. `INFERRED_CANDIDATE` — non-binding possibility that does not enter the TR map.
+
+Apply the reference contract's deterministic TR ID construction, persisted-ID
+preservation, source change state, and explicit `TR-MIGRATION-*` rules. Never use
+sequential numbering, reorder-driven IDs, display order, filenames, or fuzzy text
+matching.
+
+Every approved TR row preserves exact source text/locator/hash, approval record
+ID/hash, currentness, and ADR mapping. Duplicate source identities, hash collisions,
+ambiguous locators, missing exact text, or conflicting persisted mappings block
+publication.
+
+An inferred candidate requiring confirmation is shown separately with provenance,
+rationale, and consequences. Confirmation must be explicit and evidence-bound; it
+does not approve the GDD/ADR and cannot promote a provisional source. Unconfirmed
+candidates create neither TR coverage nor ADR obligations.
+
+---
+
+## Phase 5: Build the ADR-derived decision ledger
+
+Validate every in-scope ADR and exact lifecycle/review/registry evidence. Classify
+it as `ACCEPTED_CURRENT`, `PROPOSED`, `SUPERSEDED`, `REJECTED`, `STALE`, `UNBOUND`,
+`CONFLICT`, or `UNKNOWN` using the reference contract.
+
+Only `ACCEPTED_CURRENT` ADRs populate binding-looking derived text. Every derived
+statement includes exact ADR ID/hash, lifecycle record ID/hash, and source TR IDs.
+The architecture never settles disagreement between ADRs or lifecycle records.
+
+For missing or non-current ownership, preserve one stable `DECISION-*` gap. Do not
+select or ask the user to select APIs, modules, interfaces, data-flow mechanisms,
+threading, persistence, networking, or other technical outcomes here. State the
+decision scope and affected TR IDs, then resolve the next action from the catalog's
+ADR owner.
+
+Required Proposed/stale/unbound/conflicting/unknown ADRs and missing Accepted
+coverage block READY eligibility. They may remain visibly non-binding in DRAFT.
+
+---
+
+## Phase 6: Validate engine knowledge without inventing capability
+
+For every admitted ADR engine claim, bind pinned engine/version and only the exact
+needed reference domain. Record provenance/date/revision/path/hash/coverage and
+classify `CURRENT_COMPLETE`, `CURRENT_PARTIAL`, `STALE`, `MISSING`, `UNSUPPORTED`,
+`UNREADABLE`, or `CONFLICT`.
+
+Only CURRENT_COMPLETE supports a verified engine fact. Otherwise keep the ADR
+decision citation but label the implementation/API assertion `UNVERIFIED`, name
+the unsupported claim, and add a READY blocker when implementation depends on it.
+
+Missing knowledge is not permission to rely on model memory. Return PARTIAL if the
+selected profile cannot safely render its requested section.
+
+---
+
+## Phase 7: Render one canonical derived candidate
+
+For `new`, render the full v3 skeleton in memory before inserting content. Do not
+write an early skeleton or session checkpoint.
+
+For `resume`/`focus`, construct:
+
+```text
+BASE + authorized profile INTENT -> CANDIDATE
 ```
 
-After the skeleton write, compute its hash and checkpoint
-`production/session-state/active.md` with profile, target, current status, completed
-sections, next section, input manifest hash, and open blockers. Session state is a
-recovery aid and never a review or approval record.
+Preserve every out-of-scope technical section and prior immutable provenance event.
+Show a structured three-way diff separating unchanged, mechanically affected,
+explicitly changed, blocked, and provenance-appended fields.
 
----
+Populate the reference contract's fifteen sections. Every changed candidate uses:
 
-## Phase 4: Author sections incrementally
-
-For each in-scope section:
-
-1. Load only the manifest entries, baseline requirements, and ADR ledger rows needed
-   for that section.
-2. Show the proposed section. Binding lines cite Accepted ADR IDs/hashes. Unresolved
-   choices show a `DECISION-*` ID, 2–3 options with tradeoffs, and the owner needed
-   to decide.
-3. Obtain the user's content decision. This is a design decision, not another file
-   authorization.
-4. Recheck the target hash, write only that section, recompute the hash, and update
-   the recovery checkpoint.
-
-Section-specific rules:
-
-- **System Layer Map:** derive layer placements from Accepted ADRs; otherwise show
-  a non-binding proposed placement.
-- **Module Ownership:** only an Accepted ADR may establish exclusive ownership,
-  exposed state, or dependency direction.
-- **Data Flow:** only an Accepted ADR may establish the communication mechanism,
-  thread boundary, initialization order, or persistence authority.
-- **API Boundaries:** only an Accepted ADR may establish public interfaces or
-  engine-specific types/signatures. Pseudocode without such an ADR is illustrative
-  and labeled non-binding.
-- **Required ADRs:** list decision gaps and the baseline requirement IDs they block;
-  do not pre-decide the ADR outcome in its title or proposed architecture text.
-
-`resume` must leave completed, current sections unchanged unless the user explicitly
-selected them. `focus` must leave every non-target section byte-for-byte unchanged,
-except the minimal Document Status, provenance, and Revision History fields required
-to disclose the change. `audit` skips this phase.
-
----
-
-## Phase 5: Finalize the author-side draft
-
-Recompute coverage using baseline requirements only. Report separately:
-
-- requirements linked to Accepted ADRs;
-- requirements with unresolved `DECISION-*` gaps;
-- confirmed requirements with no architecture mapping;
-- inferred candidates awaiting confirmation;
-- Proposed or stale ADR dependencies; and
-- unverified engine claims.
-
-Set author-side status:
-
-- `PARTIAL` if the run was interrupted, an authorized section is unfinished, an
-  input is missing, a concurrent change occurred, or a requested reviewer failed.
-- otherwise `DRAFT`.
-
-The author may never set `READY`. Compute the exact SHA-256 of the completed draft
-bytes and expose it as `reviewed_artifact_hash` for the next phase. Because embedding
-a file's own hash changes its bytes, the Document Status field stores the hash of
-the canonical review payload defined as the UTF-8 document with the `Artifact Hash`
-value replaced by `PENDING`; the external review record stores both that canonical
-hash and the repository blob hash when available.
-
----
-
-## Phase 6: Independent review and recording
-
-`audit` skips this phase. Review work must use a fresh context that did not author
-or edit the artifact.
-
-### Review-mode behavior
-
-- `full`: dispatch independent `$architecture-review` and `lead-programmer`
-  feasibility review concurrently against the same immutable artifact hash. Wait
-  for both; the LP result is advisory and cannot promote the artifact.
-- `lean`: dispatch only independent `$architecture-review`. Record
-  `LP feasibility skipped — lean mode`.
-- `solo`: do not simulate independence in the current context. Record
-  `Independent architecture review not run — solo mode`; leave the artifact DRAFT.
-
-If independent delegation is unavailable, times out, becomes blocked, or reads a
-different hash, report the exact condition and leave the artifact `PARTIAL` or
-`DRAFT`. Never replace a missing independent review with author-side reasoning.
-
-The independent reviewer, not the author, writes:
-
-`docs/architecture/reviews/architecture-review-<canonical-hash-prefix>.md`
-
-The record must contain reviewer identity/context, timestamp, architecture path,
-canonical reviewed hash, repository blob hash when available, input manifest hash,
-review method, `PASS|CONCERNS|FAIL`, findings, and any required remediation. A record
-for any other hash is stale.
-
-### Separate recorder promotion
-
-A recorder who is neither author nor reviewer may change status to READY only when:
-
-- the current canonical artifact hash exactly matches a fresh independent record;
-- the independent verdict is `PASS`;
-- every source needed for readiness is APPROVED at the recorded hash;
-- every binding or blocking technical decision is owned by a current Accepted ADR;
-- there are no blocking open questions, stale ADR links, or unverified binding
-  engine claims; and
-- any required full-mode feasibility result has completed without a blocking issue.
-
-The recorder records only status, review-record path/hash, timestamp, and revision
-history. The recorder does not rewrite technical content. Any later content change
-returns the artifact to DRAFT and invalidates the old review record for promotion.
-
----
-
-## Phase 7: Handoff
-
-Never output `Architecture Complete` for a DRAFT or PARTIAL artifact. Report:
-
-```markdown
-## Architecture Draft Saved
-
-- Path: `docs/architecture/architecture.md`
-- Status: DRAFT | PARTIAL | READY
-- Canonical artifact hash: [hash]
-- Input manifest hash: [hash]
-- Independent review: [current record path and verdict | NOT RUN | STALE | FAILED]
-- Binding source: Accepted ADRs only
-
-## Blocking Decisions
-
-| Decision ID | Baseline requirements | Reason | Resolution owner |
-|---|---|---|---|
-
-## Highest-Priority Next Action
-
-[One action only: confirm an inferred candidate, create/accept one ADR, run an
-independent review, or address one review finding.]
-
-## Gate Readiness
-
-Do not claim a phase gate is ready from this workflow. State which evidence exists
-and direct `$gate-check [stage]` to verify the catalog-defined artifacts. A current-
-hash independent review record is required evidence; author text is not evidence.
+```text
+Schema: cgs.master-architecture/v3
+Status: DRAFT | PARTIAL
+External Review: NOT_CURRENT
+Source Manifest ID: sha256:<manifest>
+Prior Artifact SHA-256: <base-hash-or-ABSENT>
 ```
 
-Update session state after the last successful write. Do not automatically run a
-chain of ADR workflows, a gate, or another skill.
+Do not embed the candidate's own hash in its bytes. Append exactly one immutable
+author-side provenance event with profile/focus/base/manifest/decision/change/time/
+task identity. Never edit prior events.
+
+Render exact UTF-8/LF bytes and compute `candidate_sha256`. Recompute/report:
+
+- approved/provisional/blocked GDD source counts;
+- Cross-GDD record/state/findings;
+- stable TR current/changed/gap/migration counts;
+- Accepted/current and non-binding ADR states;
+- verified/unverified engine claims;
+- open DECISION IDs and READY blockers; and
+- exact profile mutation boundary.
+
+If candidate bytes equal valid base bytes, use `UNCHANGED`; do not rewrite or append
+a no-op provenance event.
+
+The user reviews only source mapping fidelity and derived projection accuracy here.
+Any new low-level choice is sent to ADR authoring instead of being decided inside
+this workflow.
 
 ---
 
-## Failure and recovery rules
+## Phase 8: Approve one changeset and execute CAS
 
-- Missing/unapproved source → preserve provenance, mark blocker, remain DRAFT/PARTIAL.
-- Missing/stale engine reference → mark claims UNVERIFIED; never present them as
-  confirmed API facts.
-- Proposed ADR → show as non-binding and block READY when required.
-- Reviewer unavailable/timeout/blocked → preserve draft and report review not
-  completed; never self-review.
-- Hash mismatch before a write → stop without overwriting and report concurrent
-  change.
-- Hash mismatch after review → mark the record stale and require a fresh review.
-- Resume after interruption from the on-disk document and checkpoint; do not infer
-  missing decisions from conversation memory.
+Preview exactly:
 
-## Static safety guards
+```text
+docs/architecture/architecture.md: CREATE | REPLACE with candidate_sha256
+all other persistent writes: NONE
+```
 
-- No author-side approval or sign-off fields.
-- No inferred candidate in the requirements baseline without confirmation evidence.
-- No binding architecture statement without a current Accepted ADR citation.
-- No READY transition without an independent current-hash PASS record and separate
-  recorder.
-- No whole-document rewrite in `focus` or `audit`.
-- No mutation of any kind in `audit`.
+Show complete candidate/lossless representation, profile diff, manifest entries/
+limits/hash, stable TR migrations, ADR/lifecycle/engine states, provenance append,
+blockers, base/absence, destination parent, and exact candidate bytes/hash.
+
+Obtain one approval bound to those exact values. Product/mapping approval and file
+authorization are not ADR acceptance, independent review, READY recording, gate
+approval, or permission to mutate another path. If declined, return STOPPED/
+DECLINED with zero writes. Do not ask again per section or source.
+
+Immediately before mutation, apply the complete reference-contract CAS: re-read and
+re-hash every bound input/source state/directory membership, rebuild the manifest,
+reapply BASE+INTENT, and require the same candidate hash/provenance chain.
+
+Any mismatch returns BLOCKED/CONFLICT with exact old/new states and zero writes.
+Do not merge, refresh, retry, overwrite, update session state, or implicitly accept
+changed bytes.
+
+After CAS, atomically publish only the exact architecture candidate, re-read it,
+verify hash/v3 schema/profile boundary/manifest/TR/ADR/provenance/status/review
+invariants, and confirm no other persistent path changed.
+
+- exact verified publication -> CREATE/UPDATE and this authoring may be COMPLETE;
+- pre-publication failure -> FAILED/BLOCKED;
+- publication/read-back/result uncertainty -> PARTIAL, exact observed state, never
+  COMPLETE or READY.
+
+Never repair or revert external concurrent changes.
+
+---
+
+## Phase 9: Report external review currentness and route one action
+
+When a prior independent review was explicitly supplied, validate it as
+`cgs.review-evidence/v1` produced by `architecture-review`, extension
+`cgs.architecture-review/v2`, exact architecture-derived path/hash, source-manifest
+binding, target manifest/ruleset hashes, complete coverage, internal record
+identity, and preserved PASS/BLOCKED/PARTIAL verdict. Only current full-mode PASS
+is READY-eligible; narrower modes remain scoped evidence only.
+
+It is current only for unchanged exact artifact and manifest bytes. Any authoring
+change makes it STALE/NOT_CURRENT. Never retarget, copy, edit, save, or use it to
+write READY.
+
+Choose exactly one highest-priority next action from catalog-declared evidence:
+
+1. obtain/refresh cross-GDD evidence when source admission is unsafe;
+2. resolve the first stable DECISION/TR/ADR lifecycle blocker;
+3. verify one blocking engine-reference gap;
+4. run independent architecture review for the exact current artifact/manifest;
+5. invoke a separate READY recorder/gate only when the catalog declares exact
+   current evidence and ownership; or
+6. `Stop` when no safe unique route exists.
+
+Never claim an undeclared UX/accessibility artifact exists, skip a catalog-required
+step because a file is present, infer gate readiness, print a copied roadmap, or
+invoke the action.
+
+Return:
+
+- workflow/profile/operation/context states;
+- catalog path/contract/hash and route ID/command or gap;
+- architecture path/base/candidate/on-disk hashes;
+- source manifest ID, limits/use, every source-class state;
+- Cross-GDD and per-GDD evidence IDs/hashes/states;
+- TR and migration IDs/states;
+- ADR/lifecycle and engine-reference states;
+- immutable provenance event ID and chain validation;
+- external review state/record ID/hash;
+- READY blockers and exact one next action;
+- `Architecture READY Mutation: NONE`, `Review Record Mutation: NONE`,
+  `Session-State Mutation: NONE`, `Auto Executed: false`.
+
+Then stop.
+
+## Status mapping
+
+- invalid invocation/root/catalog target identity -> `ERROR`;
+- profile/base/provenance/source-identity/TR/ADR conflict -> `BLOCKED`;
+- context/source/evidence/engine coverage incomplete or resulting-state uncertainty
+  -> `PARTIAL`;
+- declined choice/changeset -> `STOPPED`;
+- verified author Draft transaction, honest UNCHANGED, or complete read-only audit
+  -> `COMPLETE` for this workflow only.

@@ -1,376 +1,326 @@
 ---
 name: create-epics
-description: "Translate approved GDDs + architecture into epics — one epic per architectural module. Defines scope, governing ADRs, engine risk, and untraced requirements. Does NOT break into stories — run $create-stories [epic-slug] after each epic is created."
+description: "Create or safely update one traceable epic per binding architecture module from current Approved GDDs, Accepted ADR lifecycle evidence, and TR coverage, with bounded manifests, dependency ordering, conflict-safe CAS, and a recorded multi-file result."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$create-epics`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[system-name | layer: foundation|core|feature|presentation | all] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
-
-Delegate substantive work to the `technical-director` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
-
 
 # Create Epics
 
-An epic is a named, bounded body of work that maps to one architectural module.
-It defines **what** needs to be built and **who owns it architecturally**. It
-does not prescribe implementation steps — that is the job of stories.
-
-**Run this skill once per layer** as you approach that layer in development.
-Do not create Feature layer epics until Core is nearly complete — the design
-will have changed.
-
-**Output:** `production/epics/[epic-slug]/EPIC.md` + `production/epics/index.md`
-
-**Next step after each epic:** `$create-stories [epic-slug]`
-
-**When to run:** After `$create-control-manifest` and `$architecture-review` pass.
-
----
-
-## 1. Parse Arguments
-
-Resolve the review mode (once, store for all gate spawns this run):
-1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
-3. Else → default to `lean`
-
-See `.codex/docs/director-gates.md` for the full check pattern.
-
-**Modes:**
-- `$create-epics all` — process all systems in layer order
-- `$create-epics layer: foundation` — Foundation layer only
-- `$create-epics layer: core` — Core layer only
-- `$create-epics layer: feature` — Feature layer only
-- `$create-epics layer: presentation` — Presentation layer only
-- `$create-epics [system-name]` — one specific system
-- No argument — ask: "Which layer or system would you like to create epics for?"
-
----
-
-## 2. Load Inputs
-
-### Step 2a — Enumerate from the systems index (authoritative)
-
-Read `design/gdd/systems-index.md` in full before opening any individual GDD.
-The Systems Enumeration and its dependency/layer tables are the only authority
-for deciding which systems and GDD paths exist for this workflow. A filesystem
-glob, filename, document title, `## Summary`, `## Overview`, or prose search may
-help display an already-selected system, but must never add or remove a system.
-
-Build an immutable run manifest from the index. Every candidate row must provide:
-
-- a stable system ID explicitly recorded by the index; the `#` ordering column is
-  not an identity and must not be promoted into one;
-- one legal status from `Not Started`, `In Design`, `In Review`, `Approved`,
-  or `Implemented`; only the exact status `Approved` is eligible;
-- one explicit repository-relative `Design Doc` path under `design/gdd/`; and
-- one unambiguous layer from the index dependency/order data.
-
-Normalize paths only for comparison. Do not guess a missing path from the system
-name and do not discover replacement GDDs by scanning the directory. Reject
-duplicate IDs, duplicate GDD paths, conflicting layer records, path traversal,
-missing files, and ambiguous system-name matches. An invalid status token such as
-`Designed` is malformed input, not an alias for `Approved`.
-
-Apply the invocation scope only to this validated manifest:
-
-- `all` selects every eligible row in index order;
-- `layer: <name>` selects eligible rows in that exact layer and index order; and
-- `[system-name]` must resolve to exactly one indexed row by stable ID or exact
-  system name, then that row must be `Approved`.
-
-Legal but ineligible rows are reported as excluded. If a requested row is
-ineligible, malformed, missing, or ambiguous, stop with **BLOCKED**. If malformed
-or contradictory rows prevent the requested scope from being enumerated
-completely, stop before drafting or writing. If no eligible rows remain, stop with
-**BLOCKED — no eligible systems found**.
-
-### Step 2b — Full document load (selected manifest only)
-
-Read the full GDD only at each selected manifest path. Confirm its own recorded
-identity and status agree with the index; any mismatch is **BLOCKED**. Do not
-full-read out-of-scope GDDs merely to decide whether they belong.
-
-Then read for the selected systems:
-
-- `docs/architecture/architecture.md` — module ownership and API boundaries;
-- Accepted ADRs whose domains cover selected systems — read the "GDD Requirements
-  Addressed", "Decision", and "Engine Compatibility" sections;
-- `docs/architecture/control-manifest.md` — manifest version date from header;
-- `docs/architecture/tr-registry.yaml` — requirement-to-ADR coverage; and
-- `docs/engine-reference/[engine]/VERSION.md` — engine name, version, risk levels.
-
-The architecture is a derived view, not a source that can promote proposals into
-contracts. A module mapping or ownership claim is usable only when the architecture
-marks it as binding and cites a current Accepted ADR. `NON-BINDING PROPOSAL`,
-`DECISION-*` gaps, Proposed/Superseded/Rejected ADRs, stale ADR bindings, and
-uncited inferred placements may be reported, but they cannot define a production
-epic. If a selected system has no unambiguous binding module, stop with
-**BLOCKED — accepted architecture decision required**; do not infer a module.
-
-Report the run manifest before drafting:
-
-```text
-Loaded [N] indexed Approved GDDs, [M] Accepted ADRs, engine: [name + version].
-
-| System ID | System | Layer | Index Status | GDD Path | Eligibility |
-|---|---|---|---|---|---|
-| [stable-id] | [name] | [layer] | Approved | [exact path] | included |
-```
----
-
-## 3. Processing Order
-
-Process in dependency-safe layer order:
-1. **Foundation** (no dependencies)
-2. **Core** (depends on Foundation)
-3. **Feature** (depends on Core)
-4. **Presentation** (depends on Feature + Core)
-
-Within each layer, use the order from `systems-index.md`.
-
----
-
-## 4. Define Each Epic
-
-For each selected system, use the binding architectural module recorded in
-`architecture.md`. Preserve the stable system ID and exact indexed GDD path in
-the draft identity. Do not use a non-binding proposal or an unresolved
-`DECISION-*` placement as an architecture module.
-
-Check ADR coverage against the TR registry:
-- **Traced requirements**: TR-IDs that have an Accepted ADR covering them
-- **Untraced requirements**: TR-IDs with no ADR — warn before proceeding
-
-Present to user before writing anything:
-
-```
-## Epic: [System Name]
-
-**System ID**: [stable system ID from systems-index]
-**Layer**: [Foundation / Core / Feature / Presentation]
-**GDD**: design/gdd/[filename].md
-**Architecture Module**: [module name from architecture.md]
-**Governing ADRs**: [ADR-NNNN, ADR-MMMM]
-**Engine Risk**: [LOW / MEDIUM / HIGH — highest risk among governing ADRs]
-**GDD Requirements Covered by ADRs**: [N / total]
-**Untraced Requirements**: [list TR-IDs with no ADR, or "None"]
-```
-
-If there are untraced requirements:
-> "⚠️ [N] requirements in [system] have no ADR. The epic can be created, but
-> stories for these requirements will be marked Blocked until ADRs exist.
-> Run `$architecture-decision` first, or proceed with placeholders."
-
-Ask the user for a scope decision:
-- Prompt: "Include Epic: [name] in the proposed changeset?"
-- Options:
-  - `[A] Include it`
-  - `[B] Skip this epic`
-  - `[C] Pause — I need to write ADRs first`
-
-These choices select scope only; they do not authorize any file write. Gather all
-epic scope decisions before the single changeset preview.
-
----
-
-## 4a. Inventory Existing Artifacts and Classify the Changeset
-
-Complete this read-only inventory before PR-EPIC and before any write
-authorization. Derive every target slug deterministically from the project naming
-convention. If no convention exists, use lowercase kebab-case of the epic name;
-never add a numeric suffix to hide a collision.
-
-For every proposed `production/epics/[epic-slug]/EPIC.md` and for
-`production/epics/index.md`, record:
-
-- target path and whether it exists;
-- SHA-256 of the exact current bytes, or `ABSENT`;
-- identity found in the file (system ID, GDD path, module, and epic name);
-- all index rows that refer to the same ID, GDD, epic name, or target slug; and
-- whether the file contains only the recognized generated schema or also contains
-  unknown/manual content.
-
-Render the deterministic candidate bytes, including the index row changes. Preserve
-the existing index `Last Updated` value when no row changes; a no-op rerun must not
-manufacture an update by refreshing a date or reformatting unrelated rows. Then
-classify each target as exactly one of:
-
-| Class | Required evidence | Action |
-|---|---|---|
-| `create` | Target is absent and its ID, GDD, name, and slug have no collision in the index or filesystem. | Show the complete candidate file. |
-| `no-op` | Existing bytes already equal the deterministic candidate and the index mapping is exact and unique. | Do not write or ask to overwrite. |
-| `update` | Existing artifact has the same stable identity, uses only the recognized generated schema, has no unknown/manual content, and differs from the candidate. The index mapping is unique and compatible. | Show the complete unified diff and ask whether to update or skip this artifact. |
-| `conflict` | Identity differs or is missing/ambiguous; another artifact or index row owns the ID/GDD/name/slug; the file has unknown sections or manual content; the index is contradictory; or the file cannot be read safely. | Stop the entire changeset with **BLOCKED**. Never overwrite, delete, rename, merge, or reinterpret the artifact. |
-
-A legacy generated epic without `System ID` may be an `update` only when its
-epic name, exact indexed GDD path, binding module, schema, and unique index row all
-identify the same indexed system. Otherwise it is a `conflict`. User confirmation
-is not permission to relabel a conflict as an update.
-
-Present one inventory table for the requested scope:
-
-```text
-| Target | System ID | Preimage SHA-256 | Class | Evidence / action |
-|---|---|---|---|---|
-| production/epics/.../EPIC.md | SYS-... | [hash/ABSENT] | create/update/no-op/conflict | [...] |
-```
-
-For every `update`, show a unified diff against the recorded preimage and offer
-`Update` or `Skip`. This is scope selection, not a second write authorization.
-For `create`, show the complete proposed content. List `no-op` targets explicitly.
-If any target is `conflict`, report the colliding identities and hashes and stop
-before the producer gate or any write. Do not write non-conflicting siblings in
-the same run; the previewed changeset must remain atomic in scope.
-
-After update/skip choices, freeze the exact candidate bytes, selected path set,
-and preimage hashes. If every target is `no-op` or skipped, finish
-**COMPLETE — no changes required** without requesting write authorization.
-
----
-
-## 4b. Producer Epic Structure Gate
-
-**Review mode check** — apply before spawning PR-EPIC:
-- `solo` → skip. Note: "PR-EPIC skipped — Solo mode." Proceed to Step 5 (write epic files).
-- `lean` → skip (not a PHASE-GATE). Note: "PR-EPIC skipped — Lean mode." Proceed to Step 5 (write epic files).
-- `full` → spawn as normal.
-
-After all epics for the current layer are defined (Step 4 completed for all in-scope systems), and before writing any files, spawn `producer` through Codex subagent delegation using gate **PR-EPIC** (`.codex/docs/director-gates.md`).
-
-Pass: the full epic structure summary (all epics, their scope summaries, governing ADR counts), the layer being processed, milestone timeline and team capacity.
-
-Present the producer's assessment.
-
-If UNREALISTIC: offer to revise epic boundaries (split overscoped or merge underscoped epics). Revise and re-run the gate before writing.
-
-If CONCERNS, ask the user directly:
-- Prompt: "Producer raised concerns about the epic structure. How do you want to proceed?"
-- Options:
-  - `[A] Proceed as planned — I accept the producer's concerns`
-  - `[B] Revise epic boundaries — split or merge as recommended`
-  - `[C] Stop — I want to reconsider the scope`
-
-If [A]: proceed to Step 5.
-If [B]: revise epic definitions from Step 4, re-render the candidates, repeat the complete Step 4a inventory/classification, and then re-run the producer gate.
-If [C]: stop. Verdict: **BLOCKED** — user wants to reconsider epic scope.
-
-Do not write epic files until the producer gate resolves.
-
----
-
-## 5. Preview, Write, and Verify
-
-Include only selected `create` and `update` targets in the complete changeset
-preview. The preview must list every path, its classification, its recorded
-preimage SHA-256, and its complete content or unified diff. If the bounded task
-does not already authorize this exact changeset, obtain one explicit approval.
-Never ask for authorization per file.
-
-Immediately before the first mutation, re-read every selected target and the
-index in one read-only pass:
-
-- a `create` target must still be absent;
-- an `update` target must still have the previewed preimage SHA-256; and
-- the index must still have its previewed preimage SHA-256 or remain absent.
-
-If any precondition changed, write nothing. Reclassify and re-preview the entire
-changeset; a new conflict is **BLOCKED**, and any materially changed changeset
-requires new authorization. Never continue with a partially stale preview.
-
-After all preconditions pass, write only the authorized path set. Re-read each
-result and verify its exact SHA-256 against the frozen candidate bytes. A failed
-write or verification is **BLOCKED** and must report which files may have changed.
-
-### `production/epics/[epic-slug]/EPIC.md`
-
-```markdown
-<!-- create-epics:managed-schema v1 -->
-# Epic: [System Name]
-
-> **System ID**: [stable system ID from systems-index]
-> **Layer**: [Foundation / Core / Feature / Presentation]
-> **GDD**: design/gdd/[filename].md
-> **Architecture Module**: [binding module name]
-> **Status**: Ready
-> **Stories**: Not yet created — run `$create-stories [epic-slug]`
-
-## Overview
-
-[1 paragraph describing what this epic implements, derived from the selected GDD
-Overview and the binding architecture module responsibilities]
-
-## Governing ADRs
-
-| ADR | Decision Summary | Engine Risk |
-|-----|-----------------|-------------|
-| ADR-NNNN: [title] | [1-line summary] | LOW/MEDIUM/HIGH |
-
-## GDD Requirements
-
-| TR-ID | Requirement | ADR Coverage |
-|-------|-------------|--------------|
-| TR-[system]-001 | [requirement text from registry] | ADR-NNNN ✅ |
-| TR-[system]-002 | [requirement text] | ❌ No ADR |
-
-## Definition of Done
-
-This epic is complete when:
-- All stories are implemented, reviewed, and closed via `$story-done`
-- All acceptance criteria from `design/gdd/[filename].md` are verified
-- All Logic and Integration stories have passing test files in `tests/`
-- All Visual/Feel and UI stories have evidence docs with sign-off in `production/qa/evidence/`
-
-## Next Step
-
-Run `$create-stories [epic-slug]` to break this epic into implementable stories.
-```
-
-### `production/epics/index.md`
-
-Create the index if absent. When it exists, preserve unrelated rows byte-for-byte
-and apply only the previewed unique row additions or managed-row updates.
-
-```markdown
-# Epics Index
-
-Last Updated: [date]
-Engine: [name + version]
-
-| Epic | System ID | Layer | System | GDD | Stories | Status |
-|------|-----------|-------|--------|-----|---------|--------|
-| [name] | [stable-id] | Foundation | [system] | [file] | Not yet created | Ready |
-```
-
----
-
-## 6. Gate-Check Reminder
-
-After writing all epics for the requested scope:
-
-- **Foundation + Core complete**: These are required for the Pre-Production →
-  Production gate. Run `$gate-check production` to check readiness.
-- **Reminder**: Epics define scope. Stories define implementation steps. Run
-  `$create-stories [epic-slug]` for each epic before developers can pick up work.
-
----
-
-## Collaborative Protocol
-
-1. **Index-authoritative scope** — only validated Approved rows from `systems-index.md` enter the run
-2. **One epic at a time** — present each epic definition and record include/skip decisions before the changeset preview
-3. **Warn on gaps** — flag untraced requirements before proceeding
-4. **Conflict-safe reruns** — classify every target; never overwrite a conflict or manual content
-5. **Single changeset approval** — preview every selected create/update together and write the set only after the one approval
-6. **No invention** — all content comes from indexed GDDs, Accepted ADRs, and binding architecture statements
-7. **Never create stories** — this skill stops at the epic level
-
-After all requested epics are processed:
-
-- **Verdict: COMPLETE** — [N] epic(s) created/updated and [M] no-op(s) verified. Run `$create-stories [epic-slug]` per changed or current epic.
-- **Verdict: BLOCKED** — scope enumeration failed, a binding module is unavailable, an artifact conflict or preimage change exists, the user declined all epics, or no eligible systems were found.
+Translate current approved design and accepted architecture evidence into epic
+planning artifacts. Every selected in-scope canonical architecture module
+produces exactly one epic, even when several systems map to it. This workflow never creates stories,
+implementation tasks, code, assets, GDD/architecture/ADR/TR changes, readiness
+transitions, or downstream approvals.
+
+## Invocation and request contract
+
+Invoke only as:
+
+    $create-epics <request-manifest-path>
+
+No argument prints that usage and stops before repository discovery, input reads,
+delegation, authorization, or writes.
+
+The manifest declares `contract: cgs.create-epics-request/v2` and:
+
+- stable run/plan IDs and exact scope: `all`, one legal layer, ordered stable
+  system IDs, or ordered stable module IDs;
+- exact systems-index, architecture, control-manifest, TR-registry, engine-version,
+  selected GDD, Accepted ADR, ADR lifecycle/review/authoring-receipt, and existing
+  epic/index evidence paths with expected raw SHA-256 or `ABSENT`;
+- exact output root, index path, create-only transaction-receipt path, expected
+  target/index preimage hashes or `ABSENT`, and deterministic slug convention;
+- context budget no larger than 32 files and 1048576 exact bytes; larger scopes
+  must be split into another request rather than truncated;
+- `review_mode: full | lean | solo`, producer task identity/limits at or below
+  contract, and at most one targeted revision plus one re-review;
+- product/planning owner, mutation authority, plan author, target recorder/writer,
+  receipt recorder, and producer identities; and
+- authorization manifest ID/hash/authority or instruction to collect one bounded
+  authorization after candidate inventory, plus exact non-writes.
+
+Reject unknown/duplicate fields, unsafe/aliased paths, invalid hashes/statuses/
+layers/IDs, target/index/receipt aliasing, duplicate output paths, role identity
+conflicts, missing expected preimages, or limits above contract.
+
+Use runtime task identities when exposed. Otherwise generate one lowercase UUID
+per task role and persist it. Never claim the user, source owner, producer,
+architecture reviewer, ADR lifecycle recorder, or another writer identity.
+
+## Roles, approval, and mutation boundary
+
+- Systems index/GDD owners determine eligible systems and product requirements.
+- Accepted ADR lifecycle records and current architecture determine binding module
+  ownership/boundaries; this workflow cannot promote a proposal.
+- The user or named planning owner chooses include/skip and approves exact epic
+  plan content; it cannot waive stale/invalid source evidence or a conflict.
+- Producer advice is bounded/read-only and never authorizes files or changes source
+  truth.
+- Mutation authority authorizes exact create/update targets, index patch, and
+  create-only result receipt.
+- The recorder/writer applies only the approved CAS transaction and reports every
+  applied/non-applied path.
+
+Planning approval and write authorization are separate. After module mapping,
+candidate bytes, target inventory, and optional producer gate are stable, present
+one complete mutation manifest. Obtain one explicit authorization unless the
+request already binds that exact manifest/current hashes. Never ask per file.
+A new path, classification, candidate hash, source digest, owner/writer, or larger
+scope requires re-preview and new authorization.
+
+## Authoritative source and status contract
+
+The workflow consumes only current evidence declared by the request:
+
+1. `design/gdd/systems-index.md` exact path/hash is the sole system enumeration
+   source. Filesystem glob, filename, `Summary`, `Overview`, prose search, or
+   discovery cannot add/remove systems.
+2. A system is eligible only when its exact shared status is `Approved`. Legal but
+   ineligible values are `Not Started`, `In Design`, `In Review`, and
+   `Implemented`. `Designed` or any other token is malformed, never an alias.
+3. Each eligible row must have stable system ID, exact GDD path, layer/order, and
+   current row digest. The full GDD must agree on ID/status and supply stable
+   requirement/acceptance IDs plus raw hash.
+4. `docs/architecture/architecture.md` must be a current derived view with stable
+   module IDs/boundaries/owners/dependencies and exact system-to-module mappings.
+   Every binding claim cites current Accepted ADR evidence.
+5. An ADR is accepted only when its target hash, independent review record/hash,
+   authoring receipt, and `cgs.adr-lifecycle-record/v1` current Accepted transition
+   all match. Status prose alone, Proposed/Unknown/Superseded/Deprecated ADR, stale
+   receipt, or non-binding architecture proposal cannot govern an epic.
+6. `docs/architecture/tr-registry.yaml` supplies stable TR IDs, source GDD ID/path/
+   locator/hash, module/system ownership, architecture-required classification,
+   Accepted ADR coverage or auditable N/A disposition, and row digest.
+7. Control manifest and engine-version evidence must match the architecture/ADR
+   source set. Mismatch is stale/blocked, never silently normalized.
+
+Any missing, ambiguous, duplicate, stale, or contradictory required identity/
+hash/status/owner stops the affected requested scope before candidate approval.
+Never infer a GDD path, module, ADR acceptance, TR coverage, or status.
+
+## Bounded source manifest
+
+Select exact candidates in stable order:
+
+1. applicable `AGENTS.md` root-to-output targets;
+2. request, systems index, control manifest, architecture, TR registry, engine
+   version;
+3. selected Approved GDDs in systems-index order;
+4. governing Accepted ADRs in canonical ADR ID order with lifecycle/review/
+   authoring receipts adjacent;
+5. exact existing epic targets/index/previous result receipt evidence.
+
+Never scan all GDDs/ADRs/epics or follow undeclared links. Count every loaded file
+against hard maxima 32 files and 1048576 exact bytes. Determine size before load;
+never truncate. When the exact requested scope cannot fit, return
+`BLOCKED — SOURCE_MANIFEST_BUDGET_EXCEEDED`, list a deterministic request split,
+and write nothing.
+
+Create canonical `cgs.epic-source-manifest/v2` with ordered path, role, stable
+artifact/module/system/TR/ADR IDs, owner, locator/row digest, bytes, raw SHA-256,
+version/status, dependency edge, loaded/omitted state, and reason. Canonicalize
+UTF-8 LF, fixed field order, no trailing whitespace, one final newline; compute
+manifest digest. Source currency is content-bound: paths, labels, timestamps, and
+semantically similar prose do not establish currency without matching raw hashes.
+
+Re-hash every source before producer review, plan approval, mutation preflight,
+and receipt finalization. Before the first write, any mismatch makes dependent
+candidates STALE, invalidates approval/authorization, returns PARTIAL/BLOCKED with
+changed paths, and performs zero writes. A mismatch discovered only during
+post-write receipt finalization returns PARTIAL with exact applied-state evidence,
+permits only the already-authorized PARTIAL receipt attempt, and never claims
+COMPLETE or performs further ordinary writes.
+
+## Phase 0: Enumerate exact Approved systems
+
+Validate systems-index identity/status/path/layer/order first. Apply request scope
+only to that immutable index manifest. Full-read only selected exact GDD paths.
+
+- `all`: every exact Approved row in declared layer/order;
+- layer: Approved rows in that layer/order;
+- system IDs: exact declared rows in request order after uniqueness/eligibility;
+- module IDs: resolve selected modules only after Phase 1 mapping, but their source
+  system set still comes solely from eligible index rows.
+
+Report legal excluded rows. A requested ineligible/malformed/missing/ambiguous row
+returns BLOCKED. No eligible systems returns
+`BLOCKED — NO_ELIGIBLE_APPROVED_SYSTEMS`. Do not claim COMPLETE with omissions.
+
+## Phase 1: Resolve one-epic-per-module identity
+
+From current binding architecture evidence build:
+
+    module_id -> {
+      module_name,
+      owner,
+      architecture_path/locator/hash,
+      accepted_adr_ids/hashes/lifecycle_receipts,
+      system_ids[] in systems-index order,
+      layer,
+      dependency_module_ids[],
+      order_key
+    }
+
+Rules:
+
+- canonical epic ID is `EPIC-MODULE:<module_id>`; module ID, not name/slug/system,
+  owns identity;
+- exactly one candidate epic per unique module ID, aggregating every selected
+  eligible mapped system ID and GDD; two systems in one module never create two
+  epics;
+- mixed system-per-epic and module-per-epic identity modes are prohibited;
+- one system may contribute to multiple modules only when architecture explicitly
+  declares distinct binding responsibility slices and TR rows map requirements to
+  the correct module; otherwise BLOCKED;
+- one module spanning system layers uses the architecture-declared module layer/
+  order. Missing/conflicting layer/order is BLOCKED, never inferred from a system;
+- module name/slug is display/routing metadata. A slug collision with a different
+  module/epic ID is conflict, never solved by numeric suffix;
+- every selected system/TR must map to at least one binding module; every candidate
+  module must own at least one selected TR or explicit foundational responsibility
+  with Accepted ADR evidence.
+
+Render and ask planning owner to confirm/correct the read-only mapping table. A
+correction requires current architecture/TR-owner evidence; user preference cannot
+rewrite binding architecture. Include/skip decisions choose plan scope only.
+
+## Phase 2: Validate TR/ADR coverage and downstream eligibility
+
+For every selected TR row use exactly one disposition:
+
+1. `ADR_ACCEPTED`: current Accepted ADR ID/path/hash plus lifecycle/review/
+   authoring-receipt hashes covers the TR/module.
+2. `ADR_NA`: architecture decision is truly not applicable and the registry row
+   provides reason code `PRODUCT_ONLY`, `CONTENT_ONLY`, `PRESENTATION_ONLY`, or
+   `NO_ARCHITECTURE_EFFECT`, exact owner, evidence path/locator/hash, and reviewed
+   row digest.
+3. `ADR_REQUIRED_GAP`: registry says architecture required but no current Accepted
+   coverage exists.
+4. `UNKNOWN`: missing/ambiguous/stale classification or placeholder such as
+   `TR-???`/ADR `N/A` without evidence.
+
+Never convert UNKNOWN to ADR_NA. `ADR_REQUIRED_GAP` and UNKNOWN create stable
+`cgs.epic-traceability-finding/v1` with epic/module/system/TR IDs, source hashes,
+owner, destination `ARCHITECTURE_DECISION`, acceptance condition, status, and
+deterministic fingerprint.
+
+Epic planning status and story routing are deterministic:
+
+- all TRs ADR_ACCEPTED or valid ADR_NA, sources current: `Planning Status: READY`;
+- any ADR_REQUIRED_GAP/UNKNOWN/stale/blocking dependency: `Planning Status:
+  BLOCKED`, with exact affected TR IDs;
+- create-stories may later emit a story for a blocked TR only as `Blocked` with the
+  same finding ID/owner/acceptance condition; it may not use `TR-???`, unaudited
+  ADR N/A, or Ready;
+- ADR_NA TRs may produce Ready stories only when the exact reason/evidence row is
+  current and no other readiness blocker applies.
+
+Creating a BLOCKED epic preserves planning scope but does not claim architecture,
+story, sprint, or implementation readiness.
+
+## Phase 3: Build dependency graph and deterministic order
+
+Combine architecture module dependencies with systems-index dependency evidence
+and TR ownership. Every edge records upstream/downstream module IDs, source path/
+locator/hash, kind, and blocking semantics.
+
+Reject self-edge, duplicate contradictory edge, missing module, unknown owner,
+cycle, cross-layer inversion, or source disagreement. No producer/user decision
+may waive an invalid graph into readiness.
+
+Topologically order unique module epics by explicit architecture layer/order then
+stable module ID tie-breaker. Record:
+
+- `planning_dependencies`: epic IDs that must exist/current before planning can be
+  decomposed safely;
+- `execution_dependencies`: upstream epics/modules whose accepted implementation
+  evidence is required before dependent work executes; and
+- missing/stale upstream epic evidence as stable BLOCKED findings without changing
+  the authoritative module graph.
+
+Dependency order controls candidate/index order and later story routing. It never
+silently creates excluded upstream epics or marks them complete.
+
+## Phase 4: Inventory outputs and classify candidates
+
+Derive deterministic path
+`production/epics/<module-slug>/EPIC.md` from stable module identity and declared
+slug convention. Inventory every target, `production/epics/index.md`, and exact
+result receipt path before producer review/authorization.
+
+Record preimage SHA-256/ABSENT, embedded epic/module/system IDs, source-manifest
+digest, generated schema, index ownership/collisions, and unknown/manual content.
+Render exact candidate bytes and classify:
+
+- `create`: target ABSENT, identity/path/index unique;
+- `no-op`: existing bytes exactly equal candidate and current sources/index
+  evidence match; do not refresh date/reformat;
+- `update`: same canonical epic/module identity, recognized managed schema only,
+  unique index mapping, no manual/unknown content, and exact diff approved later;
+- `stale-update`: same safe managed identity but stored source hashes/digest differ;
+  show stale source diff and require current plan reapproval;
+- `conflict`: identity/slug/module differs/ambiguous, duplicate index row, unknown/
+  manual content, unsafe read, legacy per-system epic cannot map losslessly to the
+  one-module aggregate, or another artifact owns the path.
+
+Conflict blocks the whole transaction before producer/authorization. Never
+overwrite/merge/delete/rename/relabel or write non-conflicting siblings. A legacy
+system epic requiring aggregation needs a separately owned migration, not update.
+
+If every target/index operation is no-op or planning-owner skipped, finish
+`COMPLETE — NO_CHANGES_REQUIRED` only after current source/preimage verification;
+write no receipt/timestamp solely to manufacture activity.
+
+## Phase 5: Render managed epic schema v2
+
+Every candidate uses `cgs.epic-plan/v2` and contains:
+
+    Epic ID: EPIC-MODULE:<module_id>
+    Module ID / name / owner / layer / order
+    Planning Status: READY | BLOCKED
+    Story Eligibility: READY | BLOCKED
+    System IDs and exact GDD paths/hashes
+    Source Manifest ID / SHA-256
+    Systems-index / architecture / control-manifest / TR-registry hashes
+    Accepted ADR IDs, target hashes, review/authoring/lifecycle receipt hashes
+    Engine/version evidence ID/hash
+    Planning and execution dependency epic/module IDs
+    Stable traceability finding IDs
+
+Required sections:
+
+1. Module Scope and Boundaries — architecture-owned responsibility, included
+   systems/TR slices, explicit exclusions;
+2. Source Evidence — exact version/hash table for every authority;
+3. Governing Accepted ADRs — decision summary/engine risk/current receipt bindings;
+4. GDD/TR Traceability — each stable TR ID, product requirement locator/hash,
+   module responsibility, ADR_ACCEPTED/ADR_NA/gap disposition/finding;
+5. Dependencies and Order — graph edges, planning/execution conditions;
+6. Deliverables and Acceptance Mapping — observable module outcomes traced to TR/
+   GDD acceptance IDs, not implementation tasks;
+7. Definition of Done — all stories/acceptance/tests/manual evidence/dependencies
+   expressed as referenced obligations, never invented completion;
+8. Risks, Open Findings, and Owner Handoffs;
+9. Story-Creation Contract — stable epic/module/source digest, blocked routing,
+   exact downstream preconditions;
+10. Provenance — plan approval, producer result, recorder/result receipt IDs.
+
+Do not prescribe story implementation steps or copy external product/architecture
+truth as a second authority. Reference stable IDs/path/locator/hash.
+
+## Required continuation
+
+Read and follow `references/continued-workflow.md` in full after candidate render.
+It defines the capped producer gate, plan approval, one changeset authorization,
+source/target/authorization/writer CAS, recorder transaction/partial result,
+external receipt, final verdicts, and single next-step handoff.
+
+In full mode the producer receives exactly one initial attempt. Concerns permit
+at most one targeted revision and exactly one re-review; a second revision or
+third review is prohibited.
+
+## Non-write boundary
+
+This workflow writes only selected managed EPIC.md targets, exact managed index
+rows/header fields, and one create-only transaction receipt named by the request.
+It never writes sources, stories, sprints, review/lifecycle records, registries,
+readiness, implementation, code, tests, assets, or shared catalog.

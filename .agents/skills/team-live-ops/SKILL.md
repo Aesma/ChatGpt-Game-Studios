@@ -1,412 +1,361 @@
 ---
 name: team-live-ops
-description: "Orchestrates an ethics-gated, plan-only live-ops pipeline with bounded delegation, evidence-honest review, checkpoint recovery, and single-writer artifacts."
+description: "Orchestrate one bounded, ethics-gated live-ops planning run with dependency-safe proposals, protected experiment protocols, stable review findings, immutable recovery checkpoints, and single-owner artifacts that never imply production readiness."
 ---
 
 # Team Live Ops
 
-## Invocation and scope
+Produce planning artifacts for one exact season or event. This workflow does not
+implement content, change economy/store configuration, launch an experiment, schedule
+operations, publish messages, deploy a build, update a release, or prove production
+readiness. `PLAN COMPLETE` means only that the approved planning artifacts were recorded
+and verified.
 
-Invoke as `$team-live-ops [season name or event description] [--review full|lean|solo]`.
+## Invocation and strict request
 
-If no season name or event description is provided, return the documented usage and
-stop before reading files, delegating, or writing:
+Invoke only as:
 
-> Usage: `$team-live-ops [season name or event description]` — Provide the name or
-> description of the season or live event to plan.
+`$team-live-ops --request <path> --expect-request <sha256>`
 
-This workflow produces planning artifacts only. It does not implement game content,
-change economy or store configuration, publish communication, start an experiment,
-schedule production, deploy a build, or claim production readiness. Proposed copy,
-telemetry, rewards, and content remain unimplemented proposals even after
-`PLAN COMPLETE`.
+Require both flags exactly once. Reject unknown/duplicate fields, missing values,
+directories where files are required, globs, `latest`, mtime selection, unsafe IDs,
+absolute or escaping paths, symlinks, unsupported schemas and request-hash drift. Stop
+before project reads, delegation, output or writes on invocation failure.
 
-## Non-negotiable safety contract
+The request is strict `cgs.team-live-ops-request/v2` and declares one operation:
 
-1. **Policy gate** — A plan involving payment, premium currency, randomized rewards,
-   artificial scarcity or time pressure, behavioral targeting, or an audience that
-   includes or may include minors requires a readable
-   `design/live-ops/ethics-policy.md`. If it is absent, return
-   `BLOCKED — POLICY REQUIRED`. Only a demonstrably free event with no monetization,
-   randomized rewards, pressure mechanic, sensitive experiment, or minor-specific
-   risk may continue, and its strongest result is
-   `DRAFT / ETHICS NOT REVIEWED`. It is never complete or production-ready.
-2. **No conversational override** — A policy violation can only be revised away or
-   remain `NON-COMPLIANT / BLOCKED`. Do not offer an in-conversation bypass or rationale-based waiver. An
-   independently governed risk-acceptance artifact may be reported as context, but
-   it does not make the plan policy-compliant, does not clear the finding, and cannot
-   produce `PLAN COMPLETE` or a production handoff.
-3. **Whole-plan ethics** — Review economy, reward randomness, retention, experiments,
-   telemetry/privacy, communication, audience/minor protections, time windows,
-   regional/platform constraints, cancellation/exit behavior, and accessibility.
-   Never prescribe FOMO, loss-aversion pressure, misleading scarcity, or dark
-   patterns. Communication proposals use transparent deadlines, player value,
-   eligibility, costs, odds where relevant, and opt-out/exit information.
-4. **Correct review profile** — Use the read-only `live-ops-review` profile defined in
-   this workflow. Do not invoke `$design-review` for a season or event document.
-   Review findings are not implementation or test evidence.
-5. **Single writers** — Planning agents return proposals and have zero file mutation
-   authority unless a later writer turn explicitly names their one artifact. Every
-   path has exactly one writer, writers run sequentially, and no writer may edit
-   another writer's path. Shared index/metadata and the checkpoint have one recorder.
-6. **Incomplete work stays incomplete** — Any required agent failure, timeout,
-   cancellation, stale result, partial context, open blocker, missing policy gate,
-   failed preimage check, or partial write prevents `PLAN COMPLETE`.
-7. **Evidence honesty** — Never invent a source hash, proposal hash, file write,
-   policy rule, reviewer result, test result, telemetry result, or readiness claim.
-   Use `NOT RUN`, `UNKNOWN`, `UNAVAILABLE`, `PARTIAL`, or `null` when evidence does
-   not exist.
-8. **Authorization is path-bounded** — Approval to plan is not approval to write,
-   implement, publish, deploy, or modify shared state. Before the first file write,
-   present one exact artifact manifest with paths, intended changes, unique writers,
-   and current preimage hashes. Existing bounded authorization is sufficient only
-   when it covers that exact manifest. New paths or broader changes require a new
-   approval; subagent delegation never expands the boundary.
-9. **Design before implementation** — No content implementation, final asset
-   production, game/store configuration, experiment launch, publishing, sprint
-   mutation, or deployment may begin before the consolidated design is reviewed and
-   explicitly approved. This workflow stops after recording the approved plan.
+- `PLAN` — read-only proposal generation and review candidate assembly;
+- `REVISE` — one bounded revision round against exact open finding IDs;
+- `REVIEW` — one independent read-only live-ops review;
+- `RECORD` — sequentially create one exact approved artifact manifest;
+- `STATUS` — read-only checkpoint/manifest verification; or
+- `RESUME` — continue from one exact immutable checkpoint.
 
-## Review modes
+The request binds stable run/season IDs, mode `full|lean|solo`, create/revise intent,
+exact `cgs.live-ops-context-manifest/v2`, season-ID reservation/registry observation,
+ethics policy, review policy, producer registry and instruction-chain paths/hashes;
+expected predecessor checkpoint; fixed file/byte/dependency/proposal/agent/response/time
+budgets; exact operation outputs; and mutation authority/expiry when recording.
 
-`--review` controls delegation depth, not ethics or approval gates:
+Never infer season number, name, existing revision, policy, mode, registry entry,
+context, artifact path, checkpoint or reviewer. A date/title alone is not an ID. A
+changed season, policy, context, foundation, artifact manifest or decision creates a new
+identity and invalidates dependent approval.
 
-- `full` — delegate all six domain roles subject to the concurrency cap.
-- `lean` — delegate live-ops-designer, economy-designer, analytics-engineer, and
-  community-manager; the primary agent performs the narrative and copy-brief review
-  sequentially and labels those sources `primary-agent`.
-- `solo` — spawn no subagents. The primary agent performs every domain pass
-  sequentially and never claims a named agent ran.
+## Plan-only authority and shared non-writes
 
-If the option is absent, use a valid value from `production/review-mode.txt` when
-present; otherwise use `lean`. Reject unknown values. Every mode uses the same policy
-gate, review rubric, evidence requirements, writer rules, and verdict rules.
+Keep read-only planning, controller checkpoint/artifact CREATE, implementation,
+experiment execution, store/economy mutation, external publication, scheduling,
+deployment, shared index update and release-state update as separate authorities.
+Approval at one layer grants none of the others.
 
-## Roles and ownership
+Never write game assets, content source, localization, economy/store configuration,
+telemetry code, experiment services, test evidence, platform calendars, issue/sprint/
+milestone/release state, external channels or a shared season index. A shared index or
+metadata update belongs to its named owner through a later separate CAS operation; a
+season recorder cannot silently add it to this run.
 
-### Proposal roles — read-only
+Every proposal and review agent has `mutation_authority: NONE`. Only a later RECORD
+operation may create the exact approved artifact bytes. No planning result authorizes
+implementation, QA, launch, deployment or publication.
 
-- **live-ops-designer** — scope, cadence, retention proposal, content dependencies,
-  operational ownership, and rollback concept.
-- **economy-designer** — reward/economy proposal, pricing, currency flow, randomness,
-  bad-luck protection, and economy risk.
-- **analytics-engineer** — metrics, telemetry schema, experiment protocol, privacy,
-  stop rules, and kill switch.
-- **community-manager** — transparent communication strategy and calendar proposal.
-- **narrative-director** — theme, story hook, and lore constraints.
-- **writer** — content inventory, naming/copy brief, and clearly labeled draft
-  examples; no publishing or final asset mutation.
+## Ethics gate inherited by every phase
 
-All proposal turns are read-only. Prompts list allowed sources and explicitly say
-`mutation_authority: NONE`.
+A readable, hash-bound ethics policy is required for payment/premium currency,
+randomized rewards, artificial scarcity or time pressure, behavioral targeting,
+sensitive experimentation/telemetry, or an audience that includes or may include
+minors. Missing/unreadable required policy returns `BLOCKED — POLICY REQUIRED`.
 
-### Artifact writers — sequential and exclusive
+Only a demonstrably free, non-random, non-pressure, non-sensitive, non-minor-specific
+event may continue without policy, and only as `DRAFT / ETHICS NOT REVIEWED`. It is
+never PLAN COMPLETE or eligible for implementation/production handoff.
 
-| Artifact | Unique writer | Allowed write domain |
+Policy violations can only be revised away or remain `NON-COMPLIANT / BLOCKED`. Do not
+offer conversational waiver or rationale override. An external risk-acceptance artifact
+is context only; it does not clear the policy finding, establish compliance or permit
+PLAN COMPLETE in this workflow.
+
+Review the whole behavior design: economy/randomness, retention, experiments,
+telemetry/privacy, communication, audience/minors, time windows, regions/platforms,
+accessibility and cancellation/exit/refund. Never prescribe FOMO, coercive streak loss,
+loss-aversion pressure, false scarcity, misleading urgency or dark patterns. Copy uses
+transparent dates/time zones, value, eligibility, cost/odds, limitations and exit paths.
+
+Use the read-only live-ops review defined here. Never invoke `$design-review` for a
+season/event plan.
+
+## Modes and truthful fallbacks — TLO-012
+
+Mode affects proposal staffing only; ethics, independence, evidence, approval, writer,
+revision and verdict rules never change.
+
+- `full`: delegate live-ops-designer, economy-designer, analytics-engineer,
+  community-manager, narrative-director and writer within the live-slot budget.
+- `lean`: delegate live-ops-designer, economy-designer, analytics-engineer and
+  community-manager. The controller may draft narrative framing and content/copy brief
+  sequentially, labeled `controller-fallback`, never as named-agent output.
+- `solo`: spawn no proposal agents. The controller may create a bounded draft with
+  producer `controller-fallback`. Because it authored every domain, it cannot also
+  supply independent re-review; the strongest result before an independent REVIEW
+  operation is `PARTIAL / BLOCKED — INDEPENDENT REVIEW REQUIRED`.
+
+If a required delegated producer is unavailable in full/lean, the controller may use
+the documented fallback only for proposal drafting. It may not fabricate independent
+policy, legal, privacy, platform, test or operational approval. Record every fallback
+and its effect.
+
+## Stable IDs, context and bounds — TLO-009/TLO-011
+
+`cgs.live-ops-context-manifest/v2` is the only context authority. It declares stable
+run/season/product IDs, create/revise mode, exact reserved season-ID receipt or existing
+season identity, ordered first-order source dependencies, policy/review/registry paths
+and hashes, target audiences/regions/platforms, and fixed budgets.
+
+For CREATE, require a collision-free stable season-ID reservation/registry receipt from
+its owner. For REVISE, require exact prior plan identity/hash and new revision identity.
+Never scan a directory, derive the next number, rename on collision or overwrite an
+existing season. Normalize IDs/paths and reject canonical duplicates.
+
+Read only listed first-order dependencies and their explicitly declared hash-bound
+dependencies: game concept, approved design sources, current economy rules, policy,
+platform/region constraints and named prior plans. Default ceilings are 16 files,
+768 KiB, dependency depth 2, 32 proposal objects, 4 concurrent workers, 64 KiB per
+response and 20 minutes; a request may lower but not raise them.
+
+Admit whole source dependency closures. Record selected, loaded, missing, unreadable,
+invalid, omitted and unprocessed rows with bytes/depth/reason. Required omission,
+budget exhaustion, stale hash or unsupported source yields `PARTIAL CONTEXT / BLOCKED`.
+Never silently truncate or send full repository context to delegates. Each prompt gets
+only the needed bounded subset plus exact hashes and returns a bounded schema payload.
+
+## Proposal ownership and artifact writers — TLO-010
+
+Proposal roles are read-only:
+
+- live-ops-designer: scope, cadence, retention, dependencies, operations and rollback;
+- economy-designer: rewards, pricing, currencies, randomness/protection and economy risk;
+- analytics-engineer: telemetry and protected experiment protocol;
+- community-manager: transparent communication strategy/calendar;
+- narrative-director: theme, story framing and canon constraints; and
+- writer: stable content inventory, naming/copy brief and draft examples.
+
+RECORD uses exactly four disjoint immutable artifacts:
+
+| Artifact/schema | Unique writer | Canonical target |
 |---|---|---|
-| season plan | live-ops-designer acting as season recorder | the exact season-plan path only |
-| analytics plan | analytics-engineer | the exact analytics-plan path only |
-| communication plan | community-manager | the exact communication-plan path only |
-| checkpoint and optional season index/metadata | live-ops-designer acting as season recorder | only the manifest-listed checkpoint/index paths |
+| `cgs.live-ops-season-plan/v2` | live-ops-designer as season recorder | `design/live-ops/seasons/{season-id}/{plan-identity-sha256}/season-plan.md` |
+| `cgs.live-ops-analytics-plan/v2` | analytics-engineer | `.../analytics-plan.md` |
+| `cgs.live-ops-content-manifest/v2` | writer | `.../content-manifest.md` |
+| `cgs.live-ops-communication-plan/v2` | community-manager | `.../communication-plan.md` |
 
-The writer identity is a file-ownership role, not permission to change another
-domain's approved proposal. The narrative-director, writer, and economy-designer
-never write these artifacts. Writers do not run concurrently. Before each write,
-verify every manifest preimage; after each successful write, compute the raw-byte
-SHA-256 and record it. A failed or mismatched write stops later writers and returns
-`PARTIAL WRITE / BLOCKED` without claiming rollback or completion.
+The content manifest is not silently embedded in the season plan. It owns stable
+content IDs, inventory, dependency path/hash/readiness, implementation owner, draft
+copy references, localization/accessibility/platform targets and explicit
+`NOT_IMPLEMENTED` state. The season plan references its path/hash.
 
-## Bounded delegation protocol
+Narrative-director and economy-designer never write final artifacts. Writers run
+sequentially in manifest order and can write only their one exact target. One controller
+recorder writes only the separately authorized immutable artifact manifest/checkpoint,
+never a shared index. Writer identity does not permit changing another domain proposal.
 
-Record `max_parallel_agents = min(3, available_runtime_slots - 1)` in the run
-checkpoint. If available capacity is unknown, use 2. If it is zero, run sequentially.
-Never exceed 3 concurrent delegated agents.
+## Dependency graph and frozen foundation — TLO-007
 
-Each delegation has a stable attempt ID, explicit inputs and input hashes, allowed
-outputs, `mutation_authority: NONE`, a deadline recorded before launch, and one of:
-`PENDING`, `SUCCEEDED`, `BLOCKED`, `TIMEOUT`, `CANCELLED`, or `STALE`. Default
-deadline is 180 seconds unless a bounded run manifest declares another value.
+Order planning work:
 
-For an independent batch:
+1. exact scope/audience/risk and product decisions;
+2. narrative frame and economy/reward proposal;
+3. frozen `cgs.live-ops-foundation-schema/v2` with event, reward, currency,
+   entitlement, content and telemetry identifiers plus exact proposal hashes;
+4. independent analytics fields that do not depend on economy plus content/comms
+   scaffolds that do not reference unfrozen identifiers;
+5. after foundation freeze, all dependent telemetry, experiment, reward-copy,
+   eligibility, pricing/odds and communication rows;
+6. cross-domain review, revision, approval and recording.
 
-1. launch all eligible agents up to the concurrency cap before awaiting results;
-2. wait in bounded intervals and surface progress at least once per minute;
-3. at deadline, interrupt/cancel the attempt and mark `TIMEOUT`;
-4. allow at most one user-approved retry with a new attempt ID;
-5. preserve successful outputs and their SHA-256 hashes;
-6. reject late results from a cancelled, timed-out, or superseded attempt;
-7. do not start a dependent phase until every required predecessor is `SUCCEEDED`.
+Do not force Phase 4/5 work into false independence. Only dependency-free subsets may
+run early. Every dependent proposal binds the exact foundation schema identity. A
+foundation change invalidates those proposals, review and approval; freeze a new
+identity and recompute dependents.
 
-Any missing required output yields `PARTIAL / BLOCKED`. Return the completed proposal
-set and exact gaps, save an authorized checkpoint when possible, and stop before
-design approval, final artifacts, or production handoff.
+## Delegation, timeout and late results — TLO-013
 
-## Checkpoint and recovery contract
+Before each batch, read configured `max_threads`, enumerate every live root/child/nested
+agent and compute:
 
-Before work begins, derive one stable season ID and exact artifact paths. The
-changeset manifest includes:
+`available_child_slots = max(0, max_threads - live_threads_including_controller)`
 
-- `design/live-ops/checkpoints/<season-id>.yaml`;
-- `design/live-ops/seasons/<season-id>.md`;
-- `design/live-ops/seasons/<season-id>-analytics.md`;
-- `design/live-ops/seasons/<season-id>-comms.md`; and
-- an existing season index/metadata path only when the requested change explicitly
-  includes it.
+Use `dispatch_slots = min(request_worker_limit, 4, available_child_slots)`. If config,
+live count or request limit is missing/invalid, run serially. Nested delegation consumes
+the same budget and is forbidden without an assigned slot.
 
-The checkpoint is written only if that exact path is authorized. Otherwise emit the
-same checkpoint block in conversation and mark `checkpoint_persisted: false`; never
-silently add it to the changeset.
+Each assignment declares stable attempt ID, input/foundation hashes, allowed output,
+`mutation_authority: NONE`, exclusive proposal slot, deadline, response limit,
+cancel rule and retry budget of at most one. Gather a whole batch before dispatching
+dependents.
 
-Checkpoint fields are:
+Assignment state is `PENDING|SUCCEEDED|PARTIAL|BLOCKED|TIMEOUT|CANCELLED|STALE|ERROR|
+LATE_IGNORED`. At deadline, interrupt and record timeout. Retry only before review freeze
+with a new attempt ID, identical immutable inputs and explicit retry authority. A changed
+input needs a new assignment/authority. Results arriving after cancellation, timeout,
+supersession or review freeze are LATE_IGNORED and cannot write, replace a proposal,
+change a finding or qualify the run.
 
-```yaml
-season_id: <stable-id>
-review_mode: full | lean | solo
-phase: <last-completed-phase>
-checkpoint_revision: <integer>
-inputs:
-  - path: <repository-relative-path>
-    sha256: <raw-byte-hash-or-null>
-policy:
-  path: design/live-ops/ethics-policy.md
-  state: PRESENT | MISSING | UNREADABLE
-  sha256: <hash-or-null>
-risk_profile:
-  policy_required: true | false
-  reasons: []
-artifact_manifest:
-  - path: <exact-path>
-    writer: <unique-role>
-    preimage_sha256: <hash-or-ABSENT>
-    status: NOT_WRITTEN | WRITTEN | FAILED
-    postwrite_sha256: <hash-or-null>
-decisions: []
-agent_attempts: []
-proposal_hashes: {}
-findings: []
-design_approval:
-  state: NOT_REQUESTED | APPROVED | REJECTED
-  owner: <identity-or-null>
-  timestamp_utc: <timestamp-or-null>
-next_phase: <phase-or-STOP>
+Any required partial, timeout, cancellation, stale/error/late result yields
+`PARTIAL / BLOCKED`, preserves successful independent proposals, prevents design
+approval/recording/production handoff, and names the exact owner/resume action.
+
+## Immutable checkpoints and idempotent recovery — TLO-014
+
+Every milestone creates or proposes one immutable `cgs.live-ops-checkpoint/v2` at:
+
+```text
+design/live-ops/checkpoints/{season-id}/{run-id}/
+  {sequence}-{checkpoint-identity-sha256}.yaml
 ```
 
-The season recorder increments the checkpoint revision and writes it sequentially.
-Resume only when the season ID, artifact manifest, policy hash, all input hashes, and
-approved decisions match. Any mismatch makes the checkpoint `STALE`; preserve it,
-report changed fields, generate a new manifest/checkpoint revision, and obtain new
-authorization before any new path or changed intended write. Never infer success from
-an old conversation or checkpoint alone.
+Each checkpoint binds request/context/policy/review/instruction/foundation/proposal/
+finding/decision/artifact-manifest identities; predecessor path/hash; exact phase;
+agent attempt states; budgets; review round; writer/preimage/postwrite states; approval;
+verdict/readiness; persistence; and exactly one next operation. It is create-only and
+never an increment-in-place file.
 
-## Phase 0: Validate input and establish the run
+RESUME requires exact checkpoint path/hash and expected predecessor chain. Re-hash all
+inputs, proposals, decisions and already written artifact bytes; verify target absence
+and reconcile assignment/writer states. Do not replay successful assignments/writers.
+Broken chain, stale bytes, ambiguous writer outcome, changed policy/foundation or target
+collision blocks. Preserve old checkpoints and start a new identity/authorization for
+changed work. STATUS performs the same checks read-only and never repairs state.
 
-1. Parse one season/event description and optional valid review mode.
-2. Resolve or propose a stable season ID. Reject traversal, absolute paths, ambiguous
-   IDs, or collisions. Do not invent a successful registry allocation.
-3. Load only bounded context: the game concept, explicit live-ops dependencies, the
-   current economy rules, the ethics policy, and explicitly referenced prior season
-   records. Default budget is 12 files and 512 KiB. Record every path and raw-byte
-   SHA-256; if required context exceeds the budget, ask to narrow or expand it and
-   return `PARTIAL CONTEXT / BLOCKED`.
-4. Classify the policy-required risk triggers before delegation. Do not fabricate
-   missing policy content.
-5. Build the exact artifact manifest, unique-writer map, deadlines, concurrency cap,
-   and checkpoint path. Obtain one changeset authorization before the first write.
-   This authorization does not approve the design or any implementation.
+## Exact artifact manifest and recording authorization — TLO-009
 
-If policy is required and the policy is missing or unreadable, checkpoint the block
-when authorized and return `BLOCKED — POLICY REQUIRED` without spawning design or
-production agents.
+After stable season ID, final proposals, findings and design decision exist, render
+`cgs.live-ops-artifact-manifest/v2` with exact four targets, schema/identity, canonical
+bytes/hash, unique writer, expected `ABSENT` or exact allowed revision preimage,
+write order, parent identity, maximum bytes and explicit non-writes. The manifest binds
+the consolidated proposal, policy/review, approval and instruction hashes.
 
-## Phase 1: Scope, audience, and risk proposal
+Only now may RECORD request one exact changeset authorization. Earlier planning,
+delegation or product approval cannot authorize unknown season numbers, filenames,
+content, index updates or future paths. New/changed targets or bytes require a new
+artifact manifest and authorization.
 
-Run the live-ops-designer proposal pass. It must return:
+Immediately before each sequential writer, CAS every input/preimage/authority and
+revalidate all prior postwrite hashes. Use atomic no-replace/create-new, flush, parse,
+read back and hash. On drift, collision, partial/unknown writer result or mismatch, stop
+remaining writers, list actual writes/hashes and return `PARTIAL WRITE / BLOCKED`.
+Never claim rollback or unwritten artifacts.
 
-- event type, objective, audience and age assumptions;
-- start/end window, regions and platforms;
-- content inventory and explicit dependencies;
-- daily/weekly engagement proposal without coercive pressure;
-- monetization, currency, randomness, scarcity, and experiment flags;
-- operational owners, support impact, rollback concept, and cancellation/exit path;
-- unknowns and evidence sources.
+## Protected experiment protocol — TLO-015
 
-Present genuine product choices to the user using Question → Options → Decision.
-Record decision owner, UTC timestamp, selected option, and proposal hash. Routine
-phase transitions do not require repeated approval.
+Every A/B, holdout, behavioral or offer experiment is a nested
+`cgs.live-ops-experiment-protocol/v2` in the analytics plan and remains
+`Experiment State: PLANNED_NOT_RUN`. It includes:
 
-A material scope, audience, monetization, randomness, or time-pressure change requires
-reclassification against the policy gate and an artifact-manifest check.
+- stable experiment/version IDs, preregistration hash and falsifiable hypothesis;
+- target audience, eligibility/exclusions, minors treatment, regions/platforms and
+  assignment/randomization unit;
+- control/treatments, minimum and maximum exposure, duration, sample-size/power method
+  or approved rationale, holdout and contamination controls;
+- one primary metric, guardrail metrics, decision thresholds, multiple-testing rule,
+  stopping rules and inconclusive handling;
+- adverse-impact/fairness segments and thresholds, accessibility and economy harms;
+- exact event/foundation schema, data minimization, lawful basis/consent, retention/
+  deletion, access roles and privacy/security review requirements;
+- kill-switch mechanism/owner, monitoring cadence, rollback/compensation and incident
+  communication; and
+- independent ethics-review finding IDs/status and implementation/QA prerequisites.
 
-## Phase 2: Narrative and economy foundation
+Missing protection is a BLOCKER. Minimize exposure before statistical sufficiency,
+never optimize coercion, and never infer that protocol approval means an experiment ran
+or was safe. Launch requires separate implementation, privacy/security, QA, platform
+and external-action authority outside this workflow.
 
-After Phase 1 decisions are recorded:
+## Live-ops review and bounded convergence — TLO-006
 
-1. obtain a narrative framing proposal from narrative-director, or the truthful
-   primary-agent fallback defined by the mode;
-2. obtain an economy proposal from economy-designer using the approved scope,
-   audience, ethics policy hash, and current economy rules;
-3. resolve product decisions for premium value, pricing, randomness, and progression;
-4. freeze a shared event/economy schema with stable event, reward, currency,
-   entitlement, and telemetry identifiers;
-5. hash the approved foundation proposal.
+`cgs.live-ops-review/v2` is read-only and checks:
 
-Analytics, copy, or communication work that references economy/event fields cannot
-start until this schema is frozen. If narrative or economy work is blocked or partial,
-return `PARTIAL / BLOCKED`.
+1. ethics/audience/minors/accessibility/manipulation;
+2. economy/rewards/randomness/entitlement/rollback consequences;
+3. retention and transparent communication;
+4. experiments, telemetry, privacy, fairness and kill switch;
+5. content dependency ownership/readiness/localization/platform/region; and
+6. operations, timing, support/on-call, monitoring, incident thresholds,
+   disable/rollback, cancellation/refund and approval dependencies.
 
-## Phase 3: Bounded parallel planning proposals
+Every finding has stable ID derived from domain/rule/proposal evidence identity,
+severity `BLOCKER|CONCERN|NOTE`, domain, exact rule source/hash, evidence path/hash,
+problem, testable revision, owner, state `OPEN|RESOLVED|NON_COMPLIANT`, introduced round
+and last-reviewed round. Preserve the ID across revisions; do not renumber unchanged
+findings.
 
-Only after the foundation hash is frozen, run the independent proposal workstreams,
-up to the recorded concurrency cap:
+For an OPEN blocker offer only revise or stop. Allow at most two revision rounds.
+After each revision, freeze the diff/proposal hashes and use a reviewer who did not
+author the implicated revision. Re-review only open findings plus deterministic
+regression checks from the diff. If no independent reviewer is available, return
+`PARTIAL / BLOCKED — INDEPENDENT REVIEW REQUIRED`. If any blocker remains after round 2,
+return `BLOCKED — REVIEW DID NOT CONVERGE`. New findings need cited new/detected evidence;
+do not create an unbounded subjective loop.
 
-- **analytics-engineer** — metrics and telemetry against the frozen identifiers;
-  any experiment must state hypothesis, audience, sample/exposure limit, primary and
-  guardrail metrics, stop rule, privacy/data-minimization rules, fairness check, and
-  kill switch. Status is `PLANNED / NOT RUN`, never “validated.”
-- **writer** — content inventory and copy brief against approved narrative/economy
-  constraints. Examples remain `DRAFT / NOT PUBLISHED`.
-- **community-manager** — transparent communication calendar covering eligibility,
-  value, price/cost, randomized odds where relevant, dates/time zones, platform and
-  region differences, reminders, known-issue/cancellation handling, and exit
-  information. Never request coercive deadline pressure or misleading urgency.
+A policy violation resolves only when the design satisfies the cited rule. Risk
+acceptance remains NON_COMPLIANT here.
 
-All three return proposals only. Collect every eligible result before continuing. A
-timeout or blocked required workstream yields `PARTIAL / BLOCKED` and prevents review
-approval or final document writing.
+## Design approval and readiness boundary — TLO-008
 
-## Phase 4: Read-only live-ops-review profile
+Present the consolidated proposal with exact season/risk, narrative, economy/foundation,
+experiment, content, communication, review/findings, sources, artifact manifest and
+writer identities. Obtain explicit design approval only when all required work
+succeeded, required policy is current, independent review is complete and open blockers
+are zero. Approval binds owner, UTC time, proposal/policy/review/artifact-manifest hashes.
+It means “record this plan,” never implement or deploy it.
 
-Apply `live-ops-review` to the consolidated proposals. It is a document-type-specific,
-read-only review and never edits source proposals or invokes `$design-review`.
+Always include a production-readiness matrix with at least:
 
-Check these domains independently:
+- content/asset implementation dependencies and owners;
+- localization/accessibility/platform/region calendars and approvals;
+- economy/store configuration implementation and rollback/disable mechanism;
+- telemetry/experiment implementation, privacy/security approval and kill switch;
+- QA/test/build evidence, support/on-call, monitoring, incident/cancellation/refund;
+- exact status/evidence path/hash/owner/required next artifact for every row.
 
-1. **Ethics and audience** — actual policy rules and policy hash; minors, accessibility,
-   randomness, paid value, time pressure, opt-out, and manipulation risk.
-2. **Economy integrity** — currency sources/sinks, pricing, entitlement, reward value,
-   bad-luck protection, pay-to-win risk, and rollback consequences.
-3. **Retention and communication** — transparent value and deadlines; no coercive
-   streaks, loss-aversion traps, false scarcity, FOMO, or misleading copy.
-4. **Experiments and telemetry** — frozen identifiers, consent/privacy, minimization,
-   hypothesis, exposure, guardrails, stop rule, fairness, and kill switch.
-5. **Content dependencies** — owner, source hash, readiness state, localization,
-   accessibility, platform/region, and unresolved external dependency.
-6. **Operations** — launch window, support/on-call owner, monitoring plan, incident
-   thresholds, rollback/disable path, cancellation/refund handling, and regional or
-   platform approval needs.
+This workflow has no build-bound evidence and therefore always returns
+`Production Readiness: NOT_EVALUATED` and `Production Handoff Eligible: NO`. Unknown or
+planned rows cannot become ready. PLAN COMPLETE is determined only by exact plan hashes, complete
+required proposals/review, zero open blockers, accountable owners, design approval and
+verified four-artifact recording; it never changes the readiness fields.
 
-Use stable findings:
+## Verdicts and shared integration — TLO-016
 
-```yaml
-id: TLO-<DOMAIN>-<NNN>
-severity: BLOCKER | CONCERN | NOTE
-domain: ethics | economy | retention | experiment | telemetry | comms | audience | content | operations
-rule_source: <policy-path-and-rule-or-review-rubric>
-evidence: <proposal-section-and-hash>
-problem: <specific-observed-gap>
-required_revision: <testable-change>
-status: OPEN | RESOLVED | NON_COMPLIANT
-revision_round: 0 | 1 | 2
-```
+Use exactly one planning verdict:
 
-A missing policy is not a passed ethics review. A risk-acceptance artifact is not a
-resolved policy finding. Review status is one of `REVIEW PASSED`,
-`REVIEW CONCERNS`, `NON-COMPLIANT / BLOCKED`, or `PARTIAL REVIEW / BLOCKED`.
-Review evidence proves only that planning documents were examined; it is not a game,
-test, analytics, platform, legal, or deployment result.
+- `PLAN COMPLETE` — planning-only conditions and four artifact receipts verified;
+- `DRAFT / ETHICS NOT REVIEWED` — strictly low-risk policy-absent draft;
+- `BLOCKED — POLICY REQUIRED`;
+- `NON-COMPLIANT / BLOCKED`;
+- `PARTIAL CONTEXT / BLOCKED`;
+- `PARTIAL / BLOCKED`;
+- `PARTIAL WRITE / BLOCKED`;
+- `BLOCKED — REVIEW DID NOT CONVERGE`;
+- `BLOCKED — AUTHORIZATION REQUIRED`; or
+- `PARTIAL / BLOCKED — INDEPENDENT REVIEW REQUIRED`.
 
-## Phase 5: Bounded revision and re-review
+Never emit bare COMPLETE, PRODUCTION READY or READY TO DEPLOY.
 
-For each `OPEN` blocker, offer only:
+Return `cgs.team-live-ops-result/v2` with every request/run/season/context/policy/
+instruction/foundation/proposal/review/finding/decision/artifact/checkpoint identity;
+mode/fallback/assignment/budget ledgers; exact verdict; Production Readiness
+NOT_EVALUATED; Production Handoff Eligible NO; actual writes/hashes; explicit non-writes;
+and one legal next action/owner or none.
 
-- revise the implicated proposal; or
-- stop with `NON-COMPLIANT / BLOCKED` or `BLOCKED`.
+Shared consumers must preserve the boundary:
 
-Do not offer an in-conversation waiver. Preserve finding IDs across revision. Re-review
-only open findings plus regressions caused by the revision diff. Allow at most two
-revision rounds in one run. If a blocker remains after round 2, return
-`BLOCKED — REVIEW DID NOT CONVERGE` and stop. New blockers require concrete evidence
-that they were introduced by the revision or were objective policy violations; do
-not create an endless subjective review loop.
+- content/asset/localization workflows may use the approved content manifest only as a
+  hash-bound design input; NOT_IMPLEMENTED is not asset or localization evidence;
+- implementation planning may reference PLAN COMPLETE only after its own requirements,
+  architecture and story-readiness gates; this workflow does not create a sprint;
+- `$team-qa` consumes exact build/test evidence, never PLAN COMPLETE as QA PASS;
+- `$release-checklist` may list these plans as source context but cannot normalize them
+  as implementation, QA, platform, experiment or deployment PASS;
+- `$team-release` cannot treat PLAN COMPLETE, design approval, experiment protocol or
+  communication draft as GO or any deployment/publication authority.
 
-A policy violation becomes `RESOLVED` only when the violating design is removed or
-changed to satisfy the cited rule. An external risk decision remains
-`NON_COMPLIANT` for this workflow.
-
-## Phase 6: Consolidated design decision
-
-Present one consolidated proposal containing:
-
-- season brief and audience/risk profile;
-- narrative framing;
-- economy design and frozen schema;
-- analytics/experiment plan marked `NOT RUN`;
-- content inventory/copy brief marked `NOT IMPLEMENTED`;
-- communication strategy marked `NOT PUBLISHED`;
-- live-ops-review findings;
-- operational, rollback, platform, region, localization, and accessibility gaps;
-- source and proposal hashes;
-- exact artifact manifest and writer map.
-
-Request explicit design approval only when all required proposals succeeded, the
-policy is present when required, the review is not partial, and open blockers equal
-zero. The approval record includes decision owner, UTC timestamp, consolidated
-proposal hash, policy hash, and exact artifact manifest hash.
-
-Approval means “record this plan,” not “implement or deploy it.” If the user rejects
-or changes the design, update decisions/checkpoint and return to the affected phase
-within the two-round limit. Do not start implementation or final production work.
-
-## Phase 7: Sequential artifact recording
-
-Only after both exact changeset authorization and design approval:
-
-1. revalidate every input and artifact preimage hash before any final-document write;
-2. run the season-plan writer and verify its one allowed path and postwrite hash;
-3. revalidate remaining preimages, then run the analytics-plan writer;
-4. revalidate again, then run the communication-plan writer;
-5. let the season recorder update an authorized index/metadata path, if any, last;
-6. update the authorized checkpoint last with all postwrite hashes and statuses.
-
-No writers run concurrently. A writer receives only the approved proposal sections
-for its artifact and may not change design decisions. If any hash is stale or a writer
-fails, stop later writes, list every actual mutation and hash, and return
-`PARTIAL WRITE / BLOCKED`. Do not claim atomic rollback, recreate missing evidence,
-or report unwritten files as written.
-
-Required document headers include season ID, plan status, consolidated proposal hash,
-policy path/hash/state, review status, design approval owner/timestamp, source hashes,
-writer identity, and artifact postwrite hash reported alongside the artifact.
-
-## Verdicts and handoff
-
-Use exactly one:
-
-- `PLAN COMPLETE` — policy gate satisfied, all required proposals and review complete,
-  zero open blockers, design approved, all authorized planning artifacts written and
-  hash-verified. This means planning is complete only.
-- `DRAFT / ETHICS NOT REVIEWED` — missing policy is allowed only for the strictly
-  free, non-random, non-pressure, non-sensitive low-risk profile. No production or
-  implementation handoff.
-- `BLOCKED — POLICY REQUIRED` — policy-required risk with missing/unreadable policy.
-- `NON-COMPLIANT / BLOCKED` — one or more policy violations remain.
-- `PARTIAL / BLOCKED` — required context or proposal/review work is incomplete.
-- `PARTIAL WRITE / BLOCKED` — only some authorized artifacts were written.
-- `BLOCKED — REVIEW DID NOT CONVERGE` — blockers remain after two revision rounds.
-- `BLOCKED — AUTHORIZATION REQUIRED` — exact planning artifact writes are not
-  authorized.
-
-Never output bare `COMPLETE`, `PRODUCTION READY`, `READY TO DEPLOY`, or claims that
-tests, implementation, platform approval, localization, telemetry, experiments, or
-release steps succeeded without corresponding external evidence.
-
-## Next step
-
-For `PLAN COMPLETE` only, suggest one separate next action appropriate to the
-remaining gap, normally `$sprint-plan` to schedule approved implementation work.
-Do not invoke it. Do not call `$team-release` until separately produced
-implementation, QA, platform, and deployment evidence exists.
-
-For every draft, blocked, partial, or non-compliant result, recommend only the single
-action that resolves the named blocker. Never route a season document to
-`$design-review`.
+Stop after the packet. Never invoke another workflow or update shared state.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Retrospective"
-  short_description: "Generates a sprint or milestone retrospective by analyzing..."
-  default_prompt: "Use $retrospective to run the Retrospective game-studio workflow."
+  short_description: "Evidence-backed immutable retrospective with UNKNOWN preservation"
+  default_prompt: "Use $retrospective with one explicit sprint: or milestone: target to reconcile exact revisions, keep unsupported metrics and causes UNKNOWN, propose unassigned actions, and optionally persist a new immutable run plus latest index before stopping."

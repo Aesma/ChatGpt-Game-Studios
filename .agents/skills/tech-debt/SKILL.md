@@ -1,227 +1,298 @@
 ---
 name: tech-debt
-description: Track technical-debt candidates and decisions with idempotent fingerprints, evidence-based advisory scoring, and an append-only register history that is never reordered by reports.
+description: Analyze technical-debt candidates and append-only register evidence through four strictly read-only modes, with stable fingerprints, versioned analyzer receipts, explicit lifecycle state, advisory ranking, and separately authorized CAS recorder proposals.
 ---
 
 # Tech Debt
 
-Analyze, record, rank, and report technical debt without turning heuristics into decisions or destroying register history.
+Analyze one bounded project snapshot without changing it. Scanner hits are
+candidates, not technical-debt decisions. The skill may propose exact register
+events, but it never creates, migrates, appends, rewrites, sorts, or repairs the
+authoritative register and never invokes a recorder.
 
-This workflow has four modes. Scanning produces candidate evidence, prioritization produces an advisory view, reporting produces a read-only summary, and only an explicitly authorized recorder phase may mutate the register. It does not invoke another project skill, assign sprint scope, or claim a user/producer decision.
+This workflow does not accept debt, resolve debt, choose product priority, assign
+sprint scope, estimate delivery time, or certify project quality.
 
 ## Invocation
 
-`$tech-debt scan [scope]`  
-`$tech-debt add`  
-`$tech-debt prioritize [scope]`  
-`$tech-debt report [baseline]`
+Use exactly one of these forms:
 
-An absent or unknown mode, unsupported argument, or ambiguous scope returns `USAGE_ERROR` with usage text and performs no scan or write. A usage error is not a project-quality verdict.
+```text
+$tech-debt scan --scope <project-relative-manifest>@sha256:<64-lower-hex>
+                --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
+$tech-debt add --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
+               [--candidate <project-relative-record>@sha256:<64-lower-hex>]
+$tech-debt prioritize --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
+$tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
+                  [--baseline-event <uuid>|--baseline-hash <64-lower-hex>]
+```
 
-## Authoritative register
+- `scan` requires one immutable `cgs.tech-debt-scan-scope/v1` manifest.
+- `add` accepts at most one immutable `cgs.tech-debt-manual-candidate/v1`
+  record. Without it, return `INPUT_REQUIRED` with the exact missing fields.
+- `report` accepts at most one baseline selector.
+- Options may appear in either order within a mode, but each may appear once.
+- Paths must be canonical project-relative paths: `/` separators, Unicode NFC,
+  no absolute path, drive prefix, URI, traversal, glob, symlink escape, or
+  case-ambiguous match.
+- `@sha256:` binds the exact bytes. A hash mismatch, unreadable input, schema
+  mismatch, unrelated project/register ID, or mutable/ambiguous resolution is
+  an input identity error.
 
-The only authoritative file is `docs/tech-debt-register.md`.
+An absent/unknown mode, positional argument, unknown/repeated option, missing
+value, malformed UUID/hash/path, illegal option combination, or unexpected
+payload returns `USAGE_ERROR`. A well-formed invocation whose referenced input is
+invalid returns `INPUT_ERROR`; an invalid register returns `REGISTER_ERROR`.
+These are execution states, not debt or project-quality verdicts. Do no scan,
+proposal, or write after an invocation/input/register error.
 
-Schema version 2 is an append-only event log. Its immutable header declares the schema; every later record is appended in chronological order. Existing records are never sorted, edited, deleted, or regenerated.
+Valid skill outcomes are exactly:
 
-Each event contains:
+```text
+SCAN_COMPLETE | NO_NEW_DEBT_FOUND | SCAN_PARTIAL |
+ADD_PREVIEW_READY | ADD_DUPLICATE_FOUND | INPUT_REQUIRED |
+PRIORITY_VIEW_READY | PRIORITY_VIEW_PARTIAL |
+REPORT_READY | REPORT_PARTIAL |
+USAGE_ERROR | INPUT_ERROR | REGISTER_ERROR
+```
 
-- `event_id`: collision-resistant UUID;
-- `debt_id`: collision-resistant UUID assigned by the first `CREATED` event and never reused;
-- `event_type`;
-- UTC timestamp and actor;
-- fingerprint or fingerprint alias when applicable;
-- source revision/hash and evidence locator;
-- structured payload plus payload hash;
-- previous event ID for that debt item.
+`REGISTER_UPDATED`, `MUTATION_FAILED`, `PASS`, `FAIL`, `COMPLETE`, severity, and
+priority are not skill outcomes.
 
-Required event types are:
+## Load the contract
 
-- `CREATED` — immutable identity, fingerprint, category, description, evidence, and acceptance rationale;
-- `OBSERVED` — updates materialized `last_seen` for a new source revision without creating another debt item;
-- `TRIAGED_OPEN`, `ACCEPTED`, `RESOLVED`, `SUPERSEDED` — status transitions with actor, reason, and evidence;
-- `FINGERPRINT_ALIAS` — user-confirmed or repository-proven rename/move relationship;
-- `ESTIMATE_UPDATED` — numeric scale values and their evidence;
-- `PRIORITY_SELECTED` and `SCHEDULE_SELECTED` — explicit user/producer decisions, never analyzer decisions.
+Read [debt-rules-v1.md](references/debt-rules-v1.md) completely. It defines
+bounded scope, candidate and analyzer receipts, exclusions, fingerprinting,
+register schema/lifecycle, scoring, report baselines, change proposals, and the
+independent recorder protocol.
 
-Current state is a materialized view obtained by replaying valid events. Status is one of `OPEN`, `ACCEPTED`, `RESOLVED`, or `SUPERSEDED`; unknown legacy state remains `UNKNOWN` until triage.
+Read [continued-workflow.md](references/continued-workflow.md) completely and
+follow the common and mode-specific phases in order. If either file is missing,
+unreadable, or internally inconsistent, return `INPUT_ERROR` without analysis.
 
-A missing register may be proposed for creation during an authorized recorder phase. A malformed or unsupported register returns `REGISTER_ERROR` without modification. Migration is an explicit, separately previewed mutation that preserves every legacy byte in a migration appendix or immutable snapshot reference; never silently reinterpret data.
+## Strict read-only boundary
 
-## Stable fingerprint and identity contract
+The allowed write set is empty. Do not create a register, migrate legacy data,
+append an event, update `last_seen`, persist a report/view/proposal, cache output,
+install/update an analyzer, generate a dependency, build the game, edit source,
+or reorder existing bytes. Do not request ordinary write permission for this
+skill.
 
-A scanner finding is a `CANDIDATE`, not accepted debt.
+Record a before/after mutation snapshot for the bounded inputs. If attributable
+mutation cannot be established, disclose concurrent changes without reverting
+or assigning blame. A changed analyzed input invalidates its evidence and yields
+`SCAN_PARTIAL`, `PRIORITY_VIEW_PARTIAL`, or `REPORT_PARTIAL`; a changed register
+identity yields `REGISTER_ERROR`. Never call the independent recorder from this
+workflow.
 
-Compute fingerprint version `td-fp-v1` as SHA-256 over these length-delimited fields in order:
+## Register identity, absence, and validity
 
-1. versioned `rule_id`;
-2. canonical project-relative path;
-3. stable qualified symbol, or `<file>` when unavailable;
-4. normalized evidence text.
+The caller identifies the authoritative register; do not discover one by name.
+A present register must validate exactly as `cgs.tech-debt-register/v3`, including
+its project/register UUIDs, monotonic revision, append-only global event sequence,
+event/payload hashes, global and per-debt predecessor chains, UUID uniqueness,
+fingerprint ownership, lifecycle transitions, and full-file SHA-256.
 
-Normalization rules are deterministic:
+Replay valid events to obtain the current view. Never treat a materialized table,
+sorted report, comment, or prose summary as authoritative. Unknown legacy state
+is `UNKNOWN` and cannot be silently mapped.
 
-- path is repository-canonical casing, Unicode NFC, and `/` separators;
-- symbol is the analyzer-provided qualified name with surrounding whitespace removed;
-- evidence text is Unicode NFC, line endings normalized to LF, outer whitespace trimmed, and horizontal whitespace collapsed;
-- line/column numbers, scan timestamp, source revision, severity, and suggested priority are excluded.
+For `ABSENT:<path>`:
 
-The scanner records the analyzer/rule version separately. It must not invent a fingerprint when a required field cannot be normalized.
+- verify that the exact canonical path is absent;
+- `scan` analyzes against an empty index and marks `REGISTER_ABSENT`;
+- `add` may return a `CREATE_REGISTER` proposal;
+- `prioritize` returns `PRIORITY_VIEW_PARTIAL` with an empty view; and
+- `report` returns `REPORT_PARTIAL` with absence and all register-derived metrics
+  `UNKNOWN`.
 
-Deduplication:
+Absence never creates a file. A malformed, hash-mismatched, conflicting, or
+unsupported register returns `REGISTER_ERROR` in every mode. A recognized legacy
+schema returns `REGISTER_ERROR` subtype `MIGRATION_REQUIRED` plus a read-only
+migration proposal; it is never repaired or reinterpreted here.
 
-1. Replay the register and build an index of primary fingerprints and aliases.
-2. At most one `CREATED` event may own a fingerprint.
-3. If the fingerprint already exists, preserve its `debt_id`. For a new source revision, propose one `OBSERVED` event; for the same revision and evidence hash, propose no event.
-4. A previously resolved item that appears again is reported as `REAPPEARED`, but its status does not change until the user records a transition.
-5. A line move alone leaves the fingerprint unchanged.
-6. A path rename changes the raw fingerprint. Preserve identity only when version-control evidence proves the rename or the user confirms the match; append `FINGERPRINT_ALIAS`. Otherwise treat it as a new candidate and do not auto-resolve the old item.
-7. If two existing debt IDs own one fingerprint/alias, or one UUID has conflicting owners, return `REGISTER_ERROR` and do not mutate.
+## Candidate, evidence, and decision boundary
 
-Repeated scans therefore create zero duplicate debt entries. They may append a single new observation event only for a new source revision after authorization.
+Every scanner result is a `cgs.tech-debt-candidate/v2`. It must name its stable
+rule, exact source evidence, frozen scope, analyzer receipt(s), confidence,
+verification state, intentional-design alternative, triage requirement,
+fingerprint, and any register match.
 
-## Scanner evidence contract
+Candidate states are:
 
-A heuristic is never sufficient by itself to establish debt. Each candidate includes:
+```text
+HEURISTIC_CANDIDATE | EVIDENCE_SUPPORTED | UNVERIFIED
+```
 
-- rule ID and analyzer version;
-- path, symbol, evidence locator, and evidence excerpt/hash;
-- source revision/hash;
-- category suggestion and confidence;
-- why it may be debt and why it may be intentional;
-- verification state `VERIFIED` or `UNVERIFIED`;
-- owner-triage state;
-- fingerprint and matching register identity, if any.
+A TODO/FIXME/HACK/deprecated marker, file-length threshold, keyword hit, naming
+pattern, or path convention is only `HEURISTIC_CANDIDATE`. It is never debt,
+severity, acceptance, priority, or proof of duplication/complexity. Owner triage
+is required before a candidate can be selected for a `CREATED` proposal.
 
-Exclude generated output, vendored dependencies, caches, build artifacts, and third-party code by canonical path rules. Test files are excluded from generic size/duplication rules unless a test-specific rule is explicitly enabled. TODO, FIXME, HACK, deprecated markers, size thresholds, complexity, and clone results are candidates only.
+Complexity requires a compatible language-aware control-flow/AST analyzer.
+Duplication requires a compatible token/AST clone analyzer with declared minimum
+clone size and normalization. Missing, failed, timed-out, stale, incompatible,
+unversioned, or side-effecting analyzers make the affected check `UNVERIFIED` and
+the scan `SCAN_PARTIAL`. Never fabricate a result or replace unsupported analysis
+with prose review or text similarity.
 
-A missing or failed analyzer marks affected rules `UNVERIFIED` and yields `SCAN_PARTIAL`. It must not fabricate duplication or complexity results.
+Generated output, vendored/third-party dependencies, caches, build artifacts,
+engine imports, and test fixtures are excluded only by hashed scope/classification
+evidence. Tests are excluded from generic size/clone rules unless a test-specific
+rule is explicitly enabled. Every exclusion is visible in the coverage ledger;
+missing classification is `UNVERIFIED`, not an inferred exclusion.
 
-## Mutation protocol
+## Stable identity and deduplication
 
-No mode writes before a complete recorder preview.
+Use `td-fp-v2` exactly as defined in the rules reference. A fingerprint excludes
+line/column, source hash/revision, timestamp, analyzer version, diagnostic prose,
+severity, confidence, score, owner, and status. A candidate without every required
+canonical identity field is `UNVERIFIED` and receives no invented fingerprint.
 
-The preview contains:
+Replay all primary fingerprints and aliases before classifying a candidate:
 
-- exact register path and `CREATE` or `APPEND_EVENTS` operation;
-- current base content hash or `ABSENT`;
-- proposed content hash;
-- schema version;
-- every selected new event in exact order;
-- dedup result and affected debt IDs;
-- any migration;
-- explicit statement that existing event bytes and order are unchanged.
+- one fingerprint/alias has at most one owning `debt_id`;
+- an existing fingerprint preserves its UUID and may produce one `OBSERVED`
+  proposal only for materially new evidence at a new source identity;
+- the same source/evidence produces no event;
+- a resolved match is `REAPPEARED`, but remains `RESOLVED` unless an authorized
+  `REOPENED` event is recorded externally;
+- line moves do not change identity;
+- a path/symbol move obtains an alias only from an immutable VCS move receipt or
+  a user-selected alias proposal; absent that evidence it remains a new candidate;
+  and
+- duplicate fingerprint owners, duplicate/conflicting UUIDs, broken aliases, or
+  event-chain conflicts return `REGISTER_ERROR`.
 
-The user chooses which candidates or decisions to record. Analyzer recommendations are not implicit authorization.
-
-After exact authorization:
-
-1. Re-read and validate the register.
-2. Compare its current content hash with the authorized base hash.
-3. Replay events and rerun fingerprint, UUID, previous-event, payload-hash, and schema checks.
-4. Rebase and deduplicate proposed events against the current revision.
-5. If content, event IDs, dedup outcome, or proposed hash changes, write nothing and show a fresh preview for fresh authorization.
-6. Commit the complete register replacement atomically from a prepared file.
-7. Re-read and verify the authorized hash, append-only prefix/order, event chain, and uniqueness.
-8. On any failure, restore the exact base file or leave `ABSENT` unchanged and return `MUTATION_FAILED`.
-
-A revision conflict never uses last-writer-wins. A UUID collision is regenerated before preview; a collision discovered after authorization invalidates authorization.
-
-Declined authorization returns `MUTATION_DECLINED` with no write. A successful verified mutation returns `REGISTER_UPDATED`.
+The analyzer never assigns a debt UUID. A proposal may reserve an RFC 4122 UUIDv4,
+but the independent recorder must collision-check it under CAS; a collision
+invalidates the proposal and authorization.
 
 ## Mode: scan
 
-1. Resolve a bounded, displayed scope and exclusion set.
-2. Read the register and capture its hash; if absent, treat it as an empty materialized view but do not create it yet.
-3. Run only declared analyzers and capture source revision/hash.
-4. Normalize evidence, compute fingerprints, and deduplicate against registered primary fingerprints and aliases.
-5. Present:
-   - new candidates;
-   - known items seen at a new source revision;
-   - unchanged known items;
-   - reappeared resolved items;
-   - unverified candidates;
-   - excluded paths and unsupported checks.
-6. Do not accept, resolve, prioritize, or schedule a candidate.
-7. If the user asks to record selected results, enter the mutation protocol with exact `CREATED`/`OBSERVED`/status events.
+1. Validate the scope manifest, its project/target identity, explicit included
+   paths, checks, analyzers, exclusions, and fixed limits.
+2. Validate/replay the register or establish exact absence.
+3. Run only declared read-only analyzer commands. Emit a
+   `cgs.tech-debt-analyzer-receipt/v1` for every requested check.
+4. Normalize candidate evidence, compute stable fingerprints when possible, and
+   deduplicate against the replayed index.
+5. Return new, matched, unchanged, reappeared, unverified, excluded, unsupported,
+   timed-out, and over-limit rows separately.
+6. Present only a `cgs.tech-debt-change-proposal/v1` for owner-selected candidates.
+   Do not triage, record, accept, prioritize, schedule, or resolve them.
 
-Outcomes:
-
-- `SCAN_COMPLETE` — analysis finished with a complete delta;
-- `NO_NEW_DEBT_FOUND` — no new candidate and no new observation event;
-- `SCAN_PARTIAL` — one or more requested checks are unverified;
-- `REGISTER_UPDATED` — selected events were atomically recorded after authorization.
+Return `SCAN_COMPLETE` when every requested check completed and the delta is
+known; `NO_NEW_DEBT_FOUND` when complete analysis has no new candidate or new
+observation proposal; otherwise return `SCAN_PARTIAL` and enumerate gaps. A
+complete scan may still contain candidates.
 
 ## Mode: add
 
-Collect an explicit manual record:
+Validate the manual candidate record. Required fields are description, stable
+defect class, canonical affected path(s), stable symbol or `<file>`, evidence,
+source identity, category or `UNKNOWN`, owner or `UNASSIGNED`, and why the item is
+being considered for owner triage. Impact/frequency/effort may be `UNKNOWN`; any
+numeric value requires evidence and the fixed scales.
 
-- description, canonical affected paths, and evidence;
-- category, allowing `UNKNOWN`;
-- why the debt is consciously accepted for tracking;
-- owner, allowing `UNASSIGNED`;
-- initial status;
-- numeric impact, frequency, and effort inputs or `UNKNOWN`, each with evidence.
+Manual input is still a candidate. It cannot declare `ACCEPTED`, `RESOLVED`,
+`SUPERSEDED`, product priority, or sprint scheduling. Use the `manual@2` rule and
+`td-fp-v2`, then deduplicate against the register. Return:
 
-Compute a manual rule fingerprint using `manual@1` plus the normal path/symbol/text fields. Deduplicate before proposing a `CREATED` event. If a match exists, offer an observation or triage event for that stable debt ID instead of a duplicate.
+- `INPUT_REQUIRED` when no candidate record or required field is present;
+- `ADD_DUPLICATE_FOUND` with the stable existing debt ID and an optional exact
+  `OBSERVED`/triage proposal when the fingerprint matches; or
+- `ADD_PREVIEW_READY` with an exact `CREATED`/`CREATE_REGISTER` proposal after
+  owner selection.
 
-Use the mutation protocol. Outcomes are `REGISTER_UPDATED`, `MUTATION_DECLINED`, `MUTATION_FAILED`, or `REGISTER_ERROR`.
+No outcome writes the proposal.
 
 ## Mode: prioritize
 
-This mode is read-only. It never rewrites, reorders, or appends to the register, and it never edits sprint plans.
-
-Materialize outstanding `OPEN` and `ACCEPTED` items. Use only recorded numeric inputs with evidence:
-
-### Fixed scales
+This mode is read-only and outputs `ADVISORY_ONLY`. Replay current `OPEN` and
+`ACCEPTED` items. Use only recorded, evidence-linked values:
 
 | Input | Allowed values | Meaning |
 |---|---|---|
-| Impact | 1, 2, 3, 4 | local inconvenience; component/team cost; milestone/product risk; release/security/data-integrity risk |
-| Frequency | 1, 2, 3, 4 | rare/one-off; occasional; repeated each sprint; continuous/core-path |
-| Effort points | 1, 2, 3, 5, 8, 13 | team-calibrated implementation points; not elapsed time and not a T-shirt label |
+| Impact | 1, 2, 3, 4 | local; component/team; milestone/product; release/security/data-integrity |
+| Frequency | 1, 2, 3, 4 | rare; occasional; each sprint; continuous/core-path |
+| Effort points | 1, 2, 3, 5, 8, 13 | team-calibrated implementation points, not time |
 
-Legacy T-shirt sizes are not converted or summed without a recorded team calibration. Missing, out-of-range, inferred, or evidence-free inputs make the item `UNSCORED`.
+An absent, inferred, stale, evidence-free, or out-of-range input makes the item
+`UNSCORED`. Never convert or sum T-shirt sizes without a separately recorded team
+calibration.
 
 For scored items compute exactly:
 
-`advisory_score = (impact * frequency) / effort_points`
+```text
+advisory_score = (impact * frequency) / effort_points
+```
 
-Retain the unrounded value for ordering and display three decimal places. Sort only the transient view by:
+Retain the exact rational/unrounded value; display three decimals. Sort the
+transient view by score descending, impact descending, frequency descending,
+effort ascending, oldest `CREATED` timestamp first, then lexical `debt_id`.
+List `UNSCORED` rows separately by lexical debt ID. Show source events/evidence,
+calculation, uncertainty, and tie-breaks. Never reorder the register or propose a
+priority/schedule event unless the user separately selects a decision for an
+external recorder proposal.
 
-1. advisory score descending;
-2. impact descending;
-3. frequency descending;
-4. effort points ascending;
-5. oldest `CREATED` timestamp first;
-6. lexical `debt_id`.
-
-Show the values, evidence, calculation, uncertainty, and tie-break result for every row. List `UNSCORED` items separately in lexical debt-ID order.
-
-Label the result `ADVISORY_ONLY`. The user or producer chooses product priority and scheduling. If they later ask to persist a decision, it must be a separately previewed `PRIORITY_SELECTED` or `SCHEDULE_SELECTED` event through the mutation protocol; the calculated view itself is never written.
-
-Outcomes are `PRIORITY_VIEW_READY`, `PRIORITY_VIEW_PARTIAL` when any requested item is unscored, or `REGISTER_ERROR`.
+Return `PRIORITY_VIEW_READY` when every requested outstanding item is scored, or
+`PRIORITY_VIEW_PARTIAL` with gaps when any is unscored, inaccessible, absent, or
+changed.
 
 ## Mode: report
 
-This mode is read-only.
+Replay the immutable event log without writing. Report current counts by category,
+lifecycle status, and verification state; effort-point distribution and unknown
+count; evidence ages; and explicit data gaps.
 
-Replay the event log and report:
+Change/trend requires a valid baseline event UUID or register hash that is an
+ancestor of the current chain. Compute created, observed, accepted, reopened,
+resolved, and superseded transitions from exact event cursors. Derive age only
+from recorded UTC event timestamps. “Older than three completed sprints” requires
+stable sprint-transition events or an immutable external sprint-history receipt;
+otherwise it is `UNKNOWN`.
 
-- current counts by category, status, and verification state;
-- effort-point distribution and unknown count, never a sum of T-shirt sizes;
-- created, observed, accepted, resolved, reopened, and superseded changes since an explicit baseline event cursor or register hash;
-- trend only when comparable baselines exist;
-- age from stable timestamps and sprint IDs recorded by events;
-- items older than three completed sprint transitions, when the active sprint history is available;
-- data gaps and invalid/unknown legacy fields.
+Return `REPORT_READY` when requested register/baseline fields are complete;
+otherwise `REPORT_PARTIAL`. Missing or incomparable baseline makes change/trend
+`UNKNOWN`, never zero. A malformed/unrelated baseline is `INPUT_ERROR`; a broken
+register chain is `REGISTER_ERROR`.
 
-If no valid baseline exists, label change and trend `UNKNOWN` rather than inventing a previous report. Outcomes are `REPORT_READY`, `REPORT_PARTIAL`, or `REGISTER_ERROR`.
+## Change proposal and independent recorder boundary
 
-## Outcome rules
+Any user-selected creation, observation, lifecycle, alias, estimate, priority, or
+schedule change is represented only as a
+`cgs.tech-debt-change-proposal/v1`. The proposal binds:
 
-- A read-only outcome does not imply register mutation.
-- `REGISTER_UPDATED` requires authorized atomic mutation plus post-write verification.
-- `SCAN_PARTIAL`, `PRIORITY_VIEW_PARTIAL`, and `REPORT_PARTIAL` must name missing evidence.
-- Never use `COMPLETE`, `FAIL`, a severity label, or a score as a substitute for these outcomes.
-- Report the register base/final hashes for every attempted mutation and the event cursor used by every report.
+- canonical register path, project/register IDs, schema, base content SHA-256,
+  base revision, last global event UUID/hash, and operation `CREATE_REGISTER` or
+  `APPEND_EVENTS`;
+- exact ordered proposed events, reserved UUIDs, predecessor IDs, payload hashes,
+  proposed final revision/hash, fingerprint dedup results, and affected debt IDs;
+- owner selection and decision-authority references required by the event type;
+- proposal ID/hash, creation/expiry time, and an explicit statement that it is
+  `NOT_PERSISTED` and `NOT_AUTHORIZATION`.
+
+The independent `cgs.tech-debt-recorder/v1` protocol in the rules reference is
+the only writer contract. This skill does not implement, dispatch, or simulate
+it. A future recorder requires a new exact authorization over one proposal hash.
+Analyzer conversation, a scan request, owner triage, or prior authorization is
+not write authority.
+
+## Return and stop
+
+Return the mode, outcome, normalized invocation, project/target/register identity,
+input hashes, bounded coverage ledger, analyzer receipts, exclusions/gaps,
+candidates and fingerprints, dedup/lifecycle view, advisory calculations or
+report baseline, proposal (if selected), before/after mutation evidence, and stale
+key. Mark every direct result:
+
+```text
+register_mutated: false
+proposal_persisted: false
+decision_authority_exercised: false
+recorder_invoked: false
+```
+
+Then stop. Do not invoke a recorder, migration, estimator, sprint planner,
+remediation workflow, or another project skill.

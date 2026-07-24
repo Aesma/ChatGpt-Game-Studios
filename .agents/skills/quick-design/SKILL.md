@@ -1,380 +1,516 @@
 ---
 name: quick-design
-description: "Create an immutable, low-structural-risk design-change proposal against one exact GDD hash; authoritative application, independent review, lifecycle recording, and implementation authorization remain separate."
+description: "Create one immutable, evidence-gated low-risk design delta proposal against explicit target, section, owner, and base hashes; application, review, lifecycle recording, and implementation remain separate."
 ---
 
 # Quick Design
 
-`quick-design` is the lightweight authoring path for a small, structurally
-low-risk change to an existing design. It creates one proposal. It never edits an
-authoritative GDD, data file, registry, index, story, review, lifecycle record, or
-implementation.
+quick-design is the lightweight proposal path for one structurally low-risk
+change to an existing indexed system, or one explicitly isolated prototype
+hypothesis. It creates one immutable proposal and never edits an authoritative
+GDD, data file, registry, systems index, story, application receipt, review
+evidence, lifecycle record, source file, or test.
 
-A quick proposal is rationale and requested delta, not a source of truth.
-Production work consumes the updated authoritative GDD only after separate
-application, independent current-hash review, and lifecycle recording.
+A proposal records rationale and requested delta. It is not design truth.
+Production work consumes only the updated authoritative GDD after separately
+owned application, current-hash independent review, and lifecycle recording.
 
-## Invocation and modes
+## Invocation and exact identity
 
-Use one explicit mode:
+Use exactly one form:
 
-```text
-$quick-design propose "<change>" --change-id <QD-stable-id> --version <vNNN> --target <exact-gdd-path> [--expect-base <sha256:...>] [--supersedes <exact-proposal-path>] [--experiment-only <exact-prototype-scope>]
-$quick-design status <exact-proposal-path> [--record <exact-lifecycle-record-path>]
-```
+    $quick-design propose "<change>"
+      --change-id <QD-stable-id>
+      --version <vNNN>
+      --target <design/gdd/system-slug.md>
+      --target-id <SYS-stable-id>
+      --section "<exact level-two heading>" [--section "<heading>" ...]
+      --expect-base <sha256:64-lowercase-hex>
+      [--supersedes <exact-proposal-path>]
 
-`propose` is the only writing mode. `status` is read-only. Reject missing or
-ambiguous mode, change ID, version, or target. Do not infer "the most relevant"
-GDD, use filename similarity, select the latest file, or use modification time.
+    $quick-design propose "<hypothesis>"
+      --change-id <QD-stable-id>
+      --version <vNNN>
+      --experiment-only <exact-prototypes-path-or-stable-id>
+      [--supersedes <exact-proposal-path>]
 
-`change-id` must match `QD-[a-z0-9][a-z0-9-]{2,63}`. `version` must match
-`v[0-9]{3}`. The canonical path is:
+    $quick-design status <exact-proposal-path>
+      [--record <exact-lifecycle-record-path>]
 
-`design/quick-specs/<change-id>/<version>/proposal.md`
+propose is the only writing mode. status is read-only. Reject missing,
+duplicated, incompatible, or ambiguous arguments. Never infer a target, target
+ID, section, predecessor, proposal version, or record from relevance, fuzzy
+names, modification time, or "latest".
 
-A later proposal is a new immutable version. It must use a new version ID, bind
-the current target bytes, and name the exact predecessor path and SHA-256 in
-`Supersedes`. Never update or overwrite an existing proposal.
+change-id must match QD-[a-z0-9][a-z0-9-]{2,63}. version must match v[0-9]{3}.
+Proposal ID is the exact pair <change-id>@<version>. The canonical path is:
 
-## Roles and authority boundary
+    design/quick-specs/<change-id>/<version>/proposal.md
 
-Keep these responsibilities separate:
+The path is collision-free by stable change/version identity, not by a
+same-day filename. Created At UTC in the proposal is an RFC3339 UTC timestamp
+with seconds and Z. The target base hash remains a separate identity binding.
 
-1. **Proposal author** — this `quick-design propose` task gathers the product
-   decision and may create only `proposal.md`.
-2. **Application author** — a later, separately authorized design-authoring task
-   applies selected deltas to the authoritative GDD. Use the staged
-   `design-system revise-section` contract for each affected section.
-3. **Independent reviewer** — a fresh task runs staged `design-review` on the
-   complete updated GDD. It edits nothing and its verdict is bound to the exact
-   reviewed GDD hash.
-4. **Lifecycle recorder** — another owner-authorized task validates the proposal,
-   application, current GDD, independent review, and expected record pre-state,
-   then may create an APPLIED or SUPERSEDED lifecycle record.
+A later revision is a fresh immutable version. It must use a new version, bind
+the then-current target evidence, and name the exact predecessor path and
+SHA-256 in Supersedes. Never update or overwrite an existing proposal.
 
-The reviewer task ID must differ from the proposal-author and application-author
-task IDs. The recorder task ID must differ from all author and reviewer task IDs.
-A subagent in the authoring task, the author in another role, a user chat approval,
-or a solo/advisory review does not satisfy independence.
+## Roles, decisions, and authority boundary
 
-An explicit bounded request to create the proposal authorizes only the proposed
-`proposal.md` path after its product content is approved. It does not authorize a
-GDD/data/index/story/record edit, formal review, or implementation. If the user
-asks to apply or implement during this invocation, stop after the proposal
-handoff. Keep the proposal operation's axes unchanged and report a separate
-`Downstream Action: BLOCKED — SEPARATE APPLICATION AND REVIEW REQUIRED`.
+Keep these owners separate:
 
-## Status axes
+1. Proposal author — this task gathers product decisions and may create only the
+   one canonical proposal.
+2. Product decision owner — user or named product owner selects product choices.
+   The proposal author may not convert derived risk conclusions into user
+   preferences.
+3. Application author — a later authorized design-system task applies accepted
+   delta IDs to exact GDD sections and produces external application evidence.
+4. Independent reviewer — a fresh design-review task reviews the complete
+   updated GDD and emits hash-bound review evidence.
+5. Lifecycle recorder — a separate owner validates proposal, application,
+   review, current GDD, and record pre-state before recording APPLIED or
+   SUPERSEDED.
 
-Always report these independently:
+Reviewer task identity must differ from proposal and application author
+identities. Recorder identity must differ from every author and reviewer. A
+subagent in an authoring task, role-playing by one task, chat approval,
+solo/advisory review, or an unavailable invented identity is not independent.
+Use the runtime task identity when exposed. Otherwise generate one lowercase
+UUID once and record codex-task:<uuid>; never claim a person or external task ID
+that the runtime did not provide.
 
-- `Workflow Status`: `COMPLETE`, `BLOCKED`, `REDIRECTED`, `PARTIAL`, or
-  `ERROR`.
-- `Proposal Status`: `DRAFT`, `PROPOSED`, `APPLIED`, `SUPERSEDED`, or
-  `NOT_CREATED`.
-- `Currentness`: `CURRENT`, `STALE`, `INVALID`, or `NOT_APPLICABLE`.
-- `Implementation Eligible`: `YES` or `NO`.
-- `Persistence`: `NOT_REQUESTED`, `DECLINED`, `VERIFIED`, or `FAILED`.
-- `Verdict`: `PROPOSAL_CREATED`, `DRAFT_ONLY`, `STATUS_REPORTED`,
-  `REDIRECTED`, `BLOCKED`, or `ERROR`.
+Use the same decision ownership classes as the staged design-system contract:
 
-`Workflow Status: COMPLETE` means the requested authoring or status operation
-finished. It never means the design is approved or implementation-ready.
-`Implementation Eligible: YES` is possible only in read-only `status` mode after
-the full APPLIED-currentness rule below. The `propose` result is always NO.
+- product-choice — selected by user/named product owner;
+- evidence-backed-hard-constraint — current owner source path, artifact ID,
+  section/row, exact SHA-256, and fact;
+- derived-design-constraint — inputs, derivation, assumptions, and user
+  acceptance when it affects the proposed product outcome; and
+- technical-handoff — implementation/architecture question routed out.
 
-## Phase 1: Resolve the exact authoritative base
+Every material proposal statement references a stable QDD-<NNN> decision record.
+A user may revise the proposed design so risk facts change, but cannot relabel a
+current hard fact or derived gate result to enter the quick path.
 
-For production changes, require one exact existing system-GDD path under
-`design/gdd/`. Reject a directory, glob, multiple matches, `systems-index.md`,
-review artifact, quick proposal, story, or data file as the authoritative target.
-Read applicable `AGENTS.md` guidance and the target's raw bytes. Compute lowercase
-`sha256:<64 hex>` and record it as `Base GDD SHA-256`.
+An explicit bounded request authorizes only the canonical proposal CREATE after
+content approval. It does not authorize GDD/data/index/story/receipt/review/
+record/code/test edits. If application or implementation is requested in the
+same invocation, preserve the proposal result and report:
 
-If `--expect-base` is supplied, it must equal the computed hash. A mismatch
-returns:
+    Downstream Action: BLOCKED — SEPARATE APPLICATION AND REVIEW REQUIRED
 
-```text
-Workflow Status: ERROR
-Proposal Status: NOT_CREATED
-Currentness: STALE
-Implementation Eligible: NO
-Persistence: NOT_REQUESTED
-Verdict: ERROR
-Reason: STALE BASE — REBASE REQUIRED
-```
+## Status axes and failure precedence
 
-Read the target's stable artifact/system ID, Status, and exact affected section
-headings. Compute a SHA-256 for each affected section's raw heading-bound range.
-Duplicate or ambiguous headings, unreadable bytes, missing stable identity, or an
-unresolved target section returns BLOCKED and writes nothing.
+Always report independently:
 
-Read the exact current systems index and other authoritative dependency records
-needed to prove ownership. Record their paths and SHA-256 hashes. If required
-ownership/dependency evidence is missing, ambiguous, or contradictory, return
-`BLOCKED — RISK EVIDENCE REQUIRED`. Do not interpret missing evidence as low risk.
+- Workflow Status: COMPLETE, PARTIAL, BLOCKED, REDIRECTED, or ERROR
+- Proposal Status: DRAFT, PROPOSED, APPLIED, SUPERSEDED, or NOT_CREATED
+- Currentness: CURRENT, STALE, INVALID, or NOT_APPLICABLE
+- Implementation Eligible: YES or NO
+- Persistence: NOT_REQUESTED, DECLINED, VERIFIED, or FAILED
+- Verdict: PROPOSAL_CREATED, DRAFT_ONLY, STATUS_REPORTED, REDIRECTED, BLOCKED,
+  or ERROR
 
-Do not scan old quick specs as authority. When revising the same proposal, require
-`--supersedes` and validate that exact predecessor's path, artifact type, change
-ID, version, hash, and target identity. An invalid/stale predecessor blocks a new
-version.
+Apply the first matching result:
 
-For an explicitly requested `--experiment-only` proposal, require an exact path or
-stable ID under `prototypes/` and set `Target Use: EXPERIMENT_ONLY`. It may never
-target production code, data, a production story, or a production GDD mutation,
-and it can never become APPLIED or implementation-eligible.
+1. Invalid/unsupported arguments, path, artifact type, encoding, schema, stable
+   identity, or contradictory supplied evidence:
+   ERROR / NOT_CREATED / INVALID / NO / NOT_REQUESTED / ERROR.
+2. Target, section, index, dependency, range, or ownership evidence required to
+   resolve risk is missing or UNKNOWN:
+   BLOCKED / NOT_CREATED / NOT_APPLICABLE / NO / NOT_REQUESTED / BLOCKED.
+3. Any structural risk is YES:
+   REDIRECTED / NOT_CREATED / NOT_APPLICABLE / NO / NOT_REQUESTED / REDIRECTED.
+4. Discussion stops with unresolved product decisions before an approved full
+   draft:
+   PARTIAL / DRAFT / CURRENT when the base is still current, otherwise STALE /
+   NO / NOT_REQUESTED / DRAFT_ONLY.
+5. Approved draft persistence is declined:
+   COMPLETE / DRAFT / CURRENT / NO / DECLINED / DRAFT_ONLY.
+6. Atomic persistence or byte/schema verification fails:
+   ERROR / NOT_CREATED / INVALID / NO / FAILED / ERROR.
+7. Only verified atomic creation:
+   COMPLETE / PROPOSED / CURRENT / NO / VERIFIED / PROPOSAL_CREATED.
 
-## Phase 2: Run the structural risk gate
+COMPLETE means the requested operation completed. It never means approved or
+implementation-ready. Propose is always Implementation Eligible NO.
 
-Do not estimate hours or days to decide eligibility. Effort may be recorded as
-non-gating planning context only.
+status may report a recorded APPLIED/SUPERSEDED state with Currentness STALE or
+INVALID. It returns ERROR instead of STATUS_REPORTED when the explicitly
+requested proposal/record cannot be parsed or identity-bound at all. Never hide
+failed, partial, or unsupported coverage behind COMPLETE.
 
-For every row below, record `YES`, `NO`, or `UNKNOWN` plus an exact evidence path,
-section/ID, and source hash:
+## Phase 1: Resolve exact target, system owner, sections, and base
 
-| Risk fact | Gate result |
-|---|---|
-| Adds a system or subsystem, or requires a new systems-index row | YES redirects |
-| Adds a state, changes state ownership, or changes lifecycle ownership | YES redirects |
-| Adds or changes a cross-system input/output, timing, ordering, or ownership contract | YES redirects |
-| Adds or changes a player-facing core rule, pillar, MDA relationship, or progression/economy rule | YES redirects |
-| Changes formula semantics rather than a documented value within its allowed range | YES redirects |
-| Changes persistence, save compatibility, networking, security, accessibility policy, or platform contract | YES redirects |
-| Requires multiple authoritative owners or conflicts with another current GDD | YES redirects |
-| Places a tuning value outside its documented current range | YES redirects |
-| Lacks evidence needed to answer any row | UNKNOWN blocks |
+For a production proposal, canonicalize and require:
 
-The product owner may change the proposed design so the facts change, but cannot
-override a true fact by selecting a lower-risk label. Re-run the checklist against
-the revised proposal and the same current source bytes.
+- one existing non-symlink Markdown file whose direct parent is design/gdd/;
+- one supplied SYS-<canonical-kebab-slug> target ID;
+- one or more unique supplied exact level-two headings in invocation order; and
+- one required --expect-base lowercase sha256 value.
 
-If any row is YES, stop before drafting or writing:
+Reject directories, globs, URLs, junction escapes, multiple paths, concept/index
+documents, reviews, quick specs, stories, data, or unsupported document
+profiles. Read applicable AGENTS.md files root-to-target, then exact raw target
+bytes.
 
-```text
-Workflow Status: REDIRECTED
-Proposal Status: NOT_CREATED
-Currentness: NOT_APPLICABLE
-Implementation Eligible: NO
-Persistence: NOT_REQUESTED
-Verdict: REDIRECTED
-Next owner: $design-system
-```
+Parse systems-index.md by exact System ID and normalized Design Doc cell.
+Exactly one current row must bind supplied target ID to supplied target path.
+Zero/multiple rows, disagreement, or a production GDD without an indexed system
+owner returns BLOCKED — TARGET SYSTEM REGISTRATION REQUIRED. Do not fuzzy-match
+display names.
 
-If any row is UNKNOWN, use `BLOCKED / NOT_CREATED / Implementation Eligible: NO`
-and name the missing evidence. Only all-NO evidence can enter the quick path.
+Compute and record:
 
-## Phase 3: Assign the review profile
+- target raw-byte SHA-256;
+- systems-index raw-byte SHA-256 and exact owner row locator;
+- each supplied section's exact raw heading-bound SHA-256; and
+- each required first-level dependency evidence path, artifact ID, locator, and
+  raw-byte SHA-256.
 
-Choose the profile from facts, not preference or effort:
+The stable section ID is <SYS-id>#<lowercase-kebab canonical heading>. Record
+both that ID and the exact heading. Reject two headings that normalize to the
+same section ID.
 
-- `QD-TUNING` — changes only documented designer-controlled numeric defaults
-  within their current allowed ranges; formula meaning, behavior, states, and
-  interfaces are unchanged. Required independent review depth: `lean` or `full`.
-- `QD-LOCAL` — clarifies or adjusts a bounded rule within one existing system and
-  existing ownership/interface surfaces, while every Phase 2 risk fact remains
-  NO. Required independent review depth: `full`.
-- `EXPERIMENT_ONLY` — temporary prototype hypothesis with no production handoff.
-  Formal approval and APPLIED status are not available.
+--expect-base must equal the computed target hash. Duplicate/missing/ambiguous
+headings, a delta not assigned to a supplied section, unreadable bytes, missing
+owner, or contradictory dependency evidence fails before risk classification.
+Do not search for a "most relevant" target or section.
 
-`New Small System` is not a quick profile. A new system redirects regardless of
-predicted implementation effort. A tuning value outside the current GDD range
-also redirects; the range must first change through full authoring and review.
+If --supersedes is supplied, validate exactly one predecessor: project-local
+non-symlink proposal file, contract cgs.quick-design-proposal/v2, same change ID,
+lower version, exact path/hash, same target system identity for production
+changes, and lifecycle compatibility. An invalid predecessor returns
+ERROR — INVALID PREDECESSOR. A new version always rebinds current base, sections,
+index, dependencies, and decisions; it never reapplies stale bytes.
 
-Show the completed risk table, evidence hashes, inferred profile, and required
-review depth. Ask the user to decide whether to proceed with that fact-based
-profile, revise the product change, or redirect. A label choice cannot alter the
-evidence-derived gate result.
+For --experiment-only, require one exact existing scope under prototypes/.
+Production target/id/section/base arguments are forbidden in this form. Set
+Target Use EXPERIMENT_ONLY. It never becomes APPLIED or production eligible.
 
-## Phase 4: Make the product decision
+## Phase 2: Build the versioned structural risk record
 
-Follow `Question -> Options -> Decision -> Draft -> Approval` for every unresolved
-product choice. Present two to four meaningful options with tradeoffs. The user,
-not the author or reviewer, selects the rule/value and rationale.
+Do not use hours/days as a gate. Effort is non-gating planning context only.
 
-Use only current authoritative design evidence. Route implementation selections,
-engine APIs, class/module names, storage schemas, test procedures, and technical
-architecture to named downstream owners; do not place them in the design delta.
+Create one risk assessment contract cgs.quick-design-risk/v2. Every row has:
 
-For `QD-TUNING`, require the exact current knob name, default, range, unit,
-affected observable behavior, proposed in-range value, and rationale. For
-`QD-LOCAL`, require exact base rule locators, the requested product-level delta,
-unchanged invariants, observable outcomes, and the owner of each affected
-artifact. Acceptance conditions must be measurable; "feels right" alone becomes a
-named playtest hypothesis with metric, observation method, and decision threshold.
+    id: QDR-<NNN>
+    fact: <fixed question>
+    result: YES | NO | UNKNOWN
+    decision_kind: evidence-backed-hard-constraint | derived-design-constraint
+    evidence:
+      - path: <exact path>
+        artifact_id: <SYS-id or stable artifact ID>
+        locator: <section/row/field>
+        sha256: <64-lowercase-hex>
+        quote_or_fact: <minimal fact>
+    owner: <authoritative artifact/product owner>
+    derivation: <why evidence produces result>
+    assumptions: []
 
-## Phase 5: Draft one immutable proposal
+Evaluate every fixed row:
+
+| ID | Risk fact | Gate |
+|---|---|---|
+| QDR-001 | Adds a production-visible system/subsystem, new stable owner, or systems-index row | YES redirects |
+| QDR-002 | Adds state or changes state/lifecycle ownership | YES redirects |
+| QDR-003 | Adds/changes cross-system input/output, timing, ordering, or ownership contract | YES redirects |
+| QDR-004 | Adds/changes player-facing core rule, pillar, MDA, progression, or economy semantics | YES redirects |
+| QDR-005 | Changes formula semantics rather than a documented in-range value | YES redirects |
+| QDR-006 | Changes persistence/save compatibility/network/security/accessibility policy/platform contract | YES redirects |
+| QDR-007 | Requires multiple authoritative owners or conflicts with another current GDD | YES redirects |
+| QDR-008 | Places a tuning value outside its documented current allowed range | YES redirects |
+| QDR-009 | Cannot prove the change stays inside supplied target sections and existing owner | YES redirects |
+
+Each row must be YES, NO, or UNKNOWN. Missing evidence means UNKNOWN, not NO,
+and blocks. Record the ordered canonical risk-record SHA-256 using UTF-8, LF,
+no trailing whitespace, fixed field order, and one final newline.
+
+For EXPERIMENT_ONLY, evaluate the same rows against exact prototype-scope
+isolation evidence. A production-impact row must be NO because the hypothesis is
+provably isolated; UNKNOWN blocks, and YES rejects experiment-only routing
+instead of converting a production change into a prototype label.
+
+The product owner may change the requested design, after which every row is
+re-evaluated against the same still-current source hashes. User confirmation of
+a label cannot alter a fact, evidence hash, owner, or derivation.
+
+Any YES redirects before drafting/writing. For QDR-008, return a structured
+range-change handoff in conversation: target path/ID/section/hash, exact current
+range/unit/owner evidence, requested value, unresolved product-choice owner,
+affected dependency owners, and next owner design-system revise-section. The
+full authoring path decides a new range and later propagation/review. quick-design
+does not choose or propagate it.
+
+Any YES on QDR-001 returns the same no-write redirect. A "small system" is never
+a quick profile.
+
+## Phase 3: Derive one eligible profile
+
+Only all-NO production risk records are eligible:
+
+- QD-TUNING — one or more supplied sections change only documented
+  designer-controlled defaults within current ranges; formula/rule/state/
+  interface meaning is unchanged. Review depth lean or full.
+- QD-COSMETIC — player-visible copy, presentation, or feedback mapping changes
+  inside one existing indexed system without changing mechanics, state,
+  accessibility policy, interface, or ownership. Review depth lean or full.
+- QD-LOCAL — bounded clarification/adjustment within existing target sections
+  and one indexed owner, with every risk row NO. Review depth full.
+- EXPERIMENT_ONLY — isolated prototype hypothesis, no production application,
+  formal approval, or APPLIED state.
+
+A locally implemented UI/visual/audio component qualifies as QD-COSMETIC only
+when it remains presentation content owned by the supplied existing system. If
+it requires a new stable owner, state/lifecycle, interface, accessibility policy,
+or systems-index row, QDR-001/002/003/006 is YES and redirects.
+
+Show the complete risk record, evidence/record hashes, derived profile, and
+required review depth. User may proceed, revise the product change, or redirect,
+but may not select a profile inconsistent with facts.
+
+## Phase 4: Record product decisions and draft delta
+
+Follow Question -> Options -> Decision -> Draft -> Approval for each unresolved
+product choice. Present two to four meaningful options. The user/named owner
+selects the product rule/value and rationale.
+
+Create QDD decision records:
+
+    id: QDD-<NNN>
+    class: product-choice | evidence-backed-hard-constraint |
+      derived-design-constraint | technical-handoff
+    authority: <user/owner artifact/derivation>
+    source_path: <path or null>
+    source_artifact_id: <ID or null>
+    source_locator: <section/row/field or null>
+    source_sha256: <hash or null>
+    inputs: []
+    derivation: null
+    assumptions: []
+    outcome: <accepted statement or routed question>
+    status: accepted | routed | blocked
+
+Hard constraints remain owner-source facts. Derived constraints preserve inputs
+and reasoning. Implementation choices, APIs, storage, code structure, test
+procedure, and architecture become technical-handoff and stay out of the delta.
+
+QD-TUNING requires exact knob, current default/range/unit, proposed in-range
+value, observable behavior, rationale, and decision ID. QD-COSMETIC requires
+exact existing presentation owner/section, before/after player-facing feedback,
+unchanged mechanic/accessibility/interface invariants, and decision ID.
+QD-LOCAL requires exact base rule locators, product-level before/after meaning,
+unchanged invariants, outcomes, affected owner, and decision IDs.
+
+Acceptance must be measurable. "Feels right" alone becomes a playtest hypothesis
+with metric, observation method, sample/threshold, and decision owner.
+
+## Phase 5: Draft one cgs.quick-design-proposal/v2 artifact
 
 Use this exact header:
 
-```markdown
-# Quick Design Change Proposal: <title>
+    # Quick Design Change Proposal: <title>
 
-Artifact Type: quick-design-change-proposal
-Schema Version: 1
-Change ID: <QD-stable-id>
-Version: <vNNN>
-Status: PROPOSED
-Target Use: PRODUCTION_CHANGE | EXPERIMENT_ONLY
-Prototype Scope: <exact prototypes path or stable ID | NOT_APPLICABLE>
-Risk Profile: QD-TUNING | QD-LOCAL | EXPERIMENT_ONLY
-Required Review Depth: lean | full | NOT_APPLICABLE
-Proposal Author Task ID: <task-id>
-Created At UTC: <RFC3339>
-Target GDD Path: <exact path | NOT_APPLICABLE>
-Target GDD Artifact/System ID: <stable ID | NOT_APPLICABLE>
-Base GDD SHA-256: <sha256:... | NOT_APPLICABLE>
-Systems Index Path/SHA-256: <exact path and hash | NOT_APPLICABLE>
-Supersedes Path/SHA-256: <exact path and hash | NONE>
-Currentness at Creation: CURRENT
-Implementation Eligible: NO
-```
+    Contract: cgs.quick-design-proposal/v2
+    Artifact Type: quick-design-change-proposal
+    Proposal ID: <change-id>@<version>
+    Change ID: <QD-stable-id>
+    Version: <vNNN>
+    Status: PROPOSED
+    Created At UTC: <RFC3339 seconds Z>
+    Proposal Author Task ID: <stable available task identity>
+    Target Use: PRODUCTION_CHANGE | EXPERIMENT_ONLY
+    Prototype Scope: <exact prototype scope | NOT_APPLICABLE>
+    Risk Profile: QD-TUNING | QD-COSMETIC | QD-LOCAL | EXPERIMENT_ONLY
+    Required Review Depth: lean-or-full | full | NOT_APPLICABLE
+    Target GDD Path: <exact path | NOT_APPLICABLE>
+    Target System ID: <SYS-id | NOT_APPLICABLE>
+    Base GDD SHA-256: <sha256:... | NOT_APPLICABLE>
+    Systems Index Path: design/gdd/systems-index.md | NOT_APPLICABLE
+    Systems Index SHA-256: <sha256:... | NOT_APPLICABLE>
+    Risk Record Contract: cgs.quick-design-risk/v2
+    Risk Record SHA-256: <sha256:...>
+    Supersedes Path/SHA-256: <exact path/hash | NONE>
+    Currentness at Creation: CURRENT
+    Implementation Eligible: NO
 
-Then include exactly these level-two sections:
+Then include exactly seven level-two sections:
 
-1. `## Product Decision` — selected rule/value, rationale, authoritative owner,
-   and explicit non-goals.
-2. `## Base Snapshot` — ordered target section IDs/headings and hashes, short
-   locators, source paths/hashes, and current authoritative statements. Quote only
-   the minimum needed to identify the delta.
-3. `## Structural Risk Evidence` — every Phase 2 row, YES/NO/UNKNOWN, evidence
-   locator/hash, and derived profile.
-4. `## Proposed Delta` — stable delta IDs, target section, product-level before/
-   after meaning, unchanged invariants, and affected artifact owners. State:
-   "This proposal does not replace the authoritative GDD."
-5. `## Observable Acceptance Conditions` — stable AC/hypothesis IDs, observable
-   conditions, metrics/thresholds where applicable, and validation owner.
-6. `## Apply, Review, and Record Handoff` — base hash, ordered application
-   targets, required `design-system revise-section` handoffs, required independent
-   review depth, lifecycle-record requirements, and explicit implementation
-   block.
-7. `## Boundaries` — exact owned write plus GDD/data/index/story/review/record/
-   implementation non-writes.
+1. Product Decision — QDD records, selected outcome, rationale, authority,
+   hard/derived provenance, non-goals, and routed technical questions.
+2. Base Snapshot — ordered target path/ID/base hash, exact section headings/
+   section IDs/hashes, index row/hash, dependency evidence, and minimal current
+   statements.
+3. Structural Risk Evidence — complete ordered cgs.quick-design-risk/v2 record,
+   canonicalization rule/digest, and derived profile.
+4. Proposed Delta — stable QDDELTA-<NNN> IDs; each maps to one supplied section,
+   decision IDs, before/after product meaning, unchanged invariants, and owner.
+   State: "This proposal does not replace the authoritative GDD."
+5. Observable Acceptance Conditions — stable QDAC/HYP IDs, observable
+   conditions, metrics/thresholds, validation and decision owners.
+6. Apply, Review, and Record Handoff — ordered delta/section application plan,
+   expected application evidence, review depth/evidence, lifecycle requirements,
+   propagation owners, and explicit implementation block.
+7. Boundaries — exact proposal write and every authoritative/implementation
+   non-write.
 
-Do not include a `GDD Update Required? No` escape hatch. A production delta is
-only a proposal until the authoritative GDD is updated and independently approved.
-Do not tell a programmer to implement from the proposal.
+Do not add a GDD Update Required No escape hatch or instruct implementation from
+the proposal.
 
-## Phase 6: Approve and persist the proposal only
+## Phase 6: Approve and compare-and-create only the proposal
 
-Show the full draft. Ask the user to approve the proposal content, revise it, or
-redirect. Content approval means the draft expresses the product decision; it is
-not formal design review or implementation approval.
+Show the full draft. Ask approve exact content, revise, stop partial, or redirect.
+Content approval is not formal review/implementation approval.
 
-Before the first write, present one bounded changeset:
+Before writing, present:
 
-```text
-CREATE design/quick-specs/<change-id>/<version>/proposal.md
-NON-WRITES design/gdd/**, assets/data/**, design/gdd/systems-index.md,
-           production/**, src/**, tests/**, review artifacts,
-           lifecycle records, session state
-```
+    CREATE_IF_ABSENT design/quick-specs/<change-id>/<version>/proposal.md
+    NON-WRITES design/gdd/**, assets/data/**, design/registry/**,
+               production/**, stories, src/**, tests/**, review evidence,
+               application receipts, lifecycle records, session state
 
-Use an already explicit bounded authorization when it covers this exact CREATE;
-otherwise obtain one authorization. Do not re-prompt per section. Immediately
-before writing, re-read and re-hash the target GDD, every affected section, the
-systems index, dependency evidence, and predecessor proposal. Any change returns
-`ERROR — STALE BASE — REBASE REQUIRED` and writes nothing.
+Use existing explicit authorization only when it covers this exact path and
+CREATE_IF_ABSENT semantics. Otherwise obtain one authorization.
 
-Reject an existing canonical proposal path. Return `ERROR — PATH EXISTS; CHOOSE A
-NEW VERSION` without modifying it. Never offer in-place update.
+Immediately before create:
 
-Write the one proposal atomically, re-read its bytes, verify the schema, source
-hashes, status, and expected content, then report its SHA-256. A declined write
-returns `COMPLETE / DRAFT / DRAFT_ONLY / Persistence: DECLINED`. A failed or
-unverified write returns `ERROR / NOT_CREATED / ERROR / Persistence: FAILED`.
-Only verified persistence returns:
+1. assert canonical proposal path does not exist;
+2. re-read/re-hash target, all supplied sections, systems index row/file,
+   dependencies, owner evidence, and predecessor;
+3. recompute risk results and canonical risk-record digest;
+4. confirm approved draft bytes still bind those exact hashes/decision IDs; and
+5. confirm path, Proposal ID, change/version, and predecessor chain agree.
 
-```text
-Workflow Status: COMPLETE
-Proposal Status: PROPOSED
-Currentness: CURRENT
-Implementation Eligible: NO
-Persistence: VERIFIED
-Verdict: PROPOSAL_CREATED
-```
+Any source mismatch returns ERROR — STALE BASE — REBASE REQUIRED with zero
+writes. Existing path returns ERROR — PATH EXISTS; CHOOSE A NEW VERSION with zero
+modification. The create operation is atomic create-if-absent; a concurrent
+winner cannot be overwritten.
 
-## Phase 7: Separate application, review, and recording handoff
+After atomic create, re-read bytes and verify contract, IDs, timestamp, source
+hashes, risk digest, sections, status, and content. Report proposal raw-byte
+SHA-256. Declined/partial/failed results use the precedence matrix. Only verified
+bytes return PROPOSAL_CREATED.
 
-After verified proposal creation, stop with these independent next actions:
+## Phase 7: Separate application, revision evidence, review, and record
 
-1. **Application:** in a separate task, the design author reads the exact proposal
-   and revalidates its hash and Base GDD SHA-256. For each accepted delta, run
-   `design-system revise-section` with its own exact changeset authorization.
-   The application author writes only the authoritative GDD/checkpoint allowed by
-   that workflow and produces an immutable application receipt containing
-   proposal path/hash, pre/post GDD hashes, applied delta IDs, task ID, and
-   timestamp.
-2. **Review:** after the final GDD edit, a fresh independent task runs
-   `design-review <exact-gdd-path> --depth <required-depth>`. `QD-TUNING` accepts
-   formal `lean` or `full` approval; `QD-LOCAL` requires formal `full` approval.
-   `solo` is advisory and never sufficient. The report must be immutable,
-   independently attributable, and bound to the exact post-application GDD hash.
-3. **Record:** a separate recorder re-hashes every input and expected record
-   pre-state, then may append a lifecycle record. This skill does not perform that
-   write.
+After creation, stop with independent handoffs.
 
-An APPLIED lifecycle record uses a fresh exact path under:
+Application:
 
-`design/quick-specs/<change-id>/<version>/records/<record-id>.md`
+- A separate design author re-hashes proposal and every bound source.
+- Each accepted QDDELTA is applied through staged design-system
+  revise-section for its exact canonical section with separate authorization.
+- Product choices remain proposal decision-owner decisions; the application
+  author may not silently select a different outcome.
+- If any base/section/index/dependency/risk evidence changed, do not reapply.
+  Create a new proposal version with --supersedes against the new base.
+- The application owner produces immutable evidence contract
+  cgs.design-application/v1 with receipt ID, proposal path/hash, target path/ID,
+  pre/post raw GDD hashes, applied delta IDs, exact changed line ranges or patch
+  content, application task ID, UTC timestamp, and payload SHA-256.
 
-It must contain artifact type `quick-design-lifecycle-record`, schema version 1,
-`Status: APPLIED`, proposal path/hash, application receipt path/hash and task ID,
-updated GDD path/hash, independent review receipt path/hash, verdict `APPROVED`,
-review depth and independence, reviewer task ID, recorder task ID, exact previous
-record path/hash or NONE, timestamp, and `Implementation Eligible: YES`.
+Review:
 
-A SUPERSEDED record uses the same binding fields, `Status: SUPERSEDED`, successor
-proposal path/hash, recorder task ID, and `Implementation Eligible: NO`. Lifecycle
-records are append-only. Select one by explicit path and hash, never mtime.
-Conflicting records, reused task identities, missing hashes, or an unexpected
-pre-state are invalid and authorize nothing.
+- A fresh staged design-review task reviews the complete post-application GDD.
+- QD-TUNING and QD-COSMETIC require formal lean or full; QD-LOCAL requires full.
+- If re-reviewing a prior report, supply its exact path plus the
+  cgs.design-application/v1 receipt as revision evidence. The prior report must
+  declare cgs.design-review/v2. The receipt's pre-hash must equal prior report
+  target hash and post-hash current target hash.
+- Review evidence must use cgs.review-evidence/v1, formal APPROVED, independent,
+  current target path/hash, required depth, and recomputable report/evidence
+  hashes. solo/advisory/partial cannot approve.
 
-Only the recorder may create lifecycle records. The proposal author, application
-author, and reviewer must not self-record APPLIED or SUPERSEDED.
+Record:
 
-## Phase 8: Read-only status and implementation eligibility
+- A separate recorder re-hashes proposal, application receipt, current GDD,
+  review evidence/report, and expected lifecycle predecessor before appending.
+- APPLIED/SUPERSEDED records use contract cgs.quick-design-lifecycle/v2 and an
+  explicit fresh path:
 
-`status` reads the exact proposal and optional exact lifecycle record. It never
-searches for a newer version or record. Re-hash all referenced artifacts.
+      design/quick-specs/<change-id>/<version>/records/<record-id>.md
 
-Without a lifecycle record, return `Proposal Status: PROPOSED`,
-`Currentness: CURRENT` only if the target still equals Base GDD SHA-256, and
-`Implementation Eligible: NO`.
+- APPLIED binds proposal path/hash, application receipt path/hash/task,
+  pre/post/current GDD path/hash, review report/evidence path/hash/depth/verdict/
+  reviewer identity, recorder identity, previous record path/hash or NONE,
+  UTC timestamp, and Implementation Eligible YES.
+- SUPERSEDED binds the same identity graph plus successor proposal path/hash and
+  Implementation Eligible NO.
 
-For a supplied APPLIED record, `Implementation Eligible: YES` requires all of:
+Records are append-only. Never select by mtime. Conflicts, stale hashes, reused
+roles, missing receipts, or unexpected pre-state authorize nothing. quick-design
+never writes these artifacts.
 
-- proposal path/hash and change/version identity match;
-- record schema, append-only predecessor binding, and role/task independence are
-  valid;
-- application receipt is valid and binds the proposal to exact pre/post GDD
-  hashes and applied delta IDs;
-- the current GDD raw-byte SHA-256 equals the applied post-GDD hash;
-- the independent review receipt is immutable, formal, `APPROVED`, at or above
-  the profile's required depth, and targets that same current GDD path/hash;
-- no SUPERSEDED record is supplied for this proposal;
-- all referenced paths and hashes revalidate now.
+## Phase 8: Read-only status and re-application safety
 
-If any check fails, preserve the recorded lifecycle status but report
-`Currentness: STALE` or `INVALID` and `Implementation Eligible: NO`. Never repair
-or rewrite evidence in status mode.
+status reads only exact proposal and optional exact record. Validate contracts,
+canonical paths, Proposal ID/change/version, raw hashes, evidence payload hashes,
+role independence, and record predecessor.
 
-For a valid SUPERSEDED record, return `Proposal Status: SUPERSEDED`,
-`Currentness: CURRENT`, and `Implementation Eligible: NO` with the exact successor
-path/hash.
+Without record: PROPOSED; CURRENT only if every production base/index/section/
+dependency binding still matches; Implementation Eligible NO.
 
-A production story may cite the proposal as rationale, but its authoritative GDD
-reference must identify the updated GDD path/hash and the exact current APPLIED
-record path/hash. Story readiness or development must reject PROPOSED,
-SUPERSEDED, stale, invalid, experiment-only, advisory-reviewed, or unrecorded
-quick designs. Even APPLIED status does not authorize this skill to start
-implementation; a separate current story-readiness decision is still required.
+With APPLIED: YES requires simultaneously:
+
+- proposal and lifecycle v2 identities/hashes match;
+- application v1 receipt binds proposal, expected pre-base, applied delta IDs,
+  and current post-GDD hash;
+- current GDD equals post hash;
+- independent review evidence v1 is APPROVED at required depth and targets that
+  same current path/hash;
+- record predecessor and recorder independence are valid;
+- no valid SUPERSEDED record is supplied; and
+- every explicit reference revalidates.
+
+If any check fails, preserve reported record status for audit but Currentness is
+STALE/INVALID and eligibility NO. Never repair it.
+
+An APPLIED proposal is not reapplied to later GDD bytes. A desired follow-up uses
+a new version, explicit predecessor, current base, new decisions/risk record,
+fresh application receipt, review, and lifecycle record.
+
+Valid SUPERSEDED always has eligibility NO and reports exact successor.
+EXPERIMENT_ONLY never becomes APPLIED.
+
+A production story may cite proposal as rationale only. Its authoritative source
+must be the updated current GDD path/hash plus exact current APPLIED record
+path/hash. Separate story-readiness remains required; this workflow never chains
+to implementation.
 
 ## Final response contract
 
-Every invocation reports exact inspected/created paths and hashes, risk profile,
-all status axes, non-writes, and a precise next owner.
+Report:
 
-Never end a newly created proposal with "ready for implementation." Use
-"proposal created; separate authoritative application, independent review, and
-recording required." Recommend `story-readiness` only after read-only status has
-verified APPLIED and CURRENT; never chain into `dev-story`.
+- exact inspected/created paths and raw-byte hashes;
+- target system/section identities;
+- risk record, profile, and evidence digest;
+- decision IDs/owners and unresolved routed questions;
+- all six status axes;
+- exact non-writes;
+- application/review/record next owners; and
+- structured error/partial/redirect reason when applicable.
+
+Never end proposal creation with ready for implementation. Use:
+
+    Proposal created; separate authoritative application, independent review,
+    and lifecycle recording are required.
+
+Recommend story-readiness only after exact status validation returns APPLIED,
+CURRENT, and Implementation Eligible YES. Never chain into dev-story.
+
+## Authoritative P1 traceability
+
+This matrix links the audit rows to existing clauses; it grants no additional
+write or lifecycle authority.
+
+| Audit ID | Closing contract clause |
+|---|---|
+| QDS-005 | Phases 2–4 persist typed risk facts and user-owned decisions before any profile label. |
+| QDS-006 | Phase 1 resolves one exact GDD, stable system owner, and explicit sections. |
+| QDS-007 | Phase 6 uses compare-and-create identity/CAS and forbids same-day overwrite. |
+| QDS-008 | Phases 2 and 3 redirect any tuning outside the approved range. |
+| QDS-009 | Phase 3 routes production new-system work to the systems-index/design owner. |
+| QDS-010 | Phases 7 and 8 bind base/predecessor/currentness and make re-application ineligible. |
+| QDS-011 | Status axes and precedence distinguish invalid, partial, blocked, declined, and persistence failure. |
+| QDS-012 | The final response contract exposes exact hashes while the formal spec keeps catalog evidence unexecuted until run. |

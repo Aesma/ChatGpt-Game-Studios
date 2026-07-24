@@ -1,246 +1,547 @@
 ---
 name: consistency-check
-description: "Read-only cross-GDD consistency audit that compares competing claims, ownership, formulas, and dependencies, with optional registry context, and returns PASS, FINDINGS, PARTIAL, or ERROR."
+description: "Read-only, hash-bound cross-GDD consistency audit over typed claims, ownership, formulas, and dependencies that returns PASS, FINDINGS, PARTIAL, or ERROR."
 ---
 
 # Consistency Check
 
-Audit cross-document design consistency without changing the project. Compare
-claims in all in-scope GDDs directly. If `design/registry/entities.yaml` exists,
-use it as an additional claim source and coverage aid, never as automatic proof
-that one product value is correct.
+Contract version: `cgs.consistency-check/v2`.
+Claim ruleset: `cgs.consistency-claims/v1`.
 
-## Invocation and contract
+Audit cross-document design consistency without changing the project. Build one
+bounded, exact-hash manifest, compare typed claims from every in-scope system GDD,
+and optionally treat `design/registry/entities.yaml` as another attributed claim
+source. The registry and its `source` fields are never automatic product truth.
 
-Invoke as `$consistency-check [full | since-last-review | entity:<id> | item:<id>]`.
-No argument is equivalent to `full`.
+## Invocation and frozen contract
+
+Invoke as:
+
+```text
+$consistency-check [full | entity:<id> | item:<id>]
+$consistency-check since-last-review baseline:<project-relative-report-path>
+```
+
+No mode is equivalent to `full`. Accept exactly one mode. `entity:` and `item:`
+IDs must be non-empty lowercase kebab-case and are matched as exact stable IDs,
+not aliases or display names. `baseline:` is required exactly once for
+`since-last-review` and forbidden in every other mode. Reject unknown arguments,
+extra text, duplicate modes or baselines, URLs, globs, absolute/outside-project
+paths, symlinks, and missing option values with `ERROR — INVALID INVOCATION`.
+Show the exact grammar, emit no evidence record, and stop.
 
 This workflow is strictly read-only:
 
-- It may enumerate, search, and read project files and inspect read-only Git
-  history when a mode requires a baseline.
+- It may enumerate, hash, search, and read project files and inspect read-only
+  Git state.
 - It must not create, edit, append, rename, or delete any file.
-- It must not update GDDs, the entity registry, consistency logs, reports, or
-  session state.
-- It must not run another skill, spawn a director gate, or silently delegate a
-  remediation.
-- Its only deliverable is the complete report returned to the caller.
+- It must not update GDDs, the systems index, entity registry, consistency logs,
+  saved reports, lifecycle state, approval state, or session state.
+- It must not run another skill, spawn a director gate, or delegate remediation.
+- Its only deliverable is one complete report returned to the caller. A separate
+  recorder may later persist those exact report bytes, but this scanner never
+  chooses a path or performs that write.
 
-If the caller later wants a finding resolved or persisted, that is a separate
-owner-led task with its own explicit scope. Do not perform that work during this
-scan.
+Verdict contract: exactly `PASS | FINDINGS | PARTIAL | ERROR`.
 
-Verdict contract: `PASS | FINDINGS | PARTIAL | ERROR`.
+- `PASS`: required coverage is complete and there is no actionable finding.
+- `FINDINGS`: required coverage is complete and at least one actionable finding
+  is `OPEN` or `DECISION_REQUIRED`.
+- `PARTIAL`: useful evidence exists, but any material input, claim, comparison,
+  provenance channel, or required check is incomplete. It takes precedence over
+  `FINDINGS` and preserves proven findings.
+- `ERROR`: invocation/scope is invalid, fewer than two system GDDs are reviewable,
+  no in-scope GDD can be semantically read, the input manifest changes during the
+  scan, or a meaningful report cannot be constructed.
 
-The final verdict is exactly one of:
-
-- `PASS` — coverage is complete and there are no actionable consistency
-  findings.
-- `FINDINGS` — coverage is complete and one or more actionable conflicts or
-  dependency gaps exist.
-- `PARTIAL` — the scan produced useful results, but at least one material input
-  or required check could not be completed. `PARTIAL` takes precedence over
-  `FINDINGS`; preserve any findings already proven.
-- `ERROR` — the scan cannot establish a meaningful audit scope or cannot inspect
-  any in-scope GDD.
-
-Dependency gaps are a finding category, not a separate verdict.
+Dependency gaps are findings, not a verdict. Registry absence never means
+“nothing to check”: perform the direct-GDD scan, disclose the missing coverage
+channel, and return `PARTIAL`, never `PASS`.
 
 ---
 
-## Phase 1: Validate scope and inventory inputs
+## Phase 0: Resolve instructions, project identity, and scope
 
-1. Parse the optional argument.
-   - `full`: compare every system GDD.
-   - `since-last-review`: compare the complete GDD corpus, but report only
-     findings for which at least one side changed after the last review
-     baseline.
-   - `entity:<id>`: compare claims about one normalized entity identifier across
-     the complete GDD corpus.
-   - `item:<id>`: compare claims about one normalized item identifier across the
-     complete GDD corpus.
-2. Reject an empty identifier, more than one mode, or an unrecognized argument
-   with `ERROR`. Show the accepted syntax and stop.
-3. Enumerate `design/gdd/*.md`. Exclude generated cross-review reports and the
-   non-system overview files `game-concept.md`, `systems-index.md`, and
-   `game-pillars.md`.
-4. If no system GDD exists, return `ERROR` with:
-   `No system GDDs found in design/gdd/. Create or identify the GDDs to audit.`
-5. Record every in-scope path before comparison. For the default and `full`
-   modes, every discovered system GDD is in scope.
-6. For `since-last-review`, locate the baseline using read-only Git history for
-   the most recent `design/gdd/gdd-cross-review-*.md` artifact. If a reproducible
-   baseline cannot be established, continue with a full scan, disclose the
-   fallback, and force `PARTIAL`.
-7. Attempt to read `design/registry/entities.yaml` when present.
-   - Missing or empty registry: continue with direct GDD-to-GDD comparison and
-     report registry coverage as unavailable. Never stop with “nothing to
-     check,” and never infer consistency from registry absence.
-   - Malformed or unreadable registry: continue with direct comparison, record
-     the failed coverage channel, and force `PARTIAL`.
-   - Valid registry: index its entries as attributed claims. A `source` field is
-     provenance supplied by the registry, not authority and not user approval.
+Read in full every applicable `AGENTS.md` from repository root through
+`design/gdd/`, in root-to-target order, and list them in the report. The nearest
+file wins when rules differ.
 
-Report the selected mode, GDD inventory, exclusions, registry status, and any
-baseline fallback before reporting findings.
+Represent `project_id` as the canonical string
+`root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>` so a
+downstream reviewer can recompute the same identity. Also compute
+`project_id_sha256` over that exact UTF-8 string for artifact IDs. Repository
+identity is the read-only Git root commit when available. If Git is unavailable,
+use `null`, continue with exact current file hashes, record Git provenance as
+unavailable, and force `PARTIAL`; never guess a commit or emit `PASS`.
 
----
+Inventory direct children matching `design/gdd/*.md`. Exclude
+`game-concept.md`, `game-pillars.md`, `systems-index.md`, templates, generated
+cross-review or consistency reports, review logs, and non-system profiles.
 
-## Phase 2: Build a direct claim index
+Read `design/gdd/systems-index.md` when present and resolve exact stable
+`System ID` and normalized `Design Doc` cells. Include every discovered system
+GDD in the manifest:
 
-Read each in-scope GDD in full once before issuing a verdict. A read failure for
-one or more GDDs forces `PARTIAL`; failure to read every in-scope GDD is `ERROR`.
+- a unique index match supplies canonical system identity;
+- an unindexed GDD remains `PROVISIONAL_DISCOVERY` and forces `PARTIAL`;
+- duplicate IDs, normalization collisions, two IDs sharing a path, or one path
+  mapping to multiple rows are coverage conflicts and force `PARTIAL`;
+- a missing or malformed systems index does not stop direct discovery, but
+  canonical scope is unavailable and the run is `PARTIAL`.
 
-Index only claims supported by identifiable text. Each indexed claim records:
+If fewer than two system GDDs are reviewable, return
+`ERROR — CONSISTENCY CHECK REQUIRES TWO SYSTEM GDDS`, emit no evidence record,
+and stop. Targeted `entity:` and `item:` modes still scan the complete system-GDD
+corpus before filtering typed claims to the requested ID.
 
-- subject identifier and aliases stated in the document;
-- claim category: `VALUE`, `FORMULA`, `OWNERSHIP`, `DEPENDENCY`, or `REFERENCE`;
-- attribute or relationship name;
-- raw value or expression and a normalized representation when normalization is
-  unambiguous;
-- unit and scope or applicability conditions;
-- evidence location: file, heading, line or line range, and a short excerpt;
-- stated owner, decision reference, or change rationale when present.
+Read `design/registry/entities.yaml` when present:
 
-Also index registry entries in the same neutral claim form when the registry is
-available. Label them `registry claim`; do not relabel them as canonical values.
+- valid non-empty registry: parse attributed typed claims under its declared IDs;
+- missing or empty registry: continue direct-GDD comparison, mark registry
+  coverage as unavailable, and force `PARTIAL`;
+- malformed or unreadable registry: preserve direct-GDD results, mark the exact
+  failure, and force `PARTIAL`;
+- a registry `source` field records provenance only, never authority, approval,
+  ownership, or currentness.
 
-Do not turn nearby examples, historical values, prose speculation, or unrelated
-numbers into product claims. If identity, unit, scope, or meaning is ambiguous,
-record an advisory `UNVERIFIABLE` note instead of inventing a comparison. An
-ordinary reference that makes no value claim is not itself a conflict.
-
-For targeted `entity:` or `item:` modes, still inspect all system GDDs, then
-filter the claim index to the requested normalized identifier. Zero matches are
-a `FINDINGS` result with category `MISSING_CLAIM`, unless a material read or
-normalization gap requires `PARTIAL`.
+For `since-last-review`, the baseline must be one explicitly supplied,
+project-local, non-symlink regular file no larger than 1 MiB. Validate its
+`cgs.review-evidence/v1` record ID, producer `consistency-check`, extension schema
+`cgs.consistency-report/v1`, project ID, ruleset ID, complete path/hash manifest,
+run ID, and exact prior findings. A missing, ambiguous, malformed, stale,
+scope-incomplete, or hash-invalid baseline returns
+`ERROR — INVALID CONSISTENCY BASELINE`; do not select a report by filename,
+modification time, creation date, or “latest” Git history.
 
 ---
 
-## Phase 3: Compare competing claims
+## Phase 1: Lock a bounded exact-hash manifest
 
-Compare claims only when subject, attribute, unit, and applicability overlap.
-Compare GDDs directly with one another; registry claims supplement that graph.
+Create and sort the complete candidate inventory by stable system ID, then
+canonical path. Hash exact raw bytes; never hash normalized or copied text. Lock
+the manifest before semantic comparison and record:
 
-Create actionable findings for:
+- project ID, requested mode, contract/ruleset IDs;
+- source revision commit or `null`, plus `clean`, `dirty`,
+  `includes-untracked-inputs`, or `git-unavailable`;
+- every included and excluded candidate path, reason, stable system ID or null,
+  exact SHA-256, exact byte count, and planned semantic status;
+- systems-index, registry, applicable instruction, and baseline paths/hashes when
+  present; and
+- every required check: `VALUE`, `FORMULA`, `OWNERSHIP`, `DEPENDENCY`, and
+  `REFERENCE`.
 
-- `VALUE_MISMATCH`: comparable values differ.
-- `FORMULA_MISMATCH`: formulas for the same output and applicability differ in
-  variables, operators, coefficients, caps, or output range.
-- `COMPETING_OWNERSHIP`: more than one document makes an exclusive ownership
-  claim for the same entity, mechanic, or decision.
-- `DEPENDENCY_GAP`: a required dependency names a system or artifact that does
-  not exist in the audited corpus and is not explicitly marked planned.
-- `STALE_REFERENCE`: a document points to a removed, renamed, or superseded
-  artifact and the replacement cannot be resolved from explicit evidence.
-- `MISSING_CLAIM`: a targeted identifier has no supported claim.
+Use these fixed upper bounds:
 
-Assign severity from impact, not from which document supplied the claim:
+```yaml
+max_manifest_candidates: 256
+max_semantically_analyzed_gdds: 32
+max_single_gdd_bytes: 196608
+max_total_semantic_input_bytes: 1048576
+max_registry_entries: 2048
+max_indexed_claims: 4096
+```
 
-- `HIGH`: mutually exclusive normative formulas, values, or ownership claims
-  can change core behavior or block downstream architecture.
-- `MEDIUM`: an unresolved required dependency, stale reference, or bounded value
-  mismatch can invalidate a dependent system.
-- `LOW`: the contradiction is real and actionable but isolated, optional, or
-  unlikely to affect another system. Keep ambiguous evidence advisory instead
-  of inflating it into a low-severity conflict.
+Enumerating and streaming hashes does not consume the semantic byte budget, but
+the manifest candidate cap still applies. If any cap is exceeded, retain the
+complete deterministically enumerable inventory, select GDDs in manifest order
+without exceeding a limit, mark all remaining paths/checks unchecked, and force
+`PARTIAL`. Never raise a limit, silently omit a path, split one GDD into
+independently judged fragments, or infer complete coverage from a sample.
 
-Do not report a mismatch when values are equivalent after an unambiguous unit
-conversion, when conditions are explicitly different, or when one passage is
-clearly an example rather than a normative rule.
+`manifest_sha256` is SHA-256 over canonical JSON of the ordered manifest.
+`stale_key` is SHA-256 over canonical JSON containing project ID, ruleset ID,
+mode, and the sorted complete current system-GDD path/hash set. Timestamps,
+filenames of reports, and Git modification times never participate.
 
-Every actionable finding must show at least two evidence sides when two claims
-compete. A dependency or missing-claim finding instead shows the declaring
-evidence plus the audited inventory that failed to resolve it. Never emit a bare
-“conflict exists” statement.
+Re-hash every in-scope input immediately before finalizing the report. Any added,
+removed, renamed, or changed input after manifest lock returns
+`ERROR — INPUT CHANGED DURING SCAN`; emit no consistency evidence from mixed
+bytes.
+
+---
+
+## Phase 2: Build the typed claim, owner, and dependency indexes once
+
+Read each selected GDD in full exactly once. A failed or partial read marks that
+file and all five checks `FAILED`, preserves other completed work, and forces
+`PARTIAL`. If no GDD can be read semantically, return `ERROR`.
+
+### 2a. Typed claim schema
+
+Index only a normative claim with identifiable evidence. Every claim uses:
+
+```yaml
+claim_id: CLM-<first-16-stable-fingerprint-hex>
+source_system_id: <SYS-id or provisional path identity>
+subject:
+  kind: system | entity | item | resource | formula-output | requirement
+  id: <explicit stable ID>
+category: VALUE | FORMULA | OWNERSHIP | DEPENDENCY | REFERENCE
+attribute: <normalized field, relationship, or formula output ID>
+scope: <normalized applicability and conditions>
+normative: true
+value:
+  type: integer | decimal | boolean | enum | string | expression | relationship
+  raw: <bounded exact text>
+  normalized: <typed normalized value or null>
+  unit: <canonical unit or null>
+formula:
+  normalized_ast: <typed operator tree or null>
+  symbols: <stable symbol-to-type/unit map or null>
+owner:
+  owner_id: <stable system/artifact/role ID or null>
+  exclusive: true | false | null
+evidence:
+  path: <canonical path>
+  sha256: <exact current file hash>
+  section: <canonical heading>
+  line_or_anchor: <stable requirement/claim ID, otherwise bounded line location>
+  excerpt: <short exact evidence>
+```
+
+Prefer an explicit claim/requirement ID. Otherwise derive `claim_id` from source
+system ID, category, subject ID, attribute, normalized scope, evidence heading,
+and occurrence ordinal. Exclude raw value, wording, file hash, line number,
+severity, and run date so the same logical claim retains identity after a value
+edit or line movement.
+
+Subject identity must come from an exact stable ID in a GDD, systems index, or
+registry. A display name, nearby noun, alias, case-insensitive guess, or fuzzy
+filename cannot establish identity. If an alias resolves to zero or multiple
+stable IDs, record `UNVERIFIABLE_IDENTITY`; do not merge claims.
+
+Normative claims come from explicit rules, schema tables, formulas, ownership
+declarations, dependency declarations, or acceptance criteria. Examples,
+historical values, rejected alternatives, commentary, estimates, and prose
+speculation are not normative claims. Do not extract a number merely because it
+occurs near a familiar name.
+
+### 2b. Semantic normalization
+
+Normalize only when type, identity, scope, and unit are explicit. The closed
+unit-conversion table is:
+
+- time: `1000 ms = 1 s`;
+- distance: `1000 mm = 100 cm = 1 m`;
+- mass: `1000 g = 1 kg`;
+- ratio: `100 percent = 1 ratio`.
+
+Use exact rational conversion. Currency/resource units compare only when their
+stable resource ID is identical. Never convert different dimensions or infer a
+unit from convention. Non-listed, ambiguous, compound, or missing required units
+are `UNVERIFIABLE_UNIT`.
+
+Normalize formulas only when output ID, operator structure, every symbol, symbol
+type/unit, applicability, clamp/rounding behavior, and input domain are explicit.
+Store a typed operator tree rather than comparing display strings. An unparseable
+rule-critical formula is a material coverage gap and forces `PARTIAL`; incidental
+formula prose becomes an advisory unverifiable note.
+
+### 2c. Owner map
+
+Build one map from stable subject/attribute to every explicit owner claim. Only
+`exclusive: true` can establish competing exclusive ownership. Missing or vague
+owner metadata is `UNVERIFIABLE_OWNER`; it is not silently assigned to the source
+GDD. Two non-exclusive collaborators are not a conflict.
+
+### 2d. Directed dependency graph
+
+The systems-index `Depends On IDs` cell is the authoritative declared edge:
+`A depends on B` means `A -> B`. Compare each GDD's explicit outgoing dependency
+claims to that row. Reverse dependents are derived by traversal; never require B
+to restate `A -> B`.
+
+Classify each declared dependency exactly once:
+
+- `exists`: stable target row and current target GDD both resolve;
+- `planned-not-authored`: target row is `Not Started` or `In Design` with no GDD;
+  this is not a gap by itself;
+- `missing-target`: no current or explicitly planned stable target exists;
+- `broken-reference`: an explicit path is missing/outside the project, the index
+  claims a missing Design Doc, or ID/path evidence disagrees;
+- `declaration-mismatch`: GDD outgoing dependency and systems-index edge disagree.
+
+Create actionable dependency findings for `missing-target`, `broken-reference`,
+and `declaration-mismatch`. Preserve `planned-not-authored` in the dependency
+ledger as non-actionable unless another current normative claim falsely requires
+an already-authored interface.
+
+Build the claim index in one pass and compare the completed typed index. Do not
+run one repository search per registry entry or repeatedly reread a GDD.
+
+---
+
+## Phase 3: Compare only semantically comparable claims
+
+Two claims are comparable only when stable subject ID, category/attribute,
+normative status, overlapping applicability, and value type match, and their
+units are identical or convertible by the closed table.
+
+Create actionable findings only for these consumer-compatible categories:
+
+- `VALUE_MISMATCH`: comparable typed values differ after exact conversion;
+- `FORMULA_MISMATCH`: normalized formula trees for the same output/domain differ
+  in operators, coefficients, symbols, caps, rounding, or allowed output;
+- `COMPETING_OWNERSHIP`: two current explicit exclusive owner claims compete for
+  the same stable subject/attribute;
+- `DEPENDENCY_GAP`: subtype `MISSING_TARGET`, `BROKEN_REFERENCE`, or
+  `DECLARATION_MISMATCH` from the directed dependency graph;
+- `STALE_REFERENCE`: a current normative reference names a removed, renamed, or
+  superseded stable target and no explicit current replacement resolves it;
+- `MISSING_CLAIM`: a targeted exact entity/item ID has no supported normative
+  claim after complete filtering.
+
+Do not report a mismatch when values are equivalent after exact unit conversion,
+conditions do not overlap, subject IDs differ, either passage is an example or
+history, or semantic normalization is unverifiable. Material unverifiability is
+a coverage gap and forces `PARTIAL`; non-material ambiguity is an advisory note.
+
+Every competing-claim finding must show at least two complete claim sides. A
+dependency or missing-claim finding instead shows the declaring claim plus the
+complete manifest/graph lookup that failed to resolve it.
+
+Severity is impact provenance, not product truth:
+
+- `HIGH`: mutually exclusive normative formulas, typed values, or exclusive
+  ownership can change core behavior or block downstream architecture;
+- `MEDIUM`: a required dependency gap, stale reference, or bounded mismatch can
+  invalidate a dependent system;
+- `LOW`: a real, isolated actionable contradiction with limited downstream
+  effect;
+- `ADVISORY`: non-actionable observation with complete but non-normative evidence;
+- `COVERAGE_GAP`: required semantic or input evidence is incomplete.
 
 ### Product-truth boundary
 
-The scanner reports claims; it does not select product truth.
+Never choose which current claim is correct because of registry provenance,
+filename, lifecycle status, recency, source ordering, severity, or majority vote.
+Never choose a new number, formula, owner, or dependency for the user. Competing
+claims without current explicit decision evidence use status
+`DECISION_REQUIRED` and name the artifact owner or user decision needed.
 
-- Never declare a registry claim correct merely because its entry has a
-  `source` field.
-- Never declare the named source GDD correct merely because the registry points
-  to it.
-- Never rewrite “GDD versus registry” as “stale registry” or “wrong GDD” without
-  explicit, current decision evidence.
-- Never choose a new number, formula, owner, or dependency for the user.
-- When claims compete, use status `DECISION REQUIRED` and identify the artifact
-  owner or user decision needed.
-- If a current approved decision artifact explicitly selects a claim and the
-  finding includes its evidence, the report may state which claims match that
-  decision. It still must not modify any target.
-
-Owner metadata and change rationale may guide the handoff, but neither is enough
-to overwrite another claim without explicit decision evidence.
+Only a current, exact-hash approved decision artifact that explicitly selects a
+claim may support `RESOLVED_IN_CURRENT`. Cite it, hash it, and keep it in the
+manifest. The scanner still never modifies any target.
 
 ---
 
-## Phase 4: Coverage and verdict
+## Phase 4: Assign stable finding identity and re-evaluate a baseline
 
-Build a coverage ledger with one row per discovered system GDD and one row for
-the optional registry channel:
+Every finding uses:
 
-| Input | Status | Checks completed | Limitation |
-|---|---|---|---|
-| `path` | `READ / SKIPPED / FAILED` | values, formulas, ownership, dependencies | reason or `none` |
-
-Material limitations include unreadable GDDs, malformed registry data when it
-was present, an indeterminate incremental baseline, or a required comparison
-that could not be normalized. A missing registry alone is not an error when the
-complete GDD corpus was directly compared; disclose that registry-backed
-coverage was unavailable.
-
-Choose one verdict in this order:
-
-1. `ERROR` if scope is invalid, no system GDD exists, or none can be read.
-2. `PARTIAL` if any material coverage limitation remains.
-3. `FINDINGS` if coverage is complete and at least one actionable finding exists.
-4. `PASS` otherwise.
-
-Do not issue `PASS` based only on a registry lookup, a subset of GDDs, or an
-empty result from text search.
-
----
-
-## Phase 5: Return the report and stop
-
-Return the full report in the response using this structure:
-
-```markdown
-## Consistency Check Report
-Date: [YYYY-MM-DD]
-Mode: [mode]
-GDDs discovered: [N]
-GDDs read: [N]
-Registry coverage: [available | missing | empty | invalid | unreadable]
-
-### Coverage
-[coverage ledger]
-
-### Actionable findings
-| # | Category | Severity | Subject | Claim A | Claim B / Missing target | Evidence | Status |
-|---|---|---|---|---|---|---|---|
-| 1 | FORMULA_MISMATCH | HIGH | damage | ... | ... | both file locations | DECISION REQUIRED |
-
-If there are none: `No actionable consistency findings.`
-
-### Advisory notes
-[unverifiable or non-blocking observations, or `None.`]
-
-### Decision handoff
-[For each finding: owner/user decision needed and the exact competing claims.
-Do not prescribe a winning product value without explicit decision evidence.]
-
-Verdict: PASS | FINDINGS | PARTIAL | ERROR
+```yaml
+id: CSC-<category-slug>-<first-12-fingerprint-hex>
+fingerprint_sha256: <64-lowercase-hex>
+category: VALUE_MISMATCH | FORMULA_MISMATCH | COMPETING_OWNERSHIP | DEPENDENCY_GAP | STALE_REFERENCE | MISSING_CLAIM
+subcategory: <bounded subtype or null>
+severity: HIGH | MEDIUM | LOW | ADVISORY | COVERAGE_GAP
+subject_id: <stable subject/system ID>
+attribute_or_relationship: <normalized value>
+claim_a: <complete typed claim side or declaring claim>
+claim_b: <complete typed claim side, missing target, or manifest lookup>
+owners: [<stable owner IDs or UNKNOWN>]
+target_hashes:
+  - path: <canonical path>
+    sha256: <exact current hash>
+status: OPEN | DECISION_REQUIRED | RESOLVED_IN_CURRENT
+acceptance: <objective current-input condition that closes the finding>
+resolution_evidence: <current exact-hash evidence or null>
+first_seen_run_id: <run ID>
+last_evaluated_run_id: <run ID>
+producer_claim_ids: [<sorted stable claim IDs>]
 ```
 
-The report is the output. Do not save it, append a log, update session state, or
-offer an in-workflow write. End after one concise next-step handoff:
+Fingerprint canonical JSON from category, subcategory, stable subject ID,
+attribute/relationship, sorted source system IDs, and sorted stable claim IDs.
+Exclude raw values, wording, paths, hashes, severity, status, reviewer, and time.
+Thus value edits, path renames under a stable system ID, or rewording retain the
+same finding ID; a different logical claim does not.
 
-- `PASS`: the caller may proceed to the next already-planned review or
-  architecture step.
-- `FINDINGS`: the responsible artifact owner or user must choose among the shown
-  claims in a separate remediation task.
-- `PARTIAL`: restore the named coverage inputs, then rerun the audit.
-- `ERROR`: correct the scope or create/identify auditable GDDs, then rerun.
+Sort findings by category, stable subject ID, attribute/relationship, then
+fingerprint. Deduplicate only identical fingerprints and retain all evidence
+provenance. If identical fingerprints carry incompatible identity or evidence,
+record the evidence conflict as a material coverage gap and return `PARTIAL`;
+never choose one result.
+
+For `since-last-review`, compare the validated baseline manifest with the current
+manifest by stable system ID and classify added, removed, renamed, changed-hash,
+or unchanged. Re-evaluate every prior actionable finding against current typed
+claims, preserve its ID, and set `RESOLVED_IN_CURRENT` only when its acceptance is
+demonstrably satisfied by current exact-hash evidence. Include newly proven
+findings only when at least one claim side or dependency target changed; preserve
+complete current-corpus coverage in the report.
+
+Dirty and untracked current inputs participate through their exact bytes. The
+baseline's commit is provenance, not a substitute for file hashes. Git rename
+heuristics, modification time, report date, and filename recency never determine
+identity or scope.
+
+---
+
+## Phase 5: Build the coverage ledger and choose the verdict
+
+Record one row for every discovered system GDD, every required supporting input,
+and every required check:
+
+```yaml
+path: <canonical path or channel ID>
+system_id: <stable ID or null>
+sha256: <hash or null>
+bytes: <integer or null>
+status: HASHED_ONLY | INDEXED | PARTIAL | FAILED | EXCLUDED | MISSING
+checks:
+  VALUE: DONE | PARTIAL | FAILED | NOT_APPLICABLE
+  FORMULA: DONE | PARTIAL | FAILED | NOT_APPLICABLE
+  OWNERSHIP: DONE | PARTIAL | FAILED | NOT_APPLICABLE
+  DEPENDENCY: DONE | PARTIAL | FAILED | NOT_APPLICABLE
+  REFERENCE: DONE | PARTIAL | FAILED | NOT_APPLICABLE
+limitation: <none or exact bounded reason>
+```
+
+Material coverage gaps include missing/empty/invalid registry, missing/malformed
+systems index, Git provenance unavailable, unreadable GDD, invalid baseline,
+manifest or semantic budget overflow, a material unnormalizable ID/unit/formula,
+hash mismatch, evidence conflict, and any required unchecked comparison.
+
+Apply exactly this precedence:
+
+1. invalid invocation, fewer than two reviewable GDDs, no semantically readable
+   GDD, changed locked input, or failed report construction: `ERROR`;
+2. any material coverage gap: `PARTIAL`;
+3. complete coverage with at least one actionable `OPEN` or
+   `DECISION_REQUIRED` finding: `FINDINGS`;
+4. complete coverage with no actionable finding: `PASS`.
+
+Advisory notes do not cause `FINDINGS`. Never issue `PASS` from a registry-only
+lookup, absent registry, absent systems index, subset/sample, empty text search,
+or incomplete normalization.
+
+---
+
+## Phase 6: Return one hash-bound consistency report
+
+When a manifest was locked and useful evidence exists, return one authoritative
+machine block followed by a human projection. For invocation/scope errors before
+manifest lock, return the error only and no evidence record. For an execution
+`ERROR` after lock, return the partial manifest/coverage in a record whose verdict
+is `ERROR`; downstream consumers must reject it.
+
+Use this machine block:
+
+```gate-evidence
+schema: cgs.review-evidence/v1
+record_id: sha256:<canonical record payload with record_id omitted>
+artifact_id: consistency-scan:<project-id-prefix>:<manifest-prefix>
+artifacts:
+  - path: <canonical repository-relative path>
+    sha256: <lowercase SHA-256 of an existing exact-byte input>
+    role: system-gdd | systems-index | entity-registry | decision-evidence | baseline
+    system_id: <stable System ID or null>
+reviewer: consistency-check:<run-id>
+verdict: PASS | FINDINGS | PARTIAL | ERROR
+timestamp: <ISO-8601 UTC>
+finding_ids: [<sorted stable CSC IDs>]
+producer:
+  tool: consistency-check
+  version: cgs.consistency-check/v2
+extension:
+  schema: cgs.consistency-report/v1
+  ruleset_id: cgs.consistency-claims/v1
+  run_id: <UTC timestamp>-<manifest prefix>
+  project_id: <canonical root plus repository identity string>
+  project_id_sha256: <hash of exact project_id string>
+  requested_mode: full | since-last-review | entity | item
+  targeted_id: <exact ID or null>
+  source_revision:
+    commit: <commit ID or null>
+    input_state: clean | dirty | includes-untracked-inputs | git-unavailable
+  manifest_sha256: <ordered manifest digest>
+  stale_key: <project/ruleset/mode/current-system-GDD-set digest>
+  skill_sha256: <exact current SKILL.md hash>
+  coverage_status: COMPLETE | PARTIAL | ERROR
+  limits:
+    max_manifest_candidates: 256
+    max_semantically_analyzed_gdds: 32
+    max_single_gdd_bytes: 196608
+    max_total_semantic_input_bytes: 1048576
+    max_registry_entries: 2048
+    max_indexed_claims: 4096
+  baseline:
+    path: <path or null>
+    record_id: <record ID or null>
+    manifest_sha256: <hash or null>
+    source_commit: <commit or null>
+    deltas: []
+  registry:
+    status: AVAILABLE | MISSING | EMPTY | INVALID | UNREADABLE
+    path: design/registry/entities.yaml
+    sha256: <hash or null>
+    entries_indexed: <integer>
+  claim_index_sha256: <canonical typed claim index digest>
+  owner_map_sha256: <canonical owner map digest>
+  dependency_graph_sha256: <canonical directed graph digest>
+  coverage: []
+  findings: []
+  advisory_notes: []
+```
+
+The `artifacts` array must include every existing current system GDD in the
+complete review set, even when a semantic limit left it unchecked. Include
+existing supporting inputs actually used. Missing required inputs appear only in
+the coverage ledger with a null hash, never as a fake artifact. This lets
+`$review-all-gdds` verify exact current path/hash coverage without rereading or
+reinterpreting the registry.
+
+Compute `record_id` as SHA-256 over canonical JSON of the complete machine object
+with `record_id` omitted. Sort object keys lexicographically. Sort `artifacts` by
+role, system ID, then path; ID-only arrays lexicographically; coverage by system
+ID/path/check; findings by stable finding ID; and deltas by stable system ID then
+delta kind. Use UTF-8, lowercase hex, JSON `null` for required absent values, no
+insignificant whitespace, and preserve semantic array order only where specified.
+Recompute after final verdict and coverage are known.
+
+After the machine block, render from the same normalized data:
+
+1. Run Identity and verdict;
+2. Complete Input Manifest and Exclusions;
+3. Registry and Baseline Status;
+4. Coverage Ledger and exact limits/unchecked scope;
+5. Typed Claim Summary;
+6. Owner Map and Directed Dependency Ledger;
+7. Actionable Findings with stable IDs and both evidence sides;
+8. Advisory/Unverifiable Notes;
+9. Decision Handoff naming the responsible owner without choosing truth; and
+10. Staleness Contract stating that any changed path/hash invalidates the report.
+
+The machine block and projection must agree. A mismatch before delivery is report
+construction failure. Do not save the report, propose a report path, append a
+failure log, update session state, or offer an in-workflow write.
+
+Return one concise handoff and stop:
+
+- `PASS`: provide `record_id`, manifest hash, and stale key for an already-planned
+  downstream consumer.
+- `FINDINGS`: route the highest-severity stable finding ID to its artifact owner
+  or user for a separate decision/remediation task.
+- `PARTIAL`: name the highest-priority coverage gap to restore before a fresh run.
+- `ERROR`: correct the invocation/scope or restore the named failed input.
+
+The handoff is not permission to edit, persist, advance stage, or invoke another
+workflow automatically.
+
+## Authoritative P1 traceability
+
+This matrix records closure against the authoritative audit without changing the
+scanner's report-only behavior.
+
+| Audit ID | Closing contract clause |
+|---|---|
+| CSC-004 | Phase 0 treats missing or invalid registry authority as material uncertainty, never an empty success. |
+| CSC-005 | Phases 2b and 3 compare only typed, stable-identity, unit-compatible semantic claims. |
+| CSC-006 | Phases 2c and 2d build explicit owner and directed dependency indexes. |
+| CSC-007 | Phase 4 accepts only an immutable exact-hash incremental baseline. |
+| CSC-008 | Phases 1 and 2 freeze the manifest and enforce visible file, byte, claim, and comparison budgets. |
+| CSC-009 | Phase 4 assigns stable finding identity, hashes, status, and resolution evidence. |
+| CSC-010 | Phase 5 applies ERROR/PARTIAL precedence and reports every coverage gap. |
+| CSC-011 | Phase 6 returns canonical report bytes in conversation and explicitly performs no save-path write. |

@@ -1,0 +1,67 @@
+{
+  "schema": "cgs-skill-test-rules/v1",
+  "version": "1.0.0",
+  "name_policy": {
+    "normalization": ["unicode_nfc", "casefold"],
+    "silently_trim": false,
+    "grammar": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+    "maximum_codepoints": 64,
+    "forbid_consecutive_hyphens": true,
+    "duplicate_check_precedes_grammar_check": true
+  },
+  "discovery": {
+    "skill_root": ".agents/skills",
+    "skill_file": "SKILL.md",
+    "skill_metadata": "agents/openai.yaml",
+    "agent_root": ".codex/agents",
+    "agent_suffix": ".toml",
+    "follow_directory_symlinks": false,
+    "rules": [
+      {"id": "DISC-X001-SYMLINK", "kind": "symlink", "outcome": "EXCLUDED", "reason": "Symlinks are not followed; report the path and resolved target."},
+      {"id": "DISC-X002-HIDDEN-DIRECTORY", "kind": "directory_segment_regex", "pattern": "^\\..+$", "outcome": "EXCLUDED", "reason": "Hidden descendants below a discovery root are not package authority."},
+      {"id": "DISC-X003-GENERATED-DIRECTORY", "kind": "directory_segment_exact", "values": ["__pycache__", ".pytest_cache", "node_modules", "build", "dist", "generated", "generators"], "outcome": "EXCLUDED", "reason": "Exact cache/build/generator directory names are not implementation authority."},
+      {"id": "DISC-A002-GENERATOR-TOML", "kind": "agent_basename_regex", "pattern": "^(?:_?generator|generate-agents)(?:[-_.].*)?\\.toml$|^.*\\.generated\\.toml$", "outcome": "EXCLUDED", "reason": "Generator helper TOML is not an auto-discovered role definition."}
+    ]
+  },
+  "legacy_rules": [
+    {"id": "LEG-001-CLAUDE-PATH", "severity": "FAIL", "patterns": ["(?:^|[\\s`'\\\"])(?:\\.claude/|CLAUDE\\.md)(?:$|[\\s`'\\\"/])"]},
+    {"id": "LEG-002-CLAUDE-FRONTMATTER", "severity": "FAIL", "patterns": ["^\\s*(?:allowed-tools|argument-hint|disable-model-invocation|user-invocable|model)\\s*:"]},
+    {"id": "LEG-003-CLAUDE-TOOL-TOKEN", "severity": "FAIL", "patterns": ["`(?:AskUserQuestion|TodoWrite|Task|Read|Write|Edit|Bash|Glob|Grep)`", "\\b(?:AskUserQuestion|TodoWrite)\\b"]},
+    {"id": "LEG-004-CLAUDE-PRODUCT", "severity": "WARN", "patterns": ["\\bClaude(?: Code)?\\b"]}
+  ],
+  "legacy_allowed_contexts": {
+    "heading_or_fence_labels": ["migration", "historical", "quoted evidence", "legacy example"],
+    "outcome": "PASS_WITH_CONTEXT"
+  },
+  "placeholder_rules": {
+    "sentinel_patterns": ["\\bTODO\\b", "\\bTBD\\b", "\\bFIXME\\b", "\\bCHANGEME\\b", "\\bREPLACE_ME\\b", "\\[CHOOSE(?::[^\\]]*)?\\]", "\\?\\?\\?"],
+    "metavariable_patterns": ["<[a-z][a-z0-9_-]*(?:[ |/.,:+-][a-z0-9_-]+)*>", "\\[(?:--)?[a-z][a-z0-9_-]*\\]"],
+    "template_labels": ["template", "example", "output format", "usage", "invocation", "arguments", "path format", "schema"],
+    "structured_fence_languages": ["yaml", "yml", "toml", "json"],
+    "rules": [
+      {"id": "PH-001-ACTIVE-SENTINEL", "active_outcome": "FAIL", "template_outcome": "PASS"},
+      {"id": "PH-002-DECLARED-METAVARIABLE", "declared_outcome": "PASS", "undeclared_outcome": "FAIL"},
+      {"id": "PH-003-TEMPLATE-SCOPE", "labelled_outcome": "PASS"},
+      {"id": "PH-004-ACTIVE-STRUCTURED", "active_outcome": "FAIL"}
+    ]
+  },
+  "budgets": {
+    "maximum_candidate_files": 4096,
+    "maximum_total_bytes": 67108864,
+    "maximum_file_bytes": 2097152,
+    "maximum_wall_seconds": 30.0,
+    "maximum_per_file_seconds": 5.0,
+    "maximum_concurrency": 8,
+    "selection_order": "normalized_repository_relative_path_ascending"
+  },
+  "aggregation": {
+    "rule_outcomes": ["PASS", "WARN", "FAIL", "INVALID", "PARTIAL"],
+    "priority": [
+      {"when": "required_authority_invalid_or_empty_rules", "validation": "TEST_INFRA_INVALID"},
+      {"when": "conclusive_target_fail", "validation": "NON-COMPLIANT"},
+      {"when": "coverage_partial_or_required_input_unreadable_or_omitted", "validation": "PARTIAL_VALIDATION"},
+      {"when": "target_warn_and_complete_coverage", "validation": "WARNINGS"},
+      {"when": "all_required_pass_and_complete_coverage", "validation": "COMPLIANT"}
+    ]
+  }
+}

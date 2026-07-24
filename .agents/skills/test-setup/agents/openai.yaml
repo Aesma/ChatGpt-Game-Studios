@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Setup"
-  short_description: "Scaffold and verify engine tests and CI receipts"
-  default_prompt: "Use $test-setup to audit or scaffold the test framework, then verify discovery, pass/fail exit sensitivity, and build-bound CI evidence before calling setup complete."
+  short_description: "Audit, repair, and verify deterministic engine test infrastructure"
+  default_prompt: "Use $test-setup to bind structured engine and repository policy, semantically audit or ID-repair the test framework, and require pinned static checks, discovery, deterministic pass/fail canaries, reviewed immutable CI dependencies, and current hash-bound receipts before calling setup complete."

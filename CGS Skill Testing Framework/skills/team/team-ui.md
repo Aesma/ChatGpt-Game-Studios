@@ -2,294 +2,340 @@
 
 > **Category**: team
 > **Priority**: medium
-> **Spec written**: 2026-07-22
+> **Spec written**: 2026-07-23
+
+## Skill summary
+
+`$team-ui` consumes one bounded `cgs.team-ui-request/v2` manifest. It authors and independently reviews one current-hash UX specification, creates separately owned visual/asset/engine support, freezes a separately authorized implementation manifest, permits one UI writer, captures real runtime evidence through a distinct runner, and requires four independent final review streams on the same post-fix build/source-set hash. The workflow contains controlled writes; reviewers are always read-only.
+
+This specification is an executable-behavior contract, not evidence that a test was run.
+
+## Static assertions
+
+- [ ] **TUI-S001** — YAML frontmatter contains only `name` and non-empty `description`; `name` is `team-ui`.
+- [ ] **TUI-S002** — No-argument validation precedes every project read, delegate, write, result, and verdict.
+- [ ] **TUI-S003** — Invocation accepts only `--manifest` and optional `--resume`, rejecting unknown/duplicate/missing/positional input.
+- [ ] **TUI-S004** — The request schema is exactly `cgs.team-ui-request/v2` and canonical IDs/paths are deterministic.
+- [ ] **TUI-S005** — The only delegation interface is `cgs.team-ui-task/v2`; `$ux-design`, `$ux-review`, and interface fallback are forbidden.
+- [ ] **TUI-S006** — `consultation_mode` defaults to `lean`; `review_mode` is invalid; modes never reduce mandatory gates.
+- [ ] **TUI-S007** — `solo` cannot start production implementation or return `COMPLETE`.
+- [ ] **TUI-S008** — `COMPLETE` maps only from `IMPLEMENTATION_VERIFIED`; all other pipeline results have deterministic `PARTIAL` or `BLOCKED` verdicts.
+- [ ] **TUI-S009** — Accepted risk cannot change UX verdict, authorize production support/implementation, or return `COMPLETE`.
+- [ ] **TUI-S010** — UX revisions and implementation fix rounds are each capped at two and preserve stable finding IDs.
+- [ ] **TUI-S011** — Every write path has one owner; every reviewer is read-only; no role can spawn children.
+- [ ] **TUI-S012** — UI programmer cannot write UX, visual/asset/engine, ADR, global-pattern, game-state, or unlisted paths.
+- [ ] **TUI-S013** — Global pattern, visual/art-bible, and cross-screen architecture changes route to their external UX-library, art-bible, or architecture owner.
+- [ ] **TUI-S014** — Design, design-support, and implementation boundaries cannot pre-authorize unknown later paths.
+- [ ] **TUI-S015** — Every operation binds type, canonical path, expected base/absence, owner, candidate/diff hash, and byte cap.
+- [ ] **TUI-S016** — UX, visual spec, asset manifest, engine plan, implementation manifest, checkpoints, reviews, evidence, and result have canonical paths.
+- [ ] **TUI-S017** — `UNCONFIGURED` engine permits approved UX or a separately authorized engine-neutral nonproduction proposal only.
+- [ ] **TUI-S018** — Production requires exact configured engine/version and current engine plan; no generic UI implementation is invented.
+- [ ] **TUI-S019** — Visual spec and asset manifest are persisted, hash-bound, and owned by the art author; engine plan has a separate owner.
+- [ ] **TUI-S020** — UX reviewer differs from UX author, art reviewer differs from art author, and all final reviewers differ from writer, runner, authors, and each other.
+- [ ] **TUI-S020A** — The UX author writes only the current `ux-design` `ux-spec` tuple (`ux-profile-schema-v2`, `cgs.ux-content-profile/v2`, `ux-design-author-sha256:<author_schema_hash>`) with exact UXS-01..14 structure; no team-ui-local schema may occupy `design/ux/<screen-id>.md`.
+- [ ] **TUI-S020B** — The UX reviewer returns an exact `cgs.review-evidence/v1` envelope plus `cgs.ux-review/v2`; the coordinator persists only an immutable `cgs.team-ui-ux-review-recording/v1` wrapper and never upgrades the embedded NOT_PERSISTED/gate-ineligible fields.
+- [ ] **TUI-S020C** — Production support and implementation require a current independent immutable `cgs.art-bible-review/v1` with gate AD-ART-BIBLE and verdict APPROVE binding the exact art-bible target, authoring receipt, AB-1/nine-section, dependency/context hashes, and role separation; path/hash or content COMPLETE alone is insufficient.
+- [ ] **TUI-S020D** — Every request binds exact current `cgs.localization-manifest/v2` and `cgs.localization-catalog/v2` path/raw hashes plus recomputed source-table, keyset, catalog, source-locale, and target-locale identities.
+- [ ] **TUI-S020E** — `package_requirement` is explicit; REQUIRED consumes only exact current `cgs.localization-package/v1` rows bound to the same catalog/source/keyset and locale/page, while NOT_REQUIRED requires an empty package set and no package dependency.
+- [ ] **TUI-S020F** — Missing, stale, malformed, parser-mismatched, locale-incomplete, or package-incomplete localization inputs fail before checkpoint/task dispatch and remain read-only throughout team-ui.
+- [ ] **TUI-S021** — Runtime evidence runner differs from the UI programmer and every reviewer and writes only declared raw evidence paths.
+- [ ] **TUI-S022** — Runtime evidence records actual adapter/argv/config, engine/version, final identities, exit/timing, observations, and raw log hashes.
+- [ ] **TUI-S023** — Plan, mock receipt, file existence, old receipt, reviewer prose, `UNKNOWN`, and `NOT_RUN` cannot satisfy runtime evidence.
+- [ ] **TUI-S024** — Evidence matrix covers target input/focus, resolution/aspect/safe-zone, locale/expansion, every text scale/reflow, contrast/non-color/colorblind, motion, audio/events/game-state, frame/main-thread, allocation/lifecycle/leak, and engine rules.
+- [ ] **TUI-S025** — Applicable `src/ui/AGENTS.md` constraints are hashed and become mandatory checks.
+- [ ] **TUI-S026** — Project context hard caps are 32 files, 524288 total bytes, and 131072 bytes per file; manifest can only lower them.
+- [ ] **TUI-S027** — Target cardinalities, implementation/evidence operations, evidence rows, and recorder artifacts have fixed hard caps.
+- [ ] **TUI-S028** — Context is exact-path/hash/purpose only; discovery of newest or “all relevant” artifacts and silent truncation are forbidden.
+- [ ] **TUI-S029** — A coverage profile is version/hash-bound and covers every target value; absent profile requires full bounded cross product or blocks.
+- [ ] **TUI-S030** — At most three tasks are live; attempt cap is 900 seconds, phase cap is 1800 seconds, and one eligible retry is the maximum.
+- [ ] **TUI-S031** — Writer retry requires proven pre-attempt project state; runner retry uses new authorized outputs; third attempts are forbidden.
+- [ ] **TUI-S032** — Timed-out/cancelled attempt tokens are revoked and every late response is quarantined and gate-ineligible.
+- [ ] **TUI-S033** — Unknown cancellation or mutation state produces `PARTIAL`/`BLOCKED`, not a retry or success assumption.
+- [ ] **TUI-S034** — Checkpoints are immutable, sequenced, previous-hash-linked, bounded, atomically/read-back persisted, and written after every state-changing event.
+- [ ] **TUI-S035** — Resume verifies checkpoint chain and every dependent identity, preserves counters/findings, and restarts from the earliest safe state.
+- [ ] **TUI-S036** — A checkpoint cannot authorize an operation absent from its recorded manifest; stale artifacts stay preserved but ineligible.
+- [ ] **TUI-S037** — Final review uses four mandatory streams on one frozen build/source/evidence identity and deterministic two-wave scheduling when concurrency is three.
+- [ ] **TUI-S038** — Timeout, malformed output, missing stream, wrong target, late output, or incomplete check coverage yields `PARTIAL` and no quorum.
+- [ ] **TUI-S039** — Every implementation fix creates a new build/source/evidence identity and stales all prior final reviews.
+- [ ] **TUI-S040** — Re-review after a fix includes all prior open checks plus the complete regression matrix.
+- [ ] **TUI-S041** — Mandatory accessibility, nested UI, engine, evidence, and ownership blockers are non-waivable.
+- [ ] **TUI-S042** — Unexpected writes halt without silently reverting user work.
+- [ ] **TUI-S043** — Skill and spec both describe controlled writes and exact mutation allowlists; neither calls the whole pipeline read-only.
+- [ ] **TUI-S044** — Final result records hashes, authorization, attempts/cancellations/quarantine, findings, mutations, build/evidence/reviews, and persistence.
+- [ ] **TUI-S045** — Final output emits exactly one state-derived next action and does not auto-invoke another workflow.
+- [ ] **TUI-S046** — Metadata describes bounded-UX-to-independently-verified-UI behavior and names the v2 request manifest.
+- [ ] **TUI-S047** — Both relative reference links resolve inside the candidate skill package.
+- [ ] **TUI-S048** — P1 closure matrix contains exactly `TUI-007` through `TUI-017`, once each.
 
-## Skill Summary
+## Director and mode gates
 
-$team-ui consumes one exact UI feature request manifest, authors and independently reviews a hash-bound UX spec, then plans a separately authorized implementation with one writer. Reviewers are read-only and bounded. Verdict: COMPLETE is legal only when the post-fix final build/source hash has complete UX, art, accessibility, engine, input, layout, localization, text-scaling, colorblind, motion, cleanup, and main-thread evidence.
+- `full`: optional, read-only director consultation may supplement decisions but never counts as evidence.
+- `lean`: default; omits optional consultations and keeps every mandatory role and gate.
+- `solo`: permits scratch/nonproduction proposal work only; independence and production completion are impossible.
+- The mandatory final streams are UX conformance, art consistency, accessibility, and engine UI/QA-evidence validation for every production run.
 
----
+## Behavioral cases
 
-## Static Assertions
+### Case 1 — Verified final build happy path
 
-- [ ] YAML frontmatter contains only name and a non-empty description; name is team-ui
-- [ ] No-argument validation occurs before project reads or delegation
-- [ ] UX-review uses the staged read-only record schema, stable UXF IDs, exact target hash, and persisted recorder envelope
-- [ ] NEEDS REVISION/accepted risk cannot authorize production implementation or COMPLETE
-- [ ] UX revisions and implementation fixes are each capped at two rounds
-- [ ] Every artifact path has one writer and reviewers are read-only
-- [ ] ui-programmer cannot modify the global interaction-pattern library
-- [ ] Design-support and implementation each require a precise later authorization boundary
-- [ ] Implementation manifest lists exact paths, operations, base hashes, writer, evidence paths, and non-writes
-- [ ] Review concurrency, task/phase deadlines, one retry, PARTIAL behavior, checkpoints, and resume revalidation are explicit
-- [ ] Post-fix reviews bind the final build/source-set hash and stale every prior review
-- [ ] COMPLETE requires zero open blockers and the full build-bound evidence matrix
-- [ ] Skill/spec both acknowledge project writes and exact mutation allowlists
-- [ ] The final phase emits one state-driven next action without invoking another workflow
+**Fixture:** Valid bounded v2 request; configured engine; current instructions and owner sources; independently approved UX; separately authorized support artifacts and implementation manifest; one writer; one distinct evidence runner; all four distinct review streams pass the same final build/source/evidence identities.
 
----
+**Expected:** Every phase persists a current checkpoint, mutations remain inside the active manifest, evidence is actual execution evidence, and the result is `Pipeline Result: IMPLEMENTATION_VERIFIED` plus `Verdict: COMPLETE`.
 
-## Director Gate Checks
+**Assertions:** TUI-S008, S011-S025, S034-S045.
 
-- **Full mode**: optional director consultations may run, but their output is advisory and cannot replace mandatory evidence.
-- **Lean mode**: optional consultations are skipped; all mandatory independent reviews remain.
-- **Solo mode**: no independent quorum exists, so design/prototype work may proceed but production COMPLETE is impossible.
-- **Mandatory reviews**: UX conformance, art consistency, accessibility, and engine/QA evidence cannot be skipped by mode.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
----
+### Case 2 — No argument exits before project access
 
-## Test Cases
+**Fixture:** Invoke `$team-ui` without flags in any project state.
 
-### Case 1: Happy path — approved spec to verified final build
+**Expected:** Print exact usage and stop. No project file is read, no role starts, no write occurs, and no pipeline result/verdict is emitted.
 
-**Fixture**:
-- Valid feature manifest, context/hash budget, configured engine, applicable AGENTS chain, interaction library, accessibility targets, and exact owners.
-- UX review returns current-hash APPROVED with zero blockers.
-- Visual/asset/engine artifacts and precise implementation manifest are separately authorized.
-- One writer implements only listed paths.
-- All final evidence streams pass on the same post-fix build/source hash.
+**Assertions:** TUI-S002, TUI-S003.
 
-**Expected behavior**:
-1. Design, review, support-artifact, implementation, build, and final-review checkpoints are persisted.
-2. Every mutation stays inside the active manifest.
-3. Final result is Pipeline Result: IMPLEMENTATION_VERIFIED and Verdict: COMPLETE.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Assertions**:
-- [ ] UX approval envelope embeds the unmodified read-only review record and revalidates target SHA-256
-- [ ] ui-programmer never writes design artifacts or the global pattern library
-- [ ] All mandatory review outputs bind the final build/source hash
-- [ ] Final result reports exact artifact/evidence/checkpoint hashes
+### Case 3 — Canonical direct-task interface has no fallback
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Fixture:** Valid manifest, but the UX reviewer role is unavailable.
 
----
+**Expected:** Coordinator issues only typed v2 direct-task packets. It does not invoke `$ux-review`, `$ux-design`, or switch to an ad-hoc same-agent review. Result is `PARTIAL` with the unavailable role as the sole next action.
 
-### Case 2: NEEDS REVISION cannot be overridden into production
+**Assertions:** TUI-S005, TUI-S020, TUI-S038.
 
-**Fixture**:
-- UX review returns NEEDS REVISION with gamepad and contrast blockers.
-- User records accepted risk.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Expected behavior**:
-1. Original review verdict and approval_status remain unchanged.
-2. Pipeline Result is ACCEPTED_RISK_SPEC_NOT_APPROVED.
-3. Only a separately authorized nonproduction prototype/backlog proposal is legal.
-4. Visual production work, implementation writer, and COMPLETE do not run.
+### Case 4 — Consultation mode cannot change review quorum
 
-**Assertions**:
-- [ ] No implementation manifest is generated
-- [ ] Accepted risk lists stable open finding IDs and target hash
-- [ ] No approved/implementation-ready wording appears
+**Fixture:** Run once with omitted mode, once with `full`, once with `lean`, once with `solo`, and once with invalid `review_mode`.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Expected:** Omitted resolves to `lean`; `full` adds advisory work only; `lean` keeps all four streams; `solo` cannot enter production; `review_mode` is rejected during request validation.
 
----
+**Assertions:** TUI-S006, TUI-S007, TUI-S037.
 
-### Case 3: UX convergence stops after two revisions
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Fixture**:
-- The same stable UXF navigation blocker remains after revision rounds 1 and 2.
+### Case 5 — NEEDS REVISION and accepted risk cannot reach production
 
-**Expected behavior**:
-1. Author remains the only spec writer; reviewer remains independent/read-only.
-2. Each round maps the same finding ID to exact diffs and performs regression scan.
-3. Automatic loop stops after round 2 with BLOCKED/USER DECISION.
+**Fixture:** Current UX review contains gamepad and contrast blockers; user accepts named risk.
 
-**Assertions**:
-- [ ] No third automatic revision occurs
-- [ ] Legal options are narrow/redefine, stop, or accepted-risk nonproduction path
-- [ ] The stale prior hashes cannot be reused
+**Expected:** Review bytes/verdict remain unchanged. Pipeline result is `ACCEPTED_RISK_SPEC_NOT_APPROVED`, verdict is `BLOCKED`, and production support/implementation does not start. A nonproduction proposal needs its own manifest.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Assertions:** TUI-S008-S010.
 
----
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-### Case 4: Programmer global-pattern mutation is refused
+### Case 6 — UX convergence stops after two revisions
 
-**Fixture**:
-- Implementation introduces a new interaction and attempts to edit design/ux/interaction-patterns.md.
+**Fixture:** One stable `UXF-NAVIGATION` blocker remains after author revision rounds 1 and 2.
 
-**Expected behavior**:
-1. New behavior is represented as stable feature-local UXP proposal owned by ux-author.
-2. Mutation guard detects/refuses programmer write to the global library.
-3. Cross-screen behavior blocks until the external library/ADR owner acts.
+**Expected:** Same finding ID and before/after diff evidence are preserved; full regression runs on each new hash; no third revision occurs; stop for one user decision.
 
-**Assertions**:
-- [ ] Programmer source allowlist excludes the global library
-- [ ] Proposal is not labelled globally approved
-- [ ] User work is not silently reverted
+**Assertions:** TUI-S010, TUI-S020, TUI-S035.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Case Verdict:** PASS / FAIL / PARTIAL
 
----
+### Case 7 — Programmer global-pattern mutation is refused
 
-### Case 5: Post-polish change invalidates old reviews
+**Fixture:** Implementation needs a reusable cross-screen interaction and tries to update the global pattern library.
 
-**Fixture**:
-- Initial implementation build B1 receives blocking findings.
-- Unique writer fixes them and produces build B2.
+**Expected:** Programmer operation is outside its manifest and is refused/detected. A stable feature-local proposal may be owned by UX author, while cross-screen production blocks for external UX-library/ADR owner. No user change is reverted.
 
-**Expected behavior**:
-1. All B1 reviews become stale.
-2. Previously failed checks plus the full regression matrix run against B2.
-3. COMPLETE is possible only if every required B2 stream/evidence row is complete and blockers are zero.
+**Assertions:** TUI-S012, TUI-S013, TUI-S041, TUI-S042.
 
-**Assertions**:
-- [ ] B1 approval cannot be attached to B2
-- [ ] Stable UIF finding transitions are preserved
-- [ ] New fix paths require a new implementation authorization
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+### Case 8 — Later writes require later authorization
 
----
+**Fixture:** UX candidate exists, but visual/engine/source/evidence operations have not been planned.
 
-### Case 6: Design authorization cannot pre-authorize unknown implementation
+**Expected:** Design authorization cannot cover unknown support or implementation paths. Candidate bytes and exact operations precede design-support authorization; a persisted exact implementation manifest precedes implementation authorization and writer dispatch.
 
-**Fixture**:
-- UX candidate exists but visual, engine, and implementation paths are not yet planned.
+**Assertions:** TUI-S014-S016.
 
-**Expected behavior**:
-1. Initial authorization contains only exact UX/review/checkpoint paths and bounded revision rules.
-2. Visual/engine candidate bytes are planned before their authorization.
-3. Precise implementation manifest is presented and authorized separately.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Assertions**:
-- [ ] No broad all-pipeline changeset is requested
-- [ ] Nested roles do not independently re-prompt per file
-- [ ] Every implementation operation has exact path/base hash/writer/non-writes
+### Case 9 — Unconfigured engine blocks production, not UX
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Fixture:** Valid design context with `engine.status: UNCONFIGURED`.
 
----
+**Expected:** UX may reach current `SPEC_APPROVED`. At most a separately authorized engine-neutral nonproduction proposal is legal. No production engine plan, UI programmer, build claim, or `COMPLETE` occurs.
 
-### Case 7: No argument exits before reads
+**Assertions:** TUI-S017, TUI-S018.
 
-**Fixture**:
-- Any project state.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Expected behavior**:
-1. Invocation without --manifest shows exact usage.
-2. No project file is read, no agent is spawned, no checkpoint is written, and no verdict is issued.
+### Case 10 — Visual, asset, and engine outputs are versioned and owned
 
-**Assertions**:
-- [ ] Validation precedes review-mode/context resolution
-- [ ] No side effect occurs
-- [ ] Usage names the required manifest
+**Fixture:** Approved UX with configured engine and separately authorized support paths.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Expected:** Art author alone writes canonical visual spec/asset manifest; engine-plan author alone writes canonical engine plan; all bind source hashes, requirements, targets, and owner-specific content. Reviewer tasks are distinct and read-only.
 
----
+**Assertions:** TUI-S016, TUI-S019, TUI-S020.
 
-### Case 8: Missing engine blocks production, not design
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Fixture**:
-- Valid design context but Engine Status: UNCONFIGURED.
+### Case 11 — Self-review cannot satisfy independence
 
-**Expected behavior**:
-1. UX author/review may reach SPEC_APPROVED.
-2. No ui-programmer or production implementation begins.
-3. Result identifies engine configuration/plan as the single next action.
+**Fixture:** Same execution identity is assigned UX author and reviewer, or UI programmer and engine/QA reviewer.
 
-**Assertions**:
-- [ ] No generic engine hierarchy is invented
-- [ ] Prototype, if separately authorized, is explicitly nonproduction
-- [ ] COMPLETE is impossible
+**Expected:** Identity validation blocks dispatch or marks returned evidence ineligible. No mode, small team, or user risk acceptance waives this gate.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Assertions:** TUI-S020, TUI-S021, TUI-S037, TUI-S041.
 
----
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-### Case 9: Bounded parallel review timeout yields PARTIAL and resumable checkpoint
+### Case 12 — Reviewer prose is not runtime evidence
 
-**Fixture**:
-- Four required review streams; concurrency cap is 3.
-- One stream times out twice while others complete.
+**Fixture:** Reviewers say keyboard, scaling, and performance pass, but no verified runner receipts or raw logs exist.
 
-**Expected behavior**:
-1. At most three agents run concurrently and no child delegation occurs.
-2. One same-hash narrowed retry is attempted.
-3. Timeout produces PARTIAL; quorum is not fabricated.
-4. Checkpoint records completed streams, timeout, hashes, deadline, and next legal retry.
+**Expected:** Rows are missing/`NOT_RUN`; result is `PARTIAL`, no quorum and no completion. Reviewer cannot create runtime observations.
 
-**Assertions**:
-- [ ] Missing reviewer is never treated as approval
-- [ ] Resume re-hashes all inputs and invalidates stale results
-- [ ] No dependent COMPLETE occurs
+**Assertions:** TUI-S021-S024, TUI-S038.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Case Verdict:** PASS / FAIL / PARTIAL
 
----
+### Case 13 — Nested UI rules require build-bound rows
 
-### Case 10: Final evidence matrix enforces nested UI rules
+**Fixture:** Basic navigation passes, but one committed text scale lacks reflow/no-clipping evidence and the main/game-thread profile is absent.
 
-**Fixture**:
-- Implementation passes basic navigation but lacks one committed text-scale/reflow row and main-thread profile.
+**Expected:** Both are blocking missing rows bound to the current build. Result cannot be `COMPLETE`; exact check IDs, owners, and next action are reported.
 
-**Expected behavior**:
-1. Missing rows are blocking UNKNOWN/NOT RUN evidence.
-2. Result is NEEDS_REVISION or PARTIAL, never COMPLETE.
-3. Exact owners and evidence paths are reported.
+**Assertions:** TUI-S024, TUI-S025, TUI-S041.
 
-**Assertions**:
-- [ ] Keyboard/gamepad/target inputs, resolutions/aspects, locales, text scales, colorblind modes, reduced motion, lifecycle, and main-thread checks are enumerated
-- [ ] File existence or reviewer prose cannot replace build-bound receipts
-- [ ] src/ui/AGENTS constraints are represented
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+### Case 14 — Context and matrix hard caps fail closed
 
----
+**Fixture:** Manifest requests 33 files, 524289 bytes, an oversize single file, an unbounded “all relevant GDDs” search, or target cardinality above a hard maximum.
 
-### Case 11: Review-mode cannot weaken mandatory quorum
+**Expected:** Reject before delegation. No silent truncation, sampling, discovery, or user-supplied higher cap is accepted. Report bounded identities/byte counts only.
 
-**Fixture**:
-- Mode is lean or solo.
+**Assertions:** TUI-S026-S029.
 
-**Expected behavior**:
-1. Lean skips optional director consultations but keeps four mandatory review streams.
-2. Solo records that independent quorum is unavailable and cannot return production COMPLETE.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Assertions**:
-- [ ] Art/accessibility/engine/UX checks are not silently skipped
-- [ ] Optional consultation output never counts as gate evidence
-- [ ] Mode is resolved once and checkpointed
+### Case 15 — Timeout, retry, cancellation, and late output
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Fixture:** One mandatory reviewer exceeds its deadline, ignores cancellation, and returns after a same-hash narrowed retry has started.
 
----
+**Expected:** First token is revoked; its output is quarantined and never parsed or counted; at most one eligible retry occurs; phase cap still applies. Missing eligible quorum returns `PARTIAL`.
 
-### Case 12: Side-effect contract matches implementation
+**Assertions:** TUI-S030-S033, TUI-S038.
 
-**Fixture**:
-- Design and implementation writes are requested.
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-**Expected behavior**:
-1. The spec declares controlled writes rather than read-only behavior.
-2. Each phase's complete mutation allowlist is previewed and authorized at its proper boundary.
-3. Non-owned paths remain byte-identical.
+### Case 16 — Writer timeout with uncertain mutation state is not retried
 
-**Assertions**:
-- [ ] No statement claims the orchestrator pipeline is read-only
-- [ ] Review tasks are read-only while named writer tasks perform writes
-- [ ] Write/read-back and outside-path mutation checks are reported
+**Fixture:** UI writer times out after possibly changing one declared path; terminal mutation state cannot be proven.
 
-**Case Verdict**: PASS / FAIL / PARTIAL
+**Expected:** Revoke token, reconcile paths, checkpoint `UNKNOWN`, and stop `PARTIAL: MUTATION_STATE_UNKNOWN`. No automatic retry and no success inference.
 
----
+**Assertions:** TUI-S031-S035, TUI-S042.
 
-## Protocol Compliance
+**Case Verdict:** PASS / FAIL / PARTIAL
 
-- [ ] Explicit bounded requests authorize only operations already enumerated at that boundary
-- [ ] Newly discovered implementation scope requires the separate precise manifest approval
-- [ ] Stable finding IDs and current hashes govern every revision/review
-- [ ] Unique writer ownership remains unchanged through fixes
-- [ ] Timeouts/errors/missing quorum are PARTIAL/BLOCKED, never skipped
-- [ ] Checkpoints are immutable, hash-bound, and resumable
-- [ ] Accepted risk cannot create approval or production COMPLETE
-- [ ] Global UX source, ADRs, game-state owners, and unrelated paths are non-writes
-- [ ] Final COMPLETE is bound to the post-fix build/source-set and conclusive evidence
+### Case 17 — Resume invalidates stale descendants
 
----
+**Fixture:** Resume from a valid checkpoint after the visual spec hash changes; all UX inputs remain unchanged.
 
-## Coverage Notes
+**Expected:** Verify the full chain, preserve counters/findings, retain stale history, invalidate implementation/build/evidence/reviews, and restart no later than support-candidate validation. Prior authorization cannot bless a changed base.
 
-This is a behavioral specification, not an executed test result. Runtime fixtures should cover manifest/path/symlink validation, context budgets, nested AGENTS precedence, create/revise base hashes, ux-review record persistence envelope, two-round UX and implementation loops, pattern proposals, missing engine/ADR/library, all authorization boundaries, parallel scheduling/timeouts/retry, checkpoint interruption/resume, outside-path mutation detection, final evidence matrices, and proof that reviewers and non-owned artifacts remain byte-identical.
+**Assertions:** TUI-S034-S036.
+
+**Case Verdict:** PASS / FAIL / PARTIAL
+
+### Case 18 — Cross-screen technical choice requires current owner decision
+
+**Fixture:** Engine plan introduces a navigation/data-binding framework used by multiple screens, but no current Accepted ADR exists.
+
+**Expected:** Team-ui reports the proposal and named architecture owner, does not write an ADR, blocks production implementation, and emits that one owner decision as next action.
+
+**Assertions:** TUI-S013, TUI-S018, TUI-S041, TUI-S045.
+
+**Case Verdict:** PASS / FAIL / PARTIAL
+
+### Case 19 — Post-fix reviews bind only the final hash
+
+**Fixture:** Build B1 has a blocking accessibility finding. Sole UI writer applies authorized fix round 1 and evidence runner produces B2.
+
+**Expected:** Every B1 row/review becomes stale; B2 runs the prior open check plus full regression matrix; only four complete B2 streams and zero blockers can verify implementation.
+
+**Assertions:** TUI-S037-S041.
+
+**Case Verdict:** PASS / FAIL / PARTIAL
+
+### Case 20 — Controlled-write contract and mutation breach
+
+**Fixture:** Authorized UX/support/source/recorder writes occur, and an unrelated path changes during one writer attempt.
+
+**Expected:** Skill/spec identify controlled writes and role allowlists. The unrelated mutation causes `BLOCKED: MUTATION_BREACH`; it is reported and not silently reverted. No later role legalizes it.
+
+**Assertions:** TUI-S011-S015, TUI-S042, TUI-S043.
+
+**Case Verdict:** PASS / FAIL / PARTIAL
+
+### Case 21 — Localization manifest, catalog, and conditional packages are current
+
+**Fixture:** The positive request binds a current `cgs.localization-manifest/v2`,
+its exact `cgs.localization-catalog/v2` source-table bytes, recomputable source-
+table/keyset/catalog identity, target-locale coverage, and all implementation-
+required `cgs.localization-package/v1` locale/page rows. Negative variants change
+one catalog byte, parser version, keyset digest, locale entry, package payload,
+hash a placeholder/completed `package_id` instead of omitting both derived fields,
+change the re-derived ID or package catalog binding, or omit/duplicate a required
+package.
+
+**Expected:** The positive tuple is read-only, appears in the UX task and
+implementation manifest, and is revalidated before support, implementation, and
+COMPLETE. The package digest omits exactly `package_payload_sha256` and derived
+`package_id`, then re-derives the ID from the digest. Every negative variant stops
+`BLOCKED: LOCALIZATION_INPUT_NOT_CURRENT` before the first checkpoint or task;
+team-ui writes no localization artifact and never substitutes a nearby/latest
+manifest, catalog, or package.
+
+**Assertions:** TUI-S020D-S020F, TUI-S024, TUI-S028, TUI-S041.
+
+**Case Verdict:** PASS / FAIL / PARTIAL
+
+## P1 closure matrix
+
+The audit’s authoritative P1 set contains exactly 11 items:
+
+| Audit ID | Closure contract | Primary assertions/cases |
+|---|---|---|
+| `TUI-007` | No-argument and malformed invocation stop before project access or side effects. | S002-S004; Case 2 |
+| `TUI-008` | One typed direct-task interface is mandatory; no subskill/ad-hoc fallback exists. | S005; Case 3 |
+| `TUI-009` | Default lean/full/solo consultation semantics are explicit; mandatory quorum never varies. | S006-S007, S037; Case 4 |
+| `TUI-010` | Unconfigured engine permits spec/nonproduction work only and blocks production implementation. | S017-S018; Case 9 |
+| `TUI-011` | Visual spec, asset manifest, and engine plan have canonical persisted paths, hashes, and unique owners. | S016, S019; Case 10 |
+| `TUI-012` | Reviewer identities are distinct from relevant authors/writer/runner and are read-only. | S011, S020-S021, S037; Case 11 |
+| `TUI-013` | A distinct runner produces real build-bound receipts; reviewer prose and missing/NOT_RUN rows are ineligible. | S021-S024; Cases 12-13 |
+| `TUI-014` | Scalable-text/reflow, localization identities, and game/main-thread constraints are mandatory current-build evidence. | S020D-S020F, S024-S025, S041; Cases 13 and 21 |
+| `TUI-015` | Exact context/purpose/hashes and hard file/byte/cardinality/coverage bounds replace open-ended discovery. | S026-S029; Case 14 |
+| `TUI-016` | Hard deadlines, concurrency, attempt limits, revocation/quarantine, immutable checkpoints, and hash-invalidating resume are deterministic. | S030-S036, S038; Cases 15-17 |
+| `TUI-017` | Cross-screen engine/interaction/visual architecture is owned by external UX-library, art-bible, or architecture authorities and requires current accepted evidence. | S013, S018, S041, S045; Case 18 |
+
+## P0 preservation checks
+
+- `TUI-001`: accepted risk never upgrades `NEEDS_REVISION` or reaches production/complete (Case 5).
+- `TUI-002`: stable UXF findings and two-revision convergence cap (Case 6).
+- `TUI-003`: UI programmer cannot write the global interaction-pattern source (Case 7).
+- `TUI-004`: every post-fix review is stale and full revalidation binds the new final hash (Case 19).
+- `TUI-005`: later exact support/implementation boundaries require later authorization (Case 8).
+- `TUI-006`: skill and spec agree the workflow has controlled writes, with role-specific allowlists (Case 20).
+
+## Protocol compliance
+
+- [ ] Exact request, context, instruction, target, owner, and artifact hashes govern every transition.
+- [ ] User authorization applies only to the complete enumerated boundary currently presented.
+- [ ] No role can broaden scope, share ownership, self-review, spawn children, or substitute narrative for evidence.
+- [ ] Timeout, cancellation, retry, mutation reconciliation, persistence, and resume are fail-closed.
+- [ ] Mandatory evidence and accessibility/engine/nested constraints are non-waivable.
+- [ ] Final `COMPLETE` is bound to one current post-fix implementation manifest, build, source set, evidence matrix, and four-stream review set.
+- [ ] Result stops with exactly one legal next action and never chains another workflow.
+
+## Coverage notes
+
+Runtime fixtures should exercise byte-exact YAML validation, canonical path and symlink rejection, CREATE/REVISE base identities, every hard bound, instruction precedence, typed-packet validation, role identity collisions, separate authorization manifests, immutable envelope/read-back failure, reviewer and writer deadlines, cancellation without acknowledgement, late results, writer/runner mutation uncertainty, retry-specific evidence paths, checkpoint-chain corruption, each resume invalidation row, engine-unconfigured and missing-ADR branches, exact localization manifest/catalog/package currentness and fail-closed variants, all nested UI evidence rows, two-round convergence, and proof that every non-owned path remains byte-identical.

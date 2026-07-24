@@ -1,257 +1,390 @@
 ---
 name: architecture-review
-description: "Runs a hash-bound, read-only architecture and ADR traceability gate over explicit owner-approved requirements, exact evidence links, engine constraints, and current test-run evidence; returns PASS, BLOCKED, or PARTIAL without modifying project truth sources."
+description: "Bounded, hash-bound, read-only architecture traceability gate over explicit approved requirements, ADR decisions, engine constraints, and current execution evidence; returns PASS, BLOCKED, or PARTIAL."
 ---
 
 ## Invocation and public contract
 
-Invoke this workflow as $architecture-review.
+Invoke this workflow as `$architecture-review`.
 
-Arguments:
+Accepted grammar:
 
-- no argument or full — traceability, conflicts, dependency order, engine checks, and current implementation/test evidence when present
-- coverage — explicit requirement-to-ADR coverage only
-- consistency — cross-ADR conflicts and dependency validity only
-- engine — engine-version and API compatibility only
-- single-gdd path/to/gdd.md — coverage for one canonical project-relative GDD path
-- rtm — full explicit Requirement → ADR → Story → Test Run chain
+```text
+$architecture-review [full | coverage | consistency | engine | rtm]
+$architecture-review single-gdd [path:<canonical-project-relative-gdd> | id:<stable-system-id>]
+```
 
-Unknown modes or ambiguous targets are errors and produce no gate verdict.
-single-gdd accepts one existing canonical project-relative path, not a title or
-fuzzy name. This workflow does not grade architecture.md against an eight-section
-document template; that is a separate document-review concern.
+No argument is `full`. A mode appears exactly once. `single-gdd` requires
+exactly one `path:` or `id:` selector; other modes forbid selectors. Unknown,
+duplicate, missing, fuzzy, title/name, or extra arguments return
+`ERROR — INVALID INVOCATION`, emit no gate verdict, write nothing, and stop.
 
-This is a formal, hash-bound gate. Its only verdicts are exactly PASS, BLOCKED,
-and PARTIAL. It is read-only by default. It may optionally create one immutable
-review report at an exact user-authorized path, but it never changes requirements,
-GDDs, ADRs, registries, indexes, stories, tests, test results, signoff, logs, or
-session state.
+This skill is a formal, hash-bound gate. Its run verdict is exactly `PASS`,
+`BLOCKED`, or `PARTIAL`. It does not grade `architecture.md` against an
+eight-section template. It reviews explicit architecture requirements,
+decisions, dependencies, compatibility, and traceability evidence.
 
-Before creating a report, show the complete report, exact new path, and complete
-changeset, then obtain one explicit approval. Reject a report path that already
-exists. Never overwrite or update a prior report. Approval to save a report does
-not authorize any other write.
+The workflow is read-only by default. It may optionally create one new
+immutable report at one exact user-authorized path after presenting the complete
+report and changeset. It never modifies requirements, GDDs, ADRs,
+`architecture.md`, registries, indexes, stories, tests, test results, logs,
+systems status, sign-off, accepted-risk records, or session state. It never
+uses or proposes `Needs Revision` as a systems-index lifecycle value.
 
-## Source ownership and prohibited mutations
+Before analysis, read
+[`references/review-rules-v1.md`](references/review-rules-v1.md) in full. Its
+ruleset ID, authority model, mode matrix, limits, reviewer plan, evidence states,
+finding schema, blocker matrix, and verdict precedence are normative.
 
-Treat sources by their actual owners:
+## Frozen evidence contract
 
-| Source | Authority | Reviewer action |
-|--------|-----------|-----------------|
-| GDD requirement text and approval | Product/design owner | Read and verify only |
-| Technical requirement lifecycle and stable ID | Technical/product owner recorder | Read and verify only |
-| ADR decision and lifecycle | ADR owner | Read and verify only |
-| Story implementation link | Production owner | Read and verify only |
-| Test result | Test runner/QA evidence store | Read and verify only |
-| Derived registries and indexes | Their dedicated recorder | Detect drift only |
+- **Explicit baseline only:** admit only stable requirement IDs backed by exact
+  source text, current source hash/revision, lifecycle state, owner identity,
+  approval status, and approval timestamp.
+- **Exact trace links only:** prose similarity, implicit relationships, system
+  names, filenames, or inferred intent are `UNVERIFIED_LINK`.
+- **Execution truth only:** test-source discovery is not execution. Only a
+  current authoritative `EXECUTED_PASS` record counts as passing evidence.
+- **Bounded coverage:** every input, typed index record, comparison group,
+  dependency edge, shard, check, and reviewer is planned and accounted. A limit
+  overflow or unchecked required scope is `PARTIAL`, never hidden.
+- **Single source ownership:** product rules, requirement lifecycle, decisions,
+  derived views, implementation links, test runs, and engine references keep
+  their separate owners. A derived artifact never overrules its source.
+- **Machine identity:** every report binds a complete path/hash manifest,
+  ruleset hash, skill-bundle hash, unique run ID, target manifest hash, stale
+  key, coverage, stable findings, and reviewer results.
+- **Risk separation:** `ACCEPTED_RISK` is a separate owner-signed record. It
+  never changes an architecture-review verdict or finding disposition.
 
-The reviewer must not:
+## Strict mode phase matrix
 
-- create, allocate, rename, revise, deprecate, or approve a TR ID
-- infer an approved requirement from prose
-- add or repair an ADR, story, test, registry, traceability index, or systems-index link
-- change ADR lifecycle, system status, signoff, consistency logs, or session state
-- treat user permission to continue development as a changed gate verdict
-- invoke another workflow to repair findings in the same review task
+| Phase/input | `full` | `coverage` | `consistency` | `engine` | `single-gdd` | `rtm` |
+|---|---|---|---|---|---|---|
+| Approved requirement admission | REQUIRED | REQUIRED | FORBIDDEN | FORBIDDEN | REQUIRED for target | REQUIRED |
+| Requirement → ADR coverage | REQUIRED | REQUIRED | FORBIDDEN | FORBIDDEN | REQUIRED for target | REQUIRED |
+| Cross-ADR conflict/dependency checks | REQUIRED | FORBIDDEN | REQUIRED | FORBIDDEN | FORBIDDEN | FORBIDDEN |
+| Pinned-engine compatibility | REQUIRED | FORBIDDEN | FORBIDDEN | REQUIRED | FORBIDDEN | FORBIDDEN |
+| Story/test/test-run chain | REQUIRED when contract requires it | FORBIDDEN | FORBIDDEN | FORBIDDEN | FORBIDDEN | REQUIRED when contract requires it |
+| Independent reviewers | TD + LP | NOT_APPLICABLE | TD | engine specialist | NOT_APPLICABLE | LP + QA |
+| Optional immutable report | ALLOWED | ALLOWED | ALLOWED | ALLOWED | ALLOWED | ALLOWED |
 
-## Phase 0: Validate mode, write boundary, and mutation guard
+`FORBIDDEN` means do not discover, read, delegate, compare, or emit
+phase-specific findings. Record the phase as `NOT_APPLICABLE`; it is not a
+coverage failure. A `single-gdd` run cannot expand to neighboring GDDs through
+names or semantic similarity. A mode never silently promotes itself to `full`.
 
-1. Parse the mode and exact target. On an invalid mode, missing target, target
-   outside the project, or ambiguous target, return ERROR and no verdict.
-2. Establish the allowed write set before reading review inputs:
-   - default: empty
-   - saved-report request: the one exact, new, user-authorized report path
-3. Snapshot every project file outside .git as project-relative path, size, and
-   SHA-256. If a report is authorized, exclude only that exact path from the
-   before/after comparison.
-4. Immediately before the final response, repeat the snapshot. Any added,
-   deleted, or changed path outside the allowed write set is
-   MUTATION_GUARD_FAILED. Name every changed path, return BLOCKED, stop, and do
-   not attempt an automatic revert.
+---
 
-The mutation guard is mandatory in every mode, including conversational output
-with no saved report.
+## Phase 0: Validate target, write boundary, and mutation guard
 
-## Phase 1: Build the complete target manifest
+1. Parse the mode and selector using the strict grammar.
+2. For `single-gdd path:`, require one normalized project-relative Markdown
+   path resolving to a regular direct child of `design/gdd/`; reject absolute
+   paths, traversal, external symlinks, directories, and non-GDD profiles.
+3. For `single-gdd id:`, resolve the stable ID through the systems index. It
+   must map to exactly one canonical GDD path. Zero, duplicate, collision, or
+   path disagreement is `ERROR — AMBIGUOUS OR UNKNOWN GDD ID`, no verdict.
+4. Establish the allowed write set before reading review inputs:
+   - default: empty;
+   - saved-report request: one exact new path after separate approval.
+5. Build the mutation baseline as a streaming path/size/SHA-256 tree outside
+   `.git` in ruleset-sized path batches. The snapshot is a guard, not review
+   context; never paste the repository corpus into a prompt.
 
-Build a canonical manifest before evaluating evidence. Include every input
-actually used, with:
+If the mutation baseline cannot cover the repository deterministically, record
+`MUTATION_GUARD_INCOMPLETE` and the affected paths/batches. The run may continue
+to preserve evidence but cannot `PASS`.
 
-- canonical project-relative path
-- source type: GDD, requirement registry, ADR, architecture, engine reference,
-  project standard, story, test source, or test-run record
-- complete-file SHA-256
-- source revision: repository commit when available, otherwise WORKTREE plus the
-  manifest hash
+Immediately before the final response, repeat and compare the same streaming
+snapshot. An actual unauthorized added, removed, or changed path is
+`MUTATION_GUARD_FAILED`, a confirmed blocker. Name every path and do not revert
+or normalize it. Failure to complete the final comparison without proof of a
+mutation is incomplete evidence and produces `PARTIAL` when no blocker exists.
 
-Mode-specific inputs:
+---
 
-- coverage: in-scope GDDs, explicit requirement records, and ADRs
-- consistency: ADRs and their explicit dependency/interface records
-- engine: ADRs, the pinned VERSION.md, applicable breaking-changes,
-  deprecated-apis, and module references
-- single-gdd: the exact GDD, its explicit requirement records, and ADRs that
-  explicitly name those IDs
-- rtm: coverage inputs plus stories, test sources, and test-run records
-- full: all of the above that exist in the selected scope
+## Phase 1: Build a bounded target manifest and typed indexes
 
-List missing and not-applicable input classes separately. Never silently omit a
-file class. Hash the canonical ordered manifest itself as target_manifest_hash.
-The report must contain the full manifest, not only a count.
+### 1a. Inventory only mode-permitted input classes
 
-If a critical input class is missing or any intended input could not be read,
-continue only far enough to report what was checked and return PARTIAL unless a
-confirmed blocker already requires BLOCKED.
+For every class in the mode matrix, create one ledger row:
 
-## Phase 2: Admit only explicit owner-approved requirements
+```yaml
+class: <GDD | systems-index | requirement-registry | ADR | architecture-derived | engine-reference | project-standard | story | test-source | test-run>
+applicability: REQUIRED | OPTIONAL | NOT_APPLICABLE
+presence: PRESENT | MISSING | NOT_APPLICABLE
+currentness: CURRENT | STALE | UNREADABLE | UNKNOWN | NOT_APPLICABLE
+paths: []
+reason: <explicit contract evidence>
+```
 
-A requirement is eligible for gate coverage only when all of these are present:
+Absence never implies `NOT_APPLICABLE`. That state requires an explicit current
+scope/requirement contract. Missing required input or unreadable intended input
+prevents `PASS`. Record optional missing classes without expanding scope.
 
-1. A stable requirement ID appears verbatim in the source GDD.
-2. Its lifecycle record identifies that exact ID and immutable source text.
-3. The record identifies the source GDD path and a source revision or SHA-256
-   that matches the manifest.
-4. The record contains explicit owner approval: owner identity, approval status,
-   and approval timestamp.
-5. The lifecycle state is active for the reviewed revision.
+Mode inventories are exact:
 
-Do exact ID matching. Do not use semantic, fuzzy, normalized-text, or
-same-intent matching to admit or reuse an ID.
+- `coverage`: in-scope GDDs, explicit requirement lifecycle records, and ADRs
+  that explicitly link admitted requirement IDs.
+- `consistency`: current ADRs plus their explicit decision-domain, interface,
+  resource-owner, and dependency records only.
+- `engine`: current ADRs with explicit engine claims, pinned `VERSION.md`, and
+  the directly applicable breaking-change, deprecated-API, and module-reference
+  files.
+- `single-gdd`: the exact selected GDD, the systems index when `id:` resolution
+  is used, lifecycle records for IDs appearing verbatim in the GDD, and ADRs
+  that explicitly name those IDs.
+- `rtm`: coverage inputs plus stories, test sources, and test-run records linked
+  by exact IDs where the approved requirement contract requires them.
+- `full`: all classes required by coverage, consistency, and engine, plus the
+  RTM classes explicitly required by admitted requirement contracts. A systems
+  index may supply stable identity only when used and must then be hashed. A
+  derived `architecture.md` or traceability index may be checked for drift when
+  present but never becomes decision authority.
 
-Prose that appears to imply an architectural requirement but fails any admission
-condition is not a requirement baseline and must not receive an ID. Emit a
-CANDIDATE_REQUIREMENT finding with the source path/hash, exact evidence location,
-candidate text, missing approval/provenance fields, and destination owner who may
-decide it in a separate task.
+If a mode cannot establish any meaningful primary target—no reviewable GDD for
+`coverage`/`single-gdd`/`rtm`, no current ADR for `consistency`/`engine`, or no
+GDD and no ADR for `full`—return `ERROR — NO REVIEWABLE ARCHITECTURE SCOPE`, no
+verdict, and stop. Other empty or missing classes follow the deterministic
+input-state rules rather than fabricating a complete matrix.
 
-An unapproved, inferred, ambiguous, or stale requirement is UNVERIFIED and forces
-PARTIAL unless a separate confirmed blocker already forces BLOCKED. Never edit
-the registry. If registry text differs from its bound GDD revision, report
-REGISTRY_DRIFT; do not reconcile it.
+### 1b. Build compact typed indexes before full reads
 
-## Phase 3: Verify explicit traceability
+Hash each intended input's exact bytes, but first load only bounded declared
+sections/fields needed to build indexes:
 
-For each admitted requirement, accept ADR coverage only when:
+- requirement ID, source path/hash, lifecycle, owner, approval, criticality,
+  layer, and required evidence kinds;
+- ADR ID, lifecycle, explicitly addressed requirement IDs, decision domain,
+  owned resource/interface keys, dependencies, engine claims, and supersession;
+- story/test/run IDs and their explicit requirement/ADR/story links; and
+- engine reference version/provenance and applicable API/module keys.
 
-- an in-scope ADR names the exact requirement ID in its explicit requirements section
-- the ADR source revision is in the manifest
-- the ADR lifecycle state is valid for use by the gate
-- the cited decision actually addresses the named requirement without conflict
+Do not infer Foundation/Core, criticality, a “required ADR,” ownership, or
+applicability from prose. Unknown required metadata remains unknown and prevents
+`PASS`.
 
-Use these coverage states:
+Replace ADR all-pairs comparison with candidate groups. Normalize current ADRs
+by explicit decision-domain, interface key, resource-owner key, dependency edge,
+and engine API/module key. Compare only records sharing a key, and record the
+group membership and checks. Run cycle detection over the explicit directed
+dependency graph, not pairwise prose similarity.
 
-- VERIFIED_COVERED — exact current link and valid decision evidence
-- VERIFIED_GAP — admitted requirement has no exact usable ADR link
-- UNVERIFIED_LINK — only prose similarity, a GDD-level mention, an implicit
-  relationship, a stale revision, or an ambiguous link exists
+### 1c. Plan bounded evidence shards
 
-Implicit coverage never becomes VERIFIED_COVERED. A GDD filename or system name
-alone is not a requirement link. Do not repair a missing link.
+Sort artifacts by source type, stable ID, then canonical path. Sort comparison
+groups by key type/key and dependency edges by source/target ADR ID. Fill
+evidence shards greedily under all ruleset artifact, record, edge, and byte
+limits. Full-read exact files only within the shard that checks them and verify
+their hashes before and after review.
 
-For full and rtm modes, extend the chain using exact IDs:
+Every intended artifact, admitted/indexed record, candidate comparison group,
+dependency edge, and applicable check must belong to at least one planned shard.
+No worker receives the complete project unless the complete permitted scope
+fits one bounded shard. A single oversized file, index overflow, unreadable
+artifact, or uncompleted shard is named as unchecked coverage and forces
+`PARTIAL` unless an independent confirmed blocker produces `BLOCKED`.
 
-- Story evidence is valid only when the story names the exact requirement ID and
-  governing ADR ID.
-- Test linkage is valid only when the test source names the exact requirement,
-  ADR, or story ID required by the project contract.
-- A test file's existence proves discovery only, never execution or success.
+### 1d. Bind target and producer identity
+
+The ordered target manifest contains, for every actual review input:
+
+- canonical project-relative path and complete-file SHA-256;
+- source type, stable source ID when present, input-class row, and role;
+- source revision: repository commit, otherwise `WORKTREE`; and
+- currentness and exact scope consumed.
+
+Record the requested mode, exact target selector/resolution, every inclusion and
+exclusion, input-class ledger, ruleset ID/hash, effective limits, planned shards,
+and skill-bundle SHA-256 over the ordered main file, continuation, and ruleset
+bytes.
+
+`target_manifest_hash` is SHA-256 of the canonical ordered target manifest.
+`stale_key` is SHA-256 of canonical JSON containing project ID, mode, exact
+target identity, ruleset ID/hash, and the sorted complete path/hash input set.
+`run_id` is
+`AR-<UTC timestamp with fractional seconds>-<manifest12>-<UUIDv4>`. Generate the
+UUID once when the manifest is frozen and preserve it unchanged. Timestamps and
+the nonce never substitute for content identity.
+
+---
+
+## Phase 2: Admit only explicit approved requirements
+
+Run only where the mode matrix says `REQUIRED`.
+
+A requirement is admitted only when all are present and current:
+
+1. stable requirement ID appears verbatim in the source GDD;
+2. lifecycle record preserves immutable exact source text;
+3. record names the source GDD path and exact source hash/revision in the
+   manifest;
+4. owner identity, explicit approval status, and approval timestamp exist;
+5. lifecycle is active for this revision; and
+6. criticality/layer and required downstream evidence are explicit when the
+   verdict depends on them.
+
+Use exact ID matching only. Prose that implies a possible architecture need but
+fails admission is excluded from the baseline and becomes a
+`CANDIDATE_REQUIREMENT` with exact evidence, missing fields, and destination
+owner. Never allocate, reuse, normalize, or edit a TR ID.
+
+Unapproved, inferred, ambiguous, source-drifted, or metadata-incomplete
+requirements are `UNVERIFIED` and prevent `PASS`. Registry/source disagreement
+is `REGISTRY_DRIFT`; the product GDD remains product-rule authority and the
+reviewer does not reconcile either artifact.
+
+---
+
+## Phase 3: Verify exact traceability permitted by the mode
+
+For each admitted requirement, ADR coverage is `VERIFIED_COVERED` only when a
+current usable ADR explicitly names the exact requirement ID, the ADR hash is in
+the manifest, its lifecycle is eligible, and its decision addresses the
+requirement without exceeding or contradicting the approved product boundary.
+
+Use exactly:
+
+- `VERIFIED_COVERED` — exact current link and valid decision evidence;
+- `VERIFIED_GAP` — admitted requirement has no exact usable ADR link; and
+- `UNVERIFIED_LINK` — only similarity, implicit prose, filename/system mention,
+  stale revision, ambiguous ID, or derived-index assertion exists.
+
+Implicit coverage never increments verified coverage. A derived architecture or
+traceability index may reveal `DERIVED_DRIFT`, but it never supplies a missing
+source link.
+
+Where RTM is mode-permitted, extend only by exact IDs:
+
+- story must name the exact requirement ID and governing ADR ID;
+- test source must name the exact requirement, ADR, or story IDs required by
+  the approved contract; and
+- the test-run record must bind that exact test source and current target.
+
+Do not discover stories/tests in modes where RTM is forbidden.
+
+---
 
 ## Phase 4: Verify actual test-run evidence
 
-Where test evidence is in scope, locate the latest authoritative run record for
-the exact test source and reviewed source revision. Valid executed evidence must
-contain:
+Run only in `full` or `rtm`, and only for requirements whose approved current
+contract explicitly requires test evidence. Classify each exact test target:
 
-- immutable test run ID
-- exact test path and its content hash
-- linked requirement/ADR/story IDs
-- result
-- execution timestamp
-- reviewed source revision or target manifest hash
+- `EXECUTED_PASS` — authoritative latest run for the exact test hash and current
+  source revision/manifest passed;
+- `EXECUTED_FAIL` — authoritative matching current run failed;
+- `STALE_RUN` — run targets another test hash, revision, manifest, or link set;
+- `DISCOVERED_NOT_EXECUTED` — test source exists without a current run;
+- `MISSING_EVIDENCE` — required test source or run is absent; or
+- `NOT_APPLICABLE` — explicit approved contract says this evidence is not
+  required.
 
-Classify it exactly as:
+An authoritative run contains immutable run ID, exact test path/hash, linked
+IDs, result, execution timestamp, and reviewed revision or manifest hash. Only
+`EXECUTED_PASS` is passing evidence. `EXECUTED_FAIL` is a confirmed blocker.
+Stale, discovered-only, missing, ambiguous, or unreadable run evidence prevents
+`PASS` and does not become execution proof through a file's existence.
+“Latest authoritative” means the run selected by the evidence store's explicit
+append-only sequence/index with a validated record hash. Never choose a test run
+by filename date, directory order, or filesystem mtime.
 
-- EXECUTED_PASS — latest authoritative run passed and matches the current revision/hash
-- EXECUTED_FAIL — latest authoritative matching run failed
-- STALE_RUN — a run exists but targets another revision/hash
-- DISCOVERED_NOT_EXECUTED — a test file exists without an authoritative run
-- MISSING_EVIDENCE — the claimed test or run record is absent
-- NOT_APPLICABLE — explicitly justified by the governing requirement contract
+---
 
-Only EXECUTED_PASS counts as passing evidence. File existence, a story's stated
-test path, an old run, an implicit link, or a generated test name never counts as
-covered or passing. EXECUTED_FAIL is a confirmed blocker. STALE_RUN,
-DISCOVERED_NOT_EXECUTED, and MISSING_EVIDENCE force PARTIAL when test evidence is
-required.
+## Phase 5: Run mode-specific decision checks and reviewers
 
-## Phase 5: Consistency, dependency, and engine checks
+### 5a. Deterministic checks
 
-Compare current, in-scope ADR decisions for:
+In `consistency` and `full`, evaluate only typed candidate groups and explicit
+dependency edges for current ADR conflicts, competing resource/interface
+ownership, incompatible budgets/contracts, missing or unusable dependencies,
+cycles, and supersession errors.
 
-- incompatible ownership of the same state or resource
-- contradictory integration contracts
-- frame/resource budgets that cannot simultaneously hold
-- dependency cycles, missing dependencies, or dependencies on unusable ADRs
-- contradictory architecture patterns for the same boundary
-- incompatible assumptions about the pinned engine version or API
+In `engine` and `full`, validate explicit ADR engine claims only against the
+pinned current VERSION and directly applicable reference hashes. Missing,
+unreadable, stale, or out-of-scope engine references are unknown evidence and
+prevent `PASS`; never substitute model memory or web recollection for the
+pinned project evidence.
 
-For engine checks, bind every conclusion to the manifest's pinned VERSION.md and
-cited engine-reference file/hash. A missing or unreadable required engine
-reference is unknown evidence and prevents PASS. Do not silently substitute
-training knowledge for the pinned reference.
+Apply the versioned blocker matrix. Imported severity, layer names guessed from
+prose, or an unavailable source never establish a blocker. A confirmed current
+conflict may produce `BLOCKED`; unknown identity, criticality, applicability, or
+evidence produces `PARTIAL` when no blocker is independently proven.
 
-In full mode, request independent read-only findings from technical-director and
-lead-programmer in parallel when those roles are available. Each reviewer returns
-findings only and receives the same target_manifest_hash. If either required
-reviewer declines, times out, errors, or reviews a different manifest, record the
-failure and return PARTIAL unless a confirmed blocker requires BLOCKED. No
-reviewer may modify project files.
+### 5b. Profile-driven capped reviewers
 
-## Phase 6: Deterministic verdict
+Use exactly the reviewer plan in the mode matrix and ruleset, capped at two
+reviewers for the run. Start required independent reviewers in parallel when
+there are two. A reviewer receives only the relevant bounded shard(s), run ID,
+target manifest hash, ruleset excerpt, check IDs, and exact input hashes. It is
+read-only and cannot emit the gate verdict.
 
-Apply this precedence:
+Every reviewer returns:
 
-1. BLOCKED when the mutation guard fails or any confirmed in-scope blocker
-   exists, including a verified critical coverage gap, blocking ADR conflict,
-   dependency cycle, incompatible pinned-engine decision, or current
-   EXECUTED_FAIL where test evidence is required.
-2. PARTIAL when no confirmed blocker exists but the review cannot certify the
-   target: incomplete manifest, missing critical input, candidate/unapproved
-   requirement, UNVERIFIED_LINK, unknown engine evidence, stale/missing test-run
-   evidence, or required reviewer failure.
-3. PASS only when the manifest is complete and current, every admitted in-scope
-   requirement has exact valid coverage, every required check completed, all
-   required test evidence is EXECUTED_PASS or justified NOT_APPLICABLE, no
-   blocker exists, and the mutation guard passes.
+```yaml
+schema: cgs.architecture-review-worker/v1
+run_id: <run ID>
+reviewer_role: <role>
+status: DONE | DECLINED | TIMEOUT | ERROR
+target_manifest_hash: <hash reviewed>
+input_manifest: []
+checks: []
+unchecked_scope: []
+findings: []
+```
 
-Never emit PASS with unknown, implicit, missing, or stale evidence. Do not emit
-legacy advisory or document-review labels as gate verdicts.
+`DECLINED`, `TIMEOUT`, `ERROR`, wrong manifest/hash, missing required check, or
+unchecked critical scope prevents `PASS` and produces `PARTIAL` when no
+confirmed blocker exists. Normalize findings under the ruleset and deduplicate
+identical fingerprints while retaining provenance. Incompatible facts,
+severity, or evidence for the same fingerprint are `EVIDENCE_CONFLICT`, not a
+majority vote, and produce `PARTIAL` unless a separate blocker is proven.
 
-## Phase 7: Staleness and gate use
+---
 
-A report is usable only for its exact target_manifest_hash. Before any consumer
-uses it as gate evidence, rebuild the target manifest using the report's recorded
-scope. If any path, content hash, source revision, required input, or report scope
-differs, mark the report STALE. A stale report has no current gate value and must
-not be relabeled.
+## Phase 6: Compute the deterministic verdict
 
-PASS means the exact current manifest satisfies this gate. BLOCKED means a
-confirmed blocker exists. PARTIAL means certification is incomplete. These are
-formal machine semantics, not advisory prose.
+Apply the ruleset precedence only after all applicable input classes, shards,
+checks, links, runs, and reviewers have states:
 
-An owner may separately sign an ACCEPTED_RISK record, but it:
+1. `BLOCKED` when mutation guard actually fails or any confirmed current
+   blocker satisfies every matrix precondition.
+2. Otherwise `PARTIAL` when certification is incomplete: any missing/stale/
+   unreadable required input, unverified/candidate requirement or link, unknown
+   classification, budget overflow, unchecked shard, stale/missing run,
+   required reviewer failure, or evidence conflict remains.
+3. `PASS` only when the manifest is complete/current, every applicable check is
+   done, exact traceability and required execution evidence pass, all reviewers
+   are `DONE` on the same manifest, no blocker/incomplete evidence exists, and
+   the final mutation guard passes.
 
-- is not produced or written by this reviewer
-- names the original report ID and finding IDs
-- is limited to an exact manifest hash and scope
-- identifies the accountable owner, signature timestamp, rationale, and expiry
-- becomes invalid on scope/hash change or expiry
-- never edits or converts the original BLOCKED/PARTIAL verdict to PASS
+Never infer a blocker merely to avoid `PARTIAL`. Never emit `PASS` with unknown,
+implicit, missing, stale, over-budget, or unreviewed scope. Do not emit legacy
+`APPROVED`, `NEEDS REVISION`, `MAJOR ISSUES`, `FAIL`, or advisory labels as the
+gate verdict.
 
-Permission to continue work is a risk disposition, not gate passage.
+---
+
+## Phase 7: Validate prior evidence and risk without rewriting it
+
+A prior report is selected only by an exact project-relative path or exact
+record ID. An ID may resolve through an explicit immutable review index only
+when exactly one indexed path, record hash, project ID, mode, target identity,
+and target manifest reproduce; otherwise return `ERROR — AMBIGUOUS REPORT
+IDENTITY`. Never choose by filename date, directory order, mtime, or “latest.”
+
+Rebuild the prior report's recorded scope and stale key. Any path, hash,
+revision, required class, target selector, mode, ruleset hash, or scope change
+makes it `STALE` and removes current gate value. Do not edit or relabel it.
+
+A supplied `ACCEPTED_RISK` record is reported separately only when its record
+hash, report/finding IDs, exact scope/manifest, owner/signature, timestamp, and
+expiry validate. It never changes the review verdict, closes a finding, or
+authorizes a write.
 
 ## Required continuation
 
-Read references/continued-workflow.md in full. It defines the immutable report
-schema, saved-report procedure, final mutation check, and handoff. Follow it
-without expanding the write surface.
+Read [`references/continued-workflow.md`](references/continued-workflow.md) in
+full. It defines the generic review-evidence envelope, architecture extension,
+canonical record identity, optional immutable save, final mutation guard, and
+single handoff. Follow it without expanding the write surface.

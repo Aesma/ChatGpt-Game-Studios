@@ -41,12 +41,64 @@ Canonical immutable run evidence lives under:
     files/<repository-relative-target-paths>
     forward.patch
     inverse.patch
+    diff-receipt.md
   verifications/<verification-id>.md
   applications/<application-id>.md
   recoveries/<recovery-id>.md
 ```
 
 Reject an existing output path. Never overwrite run evidence.
+
+## Contract Manifest
+
+```yaml
+schema: cgs-skill-contract/v1
+skill: skill-improve
+modes:
+  freeze: {target: one_skill, mutates_live_target: false}
+  stage: {target: one_skill, mutates_live_target: false}
+  verify: {target: one_candidate, mutates_live_target: false}
+  apply: {target: one_verified_candidate, mutates_live_target: true}
+  recover: {target: one_failed_application, mutates_live_target: true}
+  status: {target: one_run, mutates_live_target: false}
+reads:
+  - .agents/skills/**/SKILL.md
+  - .agents/skills/**/agents/openai.yaml
+  - .codex/agents/**/*.toml
+  - CGS Skill Testing Framework/catalog.yaml
+  - CGS Skill Testing Framework/quality-rubric.md
+  - CGS Skill Testing Framework/skills/**/*.md
+  - .agents/skills/skill-test/rules-v1.yaml
+  - .agents/skills/skill-test/validator-manifest-v1.yaml
+  - CGS Skill Testing Framework/results/skill-test/**/*.yaml
+writes:
+  oracle_lock:
+    path_pattern: ".codex/skill-improve-runs/{run-id}/oracle-lock.md"
+  candidate_evidence:
+    path_pattern: ".codex/skill-improve-runs/{run-id}/candidates/{candidate-id}/**"
+  verification:
+    path_pattern: ".codex/skill-improve-runs/{run-id}/verifications/{verification-id}.md"
+  application:
+    path_pattern: ".codex/skill-improve-runs/{run-id}/applications/{application-id}.md"
+  recovery:
+    path_pattern: ".codex/skill-improve-runs/{run-id}/recoveries/{recovery-id}.md"
+  live_target:
+    when: apply_or_recover_after_all_gates
+    path_pattern: ".agents/skills/{skill-name}/**"
+never_writes:
+  - registered behavioral spec
+  - testing catalog or rubric
+  - skill-test rules, runner, manifest, or receipts
+  - acceptance manifest or oracle lock after creation
+  - callers, callees, shared schemas, or unrelated skills
+authorization: one_complete_changeset_before_each_mode_first_write
+operation_states: [FROZEN, STAGED, VERIFIED, APPLIED, PARTIAL_APPLICATION, RECOVERED, BLOCKED, ERROR]
+test_states: [PASS, FAIL, PARTIAL, NOT_RUN, STALE, NOT_APPLICABLE]
+evidence_classifications: [IMPROVEMENT, NO_CHANGE_REQUIRED, NO_IMPROVEMENT, TEST_NOISE, ENVIRONMENT_CHANGED, REGRESSION, INCONCLUSIVE]
+```
+
+This manifest is normative. A candidate-local change cannot expand these writes
+or remove a non-write, oracle requirement, role separation, or CAS gate.
 
 ## Role and mutation boundaries
 
@@ -92,8 +144,12 @@ Always report:
 - `Apply Eligible`: `YES` or `NO`.
 - `Mutation Status`: `NONE`, `STAGED_ONLY`, `APPLIED`,
   `PARTIAL_APPLICATION`, or `RECOVERED`.
+- `Evidence Classification`: `IMPROVEMENT`, `NO_CHANGE_REQUIRED`,
+  `NO_IMPROVEMENT`, `TEST_NOISE`, `ENVIRONMENT_CHANGED`, `REGRESSION`, or
+  `INCONCLUSIVE`.
 - `Verdict`: `ORACLE_FROZEN`, `CANDIDATE_STAGED`,
-  `VERIFIED_IMPROVEMENT`, `NO_CHANGE_REQUIRED`, `REJECTED`, `APPLIED`,
+  `VERIFIED_IMPROVEMENT`, `NO_CHANGE_REQUIRED`, `NO_IMPROVEMENT`,
+  `TEST_NOISE`, `ENVIRONMENT_CHANGED`, `REGRESSION`, `REJECTED`, `APPLIED`,
   `BLOCKED`, or `ERROR`.
 - `Persistence`: `NOT_REQUESTED`, `VERIFIED`, or `FAILED`.
 
@@ -116,9 +172,20 @@ acceptance manifest. Build a read-only impact graph containing:
 - metadata/UI entry points; and
 - owners that must review any impacted external contract.
 
-Record exact paths, stable IDs, and hashes. An unresolved or over-budget impact
-surface makes the oracle PARTIAL and prevents application. Do not let the
-candidate author decide that an external contract is "not directly affected."
+Use the exact discovery/name/exclusion/budget rules from
+`.agents/skills/skill-test/rules-v1.yaml` and first validate that file against
+the pinned `validator-manifest-v1.yaml`. Record its raw hash and full
+selected/loaded/failed/omitted/excluded ledger. Direct edges require path/line
+evidence: exact `$skill-name` calls, declared artifact paths or schemas, shared
+status/verdict tokens, catalog/spec references, or metadata entry points. Search
+all selected skill packages, registered specs, catalog entries, and shared docs;
+do not infer an edge only from similar prose.
+
+Record exact paths, stable edge IDs, owners, source hashes, and the graph's
+canonical hash. A missing/hash-mismatched skill-test authority, unresolved edge,
+unreadable prefix, exclusion, or over-budget surface makes the oracle PARTIAL and
+prevents application. Do not let the candidate author decide that an external
+contract is "not directly affected."
 
 ## Phase 2: Freeze the oracle before candidate work
 
@@ -134,7 +201,27 @@ candidate author decide that an external contract is "not directly affected."
   fixtures/seeds, expected outputs, and result parsers;
 - allowed candidate mutation scope and forbidden oracle paths;
 - impact-graph file/byte budget and required owners; and
-- approval identity/timestamp plus manifest SHA-256.
+- approval identity/timestamp plus manifest SHA-256;
+- exact current skill-test rules/validator-manifest hashes and required
+  `cgs-skill-test-receipt/v2` paths; and
+- an evidence-class declaration for every scenario: written-contract,
+  runtime, side-effect, timeout, recovery, concurrency, or manual.
+
+For every required skill-test receipt, validate schema and content hash, re-hash
+every recorded dependency, and require freshness `CURRENT`. Map its independent
+validation exactly:
+
+- `COMPLIANT` or `WARNINGS` may satisfy only mapped written-contract rows;
+- `NON-COMPLIANT` is a conclusive baseline/candidate failure;
+- `PARTIAL_VALIDATION` makes Test Status `PARTIAL`;
+- `TEST_INFRA_INVALID`, receipt `INVALID`, `STALE`, or `UNVERIFIED`
+  makes the mapped suite `NOT_RUN`.
+
+Never convert a skill-test `COMPLIANT` receipt into runtime, authorization
+ordering, tool side-effect, timeout, recovery, or concurrency proof. Freeze the
+receipt path/hash, freshness trace, rules/manifest hashes, stable outcomes, and
+aggregation trace. `freeze` does not create or refresh a skill-test receipt;
+that is independent pre-existing evidence.
 
 Before any candidate exists, execute every required baseline suite against the
 live target. Each execution receipt must record command/argv, working directory,
@@ -149,13 +236,14 @@ Assign stable finding/requirement IDs and severities. Freeze exact hashes for:
 - every live target-local file;
 - acceptance manifest and user objective;
 - registered spec, catalog entry, category rubric, templates, runner/tool;
+- skill-test rules/manifest plus every consumed receipt and freshness trace;
 - required fixture/scenario set and baseline execution receipts;
 - impact graph and shared contract set; and
 - normalized baseline findings.
 
 Use this header:
 
-```markdown
+```markdown template
 Artifact Type: skill-improve-oracle-lock
 Schema Version: 1
 Run ID: <stable-id>
@@ -167,6 +255,8 @@ Spec Path/SHA-256: <path/hash>
 Catalog Path/Entry SHA-256: <path/hash>
 Rubric Path/SHA-256: <path/hash>
 Runner/Tool Identity/SHA-256: <values>
+Skill-Test Rules/Manifest SHA-256: <values>
+Skill-Test Receipt Set/Freshness SHA-256: <values>
 Scenario Set SHA-256: <sha256:...>
 Baseline Receipt Set SHA-256: <sha256:...>
 Impact Graph SHA-256: <sha256:...>
@@ -237,6 +327,9 @@ Never edit live target bytes. The candidate manifest must bind:
 - exact candidate file path/base hash/candidate hash/action table;
 - canonical forward patch with per-file preimage/postimage hashes;
 - canonical inverse patch that applies only candidate hash -> base hash;
+- immutable `diff-receipt.md` with every source path/raw base hash/action/raw
+  candidate hash, full canonical diff hash, patch-tool/version/hash, diff options,
+  newline/binary policy, and forward/inverse patch hashes;
 - targeted findings, expected results, impact graph, and non-writes;
 - candidate aggregate SHA-256 and creation timestamp; and
 - `Candidate Status: STAGED`, `Mutation Status: STAGED_ONLY`.
@@ -257,9 +350,17 @@ If any hash changed, return STALE/BLOCKED. Do not update the lock to match.
 
 Run every frozen required suite against the isolated candidate mirror. The runner
 must accept an exact candidate manifest/root and must not resolve the live skill
-by name. If the runner cannot test the candidate without installing or replacing
-the live target, report `Test Status: NOT_RUN` and `Apply Eligible: NO`. Do not
-temporarily swap live files.
+by name. Validate the runner's path/version/hash/allowed argv/output schema before
+execution.
+
+The current `skill-test` pinned manifest exposes live repository
+`static|audit|manifest` argv only; it does not authorize a candidate root.
+Therefore a live-target skill-test receipt cannot be reused as candidate proof,
+and static/spec/category candidate rows remain `NOT_RUN` until an independently
+owned, frozen candidate-aware runner contract exists. If any required runner
+cannot test the candidate without installing or replacing the live target,
+report `Test Status: NOT_RUN`, `Evidence Classification: INCONCLUSIVE`, and
+`Apply Eligible: NO`. Do not temporarily swap live files.
 
 Record the same full execution receipt fields as baseline, plus candidate
 aggregate hash. Preserve stable requirement/finding IDs and produce a matrix:
@@ -294,19 +395,26 @@ the new suite is green. A new P0 or P1 cannot be offset by any number of resolve
 P2/P3 warnings. Counts, pass percentages, or aggregate scores are supporting data
 only.
 
-Map results:
+Classify the evidence before choosing a verdict:
 
-- all improvement predicates true -> VERIFIED / PASS / Apply Eligible YES /
-  `VERIFIED_IMPROVEMENT`;
-- full conclusive evidence but no targeted behavioral improvement ->
-  REJECTED / FAIL / Apply Eligible NO / `NO_CHANGE_REQUIRED` or `REJECTED`;
-- any missing/partial/nonconclusive execution -> STAGED / PARTIAL or NOT_RUN /
-  Apply Eligible NO / `BLOCKED`;
-- any stale oracle/base/candidate -> STALE / STALE / Apply Eligible NO /
-  `BLOCKED`.
+| Classification | Exact condition | Result |
+|---|---|---|
+| `IMPROVEMENT` | all nine predicates pass and at least one targeted requirement moves failing -> passing | VERIFIED / PASS / Apply Eligible YES / `VERIFIED_IMPROVEMENT` |
+| `NO_CHANGE_REQUIRED` | baseline already satisfies the user objective, no targeted finding is open, and the candidate is empty or byte-identical | REJECTED / PASS / Apply Eligible NO / `NO_CHANGE_REQUIRED` |
+| `NO_IMPROVEMENT` | execution is conclusive but an open targeted finding is unchanged and no regression exists | REJECTED / FAIL / Apply Eligible NO / `NO_IMPROVEMENT` |
+| `TEST_NOISE` | frozen runner, environment, inputs, and seeds are identical but the bounded repeat policy produces inconsistent outcomes | STAGED / PARTIAL / Apply Eligible NO / `TEST_NOISE` |
+| `ENVIRONMENT_CHANGED` | environment/tool/dependency identity differs from the lock before comparison | STALE / STALE / Apply Eligible NO / `ENVIRONMENT_CHANGED` |
+| `REGRESSION` | any non-waived frozen requirement worsens, including a new P0/P1 or safety failure | REJECTED / FAIL / Apply Eligible NO / `REGRESSION` |
+| `INCONCLUSIVE` | any required suite is NOT_RUN/PARTIAL, receipt is non-current, impact is partial, or evidence fields are missing | STAGED / PARTIAL or NOT_RUN / Apply Eligible NO / `BLOCKED` |
+
+The acceptance manifest fixes repeat count, seed, order, timeout, and noise
+classifier before baseline execution. Never invent reruns after seeing a failure.
+A changed environment is not test noise; a deterministic worse outcome is a
+regression; and an unresolved baseline defect is not `NO_CHANGE_REQUIRED`.
 
 Persist one immutable verification receipt with all hashes, commands, results,
-severity comparison, dual-oracle matrix when applicable, impact review, verdict,
+severity comparison, dual-oracle matrix when applicable, impact review,
+evidence classification with decision trace, exact diff-receipt hash, verdict,
 and verifier task ID. This receipt does not change the live target.
 
 ## Phase 7: Apply with all-file compare-and-set
@@ -335,8 +443,9 @@ Prepare all postimage bytes in same-filesystem temporary paths and verify them
 before publication. Publish as one transaction where supported and re-read every
 target.
 
-The application receipt records base/candidate/applied hashes per file, forward/
-inverse patch hashes, oracle/candidate/verification hashes, integrator task ID,
+The application receipt records base/candidate/applied raw hashes per file, the
+complete diff-receipt and forward/inverse patch hashes, patch-tool/version/hash,
+oracle/candidate/verification hashes, integrator task ID, environment identity,
 timestamps, transaction steps, observed final hashes, and result
 `APPLIED`, `PARTIAL_APPLICATION`, or `FAILED`.
 
@@ -388,9 +497,23 @@ recorded patch, re-read all files, and persist the recovery receipt. Never recov
 by replacing a file with saved original full text. A conflict requires human
 three-way resolution in a separately authorized task.
 
+The recovery evidence is retained under the immutable run root: candidate
+postimages, `forward.patch`, `inverse.patch`, `diff-receipt.md`, failed
+application receipt, and every recovery receipt. The acceptance manifest sets an
+RFC3339 `retain_until`; absent a value, retention is indefinite. No mode deletes
+or prunes evidence. Cleanup is a separate explicitly authorized task permitted
+only after the retention deadline and a terminal APPLIED or RECOVERED receipt.
+
+Manual recovery handoff lists exact current/base/candidate hashes, the first
+diverged path, intended direction, patch/tool hashes, and these steps: preserve
+current bytes, inspect a three-way diff outside this workflow, obtain path-level
+authorization for a new patch, apply with all-file CAS, re-read every file, and
+write a new immutable recovery receipt. It never tells an operator to copy a
+backup over the workspace.
+
 A later regression discovered after a successful application is not an automatic
-rollback. Start a new improvement run from current bytes or use an explicitly
-authorized, hash-guarded patch workflow.
+rollback. Classify it as `REGRESSION` evidence and start a new improvement run
+from current bytes or use an explicitly authorized, hash-guarded patch workflow.
 
 ## Phase 9: Status and handoff
 
@@ -399,9 +522,28 @@ It is read-only and never chooses the newest candidate, verification, applicatio
 or recovery by mtime.
 
 Every mode reports exact paths/hashes, roles/task IDs, oracle and impact identity,
-execution receipts, stable requirements/findings, severity deltas, mutation
-boundary, all status axes, and next owner.
+execution receipts, skill-test receipt freshness/partial mapping, stable
+requirements/findings, severity deltas, evidence classification, retention and
+manual-recovery status, mutation boundary, all status axes, and next owner.
 
 Do not chain automatically into `skill-test`, another improvement run, catalog
 updates, caller/schema edits, commits, or publication. Missing execution evidence
 is NOT_RUN, not success. No director gate applies.
+
+## P1 audit traceability
+
+The IDs below are copied exactly from the authoritative 2026-07-20
+`skill-improve` P1 audit table. Each row independently binds one finding to its
+normative clause and dedicated-spec case/assertions. The table does not claim
+that any case was executed.
+
+| Audit ID | Normative clause | Dedicated spec evidence |
+|---|---|---|
+| `IMPROVE-P1-001` | Phase 6 severity-first, non-offsettable improvement predicates | Case 3 — `SI-C03-A01`, `SI-C03-A02`, `SI-C03-A03` |
+| `IMPROVE-P1-002` | Phase 2 frozen oracle completeness/currentness and Phase 3 separate oracle revision | Cases 1 and 9 — `SI-C01-A02`, `SI-C01-A04`, `SI-C09-A01`, `SI-C09-A02` |
+| `IMPROVE-P1-003` | Phase 2 evidence-capability limits and Phase 5 independent verification | Case 2 — `SI-C02-A01`, `SI-C02-A02`, `SI-C02-A03` |
+| `IMPROVE-P1-004` | Phase 1 bounded impact surface and Phase 2 frozen impact graph | Case 4 — `SI-C04-A01`, `SI-C04-A02`, `SI-C04-A03` |
+| `IMPROVE-P1-005` | Phases 5 and 7 hash/tool/diff/application receipts and read-back | Case 5 — `SI-C05-A01`, `SI-C05-A02`, `SI-C05-A03`, `SI-C05-A04` |
+| `IMPROVE-P1-006` | Status axes plus Phases 5–6 fail-closed partial/unavailable classification | Case 6 — `SI-C06-A01`, `SI-C06-A02`, `SI-C06-A03`, `SI-C06-A04` |
+| `IMPROVE-P1-007` | Phase 8 immutable recovery evidence, retention, and manual recovery | Case 7 — `SI-C07-A01`, `SI-C07-A02`, `SI-C07-A03`, `SI-C07-A04` |
+| `IMPROVE-P1-008` | Phase 6 deterministic evidence classification | Case 8 — `SI-C08-A01`, `SI-C08-A02`, `SI-C08-A03`, `SI-C08-A04` |

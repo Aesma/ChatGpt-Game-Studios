@@ -1,4 +1,4 @@
 interface:
   display_name: "Story Readiness"
-  short_description: "Fail-closed validation for implementation-ready stories"
-  default_prompt: "Use $story-readiness to validate traceability, manifest snapshot, and QA readiness before implementation."
+  short_description: "Read-only cgs.story/v2 readiness with hash-bound findings"
+  default_prompt: "Use $story-readiness with exactly one --story, --sprint, or bounded --all scope. Through exact cgs.story/v2 and cgs.sprint-tracker/v2 adapters, validate Source Manifest ID, Story Core SHA-256, the Currentness Matrix, Approved GDD, active TR, Accepted ADR, current control rules, AC-SNNN-CC and TC|MC|SC-<epic>-SNNN-ACCC IDs, dependencies, assets, tracker raw hash/revision plus plan_file/raw plan_sha256 and unique ACTIVE declarations, sprint/current context, and per-story QA evidence; return READY, NEEDS WORK, or BLOCKED plus an unpersisted record candidate, and never write or invoke the independent recorder."

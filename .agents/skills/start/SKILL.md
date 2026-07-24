@@ -1,323 +1,422 @@
 ---
 name: start
-description: "Collects onboarding intent and optional preferences, then recommends one catalog-derived next workflow without self-certifying project stage or bypassing missing concept evidence."
+description: "Collect onboarding intent, consume one canonical stage packet, derive one evidence-safe catalog route, and optionally persist versioned non-authoritative preferences without changing project stage or configuration."
 ---
 
 # Start
 
-`start` is a read-mostly orientation workflow. It asks what the user wants, consumes
-one optional externally persisted `project_stage_detection/v2` packet, records non-authoritative preferences
-when requested, recommends one catalog entry, and stops.
+`$start` is a bounded onboarding and orientation workflow. It collects user
+intent, consumes at most one canonical stage-detection packet, uses the versioned
+workflow catalog as the only route/policy source, optionally persists one
+non-authoritative preference document, recommends one action, and stops.
 
-It never scans artifact existence to declare work complete, updates authoritative
-stage, invokes another workflow, creates project structure, selects an engine, or
-runs a director gate.
+It never detects stage itself, treats artifact presence as completion, owns a
+gate verdict, changes authoritative stage/review mode, selects an engine, invokes
+another workflow, delegates, or auto-executes its recommendation.
 
 ## Invocation
 
-Use:
+```text
+$start [--analysis <packet-path> --expect-analysis <sha256:...>] [--persist]
+```
 
-~~~text
-$start [--analysis <project-stage-detection-v2-path> --expect-analysis <sha256:...>] [--persist]
-~~~
+Instead of the path pair, the user may explicitly supply exactly one complete
+`cgs.project-stage-detection/v2` packet in the current invocation or conversation.
+Reject:
 
-Reject unknown or duplicate flags, missing values, directories, unsafe paths, and
-positional project/engine/stage names. `--analysis` and `--expect-analysis` are an
-inseparable pair selecting exactly one externally recorded detector packet; do not
-choose the newest report. Without `--persist`, the workflow is read-only.
+- unknown or duplicate flags, missing values, positional engine/project/stage
+  names, malformed expected hashes, or repeated `--persist`;
+- only one member of the analysis path/hash pair;
+- directories, traversal, outside-root paths, or root-escaping symlinks;
+- both path and inline packet forms; or
+- zero/multiple packet candidates when the user claims to supply one.
 
-## Authority boundaries
+Never search for a newest/nearest packet. Without `--persist`, the workflow is
+fully read-only. `--persist` authorizes only the exact previewed preference
+transaction after all validations and compare-and-set checks succeed.
 
-Treat these as independent:
+## Authority and ownership boundaries
 
-1. **Observed state** — exact catalog, optional stage analysis, existing preference,
-   and existing configuration bytes may be read and hashed.
-2. **Onboarding preference** — `start` may CREATE or UPDATE only
-   `production/onboarding/preferences.yaml` after exact changeset authorization.
-3. **Authoritative project stage** — only the separate stage owner may update it
-   after current evidence gates. `start` always reports
-   `Authoritative Stage Mutation: NONE`.
-4. **Workflow execution** — a recommendation is not execution authorization.
-5. **Implementation/external actions** — no preference or onboarding decision
-   authorizes source changes, engine setup, deployment, publication, or messaging.
+Treat these independently:
 
-A user decision, file existence, model inference, analysis proposal, old stage label,
-review-mode preference, or accepted risk cannot be recorded as an authoritative gate
-PASS. Approval to write preferences never carries to another file or workflow.
+1. **Canonical stage packet** — diagnostic evidence produced by the separate
+   stage detector. It may constrain routing only while complete and current; it
+   never becomes gate or execution authority.
+2. **Catalog route status** — this run's read-only classification of the exact
+   packet-bound catalog prerequisites. It is not an authoritative status file.
+3. **Onboarding preferences** — user intent that `$start` may initialize/update
+   only at `production/onboarding/preferences.yaml`.
+4. **Authoritative stage** — owned by the catalog-declared stage owner and
+   transition contract. `$start` always reports `Stage Mutation: NONE`.
+5. **Review-mode configuration** — observed only. A different preference may be
+   recorded, but `$start` always reports `Review Mode Mutation: NONE`.
+6. **Workflow execution** — a recommendation or accepted risk is not execution
+   authorization. `$start` always reports `Auto Executed: false`.
 
-## Canonical inputs and output
+Plain `production/stage.txt` is `LEGACY_DECLARATION` only. A user claim, file/
+directory presence, detector confidence, preference, director/producer statement,
+accepted risk, historical PASS, or status label never establishes stage, gate, or
+required-step completion.
 
-Read only these fixed routing/configuration inputs when present:
+## Fixed inputs and only output
 
-~~~text
+Read only these fixed files when present, plus one explicit packet and the bounded
+catalog-declared route-evidence closure:
+
+```text
 .codex/docs/workflow-catalog.yaml
 production/onboarding/preferences.yaml
 production/stage.txt
 production/review-mode.txt
-~~~
+```
 
-The only optional variable input is the literal `--analysis` path. The only owned
-output is:
+The only owned file is:
 
-~~~text
+```text
 production/onboarding/preferences.yaml
-~~~
+```
 
-If `production/` or `production/onboarding/` is absent, directory creation is a
-mutation and must appear in the changeset preview. Never write `production/stage.txt`
-or `production/review-mode.txt`; existing values are observed configuration only.
+Creating `production/` or `production/onboarding/` is a mutation and must appear
+in the exact changeset preview. Never write stage, review mode, packet, route
+status, catalog, receipt, report, session state, source, design, engine, or test
+files.
 
-## Status vocabulary
+## Result vocabularies
 
-| Field | Allowed values |
+| Field | Values |
 |---|---|
 | `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED`, `STOPPED`, `ERROR` |
-| `Analysis State` | `CURRENT`, `PARTIAL`, `STALE`, `INVALID`, `UNAVAILABLE`, `NOT_SUPPLIED` |
-| `Stage Authority` | `OBSERVED_ONLY`, `PROPOSED_ONLY`, `UNKNOWN` |
-| `Route State` | `READY`, `AT_RISK`, `UNKNOWN`, `BLOCKED`, `NO_ROUTE` |
-| `Preference Operation` | `CREATE`, `UPDATE`, `UNCHANGED`, `DECLINED`, `CONFLICT`, `FAILED`, `NOT_REQUESTED` |
+| `Stage Packet State` | `CURRENT`, `MISSING`, `INVALID`, `STALE`, `PROJECT_MISMATCH`, `UNREADABLE` |
+| `Stage Context` | `DETECTED_CLEAR`, `DIAGNOSTIC_BLOCKED`, `UNKNOWN` |
+| `Route State` | `READY`, `AT_RISK`, `DIAGNOSTIC`, `UNKNOWN`, `BLOCKED`, `NO_ROUTE` |
+| `Prerequisite State` | `VERIFIED_PASS`, `CLAIMED`, `PRESENT_UNVERIFIED`, `STALE`, `BLOCKED`, `MISSING`, `CONTRADICTORY`, `UNKNOWN` |
+| `Preference Operation` | `INITIALIZE`, `UPDATE`, `UNCHANGED`, `NOT_REQUESTED`, `DECLINED`, `CONFLICT`, `FAILED`, `BLOCKED_INVALID_EXISTING` |
 | `Persistence` | `WRITTEN`, `NOT_REQUESTED`, `DECLINED`, `FAILED`, `NOT_ATTEMPTED` |
-| `Authoritative Stage Mutation` | always `NONE` |
 
-`COMPLETE` means the onboarding interaction produced a transparent recommendation or
-stop decision. It never means that a development phase, gate, concept, engine, or
-project setup is complete.
+`COMPLETE` means only that the onboarding interaction returned a transparent route
+or stop decision with an honest persistence state. It never means a concept,
+engine, phase, gate, required step, or project is complete.
 
-## Phase 0: Validate the catalog and minimal state
+---
 
-Resolve literal and real paths, reject symlink escapes and paths outside the project
-root, read raw bytes once, and compute full lowercase SHA-256.
+## Phase 0: Freeze root, catalog, and minimal observations
 
-### Workflow catalog
+Resolve exactly one workspace root. Reject ambiguous roots and unsafe paths.
+Set one UTC snapshot time. Read exact bytes once and compute lowercase SHA-256.
 
-Require `.codex/docs/workflow-catalog.yaml` to have a supported schema/version and
-unique stable workflow IDs. Each routable entry must define:
+### Bind the workflow catalog
 
-- command/display name and artifact types it accepts/produces;
-- required predecessor step IDs and evidence types;
-- optional/required classification and phase;
-- risk flags and whether it can be recommended when evidence is unknown;
-- deprecation/replacement metadata when applicable.
+The only route, completion-policy, and transition-policy source is
+`.codex/docs/workflow-catalog.yaml`. Require supported schema/version and unique
+stable IDs for phases, ordered steps, prerequisites, transitions, completion
+policies, verification actions, receipt schemas, artifact types, and risk policy.
+Every routable step must declare:
 
-The catalog is the only route source. Do not embed or reconstruct a multi-step
-roadmap in this skill. If the catalog is missing, invalid, duplicated, or lacks the
-needed typed route, set `Route State: BLOCKED` or `UNKNOWN`; do not guess a command.
+- stable step ID, phase, order, command/manual action, and accepted/produced
+  artifact types;
+- required/optional/repeatable semantics and ordered prerequisite IDs;
+- exact completion policy, accepted receipt schemas/native verdicts, owner,
+  currentness/freshness, target/source/artifact hash and supersession rules;
+- bounded evidence locations/indexes and read entry/per-entry/total-byte limits;
+- verification/receipt-producing action for unverified evidence; and
+- risk eligibility plus missing-prerequisite consequences when a later action may
+  be recommended at risk.
 
-### Existing preferences and observed configuration
+Every phase transition must declare exact stable transition ID/from/to, gate
+profile, required gate-record/receipt schema, PASS/coverage/eligibility threshold,
+stage-owner handoff, and advancement action. Do not copy or reconstruct these
+inside `$start`.
 
-If `production/onboarding/preferences.yaml` exists, read and validate its schema,
-raw-byte hash, preference ID, user decision provenance, and catalog/analysis hashes.
-A valid file makes persistence an `UPDATE`; absence makes it a `CREATE`. Invalid or
-ambiguous existing preferences block writes rather than being overwritten.
+If any policy needed for the first relevant route is missing, malformed,
+duplicated, unsupported, or hash-inconsistent, use `Route State: BLOCKED` or
+`UNKNOWN` and name the missing contract. Do not guess a command, roadmap,
+transition ID, completion rule, receipt, owner, scan limit, or review profile.
 
-Read existing stage/review-mode bytes only to show observed values and raw hashes.
-A stage label without its owner/evidence receipt remains `OBSERVED_ONLY`. Do not use
-it to skip required catalog steps. A current review-mode value is not immutable; the
-user may record a different onboarding preference, but `start` does not apply it to
-the authoritative configuration.
+### Observe configuration without authority
 
-## Phase 1: Consume one versioned detection packet or remain unknown
+Read `production/stage.txt` only as a legacy path/hash/value observation. It never
+selects stage or skips a step. Read `production/review-mode.txt` only as observed
+configuration and validate its value as full/lean/solo or INVALID. The user may
+choose a different preference later; this workflow never changes the file.
 
-When `--analysis` is supplied, first verify the exact packet bytes against
-`--expect-analysis`, then require the complete `project_stage_detection/v2` contract:
+Read existing onboarding preferences when present. Validate only under
+[references/onboarding-preferences-contract.md](references/onboarding-preferences-contract.md).
+An invalid/unsupported existing document produces
+`BLOCKED_INVALID_EXISTING`; never treat it as absent or overwrite it.
 
-- `result`, `detected_stage`, `declared_stage`, `confidence`, and `snapshot_at`;
-- target commit, dirty state, and source snapshot hash;
-- authority schema/version, record path/hash, owner, and transition source;
-- required/valid receipt counts;
-- the full ordered evidence list with stable ID, provenance, path, hash, and state;
-- contradictions, coverage gaps, advisory observations, recommendation, and the
-  `ADVISORY DETECTION ONLY — NOT A GATE OR TRANSITION` disclaimer.
+---
 
-Re-hash the packet and every declared path/receipt against the same snapshot. A
-filename, directory, nonempty document, GDD/architecture/source existence, unchecked
-status text, or newest artifact can never establish completion. `UNKNOWN`, `CONFLICT`,
-`ERROR`, any non-current target, or any INVALID/STALE/UNVERIFIED evidence makes the
-analysis unsafe for stage-based routing. Even `DETECTED` is advisory and never gate
-or transition authority.
+## Phase 1: Consume exactly one canonical stage packet or remain unknown
 
-When no packet is supplied, use `Analysis State: NOT_SUPPLIED` and
-`Stage Authority: UNKNOWN`. Ask the user's intent, but do not perform a duplicate
-stage scan or impersonate a stage analyzer.
+The producer contract is `cgs.project-stage-detection/v2`. It is conversation-only
+by default; therefore accept either one explicit inline packet or one explicitly
+recorded path copy with expected raw hash. Do not require the detector itself to
+persist a file.
 
-This workflow never invokes the detector automatically. If a current packet is required
-for a safe route, select the catalog's typed stage-detection entry as the single
-recommendation when available.
+### Validate source and complete schema
 
-## Phase 2: Ask the user's onboarding intent
+For a path packet, verify literal/real path inside root, regular file, exact raw
+SHA-256 equality with `--expect-analysis`, then parse. For inline input, preserve
+the exact supplied structured packet and recompute its `packet_id` using the
+producer canonicalization rule.
 
-The first visible question asks where the user is starting:
+Require every producer-owned field: schema/version/completion marker, packet ID,
+project root ID, catalog path/version/hash, complete snapshot identity/limits/
+manifest/ordered entries, result/resolution/stage/confidence, authority,
+receipts, evidence, contradictions, read errors, coverage gaps, blocking reasons,
+advisories, recommendation, and diagnostic disclaimer. Do not repair, default,
+normalize, or consume selected fields from an incomplete packet.
 
-- no idea yet;
+Require project root ID and packet-bound catalog hash to match this run. Re-read
+only the packet's ordered snapshot closure and reproduce every raw hash or
+explicit ABSENT/UNREADABLE source state within the packet/catalog limits. Recompute
+snapshot manifest and packet ID. Timestamp age alone proves nothing.
+
+Classify packet state:
+
+| State | Rule |
+|---|---|
+| `CURRENT` | complete packet/ID/root/catalog/snapshot and current source states agree |
+| `MISSING` | no packet supplied |
+| `INVALID` | wrong schema, missing field, malformed enum/ID, bad raw/path expectation |
+| `STALE` | current catalog/source state/hash/manifest differs |
+| `PROJECT_MISMATCH` | root identity differs |
+| `UNREADABLE` | packet/catalog or reproducible source state cannot be read |
+
+Only `CURRENT` permits packet fields to guide route selection. Even then,
+`DETECTED_CLEAR` requires `result: DETECTED`, `resolution_state: CLEAR`, a valid
+detected-stage enum, and no blocking contradiction/gap. `UNKNOWN`, `CONFLICT`, or
+`ERROR` remains `DIAGNOSTIC_BLOCKED`. The packet is diagnostic and never satisfies
+a workflow prerequisite or outgoing gate by itself.
+
+Without a packet, use `Stage Packet State: MISSING` and `Stage Context: UNKNOWN`.
+Do not scan artifacts or call/impersonate the detector. A fresh intent may still
+receive an initial intent-compatible catalog route without a stage claim. Existing
+work may receive only the catalog's typed detector/diagnostic action or UNKNOWN.
+
+This workflow never invokes `$project-stage-detect` or another analyzer. It
+consumes one producer packet and preserves its conclusions unchanged.
+
+---
+
+## Phase 2: Ask the onboarding intent and preference delta
+
+Ask one focused start-state question:
+
+- no idea;
 - vague idea;
 - clear but unformalized concept;
-- existing work;
-- describe another situation.
+- existing work; or
+- another described situation.
 
-For existing work, report only facts from a `CURRENT` analysis receipt. Otherwise say
-that project completeness is unknown; do not cite counts obtained from an ad hoc scan.
+For existing work, state project context only from a CURRENT packet. Otherwise
+say it is unknown; do not cite ad hoc file counts.
 
-Collect only routing preferences needed for the next step:
+Collect only:
 
-- short free-text intent or idea hint;
-- whether the user wants concept formalization before technical work;
-- desired review preference: `full`, `lean`, `solo`, or `unspecified`;
-- whether they want to record preferences;
-- any explicit request to continue despite a missing required concept.
+- bounded intent/idea hint;
+- concept-formalization preference;
+- review-mode preference `full|lean|solo|unspecified`;
+- whether preferences should be persisted; and
+- explicit missing-concept risk decision if a later risk-eligible route is
+  requested.
 
-Do not ask the user to choose an engine here. Platform/engine decisions belong to
-their typed catalog workflow and current evidence.
+Do not ask the user to select an engine, stage, gate verdict, or receipt state.
+Show observed review mode beside the requested preference and say explicitly that
+only the preference may change.
 
-## Phase 3: Determine one catalog-derived route
+---
 
-Use the current catalog hash plus the stage analysis:
+## Phase 3: Build one bounded catalog route-status view
 
-1. If analysis is CURRENT, locate its first unmet required step by stable workflow ID
-   and confirm its evidence dependencies against the catalog.
-2. If analysis is missing/partial/stale, recommend the typed stage-analysis entry
-   when safe and available; otherwise return `Route State: UNKNOWN`.
-3. For a fresh/no-idea intent, select the catalog entry whose declared purpose and
-   accepted input type match open concept ideation.
-4. For a vague/clear idea, select a concept-authoring or concept-specific review entry
-   only when its artifact-type contract accepts `game-concept`.
-5. For existing work, never jump to a later phase merely because files exist. Use the
-   first unmet required step from current analysis.
-6. Return one workflow ID/command, its catalog path/hash, input artifact type,
-   prerequisites/evidence, and why it is the first safe next step.
+This phase classifies route evidence; it does not detect stage or own project
+status. Use current catalog bytes and one of two routing bases:
 
-### Artifact-type review routing
+1. **Fresh intent without packet** — select only an initial catalog entry whose
+   accepted input type and declared purpose match `open-ideation`, `idea-hint`, or
+   `game-concept` authoring. Do not claim a phase or completed prerequisite.
+2. **Existing work with CURRENT DETECTED_CLEAR packet** — use the exact detected
+   phase and build only the ordered required-step plus outgoing-transition closure
+   declared by the packet-bound catalog.
 
-A game concept is not a system GDD. A review route is eligible only when the catalog
-entry explicitly declares `accepts_artifact_type: game-concept` and a concept-specific
-profile. A system-GDD-only rubric is ineligible. If no typed concept reviewer exists,
-record a catalog gap and recommend concept authoring/analysis or stop; never send the
-concept to a mismatched reviewer.
+For MISSING/non-current/diagnostic-blocked packet with existing work, do not build
+a later-phase closure. Select the catalog's typed packet-refresh/evidence-resolution
+action when uniquely declared; otherwise Route State is UNKNOWN/BLOCKED.
 
-### Missing-concept risk
+### Bounded evidence closure
 
-If a concept is a required predecessor but the user asks to jump to later technical
-work, explain the missing evidence and offer:
+Starting from the routing basis, read only catalog-declared evidence locations for
+the earliest required step that may be unsafe, including all same-level evidence
+that can conflict. Honor catalog entry/per-entry/total-byte limits. Stop before a
+limit and classify the affected prerequisite UNKNOWN with
+`READ_BUDGET_EXCEEDED`; never sample and advance.
 
-- formalize the concept;
-- continue with risk recorded;
-- stop.
+Record path, field, provenance, raw hash/source state, expected hash, receipt/run
+ID, owner, timestamp, and reason codes. Re-read before output. A changed item is
+STALE. Artifact globs may find bounded candidates only when catalog permits; a
+match is `PRESENT_UNVERIFIED`, not completion.
 
-Continuing requires an explicit user decision and creates one immutable preference
-record:
+Classify each prerequisite using this precedence:
 
-~~~text
-Risk ID: accepted-risk/missing-concept
-State: ACCEPTED_BY_USER
-Missing Requirement IDs: <stable IDs>
-Selected Workflow ID: <catalog ID>
-Consequences: <bounded concrete list>
-Decision Owner: user
-Decision ID: <stable ID>
-Accepted At: <ISO-8601>
-Expires/Review At: <milestone or timestamp>
-Remediation: <first missing concept step>
-Catalog SHA-256: <digest>
-Analysis SHA-256: <digest or NOT_SUPPLIED>
-~~~
+1. conflicting current authoritative receipts -> `CONTRADICTORY`;
+2. current catalog-defined negative receipt -> `BLOCKED`;
+3. one complete current accepted PASS bundle with no conflict -> `VERIFIED_PASS`;
+4. only mismatched/superseded/changed evidence -> `STALE`;
+5. only user/session/status assertion -> `CLAIMED`;
+6. merely present artifact/record -> `PRESENT_UNVERIFIED`;
+7. confirmed absent requirement/evidence -> `MISSING`; and
+8. unreadable/schema/budget/interpretation gap -> `UNKNOWN`.
 
-Set `Route State: AT_RISK`, not READY. Set every missing concept/gate item to
-`UNSATISFIED`; never mark it complete, passed, waived, or stage-approved. If the user
-does not explicitly accept, route to the missing concept step or stop.
+Only `VERIFIED_PASS` satisfies a required prerequisite. A valid bundle must meet
+the exact catalog completion policy and bind receipt schema/ID/run, step/policy
+ID, accepted verdict, authorized owner, subject/input/source/target hashes,
+catalog hash/version, time/freshness, and supersession lineage. Detector evidence,
+stage labels, preferences, unchecked status, filenames, and claims never qualify.
 
-Risk acceptance is a preference record only. It does not authorize the selected
-workflow, implementation, stage advancement, or any file except the exact preferences
-file.
+For repeatable steps, require exact requested run/scope/input IDs and hashes;
+never choose by filename or mtime.
 
-## Phase 4: Build schema-valid onboarding preferences
+### Gate transition dependency
 
-The exact YAML document uses:
+When all ordered required steps in the CURRENT detected phase are VERIFIED_PASS,
+evaluate the catalog's exact outgoing transition dependency. Never derive an ID
+from phase names. A gate record can satisfy a transition prerequisite only when
+the catalog accepts its exact schema and it is current for the same authority,
+source/scope/artifact hashes, transition ID, and profile, with:
 
-~~~text
-Artifact Type: onboarding-preferences
-Schema Version: 1
-Preference ID: <stable UUID/slug>
-Project Root ID: <normalized-root digest>
-Catalog Path: .codex/docs/workflow-catalog.yaml
-Catalog SHA-256: sha256:<64 lowercase hex>
-Analysis Path: <path or NOT_SUPPLIED>
-Analysis SHA-256: <digest or NOT_SUPPLIED>
-Analysis State: <enum>
-Observed Stage Path: <path or ABSENT>
-Observed Stage SHA-256: <digest or ABSENT>
-Observed Stage Value: <value or UNKNOWN>
-Stage Authority: OBSERVED_ONLY | PROPOSED_ONLY | UNKNOWN
-Proposed Stage: <analysis proposal or UNKNOWN>
-Observed Review Mode Path: <path or ABSENT>
-Observed Review Mode SHA-256: <digest or ABSENT>
-Observed Review Mode: <value or UNKNOWN>
-Review Mode Preference: full | lean | solo | unspecified
-Self-Reported Start State: <stable enum>
-Intent Summary: <bounded user text>
-Selected Workflow ID: <catalog ID or NONE>
-Selected Workflow Command: <catalog command or NONE>
-Route State: READY | AT_RISK | UNKNOWN | BLOCKED | NO_ROUTE
-Decision ID: <stable ID>
-Decision Owner: user
-Decision Timestamp: <ISO-8601>
-Risk Records: <ordered records or NONE>
-Authoritative Stage Mutation: NONE
-~~~
+```text
+schema: cgs.gate-record/v2
+coverage.status: COMPLETE
+decision.verdict: PASS
+decision.advancement_disposition: ELIGIBLE
+mutation_guard.status: PASSED
+stage_mutated: false
+```
 
-For UPDATE, preserve unrelated existing preference fields and prior risk/decision
-history. Append a new immutable decision event; do not rewrite history. Display a
-field-level diff, old/new raw hash, catalog/analysis hashes, all directory/file
-operations, and the fact that stage/review-mode files remain unchanged.
+`CONCERNS`, `FAIL`, `PARTIAL`, incomplete coverage, accepted risk, a director
+opinion, a conversational permission, or a stale/unbound gate record is not PASS.
+If the exact PASS record is current but advancement is a separate catalog step,
+recommend that stage-owner/advancement action; `$start` never advances. If no
+current PASS record exists, recommend the catalog's exact `$gate-check
+<transition-id>` action only when it is the earliest unmet required transition
+dependency. Never emit phase shorthand or skip a prior required step.
 
-If the user chose not to persist, return `Preference Operation: NOT_REQUESTED` and
-retain the recommendation in conversation only.
+### Select one first safe action
 
-## Phase 5: Authorize, compare-and-set, and persist
+Select exactly the first ordered required prerequisite that is not VERIFIED_PASS:
 
-For `--persist`, an explicit bounded request may authorize the exact preference
-changes. Otherwise preview the complete changeset and obtain one approval.
+- CLAIMED/PRESENT_UNVERIFIED -> catalog verification/receipt-producing action;
+- STALE -> catalog revalidation action;
+- BLOCKED -> blocker-resolution action;
+- CONTRADICTORY -> reconciliation action preserving all conflicts;
+- UNKNOWN -> diagnostic action;
+- MISSING -> declared creation/completion action.
 
-Immediately before writing:
+Recommend a later step only when every earlier required prerequisite and
+transition dependency is VERIFIED_PASS on the same snapshot. Do not guess sprint
+planning or another later workflow because related files exist.
 
-- re-hash catalog, analysis and every referenced receipt;
-- re-read observed stage/review-mode for transparent drift reporting;
-- for CREATE, confirm the target and directories have the previewed existence state;
-- for UPDATE, require the existing preference raw SHA-256 to equal its preimage;
-- revalidate route ID/command against the same catalog bytes.
+### Concept artifact routing
 
-Any relevant change returns `Preference Operation: CONFLICT`, `Workflow Status:
-BLOCKED`, and writes nothing. Do not merge or overwrite concurrent preference edits.
+A game concept is not a system GDD. A concept review route is eligible only when
+the catalog entry explicitly accepts `game-concept`, declares a concept-specific
+profile, and its prerequisite policy is satisfied. A system-GDD-only
+`design-review` route is always ineligible. If no typed concept route exists,
+report a catalog gap and select concept authoring/diagnostic action or Stop.
 
-Create missing directories only if previewed. Write the one preference file
-atomically, re-read exact bytes, validate schema/enums/references/history, and return
-its SHA-256. A directory or file write failure returns `FAILED`; it never implies
-preferences or stage were applied.
+### Missing-concept accepted risk
 
-Declined persistence returns `DECLINED` while still showing the route, analysis
-limitations, proposed preferences and unchanged authoritative files.
+When a concept prerequisite is not VERIFIED_PASS and the user requests a later
+technical action, a later route may be `AT_RISK` only when the current catalog
+explicitly declares that action risk-eligible and supplies consequence/remediation
+IDs. Explain the exact missing prerequisite states and offer formalize, explicitly
+accept bounded risk, or Stop.
 
-## Phase 6: Output one recommendation and stop
+Explicit acceptance creates `accepted-risk/missing-concept` under the preference
+schema, bound to decision owner/time, missing prerequisite IDs, selected catalog
+step, consequence codes, expiry/review, remediation step, catalog hash, and packet
+ID. Missing steps remain unsatisfied. Risk does not create VERIFIED_PASS, gate
+PASS, stage approval, workflow execution, or write authority outside preferences.
 
-Return a concise but complete result:
+---
 
-- user intent and decision ID;
-- catalog path/hash and selected workflow ID/command;
-- analysis path/hash/state and first unmet evidence;
-- observed/proposed stage with authority label;
-- route state and accepted-risk record if any;
-- preference operation/path/preimage/output hash/persistence;
-- unchanged stage/review-mode paths/hashes;
-- `Authoritative Stage Mutation: NONE`;
-- one next action or `Stop`.
+## Phase 4: Build or update schema-valid preferences
 
-Never auto-run the recommendation, print a copied multi-phase roadmap, guess a later
-sprint, or reduce the result to a single line that hides conflicts/declined writes.
+Read [references/onboarding-preferences-contract.md](references/onboarding-preferences-contract.md)
+in full. Apply `cgs.onboarding-preferences/v2` exactly.
 
-Verdict mapping:
+- Target absent -> `INITIALIZE`.
+- Valid schema-2 target -> `UPDATE`, preserving preference identity, created time,
+  prior decision/risk history byte-for-byte and appending one decision event.
+- Invalid/unsupported target -> `BLOCKED_INVALID_EXISTING`; no overwrite/migration.
+- No requested persistence -> `NOT_REQUESTED`; keep proposal in conversation.
 
-- invalid catalog/schema/path -> `ERROR` or `BLOCKED`;
-- partial/stale analysis that prevents safe routing -> `PARTIAL`;
-- declined recommendation or user stop -> `STOPPED`;
-- successful interaction with transparent READY/AT_RISK/UNKNOWN route and verified
-  persistence state -> `COMPLETE`.
+Record packet identity/state, catalog identity, observed legacy stage/review mode,
+requested preferences, selected route/status, decision history, risk records, and
+the fixed no-authority/no-auto-execution boundary. Do not record `Proposed Stage`
+as if `$start` owned a stage decision; store only diagnostic packet stage/state.
 
-`COMPLETE` is onboarding completion only.
+For UPDATE, show the field-level old/new diff. Always show observed review-mode
+value/hash next to requested review-mode preference and show that the actual config
+will remain unchanged.
+
+---
+
+## Phase 5: Preview, authorize, CAS, and persist
+
+For persistence, show the complete one-file changeset and proposed bytes/hash,
+including every missing directory. An explicit bounded `--persist` request may
+authorize that exact preview; otherwise obtain one approval. Never re-prompt per
+directory or field.
+
+Immediately before writing, follow the preference contract's compare-and-set:
+
+- revalidate catalog, complete packet/current snapshot, route evidence closure,
+  observed legacy stage/review mode, preference preimage/absence, and parent
+  directory states;
+- require every state/hash to equal the preview;
+- on any difference return `CONFLICT`, write nothing, and do not merge/retry;
+- after successful CAS, create only previewed directories, atomically publish one
+  file, re-read exact bytes, verify output hash/schema/IDs/history/references; and
+- confirm stage/review-mode bytes or source states were not changed by `$start`.
+
+Declined persistence is `DECLINED`; write failure is `FAILED`. Neither hides the
+route, limitation, proposed bytes, or authoritative files remaining unchanged.
+
+---
+
+## Phase 6: Return one transparent result and stop
+
+Return:
+
+- user start state, intent, decision ID/owner;
+- catalog path/version/hash;
+- stage packet source/path-or-inline, raw hash where applicable, packet ID,
+  snapshot hash/state/result/resolution/stage/confidence;
+- observed legacy-stage and review-mode path/hash/value with non-authority labels;
+- ordered route-status rows through the first unmet required prerequisite,
+  including evidence/receipt IDs and every same-level conflict;
+- exact selected catalog step/command or manual action, affected prerequisite,
+  route state and reason codes;
+- accepted-risk record, if explicitly created;
+- preference operation/path/preimage/output hash/persistence/conflicts;
+- `Stage Mutation: NONE`, `Review Mode Mutation: NONE`, `Auto Executed: false`;
+  and
+- exactly one next action or `Stop`.
+
+Do not print a copied multi-phase roadmap, auto-run the recommendation, imply a
+later step is unblocked, or collapse the result to one success line that hides
+MISSING/INVALID/STALE/CONFLICT/DECLINED/FAILED state.
+
+Status mapping:
+
+- invalid invocation/root -> `ERROR`;
+- invalid catalog, invalid existing preferences, unsafe route conflict ->
+  `BLOCKED`;
+- missing/stale/invalid packet or incomplete route evidence preventing a safe
+  returning-project route -> `PARTIAL`;
+- user Stop or declined onboarding interaction -> `STOPPED`;
+- transparent completed interaction with honest route and persistence state ->
+  `COMPLETE`.
+
+`COMPLETE` is onboarding completion only. Stop without invoking anything.

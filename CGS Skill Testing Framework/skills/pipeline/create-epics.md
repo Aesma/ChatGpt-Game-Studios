@@ -2,270 +2,644 @@
 
 > **Category**: pipeline
 > **Priority**: high
-> **Spec written**: 2026-07-21
+> **Spec revision**: P1 CE-003..CE-007
+> **Spec written**: 2026-07-22
 
 ## Skill Summary
 
-`$create-epics` enumerates only Approved systems explicitly recorded in
-`design/gdd/systems-index.md`, loads their exact GDD paths, maps them only to
-binding architecture modules backed by Accepted ADRs, and proposes EPIC.md plus
-index changes. Before any mutation it classifies existing artifacts as
-`create`, `update`, `no-op`, or `conflict`; conflicts block the complete
-changeset and authorized writes are guarded by preimage hashes. It never creates
-stories.
+`$create-epics` reads the current Approved system set from the systems index,
+binds it to current architecture modules and valid Accepted ADR evidence, and
+plans exactly one canonical epic for each architecture module in scope. Multiple
+systems mapped to one module are aggregated into that one epic; a system that
+spans modules requires explicit responsibility slices. Each candidate is bound
+to a bounded source manifest, current TR dispositions, deterministic dependency
+order, exact preimage and candidate hashes, and an external result receipt.
+
+The workflow is read-only until a planning owner approves the exact plan and the
+user separately authorizes one complete mutation changeset. A full-mode producer
+gate has one initial review and at most one targeted revision/re-review. Source,
+target, identity, approval, authorization, writer, and recorder CAS gates run
+before the first write. The skill never creates stories.
 
 ---
 
 ## Static Assertions
 
-- [ ] YAML frontmatter contains only `name` and non-empty `description`; the name is `create-epics`.
-- [ ] Two or more phase headings are present.
-- [ ] The workflow has explicit `COMPLETE` and `BLOCKED` terminal states.
-- [ ] Multi-file mutation uses existing bounded authorization or one complete changeset preview and approval.
-- [ ] The workflow ends with the `$create-stories [epic-slug]` handoff.
+- [ ] **CE-S001** — YAML frontmatter contains only `name` and non-empty `description`; `name` is exactly `create-epics`.
+- [ ] **CE-S002** — The request contract is `cgs.create-epics-request/v2` and a no-argument invocation causes zero filesystem, agent, approval, or authorization effects.
+- [ ] **CE-S003** — The request identifies exact scope and hashes for the systems index, GDDs, architecture, control manifest, TR registry, ADR evidence, epic index, and existing epic targets.
+- [ ] **CE-S004** — Source acquisition is capped at 32 files and 1,048,576 exact bytes, with an explicit BLOCKED outcome on overflow.
+- [ ] **CE-S005** — The source inventory is represented by `cgs.epic-source-manifest/v2`, including normalized path, role, exact byte count, SHA-256, source identity, and selected/current evidence.
+- [ ] **CE-S006** — `design/gdd/systems-index.md` is the sole system-enumeration authority; globs, headings, names, architecture, and epic files cannot add systems.
+- [ ] **CE-S007** — Only exact `Approved` rows are eligible, the legal status vocabulary is `Not Started | In Design | In Review | Approved | Implemented`, and `Designed` is malformed rather than eligible.
+- [ ] **CE-S008** — The indexed identity, exact GDD path, layer, status, and current-selection evidence must be complete and agree with the full-read GDD.
+- [ ] **CE-S009** — Current GDD, architecture, control-manifest, TR-registry, and ADR source versions are selected through explicit current/version/hash evidence; directory order and newest-looking names are not authority.
+- [ ] **CE-S010** — Binding architecture requires the declared architecture target hash and an Accepted ADR with matching target hash, independent review hash, authoring receipt, and `cgs.adr-lifecycle-record/v1` evidence.
+- [ ] **CE-S011** — The workflow first constructs `module_id -> {system_ids[]}` with module name, owner, architecture locator/hash, Accepted ADRs, layer, dependencies, and deterministic `order_key`.
+- [ ] **CE-S012** — The invariant is exactly one epic per architecture module; system-per-epic and mixed cardinality modes are forbidden.
+- [ ] **CE-S013** — Multiple selected systems mapped to one module are aggregated into one epic whose `system_ids[]` contains every included system.
+- [ ] **CE-S014** — A system spanning multiple modules requires explicit, non-overlapping responsibility slices and TR mappings for every module; ambiguity is BLOCKED.
+- [ ] **CE-S015** — Canonical identity is `EPIC-MODULE:<module_id>` and remains stable across source-version changes.
+- [ ] **CE-S016** — Every architecture-relevant TR receives exactly one disposition: `ADR_ACCEPTED`, `ADR_NA`, `ADR_REQUIRED_GAP`, or `UNKNOWN`.
+- [ ] **CE-S017** — `ADR_NA` requires one reason code from `PRODUCT_ONLY | CONTENT_ONLY | PRESENTATION_ONLY | NO_ARCHITECTURE_EFFECT`, plus owner and auditable evidence.
+- [ ] **CE-S018** — `ADR_REQUIRED_GAP` and `UNKNOWN` generate stable `cgs.epic-traceability-finding/v1` records and force the affected epic to `Blocked`.
+- [ ] **CE-S019** — `TR-???`, unaudited `N/A`, invented ADR IDs, or missing mappings are prohibited from candidate epics.
+- [ ] **CE-S020** — Epic dependencies come from the module graph, use canonical module IDs, and are checked for missing nodes, self-edges, and cycles before approval.
+- [ ] **CE-S021** — Candidate ordering is deterministic topological order with ties broken by `order_key` and then `module_id`.
+- [ ] **CE-S022** — Each `cgs.epic-plan/v2` epic records source-manifest ID/hash and the exact hashes/versions of its GDD, architecture, control manifest, TR registry, and ADR evidence.
+- [ ] **CE-S023** — Any source-binding change makes a previously managed epic stale even if its prose appears unchanged; stale compatible artifacts classify `stale-update`.
+- [ ] **CE-S024** — Existing targets and index rows classify only as `create`, `no-op`, `update`, `stale-update`, or `conflict`, with conflict-safe behavior inherited from CE-002.
+- [ ] **CE-S025** — `no-op` requires exact candidate bytes, current source binding, stable identity, and a unique compatible index mapping.
+- [ ] **CE-S026** — Full mode runs one read-only `PR-EPIC` producer review after planning and inventory, with one attempt capped at 60 seconds.
+- [ ] **CE-S027** — `cgs.epic-producer-result/v1` records review status, disposition, source/plan/candidate hashes, stable finding IDs, omissions, and reviewer identity.
+- [ ] **CE-S028** — Producer partial, timeout, failure, or side-effect returns PARTIAL with zero writes; it cannot be retried, replaced, or inferred as a pass.
+- [ ] **CE-S029** — Producer concerns allow only accepted non-blocking advisory findings with rationale/owner/review point or one targeted revision followed by one re-review; continued blocking yields `BLOCKED — SCOPE DECISION REQUIRED`.
+- [ ] **CE-S030** — Lean and solo modes record the producer gate as skipped; solo mode invokes zero agents, and skipped is never represented as `REALISTIC`.
+- [ ] **CE-S031** — `cgs.epic-plan-approval/v1` binds the exact source, module map, dependency graph, producer result, targets, index, hashes, receipt path, owner, and decision.
+- [ ] **CE-S032** — Planning approval does not authorize filesystem mutation; one later explicit mutation authorization binds the complete changeset, writer, recorder, and non-write scope.
+- [ ] **CE-S033** — Source, target-set, identity, approval/authorization, and role CAS gates all pass in one pre-write preflight; any mismatch causes zero writes.
+- [ ] **CE-S034** — Changed epics write and verify in dependency order, the index writes after epics, and a create-only external receipt writes last.
+- [ ] **CE-S035** — The workflow never claims multi-file atomicity or rollback; any post-write failure yields PARTIAL and exact applied/not-applied evidence.
+- [ ] **CE-S036** — `cgs.create-epics-result-receipt/v1` binds source, plan, approval, authorization, producer result, writer/recorder, target/index preimages, candidates, observations, findings, and COMPLETE/PARTIAL status.
+- [ ] **CE-S037** — Epic/index content does not embed the result receipt path or hash, avoiding self-referential hashes; it may store a stable receipt ID.
+- [ ] **CE-S038** — COMPLETE, COMPLETE—NO_CHANGES_REQUIRED, PARTIAL, BLOCKED, DECLINED, and STOPPED outcomes have distinct evidence and mutation semantics.
+- [ ] **CE-S039** — The workflow never creates stories, edits story indexes, or invokes `$create-stories`; it offers exactly one bounded next action.
+- [ ] **CE-S040** — `agents/openai.yaml` accurately describes one source-bound epic per architecture module and does not imply automatic or approval-free writes.
 
 ---
 
 ## Director Gate Checks
 
-- **Full mode**: PR-EPIC runs after epic definitions and conflict-free inventory, before write authorization.
-- **Lean mode**: PR-EPIC is skipped and reported as `PR-EPIC skipped — Lean mode`.
-- **Solo mode**: PR-EPIC is skipped and reported as `PR-EPIC skipped — Solo mode`.
-- A conflict blocks before PR-EPIC; no gate may legitimize overwriting it.
+- **Full mode**: `PR-EPIC` runs after source-bound candidates and conflict-free
+  inventory, before plan approval and mutation authorization. One initial review
+  plus at most one targeted revision/re-review is allowed.
+- **Lean mode**: no producer call; the typed result records `status: skipped`,
+  `mode: lean`, and an omission reason.
+- **Solo mode**: zero agent calls; the typed result records `status: skipped`,
+  `mode: solo`, and an omission reason.
+- Producer advice is not plan approval, mutation authorization, writer identity,
+  or recorder evidence.
+- Conflict, invalid source binding, ambiguous module responsibility, ADR/TR gap,
+  or dependency cycle blocks before mutation regardless of producer disposition.
 
 ---
 
-## Test Cases
+## Behavioral Test Cases
 
-### Case 1: Happy Path — Overview-only Approved GDDs are included
+### Case 1: No-argument invocation has zero effects
 
-**Fixture**:
-
-- The Approved systems index contains stable IDs `SYS-INPUT` and `SYS-CAMERA`, exact GDD paths, unique layers, and valid order.
-- Both GDDs have `## Overview` but no `## Summary`, and their recorded identity/status agrees with the index.
-- Each system maps to a binding architecture module backed by a current Accepted ADR.
-- No epic files or index exist; review mode is lean.
+**Fixture**: Invoke `$create-epics` with no request payload.
 
 **Expected behavior**:
 
-1. The skill reads the systems index first and builds a two-row run manifest.
-2. Both Overview-only GDDs are full-read because their indexed rows are eligible.
-3. Both targets and the new index are classified `create` and shown completely.
-4. PR-EPIC is noted as skipped in lean mode.
-5. After existing bounded authorization or one changeset approval, both epics and the index are written and hash-verified.
+1. The skill explains the required `cgs.create-epics-request/v2` fields.
+2. It does not read project artifacts, call a producer, request approval or
+   authorization, or write a file.
 
 **Assertions**:
 
-- [ ] Inclusion does not depend on a Summary heading.
-- [ ] The exact indexed GDD paths are used; no guessed filename is used.
-- [ ] Epic summaries and the complete changeset are shown before mutation.
-- [ ] Only the frozen authorized files are written.
+- [ ] No project path is accessed or mutated.
+- [ ] No agent is called.
+- [ ] The terminal result is not COMPLETE.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 2: CE-001 — Unindexed documents cannot enter the run
+### Case 2: Systems index is the only enumeration authority
 
 **Fixture**:
 
-- `SYS-COMBAT` is an Approved indexed row whose GDD has only `## Overview`.
-- `design/gdd/experimental-combat.md` is not indexed but contains a compelling `## Summary` and matching words.
-- Invocation is `$create-epics all`.
+- `SYS-COMBAT` is an exact `Approved` row with a current GDD path.
+- An unindexed experimental GDD has a compelling summary and architecture terms.
+- Scope is `all`.
 
 **Expected behavior**:
 
-1. The skill includes `SYS-COMBAT` from the index.
-2. It does not use the unindexed file to select, replace, or supplement a system.
-3. It reports the authoritative manifest before drafting.
+1. Only `SYS-COMBAT` enters the selected system set.
+2. The experimental GDD may not add, replace, or supplement a system.
+3. The manifest records the exact indexed GDD path and hash.
 
 **Assertions**:
 
-- [ ] The Overview-only indexed GDD is included.
-- [ ] The unindexed Summary-bearing file is absent from the manifest and changeset.
-- [ ] No filesystem glob or heading search is treated as enumeration authority.
+- [ ] No glob, heading search, or filename guess changes enumeration.
+- [ ] The unindexed document is absent from selected systems and target epics.
+- [ ] Selection evidence is current and explicit.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 3: CE-001 — Malformed or ineligible indexed row fails safely
+### Case 3: `Designed` and malformed status fail closed
 
-**Fixture**:
-
-- One requested row lacks a stable ID, uses status `Designed`, has a duplicate GDD path, or disagrees with the GDD status.
-- No output writes have occurred.
+**Fixture**: A requested row uses `Designed`; another uses legal but ineligible
+`In Review`; no writes have occurred.
 
 **Expected behavior**:
 
-1. The skill distinguishes legal-but-ineligible status from malformed status.
-2. It reports the exact row defect and stops with BLOCKED when the requested scope cannot be enumerated completely.
-3. It does not guess an ID, status alias, layer, or GDD path.
+1. `Designed` is reported as malformed because it is outside the legal status
+   vocabulary.
+2. `In Review` is legal but ineligible.
+3. Requested scope that cannot be enumerated completely ends BLOCKED with zero
+   writes.
 
 **Assertions**:
 
-- [ ] Only exact `Approved` rows are eligible.
-- [ ] `Designed` is not accepted as an alias.
-- [ ] Ambiguous identity/path/layer data yields BLOCKED and zero writes.
+- [ ] Only exact `Approved` is eligible.
+- [ ] No alias, fallback, or inferred status is used.
+- [ ] The defect identifies the exact row and source hash.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 4: Architecture proposal is not a binding module
+### Case 4: Two systems in one module produce one epic
 
 **Fixture**:
 
-- An Approved indexed system and GDD exist.
-- Its only architecture placement is `NON-BINDING PROPOSAL — DECISION-EVENT-BUS`, sourced from Proposed ADR-0012.
+- `SYS-INPUT` and `SYS-CAMERA` are current Approved systems.
+- Current binding architecture maps both to `MOD-PLAYER-INTERACTION`.
+- The module has valid current Accepted ADR evidence.
 
 **Expected behavior**:
 
-1. The skill reports the proposal and ADR status.
-2. It stops with `BLOCKED — accepted architecture decision required`.
-3. It does not draft or write an epic against the proposed module.
+1. The module map has one key, `MOD-PLAYER-INTERACTION`, with both system IDs.
+2. Exactly one `EPIC-MODULE:MOD-PLAYER-INTERACTION` candidate is rendered.
+3. The epic aggregates both systems and their TR rows without duplicating module
+   ownership or creating system epics.
 
 **Assertions**:
 
-- [ ] Only binding architecture statements backed by current Accepted ADRs may supply a module.
-- [ ] User file authorization does not convert a proposal into a binding decision.
-- [ ] No EPIC.md or index file is written.
+- [ ] Candidate epic count is one, not two.
+- [ ] `system_ids[]` contains both stable IDs exactly once.
+- [ ] The index has one row for the canonical module epic.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 5: CE-002 — Exact rerun is a no-op
+### Case 5: One system may span modules only through explicit slices
 
-**Fixture**:
+**Fixture**: `SYS-COMBAT` maps to `MOD-COMBAT-RUNTIME` and
+`MOD-COMBAT-PRESENTATION`.
 
-- The target EPIC.md bytes exactly equal the deterministic candidate.
-- The index has one exact compatible row and no collisions.
+**Variant A**: Each module has a non-overlapping responsibility slice and exact
+TR mapping.
+**Variant B**: The architecture says only “combat belongs to both modules.”
 
 **Expected behavior**:
 
-1. The skill records current hashes and classifies the epic and index as `no-op`.
-2. It lists the no-op result and performs no write or overwrite prompt.
-3. It ends COMPLETE with `no changes required`.
+1. Variant A creates two module candidates, each with its exact slice and TRs.
+2. Variant B produces a stable mapping finding and BLOCKED with zero writes.
+3. The skill never chooses one module heuristically or creates a third
+   system-level epic.
 
 **Assertions**:
 
-- [ ] A repeat run does not rewrite timestamps or identical artifacts.
-- [ ] No-op requires both exact candidate bytes and a unique exact index mapping.
-- [ ] Zero files are mutated.
+- [ ] Cardinality remains one epic per module in both variants.
+- [ ] Responsibility slices are explicit, complete, and non-overlapping.
+- [ ] Ambiguity cannot be waived by generic user authorization.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 6: CE-002 — Compatible update plus independent create
+### Case 6: Accepted ADR must be current and evidence-complete
 
 **Fixture**:
 
-- One existing managed epic has the same stable identity, recognized generated schema, no unknown/manual content, and a unique compatible index row, but differs from the deterministic candidate.
-- A second target is absent and has no collision.
+- Architecture cites `ADR-0012` as Accepted.
+- Variant A has matching target hash, independent review hash, authoring receipt,
+  and lifecycle record.
+- Variant B lacks the lifecycle record or targets an older architecture hash.
 
 **Expected behavior**:
 
-1. The first target is classified `update`; its preimage hash and complete unified diff are shown with Update/Skip choices.
-2. The second target is classified `create`; its complete content is shown.
-3. After the user selects Update and the bounded changeset is authorized once, both targets and the index are rechecked, written, and verified.
+1. Variant A may bind the module and records all evidence hashes.
+2. Variant B is non-binding and ends BLOCKED with the exact missing or mismatched
+   evidence.
+3. A filename or prose label `Accepted` cannot replace lifecycle evidence.
 
 **Assertions**:
 
-- [ ] Existing EPIC files are inventoried before any write.
-- [ ] A compatible update is never silently overwritten.
-- [ ] The new system proceeds normally in the same conflict-free changeset.
-- [ ] No per-file write authorization is requested.
+- [ ] ADR validity is hash-bound to the current architecture target.
+- [ ] User approval cannot promote Proposed or stale ADR evidence.
+- [ ] No affected epic becomes Ready under Variant B.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 7: CE-002 — Manual or identity conflict blocks atomically
+### Case 7: TR dispositions route gaps downstream
 
-**Fixture**:
+**Fixture**: One module has four architecture-relevant requirements:
 
-- A target slug already contains an epic for another system ID, or the target has an unknown manual section.
-- A separate new target would otherwise be a valid create.
+- `TR-101` maps to a valid Accepted ADR.
+- `TR-102` is product-only with owner and evidence.
+- `TR-103` requires an architecture decision that does not exist.
+- `TR-104` has indeterminate applicability.
 
 **Expected behavior**:
 
-1. The colliding target is classified `conflict` with identities and hashes.
-2. The entire changeset stops BLOCKED before PR-EPIC or authorization.
-3. The skill does not overwrite, merge, rename, delete, or write the independent new target.
+1. The exact dispositions are `ADR_ACCEPTED`, `ADR_NA`, `ADR_REQUIRED_GAP`, and
+   `UNKNOWN`.
+2. `TR-102` uses reason code `PRODUCT_ONLY` and retains owner/evidence.
+3. Stable findings for `TR-103` and `TR-104` make the module epic `Blocked`.
+4. The candidate contains no `TR-???`, bare `N/A`, or invented ADR.
 
 **Assertions**:
 
-- [ ] Conflict cannot be downgraded to update by a generic approval.
-- [ ] Manual/unknown content is preserved.
+- [ ] Every relevant TR has exactly one disposition.
+- [ ] Downstream story eligibility is false while blocking findings remain.
+- [ ] Findings remain stable across an unchanged rerun.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 8: Source changes make a managed epic stale
+
+**Fixture**:
+
+- Existing managed epic prose equals the newly rendered prose.
+- Its recorded TR-registry hash is older than the current selected registry.
+- Identity and managed schema are otherwise compatible.
+
+**Expected behavior**:
+
+1. The skill detects the source-binding mismatch.
+2. It classifies the target `stale-update`, not `no-op`.
+3. The preview shows old/new source hashes and the deterministic candidate hash.
+
+**Assertions**:
+
+- [ ] Source currency is content-bound, not based on path or prose similarity.
+- [ ] All relevant GDD/architecture/manifest/TR/ADR hashes are recorded.
+- [ ] Story handoff is not offered from the stale preimage.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 9: Dependency graph produces deterministic order
+
+**Fixture**:
+
+- `MOD-DATA` precedes `MOD-RUNTIME`; `MOD-RUNTIME` precedes `MOD-UI`.
+- Two independent same-layer modules share an order rank.
+
+**Expected behavior**:
+
+1. All edges use canonical module IDs and validate against the module map.
+2. The plan orders data, runtime, then UI.
+3. Same-rank nodes use `order_key`, then `module_id` as deterministic ties.
+
+**Assertions**:
+
+- [ ] The order is stable across unchanged reruns.
+- [ ] Epic dependencies and the index use the same canonical IDs.
+- [ ] No hidden filesystem order influences output.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 10: Missing dependency or cycle blocks all writes
+
+**Fixture**: Variant A references an absent module. Variant B contains
+`MOD-A -> MOD-B -> MOD-A`. A separate candidate would otherwise be valid.
+
+**Expected behavior**:
+
+1. The complete graph is validated before producer review or approval.
+2. The exact missing node or cycle path becomes a stable finding.
+3. The whole changeset is BLOCKED; the independent candidate is not written.
+
+**Assertions**:
+
+- [ ] No topological order is fabricated.
+- [ ] No producer disposition can legitimize the graph.
 - [ ] All files remain byte-identical.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 8: CE-002 — Preimage changes after preview
+### Case 11: Exact current rerun is no-op
 
-**Fixture**:
-
-- A conflict-free create/update changeset has been previewed and authorized.
-- Before mutation, one target or the index changes bytes or appears/disappears.
+**Fixture**: Every managed epic and the index exactly match deterministic
+candidates and current source bindings; there are no conflicts or skips needing
+action.
 
 **Expected behavior**:
 
-1. The all-target preflight detects the hash/existence mismatch before the first write.
-2. The skill writes nothing and reclassifies the complete changeset.
-3. A resulting conflict is BLOCKED; a materially changed preview requires new authorization.
+1. Every target and the index classify `no-op` after fresh reads and hashes.
+2. No mutation authorization or activity-only receipt is requested.
+3. The workflow ends `COMPLETE — NO_CHANGES_REQUIRED`.
 
 **Assertions**:
 
-- [ ] All preimages are rechecked in one read-only pass before mutation.
-- [ ] No partially stale changeset is applied.
-- [ ] The mismatch and affected path are reported.
+- [ ] No timestamp or receipt churn rewrites a current artifact.
+- [ ] Unique module identity and index mapping are revalidated.
+- [ ] Zero files are mutated.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
 ---
 
-### Case 9: Director Gate — PR-EPIC returns CONCERNS
+### Case 12: Compatible update and create use one changeset
 
 **Fixture**:
 
-- Two Approved indexed systems have conflict-free create/update classifications.
-- Review mode is full and PR-EPIC returns CONCERNS.
+- One existing managed module epic is compatible but differs from its candidate.
+- A second module target is absent.
+- The index is compatible and both candidates are conflict-free.
 
 **Expected behavior**:
 
-1. PR-EPIC runs after inventory and before write authorization.
-2. The concerns are surfaced with revise, accept-and-proceed, and stop choices.
-3. Revised drafts are re-rendered and reclassified before any changeset approval.
-4. No files are written while concerns remain unresolved.
+1. Targets classify `update` and `create`; complete content/diffs and hashes are
+   shown.
+2. The planning owner approves one exact plan.
+3. One separate mutation authorization binds both epics, index, receipt, writer,
+   recorder, and non-write scope.
+4. After all CAS gates pass, the files write in dependency order, index next,
+   receipt last, with read-back verification.
 
 **Assertions**:
 
-- [ ] CONCERNS are shown before mutation.
-- [ ] The user has a clear revise/proceed/stop decision.
-- [ ] Revised content receives a current inventory and preview.
+- [ ] No per-file authorization is requested.
+- [ ] Planning approval alone causes no mutation.
+- [ ] Only the exact authorized paths and bytes are written.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 13: Manual content or identity collision is conflict
+
+**Fixture**:
+
+- A canonical target contains an epic for a different module ID or has unknown
+  manual content.
+- Another module is a clean create.
+
+**Expected behavior**:
+
+1. The target classifies `conflict` with identities, schema evidence, and hash.
+2. The complete changeset stops BLOCKED before producer review and authorization.
+3. Nothing is overwritten, merged, renamed, deleted, or independently written.
+
+**Assertions**:
+
+- [ ] Generic approval cannot downgrade conflict to update.
+- [ ] Existing content remains byte-identical.
+- [ ] The clean create is not applied as a partial plan.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 14: CAS detects source, target, index, or role drift
+
+**Fixture**: A plan is approved and a changeset authorized. Before the first
+write, independently vary one of: source bytes, target preimage, index preimage,
+receipt existence, canonical identity, approval binding, writer, or recorder.
+
+**Expected behavior**:
+
+1. The one-pass preflight detects the mismatch before mutation.
+2. Zero files are written.
+3. The workflow reports the exact gate/path/hash/identity and reclassifies or
+   requires fresh approval/authorization as applicable.
+
+**Assertions**:
+
+- [ ] All authorized paths are checked, not only changed epic paths.
+- [ ] Receipt existence is compared to `ABSENT`.
+- [ ] No stale plan is partially applied.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 15: Full producer gate converges within one revision
+
+**Fixture**:
+
+- Initial `PR-EPIC` returns `CONCERNS` with stable nontrivial findings.
+- The planning owner chooses one targeted revision.
+- Re-review returns `REALISTIC`.
+
+**Expected behavior**:
+
+1. The initial review occurs after full plan/inventory and before approval.
+2. Only named finding fields are revised.
+3. All candidate bytes, target inventory, source-manifest digest, and plan digest
+   are regenerated before the single re-review.
+4. The current producer result is included in later plan approval.
+
+**Assertions**:
+
+- [ ] Exactly two producer calls occur: initial review and one re-review.
+- [ ] Stable finding IDs connect review, revision, and disposition.
+- [ ] No files are written during review or revision.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 16: Producer non-convergence and incomplete review fail closed
+
+**Fixture**:
+
+- Variant A remains `UNREALISTIC` or has blocking concerns after the one
+  targeted revision.
+- Variant B returns timeout, failed, partial, or side-effect on any required
+  full-mode review.
+
+**Expected behavior**:
+
+1. Variant A ends `BLOCKED — SCOPE DECISION REQUIRED` with stable findings and
+   one owner decision.
+2. Variant B ends PARTIAL, preserves omissions/side-effect evidence, and makes
+   no writes.
+3. There is no third review, retry loop, nested delegation, or inferred pass.
+
+**Assertions**:
+
+- [ ] Review cap is mechanically observable.
+- [ ] Blocking producer findings cannot be accepted as advisory.
+- [ ] Producer status and disposition remain distinct typed fields.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 17: Lean and solo modes remain evidence-honest
+
+**Fixture**: Run the same valid plan once in lean mode and once in solo mode.
+
+**Expected behavior**:
+
+1. Neither mode calls `PR-EPIC`; solo mode invokes zero agents total.
+2. Each typed producer result records `skipped`, the exact mode, and reason.
+3. Both runs still execute local mapping, traceability, dependency, approval,
+   authorization, CAS, write, and verification gates as applicable.
+
+**Assertions**:
+
+- [ ] Skipped is never encoded as REALISTIC or complete producer evidence.
+- [ ] Mode does not relax source or mutation safety.
+- [ ] The final result discloses the omitted independent review.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 18: Mid-changeset failure produces exact PARTIAL evidence
+
+**Fixture**: Two epic updates are authorized. The first writes and verifies; the
+second write or verification fails.
+
+**Expected behavior**:
+
+1. The workflow stops ordinary writes and does not claim rollback or atomicity.
+2. If safely possible, it writes the already-authorized create-only PARTIAL
+   receipt with exact applied/not-applied and expected/observed hashes.
+3. If the receipt also fails, it reports an unreceipted changed set and remains
+   PARTIAL.
+
+**Assertions**:
+
+- [ ] No destructive rollback is attempted.
+- [ ] Index is not written if prerequisite epics did not all succeed.
+- [ ] COMPLETE is impossible without a verified COMPLETE receipt.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 19: Receipt is external and hash-cycle free
+
+**Fixture**: A valid authorized create succeeds for one epic and the index.
+
+**Expected behavior**:
+
+1. The receipt is created last at the authorized absent path.
+2. It binds source, plan, approval, authorization, producer, writer/recorder,
+   targets, index, findings, timestamp, and observed hashes.
+3. Epic and index bytes do not embed the receipt path or receipt hash.
+
+**Assertions**:
+
+- [ ] The receipt schema is `cgs.create-epics-result-receipt/v1`.
+- [ ] Receipt read-back and SHA-256 verification occur before COMPLETE.
+- [ ] The receipt cannot authorize its own creation or a repair.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 20: Downstream handoff is one exact next action
+
+**Fixture**: Variant A has one Ready epic and one higher-priority epic Blocked by
+an ADR gap. Variant B has one Ready epic and no unresolved blocker.
+
+**Expected behavior**:
+
+1. Variant A offers exactly one action to resolve the named ADR blocker and does
+   not offer story creation.
+2. Variant B may offer exactly one Ready-epic handoff; it names one epic and binds epic path/hash, source-manifest
+   digest, module/system IDs, TR rows, findings, and dependency/order evidence.
+3. A Blocked epic remains ineligible; no story skill is invoked in either
+   variant.
+
+**Assertions**:
+
+- [ ] The response does not emit a generic create-stories command for every epic.
+- [ ] Story files and story indexes remain unchanged.
+- [ ] The one next action is concrete and evidence-bound.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+### Case 21: Staged package is complete and catalog-honest
+
+**Fixture**: Inspect the P1 candidate directory without invoking `$skill-test`.
+
+**Expected behavior**:
+
+1. The formal path mirror contains `SKILL.md`,
+   `references/continued-workflow.md`, `agents/openai.yaml`, and this exclusive
+   specification.
+2. No live skill, old P0 staging file, shared framework file, or catalog entry is
+   changed.
+3. Catalog result fields remain untouched until authorized formal evaluation.
+
+**Assertions**:
+
+- [ ] Every staged file has a reported SHA-256 and exact byte count.
+- [ ] Live pre-edit snapshot hashes/bytes still match.
+- [ ] No staged catalog file exists.
+
+**Case Verdict**: PASS / FAIL / PARTIAL
+
+---
+
+## Cross-Artifact Checks
+
+- [ ] **CE-X001** — Every selected systems-index ID appears in at least one
+  explicit module responsibility slice, and no unselected ID enters an epic.
+- [ ] **CE-X002** — Every in-scope module has exactly one canonical epic ID/path,
+  and every canonical epic ID/path maps back to exactly one module.
+- [ ] **CE-X003** — Epic `system_ids[]`, module-map membership, TR responsibility
+  slices, and epic-index membership agree exactly.
+- [ ] **CE-X004** — Epic source hashes equal source-manifest hashes and the
+  approval, authorization, and receipt bind the same source-manifest digest.
+- [ ] **CE-X005** — Architecture target hashes and Accepted ADR lifecycle target
+  hashes agree for every binding module.
+- [ ] **CE-X006** — Dependency edges, topological order, epic dependency fields,
+  write order, and index order use the same canonical module identities.
+- [ ] **CE-X007** — Producer result, plan approval, mutation authorization, writer,
+  recorder, and receipt are independently attributable and cannot substitute for
+  one another.
+- [ ] **CE-X008** — Candidate hashes, authorized hashes, read-back hashes, index
+  hash, and receipt observations agree for COMPLETE; any discrepancy is PARTIAL
+  or BLOCKED, never COMPLETE.
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Treats an explicit bounded user request as authorization for all in-scope changes.
-- [ ] Otherwise previews the complete create/update changeset and asks once before applying it.
-- [ ] Does not re-prompt per file, section, or edit within the authorized changeset.
-- [ ] Requests new authorization only for material scope/preview changes or separately gated side effects.
-- [ ] Performs no mutation during index enumeration, artifact inventory, conflict handling, or gate review.
-- [ ] Ends with `$create-stories [epic-slug]` for each created, updated, or current epic.
+- [ ] Question → Options → Decision → Draft → Approval is preserved for
+  open-ended module-scope or producer-concern decisions.
+- [ ] Exact planning approval precedes and remains distinct from one bounded
+  mutation authorization.
+- [ ] New or changed scope, bytes, targets, identities, or hashes invalidates the
+  applicable approval/authorization instead of being silently absorbed.
+- [ ] No mutation occurs during enumeration, source selection, mapping,
+  traceability, dependency validation, inventory, producer review, approval, or
+  CAS failure handling.
+- [ ] Authorized writes are limited to selected epics, the epic index, and one
+  external result receipt; GDD, architecture, ADR, TR, control-manifest, and
+  story sources are read-only.
+- [ ] Partial application is reported honestly with exact path/hash evidence and
+  never relabeled COMPLETE.
 
 ---
 
 ## Coverage Notes
 
-- CE-001 is covered by Cases 1–3; CE-002 is covered by Cases 5–8.
-- Case 4 preserves the create-architecture target contract: Proposed or otherwise non-binding architecture text cannot become an epic contract.
-- CE-003 and later remediation items remain outside this P0 candidate. In particular, this spec does not resolve module-to-system cardinality, source-hash stale detection, ADR-gap routing, producer retry caps, or template extraction.
-- Behavioral execution is still required to prove the written contract; this candidate does not update catalog result fields.
+- CE-001 remains covered by Cases 2–3 and static assertions CE-S006..CE-S009.
+- CE-002 remains covered by Cases 11–14 and static assertions CE-S024..CE-S025,
+  CE-S032..CE-S035.
+- CE-003 is covered by Cases 4–5 and CE-S011..CE-S015.
+- CE-004 is covered by Case 3 and CE-S007..CE-S008.
+- CE-005 is covered by Cases 6–7 and CE-S010, CE-S016..CE-S019.
+- CE-006 is covered by Case 8 and CE-S005, CE-S009, CE-S022..CE-S023.
+- CE-007 is covered by Cases 15–17 and CE-S026..CE-S030.
+- Cases 18–20 validate recorder, partial-result, and downstream safety needed to
+  make the P1 contract executable without overstating atomicity or completion.
+- Case 21 is a staging-only integrity check. This candidate deliberately does not
+  update catalog result fields and does not invoke formal `$skill-test`.

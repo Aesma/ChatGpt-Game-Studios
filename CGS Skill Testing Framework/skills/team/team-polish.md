@@ -1,322 +1,923 @@
 # Skill Test Spec: $team-polish
 
-## Purpose
+## Contract identity
 
-Verify that `$team-polish` performs read-only assessment before authorization,
-assigns every real mutation to one owner, serializes shared-resource integration,
-remeasures the final integrated build, and refuses release readiness on partial,
-stale, mismatched, unrun, or inaccessible evidence.
+- Spec schema: `cgs-skill-spec/v2`
+- Skill path: `.agents/skills/team-polish/SKILL.md`
+- Metadata path: `.agents/skills/team-polish/agents/openai.yaml`
+- Target schema: `cgs.polish-target-manifest/v2`
+- Context schema: `cgs.polish-context-manifest/v1`
+- Assessment/mutation schemas: `cgs.polish-assessment/v2` and `cgs.polish-mutation-manifest/v2`
+- Agent schemas: `cgs.polish-agent-task/v1` and `cgs.polish-agent-result/v1`
+- Performance schemas: `cgs.polish-profile-request/v1` and `cgs.polish-profile-receipt/v1`
+- Verification schemas: `cgs.polish-test-matrix/v1` and `cgs.polish-execution-receipt/v1`
+- Recovery schema: `cgs.polish-checkpoint/v1`
+- Final report schema: `cgs.polish-verification-report/v2`
 
-## Fixtures
+## Skill summary
 
-Positive fixtures provide exact raw bytes and full
-`sha256:<64 lowercase hexadecimal>` digests for:
-
-- `polish-target-manifest`, baseline `build-candidate`, artifact, source snapshot,
-  applicable AGENTS.md chain, budgets, requirements, QA plan, test manifest, known
-  issues, runner commands, hardware inventory, and scope;
-- assessment report, stable findings, immutable mutation manifest, authorization
-  record, writer ledger, patch/integration/build receipts, checkpoints, and final
-  `build-candidate`;
-- final-build profile, memory, loading, audio, regression, edge, stress, soak,
-  visual, scalability, and accessibility receipts.
-
-Every external fact is represented by a verifiable current receipt. Negative
-fixtures change one fact unless stated otherwise. Tests observe file hashes and
-delegation order and assert that no undeclared mutation or external action occurs.
+`$team-polish` separates bounded read-only assessment, exact path-owned
+implementation, single-owner shared integration, final-candidate build, and
+fixed-matrix verification. Performance analysts never patch code; every required
+role, test row, context byte, attempt, checkpoint, and final receipt is
+hash-bound. Only a current final build with zero release blockers and complete
+passing required evidence may receive `READY FOR RELEASE`, which never grants
+release authority.
 
 ## Static assertions
 
-- [ ] Frontmatter contains only `name` and a non-empty `description`; name matches the directory.
-- [ ] Invocation has explicit `assess`, `implement`, `verify`, and `resume` modes and rejects inferred targets/latest files.
-- [ ] `assess` does not fall through to implementation.
-- [ ] All assessment delegates are explicitly read-only.
-- [ ] No implementation agent or product mutation is allowed before a complete mutation manifest and exact authorization.
-- [ ] Assessment persistence, product writes, build/test outputs, and repository/external actions are separate authority layers.
-- [ ] File approval never authorizes commit, tag, push, deploy, publication, or stakeholder communication.
-- [ ] The mutation manifest lists code, engine, scene/prefab/resource, config, shader/VFX, audio, tooling, test, build, cache, log, report, receipt, and checkpoint effects.
-- [ ] Every mutation has stable patch/finding IDs, exact path, operation, base hash, unique writer, dependencies, generated outputs, validation, and rollback.
-- [ ] Only disjoint paths may be written in parallel.
-- [ ] Every shared scene/config/resource/event/mixer/manifest has one integrator and sequential base-hash validation.
-- [ ] `performance-analyst` diagnoses and measures but never writes code.
-- [ ] Engine review requires trace hash, engine path/module, boundary justification, and confidence threshold.
-- [ ] `tools-programmer` has an explicit content/editor/build-tool trigger.
-- [ ] New motion/flash/camera/audio-only/gameplay-feedback effects require an approved design/UX artifact and independent accessibility review.
-- [ ] Reduced motion, intensity control, policy-defined flash thresholds, functional equivalent feedback, readability, and settings persistence are mandatory.
-- [ ] A final immutable build candidate is created after all patch and shared-resource integration receipts.
-- [ ] Final profiling and QA use the same final artifact hash; Phase 1 or per-patch metrics cannot issue readiness.
-- [ ] Execution receipts include command, tool, duration, seed/workload, hardware/environment, build hash, timestamps, samples, result, and raw evidence hashes.
-- [ ] `NOT_RUN`, partial, unknown, timeout, stale, missing, invalid, unavailable, or incomplete hardware evidence cannot be READY.
-- [ ] Readiness uses a deterministic four-result algorithm and requires zero open release blockers.
-- [ ] `READY FOR RELEASE` always includes `Release Authorization: NOT GRANTED`.
-- [ ] The root counts toward `max_threads`; with `max_threads = 6`, at most five children run when no other agent is live.
-- [ ] Exactly one role owns every output path; nested delegation consumes the same cap.
-- [ ] Timeouts cancel writers, reconcile path hashes, quarantine late patches, and block reassignment until termination.
-- [ ] Immutable checkpoints support hash-verified idempotent resume without replay.
-- [ ] The workflow never invokes a downstream workflow or performs release/publication actions.
+- [ ] TP-S001: Frontmatter contains only matching name and non-empty description
+- [ ] TP-S002: Invocation exposes assess, implement, verify, and resume only
+- [ ] TP-S003: No-argument and malformed invocation stop before reads, delegation, or writes
+- [ ] TP-S004: Review/full/lean/solo/director-skip flags are rejected
+- [ ] TP-S005: Assess never falls through to implementation
+- [ ] TP-S006: Assessment, persistence, product writes, build outputs, and external actions have separate authority
+- [ ] TP-S007: Assessment delegates are read-only and no product writer runs before exact authorization
+- [ ] TP-S008: Mutation manifest enumerates every code/engine/scene/config/VFX/audio/tool/test/build side effect
+- [ ] TP-S009: Every output path has one writer and every shared resource one sequential integrator
+- [ ] TP-S010: Only canonical disjoint write domains may execute in parallel
+- [ ] TP-S011: Performance analyst emits measurements/findings and never fixes code
+- [ ] TP-S012: Engine programmer trigger requires trace/module/boundary/confidence evidence
+- [ ] TP-S013: Tools programmer trigger is exact content/editor/import/build/automation scope
+- [ ] TP-S014: Required-role matrix is policy-bound before assessment
+- [ ] TP-S015: Required agent FAIL is blocking and UNKNOWN/TIMEOUT/ERROR/CANCELLED/skip is PARTIAL plus INCOMPLETE
+- [ ] TP-S016: Nonblocking role skip requires pre-run NOT_APPLICABLE policy evidence
+- [ ] TP-S017: Context manifest has deterministic exact entries and positive file/byte ceilings
+- [ ] TP-S018: Context overflow, missing required entry, drift, or unreadable input blocks before delegation
+- [ ] TP-S019: Unrestricted full context and inferred related paths are forbidden
+- [ ] TP-S020: Perf-profile is not invoked as a nested workflow
+- [ ] TP-S021: Direct profile request binds candidate, budget, context, hardware, command, durations, seed, timeout, and outputs
+- [ ] TP-S022: Profile receipt binds termination, exit/result, metrics, traces/logs, omissions, and producer
+- [ ] TP-S023: Fixed test matrix rows bind category, policy-required state, build/hardware, command, duration, seed, timeout, predicate, and owner
+- [ ] TP-S024: Verify cannot add, drop, weaken, or reclassify a test row
+- [ ] TP-S025: Execution receipt binds exact matrix row and final candidate/artifact hash
+- [ ] TP-S026: NOT_RUN/PARTIAL/UNKNOWN/TIMEOUT/INVALID/UNAVAILABLE required rows map to INCOMPLETE
+- [ ] TP-S027: Deterministic verdict order is ERROR, NEEDS MORE WORK, INCOMPLETE, then READY FOR RELEASE
+- [ ] TP-S028: READY requires zero open release blockers and every required receipt current/complete/PASS
+- [ ] TP-S029: Conclusive required failure takes precedence while incomplete rows stay visible
+- [ ] TP-S030: Agent tasks/results bind attempt, context, deadline, timeout, cancel owner, paths, and predecessor
+- [ ] TP-S031: Timeout cancels once, reconciles hashes, quarantines late output, and blocks unsafe reassignment
+- [ ] TP-S032: Retry is capped at one new attempt after the original and cannot broaden scope
+- [ ] TP-S033: Checkpoints are immutable create-only predecessor-linked v1 records
+- [ ] TP-S034: Resume verifies the full checkpoint chain and continues only at the next incomplete idempotent step
+- [ ] TP-S035: Completed patch/build steps are never replayed from conversation memory
+- [ ] TP-S036: Final integrated candidate precedes all release-readiness evidence
+- [ ] TP-S037: Any post-build product byte change invalidates the candidate evidence
+- [ ] TP-S038: Gameplay-affecting polish requires approved design/UX and final accessibility evidence
+- [ ] TP-S039: Root and nested agents share the configured concurrency cap
+- [ ] TP-S040: READY always reports Release Authorization NOT GRANTED and triggers no downstream action
 
-## Case 1: Read-only assessment before approval
+## Behavioral cases
 
-**Input**
+### Case 1: Read-only assessment has zero product mutation
 
-~~~text
-$team-polish assess --manifest production/polish/combat-target.yaml --assessment-id combat-a1
-~~~
+#### Fixture
 
-All inputs are valid.
+A valid target v2 manifest, current baseline build, bounded context, requirements,
+budgets, test matrix, and required-role policy are present.
 
-**Expected**
+#### Input
 
-- bounded read-only assessment agents may run;
-- no product, source, asset, config, test, build, report, or checkpoint file changes;
-- stable findings and the proposed path-owner manifest are returned in conversation;
-- `Persistence: NOT_REQUESTED`;
-- `Implementation State: NOT_AUTHORIZED`.
+`$team-polish assess --manifest production/polish/combat-target.yaml --assessment-id combat-a1`
 
-If `--persist` is supplied, only the exact assessment/proposal/controller paths may
-be created after their separate file-write authorization. Product mutation remains
-unauthorized.
+#### Expected reads
 
-## Case 2: Complete side-effect disclosure
+Only manifest-declared current paths and the exact role-specific context entries.
 
-Assessment proposes a game-code optimization, engine fix, shared scene edit, render
-setting, shader/material/VFX edits, new audio event/mixer data, tooling change,
-regression fixture, build cache/output, and receipts.
+#### Expected writes
 
-**Expected**
+None without `--persist`; with separately authorized persistence, only exact
+create-only controller assessment/proposal/checkpoint paths.
 
-Every effect appears in the mutation manifest with operation, base hash/ABSENT,
-writer, dependencies, shared group/integrator, generated outputs, validation, and
-rollback. Omit any one class and implementation blocks before authorization.
+#### Expected non-writes
 
-## Case 3: Approval precedes all implementation
+Product/source/assets/config/tests/builds and every unlisted path.
 
-Invoke `implement` with a current assessment and mutation manifest but no prior
-bounded approval.
+#### Expected behavior
 
-**Expected**
+Run bounded read-only assessments, return stable findings and a proposed mutation
+manifest, then stop with implementation not authorized.
 
-The workflow re-hashes all inputs, previews the exact complete changeset, and waits.
-No implementation writer is spawned and no product byte changes. Declining produces
-`Implementation State: NOT_AUTHORIZED`.
+#### Assertions
 
-Approve the exact set in a variant. Only then may the writer ledger and patch
-delegations begin. A new path or operation requires a revised assessment and new
-authorization.
+- [ ] TP-C01-A: No implementation writer starts
+- [ ] TP-C01-B: Product path hashes remain unchanged
+- [ ] TP-C01-C: Persist authority does not authorize patches
 
-## Case 4: Disjoint writers and one shared integrator
+#### Case Verdict
 
-Three patch owners have disjoint source, VFX, and audio paths. Two also propose
-changes to one scene and one event registry.
+PASS when all assertions hold; otherwise FAIL.
 
-**Expected**
+### Case 2: Complete mutation manifest and path ownership precede writers
 
-- disjoint owned paths may run in a bounded parallel batch;
-- neither contributor writes the shared scene or registry;
-- one manifest-named integrator applies shared inputs sequentially;
-- each step validates the current base hash and emits a receipt;
-- alias, case-fold, generated-output, or ancestor/descendant overlap is detected.
+#### Fixture
 
-If two writers are assigned the same canonical path, execution blocks before spawn.
+Proposals include gameplay code, engine code, shared scene/config, shader/VFX,
+audio bank/event, tools, regression fixture, build output, caches, logs, and
+receipts.
 
-## Case 5: Final integrated build invalidates local metrics
+#### Input
 
-Performance patch profiling passes. A later VFX patch adds particles and an audio
-patch adds streaming voices.
+`$team-polish implement` with current assessment and mutation manifest.
 
-**Expected**
+#### Expected reads
 
-Per-patch metrics cannot support readiness. After all patches and shared integration,
-one build owner creates a new build candidate. Unified performance, memory, loading,
-audio and QA evidence is rerun against that exact final artifact hash.
+Assessment, target, requirements, policy, complete canonical path inventory,
+baseline hashes, and authorization state.
 
-If final GPU time or audio streaming exceeds budget, verdict is
-`NEEDS MORE WORK` even though the performance patch's local metrics passed.
+#### Expected writes
 
-## Case 6: Hidden write outside manifest
+None until one preview lists every exact operation/output and authorization binds
+those bytes and paths.
 
-A technical-artist changes a render setting not listed in its owner paths.
+#### Expected non-writes
 
-**Expected**
+Any omitted class, generated output, alias, ancestor scope, or destructive target.
 
-Inventory reconciliation detects the unexpected hash change, stops integration,
-marks the patch failed, records the path/owner, and yields `NEEDS MORE WORK` or
-`INCOMPLETE` according to evidence. The workflow does not silently absorb or revert
-the change and cannot issue READY.
+#### Expected behavior
 
-## Case 7: Performance analyst role boundary
+Reject missing owner/base/operation/dependency/generated-output/validation/rollback
+fields and any overlap not assigned to one integrator.
 
-A profiler finding identifies an allocation hotspot.
+#### Assertions
 
-**Expected**
+- [ ] TP-C02-A: Every real side effect is disclosed
+- [ ] TP-C02-B: Every path has one unique writer
+- [ ] TP-C02-C: New scope requires reassessment and new authorization
 
-The performance analyst produces trace, metric, budget gap, path/module, confidence,
-and proposed owner evidence only. A programmer is the mutation owner after approval.
-A prompt asking the analyst to fix code fails the structural test.
+#### Case Verdict
 
-## Case 8: Engine and tools conditional triggers
+PASS when all assertions hold; otherwise FAIL.
 
-Variants:
+### Case 3: Shared resources integrate sequentially after disjoint patches
 
-1. profiler trace binds an engine module/path and confidence meets policy;
-2. a vague claim says “probably engine”;
-3. target manifest includes editor/import automation;
-4. target has no tools involvement.
+#### Fixture
 
-**Expected**
+Source, VFX, and audio owners have disjoint paths; two contributors propose
+fragments for one scene and one event registry.
 
-- engine-programmer read-only diagnosis/writer proposal is allowed only in variant 1;
-- variant 2 remains UNKNOWN and does not authorize an engine patch;
-- tools-programmer runs in variant 3 only;
-- tools-programmer does not run in variant 4.
+#### Input
 
-## Case 9: Gameplay-affecting visual effect lacks approval
+An authorized current mutation manifest and writer ledger.
 
-A technical artist proposes new screen shake and camera motion without a current
-approved design/UX requirement.
+#### Expected reads
 
-**Expected**
+Every patch receipt, shared-resource base hash, ordered integration plan, and
+current path inventory.
 
-The proposal may be recorded but cannot enter the authorized mutation set. Neither
-technical-artist nor user file approval substitutes for design approval. Verdict
-cannot be READY while the required behavior remains unresolved.
+#### Expected writes
 
-## Case 10: Accessibility final-build gate
+Disjoint owned paths may change in bounded parallel batches; one integrator alone
+writes the scene, registry, and integration receipt sequentially.
 
-Provide a final build with screen shake, flashes, and an audio-only critical cue.
+#### Expected non-writes
 
-Positive variant has current receipts for reduced-motion/disable behavior, intensity
-limits, policy-defined flash measurements, functional-equivalent visual/haptic cue,
-aim/readability preservation, settings persistence, and an independent
-accessibility-specialist review.
+Contributors never write shared resources or another owner's path.
 
-**Expected**
+#### Expected behavior
 
-Only the positive variant can pass. Missing threshold policy, reduced-motion control,
-equivalent cue, persistence, or current review produces `INCOMPLETE`; a measured
-threshold/readability failure produces `NEEDS MORE WORK`.
+Validate each intermediate base/result hash; conflict, drift, partial receipt, or
+unexpected path blocks integration.
 
-## Case 11: Evidence receipt completeness
+#### Assertions
 
-For a final profile or test receipt, omit one at a time: candidate/artifact hash,
-command/argv, tool version, hardware/environment, configuration, seed/workload,
-warm-up/duration, sample count, timestamps, result, budget hash, or raw log hash.
+- [ ] TP-C03-A: Shared files have exactly one writer
+- [ ] TP-C03-B: Every sequential step uses the prior verified result as base
+- [ ] TP-C03-C: Conflict resolution cannot change behavior without new authority
 
-**Expected**
+#### Case Verdict
 
-The receipt is invalid/partial and readiness is `INCOMPLETE`. A plan, checkbox,
-filename, Phase 1 measurement, or conversation claim cannot replace it.
+PASS when all assertions hold; otherwise FAIL.
 
-## Case 12: Required test matrix not run
+### Case 4: Final candidate remeasurement supersedes local patch metrics
 
-Variants include unavailable minimum-spec hardware, soak marked NOT RUN, truncated
-stress output, timed-out regression, and a receipt for the baseline build.
+#### Fixture
 
-**Expected**
+A performance patch passes locally, then VFX particles and audio streaming changes
+are integrated into a new candidate.
 
-Each produces `INCOMPLETE`, never READY. The report names the exact missing evidence,
-candidate mismatch, owner, and next permitted action. User optimism or phase approval
-cannot rewrite the state.
+#### Input
 
-## Case 13: Deterministic verdict order
+Verify the exact final build-candidate manifest.
 
-Assert:
+#### Expected reads
 
-- invalid candidate/policy/manifest -> `ERROR`;
-- current conclusive budget violation/regression/release blocker/design/accessibility
-  failure -> `NEEDS MORE WORK`;
-- otherwise, required missing/partial/not-run/unknown/timeout/stale/invalid/unavailable
-  evidence -> `INCOMPLETE`;
-- only all current complete passing evidence and zero blockers ->
-  `READY FOR RELEASE`.
+Final candidate/artifact/source/patch/integration/toolchain hashes, fixed test
+matrix, budgets, requirements, and final receipts.
 
-A current conclusive FAIL has precedence over incomplete evidence in the overall
-verdict while every omission remains visible. Every outcome reports `Release Authorization: NOT GRANTED`.
+#### Expected writes
 
-## Case 14: Bounded concurrency
+Only matrix-declared create-only final evidence and an authorized verification
+report.
 
-Set `.codex/config.toml` to `max_threads = 6`. The root and two unrelated agents are
-live; five assessment tasks exist.
+#### Expected non-writes
 
-**Expected**
+Product bytes and baseline/per-patch receipts.
 
-Available child slots are three, so dispatch batches never exceed three. Nested
-agents consume the same cap. Invalid/missing config falls back to serial. The
-controller gathers each batch before its dependents.
+#### Expected behavior
 
-## Case 15: Writer timeout and late patch
+Rerun all required profile, memory, loading, audio, QA, stress/soak, visual, and
+accessibility rows on the final artifact hash.
 
-A shader writer times out, returns after cancellation, and writes one owned file.
+#### Assertions
 
-**Expected**
+- [ ] TP-C04-A: Phase 1 and per-patch metrics cannot prove readiness
+- [ ] TP-C04-B: Every final receipt names the same artifact hash
+- [ ] TP-C04-C: A final budget violation yields NEEDS MORE WORK
 
-The workflow marks `TIMEOUT`, cancels/interrupts, blocks dependent integration,
-reconciles hashes, quarantines the late output, and never assigns that path while the
-old writer may be active. Retry requires confirmed termination, stable base, a new
-attempt ID, and the same approved scope.
+#### Case Verdict
 
-## Case 16: Checkpoint and resume
+PASS when all assertions hold; otherwise FAIL.
 
-Interrupt after shared integration and before build.
+### Case 5: Gameplay-affecting polish is design and accessibility gated
 
-**Expected**
+#### Fixture
 
-`resume` verifies every predecessor/checkpoint hash, target/baseline/mutation/
-authorization identity, writer ledger, patch receipts, and current path hashes. It
-continues from build without replaying completed patches. Drift, altered authority,
-missing predecessor, or active stale writer blocks.
+A proposal adds screen shake, flashing feedback, and an audio-only critical cue.
 
-## Case 17: Build identity and post-build change
+#### Input
 
-The final candidate records artifact/source/toolchain/platform/mutation/patch/
-integration hashes and reproducible build receipt. Then an audio bank byte changes.
+Variants with missing design approval, missing reduced-motion/flash/equivalent-cue
+evidence, measured accessibility failure, and complete current approvals/evidence.
 
-**Expected**
+#### Expected reads
 
-All prior final evidence becomes stale. The workflow creates no READY report until a
-new candidate is built and the full required verification matrix reruns.
+Exact design/UX/accessibility requirements, affected asset/config hashes, policy
+thresholds, settings persistence, and independent final review.
 
-## Case 18: Release/publication boundary
+#### Expected writes
 
-The final verification returns `READY FOR RELEASE`.
+Only the fully approved mutation may enter the authorized set; final review remains
+read-only.
 
-**Expected**
+#### Expected non-writes
 
-`Release Authorization: NOT GRANTED`; no commit, tag, push, release record, deploy,
-upload, store submission, public/stakeholder message, downstream workflow invocation,
-stage update, or scheduling action occurs. Any downstream consumer must re-hash the
-candidate/report and obtain separate authority.
+No requirement or approval record is authored by team-polish.
 
-## Case 19: Persisted report integrity
+#### Expected behavior
 
-Authorize one exact verification report CREATE.
+Missing evidence is INCOMPLETE; measured failure is NEEDS MORE WORK; only the fully
+passing final-build variant may continue toward readiness.
 
-**Expected**
+#### Assertions
 
-Immediately before write, every input is re-hashed and target absence is confirmed.
-The report is atomically created, read back, internally validated, and returned with
-its SHA-256. Decline or failure yields no consumable persisted report and no other
-write.
+- [ ] TP-C05-A: Technical-art or file approval is not design authority
+- [ ] TP-C05-B: Accessibility reviewer is not the effect writer
+- [ ] TP-C05-C: Functional-equivalent feedback is required
 
-## Case 20: Stable finding rerun
+#### Case Verdict
 
-A later verified candidate closes two of five stable finding IDs.
+PASS when all variants match; otherwise FAIL.
 
-**Expected**
+### Case 6: Performance analyst never becomes a code writer
 
-The report compares exact finding IDs and source evidence hashes, marks only verified
-closures, preserves unresolved/deferred/unknown findings, and checks diff regressions.
-It never starts an open-ended polish loop or selects an earlier report by recency.
+#### Fixture
+
+A profile trace identifies an allocation hotspot and proposes an engine or gameplay
+source path.
+
+#### Input
+
+One assessment task followed by an authorized implementation task.
+
+#### Expected reads
+
+Analyst receives only the exact bounded capture inputs; programmer receives the
+approved finding and owned path.
+
+#### Expected writes
+
+Analyst writes only its measurement receipt; the manifest-named programmer writes
+the patch and patch receipt.
+
+#### Expected non-writes
+
+Analyst never edits source, config, assets, tests, or shared resources.
+
+#### Expected behavior
+
+A prompt or receipt assigning source edits to performance-analyst is a structural
+failure and blocks integration.
+
+#### Assertions
+
+- [ ] TP-C06-A: Measurement owner and mutation owner are distinct
+- [ ] TP-C06-B: Finding records trace/module/confidence and proposed owner
+- [ ] TP-C06-C: Analyst cannot self-approve a patch
+
+#### Case Verdict
+
+PASS when all assertions hold; otherwise FAIL.
+
+### Case 7: Fixed test matrix is immutable during verify
+
+#### Fixture
+
+The captured matrix contains stable required CPU, GPU, memory, loading, audio,
+regression, stress, soak, minimum-spec, visual, and accessibility rows.
+
+#### Input
+
+Variants remove soak, weaken duration, change hardware, alter pass predicate, add
+an ad hoc substitute, and preserve the exact matrix.
+
+#### Expected reads
+
+Matrix path/hash, policy classifications, candidate manifest, environments, and
+declared commands.
+
+#### Expected writes
+
+Only exact matrix-declared receipt paths for the unchanged variant.
+
+#### Expected non-writes
+
+Matrix, policy, candidate, and substituted evidence paths remain unchanged.
+
+#### Expected behavior
+
+Every changed/dropped/weakened/reclassified variant blocks; only exact matrix
+execution continues.
+
+#### Assertions
+
+- [ ] TP-C07-A: Row IDs and policy-required state are stable
+- [ ] TP-C07-B: Command/duration/seed/hardware/predicate are immutable
+- [ ] TP-C07-C: Verify cannot choose easier evidence
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 8: Execution receipt distinguishes PASS from unrun and partial states
+
+#### Fixture
+
+Exercise valid PASS, NOT_RUN hardware, TIMEOUT, truncated log, missing exit,
+wrong build hash, wrong seed, inadequate duration, and raw-log mismatch variants.
+
+#### Input
+
+One final-candidate matrix row and one receipt variant per run.
+
+#### Expected reads
+
+Candidate/artifact bytes, matrix row, environment/hardware identity, raw trace/log,
+budget rule, and receipt.
+
+#### Expected writes
+
+None from validation; invalid receipts are not repaired.
+
+#### Expected non-writes
+
+No receipt or log is rewritten to PASS.
+
+#### Expected behavior
+
+Only the exact complete current PASS receipt satisfies the row; all nonconclusive
+required states map to INCOMPLETE and a conclusive failure maps to NEEDS MORE WORK.
+
+#### Assertions
+
+- [ ] TP-C08-A: Build/hash/command/runtime/result axes are checked separately
+- [ ] TP-C08-B: Filename, checkbox, or conversation cannot fill a field
+- [ ] TP-C08-C: Required hardware absence never becomes PASS
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 9: Readiness verdict follows one deterministic order
+
+#### Fixture
+
+Run invalid manifest, conclusive current regression, incomplete required evidence,
+and fully current passing zero-blocker variants.
+
+#### Input
+
+One exact verification evidence set per variant.
+
+#### Expected reads
+
+Candidate, policy, blocker registry, complete fixed matrix, all receipts, and
+evidence snapshot.
+
+#### Expected writes
+
+None unless separately authorized report persistence follows computation.
+
+#### Expected non-writes
+
+Evidence and blocker severity are never rewritten by risk preference.
+
+#### Expected behavior
+
+Return ERROR, NEEDS MORE WORK, INCOMPLETE, and READY FOR RELEASE respectively;
+list all incomplete rows even when a conclusive failure takes precedence.
+
+#### Assertions
+
+- [ ] TP-C09-A: Zero open release blockers is mandatory for READY
+- [ ] TP-C09-B: Every required receipt must be current complete and passing
+- [ ] TP-C09-C: Every outcome reports Release Authorization NOT GRANTED
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 10: Required agent skip and partial terminals cannot be READY
+
+#### Fixture
+
+Policy marks QA and performance roles REQUIRED. Exercise skip, UNKNOWN, TIMEOUT,
+ERROR, CANCELLED, and FAIL results; separately mark a tools row NOT_APPLICABLE with
+current policy proof.
+
+#### Input
+
+Role matrix, policy, agent tasks/results, and otherwise passing evidence.
+
+#### Expected reads
+
+Required-role classifications, rule IDs, agent receipts, context hashes, and
+affected scope.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+Role policy and results are not normalized by the controller.
+
+#### Expected behavior
+
+FAIL is a conclusive blocker. Other required non-PASS states produce workflow
+PARTIAL and verdict INCOMPLETE. The proven NOT_APPLICABLE tools row is nonblocking.
+
+#### Assertions
+
+- [ ] TP-C10-A: Required skip is visible and non-ready
+- [ ] TP-C10-B: Optionality exists before dispatch
+- [ ] TP-C10-C: Conversation cannot reclassify a required role
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 11: Timeout, cancellation, late output, and retry are bounded
+
+#### Fixture
+
+A shader writer times out, cancellation is requested, and a late patch changes one
+owned path. Exercise confirmed termination and cancellation-failure variants.
+
+#### Input
+
+Agent task/result records, deadline, one-retry policy, checkpoint, and path hashes.
+
+#### Expected reads
+
+Task/attempt/context/predecessor identities, live-agent state, owned/shared
+preimages, late-output hashes, and retry budget.
+
+#### Expected writes
+
+Only exact controller checkpoint/quarantine evidence paths; no integration write.
+
+#### Expected non-writes
+
+No reassignment, merge, silent revert, broader retry, or second retry.
+
+#### Expected behavior
+
+Mark TIMEOUT, stop dependents, reconcile all paths, exclude late bytes from
+integration, and permit one new attempt only after proven termination and stable base.
+
+#### Assertions
+
+- [ ] TP-C11-A: Late patch is never accepted into the candidate
+- [ ] TP-C11-B: Cancellation failure remains BLOCKED
+- [ ] TP-C11-C: Retry keeps the approved scope and gets a new attempt ID
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 12: Actual role matrix replaces review-mode templates
+
+#### Fixture
+
+A visual/audio/tools target requires technical-art, sound, tools, QA, and
+accessibility rows. No director row exists.
+
+#### Input
+
+Variants pass full, lean, solo, review-skip, and the valid explicit assess command.
+
+#### Expected reads
+
+Only the valid command reads target policy and required-role matrix.
+
+#### Expected writes
+
+None during command validation and read-only assessment.
+
+#### Expected non-writes
+
+No director/lead placeholder receipt or mode-derived skip record.
+
+#### Expected behavior
+
+Reject template review flags. Dispatch the real required rows from policy; each
+required row must return current PASS evidence.
+
+#### Assertions
+
+- [ ] TP-C12-A: Presentation mode cannot alter team composition
+- [ ] TP-C12-B: No ceremonial director gate exists
+- [ ] TP-C12-C: Required roles derive from exact scope triggers
+
+#### Case Verdict
+
+PASS when all assertions hold; otherwise FAIL.
+
+### Case 13: Tools and engine roles have evidence-based triggers
+
+#### Fixture
+
+Exercise editor/import automation, no tools scope, trace-backed engine boundary
+above confidence threshold, and vague probably-engine variants.
+
+#### Input
+
+Target/context/policy records and performance finding evidence.
+
+#### Expected reads
+
+Only exact trigger sources and role-specific context.
+
+#### Expected writes
+
+Assessment receipts only; patches require later exact mutation authority.
+
+#### Expected non-writes
+
+No tools or engine patch during assessment.
+
+#### Expected behavior
+
+Tools role runs only for declared tools scope. Engine diagnosis runs only for the
+trace/module/boundary/confidence variant; vague claims remain UNKNOWN.
+
+#### Assertions
+
+- [ ] TP-C13-A: Tools programmer is neither dead metadata nor unconditional
+- [ ] TP-C13-B: Engine classification has an objective evidence threshold
+- [ ] TP-C13-C: Conditional trigger absence is recorded, not guessed
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 14: Context manifest enforces deterministic hard ceilings
+
+#### Fixture
+
+Variants include valid bounded context, missing required entry, hash drift,
+unreadable file, file-count overflow, byte overflow, and an agent request for the
+whole repository.
+
+#### Input
+
+One context v1 manifest and target policy per variant.
+
+#### Expected reads
+
+Manifest metadata and sizes first; bodies only for valid ordered entries within all
+ceilings.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No generated summary, expanded manifest, or hidden cache becomes authority.
+
+#### Expected behavior
+
+Only valid bounded context dispatches. Every other variant blocks before delegation
+with exact consumed/required limits and offending entry.
+
+#### Assertions
+
+- [ ] TP-C14-A: Context order and digest are reproducible
+- [ ] TP-C14-B: Overflow never silently truncates required evidence
+- [ ] TP-C14-C: Full context and inferred paths are forbidden
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 15: Immutable checkpoints make resume idempotent
+
+#### Fixture
+
+Interrupt after shared integration and before build. Variants include valid chain,
+forked predecessor, changed path hash, altered authorization, duplicate completed
+step, missing terminal result, and active stale writer.
+
+#### Input
+
+`$team-polish resume --checkpoint production/polish/combat/implementations/run-1/checkpoints/integrated.md`
+
+#### Expected reads
+
+Full predecessor chain, schemas/hashes, manifests, authorization, ledger, agent
+results, receipts, context/test matrix, path inventory, retry budget, and next step.
+
+#### Expected writes
+
+Only the next incomplete authorized step and its new create-only checkpoint.
+
+#### Expected non-writes
+
+Completed patches/integration are never replayed; invalid variants write nothing.
+
+#### Expected behavior
+
+Valid chain resumes at build. Every drift/fork/collision/active-writer variant
+blocks with one exact recovery requirement.
+
+#### Assertions
+
+- [ ] TP-C15-A: Checkpoint IDs and predecessors are unique
+- [ ] TP-C15-B: Resume does not depend on conversation memory
+- [ ] TP-C15-C: Idempotence covers patch, integration, build, and verification steps
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 16: Performance capture uses a direct explicit interface
+
+#### Fixture
+
+Exercise valid direct profile request/receipt, unsupported runner, missing hardware,
+timeout, mismatched command, mismatched candidate, and a request to invoke
+`$perf-profile` implicitly.
+
+#### Input
+
+Assessment profile request and exact target/budget/context records.
+
+#### Expected reads
+
+Request-declared candidate/artifact, budget, context, hardware, tool, command, and
+raw receipt evidence only.
+
+#### Expected writes
+
+Only the request-declared immutable profile receipt/log/trace outputs when execution
+is supported and authorized.
+
+#### Expected non-writes
+
+No nested workflow invocation, inferred artifact path, or prose-only substitute.
+
+#### Expected behavior
+
+Accept only the current matching receipt; record unsupported/missing/timeout as
+NOT_RUN or INVALID and keep readiness non-ready.
+
+#### Assertions
+
+- [ ] TP-C16-A: Nested perf-profile behavior is not assumed
+- [ ] TP-C16-B: Request and receipt schemas define the entire compatibility boundary
+- [ ] TP-C16-C: Failure state maps deterministically to incomplete evidence
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 17: Post-build byte change invalidates every final receipt
+
+#### Fixture
+
+A complete final candidate and passing matrix exist, then one audio bank byte
+changes after build.
+
+#### Input
+
+Verify using the old candidate and receipts.
+
+#### Expected reads
+
+Current artifact/source/asset/config bytes and every captured hash.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No receipt, candidate manifest, or report is refreshed in place.
+
+#### Expected behavior
+
+Mark the candidate and dependent evidence stale; require a new candidate and full
+matrix rerun.
+
+#### Assertions
+
+- [ ] TP-C17-A: Timestamp recency cannot hide byte drift
+- [ ] TP-C17-B: Local unaffected tests cannot preserve READY
+- [ ] TP-C17-C: Old report remains immutable history
+
+#### Case Verdict
+
+PASS when stale evidence blocks; otherwise FAIL.
+
+### Case 18: Hidden or owner-violating write blocks integration
+
+#### Fixture
+
+A technical artist changes an unlisted render setting or another owner's path.
+
+#### Input
+
+Current writer ledger, mutation manifest, patch receipt, and reconciled inventory.
+
+#### Expected reads
+
+All declared and observed path hashes, canonical aliases, owner IDs, and generated
+outputs.
+
+#### Expected writes
+
+Only an immutable failure/checkpoint record in exact controller paths.
+
+#### Expected non-writes
+
+No silent absorption, revert, integration, candidate build, or READY report.
+
+#### Expected behavior
+
+Record the unexpected write and owner violation, stop dependents, and return a
+non-ready state with recovery boundary.
+
+#### Assertions
+
+- [ ] TP-C18-A: Manifest-outside writes are visible
+- [ ] TP-C18-B: Controller never silently repairs another writer's output
+- [ ] TP-C18-C: Dirty state cannot become a candidate
+
+#### Case Verdict
+
+PASS when all assertions hold; otherwise FAIL.
+
+### Case 19: Bounded concurrency counts root and nested agents
+
+#### Fixture
+
+`.codex/config.toml` sets max_threads six; root plus two unrelated agents are
+live; five independent assessment rows are ready.
+
+#### Input
+
+One valid assess invocation.
+
+#### Expected reads
+
+Exact config and live-agent inventory before each batch.
+
+#### Expected writes
+
+Only role-declared assessment outputs when persistence is separately authorized.
+
+#### Expected non-writes
+
+No extra task is dispatched beyond available slots.
+
+#### Expected behavior
+
+Dispatch at most three children, count nested delegation against the same cap, gather
+the batch, then release slots. Invalid config falls back to serial.
+
+#### Assertions
+
+- [ ] TP-C19-A: Root counts as one live thread
+- [ ] TP-C19-B: Nested agents cannot bypass the cap
+- [ ] TP-C19-C: Dependent work waits for predecessor receipts
+
+#### Case Verdict
+
+PASS when concurrency never exceeds the calculation; otherwise FAIL.
+
+### Case 20: Report persistence and release boundary stay separate
+
+#### Fixture
+
+A final candidate satisfies every required row and has zero open release blockers.
+Variant A declines persistence; Variant B authorizes one exact absent report path.
+
+#### Input
+
+Verify with `--persist` only in Variant B.
+
+#### Expected reads
+
+Every final input is rehashed immediately before report creation.
+
+#### Expected writes
+
+A creates none. B atomically creates and verifies exactly one v2 report at the
+previewed path.
+
+#### Expected non-writes
+
+No commit, tag, push, release object, deployment, upload, store submission, message,
+stage update, scheduling action, or downstream workflow.
+
+#### Expected behavior
+
+Both conversational outcomes say READY FOR RELEASE and Release Authorization NOT
+GRANTED; only B yields a consumable persisted report/hash.
+
+#### Assertions
+
+- [ ] TP-C20-A: Readiness is evidence, not release authority
+- [ ] TP-C20-B: Declined/failed persistence creates no consumable report
+- [ ] TP-C20-C: Downstream consumers must rehash and obtain separate authority
+
+#### Case Verdict
+
+PASS when all assertions hold; otherwise FAIL.
 
 ## Protocol compliance
 
-- [ ] Phase 1 completes without product mutation before any implementation approval.
-- [ ] The complete mutation manifest is stable and hash-bound before writers spawn.
-- [ ] Parallel writes are disjoint and bounded; shared resources have one sequential integrator.
-- [ ] The final integrated build is created before all release-readiness profiling and QA.
-- [ ] Every required final receipt binds the same candidate/artifact hash.
-- [ ] Partial, unavailable, unknown, stale, timeout and NOT RUN states are visible and non-ready.
-- [ ] Gameplay-affecting polish cannot bypass approved design or accessibility evidence.
-- [ ] Unique writer, timeout, cancellation, checkpoint and idempotent resume rules are enforced.
-- [ ] No file authorization expands to release, deployment, publication, or messaging.
-- [ ] Metadata describes assessment/implementation/verification rather than an unsafe parallel polish pass.
+- [ ] TP-P001: Resolve one explicit mode and exact manifest/checkpoint path
+- [ ] TP-P002: Read only hash-bound context within deterministic ceilings
+- [ ] TP-P003: Keep assessment roles read-only
+- [ ] TP-P004: Preview one complete mutation set before product writers
+- [ ] TP-P005: Assign one writer per path and one integrator per shared resource
+- [ ] TP-P006: Keep analyst, programmer, integrator, build owner, QA, and accessibility ownership distinct
+- [ ] TP-P007: Bind every agent attempt to task/result/deadline/context/checkpoint records
+- [ ] TP-P008: Cancel and reconcile before one bounded retry
+- [ ] TP-P009: Resume only from a verified immutable checkpoint chain
+- [ ] TP-P010: Build one final candidate after integration
+- [ ] TP-P011: Execute the unchanged fixed matrix on that exact candidate
+- [ ] TP-P012: Preserve every failure, omission, unavailable, timeout, and not-run row
+- [ ] TP-P013: Compute the deterministic verdict without conversational override
+- [ ] TP-P014: Persist only exact create-only controller outputs after authorization
+- [ ] TP-P015: Never invoke perf-profile or another downstream workflow automatically
+- [ ] TP-P016: Never grant release, commit, push, publish, deploy, message, or schedule authority
+
+## Verdict matrix
+
+| Highest-priority condition | Workflow Status | Readiness Verdict |
+|---|---|---|
+| Invalid candidate/manifest/policy/internal processing | ERROR | ERROR |
+| Current conclusive budget/test/blocker/design/accessibility/unexpected-write failure | COMPLETE or PARTIAL as evidenced | NEEDS MORE WORK |
+| Required missing/not-run/partial/unknown/timeout/stale/invalid/unavailable evidence or agent row | PARTIAL or BLOCKED as evidenced | INCOMPLETE |
+| Zero blockers and all required current complete passing receipts | COMPLETE | READY FOR RELEASE |
+
+Every row returns `Release Authorization: NOT GRANTED`.
+
+## Audit remediation traceability
+
+| Audit ID | Contract closure |
+|---|---|
+| TPL-001 | TP-S008–TP-S010 and Cases 2–3 enforce path ownership/shared integration |
+| TPL-002 | TP-S036–TP-S037 and Cases 4/17 bind evidence to the final candidate |
+| TPL-003 | TP-S006–TP-S009 and Case 2 disclose every mutation/output class |
+| TPL-004 | TP-S005–TP-S007 and Case 1 keep assessment read-only before authorization |
+| TPL-005 | TP-S038 and Case 5 enforce design and accessibility authority |
+| TPL-006 | TP-S011 and Case 6 separate performance analyst from code writer |
+| TPL-007 | TP-S023–TP-S026 and Cases 7–8 define fixed test and execution evidence |
+| TPL-008 | TP-S027–TP-S029 and Case 9 define deterministic readiness |
+| TPL-009 | TP-S014–TP-S016 and Case 10 map required agent partial/skip states |
+| TPL-010 | TP-S030–TP-S032 and Case 11 define timeout/cancel/late/retry handling |
+| TPL-011 | TP-S004/TP-S014 and Case 12 replace inert review modes with real role policy |
+| TPL-012 | TP-S013 and Case 13 define tools-programmer trigger/output |
+| TPL-013 | TP-S017–TP-S019 and Case 14 define bounded context authority |
+| TPL-014 | TP-S033–TP-S035 and Case 15 define checkpoint/resume/idempotence |
+| TPL-015 | TP-S020–TP-S022 and Case 16 define direct performance interface and failure mapping |
+
+## Validation boundary and shared integration note
+
+This is a static contract specification. It validates exact text, schemas, state
+mappings, role triggers, and non-write boundaries; it does not execute profiling,
+builds, soak/stress tests, agent cancellation, filesystem rollback, or checkpoint
+resume. Runtime conformance requires schema-valid fixtures, final-candidate hash
+checks, timeout/late-write injection, context-budget overflow tests, and checkpoint
+fork/replay tests.
+
+The staged candidate names shared records that other skills or runners may produce,
+but it does not modify their live schemas or catalog entries. Integration must align
+producer schema/version, canonical path, identity, and raw hashes before this
+consumer can accept them; otherwise team-polish fails closed as INCOMPLETE or
+BLOCKED.

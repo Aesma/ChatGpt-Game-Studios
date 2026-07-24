@@ -1,422 +1,436 @@
 ---
 name: soak-test
-description: "Plans build-bound endurance tests, ingests immutable checkpoint evidence, and finalizes reproducible soak results without confusing an empty protocol with an executed test."
+description: "Plans and finalizes exact build-bound endurance runs with expanded checkpoints, unit-safe resource evidence, immutable receipts, and fail-closed stability handoff."
 ---
 
 # Soak Test
 
-Use one explicit mode:
+## Purpose and authority boundary
 
-- `$soak-test plan <target-id> --protocol-id <id> --build <version> --build-hash <hash> --commit <commit> --duration <duration> --interval <duration> --focus <memory|stability|performance|experience|all> --profile <workload-profile-id> --environment <environment-profile-id> [--save-protocol] [--supersedes <protocol-id>]`
-- `$soak-test start <protocol-id> --run-id <run-id> --observer <observer-id> --started-at <ISO-8601>`
-- `$soak-test ingest <run-id> <path-to-evidence> --receipt-id <receipt-id>`
-- `$soak-test finalize <run-id> --ended-at <ISO-8601> --termination <reason>`
-- `$soak-test status <run-id>`
+Plan one reproducible endurance protocol, register one exact run, ingest immutable evidence, and finalize one build-bound result. A human or separately authorized harness performs the long-running workload. This workflow does not invent samples, launch an undeclared runner, edit product code, repair tests, change a build, or convert a protocol into proof of execution.
 
-The human or an external harness performs the long-running test. This workflow plans
-it, preserves supplied evidence, and derives a result. It never simulates missing
-samples or claims that writing a protocol executed the test.
+Planning artifacts, run manifests, evidence receipts, results, readiness decisions, and handoff receipts remain distinct. Writing a protocol means `PLANNED`, never executed. Finalizing a result means the evidence artifact is immutable and verified; it does not itself mean stability or release readiness passed.
 
-An explicit bounded request authorizes its in-scope writes. Otherwise, before the
-first file change, show one complete changeset with every intended path and change
-and obtain one approval. Do not re-prompt within that boundary. Stop for new approval
-only when scope expands materially.
+## Exact invocation contract
 
-## Artifact and status contract
+**P1 Clause SOAK-CL-004 — Explicit target/profile/build plan grammar.**
 
-Use only this canonical layout:
+Accept only these forms:
+
+~~~text
+$soak-test plan {target-id} --candidate-manifest {path} --candidate-sha256 {sha256} --build-receipt {path} --build-receipt-sha256 {sha256} --profile-manifest {path} --profile-sha256 {sha256} --environment-manifest {path} --environment-sha256 {sha256} --metric-policy {path} --metric-policy-sha256 {sha256} --adapter-manifest {path} --adapter-sha256 {sha256} --protocol-id {protocol-id} --duration-ms {positive-integer} --interval-ms {positive-integer} --focus {dimension-list} [--history-index {path} --history-index-sha256 {sha256}] [--supersedes {protocol-path} --supersedes-sha256 {sha256}] [--save]
+$soak-test start --run-manifest {path} --run-manifest-sha256 {sha256}
+$soak-test ingest --run-manifest {path} --run-manifest-sha256 {sha256} --receipt-manifest {path} --receipt-manifest-sha256 {sha256}
+$soak-test finalize --run-manifest {path} --run-manifest-sha256 {sha256} --finalize-manifest {path} --finalize-manifest-sha256 {sha256}
+$soak-test status --run-manifest {path} --run-manifest-sha256 {sha256}
+~~~
+
+`focus` is a canonical comma-separated subset of `stability,memory,performance,experience`, with duplicates rejected. There is no implicit target, duration, focus, profile, environment, build, or mode.
+
+Reject unknown modes, unknown or duplicate flags, missing values, extra positional values, ambiguous duration text, non-positive durations, intervals longer than duration, unsafe IDs, absolute paths, dot segments, globs, directory scans, symlink escapes, and hashes not expressed as 64 lowercase hexadecimal characters. Reject a plan request that omits the target/system, duration, focus, profile conditions, or exact candidate/build identities. On rejection, write nothing and return `Workflow Verdict: BLOCKED`.
+
+An explicitly bounded request authorizes its in-scope candidate writes. Otherwise preview one complete changeset and obtain one approval before the first write. Never commit, publish outside the project, invoke another workflow, or mutate a source authority automatically.
+
+## Versioned contracts
+
+Freeze the workflow contract before reading input bytes:
+
+~~~yaml template
+schema: cgs-soak-test-workflow-contract/v1
+inputs:
+  candidate: cgs-build-candidate/v1
+  build_receipt: cgs-build-receipt/v1
+  workload_profile: cgs-soak-workload-profile/v1
+  environment_profile: cgs-soak-environment-profile/v1
+  metric_policy: cgs-soak-metric-policy/v1
+  adapter: cgs-soak-adapter-manifest/v1
+  history_index: cgs-soak-history-index/v1
+  run_manifest: cgs-soak-run-manifest/v2
+  ingest_manifest: cgs-soak-ingest-manifest/v1
+  finalize_manifest: cgs-soak-finalize-manifest/v1
+outputs:
+  protocol: cgs-soak-protocol/v2
+  evidence_receipt: cgs-soak-evidence-receipt/v2
+  result: cgs-soak-result/v2
+  completion_receipt: cgs-soak-completion-receipt/v2
+canonical_root: production/qa/soak-tests/
+~~~
+
+Unknown or incompatible schema versions are blocking. Record the workflow-contract schema and SHA-256 in every output.
+
+## Artifact identity and immutable layout
+
+Use only this layout for new evidence:
 
 ~~~text
 production/qa/soak-tests/
-  _protocols/<protocol-id>.md
-  <run-id>/
-    manifest.md
-    receipts/<receipt-id>.md
-    raw/<receipt-id>.<source-extension>
-    samples/<receipt-id>.md
-    result.md
+  _protocols/{protocol-id}/
+    protocol.json
+    protocol.md
+  {run-id}/
+    run-manifest.json
+    evidence/
+      {receipt-id}/
+        source.{extension}
+        samples.jsonl
+        receipt.json
+    result.json
+    report.md
+    completion-receipt.json
 ~~~
 
-Each layer has one meaning:
+Every protocol ID, run ID, and receipt ID is stable, unique, and includes more identity than a date. Reject path separators and timestamp-only IDs. Every final destination must be absent. Never overwrite, extend in place, merge into, or select by modification time. A changed candidate, build, profile, environment, adapter, metric policy, schedule, observer, or evidence set uses a new immutable ID.
 
-- protocol: immutable execution plan; `Artifact Type: soak-test-protocol`,
-  `Status: PLANNED`, `Gate Eligible: NO`, `Verdict: PROTOCOL_PLANNED`;
-- run manifest: immutable run identity created before evidence ingest;
-  `Artifact Type: soak-run-manifest`, `Status: RUNNING`, `Gate Eligible: NO`;
-- raw receipt and sample ledger: immutable evidence copied and indexed without
-  changing tester values; never a result;
-- completed result: only `<run-id>/result.md` with
-  `Artifact Type: soak-test-result` and `Status: COMPLETED`.
+Legacy protocol or result files are read-only advisory material only when an exact path and hash are supplied. They are not evidence for `cgs-soak-result/v2` and are never handoff eligible.
 
-A protocol, manifest, receipt, sample ledger, legacy soak file, blank template, or
-partially filled table is not an execution result. It must never use `Status:
-COMPLETED`, `Execution Status: EXECUTED`, `Verdict: COMPLETE`, or `Gate Eligible:
-YES`.
+## Phase 1: Resolve exact candidate, build, and context authorities
 
-Only a result that passes Phase 6 finalization may return `Verdict: COMPLETE`.
-`COMPLETE` means the result artifact was finalized and verified; it is independent
-from technical or experience readiness.
+Resolve literal project-relative paths and real paths. Require regular files under the project root. Hash raw bytes before parsing, reject duplicate keys, and compare each observed hash with the CLI value and all cross-references.
 
-Never overwrite any canonical artifact. A changed build, workload, environment,
-protocol, evidence set, or retry uses a new protocol/run/receipt ID.
+The candidate manifest and build receipt must agree exactly on:
 
-## Result fields
+- candidate ID, build ID, artifact path and SHA-256;
+- source commit, engine identity and exact version;
+- target platform, device class, architecture, and build configuration;
+- creation identity, producer/run identity, status, and completeness;
+- target system, scene or service applicability.
 
-Keep these fields independent:
+Require the build receipt to be successful, complete, current, and verifiable. Re-hash a local artifact. For a remote artifact, require a signed or issuer-verifiable receipt that binds the same identities and hash. A filename, branch, tag, or user statement is not build evidence.
 
-| Field | Allowed values |
-|---|---|
-| `Status` | `COMPLETED` only on a finalized result |
-| `Execution Status` | `EXECUTED`, `FAILED_EARLY`, `INCOMPLETE` |
-| `Stability Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
-| `Memory Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
-| `Performance Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
-| `Experience Result` | `PASS`, `FAIL`, `INCONCLUSIVE`, `NOT_IN_SCOPE` |
-| `Readiness Result` | `PASS`, `FAIL`, `INCONCLUSIVE` |
-| `Gate Eligible` | `YES` or `NO`; only a finalized, conclusive execution or verified early objective failure may be `YES` |
-| `Verdict` | `COMPLETE`, `ERROR`, `BLOCKED`, or a mode-specific non-completion verdict |
+The workload profile binds stable target ID, ordered step IDs, rates or repetitions, player/bot count, network conditions, save/state setup, deterministic seed or explicit nondeterministic rationale, resets, transitions, incidents to induce or avoid, and profile revision/hash.
 
-An experience/fatigue observation cannot turn an objective stability, memory, or
-performance result into PASS or FAIL. Likewise, technical PASS cannot erase
-experience concerns. A consumer may combine dimensions only through an explicit,
-named gate policy.
+The environment profile binds platform, exact device/hardware identity, OS and runtime versions, graphics/quality settings, power and thermal mode, locale, input, accessibility configuration, network topology, background services, and environment revision/hash.
 
-## Phase 0: Validate mode, IDs, and paths
+The metric policy binds every metric, unit, budget/baseline, checkpoint requirements, confidence policy, early-stop trigger, recovery policy, and named consumer gate policy. The adapter manifest binds the configured engine/version, collection tools, parsers, source fields, unit conversions, harness execution manifest, and cleanup capability.
 
-Accept exactly one mode and its documented arguments. Reject unknown/missing modes,
-unknown options, duplicate options with different values, extra positionals, unsafe
-IDs, and invalid durations before writing anything.
+All target/build/profile/environment/metric/adapter applicability keys must match. Any missing, stale, partial, conflicting, unsupported, or hash-mismatched authority sets `Input Status: INVALID` or `STALE`, returns `Workflow Verdict: BLOCKED`, and writes nothing.
 
-IDs must match:
+Consume QA plans, playtest results, bug records, or prior soak results only through explicitly supplied project-relative paths and SHA-256 values declared by the request authorities. Revalidate their canonical schema and current status. Other context is labeled `ADVISORY` and cannot change the scope, thresholds, or result. Never read the most recent context.
 
-- protocol ID: `SOAK-PROTO-<slug-or-version>`;
-- run ID: `SOAK-RUN-<slug-or-uuid>`;
-- receipt ID: `SOAK-REC-<slug-or-uuid>`;
-- target, workload-profile, and environment-profile IDs:
-  lowercase/uppercase letters, digits, hyphens, and underscores only.
+**P1 Clause SOAK-CL-008 — Explicit hash-bound context only.** The preceding
+authority rule is the normative closure clause for audit item SOAK-008.
 
-Reject path separators, dot segments, timestamp-only IDs, existing-path collisions,
-symlink escapes, missing files, directories used as evidence, unsupported file types,
-and evidence larger than 100 MiB. Resolve literal real paths inside the project root.
-Accept UTF-8 `.md`, `.txt`, `.csv`, `.json`, or `.jsonl` evidence.
+## Phase 2: Validate engine adapter and exact harness contract
 
-On validation failure, return `Verdict: ERROR` or `BLOCKED` with the exact failed
-field/path. Write nothing and never emit completion or readiness.
+**P1 Clause SOAK-CL-007 — Configured engine/version adapter only.**
 
-## Phase 1: Validate protocol identity
+Load only the adapter matching the candidate's configured engine and exact version. Validate adapter path, raw SHA-256, schema, version range, collection-tool binaries or identities, parser versions, source fields, and unit conversion functions. Never include guidance for another engine or substitute a generic engine heuristic.
 
-`plan` requires all of the following before an executable protocol can be produced:
+The adapter's harness execution manifest must declare:
 
-- stable target ID plus exact system, scene/service, and target artifact;
-- build version, build hash, and source commit;
-- configured engine and version when an engine is involved;
-- workload profile ID and content: ordered action/loop step IDs, repetitions or rate,
-  player/bot count, network conditions when relevant, save/state setup, deterministic
-  seed or explicit `NONDETERMINISTIC` rationale, and reset/transition rules;
-- environment profile ID and content: platform, device/hardware, OS, graphics and
-  quality settings, power/thermal mode, input, locale, accessibility configuration,
-  network topology, and relevant background services;
-- requested duration, sampling interval, focus dimensions, observer role, and
-  collection-tool/adapter identity with version;
-- success criteria or acceptance-criterion IDs under test.
+- executable identity and optional binary SHA-256;
+- ordered argv array, project-root-contained cwd, and environment-name allowlist;
+- exact target/build/profile/environment identities;
+- deterministic seed/order/locale/timezone/clock controls;
+- heartbeat interval and missing-heartbeat timeout;
+- per-checkpoint capture timeout and whole-run hard deadline;
+- stdout, stderr, structured-result, and per-record byte limits;
+- process-group creation, child-process enumeration, graceful-stop interval, forced-stop interval, and final cleanup check;
+- recovery observation window, recovery checkpoint IDs, and restart prohibition or exact restart policy;
+- exit-code map, parser identity, expected evidence paths, and redaction rules.
 
-Missing target, build, workload, environment, or observer/collection identity is
-`BLOCKED`; do not generate a fillable “executable” protocol with placeholders.
+This workflow never builds a shell string or falls back to another runner. If the engine version, adapter, runner, or cleanup/recovery capability cannot be verified, return `Adapter Status: NEEDS_CONFIRMATION`, `Handoff Eligible: NO`, and do not call the protocol executable or gate capable.
 
-Read context only through explicit IDs and current hashes. Do not read “the most
-recent” playtest, QA plan, protocol, or run. If the plan names a playtest session as
-experience evidence, accept only the staged canonical playtest contract:
+## Phase 3: Normalize metrics, units, budgets, and baselines
 
-`production/playtests/<session-id>/report.md`
+Every resource or experience metric has one stable Metric ID and this complete contract:
 
-It must contain `Artifact Type: playtest-session-result`, `Status: COMPLETED`, and
-`Gate Eligible: YES`, and its manifest, observation-ledger, raw-evidence, and report
-hashes must verify. Treat the playtest report as derived context; it never replaces
-soak raw samples, run identity, or observer evidence.
+~~~yaml template
+metric_id: MET-{stable-id}
+dimension: stability|memory|performance|experience
+value_kind: gauge|counter|event|ordinal
+source_field: {adapter-source-field}
+raw_unit: {declared-unit}
+canonical_unit: {declared-unit}
+conversion_id: {conversion-id}
+conversion_version: {version}
+aggregation: {aggregation-id}
+warmup_ms: {nonnegative-integer}
+baseline_required: true|false
+baseline_path: {project-relative-path-or-null}
+baseline_sha256: {sha256-or-null}
+baseline_revision: {revision-or-null}
+comparison: {operator}
+threshold_value: {number-or-null}
+noise_tolerance: {number-and-unit}
+minimum_valid_samples: {positive-integer}
+uncertainty_method: {method-id}
+confidence_requirement: {policy}
+stop_trigger_id: {trigger-id-or-null}
+~~~
 
-## Phase 2: Bind budgets, baselines, and measurement policy
+Use canonical, unambiguous units. Bytes, milliseconds, seconds, hertz, frames per second, percentages, degrees Celsius, counts, and named ordinal scales must never be mixed without a pinned conversion ID/version. Record counter reset and wrap rules. Reject incompatible dimensions, unknown units, lossy implicit conversions, missing conversion provenance, non-finite numbers, and values outside the source field's declared range.
 
-For every required metric, record:
+Each threshold comes from a current project budget or an explicitly approved baseline artifact that matches target, build family, workload, environment, adapter, metric definition, warm-up, aggregation, and unit. Record source path, raw SHA-256, revision, approval identity, applicability, comparison operator, and uncertainty allowance.
 
-- stable metric ID, dimension, unit, and target/environment scope;
-- measurement method, collection tool/adapter, tool version, and source field;
-- warm-up duration and excluded warm-up samples;
-- checkpoint timing, scene/level transition policy, GC policy, sampling frequency,
-  and aggregation method;
-- project budget or approved baseline artifact path, revision, and raw SHA-256;
-- comparison operator and threshold;
-- allowed measurement noise or fluctuation;
-- minimum valid samples and confidence/uncertainty method;
-- early-stop trigger and safe shutdown/evidence-preservation action.
+Never invent a universal percentage, byte amount, consecutive-checkpoint count, or engine default. Missing, stale, mismatched, unapproved, or unit-incompatible threshold yields `Threshold Status: UNAVAILABLE` for that metric. The protocol may be planned, but `Gate Capable: NO`; a result for that metric is `INCONCLUSIVE`, never PASS or FAIL.
 
-Use only project budgets or an explicitly approved, matching baseline. Do not invent
-or transplant engine-, platform-, or tool-wide thresholds.
+A trend, slope, leak, or time-to-exhaustion result is permitted only when the metric policy pins the model ID/version, minimum sample count, excluded transitions and GC windows, fit-quality threshold, confidence interval, and validity range. Otherwise report the observed series without a leak classification or extrapolation.
 
-A missing, stale, mismatched, or unapproved threshold does not become a default. Mark
-that metric `THRESHOLD_UNAVAILABLE`; the protocol may still be saved as `PLANNED`,
-but `Threshold Readiness: INCOMPLETE` and `Gate Capable: NO`. Any completed run for
-that metric is `INCONCLUSIVE`, never PASS.
+## Phase 4: Create the complete endurance protocol
 
-Load engine measurement guidance only for the configured engine and exact supported
-version. Record adapter path/hash/version. If required guidance is unavailable or the
-engine version is unverified, return `NEEDS_CONFIRMATION` and do not call the
-protocol executable or gate capable. Do not include instructions for unselected
-engines.
+`plan` constructs `cgs-soak-protocol/v2` only after Phase 1 and Phase 2 validate. It binds all exact authority paths/hashes and identities, duration, interval, focus dimensions, metric contracts, named gate policy, safety procedures, evidence retention, and retest policy.
 
-## Phase 3: Generate an immutable protocol
+Expand the entire checkpoint schedule deterministically:
 
-Expand the entire checkpoint schedule; never leave a “repeat this section”
-placeholder. Generate unique IDs such as `CP-000`, `CP-001`, and so on from T+0
-through the requested duration at the exact interval, including the final duration.
-If duration is not evenly divisible, include the final partial interval and explain
-it.
+**P1 Clause SOAK-CL-012 — Fully expanded stable checkpoint schedule.**
 
-Each checkpoint definition includes planned offset, workload step/repetition range,
-required metric IDs, environment/thermal snapshot, expected collection source,
-observer prompt, and evidence-preservation action. It has no observed value.
+1. Create warm-up checkpoints as declared by each metric policy.
+2. Create baseline `CP-000000` at elapsed time zero after warm-up.
+3. Add monotonically increasing IDs `CP-000001` onward at exact `interval_ms` offsets.
+4. Include a final checkpoint at exactly `duration_ms`; if duration is not divisible by interval, mark the last interval as partial by design.
+5. For each checkpoint, record planned elapsed milliseconds, required Metric IDs, workload step/range, environment snapshot fields, collection source, capture timeout, observer prompt, and evidence-preservation action.
+6. Canonically sort by planned elapsed time, Checkpoint ID, and Metric ID, then hash the schedule bytes as `checkpoint_schedule_sha256`.
 
-The protocol includes:
+The protocol contains no observed values. It defines missing checkpoint semantics as `NOT_COLLECTED`, never zero, carry-forward, interpolation, or PASS.
 
-1. artifact header and complete target/build/workload/environment identity;
-2. acceptance criteria and focus dimensions;
-3. warm-up and reset/transition procedure;
-4. exact checkpoint table and required sample schema;
-5. metric budgets/baselines and provenance;
-6. safety/early-termination triggers;
-7. evidence collection and receipt instructions;
-8. missing-sample semantics (`NOT_COLLECTED`, never zero);
-9. dimension and readiness classification rules;
-10. retest identity requirements.
+Every early-stop row contains a stable Trigger ID, observed condition, unit, minimum persistence, evidence required, safety action, process-tree cleanup sequence, recovery window, recovery checkpoints, and classifications for confirmed, unconfirmed, and evidence-failure outcomes. Mandatory trigger families include crash, hang or heartbeat loss, OOM risk, thermal safety, data corruption, runaway resource use, and observer emergency stop. A project may add stricter triggers but may not weaken mandatory safe cleanup.
 
-Do not include filled result values, a leak judgment, test PASS/FAIL fields, completed
-QA sign-off, post-session conclusions, or `Verdict: COMPLETE`.
+**P1 Clause SOAK-CL-005 — Mandatory early-stop and evidence-preservation contract.**
+The preceding trigger families and their evidence/action/classification fields are
+the normative closure clause for audit item SOAK-005.
 
-Without `--save-protocol`, present the candidate protocol and return
-`Verdict: PROTOCOL_DRAFTED`, `Status: PLANNED`, `Gate Eligible: NO`, and no path.
-With `--save-protocol`, write only
-`production/qa/soak-tests/_protocols/<protocol-id>.md` after authorization and
-re-read/hash verification. Return:
-
-- `Artifact Type: soak-test-protocol`
-- `Status: PLANNED`
+Without `--save`, return the exact candidate bytes and:
+- `Artifact Status: PLANNED`
 - `Execution Status: NOT_STARTED`
-- `Gate Eligible: NO`
-- `Verdict: PROTOCOL_PLANNED`
-- protocol path and SHA-256
+- `Workflow Verdict: PROTOCOL_DRAFTED`
+- `Handoff Eligible: NO`
 
-Protocol history is selected by exact target/profile/build IDs, never timestamps.
-`--supersedes <protocol-id>` creates a new protocol ID/version and records the
-predecessor path/hash; it never edits or extends the old file.
+With `--save`, preview the two protocol members and their hashes, require both final paths absent, re-hash all authorities, render in same-filesystem staging, atomically publish the protocol directory, and read back both files. Then return `Workflow Verdict: PROTOCOL_PLANNED`, the exact protocol path/hash, and handoff NO. Planning never returns a Stability, Memory, Performance, Experience, or Readiness PASS.
 
-## Phase 4: Start one build-bound run
+## Phase 5: Preserve exact protocol history without overwrite
 
-`start` reads the exact protocol ID and verifies its bytes, identity, status, and
-hash. Reject a protocol with placeholders, mismatched target/build/profile,
-`Threshold Readiness: INCOMPLETE` when the caller requires gate-capable evidence, or
-an existing run path.
+**P1 Clause SOAK-CL-006 — Hash-bound new protocol extension without overwrite.**
 
-Create only `production/qa/soak-tests/<run-id>/manifest.md` with:
+If a history index is supplied, require `cgs-soak-history-index/v1`, a raw-byte hash, and a canonical target/profile/environment key. Validate every referenced protocol path/hash before using it. Do not scan for a recent protocol.
 
-- `Artifact Type: soak-run-manifest`, schema version, run ID, `Status: RUNNING`,
-  `Gate Eligible: NO`;
-- protocol ID/path/raw SHA-256;
-- target/build/source commit, workload profile/hash, environment profile/hash,
-  configured engine/version, duration/interval/focus, checkpoint IDs, metric IDs,
-  adapter IDs/hashes, and threshold/baseline source hashes;
-- observer ID, actual start timestamp, evidence retention classification, and intended
-  result path.
+An extension requires both `--supersedes` path and hash, a new protocol ID, and a new final directory. Verify the predecessor's candidate/build/profile/environment/schedule identity and state. Record predecessor path/hash and the exact changed fields in the new protocol. Never edit the predecessor, its run manifests, evidence, results, or history bytes. The owning history workflow may later add the new protocol through its own authorized CAS; this workflow does not mutate a shared history index.
 
-Write after bounded authorization, then re-read and hash it. Return
-`Verdict: RUN_STARTED`; never return `EXECUTED`, `COMPLETE`, or a dimension result.
+## Phase 6: Register one exact run manifest
 
-## Phase 5: Ingest immutable evidence receipts
+`start` consumes one complete `cgs-soak-run-manifest/v2` and verifies its CLI hash. It must bind:
 
-`ingest` verifies the run manifest, evidence path, receipt ID, and absence of
-collisions. Read source bytes once and compute raw SHA-256 before interpretation.
+- unique run ID and absent canonical run root;
+- protocol ID/path/hash and `cgs-soak-protocol/v2` bytes;
+- exact candidate/build/artifact/source, target, profile, environment, adapter, metric policy, and gate-policy identities/hashes;
+- observer and harness identities;
+- actual RFC 3339 start time and monotonic origin;
+- the full protocol Checkpoint ID list;
+- an actual scheduled RFC 3339 timestamp for every checkpoint, calculated from start time and planned offset;
+- exact harness argv row, cwd, deterministic controls, budgets, stop/cleanup/recovery contracts;
+- evidence classification and intended result paths.
 
-Create exactly three immutable files in one all-or-none changeset:
+Reject duplicate Checkpoint IDs, non-increasing offsets or timestamps, schedule/hash mismatch, a start time inconsistent with scheduled times, existing targets, placeholders, or changed authority bytes.
 
-1. `raw/<receipt-id>.<source-extension>` copied byte-for-byte;
-2. `samples/<receipt-id>.md`, an observation ledger preserving supplied values;
-3. `receipts/<receipt-id>.md`, a receipt binding the other two files and hashes.
+Publish only the exact immutable `run-manifest.json` after authority revalidation, target-absence CAS, atomic directory creation, and read-back. Return `Artifact Status: RUNNING`, `Execution Status: NOT_STARTED`, `Workflow Verdict: RUN_REGISTERED`, and handoff NO. Registering the run does not prove the harness launched.
 
-Every sample row requires:
+## Phase 7: Ingest append-only checkpoint evidence
 
-- stable sample ID and expected checkpoint ID;
-- actual ISO-8601 timestamp and elapsed monotonic time;
-- observer ID and raw receipt/source location;
+**P1 Clause SOAK-CL-010A — Append-only immutable evidence ingest.**
+
+`ingest` verifies the exact run-manifest path/hash and one `cgs-soak-ingest-manifest/v1`. The ingest manifest binds a unique receipt ID, run/protocol/candidate/build identities, source evidence path/hash/media type/size, parser and adapter identity, expected checkpoint subset, observer or harness issuer, collection interval, and receipt destination.
+
+Read source bytes once and hash before parsing. Enforce declared total, line, record, and field-size limits. Reject a source directory, unsupported media type, oversize input, symlink escape, duplicate keys, duplicate Sample IDs, samples for another run/build/profile, or a receipt destination that exists.
+
+Each immutable sample row contains:
+
+- stable Sample ID, Checkpoint ID, Metric ID, and Trigger/Event ID when applicable;
+- scheduled timestamp, actual RFC 3339 timestamp, and monotonic elapsed milliseconds;
+- observed raw value/unit and canonical value/unit;
+- conversion ID/version and conversion result;
 - workload step/repetition, seed, and relevant state;
-- platform/device/configuration plus thermal/power state;
-- metric ID, observed numeric/text value, unit, collection method, and tool version;
-- event/incident ID when applicable;
-- raw evidence SHA-256.
+- device, OS/runtime, build configuration, power/thermal state, and network state;
+- observer/harness identity, collection method/tool/parser versions;
+- source path, record locator, and raw evidence SHA-256;
+- row status `COLLECTED`, `PARTIAL`, `INVALID`, or `UNKNOWN`.
 
-Preserve values and observer language. Do not interpolate, smooth, replace, or classify
-them in the ledger. A missing expected checkpoint is recorded only during
-finalization as `NOT_COLLECTED`; never create a zero-valued sample.
+Do not interpolate, smooth, carry forward, silently convert, or classify the raw value in the sample ledger. If a supplied record is truncated, unparsable, unit-incompatible, outside the declared range, or lacks provenance, preserve the bounded raw reference and mark the sample `PARTIAL`, `INVALID`, or `UNKNOWN`.
 
-Preview the three-file changeset, verify internal references/hashes, and publish all
-or none. Existing receipt paths are immutable. Return `Verdict: EVIDENCE_INGESTED`,
-`Status: RUNNING`, receipt/raw/ledger hashes, and `Gate Eligible: NO`.
+In one all-or-none transaction, render `source.{extension}`, `samples.jsonl`, and `receipt.json`; index their byte counts/hashes; verify internal references; compare-and-swap the absent receipt directory; atomically publish; and read back. Existing receipts and sample rows never change. Return `Workflow Verdict: EVIDENCE_INGESTED`, `Artifact Status: RUNNING`, and handoff NO.
 
-## Phase 6: Finalize one canonical completed result
+## Phase 8: Verify timeout, cleanup, recovery, and partial evidence
 
-`finalize` reads only the requested run's canonical manifest, protocol, receipts, raw
-files, and sample ledgers. Recompute every hash and reject missing artifacts,
-changed bytes, unresolved references, duplicate sample IDs, samples for another
-run/build/profile, or an existing result path.
+Evidence for an early stop or hard timeout must include the trigger or watchdog event, last heartbeat, last complete checkpoint, termination timestamps, graceful and forced stop attempts, child-process enumeration, final process-tree state, output-cap state, evidence flush result, and recovery observations.
 
-Finalization requires:
+Classify the execution control independently:
 
-- unique protocol/run IDs and schema version;
-- exact target, build version/hash, source commit, workload/profile hash, environment
-  profile/hash, platform/device/configuration, engine/adapter version when applicable;
-- observer ID, valid start/end timestamps, and end later than start;
-- explicit termination reason;
-- at least one immutable raw receipt and matching sample ledger;
-- baseline sample when required by a metric;
-- every expected checkpoint classified as collected or `NOT_COLLECTED`;
-- each incident tied to raw evidence/source location;
-- all budgets/baselines and threshold states preserved;
-- manifest, protocol, receipt, raw-set, and sample-set SHA-256 values.
+- `Stop Status: CONFIRMED` when the declared trigger is supported by exact evidence;
+- `Stop Status: UNCONFIRMED` when an operator stopped but trigger evidence is insufficient;
+- `Cleanup Status: CLEAN` only when the full declared process tree is gone and required flushes completed;
+- `Cleanup Status: DIRTY` when a child survives, flush fails, or cleanup exceeds its deadline;
+- `Cleanup Status: UNKNOWN` when cleanup proof is missing;
+- `Recovery Status: RECOVERED` only when every required recovery checkpoint meets its explicit recovery rule;
+- `Recovery Status: NOT_RECOVERED` when a conclusive recovery rule fails;
+- `Recovery Status: UNKNOWN` when recovery samples or rules are missing;
+- `Recovery Status: NOT_REQUIRED` only when the protocol explicitly says so.
 
-Allowed termination reasons are `SCHEDULE_COMPLETED`, `CRASH`, `HANG`, `OOM_RISK`,
-`THERMAL_SAFETY`, `DATA_CORRUPTION`, `OBSERVER_STOP`, `EVIDENCE_FAILURE`, or
-`OTHER:<non-empty-reason>`.
+Preserve every complete sample collected before termination. Mark all later scheduled checkpoints `NOT_COLLECTED` with the exact termination reason. A timeout, dirty/unknown cleanup, unknown recovery, output truncation, evidence flush failure, parser failure, or missing expected sample produces partial or inconclusive evidence and can never become a technical PASS.
 
-Derive `Execution Status`:
+Do not relaunch or resume under the same run ID unless the protocol contains an exact restart segment with a new segment ID, monotonic discontinuity rule, state reset, and separate checkpoint range. Otherwise recovery means observation after safe stop, not continuation.
 
-- `EXECUTED` only when termination is `SCHEDULE_COMPLETED`, every required checkpoint
-  and baseline sample exists, observer identity is valid, and all hashes/references
-  verify;
-- `FAILED_EARLY` when a verified crash, hang, OOM risk, data-corruption, or applicable
-  threshold/safety trigger ended the run and all evidence collected before termination
-  is preserved;
-- `INCOMPLETE` for missing checkpoints without a verified product/safety failure,
-  observer stop, evidence failure, or otherwise incomplete execution.
+## Phase 9: Finalize against a frozen evidence set
 
-Do not discard early samples. List every uncollected checkpoint as `NOT_COLLECTED`
-with the termination reason; never count it as zero or PASS.
+**P1 Clause SOAK-CL-010B — Frozen-set finalization and CAS drift rejection.**
 
-### Dimension results
+`finalize` consumes the exact run manifest and `cgs-soak-finalize-manifest/v1`. The finalize manifest pins:
 
-For each in-scope dimension, evaluate only matching verified samples against the
-protocol's sourced threshold policy:
+- finalization ID and intended absent result paths;
+- run/protocol/candidate/build/profile/environment identities and hashes;
+- ordered receipt IDs, paths, and raw hashes;
+- canonical receipt-set SHA-256 and sample-set SHA-256;
+- explicit termination reason and end timestamp;
+- expected checkpoint disposition for every Checkpoint ID;
+- named gate-policy path/hash and required dimensions;
+- output schema and canonicalization version.
 
-- missing/unapproved/stale threshold, insufficient valid samples, low confidence,
-  missing checkpoint, or incompatible unit/profile: `INCONCLUSIVE`;
-- verified threshold breach: `FAIL`;
-- all required comparisons passing with required sample count/confidence: `PASS`;
-- excluded focus: `NOT_IN_SCOPE`.
+Allowed termination reasons are `SCHEDULE_COMPLETED`, `CRASH`, `HANG`, `HEARTBEAT_TIMEOUT`, `OOM_RISK`, `THERMAL_SAFETY`, `DATA_CORRUPTION`, `RESOURCE_SAFETY`, `OBSERVER_STOP`, `EVIDENCE_FAILURE`, or `OTHER` with a non-empty bounded reason.
 
-A verified crash/hang/data-loss event makes `Stability Result: FAIL` even if later
-checkpoints are absent. Do not diagnose a memory leak from monotonic growth alone.
-Linear extrapolation or time-to-OOM is prohibited unless the approved protocol
-defines the model, minimum sample count, fit quality, confidence interval, and
-validity range.
+Re-read and re-hash the protocol, run manifest, candidate, build receipt, all authorities, every evidence member, and the exact frozen receipt set. Reject missing or extra receipts, changed bytes, duplicate Sample IDs, conflicting rows, a new receipt during finalization, samples after an unexplained monotonic reset, or existing result destinations.
 
-Compute `Readiness Result` from the named gate policy:
+Every expected checkpoint receives exactly one disposition: `COLLECTED`, `NOT_COLLECTED`, `PARTIAL`, `INVALID`, or `UNKNOWN`. Never omit a checkpoint or count an absent one as zero.
 
-- `FAIL` when any required objective dimension fails;
-- `INCONCLUSIVE` when any required objective dimension is inconclusive or execution is
-  incomplete;
-- `PASS` only when every required objective dimension passes and execution is
-  `EXECUTED`.
+Derive:
+- `Execution Status: EXECUTED` only for `SCHEDULE_COMPLETED` with every required checkpoint valid and all execution-control evidence complete;
+- `Execution Status: FAILED_EARLY` for a verified objective product or safety trigger with all pre-stop evidence preserved;
+- `Execution Status: PARTIAL` when some valid samples exist but schedule, cleanup, recovery, parsing, or evidence is incomplete;
+- `Execution Status: UNKNOWN` when no trustworthy execution identity or sample set exists.
 
-Experience is reported independently. It affects readiness only when the named
-consumer policy explicitly requires `Experience Result`; it never rewrites technical
-dimensions.
+Derive `Evidence Status` separately as `VERIFIED`, `PARTIAL`, `UNKNOWN`, or `INVALID`.
 
-### Gate eligibility
+## Phase 10: Calculate unit-safe dimension results and stability verdict
 
-Set `Gate Eligible: YES` only when all provenance/finalization checks pass and either:
+For each in-scope metric, compare only verified canonical-unit samples against its exact matching threshold and baseline. Respect warm-up exclusions, transition/GC policy, minimum valid sample count, aggregation, noise tolerance, and uncertainty/confidence requirements.
 
-- execution is `EXECUTED`, every required gate-policy dimension is conclusive, and all
-  required threshold policies are available; or
-- execution is `FAILED_EARLY` because a verified objective product/safety failure
-  occurred, so the artifact is valid negative evidence.
+Metric result values are `PASS`, `FAIL`, `INCONCLUSIVE`, and `NOT_IN_SCOPE`:
+- verified threshold breach is FAIL;
+- all required comparisons conclusively within policy are PASS;
+- missing/invalid threshold, incompatible unit, insufficient samples, missing checkpoint, low confidence, partial evidence, or unknown cleanup/recovery is INCONCLUSIVE;
+- an excluded dimension is NOT_IN_SCOPE.
 
-Set `Gate Eligible: NO` for `INCOMPLETE`, any unresolved provenance or threshold gap,
-any required inconclusive dimension, or evidence that cannot support the named gate
-policy. Gate eligibility never converts a failed or inconclusive result into PASS.
+Derive these independent dimension fields:
 
-### Canonical result header
+**P1 Clause SOAK-CL-009 — Independent objective and experience dimensions.**
+- `Stability Result`;
+- `Memory Result`;
+- `Performance Result`;
+- `Experience Result`;
+- `Recovery Result`.
 
-The result must start with these machine-readable fields:
+A verified crash, hang, data corruption, or mandatory safety trigger makes Stability FAIL even when later checkpoints are not collected. A resource trend is not automatically a leak. Subjective fatigue cannot rewrite an objective dimension, and technical success cannot rewrite Experience.
 
-~~~text
-Artifact Type: soak-test-result
-Schema Version: 1
-Run ID: <run-id>
-Protocol ID: <protocol-id>
-Status: COMPLETED
-Gate Eligible: <YES|NO>
-Execution Status: <EXECUTED|FAILED_EARLY|INCOMPLETE>
-Readiness Result: <PASS|FAIL|INCONCLUSIVE>
-Stability Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
-Memory Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
-Performance Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
-Experience Result: <PASS|FAIL|INCONCLUSIVE|NOT_IN_SCOPE>
-Target ID: <target-id>
-Build Version: <version>
-Build Hash: <hash>
-Source Commit: <commit>
-Workload Profile ID: <id>
-Workload Profile SHA-256: <hash>
-Environment Profile ID: <id>
-Environment Profile SHA-256: <hash>
-Platform Configuration: <platform/device/config>
-Observer ID: <observer-id>
-Started At: <ISO-8601>
-Ended At: <ISO-8601>
-Termination Reason: <reason>
-Evidence Receipt IDs: <ordered-ids>
-Protocol SHA-256: <hash>
-Manifest SHA-256: <hash>
-Raw Evidence Set SHA-256: <hash>
-Sample Ledger Set SHA-256: <hash>
-~~~
+Apply the named gate policy:
+- `Readiness Result: FAIL` when a required dimension conclusively fails;
+- `Readiness Result: INCONCLUSIVE` when a required dimension is inconclusive, execution is PARTIAL/UNKNOWN, or evidence is not VERIFIED;
+- `Readiness Result: PASS` only when execution is EXECUTED and every required dimension passes or is validly excluded by the policy.
 
-The body includes provenance, target/build/environment/workload, expected-versus-
-collected checkpoints, raw sample traceability, early termination, metric
-calculations, threshold sources, confidence/limitations, the four dimension results,
-readiness policy/result, incidents, experience evidence, and retest requirements.
+Keep `Workflow Verdict`, artifact finalization, `Readiness Result`, and `Handoff Eligible` separate.
 
-Preview the exact result changeset, write only `<run-id>/result.md`, re-read it, verify
-the header/internal references, and compute its SHA-256. Only then return:
+## Phase 11: CAS-publish the immutable result and handoff receipt
 
-- `Status: COMPLETED`
-- `Verdict: COMPLETE`
-- `Gate Eligible: <YES|NO>` derived by the rule above
-- `Canonical Result: production/qa/soak-tests/<run-id>/result.md`
-- completion receipt with protocol, manifest, receipt, raw-set, sample-set, and result
-  hashes
-- execution, readiness, and all dimension results
+Render `cgs-soak-result/v2`, a human-readable report, and `cgs-soak-completion-receipt/v2`. The result includes:
 
-A completed failing, early-failed, incomplete, or inconclusive result remains honest:
-`Verdict: COMPLETE` confirms artifact finalization only and cannot be presented as
-PASS. A malformed or provenance-incomplete run returns `ERROR` and writes no result.
+- all authority paths/hashes and exact build/target/profile/environment identity;
+- full expected-versus-observed checkpoint ledger;
+- every metric/unit/conversion/baseline/threshold calculation;
+- stop, timeout, cleanup, recovery, and missing-sample classifications;
+- execution and evidence statuses;
+- Stability, Memory, Performance, Experience, Recovery, and Readiness results;
+- limitations, incidents, and exact retest requirements;
+- the frozen receipt/sample-set hashes and named gate-policy hash.
 
-## Phase 7: Status and downstream routing
+Preview paths, byte counts, SHA-256 values, and result axes. Then:
 
-`status <run-id>` is read-only. Validate the canonical paths and hashes and return one
-of `RUNNING`, `COMPLETED`, `STALE`, `PARTIAL`, or `ERROR`. A legacy protocol/result
-does not count. Do not mutate artifacts.
+1. require all three final paths absent;
+2. re-hash every frozen authority and evidence member;
+3. confirm the receipt set and checkpoint ledger are unchanged;
+4. render in private same-filesystem staging;
+5. validate schemas, internal references, and member hashes;
+6. compare-and-swap the absent destinations and unchanged inputs;
+7. atomically publish all three members without overwrite;
+8. read back every member and recompute its hash.
 
-For each verified incident, return a bug-report candidate containing run ID, sample
-IDs, receipt IDs, build/environment identity, severity evidence, and fingerprint.
-Do not create or triage a bug automatically.
+On drift, collision, partial publication, or read-back mismatch, write no final result, return `Persistence Status: CONFLICT` or `FAILED`, `Workflow Verdict: ERROR`, and handoff NO. A retry uses a new finalization identity and, if any run identity changed, a new run ID.
 
-After a fix:
+After verified publication return:
+- `Artifact Status: FINALIZED`;
+- `Workflow Verdict: RESULT_FINALIZED`;
+- exact result and completion-receipt paths/hashes;
+- Execution, Evidence, Stability, Memory, Performance, Experience, Recovery, and Readiness fields;
+- `Persistence Status: VERIFIED`.
 
-- a smoke check may be used only as a short precondition check;
-- it cannot close, replace, or pass a memory, performance, endurance, or fatigue
-  regression;
-- rerun the same target, workload, environment, thresholds, and duration under a new
-  protocol/run ID, with an explicit predecessor result path/hash;
-- compare only hash-valid matching profiles.
+`Handoff Eligible: YES` only when the immutable result and completion receipt verify, `Evidence Status: VERIFIED`, every required result is conclusive, and the exact candidate/build/profile/environment/gate-policy binding is intact. Verified negative evidence such as Stability FAIL may be handed off as a failure result; handoff eligibility never means Readiness PASS.
 
-Do not invoke downstream workflows automatically. Never claim a release gate consumed
-the result unless that consumer independently validates the canonical result path,
-`Status: COMPLETED`, all receipt/hashes, build/profile identity, execution status,
-dimension results, and readiness policy.
+Every other condition, including PARTIAL, UNKNOWN, INCONCLUSIVE, missing cleanup/recovery proof, unpersisted bytes, or a protocol/run manifest alone, has handoff NO.
+
+## Phase 12: Status, retest, and downstream verification
+
+`status` is read-only. Re-hash the exact run manifest and canonical members and return `REGISTERED`, `RUNNING`, `FINALIZED`, `STALE`, `PARTIAL`, or `ERROR`. Never repair evidence during status.
+
+For a verified incident, return a bug-report candidate containing exact run, checkpoint, sample, receipt, build, target, profile, environment, and evidence hashes. Do not create or triage the bug automatically.
+
+After a fix, rerun the same target/profile/environment/metric policy/duration under a new protocol and run ID. Pin the predecessor result path/hash and the fixed candidate/build identities. Only a matching targeted endurance rerun can verify the endurance regression. A smoke result may be a short precondition health check, but it cannot close a memory, performance, endurance, recovery, or fatigue regression.
+
+**P1 Clause SOAK-CL-011 — Matching endurance rerun, never smoke substitution.**
+The preceding retest rule is the normative closure clause for audit item SOAK-011.
+
+A downstream consumer receives the exact completion-receipt path/hash, result path/hash, candidate ID, build ID, artifact SHA-256, profile/environment hashes, and gate-policy hash. It must re-hash every referenced member and validate `cgs-soak-result/v2`, `cgs-soak-completion-receipt/v2`, `Persistence Status: VERIFIED`, and the exact result axes. It must not select a newest file, accept a summary, or treat `Handoff Eligible: YES` as Readiness PASS.
+
+## Required invariants
+
+- Exact candidate, build, protocol, run, receipt, and finalize manifests define identity.
+- The configured engine and exact verified adapter are the only measurement route.
+- Checkpoint IDs and scheduled times are fully expanded before execution.
+- Every resource value carries a canonical unit, conversion provenance, and matching budget or baseline.
+- Timeout, cleanup, recovery, partial, invalid, and unknown states remain explicit.
+- Existing receipts and results are immutable; publication uses absent-target CAS.
+- Objective and subjective dimensions never overwrite one another.
+- A finalized artifact is not automatically a passing stability or readiness result.
+- Only exact persisted, verified, conclusive evidence is handoff eligible.
+- Endurance regressions require a matching endurance rerun, not a smoke substitution.
+
+## P1 remediation trace
+
+This trace is structural evidence only and changes no workflow behavior. Every P1
+audit ID maps to concrete clause, case, and assertion IDs; no prose range is a
+traceability substitute.
+
+```yaml
+schema: cgs-p1-remediation-trace/v1
+entries:
+  - audit_id: SOAK-004
+    skill_clause_ids: [SOAK-CL-004]
+    spec_case_ids: [SOAK-C01]
+    assertion_ids: [SOAK-STA-002, SOAK-STA-003, SOAK-STA-004, SOAK-STA-005, SOAK-PRO-001, SOAK-PRO-002]
+  - audit_id: SOAK-005
+    skill_clause_ids: [SOAK-CL-005]
+    spec_case_ids: [SOAK-C02, SOAK-C11]
+    assertion_ids: [SOAK-STA-008, SOAK-STA-019, SOAK-STA-020, SOAK-PRO-005, SOAK-PRO-006]
+  - audit_id: SOAK-006
+    skill_clause_ids: [SOAK-CL-006]
+    spec_case_ids: [SOAK-C03]
+    assertion_ids: [SOAK-STA-009, SOAK-PRO-007]
+  - audit_id: SOAK-007
+    skill_clause_ids: [SOAK-CL-007]
+    spec_case_ids: [SOAK-C04]
+    assertion_ids: [SOAK-STA-010, SOAK-PRO-003]
+  - audit_id: SOAK-008
+    skill_clause_ids: [SOAK-CL-008]
+    spec_case_ids: [SOAK-C05]
+    assertion_ids: [SOAK-STA-011, SOAK-PRO-001, SOAK-PRO-002]
+  - audit_id: SOAK-009
+    skill_clause_ids: [SOAK-CL-009]
+    spec_case_ids: [SOAK-C06]
+    assertion_ids: [SOAK-STA-012, SOAK-PRO-008, SOAK-PRO-013]
+  - audit_id: SOAK-010
+    skill_clause_ids: [SOAK-CL-010A, SOAK-CL-010B]
+    spec_case_ids: [SOAK-C07, SOAK-C13]
+    assertion_ids: [SOAK-STA-013, SOAK-STA-014, SOAK-STA-021, SOAK-STA-022, SOAK-PRO-007, SOAK-PRO-009, SOAK-PRO-010]
+  - audit_id: SOAK-011
+    skill_clause_ids: [SOAK-CL-011]
+    spec_case_ids: [SOAK-C08]
+    assertion_ids: [SOAK-STA-015, SOAK-PRO-012]
+  - audit_id: SOAK-012
+    skill_clause_ids: [SOAK-CL-012]
+    spec_case_ids: [SOAK-C09]
+    assertion_ids: [SOAK-STA-006, SOAK-STA-007]
+```

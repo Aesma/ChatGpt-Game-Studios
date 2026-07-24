@@ -1,4 +1,4 @@
 interface:
   display_name: "Project Stage Detect"
-  short_description: "Read-only stage evidence; no count heuristics or percentages"
-  default_prompt: "Use $project-stage-detect to validate versioned stage authority and gate evidence against current hashes, reporting UNKNOWN on missing or conflicting provenance."
+  short_description: "Canonical catalog-backed stage evidence packet"
+  default_prompt: "Use $project-stage-detect to validate only the catalog-declared stage authority closure and return one canonical cgs.project-stage-detection/v2 packet with current hashes, deterministic blockers, and no artifact-count inference or persistence."

@@ -1,232 +1,203 @@
-# Behavioral Test Spec: asset-spec
+# Contract Specification: `asset-spec`
 
 ## Purpose
 
-Verify that `asset-spec` cannot create orphan specifications, dangling manifest entries, duplicate IDs, or production-ready artifacts with incomplete validation.
+Validate `asset-spec` as a bounded, provenance-preserving asset-brief workflow. It separates explicit requirements, user statements, inferred candidates, confirmations, and reuse candidates; performs finite policy-driven review; and publishes the exact specification with its manifest rows only as one collision-safe transaction.
+
+## Contract identities
+
+- Request: `cgs.asset-spec-request/v2`
+- Requirement: `cgs.asset-requirement/v1`
+- Confirmation: `cgs.asset-confirmation/v1`
+- Global review mode: `cgs.review-mode/v1`
+- Reviewer response: `cgs.asset-review/v1`
+- Provenance: `cgs.asset-spec-provenance/v1`
+- Skill: `.agents/skills/asset-spec/SKILL.md`
+- Metadata: `.agents/skills/asset-spec/agents/openai.yaml`
+
+## Invocation
+
+```text
+$asset-spec --manifest <request-path> --expect-manifest <sha256:...>
+```
 
-## Test fixtures
+Both arguments are required exactly once. No manifest prints usage and performs zero project-source reads, reviewer calls, writes, or verdict. Reject moving aliases, directories, traversal, symlink/junction/reparse escapes, malformed/mismatched hashes, unsupported schemas, and duplicate flags.
 
-Each scenario uses an isolated project fixture with:
+The request only proposes scope. It is not evidence that an asset is required, confirmation of inference, approval of reuse/license, validation, or file-write authorization.
 
-- an approved art-direction source unless the scenario removes it;
-- a target design source;
-- engine and pipeline constraints;
-- `design/assets/asset-manifest.md`;
-- optional existing target specification;
-- deterministic hashes and a failure-injectable atomic changeset adapter.
+## P0 invariants retained
 
-No scenario invokes another project skill or generates a binary asset.
+1. Target specification and `design/assets/asset-manifest.md` publish in one all-or-none two-file transaction or both retain their exact bases.
+2. Any missing/failed/timed-out/skipped/stale/conflicting required evidence forces `BLOCKED_NOT_FOR_PRODUCTION`, `production_eligible: false`, and downstream rejection.
+3. `ASSET-NNN` IDs are provisional until manifest/target/source/evidence CAS and verified atomic commit; drift causes reallocation/rerender/new transaction/new preview/fresh authorization.
+4. READY_FOR_PRODUCTION is legal only for a committed read-back verified pair with every required check current PASS.
+5. Existing specifications cannot be overwritten without exact update preview/base hash; failed rollback is CRITICAL_INCONSISTENCY, never success.
 
-## Global assertions
+## P1 requirements
 
-For every scenario:
+### A. Bounded source inventory — ASSET-P1-001
 
-1. Final writes, if any, are restricted to the exact target specification and `design/assets/asset-manifest.md`.
-2. The final pair is either both committed and mutually consistent, or both retain their exact pre-run content.
-3. Both committed files contain the same transaction ID and status.
-4. `READY_FOR_PRODUCTION` requires current `PASS` evidence for art, technical, source, and integrity validation plus confirmation of every inferred item.
-5. `BLOCKED_NOT_FOR_PRODUCTION` has `production_eligible: false` and forbids generation, outsourcing, import, or production handoff.
-6. Each committed asset ID is globally unique and resolves one-to-one between manifest and specification.
+1. Only individually declared regular repository-local files are readable. Directory recursion, all-source scans, undeclared references, external/home/temp paths, and symlink/reparse/special files are forbidden.
+2. Paths normalize to `/`, NFC, case-preserving text and are checked for duplicates/case collisions, type/size/hash mismatch, sensitivity, and root escape.
+3. Request budgets may lower but not raise: 128 KiB manifest, 64 sources, 256 KiB/source, 1 MiB total body bytes, 256 locators, 15 minutes analysis, and 32 reuse candidates.
+4. Sources process deterministically by priority/path/hash and stop before exceeding a ceiling.
+5. Every omitted entry records identity/locator/reason as `OMITTED_BUDGET`, `UNSUPPORTED_TYPE`, `SENSITIVITY_EXCLUDED`, `UNREADABLE`, or `HASH_MISMATCH`.
+6. No silent sample or omitted-scope agreement claim exists. Required omission blocks production; zero trustworthy target sources is ERROR and no write.
+7. Credentials, tokens, keys, `.env` contents, unrelated confidential data, and personal data are never read/persisted.
 
-## ASSET-001 — Happy-path atomic publication
+### B. Explicit versus inferred assets and confirmation — ASSET-P1-002
 
-**Given:** Current approved sources, complete dependencies, a manifest ending at `ASSET-014`, no target specification, and all required validations pass on the exact proposal.
+1. Every requirement is `cgs.asset-requirement/v1` with exactly one origin: `EXPLICIT_SOURCE`, `USER_STATED`, `INFERRED_CANDIDATE`, or `REUSE_CANDIDATE`.
+2. It records source path/hash/bytes/type, exact locator/text hash, request/source snapshot, normalized claim, rationale/confidence basis, affected asset keys, and confirmation state.
+3. Explicit requirements are extracted first; inferred/reuse candidates are displayed separately.
+4. Inference retains `origin: INFERRED_CANDIDATE` after confirmation and never becomes source-explicit.
+5. Inclusion in READY requires `cgs.asset-confirmation/v1` with exact question/options/answer, requirement IDs, displayed proposal hash, timestamp, and record SHA-256.
+6. Silence, confidence, reviewer agreement, content approval, or write approval is not confirmation.
+7. Unconfirmed inference is excluded or keeps both files BLOCKED; confirmation does not prove feasibility/license/reuse/readiness.
 
-**When:** The user authorizes a preview that creates the specification and updates the manifest.
+### C. Canonical global review mode — ASSET-P1-003
 
-**Then:**
+1. Reviewer participation comes only from an exact hash-pinned `cgs.review-mode/v1` global policy with project identity, version, owner, scope, and mode.
+2. Local flags, task wording, reviewer availability, or skill defaults cannot select/override mode.
+3. FULL requires art and technical reviews. LEAN/SOLO follow only policy-declared participation and cannot turn absent required validation into PASS.
+4. Missing/invalid/stale/ambiguous/conflicting policy blocks before reviewer calls.
+5. Review mode affects participation only; READY requirements never weaken.
+6. Any policy change belongs to its owner and a separate transaction.
 
-- the preview shows both paths, `CREATE`/`UPDATE`, base hashes, proposed hashes, transaction ID, status, and IDs;
-- IDs `ASSET-015` onward are reserved for the complete asset set;
-- both files commit as one transaction;
-- post-commit verification finds matching hashes, transaction ID, `READY_FOR_PRODUCTION`, references, and unique IDs;
-- result is `COMMITTED_READY`.
+### D. Bounded art/technical reviewers and conflicts — ASSET-P1-004
 
-## ASSET-002 — Authorization is indivisible
+1. Reviewers are read-only, receive exact proposal/source/policy/check hashes and `cgs.asset-review/v1`, cannot edit/publish/confirm requirements/delegate.
+2. Hard ceilings: one art + one technical reviewer, two concurrent tasks, 10 minutes/attempt, 15 minutes/round, one attempt/role/round, zero child delegation, 64 KiB/response.
+3. Every assigned check is PASS/BLOCKED/NOT_RUN with evidence/requirement IDs and exact proposal/source/reviewer config/version/timing/response hash.
+4. Missing/malformed/stale/partial/timeout/late response is NOT_RUN/BLOCKED; late attempt tokens are revoked/quarantined.
+5. Conflict matrix covers art-vs-technical, reviewer-vs-source, reviewer-vs-confirmation, and reviewer-vs-platform/license.
+6. Reviewers cannot override sources/user confirmations. User sees options/tradeoffs; a resolution is a hash-bound decision and new proposal. Unresolved conflict blocks READY.
 
-**Given:** A valid proposal.
+### E. Finite regeneration — ASSET-P1-005
 
-**When:** The user accepts the specification but rejects or requests changes to the manifest portion.
+1. At most two regeneration rounds follow the initial candidate; counters are monotonic in provenance.
+2. Each round requires at least one new hash-bound accepted input: revised confirmed constraint, changed authoritative source, explicit conflict resolution, or corrected technical/platform/license evidence.
+3. “Try again,” unchanged prompt, or dissatisfaction without a constraint cannot start a round.
+4. Each round records delta/affected requirements/new proposal hash and reruns every affected check.
+5. Limit, timeout, or unchanged proposal stops reviewer/tool calls and returns current DRAFT/BLOCKED with `REGENERATION_LIMIT_REACHED`; no in-place expansion or until-approved loop.
 
-**Then:**
+### F. Source/reviewer/transaction provenance — ASSET-P1-006
 
-- neither final file changes;
-- no final specification is created;
-- result is `NOT_COMMITTED`;
-- a revised pair requires a new preview and authorization.
+`cgs.asset-spec-provenance/v1` contains:
 
-## ASSET-003 — Specification publication failure rolls back manifest
+1. request path/schema/expected/actual hash and skill/metadata hashes;
+2. target/project/run IDs, slug/path collision keys, source inventory/snapshot and every included/omitted disposition;
+3. global review-mode path/schema/version/hash;
+4. each requirement/confirmation with source path/hash/locator/text hash;
+5. engine/pipeline/platform source identities;
+6. reviewer role and exact agent/config/version, prompt/proposal/source hashes, attempt token/times/status/response/missing fields/conflicts;
+7. every regeneration input/delta/proposal/review hash;
+8. reuse/license/variant/LOD/platform decisions and confirmations;
+9. manifest/spec bases, provisional IDs, transaction/candidate hashes, owners/authorizations, rollback/read-back receipt.
 
-**Given:** An authorized valid pair and an injected failure while publishing the specification.
+No timestamp, role name, or prose substitutes for source/reviewer/content hashes and locators.
 
-**When:** Atomic commit is attempted.
+### G. Reuse authorization, license, variant, LOD and platform constraints — ASSET-P1-007
 
-**Then:**
+1. Description similarity alone cannot establish reuse or merge IDs.
+2. Candidate matrix binds existing ID/key/owner/status/manifest/spec/source hashes and compares function, visual identity, variants/states/localization/accessibility, geometry/topology/scale/pivot/rig/skeleton/bones/animation/material/shader/textures.
+3. It also compares resolution/texture sets/LOD chain/thresholds/impostor/collision/physics, platform formats/compression/memory/performance/render/import, modifications/dependencies/acceptance.
+4. License/provenance binds source/hash, rights holder, permitted use/modification/derivative/redistribution, attribution, territory/platform, expiry/version, AI restrictions when stated, and outsourcing/downstream constraints.
+5. Classification is exactly `EXACT_REUSE`, `VARIANT_REUSE`, `DERIVED_REUSE`, `NEW_ASSET`, or `REUSE_BLOCKED`.
+6. User reuse decision/confirmation and declared owner authorization are required. Unknown license, missing provenance, or LOD/platform mismatch cannot be risk-accepted into READY.
+7. VARIANT_REUSE needs explicit variant mapping. DERIVED_REUSE receives a new asset identity and requires derivative rights. Existing IDs are never merged by similarity.
 
-- the manifest retains its exact base hash;
-- the target specification remains absent or at its exact base hash;
-- no orphan or dangling reference exists;
-- result is `NOT_COMMITTED`.
+### H. Cross-platform slug/path collision safety — ASSET-P1-008
 
-## ASSET-004 — Manifest publication failure rolls back specification
+1. Slug uses NFC, locale-independent case fold, deterministic ASCII transliteration, collapsed hyphens, regex `^[a-z0-9]+(?:-[a-z0-9]+)*$`, and 1–64 bytes.
+2. Empty/ambiguous transliteration, control/invalid characters, dot/space endings, hidden segments, overlong paths, and reserved device names are rejected.
+3. Stable `target_key = sha256(project_id + newline + stable_target_id)` and new path is `design/assets/specs/<slug>--<target_key8>-assets.md`.
+4. Collision key uses NFC + case fold + separator normalization and is checked against filesystem, manifest, and registered specs before drafting and commit.
+5. Existing exact path is UPDATE only when embedded stable target ID and manifest owner match. Otherwise PATH_COLLISION and zero writes.
+6. No ad hoc suffix, case-variant overwrite, or reuse of another target path. Legacy specs update only at exact manifest-bound path/base hash and are not silently renamed.
 
-**Given:** An authorized valid pair and an injected failure while publishing the manifest after preparation.
+## Review/readiness and ID contract
 
-**When:** Atomic commit is attempted.
+Every exact candidate has source/confirmation, art, technical, engine/import/budget/format/dependency/platform/LOD, reuse/license/ownership, policy/reviewer, path/collision, and manifest/spec/integrity checks. Each is PASS/BLOCKED/NOT_RUN with evidence hash/time. Any required non-PASS means BLOCKED_NOT_FOR_PRODUCTION.
 
-**Then:**
+Asset IDs preserve `ASSET-NNN` only through current manifest/reference duplicate audit, provisional in-transaction reservation, exact bases, same transaction/status/provenance rendering, immediate precommit CAS, and full rerender/repreview/fresh authorization after drift. Existing duplicate/malformed ownership stops allocation.
 
-- both final paths retain their exact base state;
-- no specification-only result is reported;
-- result is `NOT_COMMITTED`.
+## Atomic write contract
 
-## ASSET-005 — Atomic changeset unavailable
+One indivisible preview shows transaction ID, exact spec/manifest paths, CREATE/UPDATE, owner/writer, bases/ABSENT, candidate hashes, IDs, status, provenance, blockers/validation, rollback plan, and full content/diff.
 
-**Given:** The environment can write individual files but cannot guarantee two-file all-or-none publication and rollback.
+One exact authorization covers both or neither. Any content/ID/path/status/base/blocker/evidence/owner change invalidates it.
 
-**When:** The user authorizes the preview.
+After authorization, rehash all sources/policy/confirmations/reviews/reuse/license/paths/bases/IDs/candidates. Prepare non-final siblings and validate the pair. If all-or-none commit+rollback cannot be guaranteed, modify neither.
 
-**Then:**
+Read-back requires authorized hashes, matching transaction/status/provenance, one-to-one manifest/spec mappings, global unique IDs, correct target ownership/path, and READY only on all PASS. Failure restores both bases. Unproven rollback is CRITICAL_INCONSISTENCY.
 
-- neither final path is modified;
-- the proposal is returned as blocked evidence only;
-- result is `NOT_COMMITTED`.
+## Behavioral cases
 
-## ASSET-006 — Concurrent allocator conflict
+### Case 1 — Source budget
 
-**Given:** The preview reserves `ASSET-015` from manifest hash H1.
+Exact inventory exceeds 64 entries/1 MiB. Processing stops before excess reads, lists every omitted entry/reason, and any required omission yields blocked non-production pair or no trustworthy-output ERROR. No recursive expansion occurs.
 
-**When:** Another writer commits `ASSET-015` and changes the manifest to H2 before this transaction commits.
+### Case 2 — Explicit and inferred requirement
 
-**Then:**
+Source explicitly requires a hero portrait; model infers damage-state variants. Portrait is EXPLICIT_SOURCE. Variants remain INFERRED_CANDIDATE with rationale/confidence and cannot enter READY until an exact confirmation record exists.
 
-- compare-and-swap fails and neither candidate file is published;
-- the skill re-reads the manifest, detects the occupied ID, assigns a new provisional ID, and rerenders both candidates;
-- it issues a new transaction ID and preview;
-- it does not commit until the user freshly authorizes the changed ID and hashes;
-- no duplicate ID is created.
+### Case 3 — Local full flag conflicts with global SOLO
 
-## ASSET-007 — Existing duplicate ID blocks allocation
+Local request cannot override global policy. SOLO is recorded, no unauthorized reviewer calls occur, and missing independent art/technical evidence keeps the pair BLOCKED.
 
-**Given:** The current manifest or referenced specifications already contain conflicting ownership of one asset ID.
+### Case 4 — Technical timeout and reviewer conflict
 
-**When:** ID reservation begins.
+Art response passes; technical task times out and later returns. Timeout is NOT_RUN/BLOCKED, late response quarantined. If art and source conflict, user receives a conflict matrix; no agent silently resolves it.
 
-**Then:**
+### Case 5 — Regenerate loop
 
-- the corruption and owners are reported;
-- no new ID is allocated as authoritative;
-- neither final path changes;
-- result is `NOT_COMMITTED`.
+First revision has one confirmed constraint; second has a license correction. Third “try again” request is refused with REGENERATION_LIMIT_REACHED and no reviewer/tool call.
 
-## ASSET-008 — Technical review timeout cannot look complete
+### Case 6 — Provenance drift
 
-**Given:** Art and source validations pass, but the required technical reviewer times out.
+Source or reviewer config changes after authorization. Precommit CAS fails, neither final file changes, provenance/candidate are rebuilt, and a new preview/authorization is required.
 
-**When:** The user asks to preserve the planning artifact.
+### Case 7 — Similar asset cannot be reused
 
-**Then:**
+Description matches an existing mesh, but license lacks derivative rights and mobile LOD/memory requirements fail. Classification is REUSE_BLOCKED or NEW_ASSET; IDs are not merged and READY is impossible on that reuse decision.
 
-- technical validation is `BLOCKED` or `NOT_RUN`, never `PASS`;
-- both candidate files use `BLOCKED_NOT_FOR_PRODUCTION` and `production_eligible: false`;
-- the timeout is listed as a blocker;
-- if authorized, the pair may commit atomically as `COMMITTED_BLOCKED`;
-- production handoff is explicitly rejected.
+### Case 8 — Slug collision
 
-## ASSET-009 — Missing art direction produces no ready placeholder
+Two Unicode/case variants normalize to the same display slug. Stable target-key paths differ deterministically. An existing path owned by another target yields PATH_COLLISION; no numeric suffix or overwrite occurs.
 
-**Given:** No current approved art-direction source exists.
+### Case 9 — P0 atomic/ID/readiness regression
 
-**When:** The skill drafts provisional visual detail.
+Rejecting manifest portion writes neither file. Manifest CAS conflict reallocates/rerenders/repreviews. Reviewer missing means BLOCKED_NOT_FOR_PRODUCTION. Single-file publication failure restores both bases.
 
-**Then:**
+## Negative assertions
 
-- the missing source and all placeholders are explicit blockers;
-- status is `BLOCKED_NOT_FOR_PRODUCTION`;
-- neither candidate nor report uses `READY_FOR_PRODUCTION`, `COMPLETE`, or `APPROVED`;
-- a user statement accepting the risk does not upgrade the status.
+Any is a contract failure:
 
-## ASSET-010 — Inferred asset requires confirmation
+- all-source/unbounded scan or reading omitted/sensitive/undeclared content;
+- inferred requirement treated as explicit/confirmed;
+- local review mode overriding canonical global policy;
+- unbounded reviewer, retry, child delegation, late response acceptance, or agent-resolved conflict;
+- regenerate without new constraint or beyond two rounds;
+- missing source/reviewer/config/content hashes and locators;
+- reuse based only on text similarity or with unknown license/LOD/platform fit;
+- raw slug path, reserved/invalid/case-colliding path, silent suffix, or foreign-target overwrite;
+- READY with any required non-PASS;
+- non-atomic spec/manifest publication or stale ID commit.
 
-**Given:** An asset is implied but not explicitly required by a source.
+## Remediation traceability
 
-**When:** The proposal is prepared.
+| Finding | Closure evidence |
+|---|---|
+| ASSET-P1-001 | Section A defines exact inventory, hard file/byte/time/locator budgets, sensitivity exclusions and omissions |
+| ASSET-P1-002 | Section B preserves explicit/user/inferred/reuse origins and requires exact confirmation records |
+| ASSET-P1-003 | Section C consumes only hash-pinned global review policy and forbids local overrides |
+| ASSET-P1-004 | Section D bounds reviewers/time/response/delegation and defines partial/late/conflict terminals |
+| ASSET-P1-005 | Section E caps regeneration at two new-constraint rounds |
+| ASSET-P1-006 | Section F defines full source/reviewer/policy/regeneration/reuse/transaction provenance |
+| ASSET-P1-007 | Section G gates reuse on owner/license/variant/LOD/platform/provenance constraints |
+| ASSET-P1-008 | Section H defines normalized target-key paths, reserved names, collision keys, ownership and CAS |
 
-**Then:**
+## Outcomes
 
-- the item is labelled `inferred` with source, rationale, and confidence;
-- without confirmation it is excluded or the pair is `BLOCKED_NOT_FOR_PRODUCTION`;
-- confirmation is recorded before a ready proposal can be authorized.
-
-## ASSET-011 — Stale source after authorization
-
-**Given:** All validations passed on source hash S1 and the user authorized the pair.
-
-**When:** A cited source changes to S2 before commit.
-
-**Then:**
-
-- pre-commit validation fails;
-- neither final path changes;
-- the proposal is rerendered and revalidated against S2;
-- a new preview and fresh authorization are required.
-
-## ASSET-012 — Existing specification update uses CAS
-
-**Given:** The target specification and manifest exist at known base hashes.
-
-**When:** Either file changes after preview.
-
-**Then:**
-
-- the update does not overwrite the new content;
-- neither part of the stale pair is committed;
-- the skill re-reads and produces a new diff and authorization request.
-
-## ASSET-013 — Lean and solo modes remain non-production by default
-
-**Given:** A lean or solo run has not produced current passing evidence for every required validation.
-
-**When:** A planning specification is requested.
-
-**Then:**
-
-- the synchronized status is `BLOCKED_NOT_FOR_PRODUCTION`;
-- a blocked pair may be committed only atomically after exact authorization;
-- no production handoff is allowed.
-
-## ASSET-014 — No-argument invocation is read-only
-
-**Given:** The skill is invoked without a target.
-
-**When:** An inventory or manifest exists or is absent.
-
-**Then:**
-
-- the skill presents target selection or usage guidance;
-- it does not generate or write an inventory, specification, manifest, or placeholder.
-
-## ASSET-015 — Post-commit mismatch triggers rollback
-
-**Given:** An injected defect makes one committed final hash or transaction ID differ from the authorized pair.
-
-**When:** Verification re-reads both paths.
-
-**Then:**
-
-- the transaction rolls both files back to their exact base states;
-- result is not `COMMITTED_READY` or `COMMITTED_BLOCKED`;
-- if rollback cannot be proven, both inconsistent paths are reported as a critical incident.
-
-## Static conformance checks
-
-The candidate bundle passes only if:
-
-- frontmatter contains only `name` and `description`;
-- metadata describes atomic publication, blocked validation, and collision-safe IDs;
-- the skill contains the literal statuses `BLOCKED_NOT_FOR_PRODUCTION` and `READY_FOR_PRODUCTION`;
-- the skill requires one exact preview and authorization for both final paths;
-- the skill requires base-hash comparison immediately before commit;
-- a changed manifest forces ID reallocation, rerender, repreview, and fresh authorization;
-- individual-file failure cannot leave either final file changed;
-- the test suite covers both publication failure directions, unavailable atomicity, concurrency, stale sources, incomplete review, inferred requirements, duplicate corruption, and rollback verification.
+Return `COMMITTED_READY`, `COMMITTED_BLOCKED`, `NOT_COMMITTED`, or `CRITICAL_INCONSISTENCY` with both paths/hashes when committed, IDs, source/review/reuse/provenance evidence, omissions/blockers, regeneration count, collision retry, production-handoff permission, and `auto_executed: false`.

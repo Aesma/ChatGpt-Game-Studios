@@ -1,271 +1,364 @@
 ---
 name: ux-design
-description: "Author versioned screen, HUD, and interaction-pattern UX artifacts through bounded context, one mutation authorization, stable decisions, and hash-safe checkpoints."
+description: "Author one versioned screen, HUD, or interaction-pattern UX artifact through explicit modes, content-profile validation, bounded evidence, decision provenance, CAS writes, and a hash-bound review receipt."
 ---
 
 # UX Design
 
-Author one UX artifact without pretending that author approval is independent
-review, that missing foundations are harmless, or that this workflow owns unrelated
-accessibility and global-pattern prerequisites.
+Author exactly one UX artifact. Do not treat author approval as independent
+review, temporary platform answers as durable facts, missing foundations as
+harmless, or this workflow as owner of accessibility/global-pattern artifacts.
 
-## Invocation contract
+The maximum write set is one target UX artifact plus immutable records under its
+declared checkpoint root. Never write another UX artifact, a GDD, data, code,
+visual asset, translation, ADR, accessibility foundation, global pattern
+library outside the dedicated library profile, review record, or implementation.
+
+## Invocation and request contract
 
 Invoke only as:
 
-`$ux-design --manifest {ux-design-request-path} [--resume {checkpoint-path}]`
+    $ux-design --manifest <exact-request-path> [--resume <exact-checkpoint-path>]
 
-Validate arguments before reading the repository, delegating, requesting a decision,
-or writing. With no manifest, print the usage line and stop with no side effects and
-no verdict. Reject unknown/duplicate flags, missing values, directories, unsafe IDs,
-path traversal, and unsupported schema versions.
+With no manifest, print this usage and stop before repository reads,
+delegation, decisions, authorization, or verdict. Reject unknown/duplicate
+flags, missing values, directories, URLs, globs, unsafe IDs, traversal,
+symlink/junction escapes, and unsupported schema.
 
-The request manifest must declare:
+The manifest contract is cgs.ux-design-request/v2 and must declare:
 
-- `Artifact Type: ux-design-request` and `Schema Version: 1`;
-- stable artifact ID and run ID; screen/HUD work also requires a stable screen ID;
-- profile: `ux-spec`, `hud-design`, or `interaction-pattern-library`;
-- mode: `create`, `fill-gaps`, `revise-sections`, or `migrate-schema`;
-- exact target path and expected SHA-256, or `ABSENT` for create;
-- selected stable section IDs for revise mode and expected hashes for every other
-  authorized artifact;
-- exact context paths/hashes, GDD requirement IDs and owners, one-hop navigation
-  neighbors, and file/byte/token budgets;
-- exact platform/input profile path/hash or `MISSING`, including supported devices,
-  resolutions/aspects, safe zones, and primary input;
-- exact accessibility-foundation path/hash, committed tier, and external owner, or
-  `MISSING`;
-- global pattern-library path/hash and external UX-library owner, or `ABSENT`;
-- player-journey and art-bible paths/hashes when applicable;
-- product decision-maker, mutation authorizer, target writer task ID, checkpoint
-  recorder task ID, maximum revision rounds, consultation timeout, and checkpoint
-  root;
-- explicit non-writes.
+- stable artifact ID, run ID, profile, and screen ID where applicable;
+- profile: ux-spec, hud-design, or interaction-pattern-library;
+- mode: create, fill-gaps, revise-sections, or migrate-schema;
+- exact target path and expected raw-byte SHA-256, or ABSENT for create;
+- exact selected stable section IDs for revise-sections and expected baseline
+  body hashes;
+- exact context paths/hashes, requirement IDs/owners, and one-hop navigation
+  neighbor IDs/paths/hashes;
+- requested context budgets not exceeding 16 files and 524288 exact bytes;
+- platform contract cgs.platform-input-profile/v1: stable profile ID, version,
+  exact path/hash, supported platforms/devices/inputs, resolutions/aspects,
+  safe zones, text scales, and primary input, or MISSING;
+- accessibility foundation stable ID, version/tier, exact path/hash, external
+  owner, or MISSING;
+- pattern-library path/hash and external UX-library owner, or ABSENT;
+- player-journey and art-bible exact paths/hashes when applicable;
+- product decision owner, mutation authority, target writer task identity,
+  checkpoint recorder task identity, maximum revision rounds at most 3,
+  consultation limits at or below this contract, and checkpoint root;
+- exact target/checkpoint mutation boundary and explicit non-writes.
 
-IDs are stable slugs or UUIDs, never dates alone. Resolve real paths and reject a
-symlink or junction escaping the repository. `create` requires an absent target;
-every other mode requires an existing target whose bytes match the expected hash.
-The default target is profile-specific, but it must still be stated explicitly:
+IDs are stable slugs/UUIDs, never dates alone. create requires an absent target;
+other modes require an existing target matching expected hash. The exact target
+must be stated:
 
-- `ux-spec`: `design/ux/{screen-id}.md`;
-- `hud-design`: `design/ux/hud.md` with stable screen ID `hud`;
-- `interaction-pattern-library`: `design/ux/interaction-patterns.md`.
+- ux-spec: design/ux/<screen-id>.md
+- hud-design: design/ux/hud.md with screen ID hud
+- interaction-pattern-library: design/ux/interaction-patterns.md
 
-One run authors exactly one target UX artifact plus its declared checkpoint records.
-It does not create `design/accessibility-requirements.md` as a side effect and does
-not create both a screen spec and the global pattern library.
+One run never creates both a screen/HUD artifact and the global library. It
+never creates design/accessibility-requirements.md.
 
-## Author schema source of truth
+Use runtime task identities when exposed. Otherwise generate one lowercase UUID
+once per role and record codex-task:<uuid>; never claim the user, consultant,
+person, or unavailable external task as byte author/recorder.
 
-The versioned profiles in this file and `references/continued-workflow.md` are the
-single author/retrofit/review contract. Compute `author_schema_hash` as SHA-256 over
-the exact bytes of this `SKILL.md`, one NUL byte, and the exact bytes of the required
-continuation. Record:
+## Versioned profile and content contracts
 
-- `Profile Version: ux-profile-schema-v1`;
-- `Schema Version: ux-design-author-sha256:{author_schema_hash}`.
+The exact bytes of this SKILL.md, one NUL byte, and the exact bytes of
+references/continued-workflow.md define author_schema_hash. Record:
 
-Every section has one stable ID and one exact H2 heading. Emit the stable ID as an
-HTML comment immediately before the heading, for example
-`<!-- ux-section: UXS-01 -->`. Headings are display labels; IDs govern migration,
-selection, findings, decisions, and checkpoints.
+- Profile Version: ux-profile-schema-v2
+- Content Profile: cgs.ux-content-profile/v2
+- Schema Version: ux-design-author-sha256:<author_schema_hash>
 
-### Profile: ux-spec
+Each section has one stable ID and exact H2 heading. Emit its ID immediately
+before the heading:
 
-| Stable ID | Exact required H2 heading | Minimum contract |
+    <!-- ux-section: UXS-01 -->
+    ## Purpose & Player Need
+
+IDs, not display labels, govern migration, selection, decisions, findings,
+revision records, checkpoints, and review.
+
+### Profile ux-spec
+
+| ID | Exact required H2 heading | Content-profile contract |
 |---|---|---|
-| UXS-01 | Purpose & Player Need | Player-perspective goal, outcome, and linked requirement IDs |
-| UXS-02 | Player Context on Arrival | Prior activity, state, pressure, and journey source |
-| UXS-03 | Navigation Position | Root/parent/screen hierarchy and alternate access |
-| UXS-04 | Entry & Exit Points | Entry/exit triggers, carried state, and irreversible effects |
-| UXS-05 | Layout Specification | Information hierarchy, zones, component inventory, viewport assumptions, optional schematic evidence |
-| UXS-06 | States & Variants | Default plus applicable loading, empty, populated, error, locked, and platform states |
-| UXS-07 | Interaction Map | Every interactive component, supported input, focus order, feedback, and outcome |
-| UXS-08 | Events Fired | Each action mapped to a stable event/payload or source-backed `none` |
-| UXS-09 | Transitions & Animations | Enter/exit/state transitions and reduced-motion behavior |
-| UXS-10 | Data Requirements | Data source/owner, read/write intent, update trigger, and null handling |
-| UXS-11 | Accessibility | Conformance to the external committed tier; this section never chooses that tier |
-| UXS-12 | Localization Considerations | Locale formatting, expansion/reflow, string ownership, and real layout constraints |
-| UXS-13 | Acceptance Criteria | Requirement-linked, locally executable conditions without copied product rules |
-| UXS-14 | Open Questions | Stable dependency/finding IDs, owners, state, and next resolution action |
+| UXS-01 | Purpose & Player Need | Player goal/outcome and owned requirement IDs |
+| UXS-02 | Player Context on Arrival | Prior activity/state/pressure and journey evidence |
+| UXS-03 | Navigation Position | Stable root/parent/screen hierarchy and alternate access |
+| UXS-04 | Entry & Exit Points | Trigger, source/destination IDs, carried state, irreversible effect |
+| UXS-05 | Layout Specification | Hierarchy, zones, components, viewport/profile assumptions |
+| UXS-06 | States & Variants | Default and applicable loading/empty/populated/error/locked/platform states |
+| UXS-07 | Interaction Map | Component/input/focus/feedback/outcome/cancel/recovery |
+| UXS-08 | Events Fired | Action to stable event/payload/owner or source-backed none |
+| UXS-09 | Transitions & Animations | Enter/exit/state transitions, interrupt, reduced-motion equivalent |
+| UXS-10 | Data Requirements | Source owner, read/write intent, update, null/stale/privacy behavior |
+| UXS-11 | Accessibility | Trace to external tier/profile; no local tier selection |
+| UXS-12 | Localization Considerations | Locale formatting, expansion/reflow, strings, bidirectionality targets |
+| UXS-13 | Acceptance Criteria | Requirement/decision-linked executable local UX conditions |
+| UXS-14 | Open Questions | Stable finding/dependency IDs, owner, state, destination, next action |
 
-`UXS-05` uses exact H3 headings `Information Hierarchy`, `Layout Zones`, and
-`Component Inventory`. A wireframe is optional schematic evidence, not a pixel or
-responsive-layout authority; when present it declares viewport and scale assumptions.
+UXS-05 requires exact H3 headings Information Hierarchy, Layout Zones, and
+Component Inventory. A wireframe is optional schematic evidence and declares
+viewport/scale assumptions; it is not pixel authority.
 
-### Profile: hud-design
+### Profile hud-design
 
-| Stable ID | Exact required H2 heading | Minimum contract |
+| ID | Exact required H2 heading | Content-profile contract |
 |---|---|---|
-| HUD-01 | HUD Philosophy | Approved information-density principle and conflicts |
-| HUD-02 | Information Architecture | Requirement-linked inventory and Must Show/Contextual/On Demand/Hidden rationale |
-| HUD-03 | Layout Zones | Platform, safe-zone, aspect, viewport, and attention assumptions |
-| HUD-04 | HUD Elements | Stable element IDs, data owner, visibility/update rules, pattern refs, and states |
-| HUD-05 | Dynamic Behaviors | Gameplay-context transitions, priority, contention, and reduced motion |
+| HUD-01 | HUD Philosophy | Approved density principle and measurable implications |
+| HUD-02 | Information Architecture | Requirement-linked inventory and visibility rationale |
+| HUD-03 | Layout Zones | Platform/safe-zone/aspect/viewport/attention assumptions |
+| HUD-04 | HUD Elements | Stable element IDs, owner, data/visibility/update/pattern/states |
+| HUD-05 | Dynamic Behaviors | Context transitions, priority/contention, reduced motion |
 | HUD-06 | Platform & Input Variants | Every declared platform/input/resolution/text-scale variant |
-| HUD-07 | Accessibility | External-tier conformance, non-color cues, focus/assistive behavior |
-| HUD-08 | Open Questions | Stable dependency/finding IDs, owners, state, and next action |
+| HUD-07 | Accessibility | External-tier trace, non-color/focus/assistive/reflow behavior |
+| HUD-08 | Open Questions | Stable finding/dependency IDs, owner, state, next action |
 
-### Profile: interaction-pattern-library
+### Profile interaction-pattern-library
 
-| Stable ID | Exact required H2 heading | Minimum contract |
+| ID | Exact required H2 heading | Content-profile contract |
 |---|---|---|
-| PAT-01 | Overview | Scope, library owner, consumers, profile/hash provenance |
-| PAT-02 | Pattern Catalog | Canonical pattern ID, name, category, version, status, and entry anchor |
-| PAT-03 | Patterns | One owner-approved definition per catalog entry, states, inputs, feedback, accessibility, use/non-use rules |
-| PAT-04 | Gaps & Patterns Needed | Feature-local proposal IDs, source screen IDs, owner, and disposition |
-| PAT-05 | Open Questions | Stable dependency/finding IDs, owners, state, and next action |
+| PAT-01 | Overview | Scope, external owner, consumers, profile/hash provenance |
+| PAT-02 | Pattern Catalog | Canonical ID/name/category/version/status/entry anchor |
+| PAT-03 | Patterns | Owner-approved states, inputs, feedback, accessibility, use/non-use |
+| PAT-04 | Gaps & Patterns Needed | Local proposal IDs/source screen/owner/disposition |
+| PAT-05 | Open Questions | Stable finding/dependency IDs, owner, state, next action |
 
-Global canonical pattern IDs use `UXP-GLOBAL-{slug}`. A screen/HUD run may only
-record feature-local proposals `UXP-{screen-id}-{slug}` inside its own spec. Only the
-external UX-library owner may approve the mapping and merge it into the global
-library in an independently authorized `interaction-pattern-library` run.
+Global IDs use UXP-GLOBAL-<slug>. Screen/HUD runs may record only
+UXP-<screen-id>-<slug> local proposals inside their target. Only an independently
+authorized interaction-pattern-library run owned by the external library owner
+may merge canonical patterns.
 
 ## Required artifact header
 
-Every authored target begins with exact machine-readable blockquote fields:
+Every target begins with:
 
-```markdown
-> **Artifact Type**: ux-spec | hud-design | interaction-pattern-library
-> **Schema Version**: ux-design-author-sha256:{author_schema_hash}
-> **Profile Version**: ux-profile-schema-v1
-> **Artifact ID**: {stable-artifact-id}
-> **Screen ID**: {stable-screen-id | N/A-library}
-> **Status**: DRAFT | PARTIAL | READY_FOR_REVIEW
-> **Author Task ID**: {actual-writer-task-id}
-> **Last Updated UTC**: {ISO-8601}
-> **Platform Target**: {declared targets | DEPENDENCY-GAP}
-> **Platform Profile**: {path}@{sha256 | MISSING}
-> **Accessibility Foundation**: {path}@{sha256}/tier:{tier | MISSING}
-> **Requirement IDs**: {stable IDs with owner}
-> **Context Manifest SHA-256**: {hash}
-```
+    > **Artifact Type**: ux-spec | hud-design | interaction-pattern-library
+    > **Schema Version**: ux-design-author-sha256:<author_schema_hash>
+    > **Profile Version**: ux-profile-schema-v2
+    > **Content Profile**: cgs.ux-content-profile/v2
+    > **Artifact ID**: <stable-artifact-id>
+    > **Screen ID**: <stable-screen-id | N/A-library>
+    > **Status**: DRAFT | PARTIAL | READY_FOR_REVIEW
+    > **Author Task ID**: <actual-writer-task-id>
+    > **Last Updated UTC**: <RFC3339 seconds Z>
+    > **Platform Target**: <declared targets | DEPENDENCY-GAP>
+    > **Platform Profile ID**: <stable ID | MISSING>
+    > **Platform Profile Version**: <version | MISSING>
+    > **Platform Profile SHA-256**: <sha256 | MISSING>
+    > **Input Profile IDs**: <stable IDs | MISSING>
+    > **Accessibility Foundation**: <ID/version/path/hash/tier | MISSING>
+    > **Requirement IDs**: <stable IDs and owners>
+    > **Context Manifest SHA-256**: <hash>
+    > **Authoring Receipt ID**: <stable receipt ID | PENDING>
 
-Do not claim the user, a consultant, or a tool is an author unless that identity
-actually wrote target bytes. Record product choices separately as decision IDs,
-decision-maker identity, source options, chosen option, rationale, and timestamp.
+Temporary user answers cannot replace a platform/input/accessibility source. If
+needed to continue safe drafting, persist them as PROVISIONAL derived decision
+records plus OPEN dependency findings; dependent sections cannot be VALID and
+the artifact cannot be READY_FOR_REVIEW.
 
-## Status and dependency rules
+## Independent state axes
 
-Use artifact statuses, not an unconditional completion claim:
+Section inventory keeps:
 
-- `DRAFT`: a valid skeleton or some approved sections exist, but required sections
-  or decisions remain;
-- `PARTIAL`: all possible bounded work is preserved but a critical dependency,
-  timeout, drift, authorization, migration, or cross-reference blocker remains;
-- `READY_FOR_REVIEW`: every profile requirement and cross-reference check passes,
-  the target was read back and hashed, and no critical dependency is missing.
+- content_state: MISSING, PLACEHOLDER, SUBSTANTIVE, or NOT_APPLICABLE;
+- evidence_state: CURRENT, STALE, PROVISIONAL, MISSING, or CONFLICTING;
+- workflow_state: PENDING, DRAFTING, APPROVED_NOT_WRITTEN, WRITTEN, BLOCKED, or
+  OUT_OF_SCOPE; and
+- assertion_results: stable assertion ID, PASS/FAIL, evidence, owner.
 
-The following are critical dependency gaps for screen/HUD work: missing concept
-foundation where the player goal cannot be sourced, missing applicable GDD
-requirement or requirement owner, missing committed accessibility tier/foundation,
-missing platform/input profile, unresolved navigation contract, or an unowned
-cross-screen/global pattern. A gap receives a stable `UXD-{artifact-id}-{check-id}`,
-source evidence, owner, status `OPEN`, and resolution action. It prevents
-`READY_FOR_REVIEW`; user acceptance may be recorded but cannot close the gap.
+Artifact status:
 
-An accessibility specialist may assess conformance, but this workflow consumes the
-external accessibility foundation and never defines or writes its tier. A missing
-foundation requires its dedicated owner/workflow outside this run. Likewise, a
-screen/HUD author cannot update the global pattern library.
+- DRAFT — skeleton/some approved sections exist but required content/decisions
+  remain;
+- PARTIAL — safe work is preserved but dependency, evidence, timeout, drift,
+  authorization, migration, or blocking finding remains;
+- READY_FOR_REVIEW — target content has all profile assertions passing, current
+  evidence/critical dependencies, zero blocking findings, and stable read-back
+  target bytes.
 
-## Phase 1: Resolve target and load bounded context
+Authoring never emits COMPLETE, APPROVED, or IMPLEMENTATION READY.
+Report Workflow Verdict separately. A review handoff is available only when a
+READY_FOR_REVIEW artifact also has a verified external authoring receipt.
 
-Validate the manifest, target identity, mode, expected hash, author schema hash, and
-applicable instruction chain. Load only declared paths and exact requirement IDs.
-For navigation, load only declared direct parents, entries, and exits. For HUD, load
-only declared UI requirement sections, not every GDD. For pattern work, load only
-declared consumer specs and component/interaction sections, not all UX files.
+Critical gaps for screen/HUD include missing product requirement/owner,
+platform/input profile, committed accessibility foundation/tier, navigation
+contract, or owned cross-screen/global pattern. A user may accept risk but cannot
+close or waive a blocking owner gap.
 
-Create an in-memory context manifest containing normalized path/hash, selected
-section/range, requirement ID/owner, dependency edge, bytes/tokens consumed,
-omissions, and author schema hash. Stop at the declared budget. Budget overflow or
-hash drift produces `PARTIAL` with no target write.
+## Phase 0: Parse invocation and validate manifest identity
 
-Do not ask the user any design question until target/profile validation and bounded
-context loading finish. Present the sourced constraints, explicit gaps, assumptions,
-and the one next decision.
+Parse flags first. Then read only the exact request manifest and validate its
+contract, IDs, profile, mode, target/checkpoint roots, expected hashes, owners,
+budgets, and non-writes. Do not read design context or ask design questions
+before target/profile identity is known.
 
-## Phase 2: Plan create, retrofit, revision, or migration
+Invalid/unsupported input returns ERROR with no artifact status/verdict/write.
+Missing mandatory identity/owner/hash evidence returns BLOCKED with no write.
 
-For `create`, produce candidate header and all required stable-ID section headings in
-scratch. For an existing target, read exact bytes and classify every schema section:
+## Phase 1: Inventory target and authorize one mutation boundary
 
-- `VALID`: recognized ID/heading, substantive current content, sources current;
-- `STALE`: substantive content whose source/profile hash changed;
-- `PLACEHOLDER`: recognized but no substantive content;
-- `MISSING`: required ID/heading absent;
-- `UNMAPPABLE`: ambiguous duplicate or legacy content without a safe mapping.
+Read applicable AGENTS.md root-to-target and the profile schema sources. For an
+existing target, read raw bytes, compute target and section-body hashes, reject
+duplicate IDs/headings, and inventory every required section against
+cgs.ux-content-profile/v2.
 
-`fill-gaps` selects only PLACEHOLDER/MISSING sections. `revise-sections` may select
-VALID or STALE sections explicitly and must preserve all unselected bytes.
-`migrate-schema` builds a deterministic old-heading-to-stable-ID mapping, proposed
-moves, preserved content hashes, and unresolved fragments. Never silently discard,
-rewrite, or duplicate legacy content. An UNMAPPABLE section requires a product
-decision before mutation and remains `PARTIAL` if unresolved.
+- fill-gaps may select only MISSING/PLACEHOLDER content.
+- revise-sections may select explicit SUBSTANTIVE sections whether evidence is
+  CURRENT or STALE.
+- migrate-schema maps legacy headings/content to stable IDs and preserves exact
+  content hashes; ambiguous/unmappable fragments block until decided.
+- create scopes all profile-required sections against ABSENT target.
 
-For every selected section, state source requirements, constraints, current hash,
-decision dependencies, and the exact byte region/anchor to be replaced. Present the
-plan before mutation authorization.
+Present one mutation manifest before broader context loading:
 
-## Phase 3: One bounded mutation authorization
+    Operation: <mode>
+    Target: <exact path>
+    Expected target: <hash | ABSENT>
+    Checkpoint root: <exact path>
+    Artifact/run/profile/schema IDs: <values>
+    Authorized section IDs/body baselines: <ordered list>
+    Writer/recorder task identities: <values>
+    Limits: max bytes, revision rounds, consultation limits
+    Non-writes: <complete list>
 
-Read-only analysis, questions, options, decisions, and scratch drafts do not require
-file authorization. Before the first write, present one task mutation manifest:
+Obtain one explicit authorization from named mutation authority. It covers the
+listed target regions and immutable checkpoint/receipt records for this task.
+Per-section product approval is not filesystem authorization. New path/section,
+operation, owner, writer, or larger limit requires a revised manifest and new
+authorization.
 
-- operation, exact target and checkpoint paths;
-- expected target base hash or `ABSENT`;
-- stable artifact/screen/run/profile/schema IDs;
-- authorized section IDs, anchors, writer and checkpoint recorder task IDs;
-- maximum bytes and maximum revision rounds;
-- explicit non-writes, including accessibility foundation, unrelated UX specs,
-  implementation paths, and the global pattern library unless it is this run's
-  sole authorized target owned by the external UX-library owner.
+## Phase 2: Load bounded hash-manifested context
 
-Obtain one explicit authorization from the named mutation authority. It authorizes
-the listed path/section boundary for this task, including later user-approved section
-writes and checkpoint updates. Do not ask again per section or per file. A new path,
-new section ID, operation change, ownership change, or larger limit is scope expansion
-and requires a revised manifest and new authorization.
+After authorization, select candidates in stable order:
 
-Product decisions and section approvals are content choices, not filesystem
-authorization. Never label a product approval as permission to mutate an unlisted
-path.
+1. applicable AGENTS.md root-to-target;
+2. exact target when existing;
+3. exact platform/input profile;
+4. exact accessibility foundation;
+5. requirement-owner GDD sections in manifest requirement order;
+6. direct navigation parent/entry/exit neighbors in manifest order;
+7. declared pattern-library entries;
+8. player journey; and
+9. art-bible sections.
 
-## Phase 4: Create or migrate the skeleton
+Never scan all GDDs/UX specs or follow second-hop navigation. Count every loaded
+context file, including AGENTS and target, against hard maxima 16 files and
+524288 exact bytes. Requested budgets may be smaller but never larger. Determine
+size before load; never truncate or partially read.
 
-After authorization, the unique UX-author task verifies the current base hash and
-writes the exact profile header/section structure. Create mode writes a complete
-placeholder skeleton. Retrofit/revision preserves every unselected byte. Migration
-applies only approved mappings and preserves hashes of content moved without edits.
+The context manifest records ordered path, role, artifact/requirement IDs,
+selected range, bytes, raw SHA-256, owner, dependency edge, loaded/omitted
+state, and reason. Canonicalize UTF-8 LF, fixed field order, no trailing
+whitespace, one final newline; record digest.
 
-The checkpoint recorder is the only writer of immutable records under:
+For an existing target, mark its manifest entry mutable-target-baseline. Its
+baseline hash remains provenance but is not revalidated as external context
+after authorized target writes. Target currentness is always checked separately
+by target/section CAS. All other loaded entries are context evidence and must
+continue to match their manifest hashes.
 
-`production/ux/ux-design/{artifact-id}/{run-id}/checkpoints/{sequence}-{phase}.yaml`
+If any mandatory/selected candidate exceeds budget, is missing, or mismatches
+declared hash, append at most an authorized PARTIAL checkpoint with reason
+CONTEXT_BUDGET_EXCEEDED or CONTEXT_EVIDENCE_INVALID, leave target unchanged, and
+stop. Required context is never silently omitted.
 
-Each checkpoint records request/context/schema/target hashes, mode, section-state
-matrix, decision IDs, authorization manifest/hash, writer identities, operation
-ledger, open dependencies/findings, completed/pending sections, and next legal step.
-Read back and hash every write. Drift, an outside-path mutation, or a writer mismatch
-halts with `PARTIAL` or `BLOCKED`; do not revert user work silently.
+Only after bounded context succeeds, show sourced constraints, hard evidence,
+derived constraints, provisional assumptions, and dependency findings; then ask
+the first product question.
+
+## Phase 3: Build create, fill, revision, or migration plan
+
+For every authorized section, list baseline body hash/state, content assertion
+results, source requirements/hashes, decision dependencies, exact byte
+region/anchor, and planned operation.
+
+For migration, produce deterministic old-heading to stable-ID mapping, proposed
+moves, before hashes, and unresolved fragments. Never discard, duplicate, or
+rewrite moved content silently.
+
+Each selected content write uses compare-and-set:
+
+1. re-read target and require current hash equals checkpoint current target hash;
+2. require current section body equals stored baseline/current body hash;
+3. re-hash context evidence used by the draft;
+4. require authorization manifest hash and writer identity still match;
+5. reject any out-of-scope byte change.
+
+Target mismatch returns ERROR — CONCURRENT TARGET CHANGE. Evidence mismatch
+returns ERROR — CONTEXT EVIDENCE CHANGED. No target/checkpoint write occurs for
+that transaction.
+
+## Phase 4: Create/migrate skeleton and initialize receipt chain
+
+After context and plan succeed, the target writer performs only authorized
+CAS writes. Create writes the exact profile skeleton with placeholders.
+fill/revise preserves every unselected byte. Migration applies only approved
+mappings.
+
+The checkpoint recorder appends under:
+
+    production/ux/ux-design/<artifact-id>/<run-id>/checkpoints/
+      <sequence>-<phase>.yaml
+
+Every record uses cgs.ux-design-checkpoint/v2 and includes previous checkpoint
+path/hash, request/context/schema/authorization/target hashes, mode, full section
+state/assertions, decision/revision IDs, writer identities, operation ledger,
+consultation results, open findings, budgets, next legal step, UTC timestamp,
+and canonical payload SHA-256. Sequence and previous hash use create-if-absent
+compare-and-set; never rewrite a checkpoint.
+
+After the final target content/header CAS and read-back hash, the final immutable
+record additionally declares
+cgs.ux-authoring-receipt/v1 and binds pre/post target hashes, context manifest,
+content/profile/author schema, applied section/revision/decision IDs,
+authorization hash, unresolved findings, author/recorder identities, and exact
+target path. Its stable receipt ID may appear in the target header, but its path
+or hash must not: the receipt binds the already-final target and therefore stays
+external to avoid a target/receipt hash cycle. The receipt is authoring evidence,
+not review approval.
+
+Read back and hash every write. Drift, wrong writer, or path expansion halts
+PARTIAL/BLOCKED without reverting user work. Receipt construction failure after
+verified final target content leaves the content status unchanged but reports
+Workflow Verdict PARTIAL, emits no review handoff, and names the exact
+unreceipted target hash.
 
 ## Required continuation
 
-Before section authoring, read `references/continued-workflow.md` in full. It defines
-the mandatory per-section cycle, profile evidence, cross-reference gate, recovery,
-bounded consultation, and independent-review handoff. Its rules are part of the
-versioned author schema and cannot be skipped.
+Before section authoring, read references/continued-workflow.md in full. It
+defines decision/revision provenance, deterministic content assertions,
+cross-reference finding contract, acceptance references, bounded consultation,
+recovery, final receipt, and independent-review handoff.
 
-## Non-implementation boundary
+## Non-implementation and review boundary
 
-This workflow never writes implementation code, visual assets, production UI,
-translations, ADRs, an accessibility foundation, or another artifact's global
-patterns. `READY_FOR_REVIEW` means authoring is ready for an independent review; it
-does not mean approved or implementation-ready.
+After authoring, stop. A fresh independent reviewer reads the exact target,
+content/profile/author schema, context digest, and authoring receipt path/hash.
+Only a separate authorized recorder may persist review evidence after rechecking
+all hashes.
 
-After authoring, stop. A fresh reviewer task that is not the author must review the
-exact target SHA-256 under the current `author_schema_hash`. Only a separately
-authorized recorder may persist the returned review envelope after rechecking the
-target hash. Even a conversation `APPROVED` result does not authorize implementation.
-Production work must remain blocked until a consumer verifies current-hash persisted
-approval and obtains its own precise implementation authorization.
+READY_FOR_REVIEW is not approval or implementation readiness. A conversation
+approval, author self-review, stale receipt, stale target, or advisory review
+authorizes nothing.
+
+## P1 audit traceability
+
+Each authoritative P1 audit finding has one independent trace row. The row binds
+the normative clause to a concrete dedicated-spec case/assertion; it does not
+claim that the case was executed.
+
+| Audit ID | Normative clause | Dedicated spec evidence |
+|---|---|---|
+| `UXD-005` | Phase 1 mode/content/evidence inventory and Phase 3 mutation planning | Case 4 — `UXD-C04-A`, `UXD-C04-B`, and `UXD-C04-C` |
+| `UXD-006` | Phase 2 bounded hash-manifested context | Case 6 — `UXD-C06-A`, `UXD-C06-B`, and `UXD-C06-C` |
+| `UXD-007` | Phase 0 request resolution before Phase 2 context/questions | Case 7 — `UXD-C07-A`, `UXD-C07-B`, and `UXD-C07-C` |
+| `UXD-008` | `references/continued-workflow.md` Phase 5 decision and revision provenance | Case 8 — `UXD-C08-A`, `UXD-C08-B`, and `UXD-C08-C` |
+| `UXD-009` | Required artifact header and independent state axes for platform/input evidence | Case 9 — `UXD-C09-A`, `UXD-C09-B`, and `UXD-C09-C` |
+| `UXD-010` | `references/continued-workflow.md` Phase 8 dependency-finding gate | Case 10 — `UXD-C10-A`, `UXD-C10-B`, and `UXD-C10-C` |
+| `UXD-011` | `references/continued-workflow.md` Phase 7 reference-first acceptance criteria | Case 11 — `UXD-C11-A`, `UXD-C11-B`, and `UXD-C11-C` |
+| `UXD-012` | `references/continued-workflow.md` Phase 9 bounded consultation/failure results | Case 12 — `UXD-C12-A`, `UXD-C12-B`, and `UXD-C12-C` |
+| `UXD-013` | Versioned profile/content contracts, required continuation, and this trace matrix | Case 18 — `UXD-C18-A`, `UXD-C18-B`, and `UXD-C18-C` |

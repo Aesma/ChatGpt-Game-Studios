@@ -1,223 +1,173 @@
 ---
 name: setup-engine
-description: "Research, select, verify, configure, refresh, or upgrade a game engine using official-source snapshots, real executable receipts, and strictly authorized atomic project changes."
+description: Research, select, verify, configure, refresh, or upgrade a game engine using hash-pinned official-source claims, real executable and toolchain health receipts, owner-safe transactions, and explicit partial/offline recovery states.
 ---
 
 # Setup Engine
 
-Establish a reproducible engine identity. A version string in a document, an existing
-file, a downloaded installer, or a user preference is not proof that the project is
-configured or upgraded.
+Establish a reproducible engine identity. A version declaration, existing directory, downloaded installer, static source scan, or user preference does not prove that an engine exists, is supported, is healthy, is configured, or was upgraded.
 
-## Invocation contract
+## Invocation
 
-Invoke only as:
+```text
+$setup-engine --manifest <engine-request-path> --expect-manifest <sha256:...>
+              [--resume <checkpoint-path> --expect-resume <sha256:...>]
+```
 
-`$setup-engine --manifest {engine-request-path} [--resume {checkpoint-path}]`
+Manifest path/hash are required together. Resume path/hash are optional but inseparable. Validate arguments before repository reads beyond the manifest, network access, execution, delegation, decisions, or writes. With no manifest, show usage and stop with zero side effects and no verdict. Reject unknown/repeated flags, moving aliases such as `latest`, directories, unsafe IDs, traversal, symlink/junction/reparse escapes, unsupported schema, and expected/actual hash mismatch.
 
-Validate arguments before repository reads, network access, external execution,
-delegation, decisions, or writes. With no manifest, print this usage line and stop
-with no side effects and no verdict. Reject unknown/duplicate flags, missing values,
-directories, unsafe IDs, path traversal, and unsupported schemas.
+The request conforms to `cgs.engine-request/v2` and contains:
 
-The manifest requires:
+- stable request/run/project IDs and mode `research | decision | configure | refresh | upgrade`;
+- requested engine product/edition/channel and exact version or bounded version constraint;
+- language, target platforms/architectures, locale, distribution region(s), organization/use/revenue context needed for license evaluation, and currency/date basis;
+- exact first-party source allowlist, claim freshness windows, network/offline policy, source-snapshot root, retrieval deadline, and evidence budgets;
+- expected executable path or bounded installation roots, expected binary hash/signature when pinned, exact version argv/parser, required SDK/compiler/runtime/package/export-template commands and locks, and project health/build/test commands;
+- authoritative testing-configuration/catalog path and expected hash or explicit `UNCONFIGURED`;
+- exact project/config/reference/evidence/checkpoint/receipt/transaction paths, owners, expected base hashes or ABSENT, writers, limits, and non-writes;
+- product-decision, external install, command execution, project mutation, migration, activation, and recovery authorities as separate identities;
+- timeout, retry, parallel-probe, rollback, offline, partial-download, and resume policy;
+- for upgrade, current configured receipt, isolated candidate root, target installation, migration/import/build/regression matrix, and separate activation authority.
 
-- `Artifact Type: engine-request` and `Schema Version: 1`;
-- stable request/run IDs and mode `research`, `decision`, `configure`, `refresh`, or
-  `upgrade`;
-- requested engine, edition/channel, version or version constraint, language/toolchain,
-  target platforms, region, organization/revenue context relevant to licensing, and
-  project root;
-- exact official-source policy, retrieval deadline, source snapshot root, and
-  network authorization state;
-- for configure/upgrade: expected executable path or installation search roots,
-  installation ID if known, executable hash if pinned, supported version-output
-  command, required SDK/toolchain commands, and project validation/build/test commands;
-- exact project configuration paths, owners, expected base hashes or `ABSENT`,
-  candidate/receipt/checkpoint paths, size limits, and explicit non-writes;
-- named product decision authority, external installation authority, project mutation
-  authority, owner approval for each authoritative file, execution runner, unique
-  writers, transaction recorder, and evidence recorder;
-- per-command timeout, phase deadline, maximum parallel read-only probes, retry limit,
-  rollback policy, and resume checkpoint root;
-- for upgrade: verified current active installation receipt, isolated candidate
-  workspace, target installation, migration/build/regression matrices, and separate
-  activation authority.
+The manifest is a request and scope constraint, not proof of an external fact and not authorization for network, install, execution, mutation, upgrade, or recovery.
 
-Normalize real paths. Reject binaries, installers, candidate workspaces, or outputs
-that escape the authorized roots through symlinks or junctions. IDs are stable slugs
-or UUIDs, never dates alone.
+## State and completion model
 
-## State model and completion language
+Use exactly these primary states:
 
-Research, selection, installation, execution verification, and project configuration
-are distinct states:
+- `RESEARCH_EVIDENCE_READY` — sufficient current official-source evidence exists for a user decision; nothing selected/installed/configured;
+- `DECISION_RECORDED` — the named user/product authority selected an evidenced candidate; no install/config authority;
+- `INSTALLATION_VERIFIED` — exact binary and required toolchains passed current health receipts; project files unchanged;
+- `CONFIGURED` — verified installation identity matches all committed project declarations, framework reference, visibility probe, and final receipts;
+- `REFERENCE_REFRESHED` — reference evidence transaction committed without changing active engine/toolchain identity;
+- `UPGRADE_PLANNED` — target research/audit exists while active identity remains unchanged;
+- `UPGRADE_VERIFIED` — target installation, isolated migration/import/build/regression, activation, and post-activation health all passed on one final hash;
+- `OFFLINE_EVIDENCE_ONLY` — only identified cached snapshots were usable; freshness/claim limits are explicit and no current-online claim is made;
+- `PARTIAL` — safe evidence exists but required scope is incomplete;
+- `BLOCKED` — authority, official evidence, identity, health, ownership, CAS, validation, or policy prevents the next transition;
+- `RECOVERY_REQUIRED` — partial machine/project mutation or incomplete rollback must be resolved before any other transition.
 
-- `RESEARCH_EVIDENCE_READY`: official-source snapshot is complete enough for a
-  decision; no engine has been selected, installed, or configured by this state;
-- `DECISION_RECORDED`: the named authority selected an evidenced candidate; no
-  installation or project mutation is implied;
-- `INSTALLATION_VERIFIED`: the exact executable and required toolchain produced valid
-  current receipts; project configuration is still unchanged;
-- `CONFIGURED`: verified installation identity and project declarations agree, the
-  full transaction committed, configuration visibility was independently tested,
-  and final receipts are current;
-- `REFERENCE_REFRESHED`: authorized reference evidence changed while active engine
-  identity remained unchanged;
-- `UPGRADE_PLANNED`: target research/audit exists, but no active version changed;
-- `UPGRADE_VERIFIED`: target installation, isolated migration, import/serialization,
-  build, regression, and activation transaction all passed on final hashes;
-- `PARTIAL`: safe evidence exists, but required work/evidence is incomplete;
-- `BLOCKED`: authority, official evidence, identity, execution, ownership, CAS,
-  rollback, or validation prevents the next legal transition.
+Only `CONFIGURED` in configure mode and `UPGRADE_VERIFIED` in upgrade mode may return `Verdict: COMPLETE`. Research, decision, refresh, and offline states never return an unqualified COMPLETE. Documentation-only edits, a successful download, static search, a file's existence, or accepted risk cannot produce CONFIGURED/UPGRADE_VERIFIED.
 
-`Verdict: COMPLETE` is legal only for requested mode `configure` with state
-`CONFIGURED`, or mode `upgrade` with state `UPGRADE_VERIFIED`. Research, decision,
-and refresh report their named state without `COMPLETE`. A documentation-only version
-edit, file existence, source scan, download success, or user risk acceptance can
-never produce `CONFIGURED`, `UPGRADE_VERIFIED`, or `COMPLETE`.
+Qualify every statement such as version available, supported, downloadable, licensed, configured, healthy, or upgraded with exact product/edition/version/channel/platform/region/as-of time and evidence/receipt hashes. Never emit an unqualified `latest`, `free`, `supported`, or `verified` claim.
 
-Do not use unqualified claims such as `latest`, `supported`, `free`, `verified`,
-`configured`, or `upgraded`. Bind each claim to evidence scope, engine edition/version,
-support channel, date, region, and receipt hash.
+## Official-source claim contract — ENGINE-P1-001/002
 
-## Official-source evidence policy
+Every mutable external fact must come from an eligible first-party, versioned source in the request's frozen allowlist. Eligible source roles include official release archive/API, lifecycle/support policy, official download/artifact manifest, checksum/signature service, platform matrix, migration guide, and legal/license terms. Vendor-owned release repositories are eligible only with verified ownership.
 
-Every mutable external fact must come from a first-party, versioned source. Examples
-of eligible publishers are the engine vendor's release archive, documentation,
-download manifest/checksum/signature service, platform-support matrix, lifecycle
-policy, and legal/license terms. An official publisher's release repository is
-eligible only when ownership is verified. Search snippets, aggregators, forums,
-blogs, generated summaries, model memory, and user recollection are discovery hints,
-not evidence.
+Search results, snippets, mirrors, aggregators, package indexes not controlled by the vendor, forums, blogs, model memory, user recollection, and copied prior prose are discovery hints only. They cannot establish a claim.
 
-For each claim record:
+Each `cgs.engine-official-claim/v2` record contains:
 
-- stable claim ID and claim type;
-- engine product, edition, exact version/channel, platform/architecture, locale and
-  applicable region;
-- canonical official URL, page/document version, publisher, publication/effective
-  date, retrieved-at UTC, and exact quoted field or normalized finding;
-- content SHA-256 or response-body hash when retrievable, plus ETag/Last-Modified;
-- support/lifecycle state, download artifact identity, official checksum/signature
-  location, license/royalty context and thresholds when relevant;
-- conflicts, unavailable fields, and confidence `CONFIRMED` or `UNRESOLVED`.
+- stable claim ID/type and claim schema version;
+- engine product/edition, exact normalized release version/build ID, release channel, lifecycle/support status and support horizon as of `retrieved_at`;
+- platform/architecture, locale, applicable region, and claim applicability predicate;
+- canonical official URL, allowlist rule ID, publisher/ownership evidence, document/API version, publication/effective date, and `retrieved_at` UTC;
+- HTTP/result status, final URL and redirect chain, ETag/Last-Modified, response/content SHA-256, and preserved normalized finding;
+- for download claims, exact artifact name/bytes/platform/architecture, official download URL, checksum algorithm/value and separately sourced official checksum URL/hash, or signature/certificate/notarization identity and validation policy;
+- support channel and whether the artifact is preview/beta/RC/stable/LTS/archived/unsupported;
+- license claim IDs when relevant;
+- freshness deadline, conflicts, unavailable fields, and status `CONFIRMED | UNRESOLVED | STALE | OFFLINE_CACHED`.
 
-Preserve citations and prior snapshot hashes when refreshing. Never silently replace
-an official statement with another scope or date. Two conflicting official sources,
-an inaccessible mandatory source, missing checksum/signature policy, or unclear
-license/platform applicability is `BLOCKED` for any dependent decision. Present the
-conflict; do not choose by recency alone.
+“Most recent” can only mean the maximal release under the exact official archive snapshot and channel/platform predicate at `retrieved_at`; retain the archive URL/content hash and do not call it timeless/latest. Fixed training/knowledge-cutoff prose is forbidden.
 
-User-provided versions receive the same verification. Confirm exact existence,
-edition, support state, official download, platform/architecture, and applicable
-license terms. If a requested version is unsupported or unavailable, report the
-official evidence and ask for a product decision; do not silently substitute a
-different version.
+A user-supplied version is a requested candidate, not evidence. Confirm exact release existence, edition/channel, support status/horizon, official download asset, platform/architecture, artifact checksum/signature, and applicable license terms. If unavailable, unsupported, archived, conflicted, or unverifiable, show the official evidence and ask the user authority to select an evidenced option or stop. Never silently substitute a nearby version/channel/edition.
 
-## Evidence artifacts
+Missing/mismatched checksum, invalid/untrusted signature, artifact identity conflict, ineligible redirect, or unresolved support state blocks download/install and all dependent claims. If a vendor publishes no checksum, record `CHECKSUM_NOT_PUBLISHED` with source evidence; only a manifest-declared organization policy may allow a specific signature/notarization alternative, and the exception remains explicit in every receipt.
 
-Use immutable records under:
+## License/platform claim contract — ENGINE-P1-008
 
-`production/engine/setup-engine/{request-id}/{run-id}/`
+License, royalty, seat, revenue, funding, distribution, console/platform availability, and service-fee claims use `cgs.engine-license-claim/v1` and record:
 
-The declared evidence/transaction recorder is the sole writer for:
+- exact engine product/edition/version/channel and license/terms document title/version/URL/hash;
+- publisher, publication/effective date, retrieved-at UTC, applicable region/jurisdiction and locale;
+- organization/use category, seat/headcount basis, commercial/noncommercial/education context, distribution platform, and target platform;
+- threshold amount, currency, measurement period, gross/net/funding/revenue basis, exclusions, royalty/fee rate and base, and tax treatment exactly as stated when applicable;
+- user-provided applicability facts/attestation hash, with sensitive exact revenue minimized to an adequate band when possible;
+- status `CONFIRMED_APPLICABLE | CONFIRMED_NOT_APPLICABLE | UNRESOLVED | NOT_PROVIDED`, conflicts, and next review date.
 
-- `sources/{sequence}-{source-id}.json` — exact official-source snapshot;
-- `research-manifest.json` — claim/source matrix and its canonical hash;
-- `decision.json` — selection and decision provenance;
-- `receipts/install.json` — installer/package transaction, when installation occurs;
-- `receipts/execution.json` — real binary and SDK/toolchain execution identity;
-- `receipts/project-validation.json` — project load/import/smoke evidence;
-- `receipts/build-regression.json` — upgrade build/test matrix;
-- `mutation-manifest.json` and `mutation-receipt.json` — authorized project transaction;
-- `checkpoints/{sequence}-{phase}.json` and `result.json`.
+Never infer organization revenue, location, legal entity, platform eligibility, or license applicability. `NOT_PROVIDED`/ambiguous region/date/threshold is unresolved. Present factual source-bound information, not legal advice. A user risk acceptance cannot turn missing legal applicability into confirmed eligibility.
 
-Records use canonical serialization and SHA-256, include their schema version, stable
-request/run/installation IDs, producer identity, UTC time, input/output hashes,
-authorization IDs, and status. Read back every persisted record and include its hash.
-An existing filename or an unvalidated old receipt is not evidence.
+## Evidence and receipt root
 
-## Phase 1: Read-only research
+Authorized immutable evidence belongs under:
 
-Research mode and the research portion of other modes are read-only with respect to
-the project and machine. Network access follows the manifest's explicit policy. Do
-not download or execute an installer during research.
+```text
+production/engine/setup-engine/<request-id>/<run-id>/
+```
 
-1. Validate the engine, edition, version constraint, platforms, region, and licensing
-   context that need evidence.
-2. Retrieve only eligible official sources within the deadline and source budget.
-3. Verify source ownership, preserve response hashes and timestamps, and construct
-   the claim/source matrix.
-4. Compare candidates using sourced capabilities, lifecycle, platform requirements,
-   language/toolchain constraints, installation footprint, and applicable licensing.
-   Do not embed a timeless engine recommendation matrix in this workflow.
-5. Mark missing/conflicting facts `UNRESOLVED`. A comparison may show bounded options
-   but cannot convert unresolved facts into confidence.
+The sole evidence recorder owns exact paths for:
 
-Optional parallel retrieval is capped at three read-only tasks. Each gets explicit
-URLs, no child delegation, a unique attempt token, and a deadline capped at 15
-minutes; the total research phase is capped at 30 minutes. Permit one retry only
-after proving the prior attempt made no writes/downloads. Revoke timed-out tokens and
-ignore/quarantine late results.
+- `sources/<sequence>-<source-id>.json` and response bodies where permitted;
+- `official-allowlist.json`, `research-manifest.json`, `license-manifest.json`, and `decision.json`;
+- `receipts/download-install.json`, `receipts/engine-health.json`, `receipts/framework-consistency.json`, `receipts/project-visibility.json`, and upgrade receipts;
+- `mutation-manifest.json`, `mutation-receipt.json`, rollback/recovery receipts;
+- immutable checkpoints and `result.json`.
 
-If the request authorizes persistence of research evidence, first present its exact
-record paths, hashes, recorder, and limits for one research-record authorization.
-Otherwise return the canonical evidence in conversation as
-`RESEARCH_EVIDENCE_READY`. This authority does not permit installation or project
-configuration.
+Every record uses canonical serialization, schema version, request/run/installation IDs, producer/tool version, source/input/output hashes, authority IDs, UTC time, and status. Read back every persisted record and retain its SHA-256. An existing filename, old receipt, timestamp, or status word is not current evidence.
 
-## Phase 2: Product decision
+Hash this `SKILL.md` and `references/continued-workflow.md` in the initial packet. Revalidate both before the continuation; mixed contract versions are BLOCKED.
 
-Present only candidates supported by the current evidence snapshot. For each option,
-show exact edition/version/channel, support horizon, platform/toolchain constraints,
-license scope/date/region, unresolved facts, and source IDs. The user named as product
-authority chooses; the workflow never forces a recommendation.
+## Phase 1 — Read-only research
 
-Record stable decision ID, selected installation candidate, research-manifest hash,
-options, rationale, decision-maker identity, UTC time, and accepted unresolved risks.
-Risk acceptance does not turn an unresolved mandatory fact into confirmed evidence
-and cannot authorize installation or writes.
+Research is read-only with respect to the project and machine. Network access occurs only when explicitly authorized by the request/authority; installer/package downloads are not research.
 
-Persisting `decision.json` requires its own exact record authorization if not already
-covered. A decision is not installation consent and not project mutation consent.
-State becomes `DECISION_RECORDED` only after the persisted record, when requested, is
-read back and hashed.
+1. Validate product/edition/version constraint/channel/platform/architecture/region/license context.
+2. Freeze the exact source allowlist and expected claim roles before retrieval.
+3. Retrieve only allowlisted first-party HTTPS sources within deadline and byte/probe budgets.
+4. Verify publisher ownership, redirect eligibility, source freshness, response hash, and claim applicability.
+5. Build claim/source and conflict matrices; retain unavailable/partial/offline evidence explicitly.
+6. Compare only evidence-backed capabilities, lifecycle/support horizon, platform/toolchain constraints, footprint, and contextual license terms.
 
-## Authorization boundaries and ownership
+Read-only retrieval permits at most three parallel probes, each with exact URLs, no child delegation, unique attempt token, and at most 15 minutes; total research at most 30 minutes. One retry is allowed only after proving the first attempt made no machine/project/download mutation. Timed-out/late tokens are revoked and results quarantined.
 
-Never ask for one vague up-front approval covering unknown later work. Use separate,
-non-transitive authorities:
+Source conflict is not resolved by recency alone. Preserve both claims/scopes/hashes and mark dependent facts UNRESOLVED. Missing mandatory release/support/download/checksum/license/platform evidence blocks dependent decision/install/configuration.
 
-1. optional evidence-record authorization;
-2. product decision authority;
-3. external download/install authorization, naming URL/package, checksum/signature,
-   command/installer, exact destination, privileges, disk limit, environment changes,
-   timeout, cleanup and rollback;
-4. execution authorization for exact binary/toolchain/project commands and working
-   directories when execution is not already explicitly authorized;
-5. project configuration authorization only after `INSTALLATION_VERIFIED`, covering
-   final candidate bytes for every exact file and receipt;
-6. upgrade migration authorization for exact isolated candidate operations;
-7. upgrade activation authorization only after all current target-hash regression
-   evidence passes.
+Persisting evidence needs exact evidence-record authorization. Otherwise return the canonical packet in conversation. Research authority never authorizes installation/execution/project changes.
 
-Each authoritative project file has one owner and one writer. Owner approval is
-required for root `AGENTS.md`, technical preferences, engine reference, project lock,
-and any other declared destination. Specialist/agent instruction files are outside
-this workflow; emit owner-routed proposals rather than editing them. Testing framework
-selection belongs to the testing configuration owner and its authoritative catalog;
-do not copy or recommend a framework name here.
+## Phase 2 — User-owned engine decision
 
-The project configuration mutation manifest lists every operation, normalized path,
-owner approval ID, expected base hash or `ABSENT`, candidate content hash, unique
-writer, maximum bytes, commit order, rollback bytes/hash, and explicit non-writes.
-Any unknown path, missing owner, changed base hash, changed candidate, or expanded
-scope requires a revised manifest and new authorization.
+Present only evidenced candidates. Each option shows exact product/edition/version/channel, release/support horizon as of a date, download/checksum/signature status, platform/toolchain constraints, license region/date/threshold context, unresolved facts, and source IDs/hashes.
+
+The named user/product authority chooses. The workflow may compare tradeoffs but cannot silently decide. Record decision ID, exact candidate, research/license manifest hashes, alternatives, verbatim choice/rationale, decision identity/source, timestamp, and accepted unresolved risks.
+
+Risk acceptance cannot replace mandatory checksum/signature, legal applicability, executable/toolchain health, project validation, ownership, or CAS evidence. Decision persistence has a separate exact authorization and is not install/configuration consent.
+
+## Authorization and owner boundaries
+
+Use separate non-transitive authorities for:
+
+1. optional evidence persistence;
+2. user/product decision;
+3. external download/install and machine changes;
+4. exact engine/toolchain/project-health commands;
+5. project configuration transaction after `INSTALLATION_VERIFIED`;
+6. refresh reference-only transaction;
+7. isolated upgrade migration;
+8. activation after all validation passes;
+9. rollback/recovery/destructive cleanup when required.
+
+Every authoritative destination has one named owner and one unique writer. The transaction manifest records path, operation, owner approval ID, expected base hash/ABSENT, candidate hash, rollback bytes/hash, maximum bytes, commit order, and non-writes. Unknown owner/path, changed base/candidate, writer overlap, or expanded scope requires a new manifest/approval.
+
+Root AGENTS, technical preferences, engine reference, project engine lock/config, testing configuration reference, and evidence receipts keep their distinct owners. Do not edit specialist/role instruction files; emit exact owner-routed proposals only. This avoids bulk role-description drift. If another authorized workflow later edits them, each file still requires its own owner, snapshot hash, candidate hash, CAS, read-back, and transaction receipt.
+
+Testing framework selection belongs solely to the authoritative testing catalog/configuration owner. This skill never copies or recommends GUT, GdUnit4, NUnit, or any framework name from memory.
+
+## Testing-framework consistency — ENGINE-P1-004
+
+Read only the exact manifest-declared authoritative testing catalog/configuration and expected hash. Record `UNCONFIGURED` if none exists; do not invent a default.
+
+Configuration/upgrade candidates reference the catalog entry by stable framework/config ID, version, path, and SHA-256. The project-health/test command must come from that exact configuration, not an inline engine-specific recommendation.
+
+Emit `cgs.engine-framework-consistency-receipt/v1` with engine/language/project config hashes, testing catalog/config path/hash/schema, framework ID/version, adapter/runner command receipt, expected/actual discovery result, and status:
+
+- `MATCH` — declarations and current execution receipt agree;
+- `UNCONFIGURED` — no authoritative selection exists; engine setup may proceed only if tests are explicitly out of configure scope, while `test_readiness: NOT_CONFIGURED` remains visible;
+- `CONFLICT` — duplicated/different framework declarations;
+- `NOT_RUN` — current executable test/discovery check absent.
+
+`CONFLICT` blocks CONFIGURED/UPGRADE_VERIFIED. `NOT_RUN` blocks those states when testing is required by the manifest/upgrade matrix. Setup-engine never resolves the conflict by choosing a framework; route it to the testing owner.
 
 ## Required continuation
 
-Before installation, execution, configuration, refresh, or upgrade, read
-`references/continued-workflow.md` in full. It defines real execution receipts,
-configuration visibility, multi-owner transaction/rollback, refresh isolation,
-upgrade migration/regression, checkpoint recovery, and terminal output.
+Before download, installation, executable/toolchain health checks, configuration, refresh, upgrade, recovery, or deterministic output, revalidate the hash-pinned [references/continued-workflow.md](references/continued-workflow.md), read it completely, and apply it. It defines installation verification, health receipts, refresh allowlist/CAS, upgrade coverage, offline/partial terminals, rollback, checkpoints, and recovery.

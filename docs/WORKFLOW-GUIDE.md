@@ -1,14 +1,23 @@
 # ChatGPT Game Studios -- Complete Workflow Guide
 
+> Compatibility authority: machine routing and stage detection use the versioned `cgs.workflow-catalog/v2` record at `.codex/docs/workflow-catalog.yaml` and its schema at `.codex/docs/schemas/workflow-catalog-v2.md`. This guide is explanatory. If prose and the exact current catalog hash disagree, automation fails closed; it does not infer completion or stage from file presence.
+
+
 > **How to go from zero to a shipped game using the Agent Architecture.**
 >
 > This guide walks you through every phase of game development using the
 > 49-subagent system, 74 skills, and 12 registered hook handlers across 8 events. It assumes you
 > have Codex installed and are working from the project root.
 >
-> The pipeline has 7 phases. Each phase has a formal gate (`$gate-check`)
-> that must pass before you advance. The authoritative phase sequence is
-> defined in `.codex/docs/workflow-catalog.yaml` and read by `$help`.
+> The pipeline has 7 phases. Each adjacent transition has a read-only gate
+> assessment (`$gate-check <transition-id>`). A passing gate record is evidence,
+> not stage mutation. The authoritative phase sequence and external-recorder
+> boundary are defined in `.codex/docs/workflow-catalog.yaml` and read by `$help`.
+>
+> A bare `$skill-name` in prose, a heading, table, or flow diagram is only a
+> workflow label, not an executable invocation. Copyable command templates below
+> include every required mode/flag and leave caller-supplied values in
+> `<placeholders>`; unresolved templates return input-required and must not run.
 
 ---
 
@@ -88,9 +97,11 @@ At any point, run:
 $help
 ```
 
-This reads your current phase from `production/stage.txt`, checks which
-artifacts exist, and tells you exactly what to do next. It distinguishes
-between REQUIRED next steps and OPTIONAL opportunities.
+This resolves current stage from the catalog-declared authority record at
+`production/stage/authority.json`, validates its receipt chain, and tells you
+what to do next. `production/stage.txt` is only a legacy declaration and never
+authoritative. Missing or invalid authority remains UNKNOWN; artifact presence
+does not initialize or advance stage.
 
 ### Step 5: Create Your Directory Structure
 
@@ -150,26 +161,14 @@ with defined pillars and a player journey. This is where you figure out
 
 ### Phase 1 Pipeline
 
-```
-$brainstorm  -->  game-concept.md  -->  $design-review  -->  $setup-engine
-     |                                        |                    |
-     v                                        v                    v
-  10 concepts     Concept doc with       Validation          Engine pinned in
-  MDA analysis    pillars, MDA,          of concept          technical-preferences.md
-  Player motiv.   core loop, USP         document
-                                                                   |
-                                                                   v
-                                                             $prototype
-                                                       (concept prototype — 1-3 days)
-                                                        PROCEED ↓     PIVOT → $brainstorm
-                                                                   |
-                                                                   v (PROCEED)
-                                                             $map-systems
-                                                                   |
-                                                                   v
-                                                            systems-index.md
-                                                            (all systems, deps,
-                                                             priority tiers)
+```text
+$brainstorm <request-manifest-path>
+  --> game-concept.md + cgs.brainstorm-authoring-receipt/v1
+       |--> optional external cgs.concept-approval/v1
+       |--> optional $prototype <concept-or-question> --path <html|engine|paper>
+       |--> $map-systems
+       |     --> design/gdd/systems-index.md
+       +--> $setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
 ```
 
 ### Step 1.1: Brainstorm With $brainstorm
@@ -177,14 +176,17 @@ $brainstorm  -->  game-concept.md  -->  $design-review  -->  $setup-engine
 This is your starting point. Run the brainstorm skill:
 
 ```
-$brainstorm
+$brainstorm <request-manifest-path>
 ```
 
 Or with a genre hint:
 
 ```
-$brainstorm roguelike deckbuilder
+$brainstorm <request-manifest-path>
 ```
+
+Put any seed such as “roguelike deckbuilder” inside the exact
+`cgs.brainstorm-request/v2` manifest; positional seed text is not accepted.
 
 **What happens:** The brainstorm skill guides you through a collaborative 6-phase
 ideation process using professional studio techniques:
@@ -210,23 +212,26 @@ The concept document includes:
 
 ### Step 1.2: Review the Concept (Optional but Recommended)
 
-```
-$design-review design/gdd/game-concept.md
-```
-
-Validates structure and completeness before you proceed.
+Use a separately authorized independent concept-review process. If it persists
+an approval, require a hash-bound `cgs.concept-approval/v1` record for the exact
+concept. No P1 project skill produces this record: `$design-review` accepts
+system GDDs only and must not be routed to `design/gdd/game-concept.md`. If no
+independent reviewer/recorder is available, report the approval as UNKNOWN.
 
 ### Step 1.3: Choose Your Engine
 
 ```
-$setup-engine
+$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
 ```
 
 Or with a specific engine:
 
 ```
-$setup-engine godot 4.6
+$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
 ```
+
+The requested product/version and operation belong inside the hash-bound engine
+request manifest; positional engine/version arguments are not accepted.
 
 **What $setup-engine does:**
 
@@ -263,17 +268,25 @@ production.
 ### Phase 1 Gate
 
 ```
-$gate-check concept
+$gate-check concept-to-systems-design
 ```
 
-**Requirements to pass:**
+**Normative gate contract (`gate.concept-to-systems-design/v2`):**
 
-- Engine configured in `technical-preferences.md`
-- `design/gdd/game-concept.md` exists with pillars
-- `design/gdd/systems-index.md` exists with dependency ordering
+- `CSD-A01`, `CSD-Q01`, and `CSD-Q02` evaluate the exact current
+  `design/gdd/game-concept.md` path/raw SHA-256 and its substantive concept,
+  pillar, and Visual Identity Anchor content; file presence alone never passes.
+- `CSD-M01/v1` requires the accountable owner attestation bound to the same
+  concept and scope hashes and still current for those bytes.
+- The concept-prototype row `CSD-R01` is advisory and optional. Its absence may
+  produce CONCERNS but is not a blocking pass requirement.
+- Only a current conversation-produced `cgs.gate-record/v2` bound to this exact
+  transition/profile and dependency hashes, with PASS, COMPLETE coverage, and
+  ELIGIBLE disposition, may be considered by the external stage recorder.
 
-**Verdict:** PASS / CONCERNS / FAIL. CONCERNS is passable with acknowledged
-risks. FAIL blocks advancement.
+**Verdict:** PASS / CONCERNS / FAIL / PARTIAL. Only PASS with COMPLETE coverage,
+ELIGIBLE disposition, and current evidence may be considered by the separately
+configured external stage recorder. The gate itself never advances stage.
 
 ---
 
@@ -289,7 +302,7 @@ and then all GDDs are cross-checked for consistency.
 ### Phase 2 Pipeline
 
 ```
-$map-systems next  -->  $design-system  -->  $design-review
+$map-systems next  -->  $design-system <system-name-or-gdd-path> --mode new  -->  $design-review <path-to-system-gdd> --depth lean
        |                     |                     |
        v                     v                     v
   Picks next system    Section-by-section     Validates 8
@@ -361,14 +374,20 @@ Checks all 8 sections for completeness, formula clarity, edge case resolution,
 bidirectional dependencies, and testable acceptance criteria.
 
 **Verdict:** APPROVED / NEEDS REVISION / MAJOR REVISION. Only APPROVED GDDs
-should proceed.
+should proceed. The review command returns a conversation-only
+`cgs.review-evidence/v1` envelope with a `cgs.design-review/v2` extension; it
+does not persist gate evidence. A required catalog step becomes complete only
+after an independent external persistence owner stores the exact envelope
+byte-for-byte and verifies read-back/currentness; the final
+`PA-DESIGN-REVIEW-1` adapter consumes that persisted envelope. No generic
+recorder receipt is synthesized.
 
 ### Step 2.3: Small Changes Without Full GDDs
 
 For tuning changes, small additions, or tweaks that do not warrant a full GDD:
 
 ```
-$quick-design "add 10% damage bonus for flanking attacks"
+$quick-design propose "<change>" --change-id <QD-stable-id> --version <vNNN> --target <design/gdd/system-slug.md> --target-id <SYS-stable-id> --section "<exact-level-two-heading>" --expect-base <sha256:64-lowercase-hex>
 ```
 
 This creates a lightweight spec in `design/quick-specs/` instead of a full
@@ -416,15 +435,25 @@ If your game has story, lore, or dialogue, this is when you build it:
 ### Phase 2 Gate
 
 ```
-$gate-check systems-design
+$gate-check systems-design-to-technical-setup
 ```
 
-**Requirements to pass:**
+**Normative gate contract (`gate.systems-design-to-technical-setup/v2`):**
 
-- All MVP systems in `systems-index.md` have `Status: Approved`
-- Each MVP system has a reviewed GDD
-- Cross-GDD review report exists (`design/gdd/gdd-cross-review-*.md`)
-  with verdict of PASS or CONCERNS (not FAIL)
+- `SDT-A01`, `SDT-A02`, `SDT-Q01`, and `SDT-Q02` bind the current
+  systems-index path/raw SHA-256 and every exact MVP GDD path/raw hash from that
+  manifest; filenames, status text, or counts alone never pass.
+- Every MVP GDD needs current `PA-DESIGN-REVIEW-1` PASSING evidence: the
+  byte-identical persisted `cgs.review-evidence/v1` envelope with its
+  `cgs.design-review/v2` producer extension, exact target hash, complete finding
+  set, and `APPROVED`. This is `PERSISTED_ENVELOPE_COMPLETE`; unpersisted,
+  solo/advisory, NEEDS REVISION, or stale evidence is ineligible.
+- `SDT-E02` needs persisted/read-back `cgs.review-evidence/v1` plus
+  `cgs.cross-gdd-review/v2`, bound to the complete current MVP manifest and all
+  producer/ruleset/bundle hashes, full coverage, and PASS. CONCERNS does not
+  pass this profile.
+- The resulting `cgs.gate-record/v2` must bind the exact profile and source
+  hashes and report PASS, COMPLETE coverage, and ELIGIBLE disposition.
 
 ---
 
@@ -439,7 +468,7 @@ gives programmers flat, actionable rules. You also establish UX foundations.
 ### Phase 3 Pipeline
 
 ```
-$create-architecture  -->  $architecture-decision (x N)  -->  $architecture-review
+create-architecture workflow  -->  architecture-decision workflow (x N)  -->  architecture-review workflow
         |                          |                                   |
         v                          v                                   v
   Master architecture       Per-decision ADRs              Validates completeness,
@@ -447,7 +476,7 @@ $create-architecture  -->  $architecture-decision (x N)  -->  $architecture-revi
   all systems               adr-*.md                       engine compatibility
                                                                       |
                                                                       v
-                                                         $create-control-manifest
+                                                         create-control-manifest workflow
                                                                       |
                                                                       v
                                                          Flat programmer rules
@@ -455,7 +484,7 @@ $create-architecture  -->  $architecture-decision (x N)  -->  $architecture-revi
                                                          control-manifest.md
         Also in this phase:
         -------------------
-        $ux-design  -->  $ux-review
+        ux-design workflow  -->  ux-review workflow
         Accessibility requirements doc
         Interaction pattern library
 ```
@@ -463,7 +492,7 @@ $create-architecture  -->  $architecture-decision (x N)  -->  $architecture-revi
 ### Step 3.1: Master Architecture Document
 
 ```
-$create-architecture
+$create-architecture new
 ```
 
 Creates the overarching architecture document in `docs/architecture/architecture.md`
@@ -474,7 +503,7 @@ covering system boundaries, data flow, and integration points.
 For each significant technical decision:
 
 ```
-$architecture-decision "State Machine vs Behavior Tree for NPC AI"
+$architecture-decision <architecture-decision-request-manifest-path>
 ```
 
 **What happens:** The skill guides you through creating an ADR with:
@@ -486,6 +515,10 @@ $architecture-decision "State Machine vs Behavior Tree for NPC AI"
 - GDD Requirements Addressed (linked by TR-ID)
 
 ADRs go through a lifecycle: Proposed > Accepted > Superseded/Deprecated.
+The authoring workflow persists `cgs.adr-authoring-receipt/v1`, but it does not
+accept its own ADR. Gate-eligible completion additionally requires a current
+`cgs.adr-lifecycle-record/v1` from the independent external ADR lifecycle
+recorder, bound to the exact authoring receipt and ADR content hash.
 
 **Minimum 3 Foundation-layer ADRs are required** before the gate check.
 
@@ -493,11 +526,12 @@ ADRs go through a lifecycle: Proposed > Accepted > Superseded/Deprecated.
 project:
 
 ```
-$architecture-decision retrofit docs/architecture/adr-005.md
+$architecture-decision <architecture-decision-request-manifest-path>
 ```
 
-This detects which template sections are missing and adds only those, never
-overwriting existing content.
+Set `operation: retrofit` in the request manifest and bind the exact existing ADR
+path and current raw SHA-256. The workflow then detects missing sections without
+silently overwriting existing content.
 
 ### Step 3.3: Architecture Review
 
@@ -514,7 +548,7 @@ Validates all ADRs together:
 ### Step 3.4: Control Manifest
 
 ```
-$create-control-manifest
+$create-control-manifest new
 ```
 
 Takes all Accepted ADRs and produces a flat programmer rules sheet:
@@ -539,16 +573,25 @@ reference this tier — it is a design prerequisite, not a UX deliverable.
 ### Phase 3 Gate
 
 ```
-$gate-check technical-setup
+$gate-check technical-setup-to-pre-production
 ```
 
-**Requirements to pass:**
+**Normative gate contract (`gate.technical-setup-to-pre-production/v2`):**
 
-- `docs/architecture/architecture.md` exists
-- At least 3 ADRs exist and are Accepted
-- Architecture review report exists
-- `docs/architecture/control-manifest.md` exists
-- `design/accessibility-requirements.md` exists
+- `TSP-A01` through `TSP-A04` and `TSP-Q01` through `TSP-Q03` validate the
+  fixed technical-preferences, Art Bible, accessibility, interaction-pattern,
+  architecture, traceability, control, engine-reference, test-root, canary, and
+  CI paths by exact current raw SHA-256. Presence or an ADR count alone does not
+  pass; the authoritative manifest must bind the required Foundation ADR IDs,
+  paths, hashes, lifecycle state, engine version, and traceability.
+- `TSP-E01` requires a persisted current `PA-ARCH-REVIEW-1` report with exact
+  target-manifest and source hashes, every required reviewer complete, mutation
+  guard passing, and verdict PASS.
+- `TSP-Q03` requires the configured canary's exact schema/versioned runner
+  receipt, command, source/config hashes, current execution identity, and
+  conclusive PASS; source presence or exit code alone is insufficient.
+- Only a current `cgs.gate-record/v2` for this exact profile with PASS,
+  COMPLETE coverage, and ELIGIBLE disposition can reach the external recorder.
 
 ---
 
@@ -563,7 +606,7 @@ Vertical Slice that proves the core loop is fun.
 ### Phase 4 Pipeline
 
 ```
-$ux-design  -->  $vertical-slice plan/evaluate/status  -->  $create-epics  -->  $create-stories  -->  $sprint-plan
+ux-design workflow  -->  vertical-slice workflow  -->  create-epics workflow  -->  create-stories workflow  -->  sprint-plan workflow
     |                   |                   |                   |                       |
     v                   v                   v                   v                       v
   UX specs       Production-quality   Epic files in       Story files in          First sprint with
@@ -572,14 +615,26 @@ $ux-design  -->  $vertical-slice plan/evaluate/status  -->  $create-epics  -->  
                  PROCEED/PIVOT/KILL   (one per module)    (one per behaviour)     sprint-*.md
     |                                                          |
     v                                                          v
- $ux-review                                             $story-readiness
+ ux-review workflow                                     story-readiness workflow
  (validates specs                                       (validates each story
-  before epics)                                          before pickup)
+  before epics)                                          conversation candidate)
                                                                |
                                                                v
-                                                           $dev-story
-                                                         (implements the story,
-                                                          routes to right agent)
+                                                    independent external recorder
+                                                (cgs.story-readiness-recorder/v1;
+                                                  not a project skill or command)
+                                                               |
+                                                               v
+                                               persisted READY record + exact
+                                        cgs.story-readiness-recorder-receipt/v1
+                                       (RECORDED or ALREADY_RECORDED; exact
+                                        record/receipt/raw hashes current;
+                                        implementation_gate_eligible: true)
+                                                               |
+                                                               v
+                                                           dev-story workflow
+                                                     (consumes the current persisted
+                                                       READY record/receipt pair)
 ```
 
 ### Step 4.1: UX Specs for Key Screens
@@ -590,8 +645,8 @@ exist and what player interactions they must support.
 **UX Specs:**
 
 ```
-$ux-design main-menu
-$ux-design core-gameplay-hud
+$ux-design --manifest <main-menu-request-path>
+$ux-design --manifest <core-gameplay-hud-request-path>
 ```
 
 Three modes: screen/flow, HUD, and interaction patterns. Output goes to
@@ -608,7 +663,7 @@ and input coverage checks — no need to re-specify them per screen.
 **Interaction Pattern Library:**
 
 ```
-$ux-design interaction-patterns
+$ux-design --manifest <interaction-pattern-library-request-path>
 ```
 
 Create `design/ux/interaction-patterns.md` — 16 standard controls plus
@@ -622,7 +677,15 @@ $ux-review all
 ```
 
 Validates UX specs for GDD alignment and accessibility tier compliance.
-Produces APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED verdict.
+Produces a conversation-only `cgs.review-evidence/v1` envelope with a
+`cgs.ux-review/v2` extension and an APPROVED / NEEDS REVISION / MAJOR REVISION
+NEEDED verdict. The producer fixes `gate_evidence_status: NOT_PERSISTED` and
+`gate_evidence_eligible: false`. This is candidate-only conversation completion
+for downstream workflow routing, never persisted or gate completion. The final
+gate adapter authorizes no current durable UX recorder schema, so
+Pre-Production → Production remains
+`BLOCKED_PENDING_VERSIONED_RECORDER`; no wrapper may rewrite the embedded
+candidate fields or make that candidate gate eligible.
 
 ### Step 4.2: Build the Vertical Slice
 
@@ -633,9 +696,9 @@ Plan and evaluate in separate tasks; implementation/build/playtest evidence belo
 to separately authorized owners:
 
 ```
-$vertical-slice plan --run-id <id> --hypothesis-id <VS-H-id> --attempt <01|02> --prerequisites <exact-manifest>
-$vertical-slice evaluate --run-id <id> --plan <exact-plan> --evidence <exact-evidence-manifest> --evaluation-id <id> --persist
-$vertical-slice status <exact-report> --expect-report <sha256:...>
+$vertical-slice plan --request <project-relative-plan-request>@sha256:<64-lower-hex>
+$vertical-slice evaluate --request <project-relative-evaluation-request>@sha256:<64-lower-hex> --persist
+$vertical-slice status --report <project-relative-report>@sha256:<64-lower-hex>
 ```
 
 **What it proves:** Does a player, starting from nothing, experience the core
@@ -662,10 +725,10 @@ scope/evidence/playtest/velocity graph revalidates.
 ### Step 4.3: Create Epics and Stories From Design Artifacts
 
 ```
-$create-epics layer: foundation
-$create-stories [epic-slug]   # repeat for each epic
-$create-epics layer: core
-$create-stories [epic-slug]   # repeat for each core epic
+$create-epics <foundation-request-manifest-path>
+$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256>
+$create-epics <core-request-manifest-path>
+$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256>
 ```
 
 `$create-epics` reads your GDDs, ADRs, and architecture to define epic scope —
@@ -677,22 +740,38 @@ implementable story files in `production/epics/[slug]/`. Each story embeds:
 - Engine-specific implementation notes
 - Acceptance criteria from the GDD
 
-Once stories exist, run `$dev-story [story-path]` to implement one — it routes
+Once stories exist, validate the selected story and use the independent external
+recorder to obtain its current persisted `cgs.story-readiness-record/v1` READY
+record plus exact `cgs.story-readiness-recorder-receipt/v1`. Require `RECORDED`
+or `ALREADY_RECORDED`, exact record/receipt/raw hashes and currentness, and
+`implementation_gate_eligible: true`. Only then run
+`$dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>` to
+implement one — it routes
 automatically to the correct programmer agent.
 
 ### Step 4.4: Validate Stories Before Pickup
 
 ```
-$story-readiness production/epics/combat/story-combat-damage-calc.md
+$story-readiness --story <project-relative-story-path>
 ```
 
 Checks: Design completeness, Architecture coverage, Scope clarity, Definition
 of Done. Verdict: READY / NEEDS WORK / BLOCKED.
 
+That verdict is a conversation candidate, not pickup authorization. An
+independent external `cgs.story-readiness-recorder/v1`—not a project skill or
+`$` command—must persist the exact READY candidate. Pickup requires the current
+persisted `cgs.story-readiness-record/v1` plus its exact
+`cgs.story-readiness-recorder-receipt/v1`, bound to the story, registry, source
+paths/raw hashes, ruleset, check rows, candidate/record/receipt hashes, and
+current staleness key. Only `RECORDED` or `ALREADY_RECORDED` with
+`implementation_gate_eligible: true` qualifies; NEEDS WORK, BLOCKED, partial,
+stale, or unpersisted evidence never makes a story ready for implementation.
+
 ### Step 4.5: Effort Estimation
 
 ```
-$estimate story --input production/epics/combat/story-combat-damage-calc.md
+$estimate story --basis relative --input <project-relative-story-path>
 ```
 
 Provides effort estimates with risk assessment.
@@ -721,8 +800,9 @@ scope is selected:
 - Each counted session has a canonical completed result at
   `production/playtests/<session-id>/report.md`
 
-`$gate-check` is authoritative for the transition verdict. It accepts only an
-explicitly supplied, externally hash-bound `vertical-slice-evaluation-report`
+`$gate-check` is authoritative only for its read-only gate assessment; it never
+mutates stage. The assessment accepts only an explicitly supplied, externally
+hash-bound `vertical-slice-evaluation-report`
 whose workflow/evidence/product/final states are COMPLETE/PROCEED, whose persistence
 and currentness verify, and whose full referenced graph still matches. Session or
 file existence alone never passes.
@@ -730,22 +810,40 @@ file existence alone never passes.
 ### Phase 4 Gate
 
 ```
-$gate-check pre-production
+$gate-check pre-production-to-production
 ```
 
-**Requirements to pass:**
+**Current normative gate status
+(`gate.pre-production-to-production/v2`): `BLOCKED_PENDING_VERSIONED_RECORDER`.**
 
-- At least 1 UX spec reviewed in `design/ux/`
-- UX review completed (APPROVED or NEEDS REVISION with documented risks)
-- At least 1 prototype with README
-- Story files exist in `production/epics/[epic-slug]/`
-- At least 1 sprint plan exists
-- Every required Vertical Slice session has a distinct stable session ID and a
-  valid canonical completed report; templates, protocols, raw logs, reviews,
-  ingest-only sessions, legacy paths, and hash-invalid reports count as zero
-- Exact current persisted Vertical Slice evaluation report is gate eligible and
-  binds the current source/tree, candidate, build, plan, scope, session set,
-  velocity ledger, decision matrix, and report bytes
+- `PPP-E03` requires current PASSING `PA-UX-REVIEW-1` evidence for the main
+  menu, applicable core HUD, and pause menu. The final adapter has no PASSING
+  state under the current producer and authorizes no durable recorder schema:
+  an APPROVED conversation candidate is incomplete, while NEEDS REVISION is
+  failing. Both retain `NOT_PERSISTED` and `gate_evidence_eligible: false`.
+- UX `CONVERSATION_COMPLETE` may satisfy only the catalog's declared non-gate
+  downstream routing prerequisite. It cannot satisfy `PPP-E03`, make a
+  `cgs.gate-record/v2` ELIGIBLE, or clear the transition blocker. No wrapper may
+  rewrite the embedded UX evidence fields.
+- If a future final producer and gate adapter jointly authorize an exact
+  versioned recorder, `PPP-E01` still requires the explicit persisted
+  `cgs.vertical-slice-evaluation-report/v2` with its complete current
+  plan/source/candidate/build/scope/session/network/velocity/decision graph,
+  raw hashes, `Persistence: VERIFIED`, `Gate Eligible: YES`, and all verdict
+  axes PROCEED.
+- `PPP-A01`, `PPP-A02`, `PPP-A03`, and `PPP-Q01` still require exact current
+  sprint/control/epic/story/GDD/ADR/UX/build manifest paths and raw hashes;
+  existence, filenames, or counts do not pass. `PPP-E02` separately requires
+  current PASSING `PA-ART-BIBLE-1` external evidence, and `PPP-M01/v1` requires
+  the accountable owner attestation bound to the exact build/report/scope
+  hashes.
+- `PPP-R01` playtest evidence is advisory: when supplied it must be a current
+  `PA-PLAYTEST-1` pair—`cgs.playtest-report/v2` plus
+  `cgs.playtest-report-recorder-receipt/v1`—for the exact slice build, with
+  state `RECORDED COMPLETED — GATE ELIGIBLE`. Its absence is CONCERNS, not a
+  substitute for `PPP-M01`.
+- A concept prototype is optional/advisory and is not a Phase 4 pass
+  requirement.
 
 ---
 
@@ -760,70 +858,63 @@ is content-complete.
 
 ### Phase 5 Pipeline (Per Sprint)
 
-```
-$sprint-plan new  -->  $story-readiness  -->  implement  -->  $story-done
-       |                     |                    |                |
-       v                     v                    v                v
-  Sprint created       Story validated      Code written     8-phase review:
-  sprint-status.yaml   READY verdict        Tests pass       verify criteria,
-  populated                                                  check deviations,
-                                                             update story status
-       |
-       |  (repeat per story until sprint complete)
-       v
-  $sprint-status  (quick 30-line snapshot anytime)
-  $scope-check compare --baseline <approved-scope> --current <current-scope>
-  $retrospective  (at sprint end)
+```text
+$sprint-plan new
+  --> $story-readiness --story <project-relative-story-path>
+  --> independent external cgs.story-readiness-recorder/v1
+      (not a project skill or $ command)
+  --> persisted cgs.story-readiness-record/v1 READY
+      + cgs.story-readiness-recorder-receipt/v1
+      (RECORDED or ALREADY_RECORDED; exact record/receipt/raw hashes current;
+       implementation_gate_eligible: true)
+  --> $dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
+  --> $code-review --target <project-relative-file-or-directory>
+  --> independent external cgs.code-review-recorder-receipt/v1
+  --> $story-done <story-file-path>
+
+$sprint-status
+$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current <current-scope-path>@sha256:<64-lowercase-hex>
+$retrospective sprint:<sprint-id>
 ```
 
 ### Step 5.1: The Story Lifecycle
 
-The production phase centers on the **story lifecycle**:
+The production lifecycle separates immutable planning inputs from tracker-owned state:
 
-```
-$story-readiness  -->  implement  -->  $story-done  -->  next story
-```
-
-**1. Story Readiness:** Before picking up a story, validate it:
-
-```
-$story-readiness production/epics/combat/story-combat-damage-calc.md
-```
-
-This checks design completeness, architecture coverage, ADR status (blocks
-if ADR is still Proposed), control manifest version (warns if stale), and
-scope clarity. Verdict: READY / NEEDS WORK / BLOCKED.
-
-**2. Implementation:** Work with the appropriate agents:
-
-- `gameplay-programmer` for gameplay systems
-- `engine-programmer` for core engine work
-- `ai-programmer` for AI behavior
-- `network-programmer` for multiplayer
-- `ui-programmer` for UI code
-- `tools-programmer` for dev tools
-
-All agents follow the collaborative protocol: they read the design doc, ask
-clarifying questions, present architectural options, get your approval, then
-implement.
-
-**3. Story Completion:** When a story is done:
-
-```
-$story-done production/epics/combat/story-combat-damage-calc.md
+```text
+$story-readiness --story <project-relative-story-path>
+  --> independent external cgs.story-readiness-recorder/v1
+      (not a project skill or $ command)
+  --> persisted cgs.story-readiness-record/v1 READY
+      + cgs.story-readiness-recorder-receipt/v1
+      (RECORDED or ALREADY_RECORDED; exact record/receipt/raw hashes current;
+       implementation_gate_eligible: true)
+  --> $dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
+  --> $code-review --target <project-relative-file-or-directory>
+  --> independent external cgs.code-review-recorder-receipt/v1
+  --> $story-done <story-file-path>
+  --> next eligible tracker row
 ```
 
-This runs an 8-phase completion review:
-1. Find and read the story file
-2. Load referenced GDD, ADRs, and control manifest
-3. Verify acceptance criteria (auto-checkable, manual, deferred)
-4. Check for GDD/ADR deviations (BLOCKING / ADVISORY / OUT OF SCOPE)
-5. Prompt for code review
-6. Generate completion report (COMPLETE / COMPLETE WITH NOTES / BLOCKED)
-7. Update story `Status: Complete` with completion notes
-8. Surface the next ready story
+- The story file is an immutable requirement core during implementation and closure.
+- The sprint plan owns `plan_sha256`, `plan_revision`, and `story_set_hash`. Implementation and closure MUST NOT recompute or rewrite them.
+- `$story-readiness` emits only a NOT_PERSISTED conversation candidate. The
+  independent external recorder must persist the exact READY record and emit
+  its valid receipt; `$dev-story` consumes only that current record/receipt pair
+  after independently verifying `RECORDED` or `ALREADY_RECORDED`, all bound raw
+  hashes/currentness, and `implementation_gate_eligible: true`.
+- `$dev-story` produces hash-bound implementation and test evidence and requests a canonical lifecycle update through the tracker recorder.
+- `$code-review` returns a current `cgs.review-evidence/v1` envelope with a
+  `cgs.code-review/v2` extension, but that producer output is `NOT_PERSISTED` and
+  not gate eligible. A separately authorized independent external recorder must
+  persist and bind it through `cgs.code-review-recorder-receipt/v1`; the
+  code-review skill never creates or invokes that receipt.
+- The canonical lifecycle owner updates only the matching row in `cgs.sprint-tracker/v2`, using compare-and-swap against the exact tracker hash and emitting its proposal/result/receipt chain.
+- `$story-done` verifies the immutable story core, current tracker row in `IN_REVIEW`, exact dev result/transition receipt, independent readiness/review/QA/test evidence, and all source hashes. If eligible, it requests the tracker recorder to move only that row to the catalog-declared completed state.
+- A failed transaction restores the original tracker bytes; it does not partially update story, plan, session, or planning hashes. The persisted recorder receipt is the lifecycle evidence.
+- COMPLETE/BLOCKED summaries do not themselves change canonical state, and no skill selects a newest tracker or receipt.
 
-Tech debt discovered during review is logged to `docs/tech-debt-register.md`.
+Use each skill's exact manifest-based invocation. Tech-debt findings are proposals until their owning recorder accepts them.
 
 ### Step 5.2: Sprint Tracking
 
@@ -838,7 +929,7 @@ Quick 30-line snapshot reading from `production/sprint-status.yaml`.
 If scope is growing:
 
 ```
-$scope-check compare --baseline <approved-scope-path> --current production/sprints/sprint-03.md
+$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current production/sprints/sprint-03.md@sha256:<64-lowercase-hex>
 ```
 
 This compares current scope against the original plan and flags scope increase,
@@ -858,7 +949,7 @@ content gaps early.
 When a GDD changes after stories have been created:
 
 ```
-$propagate-design-change design/gdd/combat-system.md
+$propagate-design-change <request-manifest-path>
 ```
 
 Git-diffs the GDD, finds affected ADRs, generates an impact report, and
@@ -866,32 +957,28 @@ walks you through Superseded/update/keep decisions.
 
 ### Step 5.5: Multi-System Features (Team Orchestration)
 
-For features spanning multiple domains, use team skills:
+Team workflows do not share a universal phase count, review-mode flag, or implementation authority. Each team skill's own manifest, prerequisites, ownership, and receipts control the run.
+
+Examples:
 
 ```
-$team-combat "healing ability with HoT and cleanse"
-$team-narrative "Act 2 story content"
-$team-ui "inventory screen redesign"
-$team-level "forest dungeon level"
-$team-audio "combat audio pass"
+$team-combat --request <request-path> --expect-request <sha256>
+$team-narrative --manifest <request-path> [--resume <checkpoint-path>]
+$team-ui --manifest <ui-request-path> [--resume <checkpoint-path>]
+$team-level <level-id>
+$team-audio --manifest <request-path> [--resume <checkpoint-path>]
 ```
 
-Each team skill coordinates a 6-phase collaborative workflow:
-1. **Design** -- game-designer asks questions, presents options
-2. **Architecture** -- lead-programmer proposes code structure
-3. **Parallel Implementation** -- specialists work simultaneously
-4. **Integration** -- gameplay-programmer wires everything together
-5. **Validation** -- qa-tester runs against acceptance criteria
-6. **Report** -- coordinator summarizes status
+`$team-audio` is spec-only. Its canonical output is `design/audio/audio-<artifact-id>.md`; it does not implement, import, or validate runtime audio events. Implementation requires a later approved story/architecture handoff, and runtime/audio quality is assessed by an independent later QA workflow. A team-audio checkpoint supports bounded resume only when its exact source and candidate hashes remain current.
 
-The orchestration is automated, but **decision points stay with you**.
+Decision points and separately authorized writes stay with the user/owning recorder described by each skill.
 
 ### Step 5.6: Sprint Review and Next Sprint
 
 At the end of a sprint:
 
 ```
-$retrospective
+$retrospective sprint:<sprint-id>
 ```
 
 Analyzes planned vs. completed, velocity, blockers, and actionable improvements.
@@ -907,25 +994,47 @@ $sprint-plan new
 At milestone checkpoints:
 
 ```
-$milestone-review "alpha"
+$milestone-review <stable-milestone-id>
 ```
 
-Produces feature completeness, quality metrics, risk assessment, and go/no-go
-recommendation.
+Produces feature completeness, quality metrics, risk assessment, and an
+evidence-backed milestone progression recommendation.
 
 ### Phase 5 Gate
 
 ```
-$gate-check production
+$gate-check production-to-polish
 ```
 
-**Requirements to pass:**
+**Normative gate contract (`gate.production-to-polish/v2`):**
 
-- All MVP stories complete
-- Playtesting: 3 distinct canonical completed sessions covering new player,
-  mid-game, and difficulty curve
-- Fun hypothesis validated
-- No confusion loops in playtest data
+- `PTP-A01` and `PTP-A02` require one explicit current production/milestone
+  scope manifest and candidate build, with exact paths/raw hashes binding every
+  in-scope requirement, story, implementation, QA-plan, test ID, source, and
+  end-to-end gameplay path. Tracker status or story counts alone never pass.
+- `PTP-E01` requires current PASSING `PA-REGRESSION-1` selection and runner/CI
+  receipts bound to the exact selection hash and candidate build.
+- `PTP-E02` requires persisted/read-back
+  `cgs-smoke-check-receipt/v2` for the exact build, full selected scope,
+  `Observed Verdict: PASS`, `Persistence: VERIFIED`, and
+  `Handoff Eligible: YES`; quick/targeted or warning-bearing evidence is
+  ineligible.
+- `PTP-E03` requires current persisted/read-back `cgs.team-qa-signoff/v2`,
+  `WORKFLOW_COMPLETED`, `QA_APPROVED`, `Persistence: VERIFIED`, and
+  `Gate Eligible: YES` for that same candidate/build.
+- `PTP-E04` requires three distinct current `PA-PLAYTEST-1` pairs—each exact
+  `cgs.playtest-report/v2` plus
+  `cgs.playtest-report-recorder-receipt/v1`, with matching build/session/
+  protocol/bundle/dependency paths and hashes and state
+  `RECORDED COMPLETED — GATE ELIGIBLE`—covering new-player, mid-game, and
+  difficulty-curve scopes.
+- `PTP-E05` requires current PASSING `PA-PERFORMANCE-1` analyzer/report/
+  `cgs.performance-report-recorder-receipt/v1` evidence for every required
+  platform/scenario row. `PTP-Q01` through `PTP-Q03` separately require the
+  exact current bug, fun/confusion/difficulty, UX, and accessibility evidence.
+- Only a current `cgs.gate-record/v2` for this profile with every blocking row
+  passing, COMPLETE coverage, and ELIGIBLE disposition can reach the external
+  recorder.
 
 ---
 
@@ -939,14 +1048,14 @@ performance, balance, accessibility, audio, visual polish, and playtesting.
 ### Phase 6 Pipeline
 
 ```
-$perf-profile  -->  $balance-check  -->  $asset-audit  -->  $playtest-report finalize (x3)
+perf-profile workflow  -->  balance-check workflow  -->  asset-audit workflow  -->  playtest-report workflow (x3)
        |                  |                    |                    |
        v                  v                    v                    v
   Profile CPU/GPU    Analyze formulas     Verify naming,      Cover: new player,
   memory, optimize   and data for         formats, sizes      mid-game, difficulty
   bottlenecks        broken progressions                      curve
 
-  $tech-debt  -->  $team-polish
+  tech-debt workflow  -->  team-polish workflow
        |                |
        v                v
   Track and        Coordinated pass:
@@ -957,7 +1066,7 @@ $perf-profile  -->  $balance-check  -->  $asset-audit  -->  $playtest-report fin
 ### Step 6.1: Performance Profiling
 
 ```
-$perf-profile
+$perf-profile analyze-export --manifest <analysis-request-path> --input <profiler-export-path>
 ```
 
 Guides you through structured performance profiling:
@@ -968,7 +1077,7 @@ Guides you through structured performance profiling:
 ### Step 6.2: Balance Analysis
 
 ```
-$balance-check assets/data/combat_damage.json
+$balance-check analyze --manifest <project-relative-manifest-path>
 ```
 
 Analyzes balance data for statistical outliers, broken progression curves,
@@ -977,7 +1086,7 @@ degenerate strategies, and economy imbalances.
 ### Step 6.3: Asset Audit
 
 ```
-$asset-audit
+$asset-audit --manifest <project-relative-manifest-path>
 ```
 
 Verifies naming conventions, file format standards, and size budgets across
@@ -989,15 +1098,19 @@ For each session, create or reuse a protocol, ingest immutable evidence, then
 finalize the stable session ID:
 
 ```
-$playtest-report template <protocol-id>
-$playtest-report ingest <notes-path> --session-id <session-id>
-$playtest-report finalize <session-id>
+$playtest-report template --protocol-id <protocol-id>
+$playtest-report ingest --session <session-manifest> --bundle <evidence-bundle>
+$playtest-report finalize --session <session-manifest> --bundle <evidence-bundle>
 ```
 
 Only `production/playtests/<session-id>/report.md` with `Status: COMPLETED`,
 `Gate Eligible: YES`, complete build/session/tester fields, and matching raw and
-observation hashes counts. Director reviews are separate derived artifacts and
-never create another session. Three distinct completed sessions are required,
+observation hashes counts. The workflow returns a `cgs.playtest-report/v2`
+candidate but does not persist it; a current
+`cgs.playtest-report-recorder-receipt/v1` from the independent external
+playtest recorder must bind and persist that exact candidate before it is gate
+eligible. Director reviews are separate derived artifacts and never create
+another session. Three distinct completed sessions are required,
 covering:
 - New player experience
 - Mid-game systems
@@ -1006,7 +1119,7 @@ covering:
 ### Step 6.5: Technical Debt Assessment
 
 ```
-$tech-debt
+$tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>
 ```
 
 Scans for TODO/FIXME/HACK comments, code duplication, overly complex functions,
@@ -1015,21 +1128,19 @@ missing tests, and outdated dependencies. Each item categorized and prioritized.
 ### Step 6.6: Coordinated Polish Pass
 
 ```
-$team-polish "combat system"
+$team-polish verify --candidate-manifest <candidate-manifest-path> --verification-id <stable-id> --persist
 ```
 
-Coordinates 4 specialists in parallel:
-1. Performance optimization (performance-analyst)
-2. Visual polish (technical-artist)
-3. Audio polish (sound-designer)
-4. Feel/juice (gameplay-programmer + technical-artist)
-
-You set priorities; the team executes with your approval at each step.
+Verifies the exact final candidate against the immutable polish test matrix,
+including current performance, regression, accessibility, visual, audio, and
+platform evidence. Assessment and implementation are separate prior invocations;
+only `verify ... --persist` can produce the current
+`cgs.polish-verification-report/v2` required by the catalog.
 
 ### Step 6.7: Localization and Accessibility
 
 ```
-$localize src/
+$localize scan --request <request-path> --expect-request <sha256:...>
 ```
 
 Scans for hardcoded strings, concatenation that breaks translation, text that
@@ -1041,16 +1152,38 @@ requirements document.
 ### Phase 6 Gate
 
 ```
-$gate-check polish
+$gate-check polish-to-release
 ```
 
-**Requirements to pass:**
+**Normative gate contract (`gate.polish-to-release/v2`):**
 
-- At least 3 distinct canonical completed playtest-session reports pass current
-  hash/provenance validation
-- Coordinated polish pass completed (`$team-polish`)
-- No blocking performance issues
-- Accessibility tier requirements met
+- `PTR-A01` requires mutually bound current release/policy/candidate manifests
+  with exact schema versions, IDs, repository-relative paths, raw SHA-256,
+  candidate/build/artifact hashes, and complete feature/content/platform/locale
+  scope. Package or manifest presence alone never passes.
+- `PTR-E01` requires persisted current `cgs.release-checklist-result/v2`
+  evidence for `PA-RELEASE-COLLECTOR-1`, bound to the exact release policy and
+  candidate, with every HARD row PASS or policy-authorized N/A. UNKNOWN,
+  STALE, partial, hash mismatch, or invalid N/A is ineligible.
+- `PTR-E02` through `PTR-E05` require current PASSING
+  `cgs.team-qa-signoff/v2`, full-scope
+  `cgs-smoke-check-receipt/v2` plus regression selection/runner receipt,
+  persisted/read-back `cgs-test-evidence-review-report/v2`, and
+  `PA-PERFORMANCE-1` analyzer/report/
+  `cgs.performance-report-recorder-receipt/v1`, all bound to the same exact
+  candidate/build/platform paths and hashes and their adapter-specific
+  persistence/current/gate-eligibility states.
+- `PTR-E06` requires the exact non-persisted localization review envelope and
+  `cgs.localization-evidence-manifest/v2` extension together with current
+  `cgs.localization-evidence-review-recorder-receipt/v1`, complete required
+  locale coverage, read-back verified persistence, and gate eligibility.
+- `PTR-Q01` and `PTR-Q02` require the exact current bug, accessibility,
+  legal/privacy/rating/certification, package, store metadata, changelog,
+  patch-note, and balance evidence enumerated by the release manifests and
+  policy. Prose assertions or file existence are insufficient.
+- Only a current `cgs.gate-record/v2` for this exact profile with every
+  blocking row passing, COMPLETE coverage, and ELIGIBLE disposition may be
+  considered by the external recorder.
 
 ---
 
@@ -1063,24 +1196,25 @@ Your game is polished, tested, and ready. Now you ship it.
 ### Phase 7 Pipeline
 
 ```
-$release-checklist  -->  $launch-checklist  -->  $team-release
+release-checklist workflow  -->  launch-checklist workflow  -->  team-release workflow
         |                       |                      |
         v                       v                      v
   Candidate-bound         Hash-bound launch       Coordinate bounded
   evidence collector      assessment; no           staging/production/
   (no gate verdict)       publishing authority     communication phases
-                    Also: $changelog, $patch-notes, $hotfix
+                    Also: changelog, patch-notes, hotfix workflows
 ```
 
 ### Step 7.1: Release Checklist
 
 ```
-$release-checklist --manifest production/releases/<release-id>/release-candidate.yaml
+$release-checklist --request <path> --expect-request <sha256>
 ```
 
 Collects and normalizes current candidate-bound evidence into stable
 `PASS/FAIL/UNKNOWN/authorized N/A` items. It always emits `Gate Decision: NOT
-EVALUATED`; `$gate-check` owns the phase verdict. Coverage includes:
+EVALUATED`; `$gate-check` separately emits a read-only gate assessment and
+does not advance stage. Coverage includes:
 - Build verification (all platforms compile and run)
 - Certification requirements (platform-specific)
 - Store metadata (descriptions, screenshots, trailers)
@@ -1091,12 +1225,19 @@ EVALUATED`; `$gate-check` owns the phase verdict. Coverage includes:
 ### Step 7.2: Launch Readiness (Full Validation)
 
 ```
-$launch-checklist assess --manifest production/releases/<release-id>/launch-candidate.yaml --assessment-id <id> --persist
+$launch-checklist --request <path> --expect-request <sha256>
 ```
 
 Complete cross-department, build/hash-bound assessment. External or manual facts
 remain UNKNOWN until a verifiable receipt or authorized owner attestation exists;
 the workflow does not publish or make the final launch decision:
+
+The department rows below are coverage orientation, not pass criteria. Launch
+readiness must come from the exact `cgs.launch-checklist-result/v2` bound to the
+request, release/candidate/build/artifact paths and raw hashes, policy/risk
+profile, complete evidence-manifest rows, current versioned receipts, and its
+native persistence/currentness result. Missing, stale, partial, unpersisted, or
+unsupported evidence remains UNKNOWN/blocked regardless of filenames or counts.
 
 | Department | What Is Checked |
 |-----------|---------------|
@@ -1114,19 +1255,29 @@ the workflow does not publish or make the final launch decision:
 | **Infrastructure** | Servers scaled, CDN configured, monitoring active |
 | **Legal** | EULA finalized, privacy policy, COPPA/GDPR compliance |
 
-Each item gets a **Go / No-Go** status. All must be Go to ship.
+Each check row uses exactly `PASS`, `FAIL`, `UNKNOWN`, or `NOT_APPLICABLE`.
+The evidence-readiness verdict is exactly one of `LAUNCH_READY`,
+`LAUNCH_BLOCKED`, `CONCERNS`, `UNDETERMINED`, or `ERROR`, and the result always
+states `Launch Decision: NOT_RECORDED`. GO/NO_GO belongs only to the user or a
+separately authorized launch gate. The launch-checklist workflow neither
+records nor invokes that decision and does not ship, deploy, or publish.
 
 ### Step 7.3: Generate Player-Facing Content
 
 ```
-$patch-notes <release-id> [--style brief|detailed|full]
+$patch-notes --request <path> --expect-request <sha256>
 ```
 
-Generates player-friendly patch notes from git history and sprint data.
-Translates developer language into player language.
+Generates a local, player-facing draft only from the request-bound approved
+release change manifest and verified production deployment evidence. The
+`cgs.approved-release-change-manifest/v2` source is an EXTERNAL_BOUNDARY input;
+no P1 project skill produces it. For any non-source locale, the exact request
+must also bind current `cgs.localization-manifest/v2`,
+`cgs.localization-package/v1`, `cgs.translation-delivery/v1`, and
+`cgs.locale-review/v1` evidence produced through the localization workflow.
 
 ```
-$changelog --manifest production/releases/<release-id>/changelog-request.yaml
+$changelog --request <path> --expect-request <sha256>
 ```
 
 Generates an internal changelog (more technical, for the team).
@@ -1134,7 +1285,7 @@ Generates an internal changelog (more technical, for the team).
 ### Step 7.4: Coordinate the Release
 
 ```
-$team-release prepare --manifest production/releases/<release-id>/release-orchestration.yaml --run-id <id> --persist
+$team-release --request <path> --expect-request <sha256>
 ```
 
 Prepares a hash-bound coordination run. Staging, production promotion, and
@@ -1145,7 +1296,8 @@ and DevOps through:
 2. Build management
 3. Final QA sign-off
 4. Deployment preparation
-5. Evidence-bound Go/No-Go input and post-deploy stabilization
+5. Evidence-bound input for the separately authorized launch gate and
+   post-deploy stabilization
 
 ### Step 7.5: Ship
 
@@ -1162,7 +1314,7 @@ git push origin main --tags
 **Hotfix workflow** for critical production bugs:
 
 ```
-$hotfix plan "Players losing save data when inventory exceeds 99 items"
+$hotfix plan --request-manifest <path> --request-sha256 <sha256>
 ```
 
 Bypasses normal sprint processes with a full audit trail:
@@ -1186,28 +1338,18 @@ These topics apply across all phases.
 
 ### Director Review Modes
 
-Director gates are specialist agents that review your work at key workflow steps.
-By default they run at every checkpoint. You can control how much review you get.
+Review mode is opt-in per consumer, not a flag inherited by every gate-using skill. The optional `production/review-mode.txt` value is read only by a skill that explicitly declares support.
 
-**Set your review intensity once during `$start`.** Saved to `production/review-mode.txt`.
+| Consumer | `full` | `lean` | `solo` |
+|---|---|---|---|
+| `$gate-check` | four phase director gates | four phase director gates | director contribution `N/A` |
+| `$sprint-plan` | PR-SPRINT | skip advisory gate | skip advisory gate |
+| `$story-readiness` | QL-STORY-READY | skip advisory gate | skip advisory gate |
+| `$milestone-review` | PR-MILESTONE | skip advisory gate | skip advisory gate |
 
-| Mode | What runs | Best for |
-|------|-----------|----------|
-| `full` | All director gates at every step | New projects, learning the system |
-| `lean` | Directors only at phase transitions (`$gate-check`) | Experienced devs |
-| `solo` | No director reviews | Game jams, prototypes, maximum speed |
+No mode may skip required QA, accessibility, security, evidence/currentness validation, separation of duties, non-waivable blockers, or canonical recorder receipts. A skipped advisory gate is `N/A`, never approval. Other skills expose `--review` only if their own interface explicitly defines it.
 
-**Override for a single run** without changing your global setting:
-
-```
-$brainstorm space horror --review full
-$architecture-decision --review solo
-```
-
-The `--review` flag works on all gate-using skills. Change the global mode at any
-time by editing `production/review-mode.txt` directly or re-running `$start`.
-
-Full gate definitions and check pattern: `.codex/docs/director-gates.md`
+Full gate registry and evidence rules: `.codex/docs/director-gates.md`.
 
 ---
 
@@ -1338,42 +1480,53 @@ as BLOCKING/HIGH/MEDIUM/LOW, builds an ordered migration plan, and writes
 `docs/adoption-plan-[date].md`. Core principle: MIGRATION not REPLACEMENT --
 it never regenerates existing work, only fills gaps.
 
-Individual skills also support retrofit mode:
+Individual skills expose bounded brownfield operations through their actual
+invocation contracts:
 
 ```
-$design-system retrofit design/gdd/combat-system.md
-$architecture-decision retrofit docs/architecture/adr-005.md
+$design-system design/gdd/combat-system.md --mode fill-gaps
+$architecture-decision <architecture-decision-request-manifest-path>
 ```
 
-These detect which sections are present vs. missing and fill only the gaps.
+For an ADR, the request manifest declares `operation: retrofit`, the exact target
+path, and its current raw SHA-256. `design-system` has no `retrofit` alias:
+`fill-gaps` preserves substantive sections, while an intentional one-section
+change uses `--mode revise-section --section "<canonical-section>"`.
 
 ### Gate System
 
-Phase gates are formal checkpoints. Run `$gate-check` with the transition name:
+Phase gates are read-only assessments. Use the exact catalog transition ID:
 
 ```
-$gate-check concept              # Concept -> Systems Design
-$gate-check systems-design       # Systems Design -> Technical Setup
-$gate-check technical-setup      # Technical Setup -> Pre-Production
-$gate-check pre-production       # Pre-Production -> Production
-$gate-check production           # Production -> Polish
-$gate-check polish               # Polish -> Release
+$gate-check concept-to-systems-design
+$gate-check systems-design-to-technical-setup
+$gate-check technical-setup-to-pre-production
+$gate-check pre-production-to-production
+$gate-check production-to-polish
+$gate-check polish-to-release
 ```
 
-**Verdicts:**
-- **PASS** -- all requirements met, advance to next phase
-- **CONCERNS** -- requirements met with acknowledged risks, passable
-- **FAIL** -- requirements not met, blocks advancement with specific remediation
+The conversational `cgs.gate-record/v2` verdict is PASS, CONCERNS, FAIL, or
+PARTIAL. Only PASS + COMPLETE coverage + ELIGIBLE disposition + CURRENT evidence
+can be considered for advancement. `$gate-check` writes no files and never
+updates `production/stage.txt` or the authority record.
 
-When a gate passes, `production/stage.txt` is updated (only then), which
-controls the status line and `$help` behavior.
+Stage mutation belongs only to a separately configured external recorder at
+`production/stage/external-recorder-contract.json`, using contract schema
+`cgs.external-stage-transition-recorder-contract/v1`. It must verify the exact
+gate bytes/hash and all dependencies, compare-and-swap
+`production/stage/authority.json`, append immutable history, atomically persist
+or restore the preimage, read back the result, and emit
+`cgs.external-stage-transition-receipt/v1`. No P1 project skill implements or
+invokes this recorder. A missing or invalid recorder contract means
+`UNKNOWN_ADVANCEMENT_UNSUPPORTED`; stage does not advance.
 
 ### Reverse Documentation
 
 For code that exists without design docs (common after brownfield adoption):
 
 ```
-$reverse-document src/gameplay/combat/
+$reverse-document --manifest <request-path> --expect-manifest <sha256>
 ```
 
 Reads existing code and generates GDD-format design documentation from it.
@@ -1528,7 +1681,7 @@ conflicts go to `producer`.
 | `$scope-check` | Compare explicit immutable baseline/current scope by stable IDs; product decisions remain external | 5 |
 | `$perf-profile` | Capture preparation or runtime-export analysis; only persisted build-bound runtime reports are gate eligible | 6 |
 | `$tech-debt` | Tech debt scanning and prioritization | 6 |
-| `$gate-check` | Formal phase gate with PASS/CONCERNS/FAIL | All transitions |
+| `$gate-check` | Read-only transition assessment with PASS/CONCERNS/FAIL/PARTIAL; no stage mutation | All transitions |
 | `$reverse-document` | Generate design docs from existing code | Any |
 | `$security-audit` | Security vulnerability audit (save, network, input) | 6-7 |
 
@@ -1550,7 +1703,7 @@ conflicts go to `producer`.
 
 | Command | Purpose | Phase |
 |---------|---------|-------|
-| `$milestone-review` | Milestone progress and go/no-go | 5 |
+| `$milestone-review` | Milestone progress and progression recommendation | 5 |
 | `$retrospective` | Sprint retrospective analysis | 5 |
 | `$bug-report` | Structured bug report creation | 5+ |
 | `$bug-triage` | Read-only evidence triage with proposed priority/scheduling/risk dispositions; a separate recorder commits decisions | 5+ |
@@ -1585,7 +1738,7 @@ conflicts go to `producer`.
 | `$team-narrative` | Narrative content: structure through dialogue | 5 |
 | `$team-ui` | UI feature: UX spec through polished implementation | 5 |
 | `$team-level` | Level: layout through dressed encounters | 5 |
-| `$team-audio` | Audio: direction through implemented events | 5-6 |
+| `$team-audio` | Hash-bound audio specification only; implementation and QA are later independent workflows | 5 |
 | `$team-polish` | Coordinated polish: perf + art + audio + QA | 6 |
 | `$team-release` | Hash-bound release coordination with separate staging, production, publication, and stabilization authorizations | 7 |
 | `$team-live-ops` | Live-ops planning: seasonal events, battle pass, retention | 7+ |
@@ -1597,98 +1750,112 @@ conflicts go to `producer`.
 
 ### Workflow 1: "I just started and have no game idea"
 
-```
-1. $start (routes you based on where you are)
-2. $brainstorm (collaborative ideation, pick a concept)
-3. $setup-engine (pin engine and version)
-4. $design-review on concept doc (optional, recommended)
-5. $map-systems (decompose concept into systems with deps and priorities)
-6. $gate-check concept (verify you're ready for Systems Design)
-7. $design-system per system (guided GDD authoring)
+```text
+$start
+$brainstorm <request-manifest-path>
+$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
+# Optional: separately obtain exact external cgs.concept-approval/v1.
+$map-systems
+$gate-check concept-to-systems-design
+$design-system <system-name-or-gdd-path> --mode new
 ```
 
 ### Workflow 2: "I have designs and want to start coding"
 
-```
-1. $design-review on each GDD (make sure they're solid)
-2. $review-all-gdds (cross-GDD consistency)
-3. $gate-check systems-design
-4. $create-architecture + $architecture-decision (per major decision)
-5. $architecture-review
-6. $create-control-manifest
-7. $gate-check technical-setup
-8. $create-epics layer: foundation + $create-stories [slug] (define epics, break into stories)
-9. $sprint-plan new
-10. $story-readiness -> implement -> $story-done (story lifecycle)
+```text
+$design-review <path-to-system-gdd> --depth lean
+$review-all-gdds
+$gate-check systems-design-to-technical-setup
+$create-architecture new
+$architecture-decision <request-manifest-path>
+$architecture-review
+$create-control-manifest new
+$gate-check technical-setup-to-pre-production
+$create-epics <request-manifest-path>
+$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256>
+$sprint-plan new
+$story-readiness --story <project-relative-story-path>
+# Via external cgs.story-readiness-recorder/v1 (not a project skill or command),
+# independently obtain the current persisted cgs.story-readiness-record/v1 READY
+# plus cgs.story-readiness-recorder-receipt/v1: RECORDED or ALREADY_RECORDED,
+# exact record/receipt/raw hashes current, implementation_gate_eligible: true.
+$dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
+$code-review --target <project-relative-file-or-directory>
+# Separately obtain cgs.code-review-recorder-receipt/v1.
+$story-done <story-file-path>
 ```
 
 ### Workflow 3: "I need to add a complex feature mid-production"
 
+```text
+$design-system <system-name-or-gdd-path> --mode revise-section --section "<canonical-section>"
+$design-review <path-to-system-gdd> --depth lean
+$propagate-design-change <request-manifest-path>
+$estimate story --basis relative --input <project-relative-story-path>
+$team-narrative --manifest <request-path> [--resume <checkpoint-path>]
+$team-ui --manifest <ui-request-path> [--resume <checkpoint-path>]
+$story-done <story-file-path>
+$balance-check analyze --manifest <project-relative-manifest-path>
 ```
-1. `$design-system` for authoritative system design, or `$quick-design` only for a structurally low-risk proposal that will be independently reviewed and applied
-2. $design-review to validate
-3. $propagate-design-change if modifying existing GDDs
-4. `$estimate story --input <story-path>` for relative/calibrated evidence; it does not choose scope, staffing, budget, or schedule
-5. $team-combat, $team-narrative, $team-ui, etc. (appropriate team skill)
-6. $story-done when complete
-7. $balance-check if it affects game balance
-```
+
+For a structurally low-risk proposal, use the complete quick-design `propose`
+form shown earlier instead of abbreviating its required identity fields.
 
 ### Workflow 4: "Something broke in production"
 
-```
-1. `$hotfix plan "description of the issue"`
-2. Fix is implemented on hotfix branch
-3. $code-review the fix
-4. Run tests
-5. $release-checklist for hotfix build
-6. Deploy and backport
+```text
+$hotfix plan --request-manifest <path> --request-sha256 <sha256>
+$code-review --target <project-relative-file-or-directory>
+# Separately record the exact approved code-review envelope.
+$release-checklist --request <path> --expect-request <sha256>
 ```
 
 ### Workflow 5: "I have an existing project and want to use this system"
 
+```text
+$start
+$project-stage-detect
+$adopt
+$design-system design/gdd/<system-slug>.md --mode fill-gaps
+$architecture-decision <architecture-decision-request-manifest-path>
+$gate-check <exact-catalog-transition-id>
 ```
-1. $start (choose Path D -- existing work)
-2. $project-stage-detect (determines current phase)
-3. $adopt (audits existing artifacts, builds migration plan)
-4. $design-system retrofit [path] (fill GDD gaps)
-5. $architecture-decision retrofit [path] (fill ADR gaps)
-6. $gate-check at appropriate transition
-```
+
+The architecture-decision request manifest declares `operation: retrofit`.
 
 ### Workflow 6: "Starting a new sprint"
 
-```
-1. $retrospective (review last sprint)
-2. $sprint-plan new (create next sprint)
-3. `$scope-check compare --baseline <approved-scope> --current <current-scope>`
-4. $story-readiness per story before pickup
-5. Implement stories
-6. $story-done per completed story
-7. $sprint-status for quick progress checks
+```text
+$retrospective sprint:<sprint-id>
+$sprint-plan new
+$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current <current-scope-path>@sha256:<64-lowercase-hex>
+$story-readiness --story <project-relative-story-path>
+$story-done <story-file-path>
+$sprint-status
 ```
 
 ### Workflow 7: "Shipping the game"
 
+```text
+$gate-check polish-to-release
+$tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>
+$localize validate --request <request-path> --expect-request <sha256:...>
+$release-checklist --request <path> --expect-request <sha256>
+$launch-checklist --request <path> --expect-request <sha256>
+$team-release --request <path> --expect-request <sha256>
+$changelog --request <path> --expect-request <sha256>
+$patch-notes --request <path> --expect-request <sha256>
+$hotfix plan --request-manifest <path> --request-sha256 <sha256>
 ```
-1. $gate-check polish (verify Polish phase is complete)
-2. $tech-debt (decide what's acceptable at launch)
-3. $localize (final localization pass)
-4. $release-checklist v1.0.0
-5. $launch-checklist (full cross-department validation)
-6. $team-release (coordinate the release)
-7. `$changelog --manifest <exact-request>` and `$patch-notes <release-id> [--style brief|detailed|full]`; each remains local and evidence-bound until separate publication
-8. Ship!
-9. `$hotfix plan <BUG-ID|description>` if anything breaks post-launch; later mutation commands require their own exact authorization
-10. Post-mortem after launch stabilizes
-```
+
+Deployment/publication remain separately authorized external operations.
 
 ### Workflow 8: "I'm lost / don't know what to do next"
 
-```
-1. $help (reads your phase, checks artifacts, tells you what's next)
-2. If $help doesn't help: $project-stage-detect (full audit)
-3. If stage seems wrong: $gate-check at the transition you think you're at
+```text
+$help
+$project-stage-detect
+$gate-check <exact-catalog-transition-id>
 ```
 
 ---
@@ -1727,15 +1894,16 @@ conflicts go to `producer`.
 9. **Prototype risky mechanics first.** A day of prototyping can save a week
    of production on a mechanic that does not work.
 
-10. **Keep your sprint plans honest.** Use `$scope-check compare --baseline <approved-scope> --current <current-scope>` regularly. Scope
+10. **Keep your sprint plans honest.** Use `$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current <current-scope-path>@sha256:<64-lowercase-hex>` regularly. Scope
     creep is the number one killer of indie games.
 
 11. **Document decisions with ADRs.** Future-you will thank present-you for
     recording *why* things were built the way they were.
 
-12. **Use the story lifecycle religiously.** `$story-readiness` before pickup,
-    `$story-done` after completion. This catches deviations early and keeps
-    the pipeline honest.
+12. **Use the story lifecycle religiously.** Run `$story-readiness`, obtain the
+    independently persisted current READY record and valid recorder receipt,
+    then allow pickup; run `$story-done` after completion. This catches
+    deviations early and keeps the pipeline honest.
 
 13. **Write to files early and often.** Incremental section writing means your
     design decisions survive crashes and compactions. The file is the memory,

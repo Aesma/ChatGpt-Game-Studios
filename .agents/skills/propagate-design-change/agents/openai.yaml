@@ -1,4 +1,4 @@
 interface:
   display_name: "Propagate Design Change"
-  short_description: "When a GDD is revised, scans all ADRs and the traceability..."
-  default_prompt: "Use $propagate-design-change to run the Propagate Design Change game-studio workflow."
+  short_description: "Trace a GDD change into stable owner-routed impacts"
+  default_prompt: "Use $propagate-design-change to compare one exact GDD baseline/current pair, publish a bounded immutable impact record, and route downstream work without changing owner artifacts."

@@ -1,374 +1,412 @@
-# Skill Test Spec: $onboard
+# Skill Test Spec: `$onboard`
 
 ## Skill Summary
 
-$onboard returns a bounded, source-cited onboarding summary in conversation. It is strictly read-only in every path and never asks for changeset authorization or invents a save location. It resolves repository roles separately from human organizational authority, applies visibility and sensitive-data exclusions before reading, follows applicable nested AGENTS.md instructions, and reports ONBOARDING READY, ONBOARDING PARTIAL, or ONBOARDING ERROR.
+`$onboard` returns a bounded, visibility-filtered, source-cited repository
+orientation in conversation. It is read-only in every path, requires root
+AGENTS.md, applies the complete applicable nested-instruction chain, denies
+sensitive sources before access, uses deterministic content/Git budgets, keeps
+repository roles separate from human organization, and reports ONBOARDING READY,
+ONBOARDING PARTIAL, or ONBOARDING ERROR.
+
+Optional stage and project-recommendation context comes only from explicitly
+supplied current canonical detector/help evidence. Onboard never invokes or
+reimplements either producer.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by $skill-test static; no fixture is required.
-
-- [ ] YAML frontmatter contains only name and a non-empty description; name matches the skill directory
+- [ ] YAML frontmatter contains only name and a non-empty description; name
+      matches the skill directory
 - [ ] Has at least two phase headings
 - [ ] Contains ONBOARDING READY, ONBOARDING PARTIAL, and ONBOARDING ERROR
-- [ ] Explicitly forbids a fixed ONBOARDING COMPLETE status
-- [ ] Declares every path strictly read-only and forbids authorization prompts, save branches, output-path invention, and file mutation
-- [ ] Rejects --save and explains that persistence belongs to a separately scoped document task
-- [ ] Requires root AGENTS.md and loads the root-to-parent instruction chain for each recommended file
-- [ ] Applies the closest nested AGENTS.md rule on conflict
-- [ ] Defines file, byte, depth, and Git-window budgets plus omitted-source reporting
-- [ ] Applies visibility and sensitive-data exclusions before opening content
-- [ ] Keeps repository role definitions separate from real job titles, managers, access, and decision authority
-- [ ] Requires source path, locator, hash, snapshot status, and confidence for every fact
-- [ ] Does not use unbounded Git history or expose author identity/private metadata
-- [ ] Emits onboarding_context/v2 and has a non-mutating next-action handoff
-- [ ] Invokes no director gate, subagent, or downstream project skill
+- [ ] Explicitly forbids ONBOARDING COMPLETE
+- [ ] Every path is strictly read-only; save, authorization, output-path
+      invention, mutation, delegation, and downstream invocation are forbidden
+- [ ] `--save` is rejected and persistence is a separately scoped document task
+- [ ] Root AGENTS.md is mandatory and read before secondary project context
+- [ ] Every opened/recommended path loads its physical root-to-parent AGENTS chain
+      first and closest applicable rules win conflicts
+- [ ] Defines enumeration-entry, opened-file, per-file-byte, total-byte, depth,
+      and explicit Git-range commit budgets
+- [ ] Visibility and sensitive-data denial occur before stat/open/hash
+- [ ] Sensitive omission never reveals identifying path/filename/metadata details
+- [ ] Repository roles are separate from human title, manager, reporting line,
+      access, assignment, and decision authority
+- [ ] Git requires explicit from_ref/to_ref, redacts personal/private metadata,
+      and never infers momentum/productivity/velocity/performance
+- [ ] Missing/invalid root instructions return ERROR without partial narrative
+- [ ] Every fact has path/artifact, locator, hash, source state, instruction chain,
+      visibility, and DIRECT/UNKNOWN confidence
+- [ ] Canonical stage source is exactly `cgs.project-stage-detection/v2`; no local
+      stage algorithm exists
+- [ ] Optional help recommendation validates matching packet/catalog identity and
+      remains external/unexecuted
+- [ ] Emits `onboarding_context/v2`, source manifest identity, one non-mutating
+      next action, and no-execution markers
 
 ---
 
 ## Director Gate Checks
 
-None. Onboard is read-only and invokes no director gate, subagent, or downstream workflow.
+None. Onboard is read-only and invokes no director, subagent, gate, detector,
+help workflow, recorder, or downstream project skill.
 
 ---
 
 ## Test Cases
 
-### Case 1: Configured project with complete bounded evidence
+### Case 1: Complete bounded repository orientation
 
-Fixture:
+**Fixture:**
 
-- Root AGENTS.md is readable and valid.
-- An exact role ID resolves from the repository role index.
-- Current technology, architecture, stage evidence, active-work pointer, and test index are readable within budget.
-- All recommended files are visibility-allowed and unchanged during the run.
+- Root AGENTS.md and every applicable nested instruction are current/readable
+- Exact repository role ID resolves from an authoritative index
+- Relevant project indexes and representative sources fit all budgets
+- No sensitive or visibility-denied source affects requested scope
+- Optional canonical stage packet and matching help envelope are CURRENT
+- Every recommended file is readable, unchanged, and governed by a complete chain
 
-Input: $onboard gameplay-programmer --visibility internal
+**Input:**
 
-Expected behavior:
+`$onboard gameplay-programmer --visibility internal` with explicit stage/help evidence
 
-1. The role resolves exactly as a repository role.
-2. Facts cite source path, locator, hash, and snapshot status.
-3. Recommended files include their applicable instruction chains.
-4. No relevant coverage gap exists.
-5. Status is ONBOARDING READY.
+**Expected behavior:**
 
-Assertions:
+1. Resolves repository role without inferring human organization.
+2. Validates stage/help identities without invoking their producers.
+3. Builds only DIRECT facts with source and instruction-chain citations.
+4. Returns one non-mutating orientation action.
+5. Returns ONBOARDING READY.
 
-- [ ] The output distinguishes repository responsibilities from human reporting authority
-- [ ] Every project fact is DIRECT and traceable
-- [ ] No file is written
-- [ ] No authorization prompt or downstream workflow appears
+**Assertions:**
+
+- [ ] Budget and source-manifest identities are present
+- [ ] Stage/help data retain diagnostic/external labels
+- [ ] All project facts and recommended files are traceable
+- [ ] Files Written is none and Auto Executed is false
 
 ---
 
 ### Case 2: P0 regression — default invocation is zero mutation
 
-Fixture:
+**Fixture:** A configured repository has sufficient safe onboarding sources; no
+persistence option is supplied.
 
-- A configured repository has all onboarding sources.
-- No persistence option is supplied.
+**Input:** `$onboard`
 
-Input: $onboard
+**Expected behavior:** Returns GENERAL orientation in conversation with READY or
+PARTIAL according to relevant coverage, no changeset, no authorization prompt,
+no output path, and no file creation.
 
-Expected behavior:
+**Assertions:**
 
-1. The general onboarding summary is returned in conversation.
-2. No changeset preview or authorization question appears.
-3. No directory or file is created.
-4. Status is READY or PARTIAL according to coverage.
-
-Assertions:
-
-- [ ] Default behavior is strictly read-only
-- [ ] The workflow does not offer to save the result
 - [ ] No implicit onboarding filename or directory is invented
+- [ ] No save option is offered
+- [ ] Mutation and invocation spies remain zero
 
 ---
 
-### Case 3: P0 regression — persistence request cannot trigger path guessing
+### Case 3: P0 regression — persistence request never guesses a path
 
-Fixture:
+**Fixture:** Plausible onboarding filenames already exist in several directories.
 
-- A user asks for persistence without providing a separately scoped document task.
-- Files with plausible onboarding names already exist in several directories.
+**Input:** `$onboard artist --save`
 
-Input: $onboard artist --save
-
-Expected behavior:
-
-1. The unsupported option is identified.
-2. The workflow explains the separate explicit-path and collision-policy requirement.
-3. It stops without choosing, creating, patching, or overwriting any path.
-4. No authorization prompt appears.
-
-Assertions:
-
-- [ ] --save never writes
-- [ ] Existing files are not inspected to choose an overwrite target
-- [ ] No default path or filename is generated
-- [ ] Mutation count remains zero
+**Expected behavior:** Identifies unsupported persistence, explains the separate
+explicit-path/collision-policy requirement, and stops without inspecting output
+candidates or asking authorization.
 
 ---
 
-### Case 4: Root AGENTS.md missing
+### Case 4: ON-003 — complete nested instruction chain governs every target
 
-Fixture:
+Run these variants:
 
-- Repository root AGENTS.md is absent.
-- Other configuration and sprint files exist.
+| Variant | Fixture | Expected |
+|---|---|---|
+| 4a | Root and nested design/AGENTS.md conflict on visibility/convention | Closest design rule wins that subject; non-conflicting root rules remain |
+| 4b | Two nested levels apply to one recommended file | Root→parent chain order and hashes are reported |
+| 4c | Applicable nested AGENTS.md is unreadable/invalid | Governed target is not opened/recommended; PARTIAL + UNKNOWN_INSTRUCTION_CHAIN |
+| 4d | Nested rule denies a source root recommended by an index | Denial occurs before target stat/open/hash |
+| 4e | Candidate real path escapes through symlink | Candidate rejected; no outside-root read |
 
-Input: $onboard
+**Assertions:**
 
-Expected behavior:
-
-1. Root instruction coverage fails.
-2. No project onboarding narrative is generated from secondary sources.
-3. Status is ONBOARDING ERROR.
-4. A source-specific remediation question is returned without invoking a workflow.
-
-Assertions:
-
-- [ ] Missing root instructions never produce READY or a fixed completion verdict
-- [ ] Secondary files do not substitute for repository authority
-- [ ] The result remains read-only
+- [ ] Instruction files are read before governed target content
+- [ ] Root AGENTS.md is not reused as the only rule source
+- [ ] Override records name subject, ancestor source, closest source, and decision
+- [ ] A permissive ancestor never bypasses a restrictive closest rule
+- [ ] Every recommended file cites its effective chain
 
 ---
 
-### Case 5: Nested instruction conflict
+### Case 5: ON-004 — repository and enumeration scans are deterministically bounded
 
-Fixture:
+**Fixture:** `src`, `design`, `tests`, `production`, `assets`, and agent trees contain
+thousands of files; authoritative indexes fit the default budget, while extra
+role-relevant candidates exceed one limit at a time.
 
-- Root AGENTS.md recommends general files.
-- design/AGENTS.md restricts design material to a narrower visibility and overrides one convention.
-- The resolved area is design.
+Run limits for 256 enumerated entries, 64 opened content files, 256 KiB per file,
+1 MiB total bytes, and depth 6.
 
-Input: $onboard design
+**Expected behavior:**
 
-Expected behavior:
+1. Applies configured limits or all exact defaults before enumeration/read.
+2. Uses manifest/index order then normalized path tie-break.
+3. Never full-reads a large directory or partially reads an oversized file.
+4. Records consumption and generic OMITTED_BUDGET topics/reasons.
+5. Returns PARTIAL when omission affects requested/role-relevant coverage.
 
-1. The root-to-design instruction chain is loaded.
-2. The closest applicable rule wins.
-3. Restricted files are omitted before content is opened.
-4. The effective rule source is cited.
+**Assertions:**
 
-Assertions:
-
-- [ ] Root rules are not applied in isolation
-- [ ] Nested precedence is deterministic
-- [ ] Recommended files comply with their nearest instructions
-
----
-
-### Case 6: Large repository exceeds bounded context
-
-Fixture:
-
-- src and design contain thousands of files.
-- Relevant authoritative indexes fit within the default budget.
-- Additional role-relevant files exceed either the 64-file or 1-MiB limit.
-
-Input: $onboard programmer
-
-Expected behavior:
-
-1. Indexes and deterministic representative files are read within budget.
-2. Recursive full-read does not occur.
-3. Excess sources are OMITTED_BUDGET with counts and topics.
-4. Status is ONBOARDING PARTIAL when omitted coverage affects the role.
-
-Assertions:
-
-- [ ] File, byte, and depth budgets are reported
-- [ ] No silent truncation occurs
-- [ ] Omitted content is not summarized or guessed
+- [ ] Enumeration itself is budgeted
+- [ ] Per-file and total bytes are both enforced
+- [ ] No silent truncation, limit increase, or guessed omitted summary
+- [ ] Omitted content cannot support DIRECT facts
 
 ---
 
-### Case 7: Sensitive sources are excluded before reading
+### Case 6: ON-005 — sensitive and private material is denied before access
 
-Fixture:
+**Fixture:** Safe indexes reference environment variants, credentials, tokens,
+private keys, personnel/payroll records, private correspondence, raw exploit/
+incident/anti-cheat reports, and safe architecture sources.
 
-- Index entries mention an environment file, credentials, personnel records, and a raw exploit report.
-- Safe architecture and sprint sources are also present.
+**Expected behavior:**
 
-Input: $onboard
+1. Applies visibility/deny rules before stat/open/hash/content ingestion.
+2. Sensitive candidates never enter content reads or hash output.
+3. Output uses only generic OMITTED_SENSITIVE/OMITTED_VISIBILITY codes.
+4. No path, basename, extension, existence detail, size, timestamp, owner, hash,
+   secret-shaped value, or exploit detail identifies the omitted item.
+5. Denied sources are never recommended.
 
-Expected behavior:
+**Assertions:**
 
-1. Sensitive entries are filtered before opening.
-2. The output records generic policy omission codes only.
-3. No sensitive path, filename, metadata, value, or exploit detail appears.
-4. Safe facts remain available, with PARTIAL when the omission affects requested scope.
-
-Assertions:
-
-- [ ] Redaction is not deferred until after content ingestion
-- [ ] Secrets and personal data never enter the prompt or output
-- [ ] Denied artifacts are never recommended
-
----
-
-### Case 8: Repository role is not an organizational chart
-
-Fixture:
-
-- A repository role definition describes review responsibilities.
-- No explicit human-team or reporting-line mapping exists.
-
-Input: $onboard qa-lead
-
-Expected behavior:
-
-1. Repository workflow responsibilities are summarized with citations.
-2. Manager, reporting line, employment role, and access entitlement are UNKNOWN.
-3. No person or real team hierarchy is invented.
-
-Assertions:
-
-- [ ] Agent descriptions do not establish human authority
-- [ ] The summary does not say who the contributor reports to
-- [ ] Missing organizational facts remain UNKNOWN
+- [ ] Spy proves denied files were not opened, not merely redacted later
+- [ ] Supplied stage/help evidence referencing sensitive paths is omitted safely
+- [ ] User request and internal visibility cannot override a repository/environment denial
+- [ ] Safe facts remain usable; status is PARTIAL only when requested scope is affected
 
 ---
 
-### Case 9: Git activity requires an explicit bounded window
+### Case 7: ON-006 — repository roles are not human organization
 
-Fixture:
+**Fixture:** A role/agent definition describes review ownership and workflow
+responsibilities; no visibility-allowed human organizational mapping exists.
 
-- The repository has a large Git history with names, emails, ticket IDs, and private branch names.
-- No configured onboarding from_ref/to_ref window exists.
+**Input:** `$onboard qa-lead`
 
-Input: $onboard
+**Expected behavior:**
 
-Expected behavior:
+- Summarizes repository workflow responsibilities with citations.
+- Reports job title, manager, reporting line, employment/team status, access,
+  assignment authority, and decision authority as UNKNOWN.
+- Does not infer organization from reviewer labels, agent prompts, role name, or
+  CODEOWNERS-like routing.
 
-1. Git history is not scanned as recent activity.
-2. The activity dimension is UNKNOWN or omitted with reason.
-3. No author identity, email, branch, ticket, or raw message is exposed.
-4. Status is PARTIAL only if activity is relevant to requested scope.
+**Assertions:**
 
-Assertions:
-
-- [ ] The workflow does not fall back to HEAD-relative history
-- [ ] Git data has a maximum 20-commit budget when a window is configured
-- [ ] Personal and private metadata is redacted
-
----
-
-### Case 10: Ambiguous free-text role
-
-Fixture:
-
-- The alias artist maps to both technical-artist and art-director.
-- No exact role ID was supplied.
-
-Input: $onboard artist
-
-Expected behavior:
-
-1. Both candidate IDs are returned without reading role-specific area content.
-2. No role is guessed.
-3. Status is ONBOARDING ERROR.
-4. No file is written.
-
-Assertions:
-
-- [ ] Role selection is deterministic
-- [ ] Ambiguity cannot silently broaden visibility
-- [ ] No human reporting relationship is inferred
+- [ ] Output never says who the contributor reports to
+- [ ] Workflow owner is not presented as a human manager
+- [ ] Missing organization/access facts remain UNKNOWN
+- [ ] Next action is not framed as a manager expectation or assigned task
 
 ---
 
-### Case 11: Optional coverage is missing or stale
+### Case 8: ON-007 — Git activity uses one explicit privacy-safe window
 
-Fixture:
+Run these variants:
 
-- Root instructions and role identity are valid.
-- The active sprint pointer is missing.
-- The architecture index changes hash during the run.
+| Variant | Fixture | Expected |
+|---|---|---|
+| 8a | No authoritative from_ref/to_ref | No Git read; activity UNKNOWN/OMITTED_POLICY |
+| 8b | Valid explicit range with >20 commits | At most configured/default 20; PARTIAL if relevant remainder omitted |
+| 8c | Invalid/unreadable refs or unredactable required content | No raw fallback; PARTIAL when relevant |
+| 8d | Valid range contains names/emails/signatures/tickets/branches/raw messages | Personal/private fields absent; safe technical themes only |
 
-Input: $onboard engine-programmer
+**Assertions:**
 
-Expected behavior:
+- [ ] No “recent,” HEAD~N, date guess, current branch, all-branch, reflog, or full-history fallback
+- [ ] Exact range purpose and commit budget are reported
+- [ ] No author/committer identity or raw message is exposed
+- [ ] Commit count/frequency/authorship never becomes momentum, productivity,
+      velocity, staffing, ownership, performance, or contributor attribution
 
-1. Current work is UNKNOWN.
-2. Architecture is marked STALE and excluded from prose.
-3. Known facts remain cited.
-4. Status is ONBOARDING PARTIAL.
+---
 
-Assertions:
+### Case 9: ON-008 — root AGENTS failure cannot produce partial onboarding
 
-- [ ] Missing optional sources do not become invented facts
+Run missing, unreadable, malformed, visibility-denied, outside-root, and
+repository-identity-unverified root cases while secondary config/sprint/role
+files exist.
+
+**Expected behavior:**
+
+1. Returns ONBOARDING ERROR with exact generic root failure code.
+2. Reads no secondary project-context source.
+3. Generates no onboarding narrative, technology, role, stage, current work,
+   hierarchy, or recommended-file claim.
+4. Returns at most one non-mutating remediation question.
+
+**Assertions:**
+
+- [ ] Secondary files never substitute for repository authority
+- [ ] Root failure never becomes PARTIAL or READY
+- [ ] Error path remains visibility-safe and read-only
+- [ ] Parent/nested/cached/generated AGENTS.md is not substituted
+
+---
+
+### Case 10: Canonical stage evidence is optional and never recomputed
+
+Run stage packet variants: CURRENT DETECTED/CLEAR, CURRENT UNKNOWN/BLOCKED with
+reproducible ABSENT/UNREADABLE evidence, CURRENT CONFLICT, missing, invalid,
+stale, project mismatch, unreadable, and policy-omitted.
+
+**Expected behavior:**
+
+- Only CURRENT packets supply declared/detected/result/resolution/confidence and
+  packet/catalog/snapshot diagnostics.
+- UNKNOWN/CONFLICT/ERROR remains visible and never becomes a phase.
+- Missing/non-current stage is UNKNOWN/NOT_SUPPLIED and may make onboarding
+  PARTIAL only when stage is relevant.
+- No stage.txt/artifact/source-count/engine/ADR inference runs.
+
+**Assertions:**
+
+- [ ] Stage source is exactly `cgs.project-stage-detection/v2`
+- [ ] Packet ID, root ID, catalog hash, manifest and current source states validate
+- [ ] Detector packet remains diagnostic, not gate/access authority
+- [ ] project-stage-detect invocation count is zero
+
+---
+
+### Case 11: Evidence-bound help recommendation is external and matched
+
+Run recommendation variants: CURRENT and matching stage packet; missing; invalid
+ID/schema fields; stale evidence; project mismatch; packet/catalog mismatch;
+unreadable; policy-omitted; and envelope with omitted same-level conflicts.
+
+**Expected behavior:**
+
+- CURRENT requires recommendation ID, snapshot, stage source/context, matching
+  packet/root/manifest/catalog IDs, exactly one action, complete conflict/evidence
+  buckets, receipt/run IDs, diagnostics, no-execution markers, and current hashes.
+- Non-current variants do not supply project recommendation facts.
+- A valid project workflow action may be displayed separately but is never
+  executed, treated as assignment, or automatically made onboarding next_action.
+- It becomes the onboarding action only if independently non-mutating,
+  visibility-allowed, repository-guided, source-current, and instruction-compliant.
+
+**Assertions:**
+
+- [ ] Onboard does not recompute a different project action
+- [ ] Packet/catalog mismatches fail closed
+- [ ] Hidden same-level conflicts invalidate the envelope
+- [ ] help and recommended-workflow invocation counts are zero
+
+---
+
+### Case 12: Ambiguous repository role fails before role-specific reads
+
+**Fixture:** Alias `artist` maps to both technical-artist and art-director.
+
+**Input:** `$onboard artist`
+
+**Expected behavior:** Returns safe candidate IDs, ONBOARDING ERROR, reads no
+role-specific area content, does not broaden visibility, and invents no human hierarchy.
+
+---
+
+### Case 13: Optional coverage missing, stale, placeholder, or contradictory
+
+**Fixture:** Root and role identity are valid; active-work pointer is missing;
+architecture changes during the run; technology contains CHOOSE placeholders;
+two current safe indexes contradict one another.
+
+**Expected behavior:**
+
+- Current work and placeholder technology are UNKNOWN.
+- Stale source facts are removed from current prose.
+- Contradictions cite stable safe source records.
+- Known facts remain DIRECT and cited.
+- Status is ONBOARDING PARTIAL with exact affected dimensions.
+
+**Assertions:**
+
+- [ ] Missing/placeholder data is not inferred from file extensions or conventions
 - [ ] Mixed snapshots are not presented as current
-- [ ] PARTIAL lists the exact coverage dimensions affected
+- [ ] PARTIAL never hides omitted, stale, or contradictory coverage
 
 ---
 
-### Case 12: Placeholder configuration is unknown
+### Case 14: Safe next action is non-mutating and source-supported
 
-Fixture:
+**Fixture:** One current visibility-allowed architecture overview is explicitly
+recommended by repository guidance and has a complete instruction chain. No task
+assignment or project workflow is authorized.
 
-- Technology configuration contains placeholders such as CHOOSE or TO BE CONFIGURED.
-- Root instructions are valid.
-
-Input: $onboard
-
-Expected behavior:
-
-1. Engine and language are reported UNKNOWN.
-2. The skill does not choose an engine or infer one from source extensions.
-3. Status is ONBOARDING PARTIAL when technology is relevant.
-
-Assertions:
-
-- [ ] Placeholders are not treated as configured values
-- [ ] File extensions do not silently determine project policy
-- [ ] The summary stays source-cited and read-only
+**Expected behavior:** Recommends reading that one verified file with path/hash/
+chain, or asking one source-identified artifact owner a bounded question. Does
+not recommend implementation, initialization, sprint/design work, or a denied/
+stale/unverified file merely because another artifact is absent.
 
 ---
 
-### Case 13: Safe next action is non-mutating
+### Case 15: Every outcome remains strictly read-only
 
-Fixture:
+**Fixture:** READY, PARTIAL, ERROR, invalid invocation, save request, missing
+upstream evidence, budget overflow, sensitive candidates, and user request to run
+the next action.
 
-- A valid snapshot identifies one verified, visibility-allowed architecture overview as the highest-priority orientation source.
-- No project task assignment is authorized.
+**Expected behavior:**
 
-Input: $onboard network-programmer
+- write, authorization, detector/help/skill invocation, agent spawn, gate,
+  recorder, commit, publish, and external-action counts are zero;
+- packet says `files_written: none` and `auto_executed: false`;
+- at most one orientation action remains text only.
 
-Expected behavior:
+---
 
-1. The output recommends reading that one verified file.
-2. Its path, hash, and nested instruction chain are cited.
-3. No implementation, sprint, initialization, design, or other skill is invoked.
+## Status decision assertions
 
-Assertions:
+- `ONBOARDING ERROR`: root authority/identity invalid; role/area or invocation
+  invalid; policy prevents required root/identity coverage.
+- `ONBOARDING PARTIAL`: root and identity valid but requested/relevant optional
+  coverage is missing, unreadable, stale, contradictory, UNKNOWN,
+  OMITTED_BUDGET, or OMITTED_POLICY.
+- `ONBOARDING READY`: all requested/relevant bounded coverage is current/direct,
+  recommended paths have full chains, and no unresolved UNKNOWN could mislead.
+- `ONBOARDING COMPLETE` never appears.
 
-- [ ] The action is supported by repository guidance
-- [ ] The action does not mutate project state
-- [ ] The workflow does not assign work or claim manager expectations
+READY grants no access, authority, assignment, approval, or promise of complete
+undocumented knowledge.
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Default, error, partial, and ready paths are strictly read-only
-- [ ] No save option, output-path inference, or changeset authorization exists
-- [ ] Role/area and visibility are resolved before context loading
-- [ ] Root and applicable nested AGENTS.md instructions govern every recommended path
-- [ ] Context collection obeys explicit file, byte, depth, and Git budgets
-- [ ] Sensitive material is denied before reading and omitted without identifying detail
-- [ ] Every project fact has stable provenance and snapshot status
-- [ ] READY, PARTIAL, and ERROR are used deterministically
-- [ ] Repository roles are not represented as human organizational authority
-- [ ] No director gate, subagent, write, or downstream workflow is invoked
+- [ ] Default, error, partial, and ready paths are read-only
+- [ ] Root AGENTS.md gates all secondary context
+- [ ] Nested instruction chains precede governed reads/recommendations
+- [ ] Enumeration/content/Git collection obeys explicit budgets
+- [ ] Visibility and sensitive denial precede stat/open/hash
+- [ ] Every DIRECT fact has stable provenance and current snapshot state
+- [ ] Repository roles never become human organization
+- [ ] Git is explicit-range, privacy-safe, and non-evaluative
+- [ ] Canonical stage/help evidence is optional, matched, current, and unexecuted
+- [ ] READY/PARTIAL/ERROR are deterministic
 - [ ] Output conforms to onboarding_context/v2
+- [ ] No director, subagent, gate, detector, help, recorder, write, or downstream workflow runs
 
 ---
 
 ## Coverage Notes
 
-Behavioral fixtures must prove zero filesystem mutation and verify that denied sources were not opened, not merely absent from final prose. Catalog results remain blank until these cases are actually executed.
+Fixtures must prove denied sources were never statted/opened/hashed and that
+applicable instruction files were read before targets. Absence from final prose
+alone is insufficient. Catalog test-result fields remain blank until these cases
+are actually executed; authoring this spec is not test evidence.

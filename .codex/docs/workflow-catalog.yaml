@@ -1,395 +1,3063 @@
-# Workflow Catalog
-# Used by $help to determine where a user is and what comes next.
-#
-# Artifact checks:
-#   glob: file glob pattern — complete if ≥1 file matches (or min_count)
-#   pattern: text pattern that must appear in the file (checked after glob)
-#   min_count: minimum matching files required (default: 1)
-#   note: human-readable fallback when completion can't be auto-detected
-#
-# required: true → blocks progression to next phase (shown as REQUIRED)
-# required: false → optional enhancement (shown as OPTIONAL)
-# repeatable: true → runs multiple times (one per system, story, etc.)
-#
-# Phase gates ($gate-check): verdicts are ADVISORY — they guide the decision
-# but never hard-block advancement. The user always decides whether to proceed.
-
-phases:
-
-  concept:
-    label: "Concept"
-    description: "Develop your game idea into a documented concept"
-    next_phase: systems-design
-    steps:
-      - id: brainstorm
-        name: "Brainstorm"
-        command: $brainstorm
-        required: false
-        description: "Explore the game concept using MDA, verb-first, and player psychology frameworks"
-
-      - id: engine-setup
-        name: "Engine Setup"
-        command: $setup-engine
-        required: true
-        artifact:
-          glob: ".codex/docs/technical-preferences.md"
-          pattern: "Engine: [^[]"
-        description: "Configure engine, pin version, set naming conventions and performance budgets"
-
-      - id: game-concept
-        name: "Game Concept Document"
-        command: $brainstorm
-        required: true
-        artifact:
-          glob: "design/gdd/game-concept.md"
-        description: "Formalize concept with pillars, MDA analysis, and scope tiers"
-
-      - id: design-review-concept
-        name: "Concept Review"
-        command: $design-review
-        required: false
-        description: "Validate the game concept (recommended before proceeding)"
-
-      - id: art-bible
-        name: "Art Bible"
-        command: $art-bible
-        required: true
-        artifact:
-          glob: "design/art/art-bible.md"
-        description: "Author the visual identity specification (9 sections). Uses the Visual Identity Anchor produced by $brainstorm. Run after game concept is formed, before systems design."
-
-      - id: map-systems
-        name: "Systems Map"
-        command: $map-systems
-        required: true
-        artifact:
-          glob: "design/gdd/systems-index.md"
-        description: "Decompose concept into systems with dependency ordering and priority tiers"
-
-  systems-design:
-    label: "Systems Design"
-    description: "Author a GDD for each system in the systems index"
-    next_phase: technical-setup
-    steps:
-      - id: design-system
-        name: "System GDDs"
-        command: $design-system
-        required: true
-        repeatable: true
-        artifact:
-          note: "Check design/gdd/systems-index.md — each MVP system needs Status: Approved"
-        description: "Author per-system GDDs (guided, section-by-section). Run once per system."
-
-      - id: design-review
-        name: "Per-System Design Review"
-        command: $design-review
-        required: true
-        repeatable: true
-        description: "Validate each GDD (8 required sections, no MAJOR REVISION verdict). Run per system."
-
-      - id: review-all-gdds
-        name: "Cross-GDD Review"
-        command: $review-all-gdds
-        required: true
-        artifact:
-          glob: "design/gdd/gdd-cross-review-*.md"
-        description: "Holistic consistency check + design theory review across all GDDs simultaneously"
-
-      - id: consistency-check
-        name: "Consistency Check"
-        command: $consistency-check
-        required: false
-        repeatable: true
-        description: "Scan all GDDs for contradictions, undefined references, and mechanic conflicts. Run after $review-all-gdds, and again any time a GDD is added or revised mid-project."
-
-  technical-setup:
-    label: "Technical Setup"
-    description: "Architecture decisions, visual identity specification, accessibility foundations, engine validation"
-    next_phase: pre-production
-    steps:
-      - id: create-architecture
-        name: "Architecture Document"
-        command: $create-architecture
-        required: true
-        artifact:
-          glob: "docs/architecture/architecture.md"
-        description: "Author the master architecture document covering all systems"
-
-      - id: architecture-decision
-        name: "Architecture Decisions (ADRs)"
-        command: $architecture-decision
-        required: true
-        repeatable: true
-        artifact:
-          glob: "docs/architecture/adr-*.md"
-          min_count: 3
-        description: "Document key technical decisions as ADRs. Minimum 3 Foundation-layer ADRs required."
-
-      - id: architecture-review
-        name: "Architecture Review"
-        command: $architecture-review
-        required: true
-        artifact:
-          note: "Read-only hash-bound PASS/BLOCKED/PARTIAL evidence; an optional immutable report is valid only at the exact user-authorized path and for the current target manifest hash"
-        description: "Validate explicit architecture/ADR traceability and current test-run evidence without modifying truth sources"
-
-      - id: control-manifest
-        name: "Control Manifest"
-        command: $create-control-manifest
-        required: true
-        artifact:
-          glob: "docs/architecture/control-manifest.md"
-        description: "Flat programmer rules sheet generated from all Accepted ADRs"
-
-      - id: accessibility-doc
-        name: "Accessibility Requirements"
-        required: true
-        artifact:
-          glob: "design/accessibility-requirements.md"
-        description: "Commit accessibility tier (Basic/Standard/Comprehensive/Exemplary) and feature matrix. UX specs (Phase 4) reference this tier."
-
-  pre-production:
-    label: "Pre-Production"
-    description: "Visual entity inventory, UX specs, asset specs, prototype the core mechanic, define stories, validate fun"
-    next_phase: production
-    steps:
-      - id: entity-inventory
-        name: "Visual Entity & Screen Inventory"
-        command: $asset-spec
-        required: false
-        artifact:
-          glob: "design/assets/entity-inventory.md"
-        description: "Enumerate everything the game needs visually: entities (characters, enemies, buildings, environment pieces), UI screens, HUD elements, panels. Run $asset-spec with no arguments to start a collaborative inventory session — brief or detailed based on your responses. Reads GDDs and art bible to propose a starting list; you add, remove, and adjust. Becomes the source of truth for all art and UX work. Not required if the game has very few distinct visual elements."
-
-      - id: asset-spec
-        name: "Asset Specs"
-        command: $asset-spec
-        required: false
-        repeatable: true
-        artifact:
-          glob: "design/assets/asset-manifest.md"
-        description: "Generate per-asset visual specifications and AI generation prompts. Run once per entity, system, level, or character. If no source doc exists, $asset-spec interviews you inline — no narrative document required."
-
-      - id: ux-design
-        name: "UX Specs (key screens)"
-        command: $ux-design
-        required: true
-        repeatable: true
-        artifact:
-          glob: "design/ux/*.md"
-          min_count: 3
-        description: "Author UX specs for the screens identified in the entity inventory (or GDDs if no inventory). Minimum required: main menu, core gameplay HUD, pause menu. Add more screens as the inventory identifies them. Reads input method and platform from technical-preferences.md."
-
-      - id: ux-review
-        name: "UX Review"
-        command: $ux-review
-        required: true
-        description: "Validate all key screen UX specs for GDD alignment and accessibility tier compliance. Run before creating epics."
-
-      - id: prototype
-        name: "Prototype"
-        command: $prototype
-        required: false
-        artifact:
-          glob: "prototypes/*/README.md"
-          min_count: 1
-        description: "Build a throwaway prototype to validate the core mechanic is fun before committing to full production. Recommended for first-time mechanics or high-risk design decisions. Solo devs with proven concepts may skip."
-
-      - id: create-epics
-        name: "Create Epics"
-        command: $create-epics
-        required: true
-        repeatable: true
-        artifact:
-          glob: "production/epics/*/EPIC.md"
-          min_count: 1
-        description: "Translate GDDs + ADRs into epics — one per architectural module. Run per layer: $create-epics layer: foundation, then $create-epics layer: core"
-
-      - id: create-stories
-        name: "Create Stories"
-        command: $create-stories
-        required: true
-        repeatable: true
-        artifact:
-          glob: "production/epics/**/*.md"
-          min_count: 2
-        description: "Break each epic into implementable story files. Run per epic: $create-stories [epic-slug]"
-
-      - id: test-setup
-        name: "Test Framework Setup"
-        command: $test-setup
-        required: false
-        artifact:
-          note: "Check tests/ directory for engine-specific test framework scaffold"
-        description: "Scaffold the test framework and CI pipeline once before the first sprint. Leads to $test-helpers, a supported $qa-plan scope, and build-bound $smoke-check evidence."
-
-      - id: sprint-plan
-        name: "First Sprint Plan"
-        command: $sprint-plan new
-        required: true
-        artifact:
-          glob: "production/sprints/sprint-*.md"
-          min_count: 1
-        description: "Atomically plan the first sprint from existing exact-hash stories whose final readiness verdict is READY"
-
-      - id: vertical-slice
-        name: "Vertical Slice"
-        command: $vertical-slice plan --run-id <slice-run-id> --hypothesis-id <VS-H-stable-id> --attempt <01|02> --prerequisites <exact-manifest-path>
-        required: true
-        artifact:
-          glob: "production/validation/vertical-slices/*/attempt-*/*/reports/*.md"
-          min_count: 1
-        description: "Plan and independently evaluate a bounded two-attempt vertical-slice hypothesis. Production advancement requires an exact current persisted PROCEED report bound to the full candidate, build, session, scope, velocity, and decision graph."
-
-  production:
-    label: "Production"
-    description: "Sprint-based feature development — pick, implement, close stories"
-    next_phase: polish
-    steps:
-      - id: sprint-plan
-        name: "Sprint Plan"
-        command: $sprint-plan
-        required: true
-        repeatable: true
-        artifact:
-          glob: "production/sprints/sprint-*.md"
-        description: "Plan the current sprint with prioritized, ready stories"
-
-      - id: story-readiness
-        name: "Story Readiness Check"
-        command: $story-readiness
-        required: false
-        description: "Validate current story/control/QA provenance and emit a final READY, NEEDS WORK, or BLOCKED verdict"
-
-      - id: implement
-        name: "Implement Stories"
-        command: $dev-story
-        required: true
-        repeatable: true
-        artifact:
-          note: "Check src/ for active code and production/epics/**/*.md for In Progress stories"
-        description: "Pick the next ready story and implement it with $dev-story [story-path]. Routes to the correct programmer agent."
-
-      - id: code-review
-        name: "Code Review"
-        command: $code-review
-        required: false
-        repeatable: true
-        description: "Architectural code review after each story implementation. Run after $dev-story, before $story-done."
-
-      - id: story-done
-        name: "Story Done Review"
-        command: $story-done
-        required: true
-        repeatable: true
-        description: "Close only after every required AC has current hash-bound quality and execution evidence; static adequacy alone cannot close"
-
-      - id: qa-plan
-        name: "QA Plan"
-        command: $qa-plan
-        required: false
-        repeatable: true
-        description: "Generate a version-bound QA plan with $qa-plan sprint, $qa-plan feature: <system-name>, or $qa-plan story: <path>; PARTIAL/STALE plans cannot satisfy downstream gates."
-
-      - id: bug-report
-        name: "Bug Report / Triage"
-        command: $bug-report
-        required: false
-        repeatable: true
-        description: "$bug-report creates one canonical bug record; $bug-triage returns read-only priority/scheduling/risk proposals and a separate recorder commits decisions."
-
-      - id: retrospective
-        name: "Sprint Retrospective"
-        command: $retrospective
-        required: false
-        repeatable: true
-        description: "Post-sprint review to capture what worked and what to change. Run at the end of each sprint, before planning the next."
-
-      - id: team-feature
-        name: "Team Orchestration (optional)"
-        required: false
-        repeatable: true
-        description: "Coordinate multiple agents on a complex feature. Use: $team-combat, $team-narrative, $team-ui, $team-audio, $team-level, $team-live-ops, $team-qa. Run when a feature spans multiple agent domains."
-
-      - id: scope-check
-        name: "Scope Check"
-        command: $scope-check compare --baseline <approved-scope-path> --current <current-scope-path>
-        required: false
-        repeatable: true
-        artifact:
-          glob: "production/sprints/sprint-*.md"
-          note: "Run when stories are added mid-sprint, or before sprint retrospectives"
-        description: "Detect scope creep by comparing current sprint scope to original epic scope. Run (a) when stories are added mid-sprint, or (b) before sprint retrospectives."
-
-      - id: sprint-status
-        name: "Sprint Status"
-        command: $sprint-status
-        required: false
-        description: "Quick 30-line snapshot of sprint progress without a full report"
-
-  polish:
-    label: "Polish"
-    description: "Performance, balance, playtesting, bug fixing"
-    next_phase: release
-    steps:
-      - id: perf-profile
-        name: "Performance Profile"
-        command: $perf-profile
-        required: false
-        description: "Prepare a capture or analyze exact runtime exports; only a current build-bound performance-runtime-report-v1 can serve as gate evidence"
-
-      - id: balance-check
-        name: "Balance Check"
-        command: $balance-check
-        required: false
-        description: "Analyze game balance formulas and data for outliers and broken progressions"
-
-      - id: asset-audit
-        name: "Asset Audit"
-        command: $asset-audit
-        required: false
-        description: "Verify naming conventions, file format standards, and size budgets"
-
-      - id: playtest-polish
-        name: "Playtest Sessions (×3)"
-        command: $playtest-report finalize <session-id>
-        required: true
-        artifact:
-          glob: "production/playtests/*/report.md"
-          min_count: 3
-        description: "Count only distinct canonical COMPLETED, Gate Eligible reports with current manifest/raw/observation hashes; cover new player, mid-game, and difficulty curve"
-
-      - id: team-polish
-        name: "Polish Team Pass"
-        command: $team-polish assess --manifest <polish-target-manifest-path> --assessment-id <id> --persist
-        required: true
-        description: "Assess one hash-bound target; implementation and final-candidate verification are separate explicitly authorized modes"
-
-  release:
-    label: "Release"
-    description: "Launch preparation, certification, and ship"
-    next_phase: null
-    steps:
-      - id: release-checklist
-        name: "Release Checklist"
-        command: $release-checklist
-        required: true
-        description: "Collect and normalize candidate-bound release evidence; emits Gate Decision NOT EVALUATED for $gate-check to decide"
-
-      - id: patch-notes
-        name: "Patch Notes"
-        command: $patch-notes <release-id> [--style brief|detailed|full]
-        required: false
-        description: "Generate player-facing patch notes from git history and sprint data"
-
-      - id: changelog
-        name: "Changelog"
-        command: $changelog --manifest <changelog-request-path>
-        required: false
-        description: "Auto-generate internal changelog from commits, sprints, and design docs"
-
-      - id: launch-checklist
-        name: "Launch Checklist"
-        command: $launch-checklist
-        required: true
-        description: "Evaluate one exact launch-candidate manifest; external/manual claims remain UNKNOWN until verified receipts or authorized attestations exist"
+{
+  "schema": "cgs.workflow-catalog/v2",
+  "schema_version": 2,
+  "catalog_version": "2026-07-23-p1-r6",
+  "canonical_path": ".codex/docs/workflow-catalog.yaml",
+  "schema_reference": ".codex/docs/schemas/workflow-catalog-v2.md",
+  "canonicalization": {
+    "id": "cgs.canonical-json/v1",
+    "encoding": "UTF-8",
+    "line_endings": "LF",
+    "mapping_keys": "lexicographic for identity hashing",
+    "arrays": "declared order unless field says sorted",
+    "raw_file_sha256": "sha256 of exact bytes",
+    "command_template_grammar": "route-template/v1"
+  },
+  "stage_contract": {
+    "detection_packet_schema": "cgs.project-stage-detection/v2",
+    "stage_enum": [
+      "concept",
+      "systems-design",
+      "technical-setup",
+      "pre-production",
+      "production",
+      "polish",
+      "release"
+    ],
+    "initial_stage_rule": {
+      "rule_id": "initial-authority-required/v2",
+      "authority_record_absent_result": "UNKNOWN",
+      "first_record_transition_from": null,
+      "first_record_stage": "concept",
+      "first_record_owner": "producer",
+      "artifact_presence_never_initializes_stage": true
+    },
+    "authority_record": {
+      "path": "production/stage/authority.json",
+      "schema": "cgs.project-stage-authority/v2",
+      "owner": "owner_from_external_recorder_contract",
+      "legacy_declaration": {
+        "path": "production/stage.txt",
+        "provenance": "LEGACY_DECLARATION",
+        "authoritative": false
+      }
+    },
+    "policies": {
+      "receipt": {
+        "all_declared_receipts_required": true,
+        "raw_hash_required": true,
+        "current_schema_required": true,
+        "gate_record_must_be_eligible_pass": true
+      },
+      "continuity": {
+        "previous_record_required_except_initial": true,
+        "previous_record_raw_hash_required": true,
+        "append_only_history_required": true
+      },
+      "target": {
+        "commit_or_ref_required": true,
+        "dirty_state": "record-and-apply-transition-policy",
+        "dirty_state_unknown": "BLOCKED"
+      },
+      "freshness": {
+        "all_source_build_test_artifact_manifest_hashes_current": true,
+        "superseded_receipts_invalid": true,
+        "unknown_or_unreadable": "UNKNOWN"
+      },
+      "manifests": {
+        "source_build_test_artifact": "exact typed path schema id and raw hash required",
+        "glob_presence_never_completion": true
+      }
+    },
+    "read_limits": {
+      "maximum_referenced_entries": 512,
+      "maximum_bytes_per_entry": 8388608,
+      "maximum_total_bytes": 67108864
+    },
+    "external_recorder_contract": {
+      "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+      "configured_contract_path": "production/stage/external-recorder-contract.json",
+      "receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "implementation_scope": "external to the P1 project-skill set",
+      "p1_project_skill_producer": null,
+      "p1_project_skill_invocation": null,
+      "required_capabilities": [
+        "verify exact cgs.gate-record/v2 bytes and raw hash",
+        "require PASS + COMPLETE coverage + ELIGIBLE",
+        "rehash catalog, authority preimage, target commit/ref, dirty state and all gate dependencies",
+        "compare-and-swap the authority record",
+        "append immutable transition history",
+        "atomically persist authority postimage and receipt or restore the full preimage",
+        "read back and verify all committed bytes"
+      ],
+      "unavailable_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+      "auto_execute": false
+    }
+  },
+  "route_definitions": {
+    "completion_policies": {
+      "completion.required-current/v2": {
+        "required": true,
+        "repeatable": false,
+        "accepted_receipt_schemas": [],
+        "accepted_verdicts": [
+          "COMPLETE"
+        ],
+        "persistence": "PERSISTED",
+        "currentness": "CURRENT",
+        "coverage": "COMPLETE",
+        "supersession": "latest is forbidden; explicit chain only",
+        "evidence_source": "step.completion_evidence_contract + step.native_evidence_schemas",
+        "empty_generic_receipt_rule": "No generic workflow-step receipt producer exists in the P1 skill set; completion is valid only for an exact persisted native schema whose producer contract explicitly grants that persistence. Otherwise UNKNOWN_NO_ROUTE."
+      },
+      "completion.required-repeatable-current/v2": {
+        "required": true,
+        "repeatable": true,
+        "accepted_receipt_schemas": [],
+        "accepted_verdicts": [
+          "COMPLETE"
+        ],
+        "persistence": "PERSISTED",
+        "currentness": "CURRENT",
+        "coverage": "COMPLETE_SET",
+        "membership": "explicit stable IDs and hashes",
+        "evidence_source": "step.completion_evidence_contract + step.native_evidence_schemas",
+        "empty_generic_receipt_rule": "No generic workflow-step receipt producer exists in the P1 skill set; completion is valid only for an exact persisted native schema whose producer contract explicitly grants that persistence. Otherwise UNKNOWN_NO_ROUTE."
+      },
+      "completion.required-candidate-conversation/v2": {
+        "required": true,
+        "repeatable": false,
+        "accepted_receipt_schemas": [],
+        "accepted_verdicts": [
+          "APPROVED"
+        ],
+        "persistence": "NOT_PERSISTED",
+        "currentness": "BOUND_TO_EXACT_CURRENT_INPUTS",
+        "coverage": "COMPLETE",
+        "completion_scope": "NON_GATE_PREREQUISITE_ONLY",
+        "candidate_only": true,
+        "gate_evidence_eligible": false,
+        "transition_eligible": false,
+        "missing_versioned_recorder_result": "BLOCKED_PENDING_VERSIONED_RECORDER",
+        "evidence_source": "step.completion_evidence_contract + step.native_evidence_schemas",
+        "consumer_rule": "The exact conversation candidate may satisfy only an explicitly declared non-gate workflow prerequisite. It never satisfies persisted completion, gate evidence, or transition eligibility."
+      },
+      "completion.optional-current/v2": {
+        "required": false,
+        "repeatable": false,
+        "accepted_receipt_schemas": [],
+        "accepted_verdicts": [
+          "COMPLETE",
+          "SKIPPED_BY_POLICY"
+        ],
+        "persistence": "PERSISTED",
+        "currentness": "CURRENT",
+        "skip_requires": "catalog policy and owner identity",
+        "evidence_source": "step.completion_evidence_contract + step.native_evidence_schemas",
+        "empty_generic_receipt_rule": "No generic workflow-step receipt producer exists in the P1 skill set; completion is valid only for an exact persisted native schema whose producer contract explicitly grants that persistence. Otherwise UNKNOWN_NO_ROUTE."
+      },
+      "completion.optional-repeatable-current/v2": {
+        "required": false,
+        "repeatable": true,
+        "accepted_receipt_schemas": [],
+        "accepted_verdicts": [
+          "COMPLETE",
+          "SKIPPED_BY_POLICY"
+        ],
+        "persistence": "PERSISTED",
+        "currentness": "CURRENT",
+        "membership": "explicit stable IDs and hashes",
+        "evidence_source": "step.completion_evidence_contract + step.native_evidence_schemas",
+        "empty_generic_receipt_rule": "No generic workflow-step receipt producer exists in the P1 skill set; completion is valid only for an exact persisted native schema whose producer contract explicitly grants that persistence. Otherwise UNKNOWN_NO_ROUTE."
+      }
+    },
+    "verification_actions": {
+      "verification.registered-step-evidence/v2": {
+        "kind": "read-only native-evidence validation",
+        "input": "exact step.native_evidence_schemas path/raw hash/identity plus all transitive source hashes",
+        "output_schema": null,
+        "persistence": "NONE",
+        "must_not": "invent a generic completion receipt, infer completion from presence/filename/count/prose/latest, invoke a producer, or mutate project state",
+        "unavailable_or_unregistered_result": "UNKNOWN_NO_ROUTE",
+        "auto_execute": false
+      }
+    },
+    "risk_policies": {
+      "risk.no-prerequisite-bypass/v2": {
+        "later_route_when_required_prerequisite_missing": "FORBIDDEN",
+        "accepted_risk_never_changes_completion": true,
+        "optional_skip_requires_explicit_catalog_policy": true
+      }
+    },
+    "evidence_limits": {
+      "limits.route-evidence/v2": {
+        "maximum_referenced_entries": 128,
+        "maximum_bytes_per_entry": 4194304,
+        "maximum_total_bytes": 33554432,
+        "maximum_matches_per_location": 64,
+        "on_limit": "UNKNOWN_NO_ROUTE"
+      }
+    }
+  },
+  "relations": {
+    "map-systems": {
+      "concept_producer_id": "game-concept",
+      "formal_signoff_required": false,
+      "downstream_consumer_ids": [
+        "design-system"
+      ],
+      "formal_signoff": {
+        "workflow_id": "concept-approval",
+        "required": false,
+        "evidence_schema": "cgs.concept-approval/v1",
+        "p1_implementation": false
+      }
+    },
+    "create-architecture": {
+      "cross_gdd_evidence_producer_id": "review-all-gdds",
+      "adr_owner_id": "architecture-decision",
+      "independent_review_id": "architecture-review",
+      "downstream_consumer_ids": [
+        "control-manifest"
+      ]
+    },
+    "control-manifest": {
+      "architecture_producer_id": "create-architecture",
+      "adr_owner_id": "architecture-decision",
+      "independent_review_id": "architecture-review",
+      "downstream_consumer_ids": [
+        "create-epics",
+        "create-stories"
+      ]
+    },
+    "create-stories": {
+      "epic_producer_id": "create-epics",
+      "qa_plan_source_id": "qa-plan",
+      "readiness_consumer_id": "story-readiness",
+      "gap_owner_ids": [
+        "design-system",
+        "architecture-decision",
+        "control-manifest"
+      ]
+    },
+    "team-audio": {
+      "implementation_consumer_id": "implement",
+      "independent_qa_consumer_id": "qa-plan",
+      "implementation_prerequisites": [
+        "approved exact spec hash",
+        "Accepted ADRs when required",
+        "READY story",
+        "zero non-waivable blocker"
+      ],
+      "auto_handoff": false
+    }
+  },
+  "phases": [
+    {
+      "phase_id": "concept",
+      "label": "Concept",
+      "description": "Develop your game idea into a documented concept",
+      "order": 1,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "concept"
+      },
+      "steps": [
+        {
+          "id": "brainstorm",
+          "phase_id": "concept",
+          "order": 1,
+          "name": "Brainstorm",
+          "description": "Explore the game concept using MDA, verb-first, and player psychology frameworks",
+          "routable": true,
+          "command": "$brainstorm <request-manifest-path>",
+          "manual_action": null,
+          "owner": "brainstorm",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+      "native_evidence_schemas": [
+        "cgs.brainstorm-authoring-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/brainstorm/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+      "completion_evidence_contract": {
+        "source_field": "native_evidence_schemas",
+        "producer": "brainstorm",
+        "persisted_and_current_required": false,
+        "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+      }
+        },
+        {
+          "id": "engine-setup",
+          "phase_id": "concept",
+          "order": 2,
+          "name": "Engine Setup",
+          "description": "Configure engine, pin version, set naming conventions and performance budgets",
+          "routable": true,
+          "command": "$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>",
+          "manual_action": null,
+          "owner": "setup-engine",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.engine-framework-consistency-receipt/v1",
+              "path": "production/engine/setup-engine/<request-id>/<run-id>/receipts/framework-consistency.json",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.engine-framework-consistency-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/engine/setup-engine/<request-id>/<run-id>/receipts/framework-consistency.json"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/setup-engine/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "setup-engine",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "game-concept",
+          "phase_id": "concept",
+          "order": 3,
+          "name": "Game Concept Document",
+          "description": "Formalize concept with pillars, MDA analysis, and scope tiers",
+          "routable": true,
+          "command": "$brainstorm <request-manifest-path>",
+          "manual_action": null,
+          "owner": "brainstorm",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.game-concept-content-profile/v2",
+              "path": "design/gdd/game-concept.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+      "native_evidence_schemas": [
+        "cgs.brainstorm-authoring-receipt/v1"
+      ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/gdd/game-concept.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/brainstorm/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+      "completion_evidence_contract": {
+        "source_field": "native_evidence_schemas",
+        "producer": "brainstorm",
+        "persisted_and_current_required": true,
+        "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "concept-approval",
+          "phase_id": "concept",
+          "order": 4,
+          "name": "Independent Concept Approval",
+          "description": "External independent concept approval for the exact current game-concept artifact; no P1 project skill implements or invokes this recorder.",
+          "routable": true,
+          "command": null,
+          "manual_action": "Use a separately authorized independent concept-review/recording process that emits cgs.concept-approval/v1; if unavailable, report UNKNOWN and stop.",
+          "owner": "external-concept-approval-owner",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "game-concept"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.concept-approval/v1",
+              "path": "<concept-approval-record-path>",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.concept-approval/v1"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<concept-approval-record-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": null,
+            "source_clause": null,
+            "template_schema": null,
+            "unresolved_placeholder_result": "EXTERNAL_ACTION_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "external-concept-approval-owner",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "art-bible",
+          "phase_id": "concept",
+          "order": 5,
+          "name": "Art Bible",
+        "description": "Author the visual identity specification (9 sections). Uses the Visual Identity Anchor from the current brainstorm authoring output. Run after game concept is formed, before systems design.",
+          "routable": true,
+          "command": "$art-bible <request-manifest-path>",
+          "manual_action": null,
+          "owner": "art-bible",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "game-concept"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.art-bible-content-profile/v2",
+              "path": "design/art/art-bible.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.art-bible-authoring-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/art/art-bible.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/art-bible/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "art-bible",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "map-systems",
+          "phase_id": "concept",
+          "order": 6,
+          "name": "Systems Map",
+          "description": "Decompose concept into systems with dependency ordering and priority tiers",
+          "routable": true,
+          "command": "$map-systems [next|<system-id-or-name>]",
+          "manual_action": null,
+          "owner": "map-systems",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "game-concept"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.systems-index/v2",
+              "path": "design/gdd/systems-index.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.systems-index/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/gdd/systems-index.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/map-systems/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "map-systems",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": "systems-design",
+      "label": "Systems Design",
+      "description": "Author a GDD for each system in the systems index",
+      "order": 2,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "systems-design"
+      },
+      "steps": [
+        {
+          "id": "design-system",
+          "phase_id": "systems-design",
+          "order": 1,
+          "name": "System GDDs",
+          "description": "Author per-system GDDs (guided, section-by-section). Run once per system.",
+          "routable": true,
+          "command": "$design-system <system-name-or-gdd-path> [--mode new|resume|fill-gaps|revise-section] [--section <canonical-section>]",
+          "manual_action": null,
+          "owner": "design-system",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "map-systems"
+          ],
+          "accepted_artifact_types": [
+            "cgs.systems-index/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "system-gdd/v2",
+              "path": "design/gdd/<system-slug>.md",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "system-gdd/v2"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/gdd/<system-slug>.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/design-system/SKILL.md",
+            "source_clause": "Invocation and author-only contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "design-system",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+      {
+        "id": "design-review",
+          "phase_id": "systems-design",
+          "order": 2,
+          "name": "Per-System Design Review",
+          "description": "Validate each GDD (8 required sections, no MAJOR REVISION verdict). Run per system.",
+          "routable": true,
+          "command": "$design-review <path-to-system-gdd> [--depth full|lean|solo] [--prior-review <path> --revision-evidence <path>]",
+          "manual_action": null,
+          "owner": "design-review",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "design-system"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [
+            "cgs.review-evidence/v1",
+            "cgs.design-review/v2"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/design-review/SKILL.md",
+            "source_clause": "Read-only contract and invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "design-review",
+            "persisted_and_current_required": true,
+            "candidate_output_persistence": "NOT_PERSISTED",
+            "candidate_completion_state": "CANDIDATE_COMPLETE_NOT_GATE_ELIGIBLE",
+          "required_external_evidence": [
+            {
+              "schema": "cgs.review-evidence/v1",
+              "boundary": "EXTERNAL_BOUNDARY",
+              "producer": "independent-external-review-persistence-owner",
+              "defining_contract_sources": [
+                ".agents/skills/design-review/SKILL.md",
+                ".agents/skills/gate-check/references/transition-profiles.md"
+              ],
+              "binds_candidate_schemas": [
+                "cgs.review-evidence/v1",
+                "cgs.design-review/v2"
+              ],
+              "required_result": "EXACT_ENVELOPE_PERSISTED_AND_CURRENT",
+              "persisted_and_current_required": true,
+              "gate_evidence_eligible_required": true,
+              "project_skill_invocation": null,
+                "missing_or_invalid_result": "UNKNOWN_NO_ROUTE"
+              }
+            ],
+          "gate_eligible_completion_state": "PERSISTED_ENVELOPE_COMPLETE",
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+      {
+        "id": "review-all-gdds",
+          "phase_id": "systems-design",
+          "order": 3,
+          "name": "Cross-GDD Review",
+          "description": "Holistic consistency check + design theory review across all GDDs simultaneously",
+          "routable": true,
+          "command": "$review-all-gdds",
+          "manual_action": null,
+          "owner": "review-all-gdds",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "design-review"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+      "native_evidence_schemas": [
+        "cgs.review-evidence/v1",
+        "cgs.cross-gdd-review/v2"
+          ],
+        "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+        "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/review-all-gdds/SKILL.md",
+            "source_clause": "Invocation and execution",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "review-all-gdds",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "consistency-check",
+          "phase_id": "systems-design",
+          "order": 4,
+          "name": "Consistency Check",
+        "description": "Scan all GDDs for contradictions, undefined references, and mechanic conflicts. Run after the review-all-gdds workflow, and again any time a GDD is added or revised mid-project.",
+          "routable": true,
+          "command": "$consistency-check [full|entity:<id>|item:<id>]",
+          "manual_action": null,
+          "owner": "consistency-check",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "review-all-gdds"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/consistency-check/SKILL.md",
+            "source_clause": "Invocation and frozen contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "consistency-check",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": "technical-setup",
+      "label": "Technical Setup",
+      "description": "Architecture decisions, visual identity specification, accessibility foundations, engine validation",
+      "order": 3,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "technical-setup"
+      },
+      "steps": [
+        {
+          "id": "create-architecture",
+          "phase_id": "technical-setup",
+          "order": 1,
+          "name": "Architecture Document",
+          "description": "Author the master architecture document covering all systems",
+          "routable": true,
+          "command": "$create-architecture <new|resume|focus|audit> [<focus-area>]",
+          "manual_action": null,
+          "owner": "create-architecture",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "review-all-gdds"
+          ],
+      "accepted_artifact_types": [
+        "cgs.review-evidence/v1",
+        "cgs.cross-gdd-review/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.master-architecture/v3",
+              "path": "docs/architecture/architecture.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.master-architecture/v3"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "docs/architecture/architecture.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/create-architecture/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "create-architecture",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "architecture-decision",
+          "phase_id": "technical-setup",
+          "order": 2,
+          "name": "Architecture Decisions (ADRs)",
+          "description": "Document key technical decisions as ADRs. Minimum 3 Foundation-layer ADRs required.",
+          "routable": true,
+          "command": "$architecture-decision <request-manifest-path>",
+          "manual_action": null,
+          "owner": "architecture-decision",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "create-architecture"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.adr-content-profile/v2",
+              "path": "<request-declared-adr-target-path>",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+        "native_evidence_schemas": [
+          "cgs.adr-authoring-receipt/v1"
+        ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<request-declared-adr-target-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/architecture-decision/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+        "completion_evidence_contract": {
+          "source_field": "native_evidence_schemas",
+          "producer": "architecture-decision",
+          "persisted_and_current_required": true,
+          "candidate_output_persistence": "PERSISTED",
+          "candidate_completion_state": "AUTHORING_COMPLETE_NOT_LIFECYCLE_ACCEPTED",
+          "required_external_evidence": [
+            {
+              "schema": "cgs.adr-lifecycle-record/v1",
+              "boundary": "EXTERNAL_BOUNDARY",
+              "producer": "independent-external-adr-lifecycle-recorder",
+              "defining_contract_sources": [
+                ".agents/skills/architecture-decision/SKILL.md"
+              ],
+              "binds_candidate_schemas": [
+                "cgs.adr-authoring-receipt/v1",
+                "cgs.adr-content-profile/v2"
+              ],
+              "required_result": "ACCEPTED_LIFECYCLE_RECORDED",
+              "persisted_and_current_required": true,
+              "gate_evidence_eligible_required": true,
+              "project_skill_invocation": null,
+              "missing_or_invalid_result": "UNKNOWN_NO_ROUTE"
+            }
+          ],
+          "gate_eligible_completion_state": "LIFECYCLE_ACCEPTED_COMPLETE",
+          "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+        }
+        },
+        {
+          "id": "architecture-review",
+          "phase_id": "technical-setup",
+          "order": 3,
+          "name": "Architecture Review",
+          "description": "Validate explicit architecture/ADR traceability and current test-run evidence without modifying truth sources",
+          "routable": true,
+          "command": "$architecture-review [full|coverage|consistency|engine|rtm]",
+          "manual_action": null,
+          "owner": "architecture-review",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "create-architecture",
+            "architecture-decision"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [
+            "cgs.architecture-review/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/architecture-review/SKILL.md",
+            "source_clause": "Invocation and public contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "architecture-review",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "control-manifest",
+          "phase_id": "technical-setup",
+          "order": 4,
+          "name": "Control Manifest",
+          "description": "Flat programmer rules sheet generated from all Accepted ADRs",
+          "routable": true,
+          "command": "$create-control-manifest <new|update|audit>",
+          "manual_action": null,
+          "owner": "create-control-manifest",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "create-architecture",
+            "architecture-decision",
+            "architecture-review"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.control-manifest/v2",
+              "path": "docs/architecture/control-manifest.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.control-manifest/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "docs/architecture/control-manifest.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/create-control-manifest/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "create-control-manifest",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "accessibility-doc",
+          "phase_id": "technical-setup",
+          "order": 5,
+          "name": "Accessibility Requirements",
+          "description": "Commit accessibility tier (Basic/Standard/Comprehensive/Exemplary) and feature matrix. UX specs (Phase 4) reference this tier.",
+          "routable": false,
+          "command": null,
+          "manual_action": "owner-defined manual action; no workflow command",
+          "owner": "external-owner",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "game-concept"
+          ],
+      "accepted_artifact_types": [
+        "cgs.game-concept-content-profile/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "accessibility-requirements-document",
+              "path": "design/accessibility-requirements.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "accessibility-requirements-document"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/accessibility-requirements.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": null,
+            "source_clause": null,
+            "template_schema": null,
+            "unresolved_placeholder_result": "EXTERNAL_ACTION_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "external-owner",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": "pre-production",
+      "label": "Pre-Production",
+      "description": "Visual entity inventory, UX specs, asset specs, prototype the core mechanic, define stories, validate fun",
+      "order": 4,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "pre-production"
+      },
+      "steps": [
+        {
+          "id": "asset-spec-request",
+          "phase_id": "pre-production",
+          "order": 1,
+          "name": "Asset Specification Request",
+          "description": "Prepare one exact cgs.asset-spec-request/v2 through an external product/art owner; no catalog route pretends asset-spec creates its own request.",
+          "routable": true,
+          "command": null,
+          "manual_action": "Prepare and approve one exact cgs.asset-spec-request/v2 manifest; if unavailable, skip this optional step or stop.",
+          "owner": "external-asset-request-owner",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "art-bible",
+            "map-systems"
+          ],
+      "accepted_artifact_types": [
+        "cgs.art-bible-content-profile/v2",
+        "cgs.systems-index/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.asset-spec-request/v2",
+              "path": "<asset-spec-request-path>",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.asset-spec-request/v2"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<asset-spec-request-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": null,
+            "source_clause": null,
+            "template_schema": null,
+            "unresolved_placeholder_result": "EXTERNAL_ACTION_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "external-asset-request-owner",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "asset-spec",
+          "phase_id": "pre-production",
+      "order": 2,
+      "name": "Asset Specs",
+      "description": "Generate provenance-bound per-asset specifications from one exact request manifest. Run once per explicitly scoped entity, system, level, or character target.",
+          "routable": true,
+          "command": "$asset-spec --manifest <asset-spec-request-path> --expect-manifest <sha256>",
+          "manual_action": null,
+          "owner": "asset-spec",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "art-bible"
+          ],
+      "accepted_artifact_types": [
+        "cgs.art-bible-content-profile/v2"
+          ],
+      "produced_artifacts": [
+        {
+          "artifact_type": "asset-spec",
+          "path": "design/assets/specs/<slug>--<target-key8>-assets.md",
+          "path_kind": "template",
+          "required": true
+            },
+            {
+              "artifact_type": "asset-manifest",
+              "path": "design/assets/asset-manifest.md",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/assets/specs/<slug>--<target-key8>-assets.md",
+              "design/assets/asset-manifest.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/asset-spec/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "asset-spec",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "ux-design",
+          "phase_id": "pre-production",
+          "order": 3,
+          "name": "UX Specs (key screens)",
+          "description": "Author UX specs for the screens identified in the entity inventory (or GDDs if no inventory). Minimum required: main menu, core gameplay HUD, pause menu. Add more screens as the inventory identifies them. Reads input method and platform from technical-preferences.md.",
+          "routable": true,
+          "command": "$ux-design --manifest <exact-request-path> [--resume <exact-checkpoint-path>]",
+          "manual_action": null,
+          "owner": "ux-design",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "map-systems",
+            "accessibility-doc"
+          ],
+      "accepted_artifact_types": [
+        "cgs.systems-index/v2",
+        "accessibility-requirements-document"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.ux-content-profile/v2",
+              "path": "<request-declared-ux-target-path>",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.ux-authoring-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<request-declared-ux-target-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/ux-design/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "ux-design",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+      {
+        "id": "ux-review",
+          "phase_id": "pre-production",
+          "order": 4,
+          "name": "UX Review",
+          "description": "Validate all key screen UX specs for GDD alignment and accessibility tier compliance. Run before creating epics.",
+          "routable": true,
+          "command": "$ux-review <target-path|all|hud|patterns> [--review-depth standard|expert] [--prior-review <record-path>]",
+          "manual_action": null,
+          "owner": "ux-review",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "ux-design"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [
+            "cgs.review-evidence/v1",
+            "cgs.ux-review/v2"
+          ],
+        "completion_policy_ref": "completion.required-candidate-conversation/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+        "unknown_evidence_consequence": "BLOCKED_PENDING_VERSIONED_RECORDER",
+          "command_contract": {
+            "source_path": ".agents/skills/ux-review/SKILL.md",
+            "source_clause": "Inputs",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+        "completion_evidence_contract": {
+          "source_field": "native_evidence_schemas",
+          "producer": "ux-review",
+          "persisted_and_current_required": false,
+          "candidate_only": true,
+          "candidate_output_persistence": "NOT_PERSISTED",
+          "candidate_gate_evidence_eligible": false,
+          "candidate_completion_state": "CONVERSATION_COMPLETE",
+          "durable_recorder_schema": null,
+          "required_external_evidence": [],
+          "gate_completion_state": "BLOCKED_PENDING_VERSIONED_RECORDER",
+          "missing_registered_persisted_evidence_result": "BLOCKED_PENDING_VERSIONED_RECORDER"
+        }
+        },
+        {
+          "id": "prototype",
+          "phase_id": "pre-production",
+          "order": 5,
+          "name": "Prototype",
+          "description": "Build a throwaway prototype to validate the core mechanic is fun before committing to full production. Recommended for first-time mechanics or high-risk design decisions. Solo devs with proven concepts may skip.",
+          "routable": true,
+          "command": "$prototype <concept-or-question> [--path html|engine|paper] [--spike]",
+          "manual_action": null,
+          "owner": "prototype",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "map-systems"
+          ],
+          "accepted_artifact_types": [
+            "cgs.systems-index/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.prototype-run-receipt/v1",
+              "path": "prototypes/throwaway/<prototype-id>/RUN-RECEIPT.yaml",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.prototype-run-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "prototypes/throwaway/<prototype-id>/RUN-RECEIPT.yaml"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/prototype/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "prototype",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "create-epics",
+          "phase_id": "pre-production",
+          "order": 6,
+          "name": "Create Epics",
+        "description": "Translate GDDs + ADRs into epics — one per architectural module, using one hash-bound request manifest for each intended layer.",
+          "routable": true,
+          "command": "$create-epics <request-manifest-path>",
+          "manual_action": null,
+          "owner": "create-epics",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "control-manifest",
+            "ux-review"
+          ],
+          "accepted_artifact_types": [
+            "cgs.control-manifest/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.epic-plan/v2",
+              "path": "production/epics/<module-slug>/EPIC.md",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.create-epics-result-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/epics/<module-slug>/EPIC.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/create-epics/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "create-epics",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "create-stories",
+          "phase_id": "pre-production",
+      "order": 7,
+      "name": "Create Stories",
+      "description": "Break one exact epic into implementable story files using the current epic path and its hash-bound epic receipt.",
+          "routable": true,
+      "command": "$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256> [--cursor <story-batch-cursor-token>]",
+          "manual_action": null,
+          "owner": "create-stories",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "create-epics"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.story/v2",
+              "path": "production/epics/<epic-slug>/story-<NNN>-<slug>.md",
+              "path_kind": "template",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs.story-registry/v2",
+              "path": "production/epics/<epic-slug>/STORIES.md",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.story/v2",
+            "cgs.story-registry/v2"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/epics/<epic-slug>/story-<NNN>-<slug>.md",
+              "production/epics/<epic-slug>/STORIES.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/create-stories/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "create-stories",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "test-setup",
+          "phase_id": "pre-production",
+          "order": 8,
+          "name": "Test Framework Setup",
+        "description": "Scaffold the test framework and CI pipeline once before the first sprint. Leads to test-helpers, a supported QA-plan scope, and build-bound smoke-check evidence.",
+          "routable": true,
+          "command": "$test-setup scaffold [--candidate <candidate-manifest>] --engine-manifest <path> --repo-policy <path> --setup-run-id <run-id> [--ci-receipt <path>]",
+          "manual_action": null,
+          "owner": "test-setup",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "engine-setup"
+          ],
+      "accepted_artifact_types": [
+        "cgs-test-setup-engine-manifest/v1 (EXTERNAL_BOUNDARY)"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs-test-layout/v1",
+              "path": "tests/test-layout-manifest.json",
+              "path_kind": "canonical",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs-test-validator-manifest/v1",
+              "path": "tests/test-setup-validator-manifest.json",
+              "path_kind": "canonical",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs-test-execution-manifest/v1",
+              "path": "tests/test-execution-manifest.json",
+              "path_kind": "canonical",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs-test-setup-receipt/v2",
+              "path": "production/qa/evidence/test-setup/<candidate-id>/<setup-run-id>/report.md",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs-test-setup-receipt/v2"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "tests/test-layout-manifest.json",
+              "tests/test-setup-validator-manifest.json",
+              "tests/test-execution-manifest.json",
+              "production/qa/evidence/test-setup/<candidate-id>/<setup-run-id>/report.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/test-setup/SKILL.md",
+            "source_clause": "Invoke one mode",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "test-setup",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "first-sprint-plan",
+          "phase_id": "pre-production",
+          "order": 9,
+          "name": "First Sprint Plan",
+          "description": "Atomically plan the first sprint from existing exact-hash stories whose final readiness verdict is READY",
+          "routable": true,
+          "command": "$sprint-plan new [--review full|lean|solo]",
+          "manual_action": null,
+          "owner": "sprint-plan",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "create-stories"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.sprint-plan/v2",
+              "path": "production/sprints/<sprint-id>.md",
+              "path_kind": "template",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs.sprint-tracker/v2",
+              "path": "production/sprint-status.yaml",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.sprint-plan/v2",
+            "cgs.sprint-tracker/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/sprints/<sprint-id>.md",
+              "production/sprint-status.yaml"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/sprint-plan/SKILL.md",
+            "source_clause": "Invocation and execution",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "sprint-plan",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "vertical-slice",
+          "phase_id": "pre-production",
+          "order": 10,
+          "name": "Vertical Slice",
+        "description": "Independently evaluate a bounded vertical-slice hypothesis from its exact persisted plan. Production advancement requires an exact current persisted PROCEED report bound to the full candidate, build, session, scope, velocity, and decision graph.",
+          "routable": true,
+        "command": "$vertical-slice evaluate --request <project-relative-evaluation-request>@sha256:<64-lower-hex> --persist",
+          "manual_action": null,
+          "owner": "vertical-slice",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "first-sprint-plan"
+          ],
+          "accepted_artifact_types": [],
+        "produced_artifacts": [
+          {
+            "artifact_type": "cgs.vertical-slice-evaluation-report/v2",
+            "path": "<evaluation-request-declared-report-path>",
+            "path_kind": "template",
+            "required": true
+          }
+          ],
+          "native_evidence_schemas": [
+            "cgs.vertical-slice-evaluation-report/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+        "evidence_scope": {
+          "locations": [
+            "<evaluation-request-declared-report-path>"
+          ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/vertical-slice/SKILL.md",
+            "source_clause": "Invocation and owned writes",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "vertical-slice",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": "production",
+      "label": "Production",
+      "description": "Sprint-based feature development — pick, implement, close stories",
+      "order": 5,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "production"
+      },
+      "steps": [
+        {
+          "id": "sprint-plan",
+          "phase_id": "production",
+          "order": 1,
+          "name": "Sprint Plan",
+          "description": "Plan the current sprint with prioritized, ready stories",
+          "routable": true,
+          "command": "$sprint-plan <new|update> [--review full|lean|solo]",
+          "manual_action": null,
+          "owner": "sprint-plan",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.sprint-plan/v2",
+              "path": "production/sprints/<sprint-id>.md",
+              "path_kind": "template",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs.sprint-tracker/v2",
+              "path": "production/sprint-status.yaml",
+              "path_kind": "canonical",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.sprint-plan/v2",
+            "cgs.sprint-tracker/v2"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/sprints/<sprint-id>.md",
+              "production/sprint-status.yaml"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/sprint-plan/SKILL.md",
+            "source_clause": "Invocation and execution",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "sprint-plan",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "story-readiness",
+          "phase_id": "production",
+          "order": 2,
+          "name": "Story Readiness Check",
+          "description": "Validate current story/control/QA provenance and emit a final READY, NEEDS WORK, or BLOCKED verdict",
+          "routable": true,
+      "command": "$story-readiness --all --scope-manifest <project-relative-scope-manifest@sha256>",
+          "manual_action": null,
+          "owner": "story-readiness",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "create-stories"
+          ],
+          "accepted_artifact_types": [
+            "cgs.story/v2",
+            "cgs.story-registry/v2"
+          ],
+      "produced_artifacts": [],
+      "native_evidence_schemas": [
+        "cgs.story-readiness-recorder-receipt/v1"
+      ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/story-readiness/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "external-story-readiness-recorder",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "implement",
+          "phase_id": "production",
+          "order": 3,
+          "name": "Implement Stories",
+        "description": "Implement one explicitly selected story with $dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>. Routes to the correct programmer agent.",
+          "routable": true,
+          "command": "$dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>",
+          "manual_action": null,
+          "owner": "dev-story",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "story-readiness"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.dev-story-result/v2",
+              "path": "<request-declared-result-path>",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.dev-story-result/v2"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<request-declared-result-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/dev-story/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "dev-story",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "code-review",
+          "phase_id": "production",
+          "order": 4,
+          "name": "Code Review",
+        "description": "Architectural code review after each story implementation. Run after dev-story and before story-done.",
+          "routable": true,
+          "command": "$code-review --target <project-relative-file-or-directory>",
+          "manual_action": null,
+          "owner": "code-review",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "implement"
+          ],
+          "accepted_artifact_types": [],
+      "produced_artifacts": [],
+      "native_evidence_schemas": [
+        "cgs.review-evidence/v1",
+        "cgs.code-review/v2"
+      ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/code-review/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+      "completion_evidence_contract": {
+        "source_field": "native_evidence_schemas",
+        "producer": "code-review",
+        "persisted_and_current_required": true,
+        "candidate_output_persistence": "NOT_PERSISTED",
+        "candidate_completion_state": "CANDIDATE_COMPLETE_NOT_GATE_ELIGIBLE",
+        "required_external_evidence": [
+          {
+            "schema": "cgs.code-review-recorder-receipt/v1",
+            "boundary": "EXTERNAL_BOUNDARY",
+            "producer": "independent-external-code-review-recorder",
+            "defining_contract_sources": [
+              ".agents/skills/story-done/SKILL.md",
+              ".agents/skills/hotfix/SKILL.md"
+            ],
+            "binds_candidate_schemas": [
+              "cgs.review-evidence/v1",
+              "cgs.code-review/v2"
+            ],
+            "required_result": "RECORDED_OR_ALREADY_RECORDED",
+            "persisted_and_current_required": true,
+            "gate_evidence_eligible_required": true,
+            "project_skill_invocation": null,
+            "missing_or_invalid_result": "UNKNOWN_NO_ROUTE"
+          }
+        ],
+        "gate_eligible_completion_state": "RECORDED_COMPLETE",
+        "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+      }
+        },
+        {
+          "id": "story-done",
+          "phase_id": "production",
+          "order": 5,
+          "name": "Story Done Review",
+          "description": "Close only after every required AC has current hash-bound quality and execution evidence; static adequacy alone cannot close",
+          "routable": true,
+          "command": "$story-done [story-file-path] [--review full|lean|solo]",
+          "manual_action": null,
+          "owner": "story-done",
+          "required": true,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "implement",
+            "code-review"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [
+            "cgs.story-closure-receipt/v1"
+          ],
+          "completion_policy_ref": "completion.required-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/story-done/SKILL.md",
+            "source_clause": "Invocation, authority, and outcomes",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "external-sprint-tracker-lifecycle-recorder",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "qa-plan",
+          "phase_id": "production",
+          "order": 6,
+          "name": "QA Plan",
+        "description": "Generate a version-bound QA plan with $qa-plan --scope-manifest <project-relative-path>; PARTIAL or STALE plans cannot satisfy downstream gates.",
+          "routable": true,
+          "command": "$qa-plan --scope-manifest <project-relative-path>",
+          "manual_action": null,
+          "owner": "qa-plan",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "create-stories"
+          ],
+          "accepted_artifact_types": [
+            "cgs.story/v2",
+            "cgs.story-registry/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs-qa-plan/v2",
+              "path": "production/qa/plans/<plan-id>.md",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs-qa-plan/v2"
+          ],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/qa/plans/<plan-id>.md"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/qa-plan/SKILL.md",
+            "source_clause": "Invocation and execution",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "qa-plan",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "bug-report",
+          "phase_id": "production",
+          "order": 7,
+          "name": "Bug Report / Triage",
+        "description": "The bug-report workflow creates one canonical bug record; bug-triage returns read-only priority, scheduling, and risk proposals, while a separate recorder commits decisions.",
+          "routable": true,
+          "command": "$bug-report draft --request-manifest <project-relative-path> --request-sha256 <sha256>",
+          "manual_action": null,
+          "owner": "bug-report",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [
+            "cgs-bug-record/v2",
+            "cgs-bug-transition-event/v2"
+          ],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/bug-report/SKILL.md",
+            "source_clause": "Explicit subcommand grammar",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "bug-report",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "retrospective",
+          "phase_id": "production",
+          "order": 8,
+          "name": "Sprint Retrospective",
+          "description": "Post-sprint review to capture what worked and what to change. Run at the end of each sprint, before planning the next.",
+          "routable": true,
+          "command": "$retrospective sprint:<sprint-id> [--run-id <retro-run-id>] [--persist]",
+          "manual_action": null,
+          "owner": "retrospective",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "story-done"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/retrospective/SKILL.md",
+            "source_clause": "Contract and exact invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "retrospective",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "team-feature",
+          "phase_id": "production",
+          "order": 9,
+          "name": "Team Orchestration (optional)",
+        "description": "Coordinate multiple agents on a complex feature through the team-combat, team-narrative, team-ui, team-audio, team-level, team-live-ops, or team-qa workflow whose exact request contract matches the feature.",
+          "routable": false,
+          "command": null,
+          "manual_action": "owner-defined manual action; no workflow command",
+          "owner": "producer",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": null,
+            "source_clause": null,
+            "template_schema": null,
+            "unresolved_placeholder_result": "EXTERNAL_ACTION_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "producer",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "team-audio",
+          "phase_id": "production",
+          "order": 10,
+          "name": "Audio Specification Team",
+          "description": "Create and independently review one bounded audio specification only; implementation and independent QA are separate workflows.",
+          "routable": true,
+          "command": "$team-audio --manifest <request-path> [--resume <checkpoint-path>]",
+          "manual_action": null,
+          "owner": "team-audio",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [
+            "map-systems"
+          ],
+          "accepted_artifact_types": [
+            "cgs.systems-index/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.audio-spec/v2",
+              "path": "design/audio/audio-<artifact-id>.md",
+              "path_kind": "template",
+              "required": true
+            },
+            {
+              "artifact_type": "cgs.team-audio-checkpoint/v2",
+              "path": "production/session-state/team-audio/<artifact-id>/<run-id>.yaml",
+              "path_kind": "template",
+              "required": true
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.audio-spec/v2"
+          ],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "design/audio/audio-<artifact-id>.md",
+              "production/session-state/team-audio/<artifact-id>/<run-id>.yaml"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/team-audio/SKILL.md",
+            "source_clause": "Invocation and request contract",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "team-audio",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "scope-check",
+          "phase_id": "production",
+          "order": 11,
+          "name": "Scope Check",
+          "description": "Detect scope creep by comparing current sprint scope to original epic scope. Run (a) when stories are added mid-sprint, or (b) before sprint retrospectives.",
+          "routable": true,
+          "command": "$scope-check compare --baseline <project-relative-path>@sha256:<64-lowercase-hex> --current <project-relative-path>@sha256:<64-lowercase-hex>",
+          "manual_action": null,
+          "owner": "scope-check",
+          "required": false,
+          "repeatable": true,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-repeatable-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/scope-check/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "scope-check",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "sprint-status",
+          "phase_id": "production",
+          "order": 12,
+          "name": "Sprint Status",
+          "description": "Quick 30-line snapshot of sprint progress without a full report",
+          "routable": true,
+          "command": "$sprint-status [current|<stable-sprint-id>]",
+          "manual_action": null,
+          "owner": "sprint-status",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "sprint-plan"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/sprint-status/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "sprint-status",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": "polish",
+      "label": "Polish",
+      "description": "Performance, balance, playtesting, bug fixing",
+      "order": 6,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "polish"
+      },
+      "steps": [
+        {
+          "id": "perf-profile",
+          "phase_id": "polish",
+          "order": 1,
+          "name": "Performance Profile",
+          "description": "Prepare a capture or analyze exact runtime exports; only a current build-bound performance-runtime-report-v1 can serve as gate evidence",
+          "routable": true,
+          "command": "$perf-profile analyze-export --manifest <analysis-request-path> --input <profiler-export-path> [--baseline <baseline-report-or-export-path>]",
+          "manual_action": null,
+          "owner": "perf-profile",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/perf-profile/SKILL.md",
+            "source_clause": "Read-only contract and invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "perf-profile",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "balance-check",
+          "phase_id": "polish",
+          "order": 2,
+          "name": "Balance Check",
+          "description": "Analyze game balance formulas and data for outliers and broken progressions",
+          "routable": true,
+          "command": "$balance-check analyze --manifest <project-relative-manifest-path>",
+          "manual_action": null,
+          "owner": "balance-check",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/balance-check/SKILL.md",
+            "source_clause": "Invocation and read-only boundary",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "balance-check",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "asset-audit",
+          "phase_id": "polish",
+          "order": 3,
+          "name": "Asset Audit",
+          "description": "Verify naming conventions, file format standards, and size budgets",
+          "routable": true,
+          "command": "$asset-audit --manifest <project-relative-manifest-path> [--category <category>] [--summary]",
+          "manual_action": null,
+          "owner": "asset-audit",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+          "native_evidence_schemas": [],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/asset-audit/SKILL.md",
+            "source_clause": "Invocation and immutable read-only boundary",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "asset-audit",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+      {
+        "id": "playtest-polish",
+          "phase_id": "polish",
+          "order": 4,
+          "name": "Playtest Sessions (×3)",
+          "description": "Count only distinct canonical COMPLETED, Gate Eligible reports with current manifest/raw/observation hashes; cover new player, mid-game, and difficulty curve",
+          "routable": true,
+          "command": "$playtest-report finalize --session <session-manifest> --bundle <evidence-bundle>",
+          "manual_action": null,
+          "owner": "playtest-report",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [],
+        "native_evidence_schemas": [
+          "cgs.playtest-report/v2"
+        ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/playtest-report/SKILL.md",
+            "source_clause": "Read-only contract and invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+        "completion_evidence_contract": {
+          "source_field": "native_evidence_schemas",
+          "producer": "playtest-report",
+          "persisted_and_current_required": true,
+          "candidate_output_persistence": "NOT_PERSISTED",
+          "candidate_completion_state": "CANDIDATE_COMPLETE_NOT_GATE_ELIGIBLE",
+          "required_external_evidence": [
+            {
+              "schema": "cgs.playtest-report-recorder-receipt/v1",
+              "boundary": "EXTERNAL_BOUNDARY",
+              "producer": "independent-external-playtest-report-recorder",
+              "defining_contract_sources": [
+                ".agents/skills/playtest-report/SKILL.md"
+              ],
+              "binds_candidate_schemas": [
+                "cgs.playtest-report/v2"
+              ],
+              "required_result": "RECORDED_OR_ALREADY_RECORDED",
+              "persisted_and_current_required": true,
+              "gate_evidence_eligible_required": true,
+              "project_skill_invocation": null,
+              "missing_or_invalid_result": "UNKNOWN_NO_ROUTE"
+            }
+          ],
+          "gate_eligible_completion_state": "RECORDED COMPLETED — GATE ELIGIBLE",
+          "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+        }
+        },
+        {
+          "id": "team-polish",
+          "phase_id": "polish",
+          "order": 5,
+          "name": "Polish Team Pass",
+        "description": "Verify one exact final candidate against its immutable polish test matrix and persist the resulting verification report; assessment and implementation remain separate modes.",
+          "routable": true,
+        "command": "$team-polish verify --candidate-manifest <candidate-manifest-path> --verification-id <stable-id> --persist",
+          "manual_action": null,
+          "owner": "team-polish",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "playtest-polish"
+          ],
+          "accepted_artifact_types": [],
+        "produced_artifacts": [
+          {
+            "artifact_type": "cgs.polish-verification-report/v2",
+            "path": "production/polish/<target-id>/implementations/<implementation-id>/verification/<verification-id>/report.md",
+            "path_kind": "template",
+            "required": true
+          }
+          ],
+          "native_evidence_schemas": [
+            "cgs.polish-verification-report/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+        "evidence_scope": {
+          "locations": [
+            "production/polish/<target-id>/implementations/<implementation-id>/verification/<verification-id>/report.md"
+          ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/team-polish/SKILL.md",
+            "source_clause": "Invocation",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "team-polish",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        }
+      ]
+    },
+    {
+      "phase_id": "release",
+      "label": "Release",
+      "description": "Launch preparation, certification, and ship",
+      "order": 7,
+      "entry_policy": {
+        "authority_stage_required": true,
+        "accepted_stage": "release"
+      },
+      "steps": [
+        {
+          "id": "release-checklist",
+          "phase_id": "release",
+          "order": 1,
+          "name": "Release Checklist",
+        "description": "Collect and normalize candidate-bound release evidence; emits Gate Decision NOT EVALUATED for the separate gate-check workflow to decide.",
+          "routable": true,
+          "command": "$release-checklist --request <path> --expect-request <sha256>",
+          "manual_action": null,
+          "owner": "release-checklist",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "team-polish"
+          ],
+          "accepted_artifact_types": [
+            "cgs.polish-verification-report/v2"
+          ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.release-checklist-result/v2",
+              "path": "production/releases/<release-id>/<candidate-identity-sha256>/checklists/<request-declared-filename>",
+              "path_kind": "template",
+              "required": false
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.release-checklist-result/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/releases/<release-id>/<candidate-identity-sha256>/checklists/<request-declared-filename>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/release-checklist/SKILL.md",
+            "source_clause": "Invocation and strict request",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "release-checklist",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        },
+        {
+          "id": "patch-notes",
+          "phase_id": "release",
+          "order": 2,
+          "name": "Patch Notes",
+          "description": "Generate player-facing patch notes from git history and sprint data",
+          "routable": true,
+          "command": "$patch-notes --request <path> --expect-request <sha256>",
+          "manual_action": null,
+          "owner": "patch-notes",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "release-checklist"
+          ],
+      "accepted_artifact_types": [
+        "cgs.patch-notes-request/v3 (EXTERNAL_BOUNDARY)",
+        "cgs.approved-release-change-manifest/v2 (EXTERNAL_BOUNDARY)",
+        "cgs.release-action-receipt/v2 (EXTERNAL_BOUNDARY)",
+        "cgs.localization-manifest/v2 (EXTERNAL_BOUNDARY)",
+        "cgs.localization-package/v1 (EXTERNAL_BOUNDARY)",
+        "cgs.translation-delivery/v1 (EXTERNAL_BOUNDARY)",
+        "cgs.locale-review/v1 (EXTERNAL_BOUNDARY)"
+      ],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.patch-notes-result/v3",
+              "path": "<request-declared-patch-notes-output-path>",
+              "path_kind": "template",
+              "required": false
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.patch-notes-result/v3"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<request-declared-patch-notes-output-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/patch-notes/SKILL.md",
+            "source_clause": "Invocation and strict request",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "patch-notes",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "changelog",
+          "phase_id": "release",
+          "order": 3,
+          "name": "Changelog",
+          "description": "Auto-generate internal changelog from commits, sprints, and design docs",
+          "routable": true,
+          "command": "$changelog --request <path> --expect-request <sha256>",
+          "manual_action": null,
+          "owner": "changelog",
+          "required": false,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "release-checklist"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.changelog-entry/v2",
+              "path": "<request-declared-changelog-output-path>",
+              "path_kind": "template",
+              "required": false
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.changelog-entry/v2"
+          ],
+          "completion_policy_ref": "completion.optional-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "<request-declared-changelog-output-path>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/changelog/SKILL.md",
+            "source_clause": "Invocation and request",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "changelog",
+            "persisted_and_current_required": false,
+            "missing_registered_persisted_evidence_result": "SKIPPED_BY_POLICY"
+          }
+        },
+        {
+          "id": "launch-checklist",
+          "phase_id": "release",
+          "order": 4,
+          "name": "Launch Checklist",
+          "description": "Evaluate one exact launch-candidate manifest; external/manual claims remain UNKNOWN until verified receipts or authorized attestations exist",
+          "routable": true,
+          "command": "$launch-checklist --request <path> --expect-request <sha256>",
+          "manual_action": null,
+          "owner": "launch-checklist",
+          "required": true,
+          "repeatable": false,
+          "prerequisite_ids": [
+            "release-checklist"
+          ],
+          "accepted_artifact_types": [],
+          "produced_artifacts": [
+            {
+              "artifact_type": "cgs.launch-checklist-result/v2",
+              "path": "production/releases/<release-id>/<launch-candidate-identity-sha256>/launch-readiness/<request-declared-filename>",
+              "path_kind": "template",
+              "required": false
+            }
+          ],
+          "native_evidence_schemas": [
+            "cgs.launch-checklist-result/v2"
+          ],
+          "completion_policy_ref": "completion.required-current/v2",
+          "verification_action_ref": "verification.registered-step-evidence/v2",
+          "risk_policy_ref": "risk.no-prerequisite-bypass/v2",
+          "evidence_scope": {
+            "locations": [
+              "production/releases/<release-id>/<launch-candidate-identity-sha256>/launch-readiness/<request-declared-filename>"
+            ],
+            "presence_semantics": "PRESENT_UNVERIFIED",
+            "index_required": true,
+            "read_limits_ref": "limits.route-evidence/v2"
+          },
+          "missing_prerequisite_consequence": "BLOCKED",
+          "unknown_evidence_consequence": "UNKNOWN_NO_ROUTE",
+          "command_contract": {
+            "source_path": ".agents/skills/launch-checklist/SKILL.md",
+            "source_clause": "Invocation and strict request",
+            "template_schema": "cgs.workflow-command-template/v1",
+            "unresolved_placeholder_result": "INPUT_REQUIRED"
+          },
+          "completion_evidence_contract": {
+            "source_field": "native_evidence_schemas",
+            "producer": "launch-checklist",
+            "persisted_and_current_required": true,
+            "missing_registered_persisted_evidence_result": "UNKNOWN_NO_ROUTE"
+          }
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "transition_id": "concept-to-systems-design",
+      "from_stage": "concept",
+      "to_stage": "systems-design",
+      "authorized_owner": {
+        "source": "configured external recorder contract",
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "identity_field": "owner.identity",
+        "required_capability": "stage-authority-cas"
+      },
+      "gate_profile_id": "gate.concept-to-systems-design/v2",
+      "required_gate_record_schema": "cgs.gate-record/v2",
+      "required_transition_receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "threshold": {
+        "gate_verdict": "PASS",
+        "coverage": "COMPLETE",
+        "advancement_disposition": "ELIGIBLE",
+        "currentness": "CURRENT"
+      },
+      "stage_owner_handoff": {
+        "from_owner": "producer",
+        "to_owner": "producer"
+      },
+      "advancement_action": {
+        "kind": "external-only",
+        "project_skill_implementation": null,
+        "command": null,
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "missing_or_invalid_contract_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+        "auto_execute": false
+      },
+      "gate_assessment": {
+        "command": "$gate-check concept-to-systems-design [--review full|lean|solo]",
+        "source_path": ".agents/skills/gate-check/SKILL.md",
+        "source_clause": "Invocation and immutable boundary",
+        "output_schema": "cgs.gate-record/v2",
+        "persistence": "CONVERSATION_ONLY",
+        "stage_mutated": false
+      }
+    },
+    {
+      "transition_id": "systems-design-to-technical-setup",
+      "from_stage": "systems-design",
+      "to_stage": "technical-setup",
+      "authorized_owner": {
+        "source": "configured external recorder contract",
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "identity_field": "owner.identity",
+        "required_capability": "stage-authority-cas"
+      },
+      "gate_profile_id": "gate.systems-design-to-technical-setup/v2",
+      "required_gate_record_schema": "cgs.gate-record/v2",
+      "required_transition_receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "threshold": {
+        "gate_verdict": "PASS",
+        "coverage": "COMPLETE",
+        "advancement_disposition": "ELIGIBLE",
+        "currentness": "CURRENT"
+      },
+      "stage_owner_handoff": {
+        "from_owner": "producer",
+        "to_owner": "producer"
+      },
+      "advancement_action": {
+        "kind": "external-only",
+        "project_skill_implementation": null,
+        "command": null,
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "missing_or_invalid_contract_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+        "auto_execute": false
+      },
+      "gate_assessment": {
+        "command": "$gate-check systems-design-to-technical-setup [--review full|lean|solo]",
+        "source_path": ".agents/skills/gate-check/SKILL.md",
+        "source_clause": "Invocation and immutable boundary",
+        "output_schema": "cgs.gate-record/v2",
+        "persistence": "CONVERSATION_ONLY",
+        "stage_mutated": false
+      }
+    },
+    {
+      "transition_id": "technical-setup-to-pre-production",
+      "from_stage": "technical-setup",
+      "to_stage": "pre-production",
+      "authorized_owner": {
+        "source": "configured external recorder contract",
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "identity_field": "owner.identity",
+        "required_capability": "stage-authority-cas"
+      },
+      "gate_profile_id": "gate.technical-setup-to-pre-production/v2",
+      "required_gate_record_schema": "cgs.gate-record/v2",
+      "required_transition_receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "threshold": {
+        "gate_verdict": "PASS",
+        "coverage": "COMPLETE",
+        "advancement_disposition": "ELIGIBLE",
+        "currentness": "CURRENT"
+      },
+      "stage_owner_handoff": {
+        "from_owner": "producer",
+        "to_owner": "producer"
+      },
+      "advancement_action": {
+        "kind": "external-only",
+        "project_skill_implementation": null,
+        "command": null,
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "missing_or_invalid_contract_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+        "auto_execute": false
+      },
+      "gate_assessment": {
+        "command": "$gate-check technical-setup-to-pre-production [--review full|lean|solo]",
+        "source_path": ".agents/skills/gate-check/SKILL.md",
+        "source_clause": "Invocation and immutable boundary",
+        "output_schema": "cgs.gate-record/v2",
+        "persistence": "CONVERSATION_ONLY",
+        "stage_mutated": false
+      }
+    },
+    {
+      "transition_id": "pre-production-to-production",
+      "from_stage": "pre-production",
+      "to_stage": "production",
+      "authorized_owner": {
+        "source": "configured external recorder contract",
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "identity_field": "owner.identity",
+        "required_capability": "stage-authority-cas"
+      },
+      "gate_profile_id": "gate.pre-production-to-production/v2",
+      "required_gate_record_schema": "cgs.gate-record/v2",
+      "required_transition_receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "threshold": {
+        "gate_verdict": "PASS",
+        "coverage": "COMPLETE",
+        "advancement_disposition": "ELIGIBLE",
+        "currentness": "CURRENT"
+      },
+      "transition_blockers": [
+        {
+          "blocker_id": "ux-review-versioned-recorder-unavailable",
+          "adapter_id": "PA-UX-REVIEW-1",
+          "candidate_schemas": [
+            "cgs.review-evidence/v1",
+            "cgs.ux-review/v2"
+          ],
+          "candidate_state": {
+            "gate_evidence_status": "NOT_PERSISTED",
+            "gate_evidence_eligible": false
+          },
+          "required_recorder_schema": null,
+          "source_contracts": [
+            ".agents/skills/ux-review/SKILL.md",
+            ".agents/skills/gate-check/references/transition-profiles.md"
+          ],
+          "project_skill_invocation": null,
+          "result": "BLOCKED_PENDING_VERSIONED_RECORDER"
+        }
+      ],
+      "stage_owner_handoff": {
+        "from_owner": "producer",
+        "to_owner": "producer"
+      },
+      "advancement_action": {
+        "kind": "external-only",
+        "project_skill_implementation": null,
+        "command": null,
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "missing_or_invalid_contract_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+        "auto_execute": false
+      },
+      "gate_assessment": {
+        "command": "$gate-check pre-production-to-production [--review full|lean|solo]",
+        "source_path": ".agents/skills/gate-check/SKILL.md",
+        "source_clause": "Invocation and immutable boundary",
+        "output_schema": "cgs.gate-record/v2",
+        "persistence": "CONVERSATION_ONLY",
+        "stage_mutated": false
+      }
+    },
+    {
+      "transition_id": "production-to-polish",
+      "from_stage": "production",
+      "to_stage": "polish",
+      "authorized_owner": {
+        "source": "configured external recorder contract",
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "identity_field": "owner.identity",
+        "required_capability": "stage-authority-cas"
+      },
+      "gate_profile_id": "gate.production-to-polish/v2",
+      "required_gate_record_schema": "cgs.gate-record/v2",
+      "required_transition_receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "threshold": {
+        "gate_verdict": "PASS",
+        "coverage": "COMPLETE",
+        "advancement_disposition": "ELIGIBLE",
+        "currentness": "CURRENT"
+      },
+      "stage_owner_handoff": {
+        "from_owner": "producer",
+        "to_owner": "producer"
+      },
+      "advancement_action": {
+        "kind": "external-only",
+        "project_skill_implementation": null,
+        "command": null,
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "missing_or_invalid_contract_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+        "auto_execute": false
+      },
+      "gate_assessment": {
+        "command": "$gate-check production-to-polish [--review full|lean|solo]",
+        "source_path": ".agents/skills/gate-check/SKILL.md",
+        "source_clause": "Invocation and immutable boundary",
+        "output_schema": "cgs.gate-record/v2",
+        "persistence": "CONVERSATION_ONLY",
+        "stage_mutated": false
+      }
+    },
+    {
+      "transition_id": "polish-to-release",
+      "from_stage": "polish",
+      "to_stage": "release",
+      "authorized_owner": {
+        "source": "configured external recorder contract",
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "identity_field": "owner.identity",
+        "required_capability": "stage-authority-cas"
+      },
+      "gate_profile_id": "gate.polish-to-release/v2",
+      "required_gate_record_schema": "cgs.gate-record/v2",
+      "required_transition_receipt_schema": "cgs.external-stage-transition-receipt/v1",
+      "threshold": {
+        "gate_verdict": "PASS",
+        "coverage": "COMPLETE",
+        "advancement_disposition": "ELIGIBLE",
+        "currentness": "CURRENT"
+      },
+      "stage_owner_handoff": {
+        "from_owner": "producer",
+        "to_owner": "producer"
+      },
+      "advancement_action": {
+        "kind": "external-only",
+        "project_skill_implementation": null,
+        "command": null,
+        "contract_schema": "cgs.external-stage-transition-recorder-contract/v1",
+        "missing_or_invalid_contract_result": "UNKNOWN_ADVANCEMENT_UNSUPPORTED",
+        "auto_execute": false
+      },
+      "gate_assessment": {
+        "command": "$gate-check polish-to-release [--review full|lean|solo]",
+        "source_path": ".agents/skills/gate-check/SKILL.md",
+        "source_clause": "Invocation and immutable boundary",
+        "output_schema": "cgs.gate-record/v2",
+        "persistence": "CONVERSATION_ONLY",
+        "stage_mutated": false
+      }
+    }
+  ],
+  "command_template_grammar": {
+    "schema": "cgs.workflow-command-template/v1",
+    "required_placeholder": "<name> is a required caller-supplied token validated by the referenced SKILL contract",
+    "optional_group": "[tokens] is optional exactly as declared by the referenced SKILL contract",
+    "choice": "a|b inside one placeholder/group means choose exactly one declared literal",
+    "unresolved_result": "INPUT_REQUIRED",
+    "execution_rule": "A router MUST NOT execute or present a template as executable while a required placeholder or unresolved choice remains",
+    "path_rule": "Path values are project-relative exact identities; hash-bound forms and additional constraints come from the referenced SKILL contract",
+    "source_rule": "The command string below is an exact template copied from the final P1 SKILL invocation contract; extra modes are not implied"
+  },
+  "artifact_path_template_grammar": {
+    "schema": "cgs.workflow-artifact-path-template/v1",
+    "required_placeholder": "<name> is resolved only from the producer request/result or stable identity named by the producer contract",
+    "canonical_path_rule": "path_kind canonical contains no placeholders; path_kind template contains only declared angle-bracket placeholders",
+    "matching_rule": "A rendered path is evidence only after schema, identity, raw hash, producer receipt and currentness validation",
+    "unresolved_result": "PRESENT_UNVERIFIED"
+  }
+}

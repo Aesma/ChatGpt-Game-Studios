@@ -1,4 +1,4 @@
 interface:
   display_name: "Team UI"
-  short_description: "Implement approved UX with final-build verification"
-  default_prompt: "Use $team-ui with an exact UI feature request manifest; production implementation requires a separate bounded manifest."
+  short_description: "Coordinate UX into independently verified UI"
+  default_prompt: "Use $team-ui with one cgs.team-ui-request/v2 manifest. Keep UX, visual, engine, implementation, runtime evidence, and review ownership separate; production completion requires a configured engine and current final-build evidence."

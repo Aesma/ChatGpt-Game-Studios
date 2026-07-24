@@ -1,462 +1,647 @@
-# Skill Spec: `$hotfix`
+# Skill Spec: $hotfix
 
+> **Spec ID**: hotfix-v2
+> **Spec Schema**: cgs-skill-spec/v2
 > **Category**: utility
 > **Priority**: low
-> **Spec written**: 2026-07-22
+> **Spec written**: 2026-07-23
 
 ## Skill Summary
 
-`$hotfix` prepares one immutable local fix candidate. It separates read-only
-investigation, isolated worktree creation, code/test writes, commit, build, push, and
-release handoff into independently authorized commands and receipts. It never merges,
-deploys, rolls back, publishes, or treats model recommendations as release authority.
-`HOTFIX READY` requires one exact commit/build/artifact identity, a
-failure-sensitive regression receipt, canonical full smoke receipt, current deployed
-build receipt, and verified rollback evidence.
-
----
+`$hotfix` prepares one isolated, immutable local fix candidate. It uses exact repository preflight, bounded finding convergence, deterministic risk-to-QA mapping, build-bound interface receipts, executable rehearsed rollback evidence, and external deployment observation. It never merges, deploys, rolls back, publishes, or treats agent recommendations as release authority.
 
 ## Static Assertions
 
-- [ ] YAML frontmatter contains only required `name` and non-empty `description`;
-      name matches the skill directory
-- [ ] Metadata states local candidate scope and separate code/Git/release/rollback/
-      publication authority
-- [ ] Has at least two phase headings
-- [ ] Skill is explicit-invocation only and one invocation runs one command
-- [ ] Defines `plan`, `prepare`, `apply`, `commit`, `build`, `assess`,
-      `record-bug`, `push`, and `handoff`
-- [ ] Has no merge, deploy, rollback-execution, publish, or send command
-- [ ] Never outputs `HOTFIX COMPLETE` from local work
-- [ ] `HOTFIX READY` explicitly means local candidate only
-- [ ] File-write, repository/worktree, commit, build, push, merge/tag, staging,
-      production/rollback, and publication authorities are separate
-- [ ] Agent recommendations cannot authorize any repository or external action
-- [ ] Investigation is byte-level and Git-state read-only
-- [ ] Complete patch paths and preimage hashes are known before `apply` authorization
-- [ ] Dirty current worktree is never stashed/reset/cleaned or used for new branch
-      creation
-- [ ] Commit and push use distinct action records, commands, authorization, and
-      receipts
-- [ ] Candidate manifest matches staged smoke/release `build-candidate` identity:
-      candidate/build/artifact/source/platform plus QA-plan/test-manifest hashes
-- [ ] Regression evidence is failure-sensitive and binds commit/build/artifact,
-      exact test/argv/runner/timestamps/exit code/log hash
-- [ ] Smoke evidence requires persisted sprint `PASS` and
-      `Handoff Eligible: YES` for the exact candidate
-- [ ] Quick/targeted smoke cannot yield `HOTFIX READY`
-- [ ] Pre-release candidate smoke cannot substitute for post-staging
-      environment/deployment-bound smoke
-- [ ] Current production build/artifact hash comes from a trusted current-state receipt
-- [ ] Rollback binds current and previous artifact hashes, owner, triggers, ordered
-      steps, data compatibility, backup, rehearsal, and validation receipts
-- [ ] Missing/unrehearsed/irreversible rollback blocks readiness
-- [ ] Canonical bug update is only `Open → Fixed Pending Verification` and includes
-      commit/build/regression evidence
-- [ ] `Verified Fixed` and `Closed` remain owned by staged `bug-report`
-- [ ] All actual actions and receipts report raw hashes; stale/mismatched evidence
-      cannot pass
+- **HF-STA-001**: Frontmatter contains only `name` and non-empty `description`; name is `hotfix`.
+- **HF-STA-002**: Every invocation executes exactly one explicit command with a hash-bound manifest.
+- **HF-STA-003**: No merge, tag, deploy, rollback-execution, publish, or send command exists.
+- **HF-STA-004**: Repository preflight records dirty/staged/untracked/conflict/submodule/lock state without mutation.
+- **HF-STA-005**: Base ref resolves to a reachable policy-allowed full commit/tree.
+- **HF-STA-006**: Branch, ref, worktree path, ownership, and filesystem collisions block preparation.
+- **HF-STA-007**: Default implementation location is a new isolated worktree; user work is never stashed/reset/cleaned/moved.
+- **HF-STA-008**: Findings use stable rule IDs, SHA-256 fingerprints, owners, and deterministic order.
+- **HF-STA-009**: Review convergence permits one correction and one re-review only; unresolved blockers end BLOCKED.
+- **HF-STA-010**: Every core task has owner, exact inputs, deadline, status, output path, and receipt hash.
+- **HF-STA-011**: TIMEOUT, FAILED, PARTIAL, BLOCKED, UNAVAILABLE, and missing core task receipts prevent READY.
+- **HF-STA-012**: QA scope is a deterministic union over severity, code layer, migration, network, security, save, platform, build, concurrency, and blast-radius inputs.
+- **HF-STA-013**: QA may add checks but cannot remove or downgrade risk-mapped checks.
+- **HF-STA-014**: Rollback binds current/rollback artifact identities, owner, triggers, ordered argv, data compatibility, backup, validation, and rehearsal.
+- **HF-STA-015**: Irreversible/incompatible/unrehearsed/unknown rollback blocks HOTFIX READY and handoff.
+- **HF-STA-016**: Pre-deployment `cgs-hotfix-bug-candidate-link/v1` binds exact bug, commit/tree, candidate/build/artifact, regression/smoke, assessment, and rollback identities; it does not edit canonical bug status.
+- **HF-STA-017**: Post-deployment observation requires exact team-release `cgs.release-action-receipt/v2` with DEPLOY/production/SUCCESS and matching release/candidate/build/deployment identity.
+- **HF-STA-018**: Observation has a complete health window, monitor contracts, environment-bound checks, missing-sample rules, and rollback triggers.
+- **HF-STA-019**: Producer interfaces use versioned artifact schemas and exact path/hash/identity bindings.
+- **HF-STA-020**: Conversation text and agent role labels cannot satisfy interface or release authority.
+- **HF-STA-021**: HOTFIX READY means verified local candidate only; RELEASE HANDOFF READY is not deployment.
+- **HF-STA-022**: File, worktree, commit, build, push, release, deployment, rollback, and publication authorization are separate.
+- **HF-STA-023**: Candidate identity binds full commit/tree, build/artifact, platform/configuration, QA plan, and test manifest.
+- **HF-STA-024**: Every owned artifact uses preimage/absence CAS, atomic publication, and read-back.
+- **HF-STA-025**: Release action authority path/digest, issuer/scope/expiry, signature verification, target/idempotency, external state, payload/log, reconciliation, rollback, and receipt hash are all consumed exactly.
+- **HF-STA-026**: Code review consumes exact `cgs.review-evidence/v1` + `cgs.code-review/v2` and an independent current PERSISTED/gate-eligible recorder receipt.
+- **HF-STA-027**: Team QA consumes exact `cgs.team-qa-result/v2` plus matching persisted `cgs.team-qa-signoff/v2` with QA_APPROVED/Gate Eligible YES.
 
----
+## Protocol Assertions
 
-## Director Gate Checks
-
-None. Lead-programmer, QA, producer, and other agents produce candidate-bound
-recommendations or receipts only. They are not release-authority gates and cannot
-replace the explicit user/repository/remote/deployment/publication action records.
-
----
+- **HF-PRO-001**: Hash raw manifest/authority bytes before parsing and reject duplicate keys.
+- **HF-PRO-002**: Never mutate Git or files during plan/preflight investigation.
+- **HF-PRO-003**: Never use a dirty current worktree as the hotfix worktree or destroy user work.
+- **HF-PRO-004**: Never auto-retry repository uncertainty before read-only reconciliation.
+- **HF-PRO-005**: Never perform more than one correction and one re-review automatically.
+- **HF-PRO-006**: Never infer missing task approval, PASS, or evidence from silence.
+- **HF-PRO-007**: Never let QA discretion weaken deterministic risk mapping.
+- **HF-PRO-008**: Never accept prose rollback commands, unknown current build, incompatible data, or NOT_REHEARSED as ready.
+- **HF-PRO-009**: Never write Fixed Pending Verification, Verified Fixed, or Closed before deployment from this workflow.
+- **HF-PRO-010**: Never claim post-deploy verification without deployment/environment/window evidence.
+- **HF-PRO-011**: Never call producer workflows or infer their state from conversation.
+- **HF-PRO-012**: Never reuse candidate smoke as environment-bound post-deployment smoke.
+- **HF-PRO-013**: Never merge, deploy, execute rollback, publish, or send.
+- **HF-PRO-014**: Never use stale, partial, unknown, timed-out, unavailable, or mismatched evidence for READY.
+- **HF-PRO-015**: Never transfer authorization between action layers.
+- **HF-PRO-016**: Never overwrite immutable receipts or select latest artifacts.
+- **HF-PRO-017**: Never accept staging, canary, PROMOTE, planned, inferred, renamed, unsigned, expired, unknown-outcome, or hash-mismatched action receipts as production deployment success.
+- **HF-PRO-018**: Never accept producer NOT_PERSISTED review output, a missing/stale recorder, an unpersisted QA signoff, or conversation as a gate.
 
 ## Test Cases
 
-### Case 1: Plan is a zero-mutation investigation
+### Case 1 — Dirty worktree, missing base, and collisions block safely
 
-**Fixture:**
+#### Fixture
 
-- Canonical `BUG-0042` is `Open` and `S1-Critical` with complete reproduction data.
-- Repository has an explicit reachable base ref.
-- Source and tests can be read.
+Variant A has tracked and untracked user changes. Variant B names an unreachable base ref. Variant C names an existing branch and worktree path.
 
-**Input:** `$hotfix plan BUG-0042`
+#### Input
 
-**Expected behavior:**
+Run plan and then attempt prepare with exact manifests.
 
-1. Bug record, repository, worktree, base ref, candidate paths, and relevant code/tests
-   are read and hashed.
-2. An exact patch plan lists every proposed code/test/receipt path, preimage hash,
-   intended change, unique writer, regression test, build target, risks, rollback
-   requirements, and action IDs.
-3. No branch, worktree, file, index, staging area, commit, remote, or external state
-   changes.
-4. Result is `PLAN READY` and `READ_ONLY_NO_CHANGES`.
+#### Expected reads
 
-**Assertions:**
+Repository identity, current worktree/index/ref/submodule/lock state, policy hashes, base resolution/reachability, and proposed branch/worktree collision state.
 
-- [ ] Plan authorization is requested only after investigation establishes exact scope
-- [ ] Vague reproduction blocks before repository/file mutation
-- [ ] New paths discovered later require a revised plan
+#### Expected writes
 
----
+Plan writes none. Prepare writes only when preflight is SAFE, exact repository action is authorized, and targets are absent.
 
-### Case 2: Dirty user work is preserved
+#### Expected non-writes
 
-**Fixture:**
+No stash, reset, clean, checkout-overwrite, deletion, moved user file, current-worktree branch creation, fallback base, or collision overwrite.
 
-- Current worktree contains tracked and untracked user changes.
-- Patch plan proposes an isolated worktree from an explicit base commit.
+#### Expected behavior
 
-**Input:** `$hotfix prepare --plan <path> --action-id PREP-1`
+Dirty user work is reported and preserved; an isolated worktree may be proposed. Missing/unreachable base and collisions are UNSAFE/BLOCKED. A timeout becomes UNKNOWN and requires read-only reconciliation.
 
-**Expected behavior:**
+#### Assertions
 
-- Preflight reports dirty/staged/untracked state without changing it.
-- No branch is created in the dirty current worktree.
-- With exact repository-action authorization, only the named isolated branch/worktree
-  is created from the exact base commit.
-- Without authorization or on collision, operation is `BLOCKED`.
+HF-STA-004, HF-STA-005, HF-STA-006, HF-STA-007, HF-PRO-002, HF-PRO-003, HF-PRO-004.
 
-**Assertions:**
+#### Case Verdict
 
-- [ ] No stash, reset, clean, checkout-overwrite, deletion, or move of user work
-- [ ] Worktree/branch creation is not covered by file-write authorization
-- [ ] Timeout becomes unknown and requires read-only reconciliation before retry
+PASS only when unsafe variants cause zero Git/file mutation.
 
----
+### Case 2 — Stable findings converge once and then block
 
-### Case 3: Apply writes only the authorized patch scope
+#### Fixture
 
-**Fixture:**
+Initial code review returns two stable concerns. One correction resolves one finding; re-review leaves the other and adds no new evidence.
 
-- Isolated worktree receipt is valid.
-- Patch plan and run manifest hashes match.
-- Exact code and regression-test paths are file-write authorized.
+#### Input
 
-**Input:** `$hotfix apply --run-manifest <path>`
+Run review iteration 0, one authorized correction, and review iteration 1.
 
-**Expected behavior:**
+#### Expected reads
 
-- Every path preimage is revalidated.
-- Only the minimal fix and failure-sensitive regression test are written.
-- Patch receipt contains pre/post hashes, diff hash, writer, timestamps, and result.
-- No commit, version change, canonical bug edit, push, merge, deployment, or
-  publication occurs.
-- Result is `PATCH APPLIED` / `PATCHED_UNCOMMITTED`.
+Exact patch/candidate/review manifests, reviewed bytes/hashes, rule IDs, prior findings, task receipts, and correction authorization.
 
-**Assertions:**
+#### Expected writes
 
-- [ ] An added unplanned file blocks before write
-- [ ] A code fix without a regression test blocks
-- [ ] File authorization does not grant commit authority
+Immutable iteration receipts/findings and the one authorized correction only.
 
----
+#### Expected non-writes
 
-### Case 4: Commit requires its own exact authorization
+No second correction, second re-review, random finding ID, hidden retry, agent approval, or READY result.
 
-**Fixture:**
+#### Expected behavior
 
-- Patch receipt matches exactly the worktree diff.
-- No extra staged/untracked path is present.
-- File changes were authorized, but commit was not.
+Unchanged issue keeps the same fingerprint. After iteration 1 the remaining blocker produces REVIEW_BLOCKED with owner/escalation and preserved evidence.
 
-**Input:** `$hotfix commit --run-manifest <path> --action-id COMMIT-1`
+#### Assertions
 
-**Expected behavior:**
+HF-STA-008, HF-STA-009, HF-PRO-005.
 
-- The workflow displays repo/worktree/branch, parent commit/tree, diff hash, exact
-  staged paths/blob hashes, commit message hash, executor/signing policy, and receipt.
-- Without explicit commit authorization, it stops at
-  `PATCH APPLIED / COMMIT AUTH REQUIRED`.
-- With authorization, only listed paths are committed and a full commit/tree/parent
-  receipt is verified.
-- Result `COMMIT CREATED` does not imply pushed/merged/built/tested.
+#### Case Verdict
 
-**Assertions:**
+REVIEW_BLOCKED after the fixed convergence budget.
 
-- [ ] File-write approval is not reused as commit approval
-- [ ] Commit receipt uses full SHA, never a description
-- [ ] Unexpected worktree content blocks the commit
+### Case 3 — Core task timeout or partial result blocks readiness
 
----
+#### Fixture
 
-### Case 5: Build freezes one staged-compatible candidate
+Implementation and build tasks complete. Regression QA times out, smoke returns partial evidence, and rollback rehearsal has no persisted receipt.
 
-**Fixture:**
+#### Input
 
-- Commit receipt is valid.
-- Exact build argv/toolchain/config/output action is authorized.
-- Build succeeds with complete log and artifact.
+Assess the candidate.
 
-**Input:** `$hotfix build --run-manifest <path> --action-id BUILD-1`
+#### Expected reads
 
-**Expected behavior:**
+Every declared `cgs-hotfix-task-receipt/v1`, exact task input/output hashes, deadlines, and produced partial evidence.
 
-- Build receipt binds source commit/tree, toolchain/config, argv, timestamps, exit
-  code, complete log hash, artifact path/hash, platform, and required provenance.
-- Candidate manifest declares `Artifact Type: build-candidate`, schema 1,
-  candidate/build/artifact/source/platform, QA-plan and test-manifest paths/hashes.
-- Manifest/artifact are re-hashed after persistence.
-- Result is `BUILD READY` / `BUILT_UNVERIFIED`.
+#### Expected writes
 
-**Assertions:**
+At most an authorized immutable blocked assessment.
 
-- [ ] Build success alone is not `HOTFIX READY`
-- [ ] A rebuild or new commit creates a new candidate and stales all dependent evidence
-- [ ] No push/merge/deploy occurs
+#### Expected non-writes
 
----
+No inferred PASS, replacement task, hidden retry, HOTFIX READY, release handoff, or deployment.
 
-### Case 6: Old-build regression evidence is rejected
+#### Expected behavior
 
-**Fixture:**
+Completed evidence is retained. Task statuses remain TIMEOUT/PARTIAL/UNAVAILABLE, Workflow is PARTIAL/BLOCKED, and each missing core receipt has an accountable owner.
 
-- Candidate source commit is `C2` with build/artifact hashes `B2/A2`.
-- Regression receipt is a passing result for older `C1/B1/A1`.
+#### Assertions
 
-**Input:** `$hotfix assess ...`
+HF-STA-010, HF-STA-011, HF-PRO-006, HF-PRO-014.
 
-**Expected behavior:**
+#### Case Verdict
 
-- Exact commit/build/artifact mismatches are listed.
-- Receipt becomes stale/invalid even though its result says PASS.
-- Result is `EVIDENCE STALE` or `BLOCKED`, never `HOTFIX READY`.
+BLOCKED or PARTIAL, never READY.
 
-**Assertions:**
+### Case 4 — Risk matrix produces deterministic QA scope
 
-- [ ] Command, exit code, timestamps, runner/config, test-source and log hashes are also
-      required
-- [ ] Generic suite or manual verification cannot replace failure-sensitive receipt
-- [ ] No agent recommendation overrides the mismatch
+#### Fixture
 
----
+An S1 hotfix changes serialization and network code, includes a schema migration, affects two platforms, and touches a broad shared call graph.
 
-### Case 7: Quick smoke is targeted evidence only
+#### Input
 
-**Fixture:**
+Derive QA scope twice from the same normalized risk inputs.
 
-- Exact candidate has a persisted quick smoke report with
-  `Verdict: TARGETED CHECK PASSED` and `Handoff Eligible: NO`.
-- Regression receipt passes.
+#### Expected reads
 
-**Input:** `$hotfix assess ...`
+Exact severity, code-layer flags, migration/network/platform/concurrency/security/blast-radius inputs, current QA mappings, Test IDs, and risk-matrix version.
 
-**Expected behavior:**
+#### Expected writes
 
-- Quick receipt may be listed as diagnostic evidence.
-- Missing persisted sprint-mode PASS/handoff-eligible smoke blocks readiness.
-- Result is `PARTIAL` or `BLOCKED`.
+Only an authorized immutable `cgs-hotfix-qa-scope/v1`.
 
-**Assertions:**
+#### Expected non-writes
 
-- [ ] Quick mode never becomes full smoke PASS
-- [ ] Pre-release smoke is never represented as post-staging smoke
-- [ ] No release handoff is ready
+No free-form QA downgrade, discretionary smoke-only choice, omitted platform, duplicate Test ID, or test execution claim.
 
----
+#### Expected behavior
 
-### Case 8: Agent recommendations are not deployment approval
+The union includes mandatory regression/build/full smoke, full suite/platform/data migration/rollback/network/dependent-module additions, sorted canonically with identical scope hash both times.
 
-**Fixture:**
+#### Assertions
 
-- Lead-programmer recommends ready.
-- QA regression and smoke receipts pass.
-- Producer agent recommends urgent release timing.
-- User supplied no merge/deploy/publication authorization.
+HF-STA-012, HF-STA-013, HF-PRO-007.
 
-**Expected behavior:**
+#### Case Verdict
 
-- Recommendations are recorded with candidate hash but grant no action authority.
-- Hotfix may become locally ready only if all other objective gates, including
-  rollback/current-build evidence, pass.
-- No merge, staging, production, rollback, publication, or send occurs.
+PASS when selection and hash are deterministic and complete.
 
-**Assertions:**
+### Case 5 — Rollback must be executable, data-compatible, and rehearsed
 
-- [ ] Producer recommendation is not human production confirmation
-- [ ] `HOTFIX READY` still reports `External Release State: NOT_PERFORMED_BY_HOTFIX`
-- [ ] No action is inferred from urgency or role labels
+#### Fixture
 
----
+Variant A supplies prose rollback steps. Variant B has ordered argv but an irreversible migration. Variant C is compatible but NOT_REHEARSED. Variant D has complete rehearsal evidence.
 
-### Case 9: Complete current evidence yields local HOTFIX READY only
+#### Input
 
-**Fixture:**
+Validate rollback plans and assess readiness.
 
-- Exact patch/commit/build receipts match.
-- Code review has no blocking finding.
-- Failure-sensitive regression is current PASS.
-- Persisted sprint smoke is current PASS and handoff eligible.
-- Trusted production-state receipt proves current artifact hash.
-- Rollback artifact, compatibility, owner, triggers, rehearsal, and validation
-  receipts match.
-- No required evidence is partial/stale/unknown.
+#### Expected reads
 
-**Input:** `$hotfix assess ...`
+Trusted current deployment receipt, rollback artifact/signature/availability, owner authority, triggers/monitors, argv/cwd/env/timeouts, migration/backup/restore, rehearsal deployment and validation receipts.
 
-**Expected behavior:**
+#### Expected writes
 
-- Every path and transitive hash is recomputed.
-- Candidate State is `VERIFIED_LOCAL_CANDIDATE`.
-- Operation Status is `HOTFIX READY`.
-- External Release State remains `NOT_PERFORMED_BY_HOTFIX`.
-- No repository or external action occurs.
+At most an authorized rollback plan/rehearsal reference and assessment; this workflow executes no rollback.
 
-**Assertions:**
+#### Expected non-writes
 
-- [ ] READY means local candidate only
-- [ ] No `HOTFIX COMPLETE`, merged, deployed, or published claim
-- [ ] Assessment lists exact evidence paths/hashes and timestamp
+No synthesized command, rollback action, data compatibility assumption, fabricated rehearsal, HOTFIX READY for A/B/C, or external-state mutation.
 
----
+#### Expected behavior
 
-### Case 10: Unknown current build or rollback blocks readiness
+A/B/C block with stable findings. D is eligible only if current/rollback identities, ordered steps, compatibility, backup, owner, triggers, rehearsal, restored artifact, and validation all verify.
 
-**Variants:**
+#### Assertions
 
-- A: production-state receipt is missing or stale;
-- B: rollback artifact bytes/hash are unavailable;
-- C: migration is irreversible or save/schema rollback is incompatible;
-- D: rollback was not rehearsed;
-- E: rollback owner/trigger/backup is missing.
+HF-STA-014, HF-STA-015, HF-PRO-008, HF-PRO-013.
 
-**Expected behavior:**
+#### Case Verdict
 
-- Exact gap is reported.
-- Result is `BLOCKED` or `PARTIAL`.
-- No deploy or rollback action is attempted.
-- A branch/tag/dashboard label or local “latest” file is not accepted as current build
-  evidence.
+Only D may satisfy the rollback gate.
 
-**Assertions:**
+### Case 6 — Pre-deployment record is Fix Candidate only
 
-- [ ] Current and previous artifact hashes are distinct explicit fields
-- [ ] Rollback rehearsal requires observed restored artifact and validation receipts
-- [ ] A prose rollback plan alone cannot yield READY
+#### Fixture
 
----
+A local candidate is HOTFIX READY with exact commit/build/artifact/regression/smoke/rollback evidence, but no release action receipt exists.
 
-### Case 11: Bug transition matches staged bug-report state machine
+#### Input
 
-**Fixture:**
+Run record-candidate.
 
-- `BUG-0042` is still `Open` and its preimage hash matches.
-- Assessment is `HOTFIX READY`.
-- Exact bug-file write is separately authorized.
+#### Expected reads
 
-**Input:** `$hotfix record-bug --assessment <path>`
+Exact canonical bug path/hash/status; fix commit/tree; candidate manifest and
+identity; build/artifact/platform/configuration/source; build receipt; regression
+Test IDs/source/execution/log; smoke; assessment; rollback; and link-creation
+authority.
 
-**Expected behavior:**
+#### Expected writes
 
-- One atomic edit sets `Fixed Pending Verification`, records full fix
-  commit/candidate/build/artifact/platform identity, regression test/receipt, smoke and
-  assessment hashes, and appends transition history with owner/time/reason/preimage.
-- No `Verified Fixed` or `Closed` state is written.
-- If bug status/hash changed, no mutation occurs.
+One immutable `cgs-hotfix-bug-candidate-link/v1` with state FIX_CANDIDATE.
 
-**Assertions:**
+#### Expected non-writes
 
-- [ ] Code changeset authorization does not automatically cover bug-file edit
-- [ ] Fix workflow owns only `Open → Fixed Pending Verification`
-- [ ] Later verification requires target-build reproduction plus automated regression
-      through staged `bug-report`
+No canonical bug edit, Fixed Pending Verification, Verified Fixed, Closed, deployment claim, triage edit, or inferred lifecycle event.
 
----
+#### Expected behavior
 
-### Case 12: Push is separate and still not merge/deploy
+The link binds every exact candidate/test identity and proposed target. Record
+status remains owned by the canonical bug workflow; External Deployment State is
+NOT_PERFORMED_BY_HOTFIX.
 
-**Fixture:**
+#### Assertions
 
-- Commit/candidate/assessment are current.
-- Remote destination ref has observed old OID `R1`.
-- Commit authorization exists; push authorization does not.
+HF-STA-016, HF-PRO-009, HF-PRO-016.
 
-**Input:** `$hotfix push --run-manifest <path> --action-id PUSH-1`
+#### Case Verdict
 
-**Expected behavior:**
+FIX_CANDIDATE_RECORDED only.
 
-- Exact remote/ref, expected old OID, new commit/tree, artifact hash, non-force policy,
-  idempotency ID, timeout, reconciliation, and receipt are shown.
-- No push occurs without explicit authorization.
-- With authorization, observed remote OID must become the exact commit and a receipt
-  is written.
-- Result `PUSHED` does not mean merged/deployed.
+### Case 7 — Canonical production action receipt and full health window gate observation
 
-**Assertions:**
+#### Fixture
 
-- [ ] Never force-push
-- [ ] Unknown timeout is reconciled before retry
-- [ ] Changed remote state invalidates authorization
+Variant A has no release action receipt. Variant B has STAGE/SUCCESS or a
+production receipt for another candidate. Variant C has the exact
+`cgs.release-action-receipt/v2` with DEPLOY/production/SUCCESS but the observation
+window is still running. Variant D has the same exact receipt and completes all
+required checks. Variant E has expired authority, invalid signature, or
+OUTCOME_UNKNOWN.
 
----
+#### Input
 
-### Case 13: Handoff cannot reuse pre-release smoke as staging evidence
+Run observe for each variant.
 
-**Fixture:**
+#### Expected reads
 
-- Local assessment is `HOTFIX READY` and policy-required push receipt is valid.
-- No staging deployment receipt or environment-bound staging smoke exists.
+Exact release action receipt/checkpoint/request/authorization/signature/provider
+response; release/environment/deployment/candidate/build/artifact/target identity;
+observation window; monitor contracts/samples; environment-bound QA receipts;
+and rollback triggers.
 
-**Input:** `$hotfix handoff --run-manifest <path>`
+#### Expected writes
 
-**Expected behavior:**
+None for A/B; an authorized immutable observation artifact for C/D when applicable.
 
-- Hash-bound hotfix handoff package references the candidate evidence and exact release
-  inputs.
-- It explicitly lists staging deployment, staging smoke, production confirmation,
-  production receipt, monitoring, rollback execution, and publication as not
-  performed.
-- `RELEASE HANDOFF READY` means ready for staged `team-release prepare` only.
+#### Expected non-writes
 
-**Assertions:**
+No deploy, rollback, bug transition, post-deploy claim for A/B/C, candidate-smoke reuse, fabricated monitor sample, or external job mutation.
 
-- [ ] Hotfix does not invoke release workflow
-- [ ] New staging smoke must bind deployment receipt, environment, and observed artifact
-- [ ] No merge/deploy/publish authority appears in handoff state
+#### Expected behavior
 
----
+A is AWAITING_DEPLOYMENT; B and E are INVALID/BLOCKED; C is OBSERVING; and D
+is POST_DEPLOY_VERIFIED only after the complete window and all same-environment
+checks pass. A conclusive trigger yields ROLLBACK_REQUIRED without executing
+rollback.
 
-### Case 14: Every command has one deterministic side-effect boundary
+#### Assertions
 
-**Variants:**
+HF-STA-017, HF-STA-018, HF-STA-025, HF-PRO-010, HF-PRO-012, HF-PRO-013,
+HF-PRO-017.
 
-- `plan`, `prepare`, `apply`, `commit`, `build`, `assess`, `record-bug`,
-  `push`, `handoff`, invalid command, and requests to merge/deploy/publish.
+#### Case Verdict
 
-**Expected behavior:**
+Only D can produce POST_DEPLOY_VERIFIED.
 
-- Each supported command performs only its declared layer and stops.
-- Invalid command reads/writes nothing after argument validation.
-- Merge/deploy/publish requests are rejected as unsupported and name the separate
-  release owner/authorization requirement without invoking it.
-- No command returns `HOTFIX COMPLETE`.
+### Case 8 — Versioned interfaces reject conversation and mismatched artifacts
 
-**Assertions:**
+#### Fixture
 
-- [ ] SKILL and spec invocation/verdict dictionaries match
-- [ ] No command cascades across authority layers
-- [ ] Actual actions and receipt hashes are reported; absent actions remain not
-      performed
+The interface bundle includes an exact regression receipt; a quick smoke receipt;
+an APPROVED `cgs.review-evidence/v1` + `cgs.code-review/v2` still marked
+NOT_PERSISTED; a stale code-review recorder receipt; a conversation claiming
+Team QA passed; an unpersisted `cgs.team-qa-signoff/v2`; an unsupported bug
+artifact; and a `cgs.release-action-receipt/v2` for another candidate.
 
----
+#### Input
 
-## Protocol Compliance
+Validate and map every interface entry.
 
-- [ ] Read-only investigation precedes exact file changeset authorization
-- [ ] Existing bounded authorization is accepted only for the exact named layer/action
-- [ ] New paths, ref changes, rebuilt artifacts, or changed external targets require
-      revised authorization
-- [ ] No per-file prompts occur inside an unchanged authorized patch manifest
-- [ ] Repository/remote/external action authorization never derives from file approval
-- [ ] Partial, timeout, stale, unknown, and mismatch states block dependent actions
-- [ ] No destructive cleanup or silent user-work handling
-- [ ] One next permitted command is returned and nothing is invoked automatically
+#### Expected reads
 
----
+The exact interface bundle, schemas, verifiers, artifact bytes/hashes, transitive references, and candidate/build/platform identity.
 
-## Coverage Notes
+#### Expected writes
 
-Cases 9 and 14 close HF-001; Case 8 closes HF-002; Cases 5–7 close HF-003; Cases
-1–4 close HF-004. Cases 10–13 cover the required rollback/current-build, canonical
-bug-state, smoke/release receipt, and authority-boundary integration. These are
-behavioral expectations only: this remediation performed static validation and did
-not create a branch, edit code, commit, build, push, merge, deploy, roll back, publish,
-run tests, or execute any project workflow.
+None during validation.
+
+#### Expected non-writes
+
+No producer invocation, conversation-to-receipt conversion, quick-to-full smoke promotion, fabricated bug transition, or cross-candidate deployment acceptance.
+
+#### Expected behavior
+
+Regression maps only if complete/current. Quick smoke remains diagnostic and
+insufficient. NOT_PERSISTED review, stale/missing recorder, conversation, and
+unpersisted/nonpassing Team QA signoff are inadmissible. Unsupported bug artifact
+is inadmissible and deployment mismatch is stale/invalid.
+
+#### Assertions
+
+HF-STA-019, HF-STA-020, HF-STA-026, HF-STA-027, HF-PRO-011, HF-PRO-012,
+HF-PRO-014, HF-PRO-018.
+
+#### Case Verdict
+
+BLOCKED until every required typed interface verifies.
+
+### Case 9 — Agent recommendations never authorize release action
+
+#### Fixture
+
+Review and QA agents recommend readiness, and a producer recommends urgent deployment. No user has authorized push, merge, deployment, rollback, publication, or communication.
+
+#### Input
+
+Assess and hand off the candidate.
+
+#### Expected reads
+
+Candidate-bound recommendation receipts and objective evidence only.
+
+#### Expected writes
+
+An authorized local assessment/handoff artifact at most.
+
+#### Expected non-writes
+
+No push, merge, tag, staging, production deployment, rollback, publication, send, external action receipt, or authority inference.
+
+#### Expected behavior
+
+Recommendations remain advisory. HOTFIX READY may describe local evidence only; External Deployment State remains NOT_PERFORMED_BY_HOTFIX.
+
+#### Assertions
+
+HF-STA-003, HF-STA-020, HF-STA-021, HF-STA-022, HF-PRO-013, HF-PRO-015.
+
+#### Case Verdict
+
+PASS when no external action occurs.
+
+### Case 10 — Old-build evidence cannot make a new candidate ready
+
+#### Fixture
+
+Candidate C2/B2/A2 has a passing regression/smoke/review set for C1/B1/A1.
+
+#### Input
+
+Assess C2.
+
+#### Expected reads
+
+Exact candidate/build/artifact/source/platform, QA scope, regression, smoke, review, current deployment, rollback, and transitive hashes.
+
+#### Expected writes
+
+At most an authorized stale assessment.
+
+#### Expected non-writes
+
+No evidence rebinding, latest-receipt substitution, HOTFIX READY, handoff, or candidate mutation.
+
+#### Expected behavior
+
+Every mismatched identity is reported as stable finding; Evidence Status is STALE and Candidate State is EVIDENCE_STALE.
+
+#### Assertions
+
+HF-STA-023, HF-PRO-014, HF-PRO-016.
+
+#### Case Verdict
+
+EVIDENCE_STALE/BLOCKED.
+
+### Case 11 — Apply is restricted to planned authorized preimages
+
+#### Fixture
+
+The patch plan authorizes one code file and one failure-sensitive regression test. Implementation discovers a third required file after authorization.
+
+#### Input
+
+Run apply.
+
+#### Expected reads
+
+Exact plan/run/preflight/worktree HEAD/tree and every listed preimage.
+
+#### Expected writes
+
+None after the new path is discovered; with unchanged scope, only the two authorized files and patch receipt.
+
+#### Expected non-writes
+
+No third path, refactor, version, release note, bug record, commit, push, merge, deploy, or publish.
+
+#### Expected behavior
+
+New scope blocks before writes and requires a revised plan/authorization. Unchanged scope produces PATCH_APPLIED only.
+
+#### Assertions
+
+HF-STA-022, HF-PRO-015.
+
+#### Case Verdict
+
+BLOCKED on scope expansion; otherwise PATCH_APPLIED.
+
+### Case 12 — Build freezes exact immutable candidate identity
+
+#### Fixture
+
+A reviewed commit has an authorized exact build manifest with complete toolchain/config/argv/output policy.
+
+#### Input
+
+Run build and then change one artifact byte.
+
+#### Expected reads
+
+Commit/tree, toolchain/container/config, argv/cwd/env, timeout/caps/cleanup, output/log, QA plan, and test manifest identities.
+
+#### Expected writes
+
+An authorized build receipt and `cgs-build-candidate/v1` for the original successful build.
+
+#### Expected non-writes
+
+No synthesized build command, source edit, push, merge, deploy, or reuse of dependent evidence after byte change.
+
+#### Expected behavior
+
+The candidate binds full commit/tree and artifact hash. The byte change creates a new candidate identity and stales all prior dependent receipts.
+
+#### Assertions
+
+HF-STA-023, HF-PRO-014.
+
+#### Case Verdict
+
+BUILD_READY before verification; changed artifact makes evidence stale.
+
+### Case 13 — Push remains a separate non-force action
+
+#### Fixture
+
+The local commit/candidate/assessment is current and the remote ref has known old OID. Commit authorization exists but push authorization does not.
+
+#### Input
+
+Run push before and after exact push authorization.
+
+#### Expected reads
+
+Remote/ref identity, observed old OID, local commit/tree, candidate/artifact, non-force policy, idempotency/timeout/reconciliation, and credential identifier.
+
+#### Expected writes
+
+None before authorization. After authorization, only the exact ref update and immutable push receipt.
+
+#### Expected non-writes
+
+No force push, merge, tag, deployment, publication, changed destination ref, or second push after unknown timeout without reconciliation.
+
+#### Expected behavior
+
+Unauthorized request stops. Authorized push verifies observed new OID. PUSHED never implies merged or deployed.
+
+#### Assertions
+
+HF-STA-022, HF-PRO-004, HF-PRO-013, HF-PRO-015.
+
+#### Case Verdict
+
+PUSHED only for the exact authorized ref update.
+
+### Case 14 — CAS conflict or read-back failure cannot advance state
+
+#### Fixture
+
+An owned artifact preview is valid, then an authority hash changes or the destination appears before publication.
+
+#### Input
+
+Attempt prepare, assessment, candidate-link, handoff, or observation persistence.
+
+#### Expected reads
+
+Every authority/preimage again, target absence, staged bytes, schema references, and read-back bytes if publication occurs.
+
+#### Expected writes
+
+Private same-filesystem staging only after conflict; no partial final action set.
+
+#### Expected non-writes
+
+No overwrite, advanced Candidate/Operation state, orphan receipt, input rollback, or hidden latest pointer.
+
+#### Expected behavior
+
+CAS reports CONFLICT/FAILED, preserves observed evidence separately, and blocks dependent state until a refreshed manifest is authorized.
+
+#### Assertions
+
+HF-STA-024, HF-PRO-014, HF-PRO-016.
+
+#### Case Verdict
+
+CONFLICT or ERROR with no dependent advancement.
+
+### Case 15 — Registered spec is complete and aligned
+
+#### Fixture
+
+The P1 candidate skill, metadata, and registered spec.
+
+#### Input
+
+Run static contract validation.
+
+#### Expected reads
+
+Exactly the three candidate files.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No live skill, old P0 staging, shared catalog, source, Git, build, remote, deployment, rollback, or publication mutation.
+
+#### Expected behavior
+
+The spec is `cgs-skill-spec/v2`; Cases 1 through 16 are contiguous and each has Fixture, Input, Expected reads, Expected writes, Expected non-writes, Expected behavior, Assertions, and Case Verdict. Commands, schemas, risk mapping, evidence states, side effects, and terminal vocabulary match the skill.
+
+#### Assertions
+
+HF-STA-001 through HF-STA-027; HF-PRO-001 through HF-PRO-018.
+
+#### Case Verdict
+
+PASS only when structure and behavioral contract are fully aligned.
+
+### Case 16 — Complete local candidate happy path
+
+#### Fixture
+
+SAFE preflight, isolated worktree, exact patch/test, bounded review convergence, authorized commit/build, complete task receipts, deterministic QA scope, current full regression/smoke, verified interfaces, trusted production state, and executable rehearsed rollback all match one candidate.
+
+#### Input
+
+Run plan, prepare, apply, review, commit, build, assess, record-candidate, and handoff as separately authorized commands.
+
+#### Expected reads
+
+Every exact plan/run/action/candidate/task/finding/QA/interface/current-production/rollback authority and transitive hash.
+
+#### Expected writes
+
+Only each command's separately authorized immutable artifact and exact repository/remote mutation, with no cascade between commands.
+
+#### Expected non-writes
+
+No current user-work mutation, unplanned file, merge, tag, deployment, rollback execution, bug status change, publication, communication, or false COMPLETE claim.
+
+#### Expected behavior
+
+The candidate reaches VERIFIED_LOCAL_CANDIDATE/HOTFIX_READY, records FIX_CANDIDATE, and produces RELEASE_HANDOFF_READY with External Deployment State NOT_PERFORMED_BY_HOTFIX. Every command stops at its boundary.
+
+#### Assertions
+
+HF-STA-001 through HF-STA-027; HF-PRO-001 through HF-PRO-018.
+
+#### Case Verdict
+
+HOTFIX_READY and RELEASE_HANDOFF_READY only as local, non-deployed states.
+
+
+## P1 audit remediation trace
+
+| Audit ID | SKILL clause | Case/assertion binding | Rejected shortcut |
+|---|---|---|---|
+| HF-005 | Phases 0/2 | Case 1 / HF-STA-004–007, HF-PRO-002–004 | Direct branch creation in dirty/colliding/unreachable state |
+| HF-006 | Phase 4 | Case 2 / HF-STA-008, HF-STA-009, HF-PRO-005 | Unbounded revise/review loop or unstable findings |
+| HF-007 | Phase 5 | Case 3 / HF-STA-010, HF-STA-011, HF-PRO-006, HF-PRO-014 | Silence/timeout/partial/missing task receipt inferred READY |
+| HF-008 | Phase 6 | Case 4 / HF-STA-012, HF-STA-013, HF-PRO-007 | QA discretion downgrades deterministic scope |
+| HF-009 | Phase 9 | Case 5 / HF-STA-014, HF-STA-015, HF-PRO-008, HF-PRO-013 | Prose-only/incompatible/unrehearsed rollback passes |
+| HF-010 | Phase 11 | Case 6 / HF-STA-016, HF-PRO-009, HF-PRO-016 | Predeployment candidate becomes Fixed/Verified/Closed |
+| HF-011 | Phase 13 | Case 7 / HF-STA-017, HF-STA-018, HF-STA-025, HF-PRO-010, HF-PRO-012, HF-PRO-017 | Planned/staging/canary/mismatched deploy or incomplete window verifies production |
+| HF-012 | Phase 8 | Case 8 / HF-STA-019, HF-STA-020, HF-STA-026, HF-STA-027, HF-PRO-011, HF-PRO-014, HF-PRO-018 | Conversation/free-form producer result satisfies an interface |

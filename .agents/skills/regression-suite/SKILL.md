@@ -5,7 +5,18 @@ description: "Maintain a hash-bound, ID-keyed regression test selection manifest
 
 ## Invocation and execution
 
-Invoke this workflow as `$regression-suite`.
+Invoke exactly one explicit mode:
+
+```text template
+$regression-suite report --scope-manifest <project-relative-path> [--execution-receipt <project-relative-path>]
+$regression-suite update --scope-manifest <project-relative-path>
+$regression-suite audit --scope-manifest <project-relative-path> [--execution-receipt <project-relative-path>]
+```
+
+Reject absent/duplicate/unknown mode or flags, positional QA-plan paths, unresolved
+bracket tokens, directories, and implicit write-mode requests before project writes.
+`update` never accepts an execution receipt because a successful selection change
+creates a new manifest hash and necessarily awaits a later run.
 
 Before the first file change, present the complete proposed changeset, listing
 every file and intended modification, and obtain one explicit approval. After
@@ -13,8 +24,22 @@ approval, make all changes within that boundary continuously without asking
 again file by file. If the scope expands materially, stop, present the revised
 changeset, and obtain one new approval.
 
-Arguments: `[update | audit | report] [scope: qa-plan-path]`. Treat bracketed
-values as optional unless the workflow says otherwise.
+## Contract manifest
+
+```yaml template
+schema: cgs-regression-suite-workflow-contract/v1
+scope_schema: cgs-regression-scope/v1
+qa_plan_schema: cgs-qa-plan/v2
+selection_schema: cgs-regression-selection-manifest/v2
+owned_output: tests/regression-suite.md
+change_impact_schema: cgs-change-impact/v1
+hash_algorithm: sha256
+modes:
+  report: read_only
+  update: keyed_upsert_only
+  audit: keyed_upsert_or_approved_tombstone
+never_executes_tests: true
+```
 
 # Regression Suite Selection
 
@@ -43,8 +68,8 @@ It never writes or modifies:
   failure-sensitivity receipts;
 - session state, checkpoints, release records, or catalog/guide files.
 
-`report` mode is strictly read-only. If no mode is supplied, ask the user to
-choose `update`, `audit`, or `report`; never infer a write mode.
+`report` mode is strictly read-only. If no mode is supplied, return invalid
+invocation with the supported forms; never prompt into or infer a write mode.
 
 ---
 
@@ -69,22 +94,71 @@ Keep operation status separate from coverage status:
 
 A successful manifest write does not imply verified coverage.
 
+Also report independently:
+
+| Axis | Values |
+|---|---|
+| Scope Status | CURRENT, PARTIAL, STALE, UNKNOWN |
+| Impact Status | CURRENT, PARTIAL, STALE, UNKNOWN |
+| Selection Status | CURRENT, PARTIAL, STALE, UNKNOWN |
+| Execution Status | CURRENT, NOT_RUN, PARTIAL, STALE, UNKNOWN |
+| Persistence | WRITTEN, UNCHANGED, NOT_APPLICABLE, DECLINED, FAILED |
+
+Missing, unreadable, unsupported, timed-out, omitted, stale, or incomplete evidence
+is PARTIAL/STALE/UNKNOWN, never current or verified. `Operation`, coverage, and all
+status axes remain independent; no generic COMPLETE verdict exists.
+
 ### 1.2 QA-plan scope and provenance
 
-Resolve one explicit QA plan for the intended sprint, feature, or story scope.
-Use `scope: [qa-plan-path]` when supplied. If several plans could match, ask the
-user to select one; never choose by modification time alone.
+Resolve the literal scope-manifest path and real path inside the project. Read its
+exact bytes once, compute raw SHA-256, and require `cgs-regression-scope/v1` with:
+
+- stable scope, selection-manifest, revision, and operation IDs;
+- exact current `cgs-qa-plan/v2` path/hash and expected plan/scope IDs;
+- exact QA-plan Test ID ownership snapshot path/hash/revision;
+- exact candidate/build manifest or trusted build-receipt path/hash, build ID,
+  artifact hash, source commit, platform, and configuration;
+- exact story/AC/Requirement Binding/Coverage Unit IDs and source paths/hashes copied
+  from the plan;
+- exact in-scope bug paths/hashes;
+- exact `cgs-change-impact/v1` path/hash with baseline/current identities;
+- exact current selection-manifest path and expected preimage hash or ABSENT;
+- optional execution, sensitivity, quarantine proposal/approval/application/runner,
+  and bug-verification receipt paths/hashes; and
+- budgets for maximum requirements, bugs, Test IDs, test sources, receipts, files,
+  input bytes, coverage units, impact edges, candidate entries, estimated duration,
+  output bytes, and wall time, all no higher than workflow maxima.
+
+The hard ceilings are 32,768 requirements/coverage units/Test IDs, 4,096 bugs,
+65,536 impact edges, 8,192 files/receipts, 128 MiB input, 32,768 candidate entries,
+24 hours estimated selected duration, 16 MiB output, and 120 seconds planning time.
+Canonicalize IDs/paths using Unicode NFC, forward slashes, and case-fold comparison
+keys while preserving raw spelling. Reject unsafe IDs, canonical duplicates, path
+escapes, scope/plan/build disagreement, or a requested budget above a hard ceiling.
+
+Sort requirement units, bugs, and Test IDs by stable canonical ID. Admit only whole
+authority closures that fit all budgets. Record a complete selected, loaded, missing,
+unreadable, invalid, omitted, and unprocessed ledger with bytes/edges/duration and
+stable reason IDs. Never scan all GDDs/stories/tests or silently truncate. Any omitted
+required closure yields `Scope Status: PARTIAL` and cannot produce verified coverage.
 
 Read the plan as raw bytes and compute
 `sha256:<64 lowercase hexadecimal characters>`. Parse its Plan Manifest and:
 
-1. Require `Plan State at Generation: CURRENT`.
-2. Read every captured source path and hash its current raw bytes.
-3. Compare current hashes and source availability with the captured manifest.
-4. Treat any mismatch, disappearance, or newly unreadable source as effective
+1. Require Artifact Type `cgs-qa-plan`, Schema Version 2, Plan/Effective State
+   `CURRENT`, Scope Coverage `COMPLETE`, and Gate Evidence `NO`.
+2. Read and re-hash every captured scope/story/GDD/ADR/control/requirement span,
+   build, ownership, dependency, test/evidence source and raw plan bytes.
+3. Validate every Test ID owner and every AC root/branch/boundary/error Coverage Unit
+   ID from the plan dependency/coverage matrix.
+4. Compare current hashes, ownership revision, dependency graph, build binding, and
+   source availability with the captured manifest.
+5. Treat any mismatch, disappearance, ownership drift, or newly unreadable source as effective
    `STALE`.
-5. Reject `PARTIAL` or effective `STALE` plans as requirement/coverage evidence.
-6. Extract exact stable AC IDs and their stable `TC-...` automated test IDs.
+6. Treat partial coverage, unsupported receipt/schema, unavailable verifier, or
+   ambiguous coverage unit as `UNKNOWN`; reject `PARTIAL`, `STALE`, or `UNKNOWN` plans
+   as verified requirement/coverage evidence.
+7. Extract exact stable AC/Coverage Unit IDs and their owned stable `TC-...` automated test IDs.
    `MC-...` and `SC-...` items may be reported as manual/config obligations, but
    they are not automated regression selections unless a separately identified
    automated test exists.
@@ -93,21 +167,61 @@ Preserve the QA plan path, raw-byte hash, effective state, stable AC IDs, and
 stable test IDs in the regression manifest. Never derive identity from mutable
 criterion wording, title text, list position, or file name.
 
-If no current QA plan is available, report `INDETERMINATE` and do not claim AC
+If no current QA plan is available, report `Scope Status: UNKNOWN`, coverage
+`INDETERMINATE`, and do not claim AC
 coverage. The user may still approve clearly labelled gap entries, but no
 requirement is `VERIFIED COVERAGE`.
 
 ### 1.3 Bug requirements
 
-Load in-scope bug artifacts as raw bytes. A bug mapping requires an exact stable
-`BUG-[number]` ID, the bug source path, and its raw-byte SHA-256. Preserve any
-verified fix/build references found in the authoritative bug artifact.
+Load only scope-declared bug artifacts as raw bytes. A regression bug requirement is
+eligible only when the authoritative artifact has state `VERIFIED_FIXED` and binds:
+
+- exact stable `BUG-[number]` ID, source path/hash, original failure/reproduction ID,
+  severity, and owner;
+- fix commit and source-tree identity;
+- verification receipt path/hash proving the original failure on a pre-fix build and
+  pass on the fixed build with current reproduction/test hashes; and
+- fixed build ID/artifact hash/source commit/platform/configuration exactly matching
+  the scope target build or an explicitly declared compatible build matrix.
+
+`Closed`, `Fixed`, merged PR, assignee statement, changelog text, or fix commit alone
+does not prove verified repair. A missing/mismatched verification receipt or target
+build makes the bug status `UNKNOWN/STALE` and excludes it from verified-fixed
+prioritization while preserving it as an explicit requirement gap.
 
 A bug ID in a test file name, comment, or prose is discovery evidence only. It
 does not prove that the test exercises the original failure or would fail if the
 bug returned.
 
-### 1.4 Existing manifest and external evidence
+### 1.4 Change impact and deterministic prioritization
+
+Validate `cgs-change-impact/v1` schema, producer/tool/version/hash, baseline/current
+source commits, changed path preimage/postimage hashes, changed Requirement Binding/
+AC/BUG/Coverage Unit IDs, impacted production symbols/systems, and dependency edges.
+Every impact edge names its source authority/path/hash, relation, and nonnegative graph
+distance. Re-hash all local dependencies. Missing edges/endpoints, unmatched change,
+partial traversal, stale baseline/current identity, or unavailable producer makes
+`Impact Status: PARTIAL/STALE/UNKNOWN`; never infer impact from filenames or prose.
+
+Build the candidate set from exact current plan ownership and impact rows, then sort by
+this lexicographic key without model scoring:
+
+1. obligation class: critical verified-fixed bug, critical changed requirement,
+   direct changed requirement, direct dependency impact, required always-run baseline,
+   transitive impact, then unaffected retained selection;
+2. requirement severity rank P0, P1, P2, P3, then UNSPECIFIED;
+3. impact graph distance ascending;
+4. stable Coverage Unit ID, Test ID, and source canonical path ascending.
+
+Select every mandatory P0/P1 critical/verified-fixed obligation first. Then admit whole
+tests in key order while maximum Test IDs, files, input bytes, candidate entries, and
+estimated-duration budgets permit. Record selected and omitted rows with full sort key,
+estimated duration source/hash, and reason. If a mandatory item cannot fit, is missing,
+or has unknown impact/severity/duration, set Selection Status PARTIAL/UNKNOWN and
+Coverage `CRITICAL GAPS`; never silently demote it or use an invented score.
+
+### 1.5 Existing manifest and external evidence
 
 Read `tests/regression-suite.md` as raw bytes when it exists and compute its
 SHA-256. Parse only explicitly keyed managed entries. Preserve legacy or
@@ -124,6 +238,22 @@ Locate, but do not create or modify:
 When several receipts exist, match by exact IDs and hashes. Do not use “latest
 file” as proof of current execution.
 
+For quarantine, distinguish state-machine evidence exactly:
+
+- `REQUESTED` or `PROPOSED` is advisory and never changes runner state;
+- `APPROVED` requires a separate authorized approval receipt;
+- `APPLIED` requires the approved proposal, application receipt, adapter identity,
+  changed runner/config path/hashes, owner, issue, and unexpired deadline;
+- `VERIFIED` additionally requires a later runner receipt bound to the exact applied
+  config hash, selection manifest, target build, and stable Test ID, explicitly
+  recording it skipped/quarantined.
+
+Only a current unexpired `VERIFIED` row becomes selection state `QUARANTINED`.
+`APPLIED` without the later matching runner receipt is
+`QUARANTINE_APPLIED_UNVERIFIED`; proposal/registry text alone is
+`QUARANTINE_REQUESTED`. Neither counts as pass or verified coverage. Expired, removed,
+hash-mismatched, or unreadable evidence is STALE/UNKNOWN and release-blocking.
+
 ---
 
 ## Phase 2: Build the test evidence inventory
@@ -136,12 +266,16 @@ For each candidate collect:
 
 - exact stable test ID;
 - exact mapped stable AC and/or BUG IDs;
+- exact mapped Coverage Unit IDs for AC root, branch, boundary, error/recovery, and
+  verified bug reproduction units;
 - test source path and raw-byte SHA-256;
 - test function/case identity used by the runner;
 - requirement source path and raw-byte SHA-256;
+- Requirement Binding ID, raw span hash, and current build binding;
 - QA plan path/hash/effective state for AC mappings;
 - failure-sensitivity receipt path/hash/status;
 - quarantine record and applied runner/config hash, if relevant.
+- current change-impact row/distance and deterministic prioritization key.
 
 A candidate without a unique stable test ID or an exact stable requirement ID is
 `UNMAPPED`. Never invent, renumber, or write an ID into source files.
@@ -151,8 +285,9 @@ A candidate without a unique stable test ID or an exact stable requirement ID is
 A mapping is sensitivity-verified only when an external receipt proves all of
 the following:
 
-1. It names the exact stable test ID and mapped AC/BUG ID.
-2. It records the same test-source hash and requirement-source hash currently
+1. It names the exact stable Test ID and every claimed AC/BUG/Coverage Unit ID.
+2. It records the same test-source, requirement-file/span, QA-plan, ownership snapshot,
+   and build hashes currently
    observed.
 3. It identifies the injected or recreated failure condition.
 4. The baseline test passed.
@@ -174,7 +309,10 @@ Assign one deterministic state to each candidate:
 | `STALE` | A captured QA-plan, requirement, test, or sensitivity hash no longer matches |
 | `MISSING` | No candidate test exists for the stable requirement |
 | `QUARANTINED` | Authoritative quarantine is applied and verified against current runner/config |
+| `QUARANTINE_APPLIED_UNVERIFIED` | Application receipt is current but no later matching runner receipt proves the skip |
 | `QUARANTINE_REQUESTED` | Quarantine is claimed but runner/config application is not verified |
+| `PARTIAL` | Required mapping, impact, sensitivity, parser, or receipt coverage is incomplete |
+| `UNKNOWN` | Required evidence cannot be read or conclusively validated |
 | `TOMBSTONED` | Entry is retired with retained history, reason, and explicit approval |
 
 Only `ELIGIBLE` entries can contribute to verified coverage, and only when a
@@ -188,14 +326,19 @@ This workflow never executes a runner and never creates an execution receipt.
 
 A conforming runner/CI receipt must contain:
 
-- immutable build ID plus build/commit hash;
+- immutable candidate/build manifest hash, build ID/artifact hash, source commit,
+  platform, and configuration matching the scope;
 - exact raw-byte SHA-256 of `tests/regression-suite.md` used for selection;
+- selection schema/manifest/revision IDs, QA-plan hash, Test ID ownership snapshot
+  hash, and requirement-span hashes;
 - runner identity/version and runner/config hash;
 - invocation timestamp and exit status;
 - every active selected stable test ID;
 - for each test: result, duration, test-source path/hash, and mapped stable
   AC/BUG IDs;
 - explicit omissions, skips, quarantines, crashes, and incomplete discovery;
+- start/end timestamps, process termination state, complete untruncated log path/hash,
+  parser path/version/hash/status, and coverage ledger; and
 - receipt raw-byte SHA-256 or a verifiable signature.
 
 A receipt is current only when its selection-manifest hash equals the currently
@@ -203,21 +346,45 @@ observed manifest hash, its test-source hashes match, and its build identity is
 the exact build being evaluated. A receipt bound to a prior manifest, prior test
 bytes, or another build is stale.
 
+`report` and `audit` may classify an explicitly supplied receipt; `update` never uses
+one to claim post-write execution. After any changed manifest publication, set
+`Execution Status: NOT_RUN` and Coverage `AWAITING RUN` until a separate runner owner
+produces a receipt for the new exact manifest/build. This workflow never invokes that
+runner, waits for it, or manufactures its receipt.
+
 ### Coverage computation
 
-For each stable AC/BUG requirement:
+Use exact set operations. The required set is every scope-declared current QA-plan
+Coverage Unit ID, including every AC root, branch, boundary, error/recovery, and
+verified bug reproduction unit. The mapped set is the union of exact current coverage
+unit claims from selected stable Test IDs. `required - mapped` is always `MISSING`; it
+is never subjectively called partial or covered.
 
-- `VERIFIED` — at least one `ELIGIBLE` selected test has a passing result in the
-  current matching execution receipt.
-- `GAP` — no candidate, incomplete stable mapping, missing/invalid sensitivity
-  evidence, or a selected test did not pass.
-- `STALE` — any required source, plan, test, sensitivity, manifest, or receipt
-  hash is stale.
-- `AWAITING RUN` — selection evidence is eligible/current, but no matching
-  build-bound receipt exists.
-- `INDETERMINATE` — a required source or receipt cannot be read or validated.
+For each Coverage Unit ID in stable order:
+
+- `VERIFIED` — at least one exact `ELIGIBLE` selected Test ID maps the unit, has
+  current failure-sensitivity evidence for that unit, and PASS in the exact current
+  selection/build execution receipt;
+- `GAP` — the unit is MISSING, mapping/sensitivity is conclusive invalid, execution
+  FAIL/SKIP, or its only test is quarantined;
+- `STALE` — any required scope/plan/requirement span/ownership/build/impact/test/
+  sensitivity/selection/quarantine/execution hash mismatches;
+- `AWAITING RUN` — current mapping/sensitivity/selection is eligible, but no current
+  matching build-bound execution receipt exists;
+- `INDETERMINATE` — evidence is unreadable, unavailable, unsupported, partial, or
+  otherwise cannot be classified conclusively.
+
+An AC/BUG is VERIFIED only when all of its required Coverage Unit IDs are VERIFIED.
+Record the exact missing/stale/awaiting/indeterminate unit sets; a nonempty verified
+subset never upgrades the AC/BUG.
 
 Never collapse `AWAITING RUN`, `STALE`, or `INDETERMINATE` into `VERIFIED`.
+
+Aggregate coverage deterministically: any nonverified mandatory P0/P1 or verified-fixed
+bug unit yields `CRITICAL GAPS`; otherwise any STALE unit yields `STALE`; any
+INDETERMINATE unit yields `INDETERMINATE`; any GAP yields `GAPS FOUND`; any AWAITING
+RUN yields `AWAITING RUN`; only all-VERIFIED yields `VERIFIED COVERAGE`. Always report
+per-state counts and unit IDs so aggregate priority does not hide mixed states.
 
 ### Release-gate contract
 
@@ -241,13 +408,34 @@ decision.
 
 ### 4.1 Managed entry schema
 
+The file begins with a machine-readable header:
+
+```yaml template
+Artifact Type: regression-selection-manifest
+Schema Version: 2
+Manifest ID: <stable-id>
+Revision: <positive-integer>
+Scope Manifest: <path + sha256>
+QA Plan: <path + sha256 + effective CURRENT>
+Build Binding: <candidate/build/artifact/source/platform/config hashes>
+Test ID Ownership Snapshot: <path + revision + sha256>
+Change Impact: <path + sha256 + CURRENT>
+Selection Algorithm: cgs-regression-priority/v1
+Selection Status: <CURRENT|PARTIAL|STALE|UNKNOWN>
+Hash Algorithm: sha256
+```
+
+Header revision increments exactly once for a changed keyed publication and remains
+unchanged for a no-op. The file's own raw hash is reported externally and is never
+embedded recursively.
+
 Use one stable selection ID per stable test ID:
 
 `RS-[stable-test-id]`, for example `RS-TC-combat-S001-AC01`.
 
 Each managed entry is bounded by exact markers:
 
-```markdown
+```markdown template
 <!-- RS-ENTRY-BEGIN: RS-TC-combat-S001-AC01 -->
 ### RS-TC-combat-S001-AC01
 
@@ -257,8 +445,11 @@ Each managed entry is bounded by exact markers:
 - Test source hash: sha256:[digest]
 - Covers AC IDs: AC-S001-01
 - Covers BUG IDs: none
-- Requirement sources: [path + sha256 digest]
-- QA plan: [path + sha256 digest + effective CURRENT]
+- Coverage Unit IDs: [AC root/branch/boundary/error IDs]
+- Requirement bindings: [file/span hashes]
+- QA plan/build/ownership snapshot: [paths + hashes + states]
+- Change impact / priority key: [impact row/hash + exact lexicographic key]
+- Estimated duration source: [duration + source/hash]
 - Sensitivity receipt: [path + sha256 digest, or missing]
 - Selection evidence: ELIGIBLE
 - Owner: [human-owned; preserve]
@@ -277,8 +468,9 @@ For `update` and `audit`:
 
 1. Parse entries by exact selection ID.
 2. For an existing ID, patch only changed machine-owned fields: test source/hash,
-   requirement IDs/sources/hashes, QA-plan provenance, sensitivity receipt, and
-   selection-evidence state.
+   requirement/Coverage Unit IDs and file/span hashes, QA-plan/build/ownership
+   provenance, impact/priority/duration evidence, sensitivity/quarantine receipts,
+   lifecycle, and selection-evidence state.
 3. Preserve Owner, Rationale, all History items, unknown fields, comments, and
    unrelated surrounding bytes.
 4. Append one history event describing each machine-owned change.
@@ -287,6 +479,8 @@ For `update` and `audit`:
    do not migrate or delete legacy text implicitly.
 7. Never rebuild the document from discovered files and never replace the full
    manifest in `audit` mode.
+8. Validate Test ID and Selection ID ownership/tombstones before adding an entry;
+   IDs are never recycled or rebound to another Test ID or requirement.
 
 If a managed block is duplicated, malformed, or cannot be patched without
 ambiguity, mark the operation `FAILED` and make no write.
@@ -302,11 +496,18 @@ tombstone separately with:
 - retirement reason;
 - approver and approval timestamp;
 - optional replacement/superseding ID;
+- immutable prior Test ID/requirement/Coverage Unit ownership and non-reuse marker;
 - appended history event.
 
 Apply a tombstone only when it is explicitly listed in the approved changeset.
 Without that approval, leave the entry byte-for-byte unchanged and report the
 drift. Never physically remove the entry or its history.
+
+Tombstone approval is hash-bound to exact Selection ID, prior entry hash, reason,
+replacement, approver, timestamp, and candidate manifest hash. The same ID remains
+reserved forever. A replacement receives a new Selection ID and preserves a
+supersedes link. Duplicate/malformed blocks, ownership conflicts, stale prior hashes,
+or attempted ID reuse fail the complete patch before any write.
 
 ---
 
@@ -333,19 +534,32 @@ under verified coverage.
 `report` mode shows the report, records `Operation: REPORTED`, and performs no
 write. Do not ask for write authorization and do not say the suite was updated.
 
-For `update` or `audit`, show the complete keyed diff and explicit non-writes,
-then ask once to apply the one-file changeset.
+For `update` or `audit`, show the complete keyed diff, candidate manifest bytes/hash,
+every entry preimage/postimage hash, separate tombstone approvals, and explicit
+non-writes. A truncated/summary-only diff cannot authorize. Ask once to apply the
+one-file changeset.
 
 Immediately before writing:
 
 1. Re-read and re-hash the manifest.
 2. Abort if its hash differs from the previewed hash.
-3. Re-hash every source used by a proposed machine-owned field and abort if any
-   changed.
-4. Apply only the approved per-ID field patches, appends, and tombstones.
-5. Write only `tests/regression-suite.md`.
-6. Read it back, verify the approved changes, verify preserved human/unknown
-   fields, and compute the final raw-byte SHA-256.
+3. Re-hash the scope, QA plan, all requirement spans, Test ID ownership, build,
+   change-impact, bug verification, test/sensitivity/quarantine and execution sources
+   used by proposed machine-owned fields; abort if any availability/hash/state changed.
+4. Revalidate every Selection ID ownership, entry preimage, tombstone approval, and
+   exact candidate raw hash. Any conflict aborts the whole patch before writing.
+5. Apply only the approved per-ID field patches, appends, and tombstones to an isolated
+   staged candidate; parse and verify schema, unique IDs, revision increment, history,
+   non-reuse, preservation, and internal references.
+6. Publish only `tests/regression-suite.md` with compare-and-set against the previewed
+   raw manifest hash.
+7. Read it back, verify exact candidate bytes, approved changes, preserved human/
+   unknown fields, and compute the final raw-byte SHA-256.
+
+If CAS, persistence, parse, reference, preservation, or read-back verification fails,
+report `Persistence: FAILED`, `Operation: FAILED`, preserve concurrent bytes, and never
+claim any keyed change applied. Do not restore a saved whole manifest over a diverged
+file; recovery requires a new preview from current bytes.
 
 If approved output is byte-for-byte identical, do not rewrite it; report
 `UNCHANGED` with the verified hash.

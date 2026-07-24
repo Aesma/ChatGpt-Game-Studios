@@ -2,526 +2,472 @@
 
 ## Skill Summary
 
-`$vertical-slice` freezes an immutable, hash-bound validation plan or independently
-evaluates exact build, playtest, network, and velocity evidence. Planning,
-implementation batches, evidence capture, creative concerns, formal evaluation,
-and recording are separate tasks. One stable hypothesis permits attempt 01 and at
-most one targeted attempt 02. Deterministic evidence cannot be upgraded by a
-director or user.
+`$vertical-slice` plans or independently evaluates one exact vertical-slice run.
+It requires complete versioned prerequisite/scope evidence, finite story/batch/
+checkpoint budgets, immutable multi-session playtest records, reproducible
+velocity arithmetic, applicable network-condition evidence, and a deterministic
+verdict bound to one candidate build. It never implements the slice or advances
+the project stage.
 
----
+This spec defines expected static and scenario checks for the staged P1 candidate.
+It does not claim that a runner executed them. Framework catalog `last_*` result
+fields remain unchanged until a real harness records evidence.
+
+## Contract Files
+
+```text
+.agents/skills/vertical-slice/SKILL.md
+.agents/skills/vertical-slice/agents/openai.yaml
+.agents/skills/vertical-slice/references/vertical-slice-contract-v2.md
+CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
+```
 
 ## Static Assertions
 
-- [ ] VS-S001: YAML frontmatter contains only `name` and non-empty
-  `description`; `name` is `vertical-slice`.
-- [ ] VS-S002: Invocation exposes explicit `plan`, `evaluate`, and read-only
-  `status` modes.
-- [ ] VS-S003: Canonical artifacts live under
-  `production/validation/vertical-slices/<hypothesis-id>/attempt-<NN>/<slice-run-id>/`.
-- [ ] VS-S004: The skill writes only immutable `plan.md` or one new
-  `reports/<evaluation-id>.md`; existing paths are rejected.
-- [ ] VS-S005: Plan, build, playtest capture, evidence manifest, evaluation,
-  creative concerns, and recording have separate task/owner boundaries.
-- [ ] VS-S006: A hypothesis allows only attempts 01 and 02; attempt 02 requires
-  the same stable hypothesis definition and exact current attempt-01 PIVOT report.
-- [ ] VS-S007: Attempt-02 failure yields KILL or
-  `BLOCKED — PRODUCT DECISION REQUIRED`, never an automatic third attempt.
-- [ ] VS-S008: Every implementation story is a separately authorized bounded
-  worktree batch with exact mutation scope and at most one remediation batch.
-- [ ] VS-S009: Lack of an isolated worktree blocks implementation; the main
-  workspace is never an approved fallback.
-- [ ] VS-S010: Build, candidate, report, source commit/tree, engine/version,
-  platform/configuration, playtest sessions, and velocity evidence are
-  hash-bound.
-- [ ] VS-S011: Chat playtest answers and summaries without immutable raw evidence
-  cannot satisfy a criterion.
-- [ ] VS-S012: Missing sessions, unknown velocity, stale build, partial receipts,
-  and required network gaps prevent PROCEED.
-- [ ] VS-S013: Evidence verdict precedence is deterministic and cannot be changed
-  by a user, director, reviewer, or agent.
-- [ ] VS-S014: Creative concerns are advisory, can recommend only a downgrade,
-  and cannot override PIVOT/KILL or objective thresholds.
-- [ ] VS-S015: Workflow Status, Evidence Verdict, Product Decision, Final Verdict,
-  Currentness, Gate Eligible, and Persistence are independent axes.
-- [ ] VS-S016: Gate eligibility requires a persisted CURRENT report with
-  COMPLETE/PROCEED/PROCEED/PROCEED across the required axes.
-- [ ] VS-S017: Status requires an externally recorded expected report SHA-256;
-  any report-byte or post-build source/code/content/configuration/build/evidence
-  mutation makes an earlier report STALE and gate-ineligible.
-- [ ] VS-S018: Metadata describes a multi-task bounded validation workflow rather
-  than a one-prompt implementation loop.
-
----
+### Structure and invocation
+
+- [ ] VS-S001: Frontmatter contains only `name` and non-empty `description`;
+      `name` is `vertical-slice`.
+- [ ] VS-S002: Invocation accepts only exact hash-bound request/report paths for
+      explicit `plan`, `evaluate`, and read-only `status` modes.
+- [ ] VS-S003: No-argument, positional, glob, directory, absolute, traversal,
+      symlink-escape, case-ambiguous, latest, mtime, and session-inferred scope is
+      rejected before mutation.
+- [ ] VS-S004: The private v2 contract is read completely and fixed limits are
+      applied before source resolution.
+- [ ] VS-S005: Owned writes are only one create-only plan or one create-only
+      evaluation report; status and all other artifacts are non-writes.
+- [ ] VS-S006: Exact candidates receive one bounded approval and full CAS/readback
+      verification; existing output paths are never overwritten.
+
+### P0 regression protections
+
+- [ ] VS-S007: One hypothesis permits attempt 01 and one targeted attempt 02 only.
+- [ ] VS-S008: Attempt-02 requires an exact current attempt-01 PIVOT report with
+      the same hypothesis-definition hash and stable findings.
+- [ ] VS-S008A: A CAS-backed hypothesis-history reservation makes each
+      hypothesis/attempt unique across run IDs; implementation requires an exact
+      plan-finalization receipt.
+- [ ] VS-S009: Evidence and Workflow axes are deterministic and cannot be upgraded
+      by creative advice, another agent, or product-owner decision.
+- [ ] VS-S010: Product owner may conservatively downgrade but cannot upgrade.
+- [ ] VS-S011: Plan, implementation, build, capture, evidence assembly, creative
+      concerns, evaluation, and recording use distinct task/owner boundaries.
+- [ ] VS-S012: Every implementation batch is separately authorized inside an
+      isolated worktree; no multi-week conversational changeset exists.
+- [ ] VS-S013: Report/evidence bind exact plan, prerequisite, hypothesis, scope,
+      source commit/tree, candidate/build, engine/platform, batch, session,
+      network, velocity, decision-matrix, and workflow-contract hashes.
+- [ ] VS-S014: Any later code/content/configuration/build/evidence/contract change
+      makes a report stale and gate-ineligible.
+- [ ] VS-S015: Gate eligibility needs verified persisted CURRENT
+      COMPLETE/PROCEED/PROCEED/PROCEED and exact candidate/report hashes.
+
+### VS-005 — prerequisite completeness and status
+
+- [ ] VS-S016: Plan consumes exactly `cgs.vertical-slice-prerequisites/v2`.
+- [ ] VS-S017: Every required source role has fixed cardinality and admitted
+      lifecycle status; adapters are version/hash bound.
+- [ ] VS-S018: Each source row binds stable ID, canonical path, raw hash, schema,
+      exact fields/locators, applicability, and authority.
+- [ ] VS-S019: Required missing/unreadable/invalid/stale/unapproved/unsupported/
+      over-limit sources produce stable findings and block with zero writes.
+- [ ] VS-S020: “Key GDDs,” filename/prose matches, and user assurances cannot
+      substitute for source-role completeness.
+
+### VS-006 — stable scope closure
+
+- [ ] VS-S021: Scope begins from an explicit hash-bound product-owner proposal
+      containing stable system/requirement/AC/dependency IDs.
+- [ ] VS-S022: Required closure is computed from authoritative slice-required
+      markers, start→challenge→resolution, dependency edges, criteria, and
+      applicable network/UX/accessibility rows.
+- [ ] VS-S023: Every required node/edge appears exactly once; unknown, duplicate,
+      orphan, or omitted rows block.
+- [ ] VS-S024: `scope_sha256` binds the complete ordered scope and prerequisite
+      hashes; approval binds that scope hash.
+- [ ] VS-S025: Scope changes require a new plan and cannot be absorbed by a batch.
+
+### VS-007 — finite implementation/checkpoint budget
+
+- [ ] VS-S026: Every story has one initial and at most one remediation batch.
+- [ ] VS-S027: Every stable bug/finding has at most one remediation attempt.
+- [ ] VS-S028: Each batch has numeric command/time/path/byte limits and exact stop
+      predicates; “until playable” is invalid.
+- [ ] VS-S029: Required scope/compile/build/AC/budget/receipt checkpoints are
+      explicit and the first non-PASS immediately stops mutation.
+- [ ] VS-S030: A failed checkpoint produces PARTIAL/BLOCKED evidence; no same-task
+      fix loop, relabel, third batch, main-workspace fallback, auto-merge, or
+      auto-delete is permitted.
+
+### VS-008 — minimum immutable session matrix
+
+- [ ] VS-S031: CORE_LOOP requires at least three completed full-loop sessions and
+      three distinct human testers.
+- [ ] VS-S032: At least two testers are independent of producing/evaluating owners
+      and at least one is unfamiliar with the slice.
+- [ ] VS-S033: Every session receipt binds pseudonymous tester/session, exact
+      candidate/build, environment, UTC times/events, raw path/hash, producer/
+      observer identities, and attestation.
+- [ ] VS-S034: Duplicate, abandoned, wrong-build, stale, unattested, owner-
+      conflicted, summary-only, chat-only, or unhashed evidence cannot count.
+- [ ] VS-S035: Insufficient cardinality/cells/raw capture makes Workflow PARTIAL,
+      Evidence INCONCLUSIVE unless a verified preapproved kill predicate controls,
+      and Gate Eligible NO; a different non-kill failure cannot manufacture a
+      sampled conclusion.
+
+### VS-009 — observed velocity
+
+- [ ] VS-S036: Scope-unit IDs/types/weights/completion predicates and feasibility
+      threshold are frozen before implementation.
+- [ ] VS-S037: Ledger rows contain non-overlapping UTC active/blocked intervals,
+      owner/story/batch/finding, pre/post tree, build, and completed unit IDs.
+- [ ] VS-S038: Completed weight, active/elapsed/blocked time, active/calendar
+      throughput, and blocked ratio use the exact v2 formulas.
+- [ ] VS-S039: Missing/overlapping time, mutable weights, unproven completion,
+      absent tree/build, zero denominator, or unexplained exclusion is UNKNOWN.
+- [ ] VS-S040: Estimates, day labels, issue status, commit counts, and prose are
+      never velocity observations.
 
-### Case 1: Plan freezes exact scope without authorizing implementation
+### VS-010 — network profile
 
-**Fixture:**
+- [ ] VS-S041: Network applicability is derived from selected systems/GDD/AC/
+      fantasy/criteria and cannot be waived by a local N/A declaration.
+- [ ] VS-S042: Applicable plans freeze topology, authority, peers, target/adverse
+      latency/jitter/loss/bandwidth, duration, simulator/tool/config, telemetry,
+      sessions, and thresholds.
+- [ ] VS-S043: Minimum target evidence is two completed target-condition sessions
+      with at least two real peers controlled by distinct humans.
+- [ ] VS-S044: Simulator evidence records executable/version/config plus observed
+      injection telemetry; requested settings alone are UNKNOWN.
+- [ ] VS-S045: Localhost/0 ms covers non-network functionality only; missing target
+      coverage is PARTIAL and cannot yield unconditional PROCEED.
 
-- A valid prerequisite manifest binds current approved GDDs, accepted ADRs,
-  architecture/control manifest, systems index, concept, UX specification,
-  engine version, source commit/tree, and platform.
-- Stable core-loop system/AC IDs and objective thresholds are available.
-- Attempt 01 plan path is unused.
+## Test Cases
 
-**Input:**
+### Case 1: Valid plan freezes one complete bounded contract
 
-`$vertical-slice plan --run-id vs-run-001 --hypothesis-id VS-H-core-loop --attempt 01 --prerequisites production/validation/manifests/vs-prereq-001.md`
+**Fixture**
 
-**Expected writes:**
+- Exact plan request/prerequisite/scope-proposal hashes validate.
+- Every required source role is current with an admitted status.
+- Authoritative graph has stable system/requirement/AC/dependency IDs and scope is
+  closed for one start→challenge→resolution loop.
+- Attempt 01 output is absent.
 
-- Exactly
-  `production/validation/vertical-slices/VS-H-core-loop/attempt-01/vs-run-001/plan.md`
-  after bounded authorization.
+**Expected**
 
-**Expected non-writes:**
+1. Compute hypothesis and scope hashes.
+2. Render exact criteria, kill rules, finite story/batch/checkpoints, build
+   contract, session/network matrix, velocity schema, verdict matrix, and owners.
+3. Preview/authorize/create/readback-verify only `plan.md`.
+4. Mark `implementation_authorized: false` and stop.
 
-- No slice code, current-workspace file, worktree, build/evidence receipt,
-  playtest artifact, report, session state, prototype index, stage, pivot note,
-  graveyard, or Production artifact.
+- [ ] VS-C01-A: No worktree/code/build/evidence/report/index/stage artifact changes.
+- [ ] VS-C01-B: Output includes exact plan hash and all explicit non-writes.
 
-**Expected behavior:**
+### Case 2: VS-005 — missing prerequisite roles block
 
-1. Re-hashes every prerequisite and freezes stable hypothesis/scope hashes.
-2. Defines exact story rows, criteria/kill rules, session/network matrix, velocity
-   units, decision matrix, and attempt budget.
-3. Marks `Plan Status: FROZEN` and `Implementation Authorized: NO`.
-4. Reports that each implementation batch needs a fresh task, isolated worktree,
-   exact mutation manifest, and separate authorization.
-5. Persists atomically and reports the verified plan hash.
+**Fixture:** prerequisites omit SYSTEMS_INDEX and CONTROL_MANIFEST; one GDD path is
+missing and another has native status Draft without an admitted adapter.
 
-**Assertions:**
+**Expected:** emit stable findings naming every role/path/status/hash and owner;
+return BLOCKED/INCONCLUSIVE with zero writes.
 
-- [ ] VS-C01-A: "All core systems" resolves to ordered stable IDs.
-- [ ] VS-C01-B: The plan does not authorize code or evidence writes.
-- [ ] VS-C01-C: Only one exact file is created.
-- [ ] VS-C01-D: Plan/currentness hashes are auditable.
+- [ ] VS-C02-A: Present sources do not hide missing roles.
+- [ ] VS-C02-B: Draft is not silently normalized to Approved.
+- [ ] VS-C02-C: No scope inference or plan candidate is produced.
 
----
+### Case 3: VS-005 — duplicate, stale, or unsupported evidence matrix
 
-### Case 2: Missing or stale prerequisites block before worktree creation
+| Variant | Observation | Expected |
+|---|---|---|
+| 3a | two GAME_CONCEPT rows | BLOCKED duplicate authority |
+| 3b | source raw hash differs | BLOCKED HASH_MISMATCH |
+| 3c | unknown schema/status | BLOCKED UNSUPPORTED |
+| 3d | status adapter missing hash | BLOCKED INVALID |
+| 3e | required accessibility source omitted without N/A authority | BLOCKED ABSENT |
+| 3f | source count/bytes exceeds limit | BLOCKED OVER_LIMIT |
 
-**Fixture:**
+- [ ] VS-C03-A: Every failure remains path/role/ID/hash specific.
+- [ ] VS-C03-B: User assurance cannot bypass any row.
 
-- Systems index and control manifest are missing.
-- One GDD is present but not approved.
-- A recorded architecture hash differs from current bytes.
+### Case 4: VS-006 — stable scope closure passes
 
-**Input:**
+**Fixture:** proposal selects all authoritative slice-required systems, loop-path
+dependencies, requirement/AC rows, applicable UX/accessibility/network bindings,
+and exact stories. All IDs/edges are unique and traceable.
 
-Run `plan` for attempt 01.
+**Expected:** compute the least closure, prove set/edge equality, freeze ordered
+`cgs.vertical-slice-scope/v2`, and bind user approval to its hash.
 
-**Expected writes:**
+- [ ] VS-C04-A: “All core systems” is replaced by explicit stable IDs.
+- [ ] VS-C04-B: Scope hash changes when any node, edge, quality, environment, or
+      prerequisite hash changes.
 
-- None.
+### Case 5: VS-006 — “key GDD” omission is blocked
 
-**Expected non-writes:**
+**Fixture:** proposal labels two GDDs “key,” but omits a slice-required inventory
+system and one AC on the resolution path. Product prose says they are unnecessary.
 
-- No plan, worktree, implementation, session-state, evidence, or report artifact.
+**Expected:** report omitted node/edge/AC findings and stop. If removing them
+changes the core fantasy, require a new hypothesis.
 
-**Expected behavior:**
+- [ ] VS-C05-A: Model/user cannot arbitrarily shrink authoritative closure.
+- [ ] VS-C05-B: Implementation batch cannot later absorb the omitted system.
 
-1. Names every missing, invalid-status, and stale prerequisite path/ID.
-2. Returns `Workflow Status: BLOCKED`,
-   `Evidence Verdict: INCONCLUSIVE`, `Product Decision: AWAITING`,
-   `Final Verdict: BLOCKED — PRODUCT DECISION REQUIRED`, and
-   `Gate Eligible: NO`.
-3. Does not invent scope, architecture, or hashes.
-4. Stops before implementation planning or delegation.
+### Case 6: VS-007 — compile checkpoint failure stops initial batch
 
-**Assertions:**
+**Fixture:** an external batch owner has an exact authorized manifest. CP-SCOPE
+passes; CP-COMPILE fails. Time/path budget remains.
 
-- [ ] VS-C02-A: Prerequisites fail closed.
-- [ ] VS-C02-B: Missing evidence is not a warning-bearing pass.
-- [ ] VS-C02-C: No implementation side effect occurs.
+**Expected:** stop mutation immediately, emit immutable PARTIAL/BLOCKED receipt,
+and require a fresh targeted remediation task if its one budget remains.
 
----
+- [ ] VS-C06-A: No build/fix/recompile loop occurs in the initial task.
+- [ ] VS-C06-B: Failure receipt contains commands/exits/log hashes and actual paths.
+- [ ] VS-C06-C: Vertical-slice planner/evaluator performs no implementation write.
 
-### Case 3: Same hypothesis stops after one targeted rerun
+### Case 7: VS-007 — remediation exhaustion and bug relabeling
 
-**Fixture:**
+**Fixture:** initial receipt has `VS-BUG-a`; the one remediation batch fails the
+same semantic bug, then proposes `VS-BUG-b` with changed prose to retry.
 
-- Attempt 01 has an immutable CURRENT PIVOT report with hypothesis hash H and
-  stable failures `VS-F-01` and `VS-F-02`.
-- Attempt 02 reuses H and the original threshold meanings, targeting those
-  failures plus regressions.
-- Attempt 02's deterministic evidence again yields PIVOT.
-- A request is then made for attempt 03.
+**Expected:** stable finding identity detects the relabel; story budget is
+exhausted; return PARTIAL/BLOCKED and route product/scope decision. No third batch.
 
-**Input:**
+- [ ] VS-C07-A: One finding receives at most one remediation attempt.
+- [ ] VS-C07-B: Timestamp/prose/line drift cannot reset the budget.
+- [ ] VS-C07-C: Worktree is retained unless the user separately decides otherwise.
 
-Run attempt-02 plan/evaluation, then request attempt 03 using the same hypothesis
-ID.
+### Case 8: VS-008 — minimum CORE_LOOP matrix passes
 
-**Expected writes:**
+**Fixture:** three completed full-loop sessions bind one candidate build and three
+distinct testers; two testers are independent of producer/evaluator roles and one
+is unfamiliar. Every receipt has raw capture and attestation.
 
-- Attempt 02 may create its authorized plan and evaluation report.
-- Attempt 03 writes nothing.
+**Expected:** cardinality passes only after raw receipts/candidate identity and
+independence are verified; criteria still use their frozen thresholds.
 
-**Expected non-writes:**
+- [ ] VS-C08-A: One tester cannot count as multiple distinct testers.
+- [ ] VS-C08-B: Passing minima are not described as population-wide proof.
 
-- No third plan, reset counter, broadened rerun, or automatic code batch.
+### Case 9: VS-008 — insufficient or invalid session evidence matrix
 
-**Expected behavior:**
+| Variant | Evidence | Expected row |
+|---|---|---|
+| 9a | one completed session | NOT_RUN / insufficient cardinality |
+| 9b | three receipts, same tester | INVALID duplicate cardinality |
+| 9c | three testers, no unfamiliar tester | NOT_RUN required cohort |
+| 9d | wrong build hash | INVALID |
+| 9e | raw video path without hash | UNKNOWN |
+| 9f | chat summary only | NOT_RUN |
+| 9g | capture/evaluator owner conflict | INVALID |
 
-1. Validates the attempt-01 report path/hash and same hypothesis definition.
-2. Limits attempt 02 to named failures and regressions.
-3. Maps second PIVOT to allowed Product Decision KILL or
-   NEW_HYPOTHESIS_REQUIRED.
-4. If not KILL, returns
-   `Final Verdict: BLOCKED — PRODUCT DECISION REQUIRED`.
-5. Rejects attempt 03. A changed question/threshold requires a new hypothesis ID.
+**Expected:** Workflow PARTIAL, Gate Eligible NO, exact missing cells named;
+Evidence INCONCLUSIVE unless a verified preapproved kill predicate applies.
 
-**Assertions:**
+- [ ] VS-C09-A: No self-report or summary backfill occurs.
+- [ ] VS-C09-B: Invalid receipts remain visible in the denominator.
 
-- [ ] VS-C03-A: Initial run plus one rerun is the absolute limit.
-- [ ] VS-C03-B: Stable hypothesis and finding IDs survive the rerun.
-- [ ] VS-C03-C: Failed history cannot be erased by changing labels.
-- [ ] VS-C03-D: No same-hypothesis third attempt is possible.
+### Case 10: VS-009 — velocity arithmetic is reproducible
 
----
+**Fixture:** completed immutable unit weights total 6; ACTIVE intervals total
+18,000 seconds; BLOCKED totals 3,600; elapsed totals 28,800. All rows bind exact
+tree/build IDs without overlap.
 
-### Case 4: Creative director cannot upgrade or override evidence/user decision
+**Expected arithmetic**
 
-**Fixture:**
+```text
+completed_weight = 6
+active_hours = 5.000
+elapsed_hours = 8.000
+blocked_hours = 1.000
+active_throughput = 1.200 units/hour
+calendar_throughput = 0.750 units/hour
+blocked_ratio = 0.167
+```
 
-Use these variants:
+- [ ] VS-C10-A: Operands and rounding are reported.
+- [ ] VS-C10-B: The frozen plan selects the deciding throughput/threshold.
 
-- A required current criterion FAIL makes Evidence Verdict PIVOT, while creative
-  concerns recommend PROCEED.
-- Evidence Verdict PROCEED, creative concerns recommend PROCEED, but the product
-  owner chooses PIVOT.
-- Evidence Verdict KILL, while creative concerns recommend PIVOT.
+### Case 11: VS-009 — velocity UNKNOWN matrix
 
-Every concern receipt is otherwise valid and hash-bound.
+| Variant | Observation | Expected |
+|---|---|---|
+| 11a | day labels only | UNKNOWN |
+| 11b | planned rather than actual hours | UNKNOWN |
+| 11c | overlapping owner intervals | UNKNOWN |
+| 11d | unit weight changed after build | STALE/INVALID |
+| 11e | completed unit lacks AC evidence | UNKNOWN |
+| 11f | pre/post tree or build ID absent | UNKNOWN |
+| 11g | active denominator zero | UNKNOWN |
 
-**Input:**
+**Expected:** preserve other gameplay PASS rows, return PARTIAL/INCONCLUSIVE and
+Gate Eligible NO; never calculate production rate from missing operands.
 
-Run `evaluate` with each exact creative-concerns receipt.
+- [ ] VS-C11-A: Free-text velocity cannot become numeric evidence.
+- [ ] VS-C11-B: Exclusions require exact preapproved reasons.
 
-**Expected writes:**
+### Case 12: VS-010 — network N/A declaration conflicts with scope
 
-- Optional immutable evaluation report reflecting the deterministic result and
-  allowed product decision.
+**Fixture:** selected combat GDD and core fantasy require replicated two-peer
+combat, but scope proposal declares network profile NOT_APPLICABLE.
 
-**Expected non-writes:**
+**Expected:** derive applicability from authority, create blocker, and refuse the
+plan until a complete network profile/matrix exists.
 
-- No evidence edit, threshold waiver, creative-authored verdict replacement,
-  stage transition, or report rewrite.
+- [ ] VS-C12-A: Product/model prose cannot waive applicability.
+- [ ] VS-C12-B: A new non-network fantasy requires a new hypothesis.
 
-**Expected behavior:**
+### Case 13: VS-010 — 0 ms-only network evidence cannot proceed
 
-1. Calculates Evidence Verdict before reading concerns.
-2. Labels concerns advisory and rejects any attempted upgrade.
-3. Preserves the user's conservative PIVOT/KILL choice.
-4. Never changes PIVOT or KILL to PROCEED.
-5. Reports the attempted conflict in the report without granting authority.
+**Fixture:** applicable network profile requires target latency/jitter/loss and
+two peer sessions. Only passing localhost 0 ms sessions exist.
 
-**Assertions:**
+**Expected:** credit non-network functional rows only; mark network target cells
+NOT_RUN, Workflow PARTIAL, Evidence INCONCLUSIVE absent a verified preapproved
+kill predicate, and Gate Eligible NO.
 
-- [ ] VS-C04-A: Evidence verdict is mechanically derived.
-- [ ] VS-C04-B: Creative authority cannot override objective failure.
-- [ ] VS-C04-C: Creative authority cannot override user PIVOT/KILL.
-- [ ] VS-C04-D: Report bytes are authored only by the evaluator.
+- [ ] VS-C13-A: Localhost play is not network-feel evidence.
+- [ ] VS-C13-B: Report names exact missing peer/cell/telemetry receipts.
 
----
+### Case 14: VS-010 — valid simulated network cells
 
-### Case 5: Multi-week work is split into bounded worktree batches
+**Fixture:** two target-condition sessions use two real peers controlled by
+distinct humans. Receipts bind simulator executable/version/config hash and
+observed latency/jitter/loss/bandwidth telemetry to the candidate build.
 
-**Fixture:**
+**Expected:** validate each frozen network threshold and result independently;
+requested simulator settings alone are not used.
 
-- Frozen plan has stories `VS-S-01` and `VS-S-02`.
-- Each has exact initial/remediation IDs and allowed paths.
-- VS-S-01's initial batch discovers a necessary file outside its mutation
-  manifest.
-- A later authorized remediation batch still fails its stop condition.
+- [ ] VS-C14-A: Target and adverse cells stay separate.
+- [ ] VS-C14-B: Raw telemetry hashes are part of the evidence set.
 
-**Input:**
+### Case 15: Missing sample coverage prevents a PIVOT generalization
 
-Consume the plan as independent implementation tasks.
+**Fixture:** one verified non-kill criterion FAIL would otherwise establish PIVOT,
+while a required network cell is missing.
 
-**Expected writes:**
+**Expected:** Evidence Verdict INCONCLUSIVE; Workflow Status PARTIAL; Gate Eligible
+NO; both the independent failed row and missing network cells remain in the
+report. The failure may guide remediation but cannot replace the missing minimum
+sample unless it is a preapproved kill predicate.
 
-- Only separately authorized paths inside each task's isolated worktree and its
-  exclusive receipt path.
+- [ ] VS-C15-A: A non-kill failure does not hide incomplete sample evidence.
+- [ ] VS-C15-B: Workflow is not mislabeled COMPLETE.
 
-**Expected non-writes:**
+### Case 16: Same hypothesis stops after one targeted rerun
 
-- No implicit new file, main-workspace fallback, unbounded daily checkpoint edit,
-  third remediation, automatic merge, or worktree deletion.
+**Fixture:** attempt 01 CURRENT report is PIVOT; attempt 02 preserves hypothesis
+hash and targets findings; its result is again PIVOT; attempt 03 is requested.
 
-**Expected behavior:**
+**Expected:** attempt 02 permits only KILL or NEW_HYPOTHESIS_REQUIRED; attempt 03
+writes nothing and requires a genuinely new hypothesis.
 
-1. The out-of-manifest need stops the initial batch rather than expanding scope.
-2. A new exact authorization is required for the remediation batch.
-3. After remediation failure, emits PARTIAL/BLOCKED receipt and stops.
-4. Records branch, worktree, base/pre/post tree hashes, actual path hashes,
-   commands/results, timing, and blocker IDs.
-5. Planning/evaluation tasks do not perform these implementation writes.
+- [ ] VS-C16-A: Stable IDs and prior failure history cannot be reset.
+- [ ] VS-C16-B: No automatic new plan/build task is started.
+- [ ] VS-C16-C: A new run ID without a unique current reservation writes nothing.
 
-**Assertions:**
+### Case 17: Creative or product authority cannot upgrade
 
-- [ ] VS-C05-A: Every batch has an enumerable authorization boundary.
-- [ ] VS-C05-B: Context duration cannot silently broaden the changeset.
-- [ ] VS-C05-C: Story remediation is finite.
-- [ ] VS-C05-D: Worktree ownership/retention is explicit.
+Run variants:
 
----
+- Evidence PIVOT, creative concerns recommend PROCEED.
+- Evidence PROCEED, product owner chooses PIVOT.
+- Evidence KILL, product owner asks for PROCEED.
 
-### Case 6: Report is stale after source or build mutation
+**Expected:** advice cannot change evidence; conservative PIVOT is preserved;
+invalid KILL upgrade yields AWAITING/BLOCKED, never PROCEED.
 
-**Fixture:**
+- [ ] VS-C17-A: Evidence is derived before concerns are read.
+- [ ] VS-C17-B: Director output has empty write set and advisory authority only.
 
-- A persisted PROCEED report binds source commit/tree T1, candidate C1, artifact
-  hash B1, sessions S1–S3, and evidence manifest E1.
-- Variant A changes one source/configuration byte after C1.
-- Variant B rebuilds to the same filename with artifact hash B2.
-- Variant C changes one raw playtest receipt.
+### Case 18: Report becomes stale after source/build/evidence mutation
 
-**Input:**
+**Fixture:** persisted eligible report binds tree T1, candidate C1, build B1,
+sessions S1, velocity V1, network N1. Change any one byte or rebuild same filename
+to B2.
 
-`$vertical-slice status <exact-report-path> --expect-report <recorded-sha256>`
+**Expected:** status rehashes the exact graph, returns STALE and Gate Eligible NO,
+and writes nothing.
 
-**Expected writes:**
+- [ ] VS-C18-A: Same filename/mtime does not preserve identity.
+- [ ] VS-C18-B: Old PROCEED is never refreshed in place.
 
-- None.
+### Case 19: Wrong-build playtest is not candidate evidence
 
-**Expected non-writes:**
+**Fixture:** plan/current candidate is C2/B2; otherwise-valid session and network
+receipts bind C1/B1.
 
-- No report refresh, artifact rollback, stage transition, index update, or new
-  evidence.
+**Expected:** mark receipts INVALID, Workflow PARTIAL, Evidence INCONCLUSIVE absent
+higher precedence, Gate Eligible NO.
 
-**Expected behavior:**
+- [ ] VS-C19-A: Report/candidate/session hashes form one identity chain.
 
-1. Re-hashes the complete report graph.
-2. Detects each changed identity even when filenames are unchanged.
-3. Returns `Currentness: STALE` and `Gate Eligible: NO`.
-4. Does not retain PROCEED eligibility from historical evidence.
+### Case 20: Declined or failed report persistence
 
-**Assertions:**
+**Fixture:** calculated axes are COMPLETE/PROCEED/PROCEED/PROCEED. Variant A omits
+`--persist`; variant B authorizes it but write/readback verification fails.
 
-- [ ] VS-C06-A: Verdict binds exact source and build bytes.
-- [ ] VS-C06-B: Playtest evidence binds that same candidate.
-- [ ] VS-C06-C: Successful rebuild does not preserve the old identity.
-- [ ] VS-C06-D: Status mode is read-only.
+**Expected:** retain calculated conversation result; return Persistence
+NOT_REQUESTED/DECLINED or FAILED and Gate Eligible NO; no substitute/index/stage
+write occurs.
 
----
+- [ ] VS-C20-A: Gate evidence requires verified persisted bytes.
 
-### Case 7: Missing build or playtest evidence is first-class INCONCLUSIVE
+### Case 21: Evaluator identity conflicts with an evidence producer
 
-**Fixture:**
+**Fixture:** evaluation task ID equals playtest-capture or evidence-manifest owner.
 
-Run variants with:
+**Expected:** mark independence invalid and return BLOCKED or PARTIAL/
+INCONCLUSIVE according to evaluability; never silently self-attest.
 
-- final candidate build receipt missing;
-- one planned session NOT_RUN;
-- raw recording hash missing;
-- wrong-build playtest receipt;
-- evidence-manifest owner equal to evaluator; or
-- an implementation receipt marked PARTIAL.
+- [ ] VS-C21-A: Separating labels without distinct task identities is insufficient.
 
-No verified required criterion has already failed.
+### Case 22: Legacy report template is presentation-only
 
-**Input:**
+**Fixture:** `.codex/docs/templates/vertical-slice-report.md` is filled with day
+logs, one session, and a PROCEED recommendation but lacks v2 identity/evidence.
 
-Run `evaluate`.
+**Expected:** do not accept it as plan/evidence/report schema or gate proof.
 
-**Expected writes:**
+- [ ] VS-C22-A: Placeholder/free-text sections do not satisfy v2 receipts.
+- [ ] VS-C22-B: Template recommendation has no verdict authority.
 
-- Optional immutable PARTIAL/INCONCLUSIVE evaluation report.
+### Case 23: Fully current evidence produces eligible PROCEED
 
-**Expected non-writes:**
+**Fixture:** prerequisites/scope/plan/batches/candidate/build are current; minimum
+and stronger session/network matrices pass; velocity operands pass the frozen
+threshold; every required criterion PASS; no kill predicate; independent roles;
+product owner PROCEED; report create is authorized and verified.
 
-- No synthesized receipt, PASS inference, report upgrade, or stage transition.
+**Expected:** COMPLETE/PROCEED/PROCEED/PROCEED, CURRENT, Persistence VERIFIED,
+Gate Eligible YES; exact report/candidate hashes returned; stop for separate gate.
 
-**Expected behavior:**
+- [ ] VS-C23-A: All eligibility predicates hold simultaneously.
+- [ ] VS-C23-B: The skill does not invoke gate-check or update project stage.
 
-1. Preserves every missing/invalid row in the denominator.
-2. Returns `Workflow Status: PARTIAL`,
-   `Evidence Verdict: INCONCLUSIVE`,
-   `Final Verdict: BLOCKED — PRODUCT DECISION REQUIRED`, and
-   `Gate Eligible: NO`.
-3. Names exact evidence required to resume.
-4. Treats chat claims as non-evidence.
+## P1 Finding Coverage
 
-**Assertions:**
+| Finding | Contract remediation | Primary cases |
+|---|---|---|
+| VS-005 | versioned complete prerequisite manifest; fixed roles/cardinality/status/hash/adapters; stable blockers | 2–3 |
+| VS-006 | explicit product scope proposal; authoritative graph closure; stable system/requirement/AC/edge IDs; frozen scope hash | 4–5 |
+| VS-007 | numeric per-story/batch/finding budgets; required checkpoints; immediate PARTIAL/BLOCKED stop; no repair loop | 6–7 |
+| VS-008 | three-session/tester minimum; independence/unfamiliar cohort; immutable build-bound raw receipts | 8–9, 19 |
+| VS-009 | immutable weighted units/intervals; fixed formulas and thresholds; missing operands UNKNOWN | 10–11 |
+| VS-010 | authority-derived applicability; real-peer target cells; simulator telemetry; 0 ms cannot PROCEED | 12–14 |
 
-- [ ] VS-C07-A: Missing evidence cannot produce PROCEED.
-- [ ] VS-C07-B: Partial agents/builds/playtests remain visible.
-- [ ] VS-C07-C: Evaluator independence is enforced.
+## Cross-skill and protocol assertions
 
----
-
-### Case 8: Network core fantasy cannot pass on 0 ms-only evidence
-
-**Fixture:**
-
-- Core fantasy includes network combat feel.
-- Plan requires two peers at target latency/jitter/loss cells.
-- Local 0 ms sessions pass the non-network loop.
-- No real-peer or simulated target-network receipt exists.
-
-**Input:**
-
-Run `evaluate`.
-
-**Expected writes:**
-
-- Optional immutable INCONCLUSIVE report.
-
-**Expected non-writes:**
-
-- No network PASS inference or unconditional PROCEED report.
-
-**Expected behavior:**
-
-1. Credits local evidence only to non-network criteria.
-2. Marks required network cells NOT_RUN.
-3. Returns PARTIAL/INCONCLUSIVE and Gate Eligible NO unless a verified failure
-   already establishes PIVOT/KILL.
-4. Names the exact peer/network matrix still required.
-
-**Assertions:**
-
-- [ ] VS-C08-A: 0 ms local play is not network-feel evidence.
-- [ ] VS-C08-B: Network thresholds are frozen before tests.
-- [ ] VS-C08-C: Missing network coverage blocks PROCEED.
-
----
-
-### Case 9: Unknown velocity prevents production-feasibility PROCEED
-
-**Fixture:**
-
-- Core loop and playtest criteria pass.
-- Batch receipts contain day labels but omit actual start/end, active/blocked
-  time, scope units, or commit/build IDs.
-- No other criterion fails.
-
-**Input:**
-
-Run `evaluate`.
-
-**Expected writes:**
-
-- Optional immutable PARTIAL/INCONCLUSIVE report.
-
-**Expected non-writes:**
-
-- No conversion of estimates or prose into observed velocity.
-
-**Expected behavior:**
-
-1. Marks velocity criterion UNKNOWN.
-2. Returns `Evidence Verdict: INCONCLUSIVE` and Gate Eligible NO.
-3. Reports the missing fields and does not calculate a production rate.
-4. Preserves gameplay PASS rows separately.
-
-**Assertions:**
-
-- [ ] VS-C09-A: Velocity uses actual time/scope evidence.
-- [ ] VS-C09-B: Missing velocity does not disappear from the matrix.
-- [ ] VS-C09-C: Gameplay success alone cannot prove production feasibility.
-
----
-
-### Case 10: Fully current evidence produces gate-eligible PROCEED
-
-**Fixture:**
-
-- Exact plan and prerequisite graph are CURRENT.
-- All bounded batch/build receipts pass and bind one final candidate.
-- Planned playtest and network cells have valid immutable raw evidence for that
-  candidate.
-- Velocity ledger is complete.
-- Every proceed criterion passes; no kill rule or required failure is true.
-- Evidence-manifest/evaluator roles are independent.
-- Optional creative concerns are hash-bound and do not identify evidence gaps.
-- Product owner chooses PROCEED.
-- Fresh evaluation path is authorized.
-
-**Input:**
-
-Run `evaluate --persist` with exact inputs.
-
-**Expected writes:**
-
-- Exactly one new
-  `production/validation/vertical-slices/<hypothesis>/attempt-<NN>/<run>/reports/<evaluation-id>.md`,
-  atomically verified.
-
-**Expected non-writes:**
-
-- No evidence, plan, code, index, stage, session-state, gate, or Production
-  planning artifact.
-
-**Expected behavior:**
-
-1. Re-hashes the complete evidence graph immediately before persistence.
-2. Derives `Workflow Status: COMPLETE`,
-   `Evidence Verdict: PROCEED`, `Product Decision: PROCEED`,
-   `Final Verdict: PROCEED`, and `Currentness: CURRENT`.
-3. Returns `Gate Eligible: YES` only after the report is re-read and verified.
-4. Reports exact report and candidate hashes.
-5. Stops for a separate recorder/gate consumer.
-
-**Assertions:**
-
-- [ ] VS-C10-A: Every PROCEED predicate is satisfied simultaneously.
-- [ ] VS-C10-B: Report identity matches the tested build and sessions.
-- [ ] VS-C10-C: Persistence and verdict remain separate until verification.
-- [ ] VS-C10-D: The skill does not advance the stage itself.
-
----
-
-### Case 11: Declined or failed report persistence is not gate evidence
-
-**Fixture:**
-
-- The calculated evidence/final verdict is PROCEED.
-- Variant A omits or declines `--persist`.
-- Variant B authorizes persistence but the atomic write or byte verification
-  fails.
-
-**Input:**
-
-Run both evaluation variants.
-
-**Expected writes:**
-
-- Variant A: none.
-- Variant B: no verified canonical evaluation report.
-
-**Expected non-writes:**
-
-- No index, gate, stage, or substitute report.
-
-**Expected behavior:**
-
-1. Retains the calculated evidence and product verdict in conversation.
-2. Variant A returns Persistence NOT_REQUESTED/DECLINED and Gate Eligible NO.
-3. Variant B returns Persistence FAILED and Gate Eligible NO.
-4. Neither claims a canonical persisted PROCEED receipt.
-
-**Assertions:**
-
-- [ ] VS-C11-A: Report persistence cannot be inferred.
-- [ ] VS-C11-B: Unpersisted or failed output is never gate-eligible.
-- [ ] VS-C11-C: No unrelated write compensates for failure.
-
----
-
-## Cross-skill compatibility assertions
-
-- [ ] VS-X001: A gate consumer accepts only an explicitly supplied CURRENT
-  persisted PROCEED report and exact candidate/report hashes.
-- [ ] VS-X002: Creative review produces concerns only; it never owns or replaces
-  the evidence/product verdict.
-- [ ] VS-X003: Prototype/index/pivot/graveyard recording remains a separate
-  owner-authorized responsibility.
-- [ ] VS-X004: Implementation stories and worktree batches are independently
-  authorized; no vertical-slice plan is implementation authorization.
-- [ ] VS-X005: Real playtest capture is immutable, session-identified, and bound
-  to the exact final build.
-- [ ] VS-X006: Skill, metadata, and this spec use the same modes, paths, attempt
-  budget, evidence matrix, status axes, and gate rule.
+- [ ] VS-X001: Catalog spec path remains
+      `CGS Skill Testing Framework/skills/pipeline/vertical-slice.md`.
+- [ ] VS-X002: A gate consumer receives only an exact CURRENT persisted eligible
+      report/candidate hash pair; the workflow does not claim the gate migrated.
+- [ ] VS-X003: Plan authorization never authorizes implementation batches.
+- [ ] VS-X004: Batch/build/playtest/velocity/network/evidence artifacts remain
+      separately owned and immutable.
+- [ ] VS-X005: Metadata describes multi-task planning/evaluation, not one-prompt
+      implementation.
+- [ ] VS-X006: Static/spec validation does not populate catalog execution results.

@@ -1,4 +1,4 @@
 interface:
   display_name: "QA Plan"
-  short_description: "Write a hash-bound QA plan without editing stories"
-  default_prompt: "Use $qa-plan to create one version-bound QA plan with stable AC/test IDs and no story or session-state writes."
+  short_description: "Create an immutable bounded QA dependency and coverage plan"
+  default_prompt: "Use $qa-plan with one exact cgs-qa-plan-scope/v1 manifest to bind story, build and requirement hashes; assign owned stable Test IDs and evidence levels; preserve partial/unknown gaps; and CAS-publish one immutable QA plan without story, state or catalog writes."

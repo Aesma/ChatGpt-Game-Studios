@@ -49,6 +49,9 @@ reads:
   - .agents/skills/**/SKILL.md
   - .agents/skills/**/agents/openai.yaml
   - .codex/agents/**/*.toml
+  - .agents/skills/skill-test/rules-v1.yaml
+  - .agents/skills/skill-test/validator-manifest-v1.yaml
+  - .agents/skills/skill-test/skill_test_rules.py
   - CGS Skill Testing Framework/catalog.yaml
   - CGS Skill Testing Framework/quality-rubric.md
   - CGS Skill Testing Framework/skills/**/*.md
@@ -85,7 +88,10 @@ Read raw bytes once and compute
 - `CGS Skill Testing Framework/quality-rubric.md` and the exact category section,
   when required;
 - this validator `SKILL.md` and its versioned rule sections;
-- any pinned external validator manifest/binary/script actually used;
+- `.agents/skills/skill-test/rules-v1.yaml`;
+- `.agents/skills/skill-test/validator-manifest-v1.yaml` and the exact
+  package-local runner it pins;
+- any separately pinned external validator manifest/binary/script actually used;
 - every fixture or repository input used for an assertion.
 
 Parse content from those same bytes. Never hash normalized, copied, or
@@ -108,14 +114,37 @@ the catalog entry before using it:
 
 ### Pinned validator handling
 
-Run an external quick validator only when a trusted tool manifest provides its
-exact path, version, raw-byte hash, allowed argv, timeout, and output schema.
-Record argv, version, exit code, duration, stdout/stderr hashes, and parsed
-result in the receipt.
+The required deterministic supplement is declared by
+`.agents/skills/skill-test/validator-manifest-v1.yaml`. That file is
+JSON-compatible YAML so its exact bytes can be parsed without an unpinned YAML
+dependency. Before invocation, validate its schema, runner path/version/hash,
+rules path/version/hash, interpreter constraints, allowed argv templates,
+timeout, and output schema. Reject extra argv or paths outside the repository.
 
-If the manifest/tool is absent, its hash mismatches, it times out, or output
-cannot be parsed, record reduced coverage as `PARTIAL_VALIDATION`. Continue safe
-built-in checks, but never silently return `COMPLIANT`.
+Invoke only the pinned package-local runner with one allowed argv template. Its
+stdout must be exactly one `cgs-skill-test-runner-output/v1` JSON document;
+diagnostics belong on stderr. Record the resolved interpreter path/version/hash,
+runner and rules hashes, argv, exit code, duration, stdout/stderr hashes, and
+parsed result in the receipt.
+
+If the manifest/runner/rules are absent, unreadable, hash-mismatched, outside the
+repository, incompatible with the interpreter, timed out, non-zero, or emit an
+invalid result, record `VAL-001-PINNED-RUNNER: PARTIAL`. Continue safe
+prose/semantic checks, but aggregate to `PARTIAL_VALIDATION` unless a
+higher-priority infrastructure-invalid or conclusive target failure applies.
+
+### Canonical P1 rule authority
+
+`rules-v1.yaml` is the single machine-readable authority for recursive
+discovery/exclusions, canonical names/path identity/set differences,
+legacy-platform and placeholder contexts, budgets/coverage ledgers, and
+aggregation precedence. `skill_test_rules.py` is their read-only deterministic
+implementation; it never executes a target and emits JSON only.
+
+The runner covers these deterministic P1 rules, not Phase 4 semantic
+interpretation. If prose, runner, manifest, and rules data disagree, testing
+infrastructure is invalid; never choose whichever source would make the target
+pass.
 
 ---
 
@@ -204,17 +233,28 @@ machine, approval rule, or verdict is truthful. Keywords such as “read-only,�
 
 ### Template-aware placeholder parsing
 
-Parse Markdown/code-fence context:
+Use `PH-001` through `PH-004` from `rules-v1.yaml` and the runner's
+structured Markdown block model. Track headings, fence boundaries/info strings,
+active structured-data fences, and labelled Template/Example/Usage/Invocation/
+Arguments/Path Format scopes.
 
-- placeholders inside an explicitly labelled output/template/example fence are
-  allowed when the surrounding instructions say they are substituted;
-- unresolved placeholders in active YAML/TOML/JSON, executable commands,
-  invocation schemas, or normative contract fields fail;
-- migration examples and quoted historical evidence are not active
-  instructions but must be labelled as such.
+- active `TODO`, `TBD`, `FIXME`, `CHANGEME`, `REPLACE_ME`,
+  `[CHOOSE: ...]`, or `???` is `PH-001-ACTIVE-SENTINEL: FAIL`;
+- a declared `<metavariable>` or `[optional-argument]` in an invocation,
+  path, usage, or substitution scope is
+  `PH-002-DECLARED-METAVARIABLE: PASS`, not an unresolved implementation
+  placeholder;
+- labelled output/template/example content is
+  `PH-003-TEMPLATE-SCOPE: PASS` only inside that bounded heading/fence scope;
+  and
+- a placeholder in active YAML/TOML/JSON, an executable command, or a normative
+  contract field is `PH-004-ACTIVE-STRUCTURED: FAIL` unless the same block is
+  explicitly labelled as a generated-output template.
 
-Report the exact context classification. Do not fail a legal authoring template
-merely because placeholder tokens exist.
+Use `LEG-001` through `LEG-004` for exact legacy paths, frontmatter fields,
+tool tokens, and product names. Only headings/fences labelled Migration,
+Historical, Quoted Evidence, or Legacy Example receive the recorded context
+exception. Report token, rule ID, path, line, heading/fence context, and outcome.
 
 ---
 
@@ -267,8 +307,11 @@ For one target or all recursively discovered skills:
 4. Report Structural and Semantic results separately.
 
 `static all` discovers recursively at `.agents/skills/**/SKILL.md`. Do not follow
-directory symlinks. Exclude hidden/generated directories only through explicit
-versioned exclusion rule IDs and report every excluded path.
+directory symlinks. Use the canonical runner and `DISC-*` rules for both one and
+all targets. Exclude only exact versioned hidden/generated/symlink rules and
+report every excluded path, rule ID, reason, and resolved target when available.
+Use the same selected/loaded/failed/omitted/excluded coverage ledger and budgets
+as audit mode. Any enumeration/read/budget/timeout gap is `PARTIAL`.
 
 ### 5.2 Spec mode
 
@@ -300,21 +343,39 @@ Use one canonical discovery/normalization implementation for every set:
 - catalog entries;
 - registered skill and agent specs.
 
-Canonical names use Unicode NFC, case-folding, and the lowercase
-letters/digits/hyphen grammar. Detect duplicates before set comparison. Compare
-exact normalized sets; totals alone never pass.
+The runner recursively enumerates with `lstat`, never follows directory
+symlinks, rejects resolved paths outside the declared root, and sorts by Unicode
+NFC/case-folded repository-relative path with `/` separators before applying a
+budget. Skill identity comes from frontmatter plus its package directory; agent
+identity comes from the `.toml` basename; catalog identity comes from the raw
+`name` scalar. No source is silently trimmed.
 
-Report selected, loaded, failed, omitted, and excluded paths plus byte/file/time
-budgets. Any required read failure, unvalidated exclusion, timeout, or budget
-omission yields `PARTIAL_VALIDATION`. Derive current totals from the selected
-sets; never require hard-coded historical counts.
+For every raw name, compute `NFC(raw).casefold()` as the duplicate key first.
+Report all source paths for duplicate keys before grammar validation. Then
+require the raw name itself to be NFC, already case-folded, 1-64 code points,
+ASCII lowercase letters/digits/hyphens, with no leading/trailing/consecutive
+hyphen. Normalize path identity separately; two paths backed by one filesystem
+identity are a path-alias failure. Only after duplicate/alias checks compare
+exact implementation/catalog/spec key sets and report `missing`, `extra`,
+`duplicate`, `invalid_name`, `path_alias`, and
+`missing_metadata_or_spec` rows. Totals are presentation only.
+
+Budgets come only from `rules-v1.yaml`: deterministic path order, maximum
+candidate files, total bytes, bytes per file, wall time, per-file time, and
+concurrency. Build the complete `selected` list before reads when enumeration
+succeeds; classify every path as `loaded`, `failed`, `omitted`, or
+`excluded`. An unreadable subtree is a failed prefix whose unknown descendants
+are stated, not treated as an empty directory. Any required read failure,
+unvalidated exclusion, timeout, budget omission, or incomplete enumeration is
+`PARTIAL` and prevents `COMPLIANT` unless a higher-priority verdict applies.
 
 ---
 
 ## Phase 6: Deterministic aggregation
 
 Per-rule outcomes are `PASS`, `WARN`, `FAIL`, `INVALID`, or `PARTIAL`. Aggregate
-with this fixed priority:
+using the exact `aggregation.priority` table in `rules-v1.yaml`, in this fixed
+priority:
 
 1. Required testing authority `INVALID` → `TEST_INFRA_INVALID`.
 2. Any target `FAIL` with valid infrastructure → `NON-COMPLIANT`.
@@ -326,6 +387,13 @@ with this fixed priority:
 
 Never turn `INVALID`, `PARTIAL`, missing data, or an empty assertion set into
 `COMPLIANT`.
+
+Classify an invalid target contract as target `FAIL`; classify an invalid spec,
+rubric, catalog entry, rules file, manifest, or empty required rule/assertion set
+as required-authority `INVALID`. A conclusive target `FAIL` outranks unrelated
+partial coverage, but required-authority `INVALID` outranks both. Always report
+the losing axes as well as the winning validation. No case may offer two legal
+aggregate verdicts for the same outcome vector.
 
 Report two axes:
 
@@ -349,6 +417,7 @@ With `--persist-receipt`, generate
 - spec path/hash and `VALID SPEC` preflight result, or explicit N/A;
 - rubric path/hash and category-section byte-range hash, or explicit N/A;
 - validator skill path/hash, ruleset IDs/versions/hashes;
+- rules manifest and pinned-runner manifest path/hash;
 - external validator manifest/tool/version/hash/argv/exit/log hashes, or the
   explicit coverage reduction;
 - fixture snapshot: every selected inline block/file path plus raw-byte/range
@@ -407,3 +476,20 @@ IDs, hashes, or last-test results.
 - Never persist by default and never update catalog `last_*` fields.
 - End with the strict validation verdict, receipt freshness when applicable, and
   the smallest owner-specific remediation.
+
+
+
+## P1 audit traceability
+
+This table records exact enforcement already defined above; it adds no validator behavior.
+
+| Audit ID | Enforcing SKILL clause | Dedicated spec case and assertions |
+|---|---|---|
+| ST-004 | Contract Manifest + Phase 5.4 — recursive skill discovery uses the pinned shared rules and exact hidden/generated/symlink exclusions | Case 8; ST-C08-A01–A04 and ST-PC-010 |
+| ST-005 | Contract Manifest + Phase 5.4 — agent discovery is recursive over canonical TOML inputs and reports included/excluded sets | Case 8; ST-C08-A01–A04 and ST-PC-010 |
+| ST-006 | Phase 1 Canonical P1 rule authority — versioned rule IDs, exact patterns, severities, and bounded labelled contexts replace subjective legacy detection | Case 9; ST-C09-A01–A03 |
+| ST-007 | Phase 3 Template-aware placeholder parsing — fence/heading/format state distinguishes declared templates from active config/executable placeholders | Case 10; ST-C10-A01–A03 |
+| ST-008 | Phase 1 Pinned validator handling — path/version/hash/argv/timeout/exit/log are required and missing/failing validator reduces coverage | Case 7; ST-C07-A01–A03, ST-SA-010, ST-PC-009 |
+| ST-009 | Phase 6 Deterministic aggregation — the fixed truth table prevents INVALID/PARTIAL/FAIL or empty coverage from COMPLIANT | Case 12; ST-C12-A01–A04 and ST-SA-008 |
+| ST-010 | Phase 5 all/audit execution — bounded files/bytes/concurrency/timeouts and selected/loaded/failed/omitted/excluded ledger yield partial validation on gaps | Case 11; ST-C11-A01–A04 and ST-SA-011 |
+| ST-011 | Phase 5.4 + Phase 6 — canonical name grammar, Unicode/case/path identity, duplicate detection before set comparison, and exact diffs are deterministic | Case 13; ST-C13-A01–A04 and Case 8 ST-C08-A03 |

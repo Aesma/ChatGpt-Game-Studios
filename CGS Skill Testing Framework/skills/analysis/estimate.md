@@ -2,313 +2,611 @@
 
 ## Skill Summary
 
-`$estimate` is a read-only evidence calculator with explicit `story`, `sprint`, and
-`freeform` profiles. It always binds valid estimates to stable Scope IDs plus immutable
-baseline/current/input hashes. Without a comparable same-team history model it emits
-only a dimensionless S/M/L/XL relative band or band range and uncertainty. Numeric
-P50/P80/P90 effort requires calibrated history; elapsed workday/date ranges also
-require compatible capacity, calendar, dependency-DAG, parallelism, and wait evidence.
+`$estimate` is a single-pass, strictly read-only evidence calculator. It supports
+`story`, `sprint`, and `freeform` delivery profiles with explicit `relative` or
+`calibrated` bases. Relative output is dimensionless S/M/L/XL evidence; numeric
+effort requires comparable completed history, versioned sample-quality policy,
+and exact effort units. Elapsed ranges require additional capacity, calendar,
+dependency, parallelism, wait, and schedule-policy evidence.
+
+Every locked result is bound to exact scope identity and provenance through a
+`cgs.review-evidence/v1` envelope with `cgs.estimate-report/v1` extension under
+contract `cgs.estimate/v2`. The analyzer never chooses scope, staffing, budget,
+schedule, dates, or product tradeoffs.
+
+---
+
+## P1 Remediation Trace
+
+| Audit item | Required behavior | Primary cases |
+|---|---|---|
+| EST-003 | Comparable history matches team/profile/work type/model/unit/conditions with include/exclude provenance | 5, 6 |
+| EST-004 | No history/default conversion: relative evidence only, never `1 point = 1 day` | 3 |
+| EST-005 | Confirmed and tentative affected scope remain distinct | 7 |
+| EST-006 | Root-to-target instructions plus explicit first-level context are bounded and hash-bound | 1, 8 |
+| EST-007 | Relative and calibration confidence use explicit readiness/sample-quality algorithms | 4, 5, 6 |
+| EST-008 | Blocking product/ADR/dependency decisions are `NOT ESTIMABLE`; discovery needs its own scope | 9 |
+| EST-009 | Exact profile/basis grammar distinguishes path/description/history/capacity and invalid input states | 1, 2, 17 |
+
+---
+
+## Static Assertions
+
+- [ ] Frontmatter contains only `name` and non-empty `description`; name is
+      `estimate`.
+- [ ] Declares `cgs.estimate/v2`, `cgs.review-evidence/v1`, and
+      `cgs.estimate-report/v1`.
+- [ ] Invocation explicitly combines one `story|sprint|freeform` delivery profile
+      with one `relative|calibrated` basis; neither is inferred.
+- [ ] Calibrated basis requires exact history; relative basis rejects history and
+      capacity and can never emit numeric time.
+- [ ] Missing arguments, invalid/ambiguous paths, mixed profiles/bases, duplicate
+      roots, URLs/globs/regex/latest, escapes, symlinks, junctions, and oversized
+      descriptions have deterministic `INPUT REQUIRED` or `ERROR` behavior.
+- [ ] Declares single-analyzer strict read-only behavior and forbids writes,
+      re-baselining, scope/sprint changes, decisions, persistence, approval prompts,
+      gates, delegation, and downstream workflow invocation.
+- [ ] Every estimate unit binds `cgs.estimate-scope-binding/v1`, stable Scope ID,
+      baseline/current/input hashes, taxonomy/profile identity, and completeness.
+- [ ] Freeform normalization is exact and hashable; untestable delivery boundaries
+      are `NOT ESTIMABLE`.
+- [ ] Reads/hashes the applicable root-to-target `AGENTS.md` chain, root input,
+      exact first-level links, and explicit manifests only.
+- [ ] Defines fixed sprint-story, context-candidate, linked-artifact, single/total
+      byte, history-sample, DAG-node/edge, schedule-scenario, assumption, unknown,
+      and finding caps that inputs may only lower.
+- [ ] Hashes the complete candidate identity sequence while retaining bounded
+      rows and exact overflow counts/boundary keys/digests.
+- [ ] Required root/binding overflow is `NOT ESTIMABLE`; optional evidence/history/
+      schedule overflow is `PARTIAL ESTIMATE` with no numeric output.
+- [ ] `cgs.estimate-evidence-manifest/v1` separates confirmed and tentative scope;
+      predicted file/integration counts are never facts or direct effort inputs.
+- [ ] `cgs.estimate-relative/v2` uses a deterministic five-axis evidence rubric,
+      unknown level ranges, score interval, and dimensionless S/M/L/XL band range.
+- [ ] Relative confidence follows exact readiness states and is explicitly not a
+      probability, contingency, or time padding.
+- [ ] Blocking product/ADR/platform/migration/dependency/acceptance decisions return
+      `NOT ESTIMABLE`; discovery is not estimated without a separate Scope ID.
+- [ ] Calibrated basis requires `cgs.estimate-history/v2`,
+      `cgs.estimate-calibration-policy/v1`, and
+      `cgs.estimate-unit-registry/v1` with exact provenance.
+- [ ] Historical samples bind stable sample/scope/team/profile/work-type/model IDs,
+      delivery conditions, factor vector, source bindings, completed effort unit/
+      resolution, blocked effort, external wait, completion, and anomaly state.
+- [ ] Every history sample gets one deterministic included/excluded reason; no
+      cross-team velocity, title similarity, arbitrary recency, global average, or
+      silent outlier deletion is used.
+- [ ] Calibration policy, not skill prose, defines sample minimum, support,
+      extrapolation, dispersion gates, quantiles, resampling, resolution,
+      significant digits, and confidence.
+- [ ] Failed calibration gates preserve relative evidence, suppress numeric effort,
+      and return `PARTIAL ESTIMATE`; no default point/day conversion exists.
+- [ ] Calibrated effort uses P50/P80/P90 ranges, exact model/intermediates/sample
+      selection, source resolution, dispersion/support, and no false precision.
+- [ ] Sprint relative bands and per-story quantiles are never summed; aggregation
+      requires `cgs.estimate-aggregation-policy/v1` and compatible distributions.
+- [ ] Effort, productive capacity, wait, parallelism, critical path, elapsed
+      working time, and dates remain separate.
+- [ ] Schedule output requires `cgs.estimate-capacity/v1`, complete acyclic DAG,
+      and `cgs.estimate-schedule-policy/v1`; no headcount shortcut/start date/
+      perfect parallelism/date commitment is invented.
+- [ ] Stable `ESF-...` finding identity excludes mutable paths/hashes/titles/text/
+      values/result/confidence/owner/status/run/timestamp/recommendation.
+- [ ] Coverage is explicit per candidate/channel/check and missing required
+      evidence never becomes `NOT_APPLICABLE`.
+- [ ] Canonical results are exactly ERROR, INPUT REQUIRED, NOT ESTIMABLE, PARTIAL
+      ESTIMATE, RELATIVE ESTIMATE, CALIBRATED EFFORT ESTIMATE, and CALIBRATED
+      SCHEDULE RANGE with deterministic precedence.
+- [ ] `estimate_id`, context/inventory/payload/envelope hashes are recomputable;
+      run identity/timestamp remain outside deterministic extension bytes.
+- [ ] Scope-check eligibility distinguishes relative-only, verified effort,
+      verified schedule, and unverified analysis.
+- [ ] Returns at most one owner-routed decision boundary and never ranks or executes
+      scope, staffing, budget, schedule, date, or product decisions.
+- [ ] Metadata names the three profiles, two bases, bounded/hash-bound ranges,
+      read-only behavior, and decision boundary.
 
-It never recommends a budget, promises a date, selects sprint scope, decides
-Cut/Keep/Defer, or invokes another workflow. Canonical results are `ERROR`,
-`INPUT REQUIRED`, `NOT ESTIMABLE`, `PARTIAL ESTIMATE`, `RELATIVE ESTIMATE`,
-`CALIBRATED EFFORT ESTIMATE`, and `CALIBRATED SCHEDULE RANGE`.
+---
 
-## Static assertions
+## Director and Delegation Checks
 
-- [ ] YAML frontmatter contains only required `name` and non-empty `description`
-- [ ] Metadata names the three profiles, read-only scope, and decision boundary
-- [ ] Explicit profile parsing prevents path/description ambiguity
-- [ ] Every consumable estimate receipt binds Scope ID, baseline SHA-256, current
-      scope SHA-256, input SHA-256, model ID, and all consumed evidence
-- [ ] S/M/L/XL are dimensionless relative bands with a deterministic five-axis rubric
-- [ ] No uncalibrated hours/days/date or default point-to-day conversion
-- [ ] Comparable samples have deterministic inclusion/exclusion rules and provenance
-- [ ] Numeric calibration requires a fully resolved current factor score
-- [ ] Numeric effort and elapsed duration have separate gates and fields
-- [ ] Missing product/ADR/dependency decisions can return `NOT ESTIMABLE`
-- [ ] Estimate output does not decide product scope, budget, staffing, or schedule
-- [ ] No writes, Git mutation, gate, delegation, or follow-up execution
-- [ ] Result vocabulary exactly matches this specification
+None. Estimate uses one analyzer. A director, producer, planner, specialist, agent,
+or workflow cannot convert evidence into scope, staffing, budget, schedule, or
+date authority and is never invoked by this analyzer.
 
-## Director gate checks
+---
 
-None. An agent, model, or gate cannot turn estimate evidence into scope or schedule
-authority.
+## Required Fixture Contract
 
-## Test cases
+Fixtures provide exact raw bytes and SHA-256 values for instructions, root inputs,
+scope bindings, first-level links, evidence/history manifests, calibration/unit/
+aggregation/schedule policies, sample completion evidence, capacity/calendar,
+dependency DAG, and expected canonical evidence. Tests snapshot all project paths
+before and after and inject stale/overflow states deterministically.
 
-### Case 1: Story profile with no history returns relative evidence only
+---
 
-**Fixture**
+## Test Cases
 
-- Story has one stable Scope ID, exact baseline/current hashes, complete acceptance
-  boundary, accepted ADR references, ready dependencies, and identified tests.
-- No history manifest is supplied.
+### Case 1: Exact profile/basis invocation and path confinement
 
-**Input**
+Valid inputs cover:
 
-`$estimate story --input <story-path>`
+```text
+$estimate story --basis relative --input stories/s1.md
+$estimate story --basis calibrated --input stories/s1.md --history estimates/h1.yaml
+$estimate sprint --basis relative --input sprints/sp1.md --evidence estimates/e1.yaml
+$estimate sprint --basis calibrated --input sprints/sp1.md --history estimates/h1.yaml --capacity estimates/c1.yaml
+```
 
-**Expected**
+Invalid variants omit profile/basis/input/history, mix profiles or bases, repeat
+roots, pass capacity under relative basis, use an unflagged path, directory, URL,
+glob, regex, `latest`, external/absolute/traversal path, symlink, junction, or
+unknown flag.
 
-- The five-axis factor vector and evidence are shown.
-- A dimensionless single S/M/L/XL band and readiness-derived confidence are emitted.
-- Result is `RELATIVE ESTIMATE`.
-- Calibration is `NOT_REQUESTED`; no hours, days, dates, velocity conversion, or
-  recommended budget appears.
-- Receipt binds Scope ID and baseline/current/input hashes.
+Expected behavior:
 
-### Case 2: Freeform profile requires complete explicit scope binding
+1. Missing required values return `INPUT REQUIRED`; invalid/conflicting/unsafe
+   values return `ERROR`.
+2. Neither result emits estimate evidence or scans for alternatives.
+3. Valid paths are exact project-local regular files and stable IDs are matched
+   exactly.
 
-**Variants**
+Assertions:
 
-- A: description plus Scope ID, baseline hash, and current hash are supplied.
-- B: one or more binding arguments are absent.
-- C: the description has no testable delivery boundary.
+- [ ] Delivery profile and estimate basis are independent explicit dimensions.
+- [ ] Relative basis cannot accidentally consume calibration/capacity data.
+- [ ] No title, mtime, Git, or conversation inference occurs.
 
-**Expected**
+---
 
-- A hashes normalized description bytes and produces a bound relative estimate.
-- B returns `INPUT REQUIRED` without estimating.
-- C returns `NOT ESTIMABLE` and no consumable receipt.
-- No feature title or baseline is discovered by fuzzy search.
+### Case 2: Freeform identity is explicit and reproducible
 
-### Case 3: Sprint profile estimates stories independently
+Fixture variants:
 
-**Fixture**
+- A supplies description, stable Scope ID, baseline hash, and current hash.
+- B omits one binding argument.
+- C has a description without a testable delivery boundary.
+- D supplies equivalent CRLF/decomposed-Unicode input that normalizes to the same
+  NFC/LF/trimmed/final-LF bytes as A.
 
-- Sprint manifest lists four exact story paths/hashes, Scope IDs, baseline/current
-  hashes, inclusion state, and dependency edges.
-- No calibrated history exists.
+Expected behavior:
 
-**Expected**
+1. A/D use the same normalized input SHA-256 and scope binding.
+2. B is `INPUT REQUIRED` with no estimate.
+3. C is `NOT ESTIMABLE`, emits only non-consumable bound analysis evidence, and
+   names the boundary owner.
+4. No feature title, story, or baseline is discovered by search.
 
-- Each story gets its own factor vector and relative band/range.
-- Relative bands are not arithmetically summed into a sprint total.
-- `Sprint Effort: UNVERIFIED` identifies the missing calibration.
-- No sprint-fit or completion promise is made.
+Assertions:
 
-### Case 4: Invalid and ambiguous inputs are deterministic
+- [ ] Freeform description size cap is enforced before estimation.
+- [ ] Normalized bytes are included in estimate identity.
+- [ ] Missing scope identity is never repaired.
 
-**Variants**
+---
 
-- no profile; unflagged path; mixed story/freeform flags; two inputs; bad path;
-  traversal path; unknown flag; sprint beyond the story budget.
+### Case 3: Relative story without history has no numeric time
 
-**Expected**
+Fixture:
 
-- Missing required arguments return `INPUT REQUIRED`.
-- Invalid, ambiguous, unsafe, or unreadable inputs return `ERROR`.
-- Required root/binding budget overflow returns `NOT ESTIMABLE`.
-- No estimate or repository scan occurs.
+- Story has complete scope binding, acceptance, accepted ADR/interface evidence,
+  known dependencies, and identified validation.
+- No history or capacity is supplied; basis is relative.
 
-### Case 5: Missing history never creates a day conversion
+Expected behavior:
 
-**Fixture**
+1. Five-axis factor vector, score, one dimensionless band, and HIGH relative
+   confidence are supported by exact evidence.
+2. Result is `RELATIVE ESTIMATE` and scope-check eligibility is `RELATIVE_ONLY`.
+3. No hours, person-days, workdays, calendar dates, velocity, budget, or
+   `1 point = 1 day` conversion appears.
 
-- Story is fully estimable but no historical sample exists.
+Assertions:
 
-**Expected**
+- [ ] Missing history is normal for relative basis, not an implicit fallback.
+- [ ] Relative size is neither effort nor elapsed time.
+- [ ] No recommended budget is emitted.
 
-- Relative size remains available.
-- Calibration is `UNAVAILABLE` or `NOT_REQUESTED` as applicable.
-- The output never substitutes `1 point = 1 day`, a generic velocity, or conservative
-  numeric defaults.
+---
 
-### Case 6: Cross-team and incompatible samples are excluded
+### Case 4: Unknown axes widen ranges and confidence deterministically
 
-**Fixture**
+Fixture variants:
 
-- History contains samples from another team, another profile, another work taxonomy,
-  an older model version, incomplete work, and three valid same-team samples.
+- One axis has insufficient integration evidence but no blocking owner decision.
+- All axes are known but architecture is PARTIAL and score crosses M/L.
+- All readiness fields are READY and one band resolves.
 
-**Expected**
+Expected behavior:
 
-- Every sample is listed with deterministic inclusion/exclusion reason.
-- Only three samples remain, below the five-sample calibration minimum.
-- Result remains `RELATIVE ESTIMATE`; numeric calibration is unavailable.
-- No excluded sample affects quantiles.
+1. Unknown axis produces min/max axis values, score interval, and band range; it
+   is not guessed.
+2. Confidence is respectively LOW, MEDIUM, and HIGH under the stated algorithm.
+3. Confidence is not phrased as probability or converted into contingency time.
 
-### Case 7: Five low-variance comparable samples calibrate effort
+Assertions:
 
-**Fixture**
+- [ ] Every axis cites evidence and limitation.
+- [ ] History/capacity never alters the factor vector.
+- [ ] Band boundaries and score arithmetic are reproducible.
 
-- Five or more completed same-team/story/work-type/model samples use one effort unit,
-  cover the current factor score, and have coefficient of variation at most 0.50.
-- Sample completion receipts and hashes match.
+---
 
-**Expected**
+### Case 5: Comparable completed samples calibrate effort
 
-- Normalized effort ratios and empirical nearest-rank P50/P80/P90 selections are shown.
-- Result is `CALIBRATED EFFORT ESTIMATE`.
-- Effort values remain in the historical effort unit; no elapsed days/date is emitted
-  without capacity evidence.
-- Included sample IDs/hashes make the calculation reproducible.
+Fixture:
 
-### Case 8: High variance or extrapolation rejects calibration
+- Versioned policy requires at least five samples and defines support, dispersion,
+  quantile, rounding, resolution, and confidence gates.
+- Six completed samples match team, story profile, taxonomy/type, model, effort
+  unit, delivery conditions, bindings, and factor support.
+- Completion/sample hashes match and quality gates pass.
 
-**Variants**
+Expected behavior:
 
-- comparable-sample coefficient of variation exceeds 0.50;
-- current score is outside historical coverage;
-- mixed effort units or unresolved anomaly exists.
+1. Every sample is `INCLUDED` with exact provenance.
+2. Policy-selected deterministic P50/P80/P90 effort ranges and intermediates are
+   shown in one effort unit.
+3. Result is `CALIBRATED EFFORT ESTIMATE` when no capacity is supplied.
+4. Output precision does not exceed sample/unit/model resolution.
 
-**Expected**
+Assertions:
 
-- Calibration is `UNAVAILABLE` with exact failing gate.
-- Relative factor/band evidence is preserved.
-- No P50/P80/P90 numeric effort is fabricated.
+- [ ] Sample threshold comes from policy, not hardcoded skill behavior.
+- [ ] Quantiles are ranges/evidence, not promises or recommended budget.
+- [ ] Sample count, support, dispersion, and calibration confidence are separate.
 
-### Case 9: Architecture or product decision blocks delivery estimate
+---
 
-**Fixture**
+### Case 6: Incompatible or poor-quality history fails calibration
 
-- Matchmaking story includes blocking TBD product behavior and requires an ADR that
-  is missing or Proposed.
+Fixture includes cross-team, sprint-profile, taxonomy mismatch, old model, mixed
+unit, incompatible conditions, incomplete/censored work, unresolved anomaly, and
+out-of-support samples. Remaining included samples fail policy minimum or
+dispersion gate.
 
-**Expected**
+Expected behavior:
 
-- Requirements/architecture readiness names the exact blockers.
-- Result is `NOT ESTIMABLE`, not an arbitrary L/XL delivery estimate.
-- A discovery question may be identified but is not estimated without its own Scope
-  ID and separate explicit invocation.
-- No architecture workflow is started.
+1. Every sample receives exactly one included/excluded state and evidence reason.
+2. Excluded samples do not affect any statistic.
+3. Calibrated basis returns `PARTIAL ESTIMATE`, calibration `UNAVAILABLE`, and
+   preserves relative evidence without numeric effort.
+4. No cross-team velocity/global average/title similarity/recent sprint/default
+   conversion substitutes for missing quality.
 
-### Case 10: Tentative affected files are not counted as facts
+Assertions:
 
-**Fixture**
+- [ ] Outliers are not silently deleted.
+- [ ] Extrapolation beyond factor support is rejected by policy.
+- [ ] Unit and actual-effort resolution remain explicit.
 
-- Bound evidence confirms two affected modules and names five predicted candidates.
+---
 
-**Expected**
+### Case 7: Confirmed and tentative affected files remain distinct
 
-- Confirmed and tentative paths are listed separately.
-- Tentative file count does not directly affect relative score or numeric effort.
-- Missing confirmation contributes to uncertainty with its evidence source.
+Fixture:
 
-### Case 11: Capacity and DAG enable elapsed scenarios
+- Bound evidence confirms two modules/interfaces.
+- Five predicted files and two inferred integrations are tentative.
 
-**Fixture**
+Expected behavior:
 
-- Calibrated P50/P80/P90 effort exists.
-- Capacity receipt matches team/unit and contains dates, calendar/time zone, WIP,
-  availability, reviewers, and validity.
-- An acyclic dependency DAG and evidenced wait ranges cover all work packages.
+1. Confirmed and tentative scope are separate exact-hash lists.
+2. Tentative counts do not directly affect relative score or effort.
+3. A model axis may widen only through its explicit unresolved breadth/integration
+   rule, with evidence and limitation.
 
-**Expected**
+Assertions:
 
-- Result is `CALIBRATED SCHEDULE RANGE`.
-- Effort, external wait, parallel work, critical path, elapsed workdays, and calendar
-  dates remain separate and formulas are shown.
-- No date is called a commitment or recommendation.
+- [ ] Predicted paths are never reported as affected facts.
+- [ ] File/code count is not a calibration input by itself.
+- [ ] Estimate output exposes scope uncertainty instead of false certainty.
 
-### Case 12: Missing capacity cannot be replaced with headcount arithmetic
+---
 
-**Fixture**
+### Case 8: Bounded root context and overflow behavior
 
-- Calibrated effort exists but capacity/calendar/DAG evidence is absent or stale.
+Fixture variants exceed sprint-story, linked-artifact, context-candidate,
+single/total-byte, history-sample, DAG-node/edge, or finding caps.
 
-**Expected**
+Expected behavior:
 
-- Result remains `CALIBRATED EFFORT ESTIMATE`.
-- `Elapsed Range: UNVERIFIED` is explicit.
-- The skill does not divide effort by people, assume perfect parallelism, or invent a
-  start date.
+1. Complete candidate identity digest plus bounded rows, exact overflow count,
+   boundary keys, and omitted digest are reported when enumeration is safe.
+2. Required root/binding/story overflow is `NOT ESTIMABLE`.
+3. Optional evidence/history/capacity overflow is `PARTIAL ESTIMATE`, suppresses
+   numeric effort/elapsed output, and preserves bounded relative evidence.
+4. No truncated subset is treated as complete or calibrated.
 
-### Case 13: Sprint aggregation requires compatible distributions
+Assertions:
 
-**Variants**
+- [ ] Inputs cannot raise fixed caps.
+- [ ] All affected coverage channels are named.
+- [ ] Repository-wide GDD/code/TODO/history scans never occur.
 
-- A: every story has same-unit/model calibrated distributions and complete DAG.
-- A also provides a validated hash-bound sprint aggregation model, correlation
-  assumptions, and deterministic scenario set/seed.
-- B: one story lacks calibration or uses another unit.
+---
 
-**Expected**
+### Case 9: Product, ADR, or dependency decision blocks delivery
 
-- A aggregates numeric distributions while preserving per-story values.
-- B reports `Sprint Effort: UNVERIFIED` and identifies the blocking story.
-- Per-story quantile columns are never summed and relabeled as sprint quantiles.
-- Neither variant decides whether the sprint should contain the stories.
+Fixture:
 
-### Case 14: Scope-check receipt binding is exact
+- Story has unresolved player behavior, missing required accepted ADR, and unknown
+  dependency interface/owner.
 
-**Fixture**
+Expected behavior:
 
-- Estimate receipt initially matches Scope ID `SC-17`, baseline hash `B1`, and current
-  scope hash `C1`.
-- Variants alter Scope ID, baseline hash, current hash, input hash, model, sample set,
-  or capacity evidence.
+1. Readiness states are BLOCKED with stable decision/owner/evidence/acceptance IDs.
+2. Result is `NOT ESTIMABLE`, not a guessed L/XL, padded range, or calendar date.
+3. A smallest discovery question may be described but is not estimated without a
+   separate Scope ID and invocation.
+4. No product or architecture choice is made and no workflow starts.
 
-**Expected**
+Assertions:
 
-- The original receipt exposes every required binding for staged scope-check.
-- A relative-only receipt remains `Effort Evidence: UNVERIFIED`; only a matching
-  calibrated-effort or calibrated-schedule receipt can support `VERIFIED` effort.
-- Every altered variant produces a different Estimate ID and invalidates reuse.
-- An `UNBOUND`, partial, or blocked analysis is never presented as an
-  `estimate-receipt`.
+- [ ] Blocking decision differs from ordinary uncertainty.
+- [ ] Owner decision is not delegated by the analyzer.
+- [ ] Bound non-consumable evidence preserves why estimation stopped.
 
-### Case 15: Estimate cannot make scope or schedule decisions
+---
 
-**Fixture**
+### Case 10: Effort calibration never implies elapsed duration
 
-- Calibrated evidence exceeds currently recorded sprint capacity.
-- No user/producer tradeoff decision exists.
+Fixture:
 
-**Expected**
+- Valid calibrated effort exists.
+- Capacity, calendar, DAG, wait, or schedule policy is absent because no capacity
+  flag was supplied.
 
-- The capacity conflict and affected Scope IDs are reported.
-- The skill asks the user/producer to choose scope, staffing, or schedule.
-- It does not recommend a budget, rank options, cut/keep/defer work, remove stories,
-  re-baseline, promise a date, or invoke another workflow.
+Expected behavior:
 
-### Case 16: Mutation guard invalidates the result
+1. Result remains `CALIBRATED EFFORT ESTIMATE`.
+2. Capacity/schedule channels are `NOT_APPLICABLE` and elapsed is null.
+3. Analyzer does not divide by headcount, assume a workday/start date/perfect
+   parallelism, or convert effort to dates.
 
-**Fixture**
+Assertions:
 
-- Story, history, evidence, or capacity bytes change after initial hashing and before
-  final reporting.
+- [ ] Effort, wait, capacity, elapsed time, and date are distinct fields/units.
+- [ ] Missing optional capacity does not invalidate calibrated effort.
+- [ ] No schedule commitment is implied.
 
-**Expected**
+---
 
-- Final re-hash detects the change.
-- Result is `NOT ESTIMABLE — INPUT CHANGED DURING ESTIMATE`.
-- Prior calculations are discarded and no consumable receipt is emitted.
+### Case 11: Complete capacity and DAG produce a schedule range
 
-### Case 17: Identical immutable inputs reproduce the estimate
+Fixture:
 
-**Fixture**
+- Calibrated P50/P80/P90 effort ranges exist.
+- Current `cgs.estimate-capacity/v1` binds matching team/unit, availability,
+  working calendar/time zone, WIP/parallel lanes, reviewers/services, validity,
+  and owner.
+- Complete acyclic dependency DAG and `cgs.estimate-schedule-policy/v1` bind wait,
+  correlation, critical-path, and scenario assumptions.
 
-- Two runs use identical profile, root bytes, scope bindings, model version, history
-  sample set, capacity/dependency evidence, and assumptions.
+Expected behavior:
 
-**Expected**
+1. Result is `CALIBRATED SCHEDULE RANGE` and eligibility `VERIFIED_SCHEDULE`.
+2. Effort, productive capacity, waits, parallel branches, WIP, critical path,
+   elapsed working-time range, and dates remain separate with formulas.
+3. No range is called a commitment, budget, staffing recommendation, or promised
+   date.
 
-- Factor vector, band/range, sample inclusion/exclusion, P50/P80/P90 values, critical
-  path, Estimate ID, and canonical result are identical.
-- Generated timestamp is excluded from the Estimate ID.
+Assertions:
 
-## Protocol compliance
+- [ ] DAG cycles are invalid and prevent schedule output.
+- [ ] A supplied stale/mismatched capacity channel returns PARTIAL ESTIMATE while
+      preserving effort evidence.
+- [ ] Capacity conflict is routed to user/producer, not resolved here.
 
-- [ ] Reads only the root input, applicable AGENTS chain, explicit first-level links,
-      and exact manifest allowlists within budgets
-- [ ] Re-hashes all consumed artifacts before reporting
-- [ ] Does not scan arbitrary sprint history, code, Git, GDD, or TODO files
-- [ ] Never emits numeric time without comparable-history calibration
-- [ ] Never emits elapsed days/dates without capacity/calendar/DAG evidence
-- [ ] Every consumable receipt binds Scope ID plus baseline/current/input hashes
-- [ ] Does not write, mutate Git, invoke gates, delegate, or launch another workflow
-- [ ] Does not make scope, budget, staffing, or schedule decisions
+---
 
-## Audit remediation coverage
+### Case 12: Sprint aggregation requires compatible distributions
 
-- Cases 1 and 5–8 close EST-001: uncalibrated inputs remain relative-only; calibrated
-  numeric effort exposes comparable samples, model, dispersion, and quantiles.
-- Cases 1–4 close EST-002: story, sprint, and freeform inputs share one explicit
-  profile/result/receipt contract across skill, metadata, and this specification.
-- Cases 6–17 cover history comparability, no-history behavior, tentative scope,
-  bounded context, confidence, blocking decisions, validation, probability semantics,
-  provenance, effort-versus-elapsed separation, scope-check binding, and mutation
-  safety.
+Fixture variants:
+
+- A: every story has compatible same-unit/model calibrated distributions and a
+  valid `cgs.estimate-aggregation-policy/v1` with dependency/correlation,
+  deterministic scenarios/seeds, and applicability.
+- B: one story lacks calibration or uses another unit/model.
+
+Expected behavior:
+
+1. Every story keeps its own binding/factor/band/distribution.
+2. A aggregates through the named policy, not by summing quantile columns.
+3. B returns `PARTIAL ESTIMATE`, sprint effort `UNVERIFIED`, and names the blocking
+   story while preserving per-story relative evidence.
+4. Neither variant decides sprint inclusion or fit.
+
+Assertions:
+
+- [ ] Relative bands are never added.
+- [ ] Per-story P50/P80/P90 columns are not relabeled sprint quantiles.
+- [ ] Sprint story count cap is enforced before aggregation.
+
+---
+
+### Case 13: False precision and alternative calibration models fail closed
+
+Fixture variants:
+
+- Historical effort resolution is one half-day equivalent in a stable effort
+  unit, while raw model math yields many decimals.
+- Two valid calibration policies/models exist with no authoritative selection.
+- A seeded resampling policy omits its seed/version.
+
+Expected behavior:
+
+1. Displayed ranges obey source/model significant-digit and rounding policy and
+   show unrounded intermediates separately.
+2. Ambiguous model/policy or missing resampling provenance makes calibration
+   unavailable and result PARTIAL ESTIMATE.
+3. Analyzer does not choose the narrower/more favorable range or print a point
+   “expected” estimate.
+
+Assertions:
+
+- [ ] P50/P80/P90 are labeled distributions/ranges, not confidence promises.
+- [ ] No generic optimistic/expected/pessimistic days appear.
+- [ ] Numeric unit and measurement precision are explicit.
+
+---
+
+### Case 14: Stable findings and estimate identity have separate semantics
+
+Fixture:
+
+- Run A has one stable calibration gap for the same profile/basis/Scope IDs/policy.
+- Run B moves/rewrites sources and changes hashes/current values/owner/result label
+  without changing that logical gap.
+- Run C changes Scope ID or calibration policy ID.
+
+Expected behavior:
+
+1. A/B preserve one `ESF-...` finding ID while estimate/context/payload/record
+   hashes change.
+2. C produces a different finding fingerprint.
+3. Any changed scope/baseline/current/input/model/sample/evidence/capacity hash
+   creates a different `estimate_id` and invalidates receipt reuse.
+
+Assertions:
+
+- [ ] Finding identity excludes mutable presentation/evidence values.
+- [ ] Estimate identity intentionally includes immutable scope and consumed sample/
+      policy/evidence hashes.
+- [ ] Scope-check eligibility cannot reuse a mismatched estimate identity.
+
+---
+
+### Case 15: Final re-hash detects mutation
+
+Fixture:
+
+- Root story, scope binding, history, sample completion, evidence, capacity, or DAG
+  bytes change after lock and before output.
+
+Expected behavior:
+
+1. Re-enumeration/re-hashing detects added/removed/renamed/changed input.
+2. Derived estimates are discarded.
+3. Result is `NOT ESTIMABLE — INPUT CHANGED DURING ESTIMATE`, with only
+   non-consumable hash-bound diagnostics.
+4. No mixed snapshot or automatic restart occurs.
+
+Assertions:
+
+- [ ] Mtime/Git labels do not substitute for raw hashes.
+- [ ] Changed input cannot produce a scope-check-eligible record.
+- [ ] Project remains byte-identical except the externally injected fixture change.
+
+---
+
+### Case 16: Strict read-only owner boundary
+
+Fixture:
+
+- Calibrated evidence conflicts with recorded sprint capacity.
+- User asks to cut stories, assign staff, save the estimate, update sprint, and
+  invoke planning/architecture workflows.
+
+Expected behavior:
+
+1. Analyzer reports affected Scope IDs, conflict evidence, and one producer/user
+   decision boundary.
+2. It does not rank Cut/Keep/Defer, recommend budget, select staffing/scope/date,
+   edit/save/re-baseline, request write approval, delegate, or invoke anything.
+3. It stops after one packet.
+
+Assertions:
+
+- [ ] Estimate evidence is not authority.
+- [ ] No file, sprint, scope, calendar, decision, workflow, session, or Git state
+      changes.
+- [ ] No automatic follow-up run begins.
+
+---
+
+### Case 17: Canonical result precedence is total
+
+Evaluate independent states:
+
+| State | Result |
+|---|---|
+| missing required invocation argument | `INPUT REQUIRED` |
+| invalid/unsafe/ambiguous root or no scope identity | `ERROR` |
+| bound scope with blocking decision/invalid completeness/root overflow/stale input | `NOT ESTIMABLE` |
+| useful relative evidence but requested/required optional channel incomplete | `PARTIAL ESTIMATE` |
+| complete relative basis | `RELATIVE ESTIMATE` |
+| complete calibration without supplied schedule channel | `CALIBRATED EFFORT ESTIMATE` |
+| complete calibration plus supplied schedule channel | `CALIBRATED SCHEDULE RANGE` |
+
+Assertions:
+
+- [ ] First matching rule wins mechanically.
+- [ ] Earlier incomplete results preserve known relative/effort/gap evidence but
+      cannot claim downstream eligibility.
+- [ ] No COMPLETE status, recommended budget, sprint-fit claim, or deadline promise
+      appears.
+
+---
+
+### Case 18: Hash-bound output and catalog hygiene
+
+Fixture:
+
+- Identical immutable profile/basis, root/scope bytes, model/policies, included/
+  excluded sample set, evidence, capacity/DAG, and assumptions are processed twice.
+
+Expected behavior:
+
+1. Extension conforms to `cgs.estimate-report/v1`; envelope conforms to
+   `cgs.review-evidence/v1`.
+2. Context inventory/manifest, estimate identity, payload, artifact, and record
+   hashes recompute.
+3. Identical inputs produce identical extension bytes and estimate ID; outer run
+   ID/timestamp may differ without entering deterministic payload.
+4. Catalog test-result fields remain blank until authorized behavioral execution.
+
+Assertions:
+
+- [ ] Only complete results can be scope-check eligible; relative eligibility does
+      not verify numeric effort.
+- [ ] Inconsistent evidence construction returns ERROR without a record.
+- [ ] Structural edits alone are not recorded as a test pass.
+
+---
+
+## Protocol Compliance
+
+- [ ] Profile, basis, scope identity, baseline/current/input hashes, project
+      identity, context, and every consumed policy/sample are exact and hash-bound.
+- [ ] Relative output is deterministic, dimensionless, evidence-scoped, and
+      available without false time conversion.
+- [ ] Historical sample inclusion/exclusion, units, quality, support, variance,
+      uncertainty, and quantiles are versioned and reproducible.
+- [ ] No numeric effort is emitted without complete comparable-history calibration.
+- [ ] No elapsed/date range is emitted without complete capacity/calendar/DAG/
+      wait/parallelism schedule evidence.
+- [ ] Confirmed versus tentative scope, effort versus elapsed, and estimator versus
+      owner decisions remain separate.
+- [ ] Bounded context/overflow and stale input fail closed without sampled claims.
+- [ ] Stable findings and estimate identity use their distinct documented inputs.
+- [ ] Analyzer is project-read-only, single-pass, conversation-only, and invokes
+      no gate, agent, recorder, owner, or downstream workflow.
+- [ ] Output conforms to `cgs.review-evidence/v1` plus
+      `cgs.estimate-report/v1` under `cgs.estimate/v2`.
+
+---
+
+## Coverage Notes
+
+Tests must evaluate algorithm/provenance properties rather than hardcode that a
+subjective fixture “should be M” or “should take N days.” Calibration fixture
+thresholds belong to the explicit policy bytes. Schedule fixtures must distinguish
+person effort, external wait, capacity, critical path, elapsed work time, and
+calendar dates.
+
+Report persistence belongs to a separate recorder contract. The catalog entry
+points to this file, and its `last_*` fields remain blank until an authorized test
+workflow actually executes every case. Editing this contract/spec or running
+structural probes alone is not a test pass and must not create a catalog result.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Smoke Check"
-  short_description: "Run build-bound smoke checks for QA hand-off"
-  default_prompt: "Use $smoke-check with an exact candidate manifest, CURRENT QA plan, and unique run ID."
+  short_description: "Run deterministic build-bound smoke evidence"
+  default_prompt: "Use an explicit $smoke-check sprint or quick run manifest to execute only pinned argv rows, collect build- and platform-bound evidence, classify timeout and unknown states fail-closed, and CAS-persist one immutable receipt before handoff."

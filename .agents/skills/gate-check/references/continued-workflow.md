@@ -1,243 +1,261 @@
-# Gate Check — Required workflow continuation
+# Gate Check — Required Workflow Continuation
 
-This file contains required phases of `$gate-check`. Read it in full when the main `SKILL.md` reaches its Required continuation section, then execute the phases in order.
+This file is normative. Read it in full only after the main skill has completed
+profile evaluation, director handling, deterministic verdict calculation,
+Chain-of-Verification, and the initial mutation guard.
 
-## 5. Output the Verdict
+## Phase 7: Present the human-readable assessment
 
+Present one compact report before the machine record:
+
+```markdown
+## Gate Check: <transition-id> — <current stage> → <candidate stage>
+
+- Profile: <profile-id>
+- Selection: <EXPLICIT | AUTHORITY_AUTO_CONFIRMED>
+- Authority: <record path>@<sha256> (schema <version>)
+- Legacy stage declaration (`LEGACY_DECLARATION`): <NONE | value/path/hash; advisory only>
+- Review mode: <full | lean | solo>
+- Scope: <included count>; <excluded count>; <coverage gaps count>
+- Budget: <entries/full files/context bytes/hash bytes/actions/elapsed used vs limit>
+- Coverage: <COMPLETE | PARTIAL>
+
+### Blocking checks
+| Check ID | Status | Expected | Observed | Evidence/finding IDs |
+|---|---|---|---|---|
+
+### Advisory checks
+| Check ID | Status | Risk | Evidence/finding IDs |
+|---|---|---|---|
+
+### Director advisory panel
+| Gate ID | Status | Native verdict | Finding IDs |
+|---|---|---|---|
+
+### Coverage gaps
+- <reason code, exact unchecked scope, destination owner>
+
+### Verdict: <PASS | CONCERNS | FAIL | PARTIAL>
+- Decision-table row: <1 | 2 | 3 | 4>
+- Advancement disposition: <ELIGIBLE | NOT_ELIGIBLE>
+- Chain-of-Verification: <verdict unchanged | old → new; evidence IDs>
+- Stage mutated: false
 ```
-## Gate Check: [transition-id] — [Current Phase] → [Candidate Next Phase]
 
-**Date**: [date]
-**Checked by**: gate-check skill
+List every selected profile check exactly once, followed by common director checks
+`DIR-C01`, `DIR-T01`, `DIR-P01`, and `DIR-A01`. Never count `NOT_APPLICABLE` as a
+pass, hide PARTIAL coverage behind a percentage, or describe CONCERNS/FAIL/PARTIAL
+as passed. `ELIGIBLE` applies only to PASS; the other verdicts are
+`NOT_ELIGIBLE`, regardless of accepted risk.
 
-### Required Artifacts: [X/Y present]
-- [x] design/gdd/game-concept.md — exists, 2.4KB
-- [ ] docs/architecture/ — MISSING (no ADRs found)
-- [x] production/sprints/ — exists, 1 sprint plan
+## Phase 8: Emit one immutable gate record
 
-### Quality Checks: [X/Y passing]
-- [x] GDD has 8/8 required sections
-- [ ] Tests — FAILED (3 failures in tests/unit/)
-- [?] Core loop playtested — MANUAL CHECK NEEDED
-
-### Blockers
-1. **No Architecture Decision Records** — Run `$architecture-decision` to create one
-   covering core system architecture before entering production.
-2. **3 test failures** — Fix failing tests in tests/unit/ before advancing.
-
-### Recommendations
-- [Priority actions to resolve blockers]
-- [Optional improvements that aren't blocking]
-
-### Verdict: [PASS / CONCERNS / FAIL]
-- **PASS**: Every blocking check passed
-- **CONCERNS**: No blocking check failed, but one or more advisory risks remain
-- **FAIL**: At least one blocking check failed; risk acceptance does not change this verdict
-```
-
-### Required immutable gate record
-
-After Chain-of-Verification, emit this machine-readable record in the conversation.
-Compute `record_id` as SHA-256 of canonicalized record content excluding
-`record_id`. Any revision requires a new record ID.
+After the human report, emit the complete record in conversation. Canonicalize
+mapping keys lexicographically, preserve array order from the selected profile,
+encode UTF-8/LF, omit no required field, and compute `record_id` as SHA-256 of the
+canonical record excluding `record_id`. A changed byte requires a new record ID.
 
 ```yaml
-schema: cgs.gate-record/v1
-record_id: sha256:<canonical-gate-record>
-transition_id: <exact transition ID>
-current_stage: <validated stage.txt value>
-candidate_next_stage: <table-mapped stage>
+schema: cgs.gate-record/v2
+record_id: sha256:<canonical record excluding record_id>
+run_id: <stable run ID>
 generated_at: <ISO-8601 timestamp with timezone>
 gate:
   tool: gate-check
-  version: cgs.gate-check/p0-v1
+  version: cgs.gate-check/p1-v2
+transition:
+  transition_id: <exact ID>
+  current_stage: <catalog-authority stage>
+  candidate_next_stage: <catalog edge candidate>
+  profile_id: <selected profile ID>
+  selection_mode: EXPLICIT | AUTHORITY_AUTO_CONFIRMED
+  auto_selection_confirmed: true | false | null
+authority:
+  catalog_path: <path>
+  catalog_sha256: <hash>
+  stage_schema_version: <version>
+  transition_graph_version: <version>
+  record_path: <path>
+  record_sha256: <hash>
+  owner: <validated owner>
+  source_snapshot_hash: <hash>
+  prior_record_sha256: <hash-or-null-under-schema>
+  receipt_id: <validated receipt ID or null under schema>
+  receipt_sha256: <hash or null under schema>
+legacy_declaration:
+  path: production/stage.txt | null
+  sha256: <hash-or-null>
+  value: <value-or-null>
+  relationship: ABSENT | AGREES_ADVISORY_ONLY | CONTRADICTS_AUTHORITY
+snapshot:
+  repository_id: <canonical identity>
+  source_revision: <commit/ref-or-UNVERIFIED>
+  dirty_state: <clean|dirty|UNVERIFIED>
+  started_at: <ISO-8601>
+  finalized_at: <ISO-8601>
+review_mode: full | lean | solo
+scope:
+  manifest_sha256: <canonical complete scope manifest hash>
+  manifest_entries: <integer>
+  included: [<path/role/hash/read-mode records>]
+  excluded: [<path/rule/reason records>]
+  unreadable: [<path/reason records>]
+  ambiguous: [<identity/candidate records>]
+  budget:
+    manifest_entries: {used: <n>, limit: <n>}
+    full_content_files: {used: <n>, limit: <n>}
+    context_bytes: {used: <n>, limit: <n>}
+    hash_bytes: {used: <n>, limit: <n>}
+    tool_actions: {used: <n>, limit: <n>}
+    elapsed_seconds: {used: <n>, limit: <n>}
 checks:
-  - check_id: <stable checklist ID>
-    kind: <blocking|advisory>
-    status: <PASS|FAIL|MANUAL_CHECK_NEEDED|UNBOUND|STALE|NOT_APPLICABLE>
-    artifact_sha256: [<current artifact hashes>]
-    evidence_record_ids: [<validated evidence IDs>]
-    finding_ids: [<stable finding IDs>]
-verdict: <PASS|CONCERNS|FAIL>
-advancement_disposition: <ELIGIBLE|NOT_ELIGIBLE>
+  - check_id: <stable profile check ID>
+    class: BLOCKING | ADVISORY
+    coverage_required: true | false
+    source: DETERMINISTIC | PRODUCER_RECORD | ATTESTATION | DIRECTOR
+    status: PASS | FAIL | ADVISORY | UNKNOWN | NOT_EVALUATED | NOT_APPLICABLE | UNBOUND | STALE
+    expected: <profile predicate>
+    observed: <redacted exact observation>
+    artifact_sha256: [<current hashes>]
+    evidence_record_ids: [<IDs>]
+    producer_adapter_id: <adapter ID or null>
+    producer_native_verdict: <exact native value or null>
+    attestation_ids: [<IDs>]
+    finding_ids: [<stable IDs>]
+    reason_code: <stable reason>
+attestations:
+  - <complete cgs.gate-attestation/v1 or empty>
+director_panel:
+  required_by_mode: true | false
+  coverage: COMPLETE | PARTIAL
+  results:
+    - gate_id: <ID>
+      agent_role: <role>
+      attempt: 1
+      scope_manifest_sha256: <hash>
+      started_at: <time-or-null>
+      ended_at: <time-or-null>
+      native_verdict: READY | CONCERNS | NOT_READY | null
+      status: COMPLETE | TIMEOUT | BLOCKED | ERROR | MALFORMED | STALE | NOT_APPLICABLE_BY_MODE
+      finding_ids: [<IDs>]
+findings:
+  - finding_id: <stable profile/run finding ID>
+    check_id: <check ID>
+    severity: BLOCKING | ADVISORY | COVERAGE_GAP
+    status: OPEN | RESOLVED | ACCEPTED_RISK_REQUESTED
+    evidence_location: <path/hash/field or panel result>
+    destination_owner: <owner>
+    acceptance_test: <specific test>
+coverage:
+  status: COMPLETE | PARTIAL
+  gaps: [<reason code and exact unchecked scope>]
+decision:
+  table_row: 1 | 2 | 3 | 4
+  verdict: PASS | CONCERNS | FAIL | PARTIAL
+  advancement_disposition: ELIGIBLE | NOT_ELIGIBLE
+verification:
+  high_risk_rechecks: [<check/evidence/action/result>]
+  check_set_complete: true
+  final_rehash_passed: true
+  draft_verdict: <verdict>
+  final_verdict: <verdict>
+mutation_guard:
+  status: PASSED
+  observed_external_changes: [<paths-or-empty>]
 stage_mutated: false
 ```
 
-The record MUST retain every UNBOUND or STALE finding and MUST say
-`stage_mutated: false`. Do not save it to the repository.
+The record retains every UNBOUND, STALE, unknown, not-evaluated, advisory, panel,
+and coverage finding. Do not store the record in the repository, update a latest
+pointer, or call it a stage receipt. A stage-advancement workflow must independently
+verify the record ID and currentness.
 
----
+## Phase 9: Final currentness and mutation recheck
 
-## 5a. Chain-of-Verification
+Immediately before returning:
 
-After drafting the verdict in Phase 5, challenge it before finalising.
+1. Re-read the catalog and authority record and require their hashes to equal the
+   record. If authority changed, discard the draft gate record and return
+   `ERROR — AUTHORITY CHANGED DURING CHECK`; do not emit a stale record.
+2. Re-hash every scope entry and accepted evidence/attestation dependency required
+   by the profile. If any differs, update the affected status to STALE or the scope
+   gap to SNAPSHOT_CHANGED, rerun the decision table and record ID, then recheck
+   once. Do not loop.
+3. Repeat the mutation guard. The only permitted changes are independently caused
+   external changes already reported; this workflow itself must have changed
+   nothing. If attribution is uncertain, report mutation guard FAILED and do not
+   claim a valid assessment.
+4. Confirm `stage_mutated: false` and that stage authority/history bytes are
+   unchanged by this workflow.
 
-**Step 1 — Generate 5 challenge questions** designed to disprove the verdict:
+Never repair concurrent changes, refresh evidence, or rerun a producer inside
+this workflow.
 
-> **Tool-action requirement**: At least 2 of the 5 challenge questions below must be answered by re-reading a specific file (file read) or re-running a specific check (Search tool) — not by reflection alone. Mark these with [TOOL ACTION] to indicate a tool was used.
+## Phase 10: Optional accepted-risk request
 
-For a **PASS** draft:
-- "Which quality checks did I verify by actually reading a file, vs. inferring they passed?"
-- "Are there MANUAL CHECK NEEDED items I marked PASS without user confirmation? [TOOL ACTION] Re-scan the checklist for any [?] or MANUAL CHECK items."
-- "Did I confirm all listed artifacts have real content, not just empty headers? [TOOL ACTION] Re-read the file and check it has non-placeholder content."
-- "Could any blocker I dismissed as minor actually prevent the phase from succeeding?"
-- "Which single check am I least confident in, and why?"
+PASS needs no risk request. After CONCERNS, FAIL, or PARTIAL, emit a request only
+if the user explicitly identifies the accountable operator and accepts every
+named finding/coverage gap they intend to carry. Do not infer acceptance from a
+request to continue, a previous conversation, or a director response.
 
-For a **CONCERNS** draft:
-- "Could any listed CONCERN be elevated to a blocker given the project's current state?"
-- "Is the concern resolvable within the next phase, or does it compound over time?"
-- "Did I soften any FAIL condition into a CONCERN to avoid a harder verdict?"
-- "Are there artifacts I didn't check that could reveal additional blockers?"
-- "Do all the CONCERNS together create a blocking problem even if each is minor alone?"
-
-For a **FAIL** draft:
-- "Have I accurately separated hard blockers from strong recommendations?"
-- "Are there any PASS items I was too lenient about?"
-- "Am I missing any additional blockers the user should know about?"
-- "Can I provide a minimal path to PASS — the specific 3 things that must change?"
-- "Is the fail condition resolvable, or does it indicate a deeper design problem?"
-
-**Step 2 — Answer each question** independently.
-Do NOT reference the draft verdict text — re-check specific files or ask the user.
-
-**Step 3 — Revise if needed:**
-- If any answer reveals a missed blocker → upgrade verdict (PASS→CONCERNS or CONCERNS→FAIL)
-- If any answer reveals an over-stated blocker → downgrade only if citing specific evidence
-- If answers are consistent → confirm verdict unchanged
-
-**Step 4 — Note the verification** in the final report output:
-`Chain-of-Verification: [N] questions checked — verdict [unchanged | revised from X to Y]`
-
----
-
-## 6. Stop Without Updating Stage
-
-`$gate-check` is read-only. PASS makes the gate record `ELIGIBLE`; it does not
-authorize this skill to edit `production/stage.txt`. CONCERNS and FAIL remain
-`NOT_ELIGIBLE` under the strict verdict.
-
-If the user explicitly chooses to continue after CONCERNS or FAIL, keep the immutable
-gate record unchanged and emit a separate request in the conversation:
+Keep the immutable gate record unchanged and emit:
 
 ```yaml
-schema: cgs.advance-request/v1
+schema: cgs.advance-request/v2
+request_id: sha256:<canonical payload excluding request_id>
 transition_id: <exact transition ID>
-gate_record_id: <cgs.gate-record/v1 record ID>
+profile_id: <profile ID>
+gate_record_id: <cgs.gate-record/v2 ID>
+gate_verdict: CONCERNS | FAIL | PARTIAL
+gate_coverage: COMPLETE | PARTIAL
 requested_disposition: PROCEED_WITH_ACCEPTED_RISK
-operator: <explicit user identity, or user-unverified>
-timestamp: <ISO-8601 timestamp with timezone>
-accepted_risk_finding_ids: [<all explicitly accepted blocker/risk IDs>]
-evidence_record_ids: [<evidence IDs from the gate record>]
+operator: <explicit accountable user identity>
+identity_assurance: USER_ASSERTED | VERIFIED
+timestamp: <ISO-8601 with timezone>
+authority_record_sha256: <hash used by gate>
+scope_manifest_sha256: <hash used by gate>
+accepted_finding_ids: [<explicit IDs>]
+accepted_coverage_gap_ids: [<explicit IDs>]
+evidence_record_ids: [<IDs from gate record>]
+stage_mutated: false
 ```
 
-This request does not advance the stage and must never relabel the gate as PASS. Only an
-independent, explicitly authorized stage-advancement workflow may mutate stage state.
-That workflow must compare-and-set the current stage against the transition origin,
-validate the gate-record hash, preserve exact verdict and override fields, append
-transition history, and perform an atomic update. If no such workflow is available, stop
-after emitting the record/request and state that the project was not advanced.
----
+An omitted open blocker/gap remains unaccepted and must be named. The request does
+not make the gate eligible and is not authority to mutate. Only an independent,
+explicitly authorized stage-advancement workflow may validate policy, compare-and-
+set the current authority record, preserve verdict/risk fields, append history,
+and atomically commit. If none exists, state that no advancement occurred.
 
-## 7. Closing Next-Step Structured prompt
+## Phase 11: Bounded recovery rules
 
-After the verdict and immutable gate record (and any accepted-risk request) are presented, close with a structured next-step prompt. Do not imply that the stage changed.
+- Tool failure or budget exhaustion: keep completed checks, mark exact required
+  scope NOT_EVALUATED, calculate FAIL-with-partial-coverage or PARTIAL, and stop.
+- Director timeout/block/error/malformed/stale: preserve available results,
+  panel coverage PARTIAL in lean/full, calculate deterministically, and stop.
+- Unanswered/ambiguous attestation: retain UNKNOWN/NOT_EVALUATED; never ask in a
+  loop or manufacture an identity.
+- Late evidence or director response after the final manifest freeze: exclude it
+  as late/stale. A new assessment requires a new run/record ID.
+- Concurrent source change: perform the one final reclassification/recalculation
+  described above, then stop. Never auto-retry the whole gate.
+- Compaction/interruption before record emission: recover only from re-read
+  immutable project inputs and explicit conversation records still available;
+  if exact run state cannot be reconstructed, return PARTIAL without claiming the
+  lost checks passed.
 
-**Tailor the options to the gate that just ran:**
+Always return a partial report when some bounded work completed. Never silently
+skip, substitute a role, expand scope, or turn incomplete work into PASS.
 
-For **systems-design PASS**:
-```
-Gate passed. What would you like to do next?
-[A] Run $create-architecture — produce your master architecture blueprint and ADR work plan (recommended next step)
-[B] Design more GDDs first — return here when all MVP systems are complete
-[C] Stop here for this session
-```
+## Phase 12: One next action and stop
 
-> **Note for systems-design PASS**: `$create-architecture` is the required next step before writing any ADRs. It produces the master architecture document and a prioritized list of ADRs to write. Running `$architecture-decision` without this step means writing ADRs without a blueprint — skip it at your own risk.
+End with at most one prioritized action plus `Stop here`; do not print a pipeline,
+invoke a skill, spawn remediation, edit files, or rerun the gate.
 
-For **technical-setup PASS**:
-```
-Gate passed. What would you like to do next?
-[A] Run $create-control-manifest — generate the layer rules manifest from your Accepted ADRs (do this first)
-[B] Run $vertical-slice — build the Vertical Slice (do this before writing epics — validate fun first)
-[C] Write more ADRs first — run $architecture-decision [next-system]
-[D] Stop here for this session
-```
+- PASS: recommend a separately authorized stage-advancement workflow that consumes
+  this exact current gate record, or Stop.
+- CONCERNS: recommend resolving the highest-priority advisory finding, or Stop.
+- FAIL: recommend resolving the highest-priority blocking finding according to its
+  destination owner/acceptance test, or Stop.
+- PARTIAL: recommend supplying/resolving the highest-priority coverage gap, or Stop.
 
-> **Note for technical-setup PASS**: The Pre-Production sequence is deliberately ordered
-> to validate fun before committing to detailed planning:
->
-> 1. `$create-control-manifest` — extract technical rules from Accepted ADRs (required before epics)
-> 2. `$vertical-slice` — build the Vertical Slice **FIRST**, before writing epics or stories
-> 3. Playtest → `$playtest-report` — at least 1 session required to pass the Pre-Production gate; 3+ recommended before committing the full team
-> 4. `$ux-design [screen]` — UX specs for main menu, core HUD, pause menu (if not done)
-> 5. `$create-epics layer:foundation` then `$create-epics layer:core` — plan after fun is validated
-> 6. `$create-stories [epic-slug]` for each epic
-> 7. `$sprint-plan new`
->
-> **Why prototype before epics?** If the prototype reveals the core loop needs to change,
-> epics written before that discovery will be partially wrong. Validate fun cheaply first,
-> then plan in detail. This is the #1 lesson from GDC postmortem data.
-
-For all other gates, offer the two most logical next steps for that phase plus "Stop here".
-
----
-
-## 8. Follow-Up Actions
-
-Based on the verdict, suggest specific next steps:
-
-- **No art bible?** → `$art-bible` to create the visual identity specification
-- **Art bible exists but no asset specs?** → `$asset-spec system:[name]` to generate per-asset visual specs and generation prompts from approved GDDs
-- **No game concept?** → `$brainstorm` to create one
-- **No systems index?** → `$map-systems` to decompose the concept into systems
-- **Missing design docs?** → `$reverse-document` or delegate to `game-designer`
-- **Bounded design change needed?** → run `$quick-design` only when its effort-independent structural-risk preflight says the change is eligible. Its output is a non-authoritative versioned proposal; an independent authorized application step must produce a current `APPLIED` receipt before downstream workflows may consume the changed canonical artifact.
-- **No UX specs?** → `$ux-design [screen name]` to author specs, or `$team-ui [feature]` for full pipeline
-- **UX specs not reviewed?** → `$ux-review [file]` or `$ux-review all` to validate
-- **No accessibility requirements doc?** → stop the screen/HUD readiness path and
-  request a separately authorized accessibility-foundation artifact from its
-  owner; `$ux-design` must not create accessibility and pattern prerequisites as
-  side effects of another artifact
-- **No interaction pattern library?** → use a separate, one-artifact
-  `$ux-design patterns ...` authoring task only under the UX-library owner; a
-  screen/HUD author may create feature-local `UXP-*` proposals but not mutate
-  the global library
-- **GDDs not cross-reviewed?** → `$review-all-gdds` (run after all MVP GDDs are individually approved)
-- **Cross-GDD consistency issues?** → fix flagged GDDs, then re-run `$review-all-gdds`
-- **No test framework?** → `$test-setup` to scaffold the framework for your engine
-- **No QA plan for current sprint?** → `$qa-plan sprint` to generate one before implementation begins
-- **Missing ADRs?** → `$architecture-decision` for individual decisions
-- **No master architecture doc?** → `$create-architecture` for the full blueprint
-- **ADRs missing engine compatibility sections?** → Re-run `$architecture-decision`
-  or manually add Engine Compatibility sections to existing ADRs
-- **Missing control manifest?** → `$create-control-manifest` (requires Accepted ADRs)
-- **Missing epics?** → `$create-epics layer: foundation` then `$create-epics layer: core` (requires control manifest)
-- **Missing stories for an epic?** → `$create-stories [epic-slug]` (run after each epic is created)
-- **Stories not implementation-ready?** → `$story-readiness` to validate stories before developers pick them up
-- **Tests failing?** → delegate to `lead-programmer` or `qa-tester`
-- **No playtest data?** → `$playtest-report`
-- **No playtest sessions beyond the minimum?** → Additional sessions give more reliable signal. 3+ total is recommended before committing the full team. Use `$playtest-report` to structure findings.
-- **No Difficulty Curve doc?** → Create `design/difficulty-curve.md` through the owning design workflow from `.codex/docs/templates/difficulty-curve.md`. A `$quick-design` proposal may suggest a bounded edit only after its structural-risk preflight passes; it cannot create or replace the authoritative curve by itself.
-- **No player journey map?** → create `design/player-journey.md` as a separate
-  explicitly authorized artifact task; do not bundle it into a screen/HUD write
-- **Need a quick sprint check?** → `$sprint-status` for current sprint progress snapshot
-- **Performance unknown?** → `$perf-profile`
-- **Not localized?** → `$localize`
-- **Ready for release?** → `$launch-checklist`
-
----
-
-## Collaborative Protocol
-
-This skill follows the collaborative design principle:
-
-1. **Scan first**: Check artifacts, quality gates, and hash-bound evidence.
-2. **Ask about unknowns**: Do not assume PASS for unverifiable items.
-3. **Present findings**: Show the checklist, strict verdict, and immutable gate record.
-4. **User decides**: The user may accept identified risk, but that never changes the verdict.
-5. **Remain read-only**: Never create or edit `stage.txt`, evidence, reports, or missing artifacts.
-6. **Never auto-fix**: Report missing or stale evidence and name a possible next action;
-   do not create files or re-run the gate to manufacture PASS.
-
-Do not prevent a user from expressing an accepted-risk decision. Record that decision as
-a separate `cgs.advance-request/v1`, explain that no stage mutation occurred, and stop.
+State plainly: `Gate assessment complete; project stage was not changed.`

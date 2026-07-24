@@ -1,4 +1,4 @@
 interface:
   display_name: "Dev Story"
-  short_description: "Implement an authorized, provenance-safe story transaction"
-  default_prompt: "Use $dev-story to validate provenance and dependencies, authorize an exact owned fileset, implement the story with tests, and hand it to review."
+  short_description: "Implement one READY story with owned writes and test proof"
+  default_prompt: "Use $dev-story with one hash-bound request to validate a persisted READY gate, authorize a closed owner/path plan, implement and test it, synchronize tracker-owned lifecycle projections, and stop at In Review."

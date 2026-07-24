@@ -1,4 +1,4 @@
 interface:
   display_name: "Security Audit"
-  short_description: "Evidence-bound read-only scan; redacted, never ship approval"
-  default_prompt: "Use $security-audit to run a scoped, read-only security assessment with real command, scope, hash, build, and advisory evidence; fail closed on anything unverified."
+  short_description: "Redacted, bounded, evidence-bound security assessment"
+  default_prompt: "Use $security-audit for a strictly read-only, threat-scoped assessment with secret-safe output, versioned tool receipts, explicit unsupported/partial coverage, and no ship-approval claim."

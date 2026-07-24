@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Narrative"
-  short_description: "Deliver canon-safe narrative with independent review"
-  default_prompt: "Use $team-narrative with a narrative request manifest to freeze canon, collect bounded read-only proposals, route single-owner writes, enforce localization readiness, and verify final hashes independently."
+  short_description: "Deliver bounded canon-safe narrative with verified localization"
+  default_prompt: "Use $team-narrative with a versioned request manifest to validate and freeze canon, collect mode-bounded read-only narrative, dialogue, art, level, and localization proposals, authorize single-owner artifacts, and independently review final hashes."

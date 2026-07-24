@@ -2,521 +2,473 @@
 
 ## Skill Summary
 
-`$quick-design` creates one immutable design-change proposal for a structurally
-low-risk delta against an exact current GDD hash. It does not use estimated effort
-as a quality-gate shortcut and does not edit authoritative design, data, registry,
-story, review, lifecycle, test, or implementation artifacts. Application,
-independent hash-bound review, and lifecycle recording are separate tasks.
-Production implementation eligibility exists only for an explicitly supplied,
-valid, APPLIED and CURRENT lifecycle record.
+$quick-design creates one immutable cgs.quick-design-proposal/v2 artifact for an
+evidence-proven low-structural-risk delta against explicit target, indexed owner,
+sections, and current hashes, or for an isolated prototype hypothesis. It never
+edits authoritative design/data/index/story/application/review/lifecycle/code/
+test artifacts. Application, independent review, lifecycle recording, and
+implementation are separate.
+
+Production eligibility exists only in read-only status mode when an explicitly
+supplied cgs.quick-design-lifecycle/v2 APPLIED record, application v1 receipt,
+current GDD, and independent review evidence v1 all revalidate.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-- [ ] QDS-S001: Frontmatter contains only `name` and non-empty `description`;
-  `name` is `quick-design`.
-- [ ] QDS-S002: Invocation exposes explicit `propose` and read-only `status`
-  modes.
-- [ ] QDS-S003: The canonical proposal path is exactly
-  `design/quick-specs/<change-id>/<version>/proposal.md`.
-- [ ] QDS-S004: Existing proposals are immutable; PATH EXISTS requires a new
-  version and no in-place update.
-- [ ] QDS-S005: Scope eligibility is determined by an evidence-backed structural
-  risk table, not hours or days.
-- [ ] QDS-S006: A new system/state owner, cross-system contract, player-facing
-  core rule, formula-semantic change, outside-range tuning, or other listed
-  structural risk redirects.
-- [ ] QDS-S007: UNKNOWN risk evidence blocks rather than defaulting to low risk.
-- [ ] QDS-S008: Proposal author, application author, independent reviewer, and
-  lifecycle recorder have explicit, separated responsibilities.
-- [ ] QDS-S009: The only `quick-design propose` write is `proposal.md`; GDD,
-  data, index, story, review, lifecycle, source, and test files are non-writes.
-- [ ] QDS-S010: User draft approval authorizes proposal content/write only and is
-  explicitly not formal review or implementation approval.
-- [ ] QDS-S011: Proposal schema includes stable change/version IDs, Status
-  PROPOSED, exact target/base/section/source hashes, author task ID, risk
-  evidence/profile, and Implementation Eligible NO.
-- [ ] QDS-S012: Proposal sections are exactly Product Decision, Base Snapshot,
-  Structural Risk Evidence, Proposed Delta, Observable Acceptance Conditions,
-  Apply Review and Record Handoff, and Boundaries.
-- [ ] QDS-S013: APPLIED requires an application receipt, unchanged updated GDD
-  hash, formal independent APPROVED review at required depth, and a separate
-  recorder.
-- [ ] QDS-S014: PROPOSED, SUPERSEDED, stale, invalid, experiment-only,
-  advisory-reviewed, and unrecorded proposals are not implementation-eligible.
-- [ ] QDS-S015: Lifecycle records use explicit paths/hashes and append-only
-  predecessor binding; no latest/mtime selection.
-- [ ] QDS-S016: Workflow Status, Proposal Status, Currentness, Implementation
-  Eligible, Persistence, and Verdict are independent axes.
-- [ ] QDS-S017: A production story must reference the updated authoritative GDD
-  path/hash and exact APPLIED record; the proposal is rationale only.
-- [ ] QDS-S018: Metadata describes the hash-bound proposal boundary without
-  claiming direct implementation readiness.
+- [ ] QDS-S001: Frontmatter contains only name and non-empty description; name is quick-design
+- [ ] QDS-S002: propose and read-only status forms are distinct
+- [ ] QDS-S003: Production propose requires exact target, target ID, one-or-more exact sections, and expect-base
+- [ ] QDS-S003A: Stable section ID is SYS-id#canonical-heading-key and normalization collisions fail
+- [ ] QDS-S004: Experiment form forbids production target/base arguments
+- [ ] QDS-S005: Proposal ID is change-id@version and path is design/quick-specs/change-id/version/proposal.md
+- [ ] QDS-S006: Created At UTC is RFC3339 seconds Z; path uniqueness never depends on date
+- [ ] QDS-S007: Existing path uses atomic CREATE_IF_ABSENT and cannot be overwritten
+- [ ] QDS-S008: Revisions require fresh version, exact predecessor, and current rebased evidence
+- [ ] QDS-S009: Risk uses cgs.quick-design-risk/v2 with fixed IDs, YES/NO/UNKNOWN, owner, evidence, derivation, and digest
+- [ ] QDS-S010: User label/effort cannot override a current risk fact
+- [ ] QDS-S011: Any YES redirects and any UNKNOWN blocks before proposal creation
+- [ ] QDS-S012: New system/owner/index row always redirects
+- [ ] QDS-S013: Outside-range tuning redirects with owner/range/propagation handoff
+- [ ] QDS-S014: QD-COSMETIC is restricted to presentation inside an existing indexed owner
+- [ ] QDS-S015: QD-TUNING, QD-COSMETIC, QD-LOCAL, EXPERIMENT_ONLY have fact-derived review rules
+- [ ] QDS-S016: Product, hard-evidence, derived, and technical decision classes match design-system P1
+- [ ] QDS-S017: Every material delta references stable decision IDs and exact section hashes
+- [ ] QDS-S018: Proposal contract is cgs.quick-design-proposal/v2 with exactly seven required sections
+- [ ] QDS-S019: The only propose write is proposal.md; all authoritative and downstream artifacts are non-writes
+- [ ] QDS-S020: Transaction preflight re-hashes target, sections, index, dependencies, owner evidence, predecessor, and risk digest
+- [ ] QDS-S021: Application evidence contract cgs.design-application/v1 binds pre/post hashes, delta IDs, patch/ranges, task, and payload
+- [ ] QDS-S022: Re-review passes prior report plus application receipt as revision evidence
+- [ ] QDS-S022A: Prior re-review report contract is cgs.design-review/v2
+- [ ] QDS-S023: Review evidence contract cgs.review-evidence/v1 is independent/current/depth-bound
+- [ ] QDS-S024: Lifecycle contract cgs.quick-design-lifecycle/v2 is append-only and explicit-path
+- [ ] QDS-S025: APPLIED proposal is never reapplied; follow-up requires new superseding version
+- [ ] QDS-S026: COMPLETE/PARTIAL/BLOCKED/REDIRECTED/ERROR have explicit precedence
+- [ ] QDS-S027: Unsupported or unparseable input never returns COMPLETE or PROPOSAL_CREATED
+- [ ] QDS-S028: Six status axes remain independent
+- [ ] QDS-S029: Production story uses updated GDD plus current APPLIED record, proposal as rationale only
+- [ ] QDS-S030: Metadata describes evidence-gated proposal boundary and no implementation readiness
 
 ---
 
-### Case 1: In-range tuning creates only a PROPOSED artifact
+## Behavioral Cases
+
+### Case 1: in-range tuning creates one current PROPOSED artifact
 
 **Fixture:**
 
-- `design/gdd/movement.md` is a valid current system GDD with stable system ID.
-- Its Tuning Knobs section documents `jump_height` range 4.0–7.0 and current
-  default 5.0.
-- Exact current GDD and section hashes are known.
-- Current systems-index ownership is unambiguous and hashable.
-- All structural risk rows are proven NO.
-- `design/quick-specs/QD-jump-height/v001/proposal.md` does not exist.
+- movement GDD is indexed exactly as SYS-movement.
+- Tuning Knobs uniquely defines jump_height default 5.0, range 4.0–7.0, unit m.
+- Target/index/section/dependency hashes are current.
+- Risk rows QDR-001..009 are all NO.
+- Canonical v001 path is absent.
 
 **Input:**
 
-`$quick-design propose "change jump_height default to 6.0" --change-id QD-jump-height --version v001 --target design/gdd/movement.md --expect-base <current-sha256>`
-
-**Expected writes:**
-
-- Exactly `design/quick-specs/QD-jump-height/v001/proposal.md` after product
-  content approval and bounded write authorization.
-
-**Expected non-writes:**
-
-- `design/gdd/movement.md`, `assets/data/**`,
-  `design/gdd/systems-index.md`, stories, review/lifecycle records, `src/**`,
-  `tests/**`, and session state.
+    $quick-design propose "set jump_height to 6.0"
+      --change-id QD-jump-height --version v001
+      --target design/gdd/movement.md --target-id SYS-movement
+      --section "Tuning Knobs" --expect-base sha256:<current>
 
 **Expected behavior:**
 
-1. Verifies the exact target and source hashes without choosing by relevance or
-   mtime.
-2. Shows all-NO structural risk evidence and selects `QD-TUNING`.
-3. Requires formal later review depth `lean` or `full`.
-4. Writes and re-reads one immutable proposal with `Status: PROPOSED`,
-   `Implementation Eligible: NO`, and all seven required sections.
-5. Returns `Workflow Status: COMPLETE`, `Proposal Status: PROPOSED`,
-   `Currentness: CURRENT`, `Persistence: VERIFIED`, and
-   `Verdict: PROPOSAL_CREATED`.
-6. Stops before authoritative application, review, recording, or implementation.
+1. Exact row, target, section, owner, and hashes are verified.
+2. Risk contract/digest derives QD-TUNING; effort is non-gating.
+3. Product owner selects 6.0 and QDD record binds source/range/decision.
+4. Atomic create-if-absent writes one proposal v2 and verifies raw bytes.
+5. Result is COMPLETE/PROPOSED/CURRENT/NO/VERIFIED/PROPOSAL_CREATED.
 
 **Assertions:**
 
-- [ ] QDS-C01-A: No effort estimate participates in eligibility.
-- [ ] QDS-C01-B: The proposal is bound to exact current target/section hashes.
-- [ ] QDS-C01-C: Only the canonical proposal path is created.
-- [ ] QDS-C01-D: A successful proposal is still implementation-ineligible.
+- [ ] QDS-C01-A: Only canonical proposal path is created
+- [ ] QDS-C01-B: Proposal binds exact target/index/section/risk/decision evidence
+- [ ] QDS-C01-C: Successful proposal remains implementation-ineligible
 
 ---
 
-### Case 2: Structural risk redirects regardless of effort or label
+### Case 2: risk facts cannot be downgraded by label or effort
+
+**Fixture:** variants add a state owner, cross-system timing contract,
+player-facing core rule, formula semantic, or persistence/accessibility policy.
+User calls each tiny, under one hour, cosmetic, or tuning.
+
+**Expected behavior:**
+
+1. Fixed risk row is YES with owner source and derivation.
+2. User label and effort do not change result.
+3. Workflow is REDIRECTED/NOT_CREATED/NOT_APPLICABLE/NO/NOT_REQUESTED/REDIRECTED.
+4. No proposal/write authorization prompt occurs.
+
+**Assertions:**
+
+- [ ] QDS-C02-A: Structural facts, not classification preference, gate eligibility
+- [ ] QDS-C02-B: Revised product idea triggers full risk re-evaluation
+- [ ] QDS-C02-C: Redirect creates no shadow artifact
+
+---
+
+### Case 3: exact target, ID, and sections fail closed
+
+**Fixture:** run variants with missing target ID, wrong index row, multiple rows,
+fuzzy target request, absent/duplicate heading, unsupplied affected section,
+unsupported document profile, directory, symlink, or non-UTF-readable bytes.
+
+**Expected behavior:**
+
+- Invalid/unsupported input returns ERROR/NOT_CREATED/INVALID.
+- Missing or contradictory registration/ownership evidence returns BLOCKED with
+  TARGET SYSTEM REGISTRATION REQUIRED or RISK EVIDENCE REQUIRED.
+- No relevance search, filename matching, or most-recent selection occurs.
+
+**Assertions:**
+
+- [ ] QDS-C03-A: Target path and SYS ID resolve one exact index row
+- [ ] QDS-C03-B: Every delta maps to a supplied unique section
+- [ ] QDS-C03-C: Unsupported input cannot produce COMPLETE
+
+---
+
+### Case 4: same-day and concurrent proposal collisions cannot overwrite
 
 **Fixture:**
 
-Run variants where the requested change:
-
-- creates a new achievement system;
-- adds a new combat state owner;
-- changes a combat-to-inventory timing/ownership contract; or
-- changes a player-facing progression core rule.
-
-The user describes each as "tiny", estimates under one hour, or selects
-"Tuning".
-
-**Input:**
-
-Run `propose` with an exact target and distinct unused IDs.
-
-**Expected writes:**
-
-- None.
-
-**Expected non-writes:**
-
-- No proposal, GDD, data, systems-index, review, lifecycle, story, or
-  implementation file.
+- QD-dash-window/v001 already exists.
+- Variant A requests v001 again.
+- Variant B requests unused v002 with exact predecessor and current base.
+- Variant C races another creator for the same unused v003 path.
 
 **Expected behavior:**
 
-1. Records the objective risk fact as YES with evidence.
-2. Does not allow label selection or estimated effort to override the fact.
-3. Returns `Workflow Status: REDIRECTED`,
-   `Proposal Status: NOT_CREATED`, `Implementation Eligible: NO`,
-   `Verdict: REDIRECTED`, and next owner `$design-system`.
-4. Stops before drafting or asking for proposal write authorization.
+- A returns PATH EXISTS; CHOOSE A NEW VERSION with zero modification.
+- B verifies predecessor, uses Proposal ID QD-dash-window@v002, current base,
+  RFC3339 UTC timestamp, and creates only v002.
+- C atomic CREATE_IF_ABSENT has one winner; loser returns path-exists error.
 
 **Assertions:**
 
-- [ ] QDS-C02-A: Every prohibited structural risk fails closed.
-- [ ] QDS-C02-B: "New Small System" is never a quick profile.
-- [ ] QDS-C02-C: User classification cannot downgrade evidence-backed risk.
-- [ ] QDS-C02-D: Redirection creates no shadow proposal.
+- [ ] QDS-C04-A: Date never controls path uniqueness
+- [ ] QDS-C04-B: Predecessor path/hash/version chain is explicit
+- [ ] QDS-C04-C: Existing bytes are never updated in place
 
 ---
 
-### Case 3: Proposal approval cannot authorize GDD edits or implementation
+### Case 5: outside-range tuning redirects with decision ownership
+
+**Fixture:** current range is 4.0–7.0 m, requested value is 9.0, and dependent
+HUD presentation consumes the range.
+
+**Expected behavior:**
+
+1. QDR-008 is YES with knob/range/unit/owner/hash.
+2. No quick proposal or range/data edit is created.
+3. Conversation handoff names target ID/section/hash, requested value, product
+   decision owner, dependent owner, and design-system revise-section.
+4. Full authoring decides the new range and later propagation/review.
+
+**Assertions:**
+
+- [ ] QDS-C05-A: Rationale cannot extend range in quick path
+- [ ] QDS-C05-B: quick-design does not choose new range
+- [ ] QDS-C05-C: Dependent propagation is routed, not silently performed
+
+---
+
+### Case 6: production new system redirects; cosmetic stays under existing owner
 
 **Fixture:**
 
-- A valid `QD-LOCAL` draft proposes a bounded rule clarification.
-- The user approves the draft and says, "apply it to the GDD and implement it
-  now."
-- The current task is the proposal-author task.
-
-**Input:**
-
-Approve the proposed `proposal.md` changeset.
-
-**Expected writes:**
-
-- Only the authorized canonical `proposal.md`.
-
-**Expected non-writes:**
-
-- Target GDD/checkpoint, data, systems index, story, review receipt, lifecycle
-  record, code, tests, or implementation artifacts.
+- A requests a small standalone notification system requiring a new index row.
+- B changes only hit-confirm text/color mapping in existing SYS-combat,
+  preserving mechanics, accessibility policy, interfaces, state, and owner.
+- C calls a new UI component cosmetic but it owns lifecycle state.
 
 **Expected behavior:**
 
-1. Treats approval as product-content and one-file persistence approval only.
-2. Creates the PROPOSED artifact, if persistence was authorized.
-3. Keeps the proposal operation's axes accurate and returns
-   `Downstream Action: BLOCKED — SEPARATE APPLICATION AND REVIEW REQUIRED`
-   for the request to apply/implement.
-4. Provides separate application-author, independent-reviewer, and recorder
-   handoffs, then stops.
-5. Does not invoke the next workflow in the same task.
+- A and C set applicable QDR rows YES and redirect with no proposal.
+- B may derive QD-COSMETIC after all-NO evidence and requires lean-or-full review.
+- Cosmetic proposal remains bound to existing combat GDD section/owner.
 
 **Assertions:**
 
-- [ ] QDS-C03-A: Proposal author never edits authoritative GDD/data/index.
-- [ ] QDS-C03-B: User draft approval is not a formal review receipt.
-- [ ] QDS-C03-C: No implementation begins before APPLIED/current evidence.
-- [ ] QDS-C03-D: Author-review-record responsibilities remain separated.
+- [ ] QDS-C06-A: New Small System is not a profile
+- [ ] QDS-C06-B: Cosmetic category never creates a hidden system owner
+- [ ] QDS-C06-C: Accessibility-policy changes are not cosmetic
 
 ---
 
-### Case 4: PROPOSED cannot become a shadow implementation source
+### Case 7: stale base, predecessor, or re-application requires rebase
 
 **Fixture:**
 
-- A valid immutable proposal exists with `Status: PROPOSED`.
-- The authoritative GDD still has the proposal's base hash.
-- No lifecycle record is supplied.
-- A story cites only the proposal path as its GDD Reference.
-
-**Input:**
-
-`$quick-design status design/quick-specs/QD-parry-window/v001/proposal.md`
-
-**Expected writes:**
-
-- None.
-
-**Expected non-writes:**
-
-- No proposal/status rewrite, story repair, GDD application, review, record, or
-  implementation.
+- Draft binds target hash A/section hashes.
+- Target becomes B before write.
+- Another variant has an APPLIED v001 against A and wants same delta on C.
 
 **Expected behavior:**
 
-1. Re-hashes the proposal and current GDD.
-2. Returns `Proposal Status: PROPOSED`, `Currentness: CURRENT`,
-   `Implementation Eligible: NO`, and `Verdict: STATUS_REPORTED`.
-3. Reports that the story's authoritative reference is inadequate.
-4. Requires an updated authoritative GDD plus exact APPLIED lifecycle record
-   before implementation readiness can be evaluated.
+1. Pre-create rehash detects A/B mismatch and writes nothing.
+2. Returns ERROR, STALE, REBASE REQUIRED; never silently edits draft binding.
+3. APPLIED v001 is not reapplied to C.
+4. Follow-up requires v002, --supersedes exact v001 path/hash, base C, fresh
+   decisions/risk/application/review/record.
 
 **Assertions:**
 
-- [ ] QDS-C04-A: PROPOSED never authorizes production implementation.
-- [ ] QDS-C04-B: The proposal is rationale, not an authoritative GDD substitute.
-- [ ] QDS-C04-C: Status mode is read-only.
-- [ ] QDS-C04-D: Story handoff cannot bypass application/review/recording.
+- [ ] QDS-C07-A: Compare-and-set covers all source evidence
+- [ ] QDS-C07-B: Conversation memory is not currentness evidence
+- [ ] QDS-C07-C: Re-application cannot bypass new version review
 
 ---
 
-### Case 5: Stale base blocks before persistence
+### Case 8: decision ownership classes prevent silent override
 
 **Fixture:**
 
-- The invocation supplies expected base hash A.
-- The target GDD is changed to hash B before the proposal write preflight.
-- The draft and risk analysis were based on A.
-- The output path is unused.
-
-**Input:**
-
-Approve the draft for persistence.
-
-**Expected writes:**
-
-- None.
-
-**Expected non-writes:**
-
-- No proposal, GDD, data, index, review, record, story, or source write.
+- User selects one in-range tuning option.
+- Current owner GDD establishes range as hard evidence.
+- Observable threshold is derived from accepted inputs.
+- Engine storage question appears.
 
 **Expected behavior:**
 
-1. Re-reads all authoritative inputs immediately before writing.
-2. Detects the target/section hash mismatch.
-3. Returns `Workflow Status: ERROR`, `Proposal Status: NOT_CREATED`,
-   `Currentness: STALE`, `Implementation Eligible: NO`,
-   `Persistence: NOT_REQUESTED`, and `Reason: STALE BASE — REBASE REQUIRED`.
-4. Does not silently update the draft or bind it to B.
+1. Four QDD records use product-choice, evidence-backed-hard-constraint,
+   derived-design-constraint, and technical-handoff correctly.
+2. Hard evidence includes owner path/ID/locator/hash.
+3. Derived record includes inputs/derivation/assumptions and acceptance.
+4. Technical question is routed and absent from design delta.
 
 **Assertions:**
 
-- [ ] QDS-C05-A: Compare-and-set currentness is enforced.
-- [ ] QDS-C05-B: Conversation memory is not hash evidence.
-- [ ] QDS-C05-C: Stale proposal bytes are never written as current.
+- [ ] QDS-C08-A: User owns product outcome, not external fact classification
+- [ ] QDS-C08-B: Delta IDs reference accepted decision IDs
+- [ ] QDS-C08-C: Application author cannot choose a different outcome silently
 
 ---
 
-### Case 6: Existing path is immutable; revision creates a new version
+### Case 9: partial, blocked, error, decline, and failed persistence are distinct
+
+**Fixture:** variants stop with unresolved decision, lack risk evidence, provide
+unsupported target, decline persistence, or fail atomic byte verification.
+
+**Expected behavior:**
+
+- Unresolved discussion: PARTIAL/DRAFT/(CURRENT or STALE)/NO/NOT_REQUESTED/DRAFT_ONLY.
+- Missing risk evidence: BLOCKED/NOT_CREATED/NOT_APPLICABLE/NO/NOT_REQUESTED/BLOCKED.
+- Unsupported input: ERROR/NOT_CREATED/INVALID/NO/NOT_REQUESTED/ERROR.
+- Decline: COMPLETE/DRAFT/CURRENT/NO/DECLINED/DRAFT_ONLY.
+- Persistence failure: ERROR/NOT_CREATED/INVALID/NO/FAILED/ERROR.
+
+**Assertions:**
+
+- [ ] QDS-C09-A: No incomplete path emits PROPOSAL_CREATED
+- [ ] QDS-C09-B: UNKNOWN never defaults to NO
+- [ ] QDS-C09-C: Failure does not claim canonical artifact exists
+
+---
+
+### Case 10: proposal approval cannot authorize downstream writes
+
+**Fixture:** valid draft is approved and user asks to apply, review, record, and
+implement immediately.
+
+**Expected behavior:**
+
+1. Approval applies only to exact proposal content and CREATE_IF_ABSENT.
+2. Only proposal may be written.
+3. GDD/checkpoint/data/index/story/application/review/lifecycle/code/test remain
+   non-writes.
+4. Downstream action is blocked and independent owner handoffs are returned.
+
+**Assertions:**
+
+- [ ] QDS-C10-A: Proposal author cannot self-apply/review/record
+- [ ] QDS-C10-B: Draft approval is not formal review
+- [ ] QDS-C10-C: Workflow stops after handoff
+
+---
+
+### Case 11: proposal v2 schema is complete and non-authoritative
+
+**Fixture:** verified QD-LOCAL draft with two explicitly supplied sections.
+
+**Expected behavior:**
+
+1. Header contains all v2 identity, UTC, base/index/risk/profile/non-eligibility
+   fields.
+2. Exactly seven required level-two sections exist.
+3. Each QDDELTA maps one supplied section, decision IDs, owner, before/after,
+   and unchanged invariants.
+4. Literal statement says proposal does not replace authoritative GDD.
+
+**Assertions:**
+
+- [ ] QDS-C11-A: No GDD Update Required No escape exists
+- [ ] QDS-C11-B: Proposal cannot instruct programmer to implement
+- [ ] QDS-C11-C: Risk digest canonicalization is recorded
+
+---
+
+### Case 12: application uses design-system ownership and receipt v1
+
+**Fixture:** valid current proposal contains delta IDs for Formulas and Tuning
+Knobs.
+
+**Expected behavior:**
+
+1. Separate application author revalidates proposal/base/section/evidence hashes.
+2. Each section uses design-system revise-section with separate authorization,
+   decision owner preserved, and no quick-design write expansion.
+3. External immutable cgs.design-application/v1 receipt binds proposal,
+   pre/post GDD hashes, delta IDs, exact ranges/patch, task, timestamp, payload.
+4. Base mismatch requires new proposal version, not application improvisation.
+
+**Assertions:**
+
+- [ ] QDS-C12-A: Application matches design-system P1 section ownership
+- [ ] QDS-C12-B: Receipt is revision evidence, not approval
+- [ ] QDS-C12-C: Proposal author does not create receipt
+
+---
+
+### Case 13: review uses design-review P1 current evidence
 
 **Fixture:**
 
-- `design/quick-specs/QD-dash-window/v001/proposal.md` exists.
-- Variant A requests `v001` again.
-- Variant B requests `v002`, supplies the current GDD hash, and names the exact
-  v001 path/hash in `--supersedes`.
-- The current risk gate passes for Variant B.
-
-**Input:**
-
-Run both variants.
-
-**Expected writes:**
-
-- Variant A: none.
-- Variant B: exactly the fresh
-  `design/quick-specs/QD-dash-window/v002/proposal.md` after authorization.
-
-**Expected non-writes:**
-
-- No edit or overwrite of v001 and no mutable current-status pointer.
+- Updated GDD and application receipt exist.
+- For re-review, prior design-review v2 report targets receipt pre-hash.
+- Variants use self-review, solo, partial, weak depth, stale target, malformed
+  report/evidence payload, or valid independent approval.
 
 **Expected behavior:**
 
-1. Variant A returns `ERROR — PATH EXISTS; CHOOSE A NEW VERSION`.
-2. Variant B verifies the predecessor and rebases all target hashes.
-3. v002 records the exact v001 path/hash in `Supersedes`.
-4. Neither variant selects a version by date or mtime.
+- Re-review gets exact prior report plus application receipt revision evidence.
+- Receipt post-hash equals current GDD and review target.
+- Only formal independent APPROVED cgs.review-evidence/v1 at profile depth can
+  support APPLIED.
+- Invalid variants remain NO and are never repaired by status.
 
 **Assertions:**
 
-- [ ] QDS-C06-A: Same-day or repeated invocation cannot overwrite a proposal.
-- [ ] QDS-C06-B: New versions are collision-free and explicitly chained.
-- [ ] QDS-C06-C: Existing-file behavior matches the canonical contract.
+- [ ] QDS-C13-A: QD-LOCAL requires full review
+- [ ] QDS-C13-B: Tuning/cosmetic accept lean or full formal review
+- [ ] QDS-C13-C: Review report/evidence hashes recompute
+- [ ] QDS-C13-D: Reviewer identity differs from both authors
 
 ---
 
-### Case 7: Outside-range tuning redirects to full design
+### Case 14: PROPOSED remains rationale, not shadow truth
 
-**Fixture:**
-
-- Current GDD documents a tuning range of 4.0–7.0.
-- The proposal requests value 9.0.
-- No new state or cross-system interaction exists.
+**Fixture:** valid PROPOSED file exists, base GDD remains current, no lifecycle
+record, and a story cites only proposal path.
 
 **Input:**
 
-Run `propose` for the value 9.0.
-
-**Expected writes:**
-
-- None.
-
-**Expected non-writes:**
-
-- No proposal, GDD range edit, data edit, or implementation.
+    $quick-design status <proposal>
 
 **Expected behavior:**
 
-1. Records `Places tuning value outside documented current range: YES`.
-2. Returns REDIRECTED and names `$design-system` as the authoring owner.
-3. Does not accept rationale text as permission to extend the range.
-4. Requires the range change to receive full authoritative authoring and review.
+1. Read-only status returns PROPOSED/CURRENT/NO/STATUS_REPORTED.
+2. Story reference is inadequate: it needs updated authoritative GDD and current
+   APPLIED record.
+3. No repair/application/review/record/story edit occurs.
 
 **Assertions:**
 
-- [ ] QDS-C07-A: Outside-range values cannot use `QD-TUNING`.
-- [ ] QDS-C07-B: Quick-design never edits the range or data directly.
-- [ ] QDS-C07-C: Structural fact, not effort, controls redirection.
+- [ ] QDS-C14-A: PROPOSED never authorizes production
+- [ ] QDS-C14-B: Proposal is rationale only
+- [ ] QDS-C14-C: Status is explicit-path and read-only
 
 ---
 
-### Case 8: Self-review, stale review, or weak review cannot establish APPLIED currentness
+### Case 15: valid APPLIED and CURRENT graph is recognized read-only
 
-**Fixture:**
-
-Use an APPLIED lifecycle-record candidate with one invalid variant at a time:
-
-- reviewer task ID equals proposal-author or application-author task ID;
-- recorder task ID equals an author/reviewer task ID;
-- review is `solo` / `ADVISORY REVIEW — NOT APPROVAL`;
-- `QD-LOCAL` review depth is only `lean`;
-- review verdict is not APPROVED;
-- review targets the old GDD hash; or
-- current GDD bytes changed after the review.
-
-**Input:**
-
-`$quick-design status <proposal-path> --record <applied-record-path>`
-
-**Expected writes:**
-
-- None.
-
-**Expected non-writes:**
-
-- No repair, re-review, record rewrite, GDD rollback, or implementation.
+**Fixture:** proposal v2, application receipt v1, current post-GDD, independent
+APPROVED review evidence v1 at required depth, lifecycle v2 record, identities,
+hashes, and predecessor all revalidate.
 
 **Expected behavior:**
 
-1. Re-hashes every explicit artifact and validates task-role separation.
-2. Preserves the record's stated lifecycle status for audit but reports
-   `Currentness: INVALID` or `STALE`.
-3. Returns `Implementation Eligible: NO`.
-4. Names the exact failed predicate and required fresh owner/review/record action.
+1. Status validates complete explicit graph.
+2. Returns APPLIED/CURRENT/Implementation Eligible YES/STATUS_REPORTED.
+3. Still requires separate current story-readiness.
+4. Any one stale/invalid predicate changes eligibility to NO without mutation.
 
 **Assertions:**
 
-- [ ] QDS-C08-A: Author cannot self-approve or self-record.
-- [ ] QDS-C08-B: Review approval is bound to the current GDD hash.
-- [ ] QDS-C08-C: Risk-profile review depth is enforced.
-- [ ] QDS-C08-D: Status validation never mutates evidence.
+- [ ] QDS-C15-A: All eligibility predicates are simultaneous
+- [ ] QDS-C15-B: Recognition never writes evidence
+- [ ] QDS-C15-C: quick-design never chains into implementation
 
 ---
 
-### Case 9: Valid APPLIED and CURRENT evidence is recognized read-only
+### Case 16: experiment-only cannot enter production lifecycle
 
-**Fixture:**
-
-- Proposal is valid and hash-bound.
-- A separately authorized application receipt binds its proposal hash, applied
-  delta IDs, and exact pre/post GDD hashes.
-- Current GDD bytes equal the post-application hash.
-- Independent formal review is APPROVED for that exact GDD path/hash and meets
-  the profile's required depth.
-- Reviewer and recorder task IDs are independent from all author task IDs.
-- A valid append-only APPLIED record binds every artifact and expected pre-state.
-
-**Input:**
-
-`$quick-design status <proposal-path> --record <applied-record-path>`
-
-**Expected writes:**
-
-- None.
-
-**Expected non-writes:**
-
-- No story, GDD, lifecycle, review, code, or test changes.
+**Fixture:** exact prototype scope exists and unused proposal path is authorized.
 
 **Expected behavior:**
 
-1. Revalidates the complete hash graph.
-2. Returns `Workflow Status: COMPLETE`, `Proposal Status: APPLIED`,
-   `Currentness: CURRENT`, `Implementation Eligible: YES`, and
-   `Verdict: STATUS_REPORTED`.
-3. Clarifies that implementation still requires a separate current
-   `story-readiness` decision.
-4. Requires stories to reference the authoritative updated GDD path/hash and
-   exact APPLIED record, not the proposal alone.
+1. Production target/id/section/base arguments are rejected in experiment form.
+2. Valid experiment proposal has EXPERIMENT_ONLY, exact scope, review N/A, and
+   eligibility NO.
+3. APPLIED/lifecycle production handoff and story-readiness are unavailable.
+4. No production artifact changes.
 
 **Assertions:**
 
-- [ ] QDS-C09-A: Every APPLIED predicate is simultaneously satisfied.
-- [ ] QDS-C09-B: Eligibility recognition is read-only.
-- [ ] QDS-C09-C: Quick-design does not chain into implementation.
+- [ ] QDS-C16-A: Experiment identity is exact and isolated
+- [ ] QDS-C16-B: Experiment never becomes APPLIED
+- [ ] QDS-C16-C: Only prototype-validation handoff is offered
 
 ---
 
-### Case 10: Experiment-only proposal cannot enter production
+### Case 17: P1 test evidence and catalog registration are honest
 
-**Fixture:**
-
-- Exact prototype scope exists under `prototypes/`.
-- A low-risk temporary hypothesis is requested with `--experiment-only`.
-- No production GDD mutation is authorized.
-
-**Input:**
-
-Run `propose` with an unused canonical proposal path and exact prototype scope.
-
-**Expected writes:**
-
-- Only the authorized proposal with `Target Use: EXPERIMENT_ONLY`.
-
-**Expected non-writes:**
-
-- Production GDD/data/story/code, lifecycle APPLIED record, review approval, or
-  production implementation.
+**Fixture:** current staged implementation, metadata, and this spec; shared
+catalog last-result fields are not assumed current.
 
 **Expected behavior:**
 
-1. Writes `Status: PROPOSED`, the exact `Prototype Scope`,
-   `Risk Profile: EXPERIMENT_ONLY`, `Required Review Depth: NOT_APPLICABLE`, and
-   `Implementation Eligible: NO`.
-2. States that APPLIED status is unavailable.
-3. Provides only a prototype-validation handoff, not `story-readiness` or
-   `dev-story`.
+1. Static/spec/category evaluation maps every assertion to current file hashes.
+2. Each axis reports PASS/FAIL/UNEXECUTED separately.
+3. A separately owned shared catalog update occurs only after actual execution.
+4. Empty/stale/copied fields are not test evidence.
 
 **Assertions:**
 
-- [ ] QDS-C10-A: Experiment-only is visibly non-production.
-- [ ] QDS-C10-B: It cannot become APPLIED or implementation-eligible.
-- [ ] QDS-C10-C: Production artifacts remain untouched.
+- [ ] QDS-C17-A: Spec covers QDS-001 through QDS-012
+- [ ] QDS-C17-B: This candidate does not edit shared catalog
+- [ ] QDS-C17-C: Current implementation/metadata/spec hashes are required
 
 ---
 
-### Case 11: Authorization decline or persistence failure does not claim creation
+## Cross-skill compatibility
 
-**Fixture:**
+- [ ] QDS-X001: Application uses staged design-system revise-section exact section ownership
+- [ ] QDS-X002: Product/hard/derived/technical decision ownership matches design-system
+- [ ] QDS-X003: Re-review evidence shape satisfies staged design-review v2 input requirements
+- [ ] QDS-X004: Formal evidence uses staged design-review cgs.review-evidence/v1
+- [ ] QDS-X005: Solo/advisory/partial review never approves
+- [ ] QDS-X006: Proposal is rationale; story authority is current GDD plus APPLIED record
+- [ ] QDS-X007: Propagation remains a separately owned workflow
+- [ ] QDS-X008: Metadata/spec/skill agree on proposal/risk/application/lifecycle contracts and profiles
 
-- Draft, target, and risk evidence are valid.
-- Variant A declines the one-file write.
-- Variant B authorizes it but atomic persistence or byte verification fails.
+## Authoritative P1 closure matrix
 
-**Input:**
+| Audit ID | Static clause | Behavioral evidence |
+|---|---|---|
+| QDS-005 | Typed risk facts precede profile classification | Cases 1 and 2 assertions |
+| QDS-006 | Exact target/system/section ownership | Cases 3 and 6 assertions |
+| QDS-007 | Compare-and-create collision safety | Case 4 assertions |
+| QDS-008 | Approved tuning-range enforcement | Case 5 assertions |
+| QDS-009 | Production new-system redirect | Case 6 assertions |
+| QDS-010 | Stale-base, predecessor, and re-application protocol | Cases 7 and 15 assertions |
+| QDS-011 | Failure, partial, unsupported, decline, and persistence states | Case 9 assertions |
+| QDS-012 | Current P1 spec evidence and honest catalog registration | Case 17 assertions |
 
-Complete `propose` through the persistence decision.
+## Coverage Notes
 
-**Expected writes:**
-
-- Variant A: none.
-- Variant B: no verified canonical proposal; temporary staging is not a result.
-
-**Expected non-writes:**
-
-- All authoritative and implementation artifacts remain untouched.
-
-**Expected behavior:**
-
-1. Variant A returns `COMPLETE / DRAFT / DRAFT_ONLY`,
-   `Persistence: DECLINED`, and `Implementation Eligible: NO`.
-2. Variant B returns `ERROR / NOT_CREATED / ERROR`,
-   `Persistence: FAILED`, and `Implementation Eligible: NO`.
-3. Neither response claims `PROPOSAL_CREATED` or an existing canonical path.
-
-**Assertions:**
-
-- [ ] QDS-C11-A: Content approval and filesystem persistence remain distinct.
-- [ ] QDS-C11-B: Failed verification cannot produce a success verdict.
-- [ ] QDS-C11-C: No partial write expands the authorization boundary.
-
----
-
-## Cross-skill compatibility assertions
-
-- [ ] QDS-X001: GDD mutation is handed to staged `design-system
-  revise-section` with a separate authorization and author-only mutation scope.
-- [ ] QDS-X002: Formal approval uses a fresh staged `design-review` task and is
-  bound to the exact whole-GDD hash.
-- [ ] QDS-X003: Solo/advisory review never satisfies formal approval.
-- [ ] QDS-X004: Production stories must satisfy staged `story-readiness` using
-  current authoritative-source traceability; a PROPOSED quick artifact is not a
-  GDD.
-- [ ] QDS-X005: Dependent-artifact propagation, when needed, remains a separate
-  owner-authorized workflow and is never performed by quick-design.
-- [ ] QDS-X006: The spec and metadata use the same proposal path, schema,
-  lifecycle states, verdicts, and non-write boundary as the skill.
+This contract covers QDS-001 through QDS-012. Filename normalization hardening,
+project-specific implementation-value formats, dependent-owner tooling, and
+downstream story policy refinements remain separate QDS-013..017 work except
+where required to preserve the P1 authority boundary.

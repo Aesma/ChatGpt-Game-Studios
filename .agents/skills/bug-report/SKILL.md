@@ -1,312 +1,397 @@
 ---
 name: bug-report
-description: "Creates canonical bug reports and records evidence-gated verification and closure transitions without treating static inspection or manual checks as regression proof."
+description: "Creates canonical bug records and evidence-gated lifecycle events with complete draft fields, duplicate-safe allocation, exact runner receipts, and mandatory regression closure."
 ---
 
 # Bug Report
 
-## Invocation and execution
-
-Invoke this workflow as `$bug-report`.
-
-Before the first file change, present the complete proposed changeset, listing every
-file and intended modification, and obtain one explicit approval. Existing bounded
-task authorization satisfies this gate. After approval, make all changes within that
-boundary continuously without asking again file by file. If the scope expands
-materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[description] | analyze [path-to-file]`. Treat bracketed values as
-optional unless the workflow says otherwise.
-
-## Non-negotiable canonical contract
-
-1. The only canonical bug registry is `production/qa/bugs/*.md`. A record's path is
-   `production/qa/bugs/<BUG-ID>.md`, where the filename ID exactly matches the `ID`
-   field. Do not read or write `production/bugs/`, a combined bugs file, a triage
-   report, or any other artifact as a bug record.
-2. Canonical records use `Schema Version: 1` and one stable ID matching
-   `BUG-[0-9]{4,}`. Route verify and close operations only through that stable ID.
-   If the expected record is absent, the filename and field disagree, or more than
-   one canonical file contains the ID, stop without a business verdict or mutation
-   and report the conflicting paths.
-3. Canonical severity values are exactly `S1-Critical`, `S2-Major`, `S3-Minor`,
-   and `S4-Trivial`. Do not silently convert legacy
-   `CRITICAL/HIGH/MEDIUM/LOW` values. Priority and scheduling are separate owner
-   decisions and are never inferred from severity by this workflow.
-4. Canonical lifecycle statuses are exactly `Open`,
-   `Fixed Pending Verification`, `Verified Fixed`, and `Closed`. Update the single
-   top-level Status field and append the matching transition-history event in one
-   proposed mutation.
-5. Source search, diff inspection, or the presence of a test can establish only
-   `FIX PRESENT / RUNTIME UNVERIFIED`. It can never establish
-   `VERIFIED FIXED`.
-6. `VERIFIED FIXED` requires both a target-build reproduction receipt and a passing,
-   failure-sensitive automated regression-test receipt bound to the fix revision.
-   Manual runtime observation may supply the reproduction receipt, but manual
-   evidence never replaces the automated regression-test receipt.
-7. `CLOSED` requires the current `Verified Fixed` transition and the same valid
-   automated regression evidence. `Manual verification` is not an allowed value for
-   `Regression test`. The repository test policy grants no regression-test waiver.
-8. This workflow does not assign priority, schedule work, accept risk, or edit sprint,
-   triage, hotfix, release, or test-plan records.
-
-## Canonical state machine and owners
-
-| From | To | Decision owner | Required evidence | This workflow's role |
-|---|---|---|---|---|
-| `Open` | `Fixed Pending Verification` | fix implementer / owning development workflow | fix commit or PR, affected build, and regression test ID/path | Consume the recorded transition; Verify Mode does not create it |
-| `Fixed Pending Verification` | `Verified Fixed` | QA verifier | passing target-build reproduction receipt and passing automated regression receipt for the fix revision | Verify Mode may record after authorization |
-| `Fixed Pending Verification` | `Open` | QA verifier | failing target-build reproduction or regression receipt | Verify Mode may record after authorization |
-| `Verified Fixed` | `Closed` | authorized QA closure owner | current verification transition plus its passing automated regression receipt | Close Mode may record after authorization |
-
-All other transitions are illegal. In particular, reject `Open → Verified Fixed`,
-`Open → Closed`, `Fixed Pending Verification → Closed`, and every transition out of
-`Closed`. The workflow records an owner's decision; it does not grant that authority.
-Every accepted transition appends an immutable history entry containing old status,
-new status, owner identity and role, UTC timestamp, reason, source receipt hashes,
-and the bug-record preimage SHA-256.
-
-## Phase 1: Parse arguments
-
-Determine the mode from the argument:
-
-- No keyword → **Description Mode**: generate a structured canonical bug report from
-  the provided description.
-- `analyze [path]` → **Analyze Mode**: read the target file(s) and identify potential
-  bugs.
-- `verify [BUG-ID]` → **Verify Mode**: evaluate evidence for a reported fix.
-- `close [BUG-ID]` → **Close Mode**: record an authorized closure after all gates pass.
-
-If no argument is provided, ask the user for a bug description before proceeding.
-
-For Verify and Close, normalize no user-supplied path. Validate the ID, resolve only
-`production/qa/bugs/<BUG-ID>.md`, confirm its raw-byte SHA-256, parse
-`Schema Version`, `ID`, `Severity`, and `Status`, and reject ambiguity before doing
-business work.
-
-## Phase 2A: Description Mode
-
-1. Parse the description for what broke, when, how to reproduce it, expected
-   behavior, actual behavior, environment, and impact.
-2. Search the codebase by file name and contents to add clearly labeled inferred
-   context. Source search is not runtime evidence.
-3. Draft the canonical report below. Allocate a stable project bug ID and use the
-   same ID in the filename and body.
-4. Set initial status only to `Open`. Description Mode cannot record a fixed,
-   verified, or closed status.
-
-```markdown
-# Bug Report
-
-**Schema Version**: 1
-**ID**: BUG-[NNNN]
-**Title**: [Concise, descriptive title]
-**Severity**: [S1-Critical / S2-Major / S3-Minor / S4-Trivial]
-**Priority**: [Observed value, or Unassigned]
-**Status**: Open
-**Reported**: [UTC timestamp]
-**Reporter**: [Name]
-
-## Classification
-- **Category**: [Gameplay / UI / Audio / Visual / Performance / Crash / Network]
-- **System**: [Which game system is affected]
-- **Frequency**: [Always / Often (>50%) / Sometimes (10-50%) / Rare (<10%)]
-- **Regression**: [Yes / No / Unknown]
+## Purpose and authority boundary
+
+Create one canonical bug record, produce bounded static candidate findings, record one independently produced build-bound fix candidate, verify one recorded fix against an exact target build, or close one verified defect. Observation, hypothesis, fix reference, candidate recording, runtime reproduction, regression execution, and lifecycle decision remain separate.
+
+This workflow does not assign priority, schedule work, accept risk, implement a fix, invent evidence, waive regression tests, edit triage/sprint/hotfix/release/test-plan artifacts, or invoke another workflow. It records an authorized owner's decision only after the required immutable evidence verifies.
+
+## Explicit subcommand grammar
 
-## Environment
-- **Build**: [Version or commit hash]
-- **Platform**: [OS and relevant hardware]
-- **Scene/Level**: [Where in the game]
-- **Game State**: [Relevant state]
-
-## Reproduction Steps
-**Repro Case ID**: [Stable case ID]
-**Preconditions**: [Required state before starting]
-
-1. [Exact step 1]
-2. [Exact step 2]
-3. [Exact step 3]
-
-**Expected Result**: [What should happen]
-**Actual Result**: [What actually happens]
+Accept exactly one form:
 
-## Technical Context
-- **Likely affected files**: [List of files based on codebase search]
-- **Related systems**: [What other systems might be involved]
-- **Possible root cause**: [If identifiable from the description]
-
-## Evidence
-- **Logs**: [Path and SHA-256, if available]
-- **Visual**: [Path and SHA-256, if available]
-
-## Fix Reference
-- **Fix commit / PR**: [Not recorded until a fix owner supplies it]
-- **Fix build**: [Not recorded until a fix owner supplies it]
-- **Regression test ID/path**: [Not recorded until a fix owner supplies it]
-
-## Verification Evidence
-Not yet verified.
-
-## Transition History
-- [Reported timestamp] — record created with Status `Open` by [reporter]
-
-## Related Issues
-- [Links to related bugs or design documents]
-
-## Notes
-[Any additional context or observations]
-```
-
-The proposed destination is exactly
-`production/qa/bugs/<BUG-ID>.md`. Never save the canonical report anywhere else.
-
-## Phase 2B: Analyze Mode
-
-1. Read only the explicitly specified project file(s).
-2. Identify potential null references, off-by-one errors, race conditions, unhandled
-   edge cases, resource leaks, or incorrect state transitions.
-3. For each potential bug, draft the canonical report from Phase 2A with the trigger
-   scenario and recommended fix recorded as hypotheses.
-4. Source analysis alone does not reproduce a bug and does not create verification
-   evidence. New records begin at `Open` and use the canonical path, schema, and
-   severity enum.
-
-## Phase 2C: Verify Mode
-
-Load the one canonical record by stable ID and require current status
-`Fixed Pending Verification`. If the status is `Open`, stop because no fix-owner
-transition is ready to verify. If it is `Verified Fixed`, report the existing
-transition without adding a second one. If it is `Closed`, stop; closed records are
-immutable.
-
-### Step 1: Static fix inspection
-
-Inspect the referenced fix revision and related code path. Record changed paths and
-source hashes. Static inspection can return only:
-
-- `FIX PRESENT / RUNTIME UNVERIFIED`; or
-- `FIX NOT FOUND / RUNTIME UNVERIFIED`.
-
-If this is all the available evidence, return `CANNOT VERIFY`, propose no status
-change, and state exactly which runtime or regression receipt is missing.
-
-### Step 2: Target-build reproduction receipt
-
-Re-run the record's exact `Repro Case ID` and numbered reproduction steps on the
-target fix build. A receipt is valid only when it records all of:
-
-- bug ID and repro case ID;
-- build ID and fix commit SHA;
-- platform and relevant configuration;
-- runner identity, or manual observer identity and role;
-- UTC start/end timestamps;
-- each executed step, observed actual result, and expected result;
-- outcome `PASS`, `FAIL`, or `RUNNER_ERROR`;
-- immutable evidence path(s) and raw-byte SHA-256 hashes.
-
-The build ID, fix commit, platform, and repro case must match the canonical record's
-fix reference. Missing, stale, wrong-build, wrong-platform, or unreadable evidence
-does not verify the fix.
-
-### Step 3: Automated regression-test receipt
-
-Require a regression test that is specifically failure-sensitive to the original
-defect. A valid receipt records:
-
-- regression test ID and repository-relative test path;
-- fix commit SHA and target build/configuration;
-- exact test invocation and completion timestamp;
-- exit code and `PASS` result;
-- assertion or fixture explaining why the test would fail on the original defect;
-- immutable log path and raw-byte SHA-256.
-
-The test ID/path must match the canonical Fix Reference, and the receipt must be from
-the fix commit being verified. A related suite that does not exercise the original
-failure is insufficient. A manual playtest, code review, screenshot, or prose claim
-cannot serve as this receipt.
-
-### Step 4: Verdict and transition
-
-- When target-build reproduction is `PASS` and the automated regression receipt is
-  `PASS`, return `VERIFIED FIXED` and propose one atomic mutation:
-  set `Status: Verified Fixed`, append both receipts under Verification Evidence,
-  and append the `Fixed Pending Verification → Verified Fixed` history event.
-- When target-build reproduction or the failure-sensitive regression is `FAIL`,
-  return `STILL PRESENT` and propose one atomic mutation: set `Status: Open`, retain
-  the failure evidence, and append the
-  `Fixed Pending Verification → Open` history event.
-- When either required receipt is missing, stale, mismatched, unreadable, partial, or
-  `RUNNER_ERROR`, return `CANNOT VERIFY` and make no status mutation.
-- A static-only result always remains `FIX PRESENT / RUNTIME UNVERIFIED` (or
-  `FIX NOT FOUND / RUNTIME UNVERIFIED`) and `CANNOT VERIFY`.
-
-Do not write the proposed transition before the complete changeset is authorized.
-
-## Phase 2D: Close Mode
-
-Load the one canonical record by stable ID. Require current status
-`Verified Fixed` and a valid `Fixed Pending Verification → Verified Fixed` history
-event.
-
-Revalidate that the transition references:
-
-1. a passing target-build reproduction receipt matching the bug, repro case, fix
-   build, fix commit, and platform; and
-2. a passing, failure-sensitive automated regression receipt matching the regression
-   test ID/path and fix commit.
-
-The receipt files must still be readable and their raw-byte SHA-256 values must match.
-If either receipt is missing, stale, mismatched, non-passing, or manual-only, stop
-without mutation:
-
-`Bug [ID] cannot be closed: current target-build verification and a passing automated
-regression-test receipt are required.`
-
-Require the authorized QA closure owner's identity and authority reference. Then
-propose one atomic edit: set the top-level status to `Closed` and append:
-
-```markdown
-## Closure Record
-**Closed**: [UTC timestamp]
-**Resolution**: Fixed — [one-line description]
-**Fix commit / PR**: [verified fix reference]
-**Build verification receipt**: [path and SHA-256]
-**Verified by**: [QA verifier identity]
-**Closed by**: [authorized QA closure owner]
-**Closure authority**: [role or decision reference]
-**Regression test ID/path**: [automated test ID and path]
-**Regression receipt**: [path and SHA-256]
-**Status**: Closed
-```
-
-Append the `Verified Fixed → Closed` transition-history event in that same edit.
-Manual verification may be supporting evidence but never replaces either required
-receipt.
-
-After closing, do not edit triage output. Note only that `$bug-triage` derives a
-fresh read-only snapshot from canonical records.
-
-## Phase 3: Present and save
-
-Present the completed report or transition proposal and its exact canonical path.
-List every proposed file change and obtain the one changeset authorization required
-above unless existing bounded authorization already covers it.
-
-For a new report, write only `production/qa/bugs/<BUG-ID>.md`. For Verify or Close,
-write only the resolved canonical bug record, and only after every evidence and owner
-gate passes. Preserve the preimage hash in the transition history.
-
-If authorized and all gates pass, verdict: `COMPLETE`. If not authorized, verdict:
-`BLOCKED — changeset not authorized`. Evidence failure uses the Verify/Close verdict,
-not `COMPLETE`.
-
-## Phase 4: Next steps
-
-- After filing, suggest `$bug-triage` for a read-only priority/schedule snapshot.
-- After a development owner records `Fixed Pending Verification` with a fix reference
-  and regression test, suggest `$bug-report verify [BUG-ID]`.
-- After `VERIFIED FIXED`, suggest `$bug-report close [BUG-ID]`.
-- For an S1/S2 emergency candidate, `$hotfix plan <BUG-ID>` may be suggested but never invoked
-  automatically.
-- Never claim that triage, sprint, risk, release, or test records were changed by this
-  workflow.
+~~~text
+$bug-report draft --request-manifest {project-relative-path} --request-sha256 {sha256}
+$bug-report analyze --analysis-manifest {project-relative-path} --analysis-sha256 {sha256}
+$bug-report create --creation-manifest {project-relative-path} --creation-sha256 {sha256}
+$bug-report record-fix-candidate --record-manifest {project-relative-path} --record-sha256 {sha256}
+$bug-report verify --verification-manifest {project-relative-path} --verification-sha256 {sha256}
+$bug-report close --closure-manifest {project-relative-path} --closure-sha256 {sha256}
+$bug-report status --bug-id {bug-id} --record-sha256 {sha256}
+~~~
+
+Reject an omitted mode, free-form positional description, direct source path, a path in place of a bug ID, unknown mode or flag, duplicate flag, missing value, unsafe ID/path, absolute path, glob, directory scan, or non-lowercase 64-hex SHA-256. Each mode accepts only its listed flags. `draft`, `analyze`, and `status` are read-only. `create`, `record-fix-candidate`, `verify`, and `close` may mutate only their exact owned canonical artifacts after all gates and authorization pass.
+
+Return these independent fields:
+
+| Field | Values |
+|---|---|
+| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED` |
+| `Command Disposition` | `SUCCESS`, `NO_CHANGE`, `RETRYABLE_CONFLICT`, `BLOCKED_INPUT`, `BLOCKED_EVIDENCE`, `FAILED_WRITE` |
+| `Operation Result` | `DRAFT_INCOMPLETE`, `DRAFT_READY`, `CANDIDATE_FINDINGS`, `DUPLICATE_DECISION_REQUIRED`, `BUG_CREATED`, `OCCURRENCE_LINKED`, `FIX_CANDIDATE_RECORDED`, `FIX_PRESENT_RUNTIME_UNVERIFIED`, `VERIFIED_FIXED`, `STILL_PRESENT`, `CANNOT_VERIFY`, `BUG_CLOSED`, `STATUS_REPORTED`, `ERROR` |
+| `Evidence Status` | `VERIFIED`, `STALE`, `PARTIAL`, `UNKNOWN`, `UNAVAILABLE`, `INVALID` |
+| `Record Status` | `Open`, `Reopened`, `Fixed Pending Verification`, `Verified Fixed`, `Closed`, `NOT_CREATED`, `UNKNOWN` |
+| `Persistence` | `NOT_REQUESTED`, `WRITTEN`, `DECLINED`, `CONFLICT`, `FAILED`, `NOT_ATTEMPTED` |
+
+A parse or identity error produces no business lifecycle result, no bug ID allocation, and no write. `Workflow Status: COMPLETE` means the requested operation was fully evaluated; it does not mean the bug is fixed or closed.
+
+## Versioned artifact contract
+
+Freeze this contract before reading inputs:
+
+~~~yaml template
+schema: cgs-bug-report-workflow-contract/v1
+inputs:
+  draft_request: cgs-bug-draft-request/v1
+  analysis_request: cgs-bug-analysis-request/v1
+  creation_manifest: cgs-bug-creation-manifest/v1
+  fix_candidate_record_request: cgs-bug-fix-candidate-record-request/v1
+  hotfix_candidate_link: cgs-hotfix-bug-candidate-link/v1
+  verification_manifest: cgs-bug-verification-manifest/v1
+  closure_manifest: cgs-bug-closure-manifest/v1
+  candidate: cgs-build-candidate/v1
+  build_receipt: cgs-build-receipt/v1
+  test_execution_manifest: cgs-test-execution-manifest/v1
+  reproduction_receipt: cgs-bug-reproduction-receipt/v2
+  regression_receipt: cgs-regression-execution-receipt/v2
+outputs:
+  registry: cgs-bug-registry/v2
+  record: cgs-bug-record/v2
+  transition_event: cgs-bug-transition-event/v2
+  occurrence_receipt: cgs-bug-occurrence-receipt/v1
+  fix_candidate_record_receipt: cgs-bug-fix-candidate-record-receipt/v1
+~~~
+
+Unknown or incompatible schemas are blocking.
+
+## Canonical paths and identity
+
+Use only:
+
+~~~text
+production/qa/bugs/
+  _registry.json
+  {bug-id}.md
+  _events/{bug-id}/{event-id}.json
+  _occurrences/{bug-id}/{occurrence-id}.json
+~~~
+
+The record path is exactly `production/qa/bugs/{bug-id}.md`, and its `Bug ID` field must match the filename. Do not read or write `production/bugs/` or use a triage report as a record.
+
+Bug IDs match `BUG-[0-9]{6,}` and are allocated only through `cgs-bug-registry/v2`. Event and occurrence IDs are stable UUIDs or content-addressed IDs. Every registry entry binds bug ID, record path/hash, status, severity, duplicate fingerprint, creation idempotency key, latest event hash, and occurrence-set hash.
+
+Canonical severity is exactly:
+- `S1-Critical`;
+- `S2-Major`;
+- `S3-Minor`;
+- `S4-Trivial`.
+
+Never silently convert `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW`. Severity describes impact and must be supplied or confirmed by an authorized reporter/triage source. `Priority` remains `UNASSIGNED` in this workflow unless a pre-existing authorized triage reference is merely cited; this workflow never assigns it.
+
+## Lifecycle and hash-chained events
+
+Legal transitions are:
+
+| From | To | Decision owner | Required evidence |
+|---|---|---|---|
+| no record | `Open` | authorized reporter/record creator | complete draft, duplicate decision, registry allocation |
+| `Open` or `Reopened` | `Fixed Pending Verification` | canonical bug-registry recorder under authorized bug owner | current hotfix candidate link; exact commit/tree, candidate/build/artifact/platform, regression/smoke/assessment/rollback identities |
+| `Fixed Pending Verification` | `Verified Fixed` | authorized QA verifier | conclusive target-build reproduction PASS and automated regression PASS |
+| `Fixed Pending Verification` | `Reopened` | authorized QA verifier | conclusive current-build reproduction or defect-sensitive regression FAIL |
+| `Verified Fixed` | `Closed` | authorized QA closure owner | current verified transition plus revalidated automated regression evidence |
+
+This workflow creates the initial event and is the sole canonical registry writer for `Open|Reopened → Fixed Pending Verification`, the QA-owned verification/reopen transitions, and closure. The hotfix workflow only creates an immutable candidate link and never writes the bug record, registry, or transition chain.
+
+Reject `Open|Reopened → Verified Fixed`, `Open|Reopened → Closed`, `Fixed Pending Verification → Closed`, all transitions out of Closed, and every owner/evidence mismatch.
+
+Each accepted transition creates one immutable `cgs-bug-transition-event/v2` containing Event ID, bug ID, old/new status, owner identity/role/authority hash, UTC timestamp, reason, exact evidence paths/hashes, record preimage SHA-256, prior event path/hash, and event SHA-256. The materialized record is updated in the same all-or-none transaction and points to the new event. History is a verified hash chain, not an unstructured Markdown replacement.
+
+## Phase 0: Validate paths, IDs, budgets, and authority
+
+Resolve every literal project-relative path and real path. Reject path escapes, unexpected symlinks, missing regular files, directories used as files, unsupported encodings, duplicate keys, oversize inputs, and schema errors. Hash raw bytes before parsing.
+
+Each request manifest declares maximum files, total bytes, per-file bytes, evidence records, findings, and output bytes, all at or below the workflow safety ceiling. Exceeding a budget returns `Workflow Status: PARTIAL`, `Command Disposition: BLOCKED_INPUT`, and no write.
+
+For ID-addressed operations, resolve only the canonical record path and registry entry. Verify registry, record, filename, body ID, status, severity, latest event, and hashes agree. Multiple records with the same ID, an absent registry row, legacy-only data, or any mismatch blocks before business evaluation.
+
+## Phase 1: Draft with required, optional, and unknown fields
+
+`draft` consumes `cgs-bug-draft-request/v1` and produces a conversation-only candidate. It never allocates a Bug ID or writes a canonical record.
+
+Classify fields:
+
+### Required and known before create
+
+- reporter identity/reference and observed-at time;
+- concise title, category, stable affected system, and confirmed canonical severity;
+- exact candidate/build reference, artifact hash or receipt, source commit, platform, and configuration;
+- stable Repro Case ID, preconditions, ordered numbered steps, and reset conditions;
+- expected result and observed actual result;
+- frequency observation with sample basis;
+- impact and user/data/safety consequence;
+- evidence references/hashes when the report claims attached evidence.
+
+A required field cannot be an empty string, placeholder, inferred value, or `UNKNOWN`. If build, repro steps, expected result, actual result, system, environment, or severity is not known, return `DRAFT_INCOMPLETE`, name every missing field, group the missing questions into no more than three coherent prompts, and write nothing. Do not call the draft complete because it has a title.
+
+### Optional
+
+Logs, images, videos, save files, traces, related issue IDs, accessibility context, network conditions, and additional observers may be absent. If supplied, every artifact has a path, media type, byte count, SHA-256, capture identity, and build/environment binding.
+
+### Explicitly unknown
+
+Regression origin, suspected component, possible root cause, and affected range may be `UNKNOWN` with a reason and owning investigation role. Unknown values remain unknown; do not turn a source-search guess into an observation.
+
+When all required fields are known and internally consistent, return `DRAFT_READY` with:
+- `Observed Facts`;
+- `Reporter Statements`;
+- `Evidence References`;
+- `Inferences/Hypotheses` with confidence and basis;
+- `Unknowns`;
+- proposed duplicate fingerprint inputs.
+
+No record exists until `create` succeeds.
+
+## Phase 2: Analyze explicit bounded sources as candidate findings only
+
+`analyze` consumes `cgs-bug-analysis-request/v1`. It contains an ordered allowlist of project-relative files and raw SHA-256 values, explicit analysis questions, parser/language identity, and strict file/byte/finding budgets. Reject a directory, glob, repository-wide implicit scan, path outside the project, changed hash, or undeclared dependency.
+
+Inspect only the declared bytes. Each output is `cgs-bug-candidate-finding/v1` with:
+- stable Finding ID and fingerprint;
+- exact path/hash and tight line or symbol locator;
+- observed code fact;
+- inferred failure mode, separately labeled;
+- confidence `HIGH`, `MEDIUM`, or `LOW` with basis;
+- affected system hypothesis;
+- reproduction hypothesis and required target-build evidence;
+- possible fix direction, labeled non-authoritative;
+- false-positive conditions and owning reviewer.
+
+Static analysis never establishes an observed product defect, actual runtime result, severity, occurrence, or reproduction. Return `Operation Result: CANDIDATE_FINDINGS`, `Record Status: NOT_CREATED`, and `Persistence: NOT_REQUESTED`. To register a bug, a separate draft/create request must supply actual reproduction and reporter-owned required fields.
+
+## Phase 3: Compute duplicate candidates without automatic merge
+
+Normalize the complete draft using `cgs-bug-fingerprint/v1`:
+- stable system ID;
+- normalized symptom class;
+- expected-observable signature;
+- actual-result or crash signature;
+- canonical reproduction-step signature;
+- platform family;
+- data-loss/corruption signature when applicable.
+
+Exclude reporter name, report time, priority, prose formatting, and the new build ID from the primary fingerprint so repeated occurrences can match across builds. Preserve those values in the occurrence.
+
+Read only the exact `cgs-bug-registry/v2` path/hash declared by the creation manifest. Compare primary fingerprint and explicit secondary similarity keys. Return candidate rows with existing bug ID/path/hash, match rule, matching and differing fields, current status, and confidence. A hash match is a duplicate candidate, not a duplicate decision.
+
+Only an authorized human decision in `cgs-bug-creation-manifest/v1` may select:
+- `CREATE_NEW`;
+- `LINK_OCCURRENCE` to one exact open or otherwise linkable bug ID;
+- `CANCEL`.
+
+Never silently merge, close, overwrite, or discard an independent occurrence. A link creates one immutable occurrence receipt containing its own candidate/build/platform/repro/evidence identity and the deciding human/authority. It does not rewrite the original observation as though both occurrences were identical.
+
+## Phase 4: Allocate an ID atomically and idempotently
+
+`create` requires a DRAFT_READY payload hash, exact registry path/preimage SHA-256/revision, duplicate decision, decision owner/authority, and a stable creation idempotency key derived from the request identity.
+
+For `CREATE_NEW`:
+
+1. If the registry already maps the idempotency key to the same draft hash, return the existing Bug ID and record hash as `NO_CHANGE`; do not allocate another ID.
+2. If the same key maps to different bytes, return `RETRYABLE_CONFLICT`.
+3. Acquire the bounded exclusive registry allocation lock with atomic create-new semantics.
+4. Re-read registry bytes and compare revision/hash with the creation manifest.
+5. Allocate `BUG-` plus the zero-padded numeric `next_sequence`, at least six digits.
+6. Verify the registry has no such ID and the record/event targets are absent.
+7. Increment `next_sequence`, add the idempotency/fingerprint/record entry, render the Open record, and render the immutable creation event.
+8. Stage the updated registry, new record, and event on the same filesystem.
+9. Validate schemas, hashes, event chain, internal references, and exact write set.
+10. Atomically publish all three or none, read back, then release the lock.
+
+If the lock is busy, registry changed, a target appeared, or read-back fails, publish no partial state and return `RETRYABLE_CONFLICT` or `FAILED_WRITE`. Do not auto-retry with a hidden new ID. A rerun uses the same idempotency key and refreshed registry preimage.
+
+For `LINK_OCCURRENCE`, use the same lock/CAS discipline to publish one absent occurrence receipt and the updated registry occurrence-set hash. Do not allocate a new Bug ID.
+
+The canonical Open record uses `cgs-bug-record/v2` and separates:
+- observed facts;
+- reporter statements;
+- environment/build identity;
+- reproduction case and expected/actual;
+- evidence references;
+- hypotheses/inferences with confidence;
+- unknowns;
+- fix reference;
+- verification evidence;
+- current status/event hash;
+- related bugs/occurrences.
+
+## Phase 5: Record an exact build-bound fix candidate
+
+`record-fix-candidate` consumes one
+`cgs-bug-fix-candidate-record-request/v1`. The request binds the canonical
+registry and bug-record paths/raw hashes/revision, expected current status
+`Open|Reopened`, one current immutable `cgs-hotfix-bug-candidate-link/v1`
+path/raw hash, authorized bug owner identity/role/authority path/raw hash,
+collision-resistant transition and receipt IDs, absent event/receipt targets,
+transaction deadline, and exact authorization over the rendered write set.
+
+The candidate link is the only fix-candidate business handoff. Re-hash it and
+require state `FIX_CANDIDATE`, the same Bug ID and exact current canonical bug
+path/hash/status, Hotfix ID, fix full commit/tree, candidate/build/artifact IDs
+and hashes, platform/configuration, build-candidate and build-receipt paths/hashes,
+regression Test IDs/source/execution-receipt/log hashes, smoke scope/receipt
+hashes, HOTFIX READY assessment path/hash, rollback plan/rehearsal identities,
+creation owner/time, and canonical link hash. Re-hash every referenced artifact
+and require all commit/candidate/build/artifact/test/smoke/assessment identities
+to join exactly. A path label, PR URL, newest build, conversation, deployment
+claim, missing test identity, or stale/mismatched byte is blocking.
+
+This mode records provenance; it does not rerun tests or upgrade local evidence
+to verification. After owner-authority validation, acquire the canonical registry
+lock, reread the registry/record/prior event/link/authority bytes, validate the
+complete event chain, and CAS the declared preimages. Atomically publish all or
+none of:
+
+1. one immutable `Open|Reopened -> Fixed Pending Verification`
+   `cgs-bug-transition-event/v2`;
+2. the updated materialized bug record with the exact fix/candidate/build/test
+   references and no QA-verification claim;
+3. the updated registry row/revision/latest-event hash; and
+4. one immutable `cgs-bug-fix-candidate-record-receipt/v1` binding request,
+   authority, link, pre/post hashes, lock/CAS/commit/read-back evidence, result,
+   and receipt hash.
+
+Only verified all-member read-back may return `FIX_CANDIDATE_RECORDED` and
+`Fixed Pending Verification`. Any conflict, collision, invalid authority,
+unsupported link, partial write, or read-back mismatch reports non-success and
+must not advance canonical state. This mode cannot write `Verified Fixed` or
+`Closed`; hotfix cannot invoke or impersonate this recorder and never owns a
+canonical bug-registry path.
+
+## Phase 6: Validate verification authority and exact build
+
+`verify` consumes `cgs-bug-verification-manifest/v1`. It binds:
+- canonical registry and bug-record paths/hashes;
+- expected current status `Fixed Pending Verification`;
+- canonical recorder fix-candidate transition event/receipt paths and hashes;
+- fix commit/PR, candidate manifest/hash, build receipt/hash, artifact SHA-256, platform/configuration;
+- exact Repro Case ID and steps hash;
+- exact regression Test ID/path/source hash and failure-sensitivity receipt;
+- exact `cgs-test-execution-manifest/v1` path/hash and selected runner row ID;
+- either an exact current reproduction/regression receipt set or explicit authorization to execute only the pinned rows;
+- QA verifier identity, role, authority path/hash, and transition timestamp;
+- record/event destinations with absent-event precondition.
+
+Static source/diff inspection may return only `FIX PRESENT / RUNTIME UNVERIFIED` or `FIX NOT FOUND / RUNTIME UNVERIFIED`. It never changes status.
+
+Revalidate candidate and build receipt agreement on candidate/build/artifact/source/engine/platform/configuration. Re-hash a local artifact or verify the remote producer receipt. Old logs and receipts are rejected by exact identity/hash, not by timestamp heuristics.
+
+## Phase 7: Execute or consume only the project test manifest
+
+The project execution manifest is the only command authority. Validate:
+- runner row ID, runner/binary identity and version;
+- ordered argv array and exact selected Test IDs;
+- project-root-contained cwd;
+- environment-name allowlist and secret redaction policy;
+- deterministic seed/order/locale/timezone/clock/parallelism;
+- wall-clock and inactivity deadlines;
+- stdout/stderr/result/per-record byte limits;
+- process-group creation and full process-tree cleanup;
+- exit-code map, parser/version, expected result count, log/result destinations.
+
+Never build a shell command, discover a related test by name, run an arbitrary suite, or fall back to an engine default. If execution is authorized, preserve every argv element and use only declared environment names.
+
+Classify runner evidence:
+- `PASS` and `FAIL` only when a complete current receipt is conclusive;
+- `NOT_RUN`, `TIMEOUT`, `RUNNER_ERROR`, `PARSE_ERROR`, `PARTIAL`, `INVALID_RECEIPT`, `STALE`, and `UNAVAILABLE` are nonconclusive.
+
+On deadline, output cap, cancellation, or crash, terminate the full process tree, record cleanup, hash bounded output, preserve complete parsed records, and mark missing/trailing rows PARTIAL. Never retry with changed argv, seed, scope, parser, or budgets.
+
+Every reproduction receipt contains bug/repro IDs, build/fix/platform/configuration, runner or manual observer identity, start/end, each executed step, expected/observed result, outcome, evidence path/hash, and receipt hash.
+
+Every automated regression receipt contains Test ID/path/source hash, bug/repro IDs, build/fix/platform/configuration, runner/argv/cwd/manifest hash, start/end, exit code/parser/result counts, outcome, log path/hash, cleanup, and receipt hash. It also references current failure-sensitivity evidence proving the test would fail for the original defect. Manual evidence cannot be this receipt.
+
+## Phase 8: Derive verification result and CAS-transition
+
+Use both target-build reproduction and automated regression evidence:
+
+- if both are current, complete, admissible, and PASS, return `VERIFIED_FIXED` and propose `Fixed Pending Verification → Verified Fixed`;
+- if a current conclusive reproduction or defect-sensitive regression is FAIL and demonstrates the original defect, return `STILL_PRESENT` and propose `Fixed Pending Verification → Reopened`;
+- if either is missing, stale, partial, mismatched, unreadable, nonconclusive, timed out, runner-failed, parser-failed, or from the wrong build/platform/commit/Test ID, return `CANNOT_VERIFY`, preserve `Fixed Pending Verification`, and write nothing;
+- static-only evidence returns `FIX_PRESENT_RUNTIME_UNVERIFIED` and `CANNOT_VERIFY`.
+
+For an authorized transition, re-hash registry, record, prior event, fix/candidate/build/test authorities, receipts, logs, and verifier authority. Require the new event target absent. Stage the updated record projection, new event, and updated registry row; validate the hash chain; CAS unchanged preimages and absent event; atomically publish all or none; and read back every member. A conflict returns no transition and preserves the observed verification result separately from Persistence.
+
+## Phase 9: Close only with current automated regression evidence
+
+`close` consumes `cgs-bug-closure-manifest/v1`. Require:
+- current record state `Verified Fixed`;
+- exact current `Fixed Pending Verification → Verified Fixed` event and hash chain;
+- exact passing target-build reproduction receipt;
+- exact passing automated regression Test ID/path receipt;
+- same fix commit, candidate/build/artifact, platform/configuration, Repro Case ID, execution-manifest hash, and failure-sensitivity evidence;
+- readable logs/evidence with matching raw SHA-256;
+- authorized QA closure owner identity/role and authority path/hash;
+- bounded closure reason and immutable closure Event ID.
+
+Manual observation may support the reproduction receipt but never replaces the automated regression Test ID, execution receipt, log, or failure-sensitivity evidence. The repository policy grants no regression-test waiver. A field containing `Manual verification`, `not automatable`, or an approval note is not a regression receipt.
+
+Missing, wrong-build, stale, partial, timed-out, runner-error, unverifiable, non-passing, or manual-only regression evidence returns `BLOCKED_EVIDENCE`, `Operation Result: CANNOT_VERIFY`, leaves the record `Verified Fixed`, and writes nothing.
+
+On success, propose one CAS transaction:
+- set materialized status to `Closed`;
+- append the immutable `Verified Fixed → Closed` event;
+- update registry status/latest-event/hash;
+- add the closure record fields: resolution, fix reference, candidate/build/artifact, reproduction receipt, QA verifier, closure owner/authority, automated regression Test ID/path, execution receipt/log hashes, and UTC time.
+
+Closed records have no outgoing transition.
+
+## Phase 10: Status and deterministic handoff
+
+`status` is read-only. Resolve the exact registry entry and record hash, verify the complete event chain and referenced current artifacts, and return current record state, severity, priority reference, evidence currency, duplicate fingerprint, occurrence count/set hash, and any integrity findings. It never repairs stale data.
+
+Every mutation preview lists:
+- exact CREATE/UPDATE paths;
+- preimage and rendered SHA-256 values;
+- registry revision and lock/CAS preconditions;
+- business result, evidence status, resulting record status, and persistence consequence;
+- explicit non-writes.
+
+If authorization is declined, preserve the evaluated Operation Result but set Persistence DECLINED and leave canonical state unchanged.
+
+Return exact canonical record path/hash, registry path/hash/revision, latest transition event path/hash, occurrence receipt path/hash when applicable, and all consumed evidence identities. Downstream consumers must re-hash the registry, record, event chain, and referenced receipts. They must never select a newest bug file, treat a candidate finding as a bug, or treat `Verified Fixed`/`Closed` without the exact event/evidence chain as current.
+
+## Required invariants
+
+- Explicit subcommands and manifests define every operation and illegal combination.
+- Required create fields cannot remain unknown or inferred.
+- Duplicate candidates require a human decision and independent occurrences remain traceable.
+- Registry allocation is concurrency-safe and idempotent.
+- Static analysis creates candidate findings, never runtime defects.
+- Only exact project-manifest argv and current receipts can verify.
+- Timeout, runner error, stale, partial, unavailable, and invalid evidence cannot verify.
+- Severity is S1-Critical/S2-Major/S3-Minor/S4-Trivial; priority is separate.
+- Manual verification never substitutes for an automated regression test.
+- Record projections and immutable hash-chained events transition atomically.
+- Only bug-report `record-fix-candidate` may record Open/Reopened to Fixed Pending
+  Verification; hotfix supplies evidence but never registry authority.
+
+
+## P1 audit traceability
+
+This trace maps the repaired behavior to exact dedicated-spec assertions without changing the sealed contract.
+
+| Audit ID | Enforcing SKILL clause | Dedicated spec case and assertions |
+|---|---|---|
+| BR-005 | Explicit subcommand grammar — draft/analyze/create/record-fix-candidate/verify/close/status are non-overlapping; invalid forms stop before business work | Case 2; BR-STA-002, BR-STA-003, BR-PRO-001 |
+| BR-006 | Phase 1 — required/optional/unknown are explicit and missing critical fields stay conversation-only DRAFT | Case 3; BR-STA-004, BR-STA-005, BR-PRO-003 |
+| BR-007 | Phase 3 — stable fingerprint produces duplicate candidates only; human decision preserves each occurrence | Case 4; BR-STA-006, BR-STA-007, BR-PRO-004 |
+| BR-008 | Phase 4 — exclusive registry allocation, CAS/absence checks, read-back, and request idempotency prevent collision | Case 5; BR-STA-008, BR-STA-009, BR-PRO-005, BR-PRO-006 |
+| BR-009 | Phase 0 + Phase 2 — explicit project-contained paths/hashes and file/byte/finding budgets yield candidate findings, never runtime defects | Case 6; BR-STA-010, BR-STA-011, BR-PRO-007 |
+| BR-010 | Phases 6–8 — only exact manifest Test IDs/argv run with bounded deadline, runner/exit/log identity; timeout/partial/stale/error cannot verify | Case 7; BR-STA-012–BR-STA-014, BR-PRO-008–BR-PRO-010 |
+| BR-011 | Versioned artifact contract + Phase 1 — severity is exactly S1-Critical/S2-Major/S3-Minor/S4-Trivial and priority remains triage-owned | Case 8; BR-STA-015, BR-STA-016, BR-PRO-011, BR-PRO-012 |
+| BR-012 | Phase 0 — canonical ID/path normalization rejects malformed/missing/duplicate/noncanonical/out-of-root/unreadable inputs with zero business verdict/write | Case 2; BR-STA-003, BR-STA-017, BR-STA-018, BR-PRO-001, BR-PRO-002 |

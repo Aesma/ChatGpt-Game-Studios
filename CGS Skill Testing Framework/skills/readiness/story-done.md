@@ -1,494 +1,828 @@
 # Skill Test Spec: $story-done
 
-## Skill Summary
-
-$story-done is the sole In Review -> Complete gate. It consumes the staged
-$dev-story plan/source/file/test-log handoff, independently revalidates the
-$story-readiness provenance contract, binds manual evidence to the current
-verification tree or build, and closes only when every required acceptance
-criterion and every story-type evidence requirement has a current PASS result.
-
-The P0 contract is fail-closed:
-
-- static presence and keyword checks are findings, never behavioral evidence;
-- one missing required criterion blocks closure;
-- Visual/Feel, UI, Config/Data, Integration, and Logic evidence requirements are
-  all blocking;
-- manual evidence requires criterion, tree/build, steps, observation, tester,
-  timestamp, and artifact bindings; and
-- no user override may convert a required evidence gap into Complete.
-
----
-
-## Static Assertions (Structural)
-
-Verified by static inspection; no fixture is required.
-
-- [ ] YAML frontmatter contains only name and a non-empty description; name
-  matches the skill directory
-- [ ] Declares story-done as the sole owner of the Complete transition and
-  requires the selected story to be In Review
-- [ ] Consumes dev-story plan_hash, source-context hashes, post-write file hashes,
-  command/cwd/timestamps/exit code, and raw log SHA-256
-- [ ] Computes a deterministic verification_tree_hash from the approved plan and
-  current implementation, automated-test, config, and runtime-input hashes
-- [ ] Revalidates active TR, Accepted ADR, Manifest Version, Manifest Hash, and
-  Source Snapshot instead of trusting prose readiness
-- [ ] Preserves STALE / ACCEPTED-RISK and validates the staged manifest waiver
-  without relabeling it READY or CURRENT
-- [ ] States that file/symbol/number/string searches are findings and cannot mark
-  an acceptance criterion PASS, COVERED, or VERIFIED
-- [ ] Defaults every acceptance criterion to required
-- [ ] Requires every required criterion to be PASS and makes FAIL, UNTESTED,
-  DEFERRED, and STALE blocking
-- [ ] Allows optional/non-blocking only when declared before the approved
-  dev-story plan and bound by unchanged source/profile hashes
-- [ ] Makes the required evidence row blocking for every supported Story Type
-- [ ] Manual evidence schema includes evidence ID, criterion ID, tested tree
-  hash, steps, observed result, PASS, tester, timestamp, and artifact links
-- [ ] Invalidates manual evidence after tree/build hash change
-- [ ] COMPLETE WITH NOTES cannot contain a required evidence gap
-- [ ] BLOCKED has no close-anyway or risk-acceptance override
-- [ ] Presents one complete changeset and obtains at most one authorization for
-  an unchanged write set
-
----
-
-## Test Cases
-
-### Case 1: Happy path — current provenance and automated evidence for every required AC
-
-Fixture:
+## Contract identity
+
+- Spec ID: `skill-spec.story-done/v2`
+- Spec schema: `cgs-skill-spec/v2`
+- Category: `readiness`
+- Priority: `critical`
+- Spec written: `2026-07-23`
+- Skill path: `.agents/skills/story-done/SKILL.md`
+- Metadata path: `.agents/skills/story-done/agents/openai.yaml`
+- Dev-story contracts: `cgs.dev-story-result/v2`, `cgs.dev-story-plan/v2`, `cgs.dev-story-status-transition-proposal/v2`, `cgs.dev-story-status-transaction/v2`, `cgs.dev-story-checkpoint/v2`, and `cgs.dev-story-test-execution/v2`
+- Lifecycle authority: immutable `cgs.story/v2`, canonical `cgs.sprint-tracker/v2`, and tracker-declared lifecycle recorder
+- Readiness contracts: `cgs.story-readiness-record/v1` and `cgs.story-readiness-recorder-receipt/v1`
+- Test contracts: `cgs.dev-story-test-execution/v2` and `cgs.manual-evidence/v1`
+- Gate contracts: `cgs.team-qa-result/v2`, `cgs.team-qa-signoff/v2`, `cgs-test-evidence-review-report/v2`, `cgs.story-review-policy/v1`, `cgs.review-evidence/v1`, `cgs.code-review/v2`, `cgs.code-review-recorder-receipt/v1`, and `cgs.review-waiver/v1`
+- Owner decision: `cgs.design-equivalence-decision/v1`
+- Closure contracts: tracker-only `cgs.story-closure-transaction/v1` and `cgs.story-closure-receipt/v1`
+- Closure evaluator/request owner: `story-done`; canonical lifecycle writer: tracker-declared `cgs.sprint-tracker/v2` recorder
 
-- Story is In Review and the sprint tracker agrees
-- Story has two required Logic criteria with stable IDs AC-LIGHT-001 and
-  AC-LIGHT-002
-- Dev-story handoff contains a valid plan hash, current source hashes, exact
-  source/test file post-write hashes, and criterion coverage
-- Each criterion maps to a named unit test
-- Each test record contains command, cwd, timestamps, exit 0, PASS, and a raw
-  log SHA-256
-- Current raw file hashes equal the handoff hashes
-- Exact active TR, Accepted ADR, current Manifest Version/Hash, and Source
-  Snapshot checks pass
-- No blocking or advisory finding exists
+## Skill summary
 
-Expected behavior:
+`$story-done` is a fail-closed closure evaluator. It revalidates immutable story requirements, a current tracker row exactly `in_review`, the exact dev-story result/plan/proposal/recorder receipt and execution evidence, required QA/review evidence, and authorized design-equivalence decisions. A closable result only requests the unique tracker lifecycle recorder to change that one row to `done`. Story bytes/Revision, sprint plan bytes, `plan_sha256`, `plan_revision`, `story_set_hash`, session state, and all unowned tracker fields remain immutable.
 
-1. Rehashes all handoff paths and authoritative sources
-2. Computes verification_tree_hash
-3. Marks both required criteria PASS using the direct automated results
-4. Marks Logic type evidence PASS
-5. Emits COMPLETE
-6. Previews the closure write set once
-7. After approval, records all hashes/evidence and moves the story/tracker to
-   Complete/done
+## Static assertions
 
-Assertions:
+- [ ] SD-S001: Frontmatter contains only `name` and non-empty `description`
+- [ ] SD-S002: Frontmatter name equals the `story-done` directory
+- [ ] SD-S003: Invocation accepts one optional exact story path and one review mode
+- [ ] SD-S004: The immutable story identity/hash matches a canonical tracker row exactly `in_review`
+- [ ] SD-S005: Story-done owns closure evaluation/request only; the tracker-declared lifecycle recorder is sole canonical writer
+- [ ] SD-S006: Only `cgs.dev-story-result/v2` outcome IMPLEMENTED with exact proposal and verified recorder result/receipt ending at `in_review` is admissible
+- [ ] SD-S007: A persisted current READY record and matching recorder receipt are both revalidated
+- [ ] SD-S008: Closure requires `implementation_gate_eligible: true`; accepted-risk or NEEDS_WORK readiness is blocking
+- [ ] SD-S009: Test execution consumes the exact `cgs.dev-story-plan/v2` and `cgs.dev-story-test-execution/v2` set
+- [ ] SD-S010: Test definitions bind IDs, locator, executable, argv, cwd, environment, timeout, and expected result
+- [ ] SD-S011: Run evidence binds command context, timestamps, termination, exit, logs, tree, and per-test results
+- [ ] SD-S012: TIMEOUT, partial, missing, changed, or unexecuted test evidence is blocking
+- [ ] SD-S013: Verification tree canonicalization includes dev result, plan, transition receipt, and execution-set hashes
+- [ ] SD-S014: Every required AC needs direct current PASS evidence
+- [ ] SD-S015: Static searches and conversational confirmations are findings only
+- [ ] SD-S016: Manual evidence binds identity, session, steps, observation, tree/build, artifacts, and hashes
+- [ ] SD-S017: All five Story Type rows are blocking
+- [ ] SD-S018: Exact current `cgs.team-qa-result/v2` and persisted `cgs.team-qa-signoff/v2` agree on `QA_APPROVED` and Gate Eligible YES
+- [ ] SD-S019: Any Team QA condition, gap, incomplete/nonpass row, stale identity, or unpersisted signoff blocks closure
+- [ ] SD-S020: Logic and high-risk stories require review in full, lean, and solo
+- [ ] SD-S021: Review policy is predeclared and hash-bound
+- [ ] SD-S022: Review skip blocks unless an authorized policy-permitted waiver is current
+- [ ] SD-S023: Design mismatch defaults to blocking
+- [ ] SD-S024: Functional equivalence requires an authorized owner decision with exact source/subject hashes
+- [ ] SD-S025: Owner decisions cannot waive behavior, QA, review, or type evidence
+- [ ] SD-S026: Evidence verdict and lifecycle commit are separate states
+- [ ] SD-S027: Story-done never writes tracker, story, plan, session, planning hashes, or evidence artifacts directly
+- [ ] SD-S028: Closure proposal binds exact tracker CAS tuple, one row transition, lifecycle-owned fields, preservation assertions, rollback, and authorization
+- [ ] SD-S029: Recorder capability requires tracker/receipt atomic commit or verified rollback, recovery, and immutable receipt
+- [ ] SD-S030: Only a verified COMMITTED receipt and independent read-back permits a Complete verdict
+- [ ] SD-S031: Closure preserves story bytes/Revision, plan bytes, `plan_sha256`, `plan_revision`, and `story_set_hash`; none are recomputed
+- [ ] SD-S032: No follow-on workflow, commit, push, or publication is automatic
+- [ ] SD-S033: Review consumes exact `cgs.review-evidence/v1` plus embedded `cgs.code-review/v2`, never an invented code-review receipt
+- [ ] SD-S034: Closure requires an independent current recorder receipt with PERSISTED and `gate_evidence_eligible: true`
 
-- [ ] COMPLETE is based on direct test results, not test-file existence
-- [ ] Completion Record contains plan, tree, source, file, and log hashes
-- [ ] The story is not mutated before the approved closable verdict
-- [ ] No implementation path is modified during closure
+## Behavioral cases
 
----
+### Case 1: Fully current Logic story closes through one tracker-only transaction
 
-### Case 2: SD-001 — file and function exist but behavior test fails
+#### Fixture
 
-Fixture:
+- Immutable `cgs.story/v2` ID/path/hash matches one tracker row exactly `in_review`
+- Current persisted READY record, matching recorder receipt, and every stale-key source hash match
+- One IMPLEMENTED dev result binds its exact plan, final transition proposal, verified recorder result/receipt, no checkpoint, and two Logic ACs mapped to passing immutable executions
+- Tracker planning tuple and all unowned fields are current and frozen
+- Team QA result/signoff are current, persisted, `QA_APPROVED`, and Gate Eligible YES
+- Required code-review envelope/extension is current `APPROVED` and an exact independent recorder receipt proves PERSISTED/gate eligible
+- Tracker lifecycle recorder capability and receipt destination are current
 
-- Logic criterion says damage is clamped to zero
-- The expected source file and clamp_damage function both exist
-- Keyword search finds the expected function and numeric boundary
-- The direct unit test exits 1 and records FAIL
-- All unrelated checks pass
+#### Input
 
-Expected behavior:
+`$story-done production/stories/STORY-101.md --review lean`
 
-1. Reports file/function/numeric search only as static findings
-2. Marks the criterion FAIL
-3. Emits BLOCKED
-4. Makes no mutation and offers no completion override
+#### Expected reads
 
-Assertions:
+Immutable story, sprint plan/tracker, dev result/plan/final proposal/transaction receipt, readiness record/receipt/sources, test executions/logs, Team QA result/signoff, review policy/evidence/receipt, implementation tree, and recorder capability.
 
-- [ ] Function presence never becomes PASS or VERIFIED
-- [ ] The failing behavioral test controls the criterion result
-- [ ] COMPLETE WITH NOTES is not offered
+#### Expected writes
 
----
+Only the tracker-declared recorder may replace the tracker with one row `done` and create the immutable closure receipt.
 
-### Case 3: SD-001 — search match without a test result
+#### Expected non-writes
 
-Fixture:
+Story bytes/Revision, sprint plan, planning hashes, session state, every other tracker row/unowned field, implementation, tests, requirements, and review evidence.
 
-- All named implementation files exist
-- Test filename and contents contain words similar to the acceptance criterion
-- No command result, exit code, or log hash exists for that criterion
-- Other criteria pass
+#### Expected behavior
 
-Expected behavior:
+Recompute all hashes, produce a closable evidence verdict, preview once, obtain authorization, invoke the unique recorder, verify `COMMITTED` and independent read-back, then report `COMPLETE`.
 
-1. Does not infer direct coverage from names or text similarity
-2. Marks the criterion UNTESTED
-3. Emits BLOCKED
+#### Assertions
 
-Assertions:
+- [ ] SD-C01-A: Exact dev plan/execution command contexts and log hashes support each AC
+- [ ] SD-C01-B: Only lifecycle-owned fields of the matching tracker row change `in_review -> done`
+- [ ] SD-C01-C: Story/plan/planning tuple remain byte-identical and Complete is reported only after receipt read-back
 
-- [ ] Filename/content similarity is a finding only
-- [ ] COVERED is not treated as a passing test result
-- [ ] Missing execution evidence blocks closure
+#### Case Verdict
 
----
+PASS when all assertions hold; otherwise FAIL.
 
-### Case 4: SD-002 — one required criterion is untested
+### Case 2: Static presence cannot rescue failed behavior
 
-Fixture:
+#### Fixture
 
-- Story has four required criteria
-- Three have current direct PASS evidence
-- One has no current automated or manual result
-- The missing share is 25 percent
-- All story-type and provenance checks otherwise pass
+A source file, expected function, boundary number, and matching test name exist,
+but the declared test exits nonzero and records FAIL.
 
-Expected behavior:
+#### Input
 
-1. Marks the fourth criterion UNTESTED
-2. Emits BLOCKED regardless of percentage
-3. Does not write completion notes or status
+The exact In Review story path.
 
-Assertions:
+#### Expected reads
 
-- [ ] There is no 50-percent allowance
-- [ ] One missing required criterion blocks
-- [ ] COMPLETE WITH NOTES cannot contain the gap
+Current source, dev-story plan/result, failing execution record/log, and all
+ordinary sources.
 
----
+#### Expected writes
 
-### Case 5: SD-002 — predeclared optional criterion may be deferred
+None.
 
-Fixture:
+#### Expected non-writes
 
-- Story has three required criteria and one optional/non-blocking criterion
-- The optional classification existed before dev-story approval and is present
-  in the unchanged hashed story/Definition-of-Done source and plan coverage
-- All required criteria and blocking type evidence PASS
-- Optional criterion is DEFERRED
+Story, tracker, session, closure request, and closure receipt.
 
-Expected behavior:
+#### Expected behavior
 
-1. Preserves required versus optional classification
-2. Emits COMPLETE WITH NOTES
-3. Names the optional deferred criterion in Completion Notes
+Report static matches as findings, mark the AC FAIL, and return `BLOCKED`
+without a close-anyway branch.
 
-Assertions:
+#### Assertions
 
-- [ ] Optional classification is not created at closure time
-- [ ] Runtime user preference cannot downgrade a required criterion
-- [ ] Required criteria remain fully passing
+- [ ] SD-C02-A: File/function/number/name presence never becomes PASS
+- [ ] SD-C02-B: Direct failing behavior controls the AC result
+- [ ] SD-C02-C: COMPLETE WITH NOTES is not offered
 
----
+#### Case Verdict
 
-### Case 6: SD-003 — missing story-type evidence matrix
+PASS when all assertions hold; otherwise FAIL.
 
-Run each variant with all acceptance criteria otherwise mapped to some passing
-evidence and all provenance checks passing.
+### Case 3: Required gap blocks while a predeclared optional deferral is a note
 
-| Variant | Story Type | Missing required evidence | Expected |
-|---|---|---|---|
-| 6a | Logic | passing unit-test evidence | BLOCKED |
-| 6b | Integration | integration run or hash-bound end-to-end session | BLOCKED |
-| 6c | Visual/Feel | manual session, screenshot/artifact, or required sign-off | BLOCKED |
-| 6d | UI | walkthrough/interaction evidence or required sign-off | BLOCKED |
-| 6e | Config/Data | smoke-check PASS bound to current tree | BLOCKED |
-| 6f | absent/unknown | declared type and evidence contract | BLOCKED |
+#### Fixture
 
-Assertions:
+Variant A has one UNTESTED required AC. Variant B has all required ACs passing
+and one optional AC whose classification is unchanged across story, profile,
+plan, and dev-story result hashes.
 
-- [ ] No supported type downgrades missing evidence to advisory
-- [ ] Config/Data is not treated as requiring no evidence
-- [ ] Missing Story Type cannot close
-- [ ] A gate skip does not bypass this matrix
+#### Input
 
----
+Run each variant independently.
 
-### Case 7: SD-003 — evidence file exists but Visual/Feel or UI sign-off is pending
+#### Expected reads
 
-Fixture:
+Exact AC declarations, Definition-of-Done profile, dev-story plan/result, and
+mapped evidence.
 
-- Evidence document exists and references the story
-- It contains current screenshots and a walkthrough
-- One required sign-off remains unchecked or unsigned
-- Required criteria otherwise pass
+#### Expected writes
 
-Expected behavior:
+Variant A writes nothing. Variant B may enter the atomic closure transaction
+after approval.
 
-1. Reports the evidence artifact and pending sign-off
-2. Marks story-type evidence BLOCKED
-3. Makes no story/status mutation
+#### Expected non-writes
 
-Assertions:
+No runtime edit may change an AC classification.
 
-- [ ] Evidence-file existence alone does not pass
-- [ ] Pending sign-off is blocking, not advisory
-- [ ] A conversational approval cannot replace the declared sign-off record
+#### Expected behavior
 
----
+Variant A returns `BLOCKED` regardless of the missing percentage. Variant B
+may return `COMPLETE WITH NOTES` and name the optional deferral.
 
-### Case 8: SD-004 — valid manual record bound to the current tree
+#### Assertions
 
-Fixture:
+- [ ] SD-C03-A: One required UNTESTED/DEFERRED/STALE/FAIL result blocks
+- [ ] SD-C03-B: Optional status cannot be invented at closure
+- [ ] SD-C03-C: No percentage threshold exists
 
-- UI criterion AC-UI-003 is permitted to use manual evidence
-- Evidence record contains EVID-UI-003, exact criterion ID, the current
-  verification_tree_hash, reproducible steps, observed result, explicit PASS,
-  tester handle, ISO-8601 timestamp, and artifact links
-- Current implementation/evidence hashes match dev-story
-- Required UI sign-off is complete
+#### Case Verdict
 
-Expected behavior:
+PASS when both variants match; otherwise FAIL.
 
-1. Validates every record field and exact criterion mapping
-2. Confirms tested_tree_hash equals the current tree
-3. Marks the criterion and UI type evidence PASS
+### Case 4: Every Story Type evidence row is blocking
 
-Assertions:
+#### Fixture
 
-- [ ] Manual evidence can PASS only with the full record
-- [ ] Output includes evidence ID, tester, timestamp, and tree hash
-- [ ] Artifact links are retained in the closure record
+Run Logic, Integration, Visual/Feel, UI, Config/Data, and unknown-type variants;
+each lacks one declared type obligation while ordinary AC evidence otherwise
+passes.
 
----
+#### Input
 
-### Case 9: SD-004 — simple confirmation or incomplete manual record
+One exact story per variant.
 
-Run variants with unrelated checks passing:
+#### Expected reads
 
-| Variant | Manual input | Expected criterion result |
-|---|---|---|
-| 9a | User answers Yes — passes | UNTESTED/BLOCKED |
-| 9b | Record lacks tester | UNTESTED/BLOCKED |
-| 9c | Record lacks timestamp | UNTESTED/BLOCKED |
-| 9d | Record lacks steps or observation | UNTESTED/BLOCKED |
-| 9e | Record lacks artifact links required by type | UNTESTED/BLOCKED |
-| 9f | Record lacks tested tree/build hash | STALE/BLOCKED |
-| 9g | Record says Not tested | UNTESTED/BLOCKED |
+Story Type, unchanged profile, dev-story plan mappings, manual/automated evidence,
+artifacts, smoke records, and sign-offs as applicable.
 
-Assertions:
+#### Expected writes
 
-- [ ] No bare conversational confirmation counts as a manual test
-- [ ] Every required identity/session/behavior/hash field is enforced
-- [ ] None of the variants can produce COMPLETE WITH NOTES
+None for every variant.
 
----
+#### Expected non-writes
 
-### Case 10: SD-004 — source or build changes invalidate manual evidence
+No type profile, sign-off, or status projection is created or edited.
 
-Fixture:
+#### Expected behavior
 
-- A complete manual record passed tree hash A
-- One implementation file changes after the session, producing current tree B
-- Optionally, a recorded packaged build path now hashes differently
-- Story remains In Review
+Each known type returns `BLOCKED` for its missing obligation; unknown type
+also returns `BLOCKED`.
 
-Expected behavior:
+#### Assertions
 
-1. Rehashes the current files/build
-2. Reports tested A versus current B
-3. Marks dependent manual evidence STALE
-4. Emits BLOCKED and requests a new session on the current tree/build
+- [ ] SD-C04-A: Missing visual/UI artifacts or sign-off is not advisory
+- [ ] SD-C04-B: Config/Data requires current smoke evidence
+- [ ] SD-C04-C: Mode or gate skip cannot bypass the matrix
 
-Assertions:
+#### Case Verdict
 
-- [ ] Timestamp recency cannot hide a hash mismatch
-- [ ] Tester identity cannot override staleness
-- [ ] No closure write occurs
+PASS when all variants block; otherwise FAIL.
 
----
+### Case 5: Manual evidence is complete only on the exact current tree
 
-### Case 11: Dev-story handoff compatibility and fail-closed freshness
+#### Fixture
 
-Run each variant with acceptance behavior otherwise passing.
+Variant A has a complete manual record with stable IDs, current tree/build,
+steps, observation, PASS, tester, session timestamp, artifacts, and sign-offs.
+Variant B changes one implementation byte after that session. Variant C is a
+conversational Yes without a durable record.
 
-| Variant | Handoff condition | Expected |
-|---|---|---|
-| 11a | plan_hash missing/malformed | BLOCKED |
-| 11b | implementation post-write hash differs now | BLOCKED |
-| 11c | command/cwd present but log hash missing | BLOCKED |
-| 11d | log hash exists but exit code missing | BLOCKED |
-| 11e | source-context hash changed | BLOCKED |
-| 11f | all required fields and current hashes match | Continue to criterion checks |
+#### Input
 
-Assertions:
+Run all variants with otherwise passing inputs.
 
-- [ ] Story-done consumes the staged field set rather than inventing an
-  incompatible handoff
-- [ ] A prose dev-story success summary is insufficient
-- [ ] Handoff freshness is checked before evidence evaluation
+#### Expected reads
 
----
+Manual record, artifact/build bytes, dev-story plan declaration, and current
+verification tree.
 
-### Case 12: Story-readiness and manifest provenance compatibility
+#### Expected writes
 
-Run three variants with all required AC/type evidence passing.
+Variant A may proceed to an approved closure transaction. Variants B and C write
+nothing.
 
-Variant 12a — current:
+#### Expected non-writes
 
-- Story header version/hash and Source Snapshot match the current raw manifest
-- Dev-story source hashes match current sources
-- Expected verdict can be COMPLETE
+The manual record is never rewritten to current by story-done.
 
-Variant 12b — staged structured accepted risk:
+#### Expected behavior
 
-- Story captured hash A
-- Dev-story waiver names implemented_against_hash A and current_hash B
-- Current manifest still hashes to B
-- All non-manifest readiness/source checks pass
-- Expected verdict can be COMPLETE WITH NOTES, labeled STALE / ACCEPTED-RISK
+A may PASS; B is STALE/BLOCKED; C is UNTESTED/BLOCKED.
 
-Variant 12c — manifest changes again:
+#### Assertions
 
-- Same waiver names B, but current manifest hashes to C
-- Expected verdict is BLOCKED
+- [ ] SD-C05-A: Identity/session/behavior/artifact/hash fields are all enforced
+- [ ] SD-C05-B: Tree/build drift invalidates the record
+- [ ] SD-C05-C: Conversation is not a manual test
 
-Assertions:
+#### Case Verdict
 
-- [ ] Prior readiness prose never replaces current revalidation
-- [ ] Accepted-risk provenance is preserved, not relabeled READY/CURRENT
-- [ ] The waiver cannot conceal any non-manifest readiness gap
-- [ ] A second manifest change invalidates the branch
+PASS when all variants match; otherwise FAIL.
 
----
+### Case 6: Readiness is checked on current hashes
 
-### Case 13: Story changed after dev-story
+#### Fixture
 
-Fixture:
+Variant A has a persisted current READY record with
+`implementation_gate_eligible: true` and a matching `RECORDED` receipt. Variant
+B has the same prior record but the GDD changed. Variant C has a direct READY
+candidate with no recorder receipt. Variant D has a persisted NEEDS_WORK record
+used by dev-story under structured accepted risk. Variant E has a record/receipt
+pair whose registry-final hash no longer matches current bytes.
 
-- Dev-story handoff was recorded for a particular story/plan
-- Acceptance-criterion text or required/optional classification changed later
-- Implementation files are unchanged
+#### Input
 
-Expected behavior:
+Run each variant independently.
 
-1. Detects story/plan or source inconsistency
-2. Does not remap evidence by similar text
-3. Emits BLOCKED and routes through revalidation/reimplementation as needed
+#### Expected reads
 
-Assertions:
+Record, recorder receipt, readiness registry, TR registry, control manifest,
+GDDs, ADRs, profile, story snapshot, and every stale-key source.
 
-- [ ] Run-local fallback AC IDs stay bound to the approved plan hash and exact criterion mapping
-- [ ] Similar wording does not preserve evidence across a changed criterion
-- [ ] Optional status cannot be retrofitted
+#### Expected writes
 
----
+Only A may later enter an approved closure transaction.
 
-### Case 14: QA/code-review result cannot override evidence blockers
+#### Expected non-writes
 
-Fixture:
+No record, receipt, registry, source, or story provenance is refreshed here.
 
-- Full-mode QA says ADEQUATE and code review says APPROVED
-- One required AC is UNTESTED or one manual record is STALE
+#### Expected behavior
 
-Expected behavior:
+A continues. B blocks on current-byte drift; C blocks because the candidate is
+not persisted; D blocks because readiness is not READY/gate eligible; E blocks
+because receipt/registry identity is not current.
 
-1. Records gate results
-2. Keeps the evidence blocker
-3. Emits BLOCKED
+#### Assertions
 
-Assertions:
+- [ ] SD-C06-A: A persisted record/receipt never substitutes for current-byte validation
+- [ ] SD-C06-B: Record, candidate, readiness key, story hash, and registry-final hash joins are exact
+- [ ] SD-C06-C: Only current persisted READY with `implementation_gate_eligible: true` is closable
 
-- [ ] Director gates cannot manufacture PASS evidence
-- [ ] User acceptance of review risk cannot close the story
+#### Case Verdict
 
----
+PASS when all variants match; otherwise FAIL.
 
-### Case 15: No-argument selection is bounded to an In Review story
+### Case 7: Dev result, plan, transition proposal, and recorder receipt are mandatory and exact
 
-Fixture:
+#### Fixture
 
-- active.md identifies one In Review story
-- Another sprint story is In Progress
+Run missing result, unknown schema, non-IMPLEMENTED outcome, missing plan, duplicate Test ID, changed argv/cwd/environment, unbounded timeout, unresolved checkpoint, missing/mismatched proposal, partial/ambiguous recorder receipt, changed immutable story, changed planning tuple, and fully valid variants.
 
-Expected behavior:
+#### Input
 
-1. Selects and reads the In Review story
-2. Does not attempt to close the In Progress story
-3. Confirms ambiguity if multiple In Review stories exist
+The exact dev-story evidence set except for the named variant.
 
-Assertions:
+#### Expected reads
 
-- [ ] Lifecycle precondition is checked before evidence
-- [ ] Non-In-Review state is BLOCKED for closure
+Result, plan, final status-transition proposal, status-transaction result/receipt, immutable story, canonical tracker row/read-back, checkpoint when referenced, and declared inputs.
 
----
+#### Expected writes
 
-### Case 16: Optional test-evidence-review receipt keeps quality and execution separate
+None for invalid variants.
 
-**Fixture**: Supply exact persisted review/report and manifest paths. Exercise
-`ADEQUATE + UNKNOWN`, `ADEQUATE + PASS + TARGETED`, a stale source hash, and the
-fully current `COMPLETE/ADEQUATE/PASS/FULL/Closure Eligible YES` combination.
+#### Expected non-writes
 
-**Expected**:
+No ad hoc command, replacement result/plan/receipt, story projection, lifecycle normalization, or planning-hash rewrite is invented.
 
-- [ ] `ADEQUATE` alone never proves execution or closure
-- [ ] Targeted, unknown, stale, unavailable, incomplete, or hash-invalid review evidence blocks closure
-- [ ] Every underlying QA/story/build/test/smoke/playtest/manual/attestation hash is revalidated
-- [ ] A valid review remains a summary; per-criterion evidence checks still apply
+#### Expected behavior
 
-### Case 17: Closure updates the revisioned tracker atomically
+Every invalid variant returns `BLOCKED`; only `IMPLEMENTED` with no checkpoint and a verified recorder transaction ending at canonical tracker row `in_review` continues.
 
-- [ ] Invalid sprint identity/revision/story-set hash blocks closure
-- [ ] Complete story, done tracker, and session projection share one closure transaction ID
-- [ ] Story-byte change recomputes sorted `ID<TAB>path<TAB>raw-hash` story_set_hash
-- [ ] plan_revision remains unchanged and updated_at is timezone-qualified
-- [ ] CAS/write/read-back failure cannot report closure success
+#### Assertions
 
-## Verdict Matrix
+- [ ] SD-C07-A: Canonical paths/schemas/raw hashes identify one joined result/plan/proposal/receipt/tracker set
+- [ ] SD-C07-B: Test ID/argv/cwd/environment/runner/source/build/timeout/log contract is immutable
+- [ ] SD-C07-C: PARTIAL/FAILED/BLOCKED, receipt ambiguity, story/planning change, and free-form shell text are blocking
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 8: Execution evidence preserves command, logs, and partial terminals
+
+#### Fixture
+
+Run PASS, TIMEOUT, partial log, missing exit, nonzero exit, changed environment,
+log-hash mismatch, and evidence-tree mismatch variants for one declared test.
+
+#### Input
+
+The same exact dev-story plan/result with one execution record variant at a time.
+
+#### Expected reads
+
+Execution record, plan row, raw log, result-set identity, and current tree.
+
+#### Expected writes
+
+None for invalid or non-PASS variants.
+
+#### Expected non-writes
+
+Execution records and logs are immutable and never normalized after the fact.
+
+#### Expected behavior
+
+Only normal termination, exit zero, PASS, exact command context, exact current
+tree, and matching log hashes can support the mapped AC.
+
+#### Assertions
+
+- [ ] SD-C08-A: TIMEOUT and partial are blocking terminals
+- [ ] SD-C08-B: Exit/result/log/tree axes are checked separately
+- [ ] SD-C08-C: Prose test summaries cannot fill missing fields
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 9: Team QA signoff gaps and nonpass terminals are blocking
+
+#### Fixture
+
+Variant A is `QA_APPROVED`/YES with every required row current. Variant B is
+`QA_APPROVED_WITH_CONDITIONS`/NO. Variant C is `QA_INCOMPLETE` with one required
+TIMEOUT. Variant D says `QA_APPROVED` in the result but its signoff is absent.
+Variant E has a stale candidate/build join.
+
+#### Input
+
+Each exact `cgs.team-qa-result/v2` plus its named signoff in turn.
+
+#### Expected reads
+
+QA result/signoff, frozen evidence manifest, independent review, exact required
+denominator, scope/candidate/build/artifact/source/plan hashes, roles, findings,
+conditions, persistence, and raw hashes.
+
+#### Expected writes
+
+Only A may later enter closure when all other checks pass.
+
+#### Expected non-writes
+
+QA artifacts, finding dispositions, denominator, and AC classification remain
+unchanged.
+
+#### Expected behavior
+
+A satisfies only the QA evidence gate; it does not grant closure. B through E
+block without normalization or inferred signoff.
+
+#### Assertions
+
+- [ ] SD-C09-A: Only persisted current QA_APPROVED with Gate Eligible YES satisfies the QA evidence gate
+- [ ] SD-C09-B: Result/signoff and every scope/build/evidence identity join exactly
+- [ ] SD-C09-C: QA approval grants no closure authority and positive tests do not override nonpass QA
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 10: Lean or solo cannot skip required Logic review
+
+#### Fixture
+
+A Logic story has a current policy requiring review and all tests/QA pass.
+Variant A has no review envelope. Variant B has an APPROVED
+`cgs.review-evidence/v1` + `cgs.code-review/v2` producer record that remains
+NOT_PERSISTED/gate-ineligible. Variant C has a recorder receipt for a stale raw
+hash. Exercise lean and solo modes plus a user answer of No/skip.
+
+#### Input
+
+`$story-done production/stories/STORY-LOGIC-202.md --review lean` and the same
+path with `--review solo`.
+
+#### Expected reads
+
+Policy, Story Type/risk class, plan, tree, envelope/extension when present,
+stale key, recorder receipt/registry when present, and all current bound inputs.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No completion projection and no fabricated waiver.
+
+#### Expected behavior
+
+All variants return `BLOCKED`; conversational skip, APPROVED alone, or a stale
+recorder receipt cannot change policy or persistence eligibility.
+
+#### Assertions
+
+- [ ] SD-C10-A: Logic/high-risk review is mode independent
+- [ ] SD-C10-B: Missing/ambiguous policy fails closed
+- [ ] SD-C10-C: No/skip is not APPROVED
+- [ ] SD-C10-D: NOT_PERSISTED/gate-ineligible review evidence cannot close
+- [ ] SD-C10-E: Recorder receipt must bind the exact current envelope and stale-key inputs
+
+#### Case Verdict
+
+PASS when all variants block; otherwise FAIL.
+
+### Case 11: Only a policy-permitted current review waiver is non-blocking
+
+#### Fixture
+
+Variant A has a policy that permits waiver plus a signed current risk-owner
+waiver bound to policy/story/plan/result/tree hashes. Variant B has a policy
+that forbids waiver. Variant C has an expired or stale waiver.
+
+#### Input
+
+Run each variant without persisted eligible code-review evidence.
+
+#### Expected reads
+
+Policy, authority source, waiver, signature/attestation, and all bound bytes.
+
+#### Expected writes
+
+Only A may later close, with notes.
+
+#### Expected non-writes
+
+Policy and waiver records remain immutable.
+
+#### Expected behavior
+
+A may satisfy the review condition as `COMPLETE WITH NOTES`; B and C block.
+
+#### Assertions
+
+- [ ] SD-C11-A: Waiver authority and permission are both required
+- [ ] SD-C11-B: Waiver scope and hashes match the exact current candidate
+- [ ] SD-C11-C: Waiver cannot cover QA or behavioral gaps
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 12: Subjective functional equivalence is rejected
+
+#### Fixture
+
+Implementation differs from an exact GDD or Accepted ADR rule, while the
+implementer or model says the result is functionally equivalent. No owner
+decision record exists.
+
+#### Input
+
+The exact story and mismatching source/implementation evidence.
+
+#### Expected reads
+
+Requirement ID/path/locator/hash, subject path/hash, AC mapping, and review
+findings.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No requirement, ADR, implementation, owner record, or status is modified.
+
+#### Expected behavior
+
+Create a stable blocking mismatch finding and request the designated product or
+architecture owner decision.
+
+#### Assertions
+
+- [ ] SD-C12-A: Model judgment cannot resolve the mismatch
+- [ ] SD-C12-B: Similar outcomes or wording are insufficient
+- [ ] SD-C12-C: The exact owner and evidence needed are named
+
+#### Case Verdict
+
+PASS when the mismatch blocks; otherwise FAIL.
+
+### Case 13: Exact owner decision resolves only its named design scope
+
+#### Fixture
+
+Variant A has a signed current owner decision binding exact authority, source,
+subject, AC, dev-story plan/result, tree, semantic comparison, regression evidence,
+scope, and expiry. Variant B changes one source byte. Variant C has missing owner
+authority. Variant D asks the decision to waive a failed test.
+
+#### Input
+
+Each decision record with otherwise identical evidence.
+
+#### Expected reads
+
+Decision, authority/signature, named sources/subjects, and regression evidence.
+
+#### Expected writes
+
+Only A may later enter closure.
+
+#### Expected non-writes
+
+Decision and governed artifacts remain unchanged.
+
+#### Expected behavior
+
+A resolves only the named mismatch. B, C, and D return `BLOCKED`.
+
+#### Assertions
+
+- [ ] SD-C13-A: Decision scope and current hashes are exact
+- [ ] SD-C13-B: Expired/revoked/stale/unauthorized decisions fail
+- [ ] SD-C13-C: Owner decision cannot manufacture test PASS
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 14: Lifecycle recorder unavailability or CAS conflict prevents canonical writes
+
+#### Fixture
+
+Variant A has no declared tracker lifecycle recorder capability. Variant B changes tracker bytes/revision/event after preview. Variant C collides with a non-identical create-only receipt path. Variant D changes plan/story bytes before commit.
+
+#### Input
+
+A closable evidence verdict and approved tracker-only closure proposal.
+
+#### Expected reads
+
+Recorder identity/capability, proposal/authorization hashes, every evidence hash, immutable story/plan hashes, exact tracker preimage/CAS tuple, and receipt destination.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+Tracker, receipt path, story, plan, planning hashes, session state, implementation, and sources.
+
+#### Expected behavior
+
+Abort before commit and return `BLOCKED` with the exact conflict; do not retry against a new preimage.
+
+#### Assertions
+
+- [ ] SD-C14-A: Story-done direct tracker replacement and sequential cross-owner writes are forbidden
+- [ ] SD-C14-B: Full tracker/story/plan CAS and preservation checks precede recorder commit
+- [ ] SD-C14-C: Conflict/collision never mints a replacement transaction silently
+
+#### Case Verdict
+
+PASS when every variant leaves canonical bytes identical; otherwise FAIL.
+
+### Case 15: Injected lifecycle-recorder failure restores the tracker preimage
+
+#### Fixture
+
+The recorder stages the exact tracker replacement and receipt, then an injected failure occurs after tracker replacement would otherwise become visible.
+
+#### Input
+
+One approved tracker-only `cgs.story-closure-transaction/v1`.
+
+#### Expected reads
+
+Proposal, staged bytes, tracker preimage, immutable story/plan hashes, recorder journal, and rollback data.
+
+#### Expected writes
+
+Only recorder-controlled rollback/journal/immutable aborted-receipt writes permitted by its capability; final tracker bytes equal the complete preimage.
+
+#### Expected non-writes
+
+No story, plan, session, planning-hash, evidence, or independent repair write.
+
+#### Expected behavior
+
+Return `ROLLED_BACK` or `RECOVERY_REQUIRED`, never Complete. If recovery is required, name the exact recorder recovery action and do not retry silently.
+
+#### Assertions
+
+- [ ] SD-C15-A: No partial `done` row survives verified rollback
+- [ ] SD-C15-B: Story/plan/planning tuple stay unchanged and partial state cannot produce COMMITTED
+- [ ] SD-C15-C: Recovery evidence is distinct from closure success
+
+#### Case Verdict
+
+PASS when no successful closure is reported and final tracker state matches the receipt; otherwise FAIL.
+
+### Case 16: Dev-story terminal-state claim is rejected as owner drift
+
+#### Fixture
+
+A dev result, status proposal, or status-transaction receipt claims that dev-story committed tracker row `done`, mutated story bytes/Revision, or supplies a dev-authored closure receipt.
+
+#### Input
+
+The exact dev result/proposal/receipt set and current immutable story/tracker.
+
+#### Expected reads
+
+Story, tracker, dev producer schemas, proposal/result/receipt identities, and alleged closure receipt.
+
+#### Expected writes
+
+None.
+
+#### Expected non-writes
+
+No normalization of terminal state, story rewrite, tracker rewrite, planning-hash rewrite, or new closure receipt.
+
+#### Expected behavior
+
+Return `BLOCKED`, identify `in_review` as dev-story's only valid terminal row, and route producer evidence back for correction.
+
+#### Assertions
+
+- [ ] SD-C16-A: Dev-story may end only at canonical tracker row `in_review`
+- [ ] SD-C16-B: Producer and lifecycle-recorder identities are validated
+- [ ] SD-C16-C: Owner drift never becomes imported closure provenance
+
+#### Case Verdict
+
+PASS when the owner violation blocks; otherwise FAIL.
+
+### Case 17: Test-evidence review summary keeps quality and execution separate
+
+#### Fixture
+
+Exercise `ADEQUATE + UNKNOWN`, `ADEQUATE + PASS + TARGETED`, stale hashes,
+missing durable persistence, and fully current
+`COMPLETE/ADEQUATE/PASS/FULL/Closure Eligible YES` variants.
+
+#### Input
+
+One exact persisted `cgs-test-evidence-review-report/v2` and its input manifest
+identity per variant.
+
+#### Expected reads
+
+Every captured QA/story/build/test/smoke/playtest/manual/attestation path and
+hash plus the direct AC evidence.
+
+#### Expected writes
+
+None from review consumption itself.
+
+#### Expected non-writes
+
+Review artifacts and direct evidence remain immutable.
+
+#### Expected behavior
+
+Only the fully current variant can summarize evidence; all others block. Even
+the valid summary does not replace direct AC checks or Team QA result/signoff.
+
+#### Assertions
+
+- [ ] SD-C17-A: ADEQUATE alone never proves execution
+- [ ] SD-C17-B: TARGETED cannot satisfy FULL closure scope
+- [ ] SD-C17-C: Summary and direct evidence remain separate layers
+
+#### Case Verdict
+
+PASS when all variants match; otherwise FAIL.
+
+### Case 18: Tracker-only closure preserves planning and story identity
+
+#### Fixture
+
+The active `cgs.sprint-tracker/v2` has valid sprint IDs/state, revision/event, lifecycle owner/recorder, exact plan path/hash/revision/story-set hash, and one matching row `in_review`. Story and plan raw bytes are frozen.
+
+#### Input
+
+A fully authorized tracker-only closure proposal with current CAS preimage.
+
+#### Expected reads
+
+Immutable story, plan, tracker preimage, dev transition receipt, closure proposal/authorization, recorder capability, and receipt destination.
+
+#### Expected writes
+
+The lifecycle recorder replaces only the tracker with the one permitted row transition and creates one immutable COMMITTED receipt.
+
+#### Expected non-writes
+
+Story bytes/Revision, plan bytes, `plan_sha256`, `plan_revision`, `story_set_hash`, session state, unrelated rows, unowned fields, implementation, and sources.
+
+#### Expected behavior
+
+Commit `in_review -> done`, re-read tracker/story/plan/receipt, verify the exact revision/event increment and preservation assertions, then report the evidence verdict.
+
+#### Assertions
+
+- [ ] SD-C18-A: Story-set hash is preserved byte-for-byte and never recomputed
+- [ ] SD-C18-B: Only tracker-declared lifecycle-owned fields of the named row change
+- [ ] SD-C18-C: Receipt tracker post-hash equals verified read-back and all protected hashes match preimages
+
+#### Case Verdict
+
+PASS when every assertion and receipt check holds; otherwise FAIL.
+
+## Protocol compliance
+
+- [ ] SD-P001: Read the complete selected story before evaluation or mutation
+- [ ] SD-P002: Use raw SHA-256 for every mutable and evidence boundary
+- [ ] SD-P003: Preserve exact stable IDs and reject ambiguous duplicates
+- [ ] SD-P004: Keep readiness, evidence, QA, review, design, and lifecycle axes separate
+- [ ] SD-P005: Present one deterministic evidence report before authorization
+- [ ] SD-P006: Present the complete byte-exact transaction once
+- [ ] SD-P007: Re-preview after any path, byte, preimage, authorization, or intent change
+- [ ] SD-P008: Write nothing on a BLOCKED evidence verdict
+- [ ] SD-P009: Use only the atomic recorder for lifecycle projection writes
+- [ ] SD-P010: Treat ABORTED/ROLLED_BACK/RECOVERY_REQUIRED as non-closure
+- [ ] SD-P011: Never overwrite immutable evidence, decision, transaction, or receipt records
+- [ ] SD-P012: Never infer an owner approval, waiver, or PASS from conversation
+- [ ] SD-P013: Never commit, push, publish, or invoke a follow-on workflow automatically
+- [ ] SD-P014: Surface exact recovery/owner/evidence needs without claiming completion
+
+## Verdict matrix
 
 | Condition | COMPLETE | COMPLETE WITH NOTES | BLOCKED |
 |---|---:|---:|---:|
-| Every required AC has current PASS evidence | required | required | false/missing |
-| Story-type evidence complete | required | required | false/missing |
-| Current file/source/tree bindings | required | required, except valid manifest accepted-risk branch | stale/invalid |
-| Required AC deferred/untested/failed | never | never | yes |
-| Optional predeclared AC deferred | no | allowed | no |
-| Valid STALE / ACCEPTED-RISK manifest waiver | no | allowed | invalid/changed |
-| Advisory review finding only | no | allowed | no |
-| Blocking deviation/gate | no | no | yes |
+| All required AC and type obligations current PASS | required | required | false or missing |
+| Current readiness | persisted READY, eligible | persisted READY, eligible | stale/unpersisted/non-READY/ineligible |
+| Dev result/plan/proposal/recorder receipt/executions valid | required | required | invalid/partial/non-IN_REVIEW |
+| Team QA evidence | QA_APPROVED / YES | QA_APPROVED / YES | other/stale/unpersisted |
+| Required review | APPROVED | APPROVED or valid policy-permitted waiver | missing/rejected/stale |
+| Design mismatch | absent/resolved | absent/resolved with advisory risk | unresolved/subjective |
+| Closure receipt | COMMITTED | COMMITTED | any other state |
 
-There is no percentage threshold and no close-anyway branch.
+## Audit remediation traceability
 
----
+| Audit ID | Contract closure |
+|---|---|
+| SD-001 | Static assertions SD-S014–SD-S017 and Cases 2–5 forbid heuristic PASS |
+| SD-002 | SD-S014 and Case 3 require every required AC to PASS |
+| SD-003 | SD-S017 and Case 4 make every Story Type obligation blocking |
+| SD-004 | SD-S016 and Case 5 require hash/session/identity-bound manual evidence |
+| SD-005 | SD-S009–SD-S013 and Cases 7–8 consume exact dev-story plan/execution/log schemas |
+| SD-006 | SD-S018–SD-S019 and Case 9 make every Team QA nonpass/condition/gap blocking |
+| SD-007 | SD-S020–SD-S022 and Cases 10–11 enforce predeclared risk review/waiver policy |
+| SD-008 | SD-S007–SD-S008 and Case 6 require current persisted READY and exact recorder evidence |
+| SD-009 | SD-S023–SD-S025 and Cases 12–13 reserve equivalence for authorized owners |
+| SD-010 | SD-S026–SD-S031 and Cases 14–15/18 require tracker-only CAS closure, immutable planning/story inputs, rollback, and receipt |
+| SD-011 | SD-S004–SD-S006/SD-S027–SD-S031 and Cases 1/7/14–16/18 define immutable story/planning ownership and tracker-recorder-only closure |
 
-## Protocol Compliance
+## Validation boundary
 
-- [ ] Reads the full story before delegation or mutation
-- [ ] Uses raw SHA-256 bindings for story, source, implementation, evidence,
-  tree/build, and test logs
-- [ ] Does not treat file existence, static search, or names as behavior
-- [ ] Lists every required AC with evidence IDs, freshness, and result
-- [ ] Enforces type evidence as blocking for all five types
-- [ ] Uses structured manual records, not direct confirmations
-- [ ] Makes stale evidence blocking
-- [ ] Presents the complete report before the one closure authorization
-- [ ] Writes nothing for BLOCKED
-- [ ] Never permits a required-gap override
-- [ ] Preserves accepted-risk provenance in report and closure
-- [ ] Does not commit, push, publish, or run follow-on workflows automatically
-
----
-
-## Coverage Notes
-
-These cases fully exercise SD-001, SD-002, SD-003, and SD-004 and their
-no-bypass paths. They also cover compatibility with the staged dev-story
-plan/source/post-write/test-log handoff and the staged story-readiness manifest
-provenance model.
-
-Still outside this P0 candidate:
-
-- standardized cross-skill evidence-file and test-manifest schemas;
-- mandatory QA GAPS handling and risk-based code-review policy;
-- atomic multi-artifact closure with compare-and-swap recovery;
-- a single shared stable ID registry for AC/Test/Evidence/Finding records; and
-- catalog/workflow-guide/source-skill migration.
+This is a static contract specification. It proves that the staged skill text
+contains testable fail-closed rules and exact state mappings. It does not execute
+a test runner, readiness workflow, QA review, code review, game build, or closure
+recorder. Runtime conformance requires fixtures implementing the named schemas,
+fault injection for the recorder, and byte-level postcondition checks. Cross-skill
+The candidate consumes only the staged producer contracts named above and
+rejects every nonconforming or stale producer output at the consumer boundary.

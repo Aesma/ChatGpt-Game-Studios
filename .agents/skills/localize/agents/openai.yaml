@@ -1,4 +1,7 @@
 interface:
   display_name: "Localize"
-  short_description: "Build owner-separated localization evidence"
-  default_prompt: "Use $localize with an explicit subcommand and locale; never treat templates, drafts, static checks, or QA plans as completed localization."
+  short_description: "Run hash-bound locale packages and evidence with owner separation"
+  default_prompt: "Use $localize only with an explicit hash-pinned v2 request. Bind source catalog, stable key, plural/placeholder, locale and translation identities; keep translator and reviewer distinct; process bounded locale/key batches with partial results; treat pseudo-localization and static UI/RTL/VO checks as test candidates until build-bound evidence exists; enforce consent/privacy; and protect every catalog/package import or export with exact owner authorization and CAS."
+
+policy:
+  allow_implicit_invocation: true

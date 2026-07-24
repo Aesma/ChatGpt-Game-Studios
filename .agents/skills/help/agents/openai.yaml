@@ -1,4 +1,4 @@
 interface:
   display_name: "Help"
-  short_description: "Evidence-backed next steps from a current stage packet"
-  default_prompt: "Use $help to recommend one safe next action from a complete current project_stage_detection/v2 packet. Treat the detector as diagnostic only, require current PASS receipts for gated completion, and never infer a stage, write files, or auto-run the recommendation."
+  short_description: "One receipt-backed action from a canonical stage packet"
+  default_prompt: "Use $help to validate one current cgs.project-stage-detection/v2 packet and its bound catalog, distinguish verified receipts from claims or present artifacts, expose all earliest conflicts, and recommend exactly one action without writing or executing it."

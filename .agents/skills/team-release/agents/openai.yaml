@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Release"
-  short_description: "Gate and deploy one exact release safely"
-  default_prompt: "Use $team-release with an exact orchestration manifest and action mode to verify gates, request separately scoped deployment authority, and track immutable receipts through stabilization."
+  short_description: "Gate and execute one exact release safely"
+  default_prompt: "Use $team-release with one exact v2 request to verify immutable release evidence and perform at most the separately authorized action named by that request; preserve receipts through reconciliation and stabilization."

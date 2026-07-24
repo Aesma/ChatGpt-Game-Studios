@@ -1,402 +1,304 @@
 ---
 name: brainstorm
-description: "Collaboratively authors or safely revises one game concept through user-owned decisions, section-scoped compare-and-set writes, bounded checkpoints, and a deterministic concept gate DAG."
+description: "Collaboratively author or safely revise one game concept through bounded ideation, user-owned decisions, finite convergence, immutable checkpoints, section-scoped CAS, and a hash-bound independent concept-review handoff."
 ---
 
 # Brainstorm
 
-This workflow facilitates product decisions; it does not make them for the user. It
-creates or revises one game concept, records provenance and open questions, and stops.
-It does not implement a game, choose an engine, publish market claims, produce a
-formal schedule, or invoke a system-GDD review profile.
+Facilitate product decisions; never make them for the user. Author exactly one
+game concept, preserve decision/evidence provenance, and stop with authoring
+evidence plus an optional independent read-only review handoff.
 
-## Invocation
+Do not implement a game, choose an engine, publish market claims, create a formal
+schedule, invoke a system-GDD reviewer, approve the concept, or start downstream
+workflows.
 
-Accept exactly one mode:
+## Invocation and request contract
 
-~~~text
-$brainstorm new --session-id <id> [--hint <text>] [--review full|lean|solo]
-$brainstorm resume --concept design/gdd/game-concept.md --session-id <id> [--review full|lean|solo]
-$brainstorm resume --checkpoint <checkpoint-path> --session-id <id> [--review full|lean|solo]
-$brainstorm revise --concept design/gdd/game-concept.md --sections <stable-id[,stable-id...]> --session-id <id> [--review full|lean|solo]
-~~~
+Invoke only as:
 
-Reject unknown/duplicate flags, missing values, unsafe paths, unsupported modes, and
-review values outside `full`, `lean`, or `solo`. Session IDs are stable slugs or UUIDs,
-not dates alone. Default review mode is `lean` only when `--review` is absent; never
-read a newest session, latest concept, inferred review-mode file, or modification
-time to choose state.
+    $brainstorm <request-manifest-path>
 
-`new` requires the canonical concept target to be absent. If it exists, stop and show
-the `resume`/`revise` forms. Existing-concept `resume` and `revise` require the
-exact canonical path and its current raw-byte SHA-256. Checkpoint `resume` requires
-one exact immutable checkpoint and revalidates whether its source concept was ABSENT
-or hash-bound. Supply exactly one of `--concept` or `--checkpoint`; never silently
-turn one mode into another.
+No argument prints that usage and stops before repository discovery, target/
+context reads, delegation, authorization, or writes.
 
-## Authority, ownership, and write boundary
+The manifest declares `contract: cgs.brainstorm-request/v2` and:
 
-The user is the decision owner for concept selection, core fantasy, player experience,
-core loop, pillars, anti-pillars, visual anchor, audience, platform intent, MVP, scope
-tradeoffs, accepted concerns, and unresolved questions. Agents propose and review;
-they never lock a product decision.
+- stable session, run, and concept artifact IDs;
+- exact operation `new`, `resume`, or `revise`;
+- exact target `design/gdd/game-concept.md`, checkpoint root, expected target
+  SHA-256 or `ABSENT`, and expected checkpoint predecessor ID/hash or `ABSENT`;
+- for `revise`, ordered selected stable section IDs; for `resume`, ordered IDs or
+  an instruction to collect them once from OPEN/DRAFT inventory before mutation
+  authorization;
+- `review_mode: full | lean | solo`, separately from
+  `research_mode: none | receipts-only | authorized-current`;
+- exact source/reference, research, platform/technical-preference, estimate,
+  gate, approval, workflow-catalog, and instruction evidence with stable ID/
+  owner/path-or-URL/locator/raw hash and required/optional role;
+- context budget no larger than 16 files and 524288 exact bytes;
+- ideation count from two to four per round, no more than two concept rounds, no
+  more than two revisions per decision family, and delegation limits at or below
+  this contract;
+- actual product-decision owner, mutation authority, author, target writer,
+  checkpoint recorder, gate-node roles, and intended independent concept-reviewer
+  role; and
+- authorization manifest ID/hash/authority or instruction to collect one bounded
+  mutation authorization after inventory, plus exact non-writes.
 
-The brainstorm controller is the only writer of:
+Reject unknown/duplicate fields, unsafe/aliased paths, duplicate IDs, invalid
+operation/mode, non-lowercase SHA-256, target/checkpoint aliasing, budgets above
+the hard caps, review/gate identity equal to author/writer/recorder, or limits
+above the finite-convergence contract.
 
-~~~text
-production/brainstorm/<session-id>/session-manifest.md
-production/brainstorm/<session-id>/checkpoints/<sequence>-<decision-id>.md
-design/gdd/game-concept.md
-~~~
+`new` requires target `ABSENT`. Existing target `resume`/`revise` requires its
+current raw SHA-256. Checkpoint resume requires one exact v2 checkpoint chain;
+never select newest/latest files or silently change operation.
 
-No gate agent writes these files. This workflow never writes
-`design/gdd/game-pillars.md`, an art bible, engine settings, production state, or any
-other project artifact.
+Use runtime task identities when exposed. Otherwise generate one lowercase UUID
+per task role and persist it. Never claim the user, a gate, research source, or
+another agent identity.
 
-Use two explicit file boundaries:
+## Roles, ownership, and one mutation boundary
 
-1. **Checkpoint boundary** — after target validation, preview the exact session
-   manifest/checkpoint root and obtain one bounded CREATE authorization unless the
-   invocation already authorizes those exact files. This authority covers only
-   immutable session/checkpoint files, not the concept.
-2. **Concept boundary** — after the final section validation, show the complete
-   concept CREATE or section-scoped MODIFY diff and obtain one authorization for
-   that exact byte change. Product decisions collected earlier are not file
-   authorization, and checkpoint approval is not concept-write approval.
+- The user or named product owner owns concept selection, core fantasy/player
+  promise, loop, pillars/anti-pillars, audience intent, visual anchor, platform
+  intent, MVP/scope tradeoffs, risk acceptance, and explicit deferrals.
+- The author asks, presents options, drafts, and performs semantic preflight.
+- Gate nodes are bounded read-only advisers; they never choose product outcomes.
+- The target writer performs concept skeleton/final section CAS writes only.
+- The checkpoint recorder creates immutable checkpoints/authoring receipt only.
+- A future fresh independent concept-review task is read-only and separate from
+  every author/gate/writer/recorder identity.
 
-Do not re-prompt per checkpoint or per section inside an unchanged authorized
-boundary. A new path, newly selected section, changed source hash, or material scope
-expansion requires a revised boundary. No approval authorizes implementation,
-external research, publication, or downstream workflow execution.
+After target/section inventory and selected-set confirmation, present one mutation
+manifest covering:
 
-## Canonical status vocabulary
+- exact target operation (`new`: create skeleton then modify authorized sections;
+  `resume/revise`: modify only selected stable-ID sections/header fields);
+- expected target preimage/ABSENT and selected section preimage hashes;
+- checkpoint root and deterministic create-only checkpoint/receipt names;
+- author/profile/content schema, writer/recorder identities, limits, and non-writes.
 
-| Field | Allowed values |
-|---|---|
-| `Workflow Status` | `COMPLETE`, `PARTIAL`, `BLOCKED`, `STOPPED`, `ERROR` |
-| `Mode` | `new`, `resume`, `revise` |
-| `Section Status` | `PRESERVED`, `SELECTED`, `OPEN`, `DRAFT`, `LOCKED`, `CONFLICT` |
-| `Gate Status` | `PASS`, `CONCERNS`, `REJECT`, `TIMEOUT`, `BLOCKED`, `ERROR`, `NOT_RUN_BY_MODE` |
-| `Concept Review` | `CONCEPT READY`, `CONCEPT WITH DOCUMENTED CONCERNS`, `CONCEPT INCOMPLETE`, `BLOCKED` |
-| `Document State` | `NEW DRAFT`, `RESUME DRAFT`, `REVISION DRAFT`, `READY TO WRITE`, `WRITTEN`, `UNCHANGED`, `CONFLICT` |
-| `Persistence` | `WRITTEN`, `NOT_REQUESTED`, `DECLINED`, `FAILED`, `NOT_ATTEMPTED` |
+Obtain one explicit authorization from the named mutation authority. It covers
+that target boundary and create-only checkpoint/receipt sequence for this run.
+Later product decisions and exact-draft approvals are content approval, not new
+filesystem authority. A new path, operation, selected section, owner, writer, or
+larger limit requires a revised manifest and new authorization.
 
-A workflow can be complete while explicitly open questions remain, but it cannot be
-`CONCEPT READY` when a required section is empty, placeholder-only, contradictory,
-or falsely stated as fact.
+## Versioned concept schema and content profile
 
-## Phase 0: Validate target, source bytes, and instructions
+The author contract version is:
 
-Resolve literal and real paths. Reject dot segments, symlink escapes, directories,
-malformed IDs, unsupported encodings, path aliases, and paths outside the project
-root. Read raw bytes once and compute full lowercase SHA-256.
+    brainstorm-author-sha256:<sha256(SKILL.md exact bytes || 0x00 || references/continued-workflow.md exact bytes)>
 
-For `new`:
+The target uses document schema `GC-1`, profile
+`game-concept-profile-schema-v2`, and assertion contract
+`cgs.game-concept-content-profile/v2`. Stable section IDs, never titles, govern
+inventory, selection, decisions, assertions, CAS, revisions, and receipts.
 
-- require `design/gdd/game-concept.md` to be absent;
-- set the source concept state to `ABSENT`;
-- do not delete, rename, or replace an existing file.
-
-For existing-concept `resume` or `revise`:
-
-- require exact path `design/gdd/game-concept.md`;
-- capture the source concept raw SHA-256 and newline/encoding convention;
-- parse its section manifest, stable headings, user-authored/custom sections,
-  decision provenance, open questions, and gate evidence;
-- reject duplicate stable section IDs, malformed ownership, or ambiguous headings;
-- inventory any linked pillar/visual artifacts as read-only references only.
-
-For checkpoint `resume`, require the exact checkpoint path to belong to the supplied
-session ID, verify the full predecessor chain, and restore its recorded mode, source
-path/hash-or-ABSENT, selected section set, draft snapshot and next step. If the
-checkpoint says ABSENT, the canonical concept must still be absent; otherwise it
-must still match the recorded raw hash.
-
-Read the applicable AGENTS.md chain for the concept and checkpoint targets and bind
-its paths/hashes to the session manifest. If source bytes or instructions cannot be
-established, return `BLOCKED` and write nothing.
-
-## Phase 1: Create the section and ownership manifest
-
-Use these stable concept section IDs:
-
-| Stable ID | Product owner | Purpose |
+| Stable ID | Product owner | Required purpose |
 |---|---|---|
-| `CONCEPT-CORE-IDENTITY` | user | title, elevator pitch, core fantasy and hook |
-| `CONCEPT-PLAYER-EXPERIENCE` | user | desired emotion, player promise, motivation |
-| `CONCEPT-CORE-LOOP` | user | moment, short-session, session and progression loops |
-| `CONCEPT-PILLARS` | user | 3–5 pillars with definitions and decision tests |
-| `CONCEPT-ANTI-PILLARS` | user | at least 3 explicit boundaries |
-| `CONCEPT-AUDIENCE` | user | primary/secondary audience and exclusions |
-| `CONCEPT-VISUAL-ANCHOR` | user | stable visual anchor ID, rule and principles |
-| `CONCEPT-PLATFORM-CONSTRAINTS` | user | target intent and observed constraints |
-| `CONCEPT-MVP` | user | smallest hypothesis-testing build |
-| `CONCEPT-SCOPE-TIERS` | user | MVP, fallback and full-vision boundaries |
-| `CONCEPT-RISKS` | user | design, technical, production and evidence risks |
-| `CONCEPT-ASSUMPTIONS` | user | market, schedule, content and resource assumptions |
-| `CONCEPT-OPEN-QUESTIONS` | user | explicitly unresolved decisions |
-| `CONCEPT-PROVENANCE` | controller | decision/gate/source records only |
+| `CONCEPT-CORE-IDENTITY` | product owner | title, pitch, fantasy, hook |
+| `CONCEPT-PLAYER-EXPERIENCE` | product owner | emotion, promise, motivation |
+| `CONCEPT-CORE-LOOP` | product owner | moment, short, session, progression loops |
+| `CONCEPT-PILLARS` | product owner | 3–5 definitions and decision tests |
+| `CONCEPT-ANTI-PILLARS` | product owner | at least three explicit boundaries |
+| `CONCEPT-AUDIENCE` | product owner | audience intent, exclusions, evidence labels |
+| `CONCEPT-VISUAL-ANCHOR` | product owner | stable anchor ID, rule, principles |
+| `CONCEPT-PLATFORM-CONSTRAINTS` | product owner | intent, observed constraints, deferred engine |
+| `CONCEPT-MVP` | product owner | smallest core-uncertainty test |
+| `CONCEPT-SCOPE-TIERS` | product owner | MVP, fallback, full-vision boundaries |
+| `CONCEPT-RISKS` | product owner | design/technical/production/evidence risks |
+| `CONCEPT-ASSUMPTIONS` | product owner | market/schedule/content/resource labels |
+| `CONCEPT-OPEN-QUESTIONS` | product owner | explicit owner/impact/blocking/deferral |
+| `CONCEPT-PROVENANCE` | authoring recorder | decisions, sources, gates, revisions only |
 
-For each section record current heading, owner, source byte range, preimage hash,
-status, selected-for-change flag, dependencies, decision IDs, and linked evidence.
-Unknown custom sections receive stable preservation IDs and remain user-owned.
+Unknown custom sections get stable preservation IDs and remain user-owned. They
+are byte-preserved unless explicitly selected under a revised authorized set.
+
+Every target begins with:
+
+    # Game Concept
+
+    > **Schema**: GC-1
+    > **Profile Version**: game-concept-profile-schema-v2
+    > **Content Profile**: cgs.game-concept-content-profile/v2
+    > **Author Schema**: brainstorm-author-sha256:<hash>
+    > **Concept Artifact ID**: <stable ID>
+    > **Content Status**: DRAFT | PARTIAL | CONTENT_COMPLETE
+    > **Approval Status**: EXTERNAL EVIDENCE REQUIRED
+    > **Context Manifest SHA-256**: <hash>
+    > **Authoring Receipt ID**: <stable ID | PENDING>
+
+Never write `APPROVED`, reviewer identity/signature/date, approval-record path/
+hash, or authoring-receipt path/hash into the concept. External evidence binds
+already-final target bytes and avoids a target/receipt hash cycle.
+
+## Independent state axes
+
+For each canonical/custom section checkpoint:
+
+- `content_state`: `EMPTY`, `PLACEHOLDER`, `SUBSTANTIVE`, or
+  `EXPLICITLY_OPEN`;
+- `evidence_state`: `CURRENT`, `USER_ASSUMPTION`, `MODEL_HYPOTHESIS`, `UNKNOWN`,
+  `STALE`, or `CONFLICTING`;
+- `workflow_state`: `PENDING`, `DRAFTING`, `APPROVED_NOT_WRITTEN`, `WRITTEN`,
+  `PRESERVED`, `BLOCKED`, or `OUT_OF_SCOPE`;
+- `assertion_results`: stable ID, `PASS/FAIL`, applicability, evidence, owner;
+- `section_status`: `INCOMPLETE`, `COMPLETE`, `INVALID`, or `STALE`; and
+- decision, exact-body approval, source, gate, and revision IDs.
+
+Section COMPLETE requires substantive or profile-permitted explicitly-open
+content, passing assertions, honest evidence labels, current exact-body user
+approval, and no blocking conflict. Heading existence/non-placeholder length is
+not completeness.
+
+Target content status:
+
+- DRAFT: authorized skeleton exists without a complete selected body;
+- PARTIAL: safe selected work exists but any required section/assertion/evidence/
+  gate/decision remains incomplete, invalid, stale, conflicting, or blocking;
+- CONTENT_COMPLETE: all required sections pass the content profile, only permitted
+  explicitly deferred nonblocking questions remain, and target/context bytes are
+  current. A verified authoring receipt is still required before Workflow Verdict
+  READY_FOR_REVIEW or a review handoff.
+
+Selected-run completion and whole-concept readiness are separate.
+
+## Concept approval and evidence boundary
+
+User selection/section approval establishes product intent, not independent
+concept approval. Only a separate immutable `cgs.concept-approval/v1` record from
+a fresh independent concept-review task may support `APPROVED`, and only when it:
+
+1. declares concept profile `GC-1/game-concept-profile-schema-v2` and verdict
+   `APPROVE`;
+2. binds current target, authoring receipt, section/assertion/context hashes;
+3. names author/gate/reviewer identities and proves separation;
+4. includes current findings/open-question disposition; and
+5. still matches all current bytes.
+
+CONCERNS, REJECT, self/wrong-profile review, stale target/context/receipt, user
+risk acceptance, or conversation approval cannot establish approval. Authoring
+only emits a review handoff; it never invokes/writes this evidence.
+
+## Phase 0: Parse request and validate exact source identity
+
+Parse request first. Validate contract, operation, modes, IDs, paths, hashes,
+roles, budgets, limits, and non-writes before context or ideation.
+
+Resolve review behavior:
+
+- `full`: run the deterministic read-only advisory gate DAG in Phase 7; it is not
+  the independent final concept review.
+- `lean`: all advisory nodes are `NOT_RUN_BY_MODE`; no gate agents spawn.
+- `solo`: all advisory nodes are `NOT_RUN_BY_MODE`; spawn zero subagents.
+
+Resolve research separately. `none` forbids research; `receipts-only` reads exact
+declared receipts; `authorized-current` may collect only the bounded current
+research evidence authorized by the request and records receipts. Research never
+selects the concept.
+
+For target `new`, prove absence. For `resume/revise`, read raw bytes, preserve
+encoding/newlines, parse stable/custom sections and provenance, and verify current
+hash. For checkpoint resume, validate exact session/run and v2 predecessor chain,
+source ABSENT/hash, selected set, draft snapshot, and next transition.
+
+Invalid input returns ERROR with zero writes. Missing/changed source,
+instructions, authorization identity, or unsafe paths returns BLOCKED with zero
+target writes.
+
+## Phase 1: Inventory sections, choose resume scope, authorize once
+
+Create the complete section/ownership table with headings, byte ranges, hashes,
+content/evidence/workflow/assertion state, dependencies, decision/approval/
+revision IDs, gate receipts, and custom preservation IDs.
 
 Mode rules:
 
-- `new`: all required sections begin `OPEN`.
-- `resume`: show the complete table and ask the user which `OPEN`/`DRAFT` sections to
-  continue. Existing `LOCKED` sections are `PRESERVED` unless explicitly selected.
-- `revise`: only IDs named by `--sections` become `SELECTED`. Reject unknown or
-  duplicate IDs rather than broadening scope.
-- In all modes, non-selected existing sections and custom prose must remain byte-for-
-  byte unchanged. A selected section's dependencies are read-only context; selecting
-  one does not silently select its dependents.
+- `new`: all canonical sections selected for eventual target creation; concept
+  ideation still begins from alternatives rather than a preselected answer.
+- `resume`: show inventory and let the user select OPEN/DRAFT sections once;
+  existing COMPLETE sections remain PRESERVED unless explicitly selected.
+- `revise`: only request-declared IDs are selected; reject scope expansion.
+- In existing targets, non-selected canonical/custom ranges remain byte-identical.
+- Selecting a section never silently selects or writes its dependencies.
 
-If `game-pillars.md` or another linked artifact disagrees with concept pillars, record
-a conflict and owner. Do not synchronize or dual-write it.
+Linked `game-pillars.md`, art, architecture, or other project artifacts are
+read-only evidence; disagreement creates an owned finding, never dual-write.
 
-## Phase 2: Immutable checkpoints and bounded context
+After selected-set confirmation, perform the one mutation authorization described
+above. Do not ask for another write approval per checkpoint, decision, gate,
+section, final exact body, or receipt while the boundary remains unchanged.
 
-After checkpoint authorization, create the session manifest and immutable checkpoints
-after discovery, concept selection, core loop, pillars, every gate node, scope
-decision, section review, and final write attempt.
+## Phase 2: Load bounded ideation context
 
-Each checkpoint contains:
+After authorization select candidates in stable order:
 
-- session/mode/review values and predecessor path/hash;
-- source concept path/hash or ABSENT;
-- complete section/ownership/status table and selected IDs;
-- stable decision ID, user-selected option, alternatives, rationale summary, and
-  timestamp, excluding sensitive personal details not needed by the concept;
-- draft snapshot hash, gate inputs/receipts/statuses, hypotheses/assumptions, and open
-  questions;
-- revision round counts, timeout/partial state, authorized paths, and next permitted
-  step.
+1. applicable `AGENTS.md` root-to-target/checkpoint;
+2. exact target and checkpoint chain;
+3. exact request-declared concept/pillar/product references;
+4. exact prior gate/approval evidence;
+5. exact research receipts/snapshots;
+6. exact platform/technical-preference evidence;
+7. exact estimate evidence; and
+8. exact workflow-catalog row evidence.
 
-Never overwrite checkpoints. `resume` re-hashes the predecessor chain and source
-concept. Continue only the first incomplete idempotent step. A missing predecessor,
-changed source, altered selected set, or checkpoint collision returns `CONFLICT`.
+Never scan all GDDs/sessions, choose latest files, or follow undeclared links.
+Count every loaded file against hard maxima 16 files and 524288 exact bytes.
+Determine exact size before load; never truncate.
 
-Keep prompts and delegate context bounded to the current section, dependent section
-hashes, user decisions, and explicit evidence. Do not send an unrestricted transcript.
+The ordered context manifest records path/URL snapshot, role, stable ID/owner,
+locator, bytes, raw SHA-256, observed date when temporal, dependency edge,
+loaded/omitted state, and reason. Canonicalize UTF-8 LF, fixed fields, no trailing
+whitespace, one final newline; persist its digest.
 
-## Phase 3: Collaborative discovery and concept selection
+Mark an existing concept `mutable-target-baseline`: its baseline is provenance,
+but target currentness is checked separately by Target/Section CAS after writes.
+All external entries are re-hashed before dependent use/final handoff.
 
-Ask conversational questions about desired experience, memorable play, taste,
-avoided genres, team/resources, and practical constraints. Preserve free-text escape
-paths; do not force a product decision into preset options.
+If mandatory evidence exceeds budget, is absent, or mismatches declared hash,
+append at most one authorized PARTIAL checkpoint with
+`CONTEXT_BUDGET_EXCEEDED` or `CONTEXT_EVIDENCE_INVALID`, leave target unchanged,
+list loaded/omitted evidence, and stop. Required context is never silently omitted.
 
-Synthesize a Creative Brief and ask the user to:
+Only after context succeeds, summarize user decisions, current evidence,
+hypotheses/assumptions/unknowns, derived concept constraints, and routed questions;
+then ask the first product question.
 
-- accept it;
-- revise one named dimension;
-- keep the draft/checkpoint and stop.
+## Phase 3: Skeleton and cgs.brainstorm-checkpoint/v2 chain
 
-Allow at most two revision rounds for this decision. If it does not converge, write
-the authorized checkpoint and return `STOPPED`, not an infinite loop.
+For `new`, the target writer first performs CAS on ABSENT and atomically creates
+the complete GC-1 header plus every canonical stable-ID heading with neutral
+placeholders. Read back exact bytes before drafting; do not fill a selected
+concept silently. Existing targets remain unchanged during drafting.
 
-Generate two to four structurally complete concepts; default to three unless the user
-requests another number in that range. Each has:
+Append create-only `cgs.brainstorm-checkpoint/v2` records after discovery brief,
+every concept-selection/decision family, every gate node, content preflight,
+final target attempt, and receipt attempt. Each contains request/authorization/
+context/target/author-schema hashes, complete section axes, selected/preserved
+IDs, decisions/approvals/revisions, draft snapshot, gate/research/estimate
+evidence, convergence counters, findings/open questions, roles, operation ledger,
+budgets, predecessor ID/hash, next legal transition, and UTC timestamp.
 
-- working title and 10-second elevator pitch;
-- core verb, fantasy, hook and primary player experience;
-- smallest testable loop;
-- qualitative scope label;
-- audience/market statement explicitly classified as sourced evidence, user
-  assumption, model hypothesis, or unknown;
-- biggest unanswered risk.
+Canonical payload hash excludes its own `record_sha256`. Append by deterministic
+name through predecessor/create-if-absent CAS. Never overwrite or fork a chain.
 
-Ask the user to select one, combine named elements, request one fresh bounded round,
-keep the checkpoint, or stop. Generate at most two concept rounds total. Record the
-decision and alternatives; never pressure or silently select.
+Checkpoint state is continuity/provenance, not target content, review, approval,
+market validation, engine recommendation, or estimate evidence.
 
-## Phase 4: Core loop, pillars, and boundaries
+## Required continuation
 
-Develop the selected concept collaboratively:
+Read and follow `references/continued-workflow.md` in full after Phase 3. It
+defines bounded ideation and convergence, decision/evidence provenance, gate DAG
+failure results, content assertions, exact-body approval, five-part CAS, authoring
+receipt, independent concept-review handoff, resume, and safe stop behavior.
 
-- 30-second action and feel;
-- five-minute choice/reward cycle;
-- session loop and stopping point;
-- progression/long-term completion;
-- autonomy, competence and relatedness;
-- 3–5 pillars with one-sentence definitions and concrete decision tests;
-- at least 3 anti-pillars explaining the protected pillar.
+## Non-implementation boundary
 
-At each product decision offer Accept, Revise one named part, Keep draft/checkpoint,
-and Stop. Limit each decision family to two revisions. A third requested revision
-saves a checkpoint and stops for a fresh session.
-
-Pillars are authoritative in the concept. Linked pillar documents are derived
-references and are not updated here.
-
-## Phase 5: Audience, platform, scope, and evidence labels
-
-Audience and market statements use one evidence label:
-
-- `SOURCED CURRENT`: path/URL, publisher, observed date, relevant claim and snapshot
-  hash are present;
-- `USER ASSUMPTION`: the user supplied it;
-- `MODEL HYPOTHESIS`: creative comparison only, not a market fact;
-- `UNKNOWN`: no support.
-
-Without current sources, audience size, comparable success, demand, price, platform
-policy, or trend statements remain hypothesis/unknown. Do not fabricate citations or
-write model intuition as authoritative validation.
-
-Record platform targets, performance needs, distribution constraints, team experience
-and user engine preference. Do not recommend an engine or state current engine/
-platform support as fact. Set `Engine Decision: DEFERRED TO TECHNICAL SETUP` unless
-the user records an existing preference, which remains a preference rather than a
-technical recommendation.
-
-Timeline, team capacity, content counts, cost, and delivery dates must be labeled
-`USER BUDGET`, `USER ASSUMPTION`, `SOURCED ESTIMATE`, or `UNKNOWN`. Do not generate a
-formal schedule or precise content promise from model judgment. Prepare preliminary MVP and scope constraints from those labels. After technical
-feedback in the gate DAG, the user locks or revises the final scope tiers before the
-PR-SCOPE node.
-
-## Phase 6: Deterministic review-mode gate DAG
-
-The DAG is sequential and hash-bound:
-
-~~~text
-CD-PILLARS
-  -> AD-CONCEPT-VISUAL
-  -> TD-FEASIBILITY
-  -> PR-SCOPE
-~~~
-
-Never dispatch these four nodes in parallel. Each node receives the exact draft
-snapshot hash, relevant stable section hashes, decision IDs, prior required gate
-receipt, a bounded question, deadline, and attempt number. Each returns an immutable
-receipt with gate ID, role, input hashes, start/end, verdict, concerns/rejection,
-omissions, and receipt hash.
-
-Mode matrix:
-
-- `full`: all four nodes run in order and each downstream node waits for the current
-  upstream disposition.
-- `lean`: all four are `NOT_RUN_BY_MODE`; user-owned product decisions and the
-  concept-specific review still apply.
-- `solo`: all four are `NOT_RUN_BY_MODE`; spawn no gate agents.
-
-### Node inputs and dependencies
-
-1. `CD-PILLARS` consumes the chosen concept, core fantasy/hook, pillars, design tests,
-   and anti-pillars.
-2. `AD-CONCEPT-VISUAL` runs only after CD disposition and consumes confirmed pillar
-   hashes. It proposes bounded visual directions; the user selects or describes the
-   visual anchor.
-3. `TD-FEASIBILITY` runs only after the visual-anchor decision and consumes core-loop,
-   platform-intent, visual, MVP-risk, and assumption hashes. It records feasibility
-   evidence/unknowns but never chooses an engine.
-4. `PR-SCOPE` runs only after technical disposition and consumes MVP, fallback/full
-   tiers, user resource/timeline assumptions, and technical concerns. It recommends
-   scope risks but never approves scope for the user.
-
-If an upstream section changes, mark that node and all downstream receipts `STALE`
-and rerun them in order when full-mode gates remain required.
-
-### Verdict semantics
-
-- `PASS`: proceed to the next dependency.
-- `CONCERNS`: keep the gate status as CONCERNS. The user may revise the named input,
-  keep a checkpoint and stop, or explicitly document the concern and continue when
-  the gate policy classifies concerns as advisory. Record owner, rationale, impact
-  and review point. This is not PASS or an override.
-- `REJECT`: do not write the final concept. There is no override path. The user may
-  revise the rejected node's source sections and rerun that node, or checkpoint and
-  stop.
-- `TIMEOUT`, `BLOCKED`, `ERROR`, missing or partial receipt: return `Workflow Status:
-  PARTIAL`, do not invent a verdict, do not run dependent nodes, and do not write the
-  final concept.
-
-Allow at most one retry per node and at most two user revision rounds for a rejected
-or concerned node. On exhaustion, checkpoint and stop. A late result for an older
-draft hash is stale and cannot unblock the DAG.
-
-## Phase 7: Concept-specific read-only review
-
-Review the exact final draft snapshot against this concept profile:
-
-1. core identity is concise and internally consistent;
-2. player promise, loops and motivations explain the intended experience;
-3. pillars have definitions/tests and anti-pillars bound scope;
-4. visual anchor has a stable ID, rule, principles, color philosophy and source
-   decision;
-5. audience, platform, market, engine, schedule and content statements have evidence
-   labels rather than unsupported facts;
-6. MVP tests the core uncertainty and scope tiers distinguish fallback/full vision;
-7. risks, open questions, decision provenance and gate states are explicit;
-8. required stable sections contain substantive content or an explicit open question;
-9. no unresolved contradiction, placeholder token, fabricated citation, or stale gate
-   receipt remains.
-
-This is a concept-specific content review, not a system-design/GDD review. It is
-read-only and cannot approve product decisions.
-
-Return:
-
-- `CONCEPT READY` when every required section is substantive or explicitly open,
-  all statements are correctly labeled, full-mode gates pass or contain valid
-  documented advisory concerns, and no REJECT/partial/stale required gate exists;
-- `CONCEPT WITH DOCUMENTED CONCERNS` when only user-accepted advisory concerns remain;
-- `CONCEPT INCOMPLETE` for placeholders, missing provenance/evidence labels, open
-  blocking questions, or skipped required full-mode evidence;
-- `BLOCKED` for a full-mode REJECT, conflict, unsafe target, or changed source hash.
-
-## Phase 8: Preview, compare-and-set, and write
-
-Only `CONCEPT READY` or `CONCEPT WITH DOCUMENTED CONCERNS` may enter the
-concept-write boundary. `CONCEPT INCOMPLETE` checkpoints and stops without offering
-a final concept write.
-
-Build the exact target bytes and show:
-
-- source path/hash or ABSENT;
-- selected section IDs and their before/after hashes;
-- byte-for-byte preserved section/custom ranges;
-- complete unified diff, output hash, and one CREATE or MODIFY operation;
-- unresolved open questions, documented concerns, and concept-review result.
-
-For `new`, immediately before write confirm the target is still absent. For
-`resume`/`revise`, re-read the source and require its raw SHA-256 to equal the Phase 0
-preimage. Also verify every non-selected section hash. Any mismatch returns
-`Document State: CONFLICT`, writes nothing, preserves both drafts in conversation/
-checkpoint, and asks the user to merge in a new session.
-
-Obtain one authorization for the exact displayed concept bytes. Write atomically,
-re-read bytes, re-parse stable section IDs/provenance, confirm preserved sections,
-and return the final SHA-256. Never replace the whole existing concept from
-conversation memory.
-
-If the exact output equals the source, return `Document State: UNCHANGED` and do not
-write. Declined/failed authorization returns `Persistence: DECLINED` or `FAILED` and
-does not change product decisions or source bytes.
-
-## Output and stop
-
-Always return:
-
-- mode/session/review and source/output concept hashes;
-- section owner/status/change table;
-- user decision IDs and open questions;
-- gate DAG statuses/input/receipt hashes and stale/partial rows;
-- concept review, document state, workflow status and persistence;
-- exact checkpoint/concept paths and next permitted action.
-
-Recommend at most one next action selected from the concept state:
-
-- unresolved product question -> continue this exact session;
-- unproven core loop -> validate the core mechanic;
-- complete concept with engine undecided -> perform technical setup;
-- otherwise -> decompose the concept into systems;
-- or `Stop`.
-
-Do not invoke the recommendation, print a long pipeline, or claim formal market,
-engine, feasibility, schedule, art, or release approval.
-
-Verdict is `COMPLETE` only after an authorized atomic write/read-back or an explicitly
-accepted unchanged result. REJECT, conflict or unsafe target is `BLOCKED`; missing/
-timeout/partial required evidence is `PARTIAL`; user stop or bounded-loop exhaustion
-is `STOPPED`.
+This workflow writes only its authorized concept target and create-only
+checkpoint/authoring-receipt records. It never writes pillars, research source,
+estimate, engine/platform setup, review/approval record, shared catalog, art,
+architecture, backlog, code, assets, production state, or publication. It invokes
+no downstream recommendation.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Control Manifest"
-  short_description: "After architecture is complete, produces a flat actionable..."
-  default_prompt: "Use $create-control-manifest to run the Create Control Manifest game-studio workflow."
+  short_description: "Publish one source-faithful versioned control-manifest Draft"
+  default_prompt: "Use $create-control-manifest to create or safely update one bounded DRAFT control manifest from current architecture, stable TR scope, and Accepted ADR evidence while preserving MUST/SHOULD/MAY provenance, deterministic conflicts, monotonic versioning, and CAS; keep independent review and Active recording external."

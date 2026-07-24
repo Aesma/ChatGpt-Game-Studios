@@ -1,265 +1,361 @@
 ---
 name: retrospective
-description: "Generates an evidence-backed sprint or milestone retrospective while preserving unsupported metrics and causes as UNKNOWN."
+description: "Produces immutable, revision-bound sprint or milestone retrospectives whose metrics, causes, actions, owners, deadlines, and trends remain evidence-backed or explicitly UNKNOWN."
 ---
 
-## Invocation and execution
+## Contract and exact invocation
 
-Invoke this workflow as `$retrospective`.
-
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
-
-Arguments: `[sprint-N|milestone-name]`. Treat bracketed values as optional unless the workflow says otherwise.
-
-This workflow creates only the retrospective artifact. It never invokes planning, a gate, another skill, or another task.
-
-## Phase 1: Parse Arguments
-
-Determine whether this is a sprint retrospective (`sprint-N`) or a milestone retrospective (`milestone-name`).
-
----
-
-## Phase 1b: Check for Existing Retrospective
-
-Before loading any data, search for an existing retrospective file:
-
-- For sprint retrospectives: `production/retrospectives/retro-[sprint-slug]-*.md`
-  (also check `production/sprints/sprint-[N]-retrospective.md` as an alternate location)
-- For milestone retrospectives: `production/retrospectives/retro-[milestone-name]-*.md`
-
-If a matching file is found, ask the user directly:
-
-- Prompt: "An existing retrospective was found: [filename]. How do you want to proceed?"
-- Options:
-  - `[A] Update existing — load it and add/revise sections with new data`
-  - `[B] Start fresh — generate a new retrospective (archive the old one)`
-
-If [A]: read the existing file and carry its content forward, revising sections with new data.
-If [B]: continue to Phase 2 with a blank slate. Before writing the new file, rename the existing one with a `-archived-[date]` suffix.
-
----
-
-## Phase 2: Load Sprint or Milestone Data
-
-Read the sprint or milestone plan from the appropriate location:
-
-- Sprint plans: `production/sprints/`
-- Milestone definitions: `production/milestones/`
-
-**Also check for `production/sprint-status.yaml`**: if it exists, read it alongside the sprint plan. It is the primary source for recorded story completion status (status, completion dates, blockers), but it is not authority for unrelated values such as actual effort or bug counts. Fall back to markdown scanning only if the YAML does not exist. Note discrepancies between the YAML and the sprint plan; do not choose a side silently or calculate a metric from conflicting records.
-
-**If the file does not exist or is empty**, output:
-
-> "No sprint data found for [sprint/milestone]. Run `$sprint-status` to generate
-> sprint data first, or provide the sprint details manually."
-
-Then ask the user directly to present two options:
-
-- **[A] Provide data manually** — ask the user to paste or describe the sprint
-  tasks, dates, and outcomes; record those claims as `user-provided` evidence.
-- **[B] Stop** — abort the skill. Verdict: **BLOCKED** — no sprint data available.
-
-If the user chooses [A], collect the data and continue to Phase 3 using what they provide.
-If the user chooses [B], stop here.
-
-Extract recorded planned tasks, estimated effort, owners, goals, dates, completion events, blockers, bug events, and scope changes. Do not turn an absent field into zero, false, completed, or not completed.
-
-Run Git history read-only for the sprint period to understand what was committed and when:
+Invoke exactly one target:
 
 ```text
-git log --oneline --since="4 weeks ago"
+$retrospective sprint:<sprint-id> [--run-id <retro-run-id>] [--persist]
+$retrospective milestone:<milestone-id> [--run-id <retro-run-id>] [--persist]
 ```
 
-Adjust the `--since` date to match the sprint duration if known from the sprint plan. If the dated query fails or returns no usable history, fall back to `git log --oneline -20`. A fallback query is context only: unless its commits can be tied to the target period, report the `Commits` metric as `UNKNOWN`.
+Contract version: `cgs.retrospective/v2`.
 
-### Evidence ledger
+`<sprint-id>` must be `sprint-<lowercase-kebab-or-digits>` and
+`<milestone-id>` must be `milestone-<lowercase-kebab-or-digits>`. A run ID is
+`retro-<UUIDv4>`. Without `--run-id`, generate one and report it before drafting;
+`--persist` requires an explicit `--run-id` so a retry cannot silently create a
+second artifact.
 
-Create an in-memory evidence ledger before calculating or drafting anything. Give each item a stable ID such as `SRC-001` and record:
+Reject missing/multiple targets, unprefixed names, ambiguous type, invalid IDs,
+paths, URLs, globs, extra positional arguments, duplicate/unknown options, option
+values beginning with `--`, or `--persist` without a run ID. Invalid invocation
+returns `analysis_status: BLOCKED`, `persistence_status: NOT_ATTEMPTED`, no
+artifact/evidence, and stops before reading project files.
 
-- source type (`plan`, `status`, `git`, `bug-record`, `delivery-artifact`, `prior-retro`, or `user-provided`);
-- exact file path, commit range, or user-message locator;
-- the target period and story/task scope the item actually covers;
-- the claim or field supported by the item; and
-- any ambiguity or conflict.
+This workflow creates only one immutable retrospective plus its latest-pointer
+index when explicitly persisted. It never moves, renames, overwrites, archives,
+or edits an earlier retrospective; never updates a sprint/milestone tracker or
+action registry; and never invokes planning, a gate, another skill, task, or
+external workflow. Suggestions after output are plain-text handoffs only.
 
-Every reported metric must use exactly one of these evidence states:
-
-- `OBSERVED` — a value is stated directly in one or more in-scope evidence items;
-- `DERIVED` — a deterministic calculation uses only supported inputs; record the formula and all input evidence IDs;
-- `UNKNOWN` — a required input is absent, ambiguous, conflicting, out of period, or incomparable.
-
-For every metric, record the state, value, source IDs, derivation when applicable, and confidence (`HIGH`, `MEDIUM`, `LOW`, or `NONE`). `UNKNOWN` always has value `UNKNOWN`, confidence `NONE`, and a short missing-evidence reason. Never estimate, interpolate, or substitute a plausible value.
-
----
-
-## Phase 3: Analyze Completion and Trends
-
-Compare the plan against recorded deliverables and completion events. Check for:
-
-- tasks completed as planned;
-- tasks completed but modified from the plan;
-- tasks carried over (not completed);
-- tasks added mid-sprint (unplanned work); and
-- tasks removed or descoped.
-
-Classify an item only when evidence supports that classification. Otherwise preserve its status as `UNKNOWN` and identify the missing or conflicting evidence.
-
-Use the following minimum evidence rules:
-
-| Metric or claim | Acceptable support | Forbidden inference |
-|---|---|---|
-| Planned tasks or effort | Target plan or explicit user statement | Reconstructing the plan from commits |
-| Completed tasks | In-scope status/completion record or verified deliverable mapped to the task | Treating a commit or missing TODO as completion |
-| Actual effort | Explicit time/effort record or explicit user statement | Estimating effort from commits, dates, or task complexity |
-| Bugs found/fixed | In-scope bug event records or explicit user statement | Counting bug-like commit messages or assuming no record means zero |
-| Unplanned work | Recorded scope change or explicit user statement | Treating every unmatched commit as a task |
-| Commits | Git range objectively bounded to the target period | Counting the fallback history as period activity |
-
-Calculate `Delta`, completion rate, estimation accuracy, and any trend only when every input is supported. If any required input is `UNKNOWN`, the result is also `UNKNOWN`; include no approximate result.
-
-Scan the codebase for current TODO/FIXME/HACK comments. Record the scan scope, command or method, and repository revision as evidence. Compare against a previous count only when that retrospective documents a compatible scan scope and method. Otherwise keep the trend `UNKNOWN`.
-
-Read previous retrospectives from `production/retrospectives/` to check whether prior action items were recorded as addressed and whether supported, comparable metrics exist. A retrospective's conclusion is not independent evidence for the underlying metric unless it cites its sources.
-
-### Causes and explanations
-
-A cause, blocker resolution, prevention claim, trend explanation, or carryover reason may be stated as fact only when an in-scope event record says it or the user explicitly confirms it. Cite the supporting evidence ID beside the claim.
-
-When no such evidence exists, write `UNKNOWN — no event record or user confirmation`. Do not infer a likely cause from timing, correlation, commit messages, task type, or general experience. You may ask the user to confirm a cause; until confirmation, keep it `UNKNOWN`.
+Without `--persist`, the workflow is read-only and returns a complete draft in
+conversation. `--persist` explicitly authorizes only the two-path transaction
+defined in Phase 8; it authorizes no other mutation.
 
 ---
 
-## Phase 4: Generate the Retrospective
+## Phase 0: Freeze governance, policy, and fixed bounds
 
-Use `UNKNOWN` literally wherever evidence is insufficient. Do not omit an expected row merely because its value is unknown.
+Resolve the repository root and canonicalize selected paths. Load every
+applicable `AGENTS.md` from root to target in root-to-target order and list them.
+Require `production/retrospectives/policy.yaml` with schema
+`cgs.retrospective-policy/v1`, exact version/hash, target source routes, metric
+definitions, evidence-confidence rules, required core evidence, Git range rules,
+scan protocol rules, report schema, and immutable index semantics. Prose does not
+override executable policy.
 
-```markdown
-## Retrospective: [Sprint N / Milestone Name]
-Period: [Start Date or UNKNOWN] -- [End Date or UNKNOWN]
-Generated: [Date]
+Fixed limits cannot be raised by policy, target, or user input:
 
-### Evidence Summary
+| Resource | Fixed maximum |
+|---|---:|
+| Plan, tracker/status, policy, index, prior report, or receipt | 1 MiB each |
+| Explicit evidence artifacts | 1,024 |
+| Aggregate evidence bytes | 256 MiB |
+| Evidence-ledger rows | 10,000 |
+| Target stories/tasks | 5,000 |
+| Status/history events | 100,000 |
+| In-period Git commits | 10,000 |
+| Scan candidate files | 100,000 |
+| Scan candidate bytes | 512 MiB |
+| Metrics | 1,024 |
+| Observations | 4,096 |
+| Action proposals | 64 |
+| Rows rendered per report section | 500 |
+| Rendered report bytes | 2 MiB |
 
-| Evidence ID | Source | Locator | Supported Scope / Claim | Limitations |
-|-------------|--------|---------|-------------------------|-------------|
-| SRC-001 | [plan/status/etc.] | [path/range/message] | [claim] | [none or limitation] |
+Reject a required configuration artifact above its per-file bound as BLOCKED.
+When otherwise valid selected work exceeds an evidence, event, commit, scan,
+metric, observation, action, row, or output bound, stop at declared source order
+then stable identity. Record candidate-set digest, included/omitted counts,
+boundary key, and omitted-tail digest; set `analysis_status: RETRO_PARTIAL` and
+`data_quality: PARTIAL — BOUNDED EVIDENCE`. Never sample or extrapolate omitted
+work or call a truncated trend complete.
 
-### Metrics
+Hash every selected source from exact raw bytes before interpretation. Recompute
+all source and target/index preimage hashes immediately before output and before
+persistence. Any change returns `BLOCKED — INPUT CHANGED DURING RETROSPECTIVE`;
+do not persist a stale mixture.
 
-| Metric | Planned | Actual | Delta | State | Evidence / Formula | Confidence |
-|--------|---------|--------|-------|-------|--------------------|------------|
-| Tasks | [X or UNKNOWN] | [Y or UNKNOWN] | [Z or UNKNOWN] | [OBSERVED/DERIVED/UNKNOWN] | [SRC IDs and formula, or missing-evidence reason] | [HIGH/MEDIUM/LOW/NONE] |
-| Completion Rate | -- | [Z% or UNKNOWN] | -- | [DERIVED/UNKNOWN] | [formula + SRC IDs, or reason] | [confidence] |
-| Story Points / Effort Days | [X or UNKNOWN] | [Y or UNKNOWN] | [Z or UNKNOWN] | [state] | [evidence/formula/reason] | [confidence] |
-| Bugs Found | -- | [N or UNKNOWN] | -- | [state] | [evidence/reason] | [confidence] |
-| Bugs Fixed | -- | [N or UNKNOWN] | -- | [state] | [evidence/reason] | [confidence] |
-| Unplanned Tasks Added | -- | [N or UNKNOWN] | -- | [state] | [evidence/reason] | [confidence] |
-| Commits | -- | [N or UNKNOWN] | -- | [state] | [evidence/reason] | [confidence] |
+---
 
-### Velocity Trend
+## Phase 1: Resolve exactly one sprint or milestone
 
-| Sprint | Planned | Completed | Rate | Evidence | Confidence |
-|--------|---------|-----------|------|----------|------------|
-| [N-2] | [value/UNKNOWN] | [value/UNKNOWN] | [value/UNKNOWN] | [SRC IDs/reason] | [confidence] |
-| [N-1] | [value/UNKNOWN] | [value/UNKNOWN] | [value/UNKNOWN] | [SRC IDs/reason] | [confidence] |
-| [N] (current) | [value/UNKNOWN] | [value/UNKNOWN] | [value/UNKNOWN] | [SRC IDs/reason] | [confidence] |
+Resolve the target only through the policy's exact route:
 
-**Trend**: [Increasing / Stable / Decreasing / UNKNOWN]
-[Evidence-backed explanation, or `UNKNOWN — comparable supported history is unavailable`]
+- sprint plan: `production/sprints/<sprint-id>.md` plus
+  `production/sprint-status.yaml`;
+- milestone plan: `production/milestones/<milestone-id>.md` plus
+  `production/milestone-status.yaml`.
 
-### What Went Well
-- [Observation with evidence ID]
-- [Another supported observation, or UNKNOWN]
+The plan and status artifact each declare schema/version, exact target type/ID,
+plan revision, plan raw SHA-256, story/task-set SHA-256, start/end UTC, and source
+revision. The status also declares captured-at UTC, event-history receipt, and
+one row per exact story/task identity.
 
-### What Went Poorly
-- [Supported issue and impact with evidence ID]
-- [Another supported issue, or UNKNOWN]
+Reject zero or multiple matching plans, wrong target type/ID, path collision,
+duplicate authority rows, dangling status path, or a second plan claiming the
+same identity as `BLOCKED — TARGET NOT UNIQUE`. Do not fuzzy-match display names,
+select latest mtime, infer current sprint, or accept an unprefixed argument.
 
-### Blockers Encountered
+The target period is the plan's exact half-open interval `[start_utc, end_utc)`.
+Missing/invalid boundaries make time-bound metrics UNKNOWN. A final status
+snapshot is fresh only when `captured_at_utc >= end_utc`, not in the future, and
+its plan revision/hash and story/task-set hash equal the selected plan. An active
+or pre-end status may support explicitly time-stamped observations but cannot
+support final completion/variance/trend claims.
 
-| Blocker | Duration | Resolution | Prevention | Evidence |
-|---------|----------|------------|------------|----------|
-| [blocker/UNKNOWN] | [duration/UNKNOWN] | [resolution/UNKNOWN] | [prevention/UNKNOWN] | [SRC IDs/reason] |
+---
 
-### Estimation Accuracy
+## Phase 2: Reconcile plan, tracker, and history revisions
 
-| Task | Estimated | Actual | Variance | Cause | Evidence / Formula | Confidence |
-|------|-----------|--------|----------|-------|--------------------|------------|
-| [task] | [value/UNKNOWN] | [value/UNKNOWN] | [value/UNKNOWN] | [confirmed cause or UNKNOWN] | [SRC IDs/formula/reason] | [confidence] |
+Validate these equality keys before combining plan and status:
 
-**Overall estimation accuracy**: [supported result or UNKNOWN]
-
-[Evidence-backed analysis, or `UNKNOWN — supported estimate/actual pairs are unavailable`]
-
-### Carryover Analysis
-
-| Task | Original Sprint | Times Carried | Reason | Action | Evidence |
-|------|----------------|---------------|--------|--------|----------|
-| [task] | [value/UNKNOWN] | [value/UNKNOWN] | [confirmed reason/UNKNOWN] | [proposed action] | [SRC IDs/reason] |
-
-### Technical Debt Status
-- Current TODO count: [N or UNKNOWN] (previous: [N or UNKNOWN])
-- Current FIXME count: [N or UNKNOWN] (previous: [N or UNKNOWN])
-- Current HACK count: [N or UNKNOWN] (previous: [N or UNKNOWN])
-- Trend: [Growing / Stable / Shrinking / UNKNOWN]
-- Evidence: [scan scope, method, revision, and comparable prior source; or reason]
-
-### Previous Action Items Follow-Up
-
-| Action Item (from Sprint N-1) | Status | Notes | Evidence |
-|-------------------------------|--------|-------|----------|
-| [previous action] | [Done / In Progress / Not Started / UNKNOWN] | [context] | [SRC IDs/reason] |
-
-### Action Items for Next Iteration
-
-| # | Action | Owner | Priority | Deadline | Triggering Evidence |
-|---|--------|-------|----------|----------|---------------------|
-| 1 | [specific, measurable action] | [who] | [High/Med/Low] | [when] | [SRC IDs] |
-| 2 | [another action] | [who] | [priority] | [when] | [SRC IDs] |
-
-### Process Improvements
-- [Specific change tied to supported evidence]
-- [Another supported improvement]
-
-### Data Gaps
-- [Each UNKNOWN field and the evidence needed to resolve it]
-
-### Summary
-[2-3 sentence evidence-backed assessment. Do not convert UNKNOWN metrics or causes into a qualitative conclusion.]
+```text
+target_type + target_id + plan_revision + plan_sha256 + story_or_task_set_sha256
 ```
 
-Before presenting the draft, audit every number, percentage, delta, trend, cause, and explanation against the evidence ledger. Replace any unsupported value or claim with `UNKNOWN` and state why.
+For every story/task, require the same stable ID and estimate unit/value in the
+plan and status baseline, or an immutable scope-change event binding pre/post
+story-set hashes, owner, reason, UTC within the target period, and transaction ID.
+Status, completion, carryover, blocker, bug, effort, and scope-change claims must
+reference exact event IDs and source hashes.
+
+Any unequal key, unexplained added/removed/changed item, duplicated item, stale
+snapshot, conflicting event, or mismatched source revision becomes
+`DATA CONFLICT`. Preserve both claims and their evidence; never choose a side.
+Set `analysis_status: RETRO_PARTIAL` and block every metric or conclusion whose
+inputs touch the conflict. Unaffected local observations may remain supported.
+
+Absent data is not a conflict and not zero. Mark its dependent field `UNKNOWN`.
+Never fall back from a present but conflicting YAML tracker to Markdown scanning,
+and never make the tracker authoritative for fields its schema does not own.
 
 ---
 
-## Phase 5: Save Retrospective
+## Phase 3: Build a bounded evidence ledger before analysis
 
-Present the retrospective and top supported findings to the user. If completion rate, velocity trend, top blocker, or most important action item is unsupported, present it as `UNKNOWN` rather than filling it in.
+Create an in-memory ledger with stable source IDs. Each row contains source type,
+normalized path or immutable conversation locator, exact SHA-256, schema/version,
+target/revision/story-set identity, event/commit/message range, covered time and
+story/task scope, supported claims, exclusions, freshness, and conflicts.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized. (or `production/retrospectives/retro-[milestone-name]-[date].md` for milestone retrospectives)
+Allowed source types are `PLAN`, `STATUS`, `EVENT_HISTORY`, `BUG_EVENT`,
+`DELIVERY_RECEIPT`, `GIT_RANGE`, `SCAN_SNAPSHOT`, `PRIOR_RETRO`,
+`ACTION_DECISION`, and `USER_CONFIRMED`. A user claim is evidence only when the
+response is explicit, its exact UTF-8 text hash and conversation run/turn locator
+are recorded, and the report labels it `USER_CONFIRMED`; it does not retroactively
+change tracker bytes.
 
-Once the complete changeset is authorized, write the file, creating the `production/retrospectives/` directory if needed. Verdict: **COMPLETE** — retrospective saved.
+Every metric or factual claim has exactly one state:
 
-If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** — changeset not authorized.
+- `OBSERVED`: directly stated by fresh, in-scope, nonconflicting evidence;
+- `DERIVED`: deterministic formula over only supported inputs, with formula,
+  units, and every source ID; or
+- `UNKNOWN`: an input is absent, stale, conflicting, out of period, truncated, or
+  incomparable; value is literally `UNKNOWN`, confidence `NONE`, with reason.
+
+Observed/derived confidence `HIGH|MEDIUM|LOW` comes only from the policy's
+evidence-coverage rule and lists its rule ID. Never estimate, interpolate, impute,
+silently convert units, or replace UNKNOWN with zero/false/none/not-applicable.
 
 ---
 
-## Phase 6: Return Artifact and Stop
+## Phase 4: Calculate only evidence-supported metrics and causes
 
-After the retrospective is saved:
+Classify planned, completed-as-planned, completed-with-change, carried, added,
+removed, blocked, and unknown stories/tasks only from exact plan/event evidence.
+Metrics obey their registered formulas and units:
 
-1. Return the saved artifact path and `Verdict: COMPLETE`.
-2. Optionally list relevant commands the user could run in a new task, as plain text only.
-3. Stop the workflow immediately.
+- planned count/effort comes only from the selected plan revision;
+- completed count comes only from fresh completion events or verified delivery
+  receipts mapped to exact story/task IDs;
+- completion rate is `completed_eligible / planned_eligible * 100` only when both
+  sets and exclusion rules are fully known;
+- actual effort requires an explicit effort record in the same unit;
+- variance requires supported planned and actual values; if either is UNKNOWN,
+  variance and estimation accuracy are UNKNOWN;
+- bugs found/fixed require immutable in-period bug open/fix events mapped to the
+  target; bug-like commit text and absence of records are not counts; and
+- unplanned work requires a scope-change event or explicit confirmed statement.
 
-Do not invoke `$sprint-plan`, `$gate-check`, or any other skill. Do not start planning, evaluate phase readiness, open another task, or pass retrospective data into another workflow. This rule applies to both sprint and milestone retrospectives, regardless of review mode or user interest in the next phase. A later planning or gate workflow requires an explicit command in a new task.
+Every number, percentage, delta, duration, rate, and qualitative trend cites
+source IDs. Keep full precision for calculation and apply only policy display
+rounding after decisions.
 
-### Guidelines
+A cause, carryover reason, blocker resolution, prevention claim, trend
+explanation, or responsibility statement is factual only when an in-scope event
+record states it or a user/team explicitly confirms it. Otherwise write
+`UNKNOWN — no in-scope event or explicit confirmation`. Timing, correlation,
+commit messages, task category, owner identity, and general experience never
+prove cause.
 
-- Be honest and specific. Unsupported precision is not useful specificity.
-- Focus on systemic issues, not individual blame.
-- Limit action items to 3-5. More than that dilutes focus.
-- Every action item must have an owner and a deadline.
-- Check whether previous action items were completed. Recurring unaddressed items are a process smell.
-- If this is a milestone retrospective, report only evidence-backed milestone outcomes; do not evaluate or invoke readiness gates.
-- `UNKNOWN` is a valid and required result when evidence is missing. It is never equivalent to zero, none, false, or not applicable.
+---
+
+## Phase 5: Bound Git evidence to the exact target period
+
+Never run a “last four weeks,” “latest 20,” latest tag, current branch, or mtime
+fallback. The plan/status must bind repository identity, baseline commit,
+terminal commit, branch/ref identity, and target start/end UTC.
+
+Verify both commits exist in the same repository, baseline is an ancestor of
+terminal under the policy's merge rule, and the range contains only commits
+reachable in `baseline_exclusive..terminal_inclusive`. For each candidate retain
+commit SHA, parent identity, committer UTC, and scope mapping. Count a commit only
+when it is in that exact graph range, its committer UTC is within `[start,end)`,
+and it satisfies the policy's declared target-scope rule. Report excluded commits
+and reasons.
+
+Missing/invalid boundaries, commits, ancestry, ref, timestamps, or scope mapping
+makes the Commits metric `UNKNOWN`; Git output may appear only as out-of-scope
+context. A commit count never proves completion, effort, bugs, or causation.
+
+---
+
+## Phase 6: Compare TODO/FIXME/HACK only under one scan protocol
+
+The current scan produces a `cgs.retrospective-scan-snapshot/v1` record containing
+stable scan protocol ID/version; scanner product/version/executable hash; exact
+argv and match semantics; repository revision; included roots; excluded roots,
+extensions, generated/vendor/binary rules; file-list digest; selected file/byte
+counts; TODO/FIXME/HACK counts and stable occurrence IDs; start/end UTC; and any
+omissions or errors.
+
+Current counts may be OBSERVED only from a complete bounded scan. Trend against a
+prior retrospective is DERIVED only when the prior report exposes a valid scan
+snapshot with identical protocol ID/version, scanner version/hash, argv/match
+semantics, include/exclude scope digest, and compatible repository lineage. The
+formula is current minus prior for each marker.
+
+Any scope/tool/version/argv/match/exclusion mismatch, missing prior snapshot,
+unrelated repository lineage, partial scan, or unknown prior count makes trend
+`UNKNOWN — INCOMPARABLE SCAN`; never compare current raw counts to prose or a
+snapshot created under another protocol.
+
+---
+
+## Phase 7: Create observations and proposed actions without assigning people
+
+Every observation has stable ID `ROBS-<category>-<12hex>`, type
+`OBSERVATION|DATA_GAP|DATA_CONFLICT`, exact evidence IDs, fact/limitation, and
+acceptance for additional evidence. Its hash identity uses repository, target
+type/ID/revision, category, and stable evidence/event IDs—not paths, wording,
+severity, timestamps, current report hash, or status.
+
+Every action begins as `PROPOSED` with stable ID
+`RACT-<category>-<12hex>`, triggering observation IDs, measurable action,
+acceptance criteria, owner role candidate or `NONE`, due-window candidate or
+`NONE`, and priority candidate or `NONE`. Limit to five top proposals by the
+policy's deterministic evidence/impact order.
+
+The model never selects a person, commits a deadline, or turns a candidate into a
+team obligation. `owner` and `due` remain `UNASSIGNED` until an exact
+`cgs.retrospective-action-decision/v1` receipt or explicit current user/team
+confirmation binds action ID, chosen owner, due UTC/window, decision authority,
+decision UTC, and the exact action-proposal-set SHA-256 shown for confirmation. A
+missing/ambiguous response leaves the
+proposal valid but unassigned. The report distinguishes `PROPOSED`, `CONFIRMED`,
+`CARRIED`, `COMPLETED`, and `CANCELLED`; only external evidence advances state.
+
+Never infer prior action completion from an unchecked box or its absence. A prior
+retrospective is evidence that an action was proposed, not that it was performed.
+
+---
+
+## Phase 8: Produce and optionally persist immutable artifacts
+
+The report payload schema is `cgs.retrospective-report/v2` and contains:
+
+1. `Result and Data Quality`
+2. `Target, Period, Revision, and Run Identity`
+3. `Evidence Ledger`
+4. `Plan/Status Reconciliation and Conflicts`
+5. `Metrics`
+6. `What Went Well`
+7. `What Went Poorly`
+8. `Blockers, Carryover, and Causes`
+9. `Git Period Evidence`
+10. `Comparable Scan Snapshot and Trend`
+11. `Previous Action Follow-up`
+12. `Stable Observations and Data Gaps`
+13. `Proposed and Confirmed Actions`
+14. `Bounded Omissions`
+15. `Handoffs and Stop Boundary`
+
+Canonicalize the machine payload as UTF-8 JSON with lexicographically sorted
+object keys, preserved array order, JSON number grammar, and no insignificant
+whitespace. Include contract/policy/source/target/revision/story-set/period/Git/
+scan/prior-report identities; fixed limits; all metrics/evidence/conflicts/
+observations/actions/omissions; producer `retrospective@cgs.retrospective/v2`;
+UUIDv4 run ID; and RFC 3339 UTC generated time.
+
+The rendered report bytes contain these fifteen sections plus the exact canonical
+payload, but exclude the separate evidence record, any persistence/write receipt,
+and the latest index. This makes report/payload/evidence hashes acyclic.
+
+Return independent axes:
+
+- `analysis_status`: `RETRO_COMPLETE`, `RETRO_PARTIAL`, or `BLOCKED`;
+- `data_quality`: `COMPLETE`, `SUPPORTED_WITH_UNKNOWNS`,
+  `PARTIAL — DATA CONFLICT`, `PARTIAL — STALE STATUS`,
+  `PARTIAL — BOUNDED EVIDENCE`, or `NONE`;
+- `persistence_status`: `NOT_REQUESTED`, `WRITTEN`, `UNCHANGED`, `CONFLICT`,
+  `DECLINED`, or `FAILED`.
+
+Optional unsupported metrics may be UNKNOWN with
+`SUPPORTED_WITH_UNKNOWNS` without inventing values. A revision/story-set conflict,
+stale final status, required core-evidence gap, or bounded omission makes
+`RETRO_PARTIAL`. Persistence status never changes analysis/data-quality results.
+
+For every nonblocked analysis, emit one `cgs.review-evidence/v1` record bound to
+the payload hash, exact target/revision/story-set/period/source identities,
+observation/action IDs, coverage, producer, run/time, and:
+
+```yaml
+artifact_kind: retrospective-report
+persistence: NONE | VERIFIED_FILE
+gate_evidence_candidate: false
+planning_authority: NONE
+action_assignment_authority: NONE
+```
+
+Return that record after the report, outside the report bytes. After verified
+persistence it may additionally bind the report file SHA-256 and index SHA-256;
+neither persisted file embeds that post-write record.
+
+The intended immutable report path is exactly:
+
+```text
+production/retrospectives/<sprint|milestone>/<target-id>/<retro-run-id>.md
+```
+
+The latest pointer is exactly:
+
+```text
+production/retrospectives/<sprint|milestone>/<target-id>/index.yaml
+```
+
+`index.yaml` uses schema `cgs.retrospective-index/v1` and records target identity,
+latest run ID/path/report SHA-256, analysis/data-quality states, generated UTC,
+and previous index SHA-256 or `NONE`. It is navigation only, never metric or
+action authority.
+
+Without `--persist`, write nothing. With `--persist`, preview exact report and
+index bytes, rehash every source and index preimage, and stage a two-path atomic
+transaction. The report target must not exist. If it exists with byte-identical
+content and the index already points to the same hash, perform no write and return
+`UNCHANGED`; any other existing target is `CONFLICT`. Publish report and index
+all-or-none, then read both back and return `WRITTEN` only when hashes match.
+Failure preserves the old index and every existing report.
+
+Never rename, move, archive, overwrite, or edit any older report. A new run always
+uses a new run ID/path; “start fresh” means another immutable run, not historical
+mutation. Resolve prior context only from a valid index/predecessor reference;
+never rewrite old links.
+
+After returning the draft or verified artifact/index paths and hashes, stop.
+Do not invoke sprint planning, milestone review, gate checking, action tracking,
+or any other workflow, and do not open another task.

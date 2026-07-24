@@ -1,204 +1,434 @@
 ---
 name: playtest-report
-description: "Creates playtest protocols, ingests immutable session evidence, and finalizes build-bound playtest reports whose derived findings remain traceable to raw observations."
+description: "Validates immutable playtest sessions and returns traceable build-bound report candidates while keeping raw evidence, observations, inferences, review, recording, and gate authority separate."
 ---
 
-## Invocation and contract
+## Read-only contract and invocation
 
-Invoke as:
+Invoke exactly one mode:
 
-- $playtest-report template [<protocol-id>] [--save-protocol]
-- $playtest-report ingest <path-to-notes> --session-id <session-id>
-- $playtest-report finalize <session-id>
-- $playtest-report review <session-id>
-- Optional for finalize or review: --review full|lean|solo
+```text
+$playtest-report template --protocol-id <protocol-id> [--source <protocol-source>]
+$playtest-report ingest --session <session-manifest> --bundle <evidence-bundle>
+$playtest-report finalize --session <session-manifest> --bundle <evidence-bundle>
+  [--review full|lean|solo]
+$playtest-report verify-recording --report <canonical-report> --receipt <recorder-receipt>
+```
 
-The legacy new mode is an alias for template. The legacy analyze <path> form is not a completion command: treat it as ingest <path> and require a session ID before any write.
+Contract version: `cgs.playtest-report/v2`.
 
-Resolve review mode exactly once per invocation:
+Omitting `--review` in `finalize` deterministically means `lean`; no settings or
+session-state file is read to choose review depth.
 
-1. Use an explicit --review value when present.
-2. Otherwise read production/review-mode.txt once.
-3. Otherwise use lean.
-4. Reject any value other than full, lean, or solo with ERROR before reading session artifacts or writing files.
+This skill is strictly read-only in every mode. It may return a protocol,
+ingestion assessment, final report candidate, optional director-review candidate,
+or recording-verification result in conversation. It never creates a session,
+copies or edits raw evidence, authors an observation ledger, writes a report or
+review, changes consent, updates a bug/GDD/backlog/gate artifact, launches a
+playtest, or invokes another workflow. A separately authorized recorder owns
+artifact persistence and produces immutable receipts.
 
-An explicit bounded user request authorizes its in-scope writes. Otherwise, before the first file change, present one complete changeset containing every intended path and modification and obtain one explicit approval. Do not re-prompt within that boundary. Stop for new approval only if scope expands materially.
+Reject missing or extra positional arguments, duplicate or unknown options,
+option values beginning with `--`, mode-forbidden options, invalid review values,
+URLs, globs, directories where files are required, symlinks, outside-repository
+paths, and junction escapes. Do not infer a session, protocol, build, bundle,
+report, receipt, context document, review mode from project state, or “latest”
+artifact. Legacy
+`new` and `analyze` forms return `ERROR — LEGACY MODE UNSUPPORTED` with the exact
+replacement command and no artifact.
 
-## Phase 1: Validate inputs and choose one mode
+Input failure returns `ERROR`, names the failed input/check, emits no completed
+status, report candidate, evidence record, or gate state, and stops.
 
-Treat the project root as the only trust boundary for project artifacts. Resolve literal paths, normalize separators, reject missing paths and directories, and resolve symlinks before use. For ingest, reject any source whose real path escapes the project root. Accept only UTF-8 text notes in .md, .txt, .csv, or .json form up to 10 MiB. On a validation failure:
+---
 
-- return Verdict: ERROR with the failed check and path;
-- do not create or modify a protocol, session, report, review, or verdict artifact;
-- never return COMPLETE.
+## Phase 0: Freeze instructions, schemas, and fixed bounds
 
-Session IDs are stable, unique identifiers in the form PT-<slug-or-uuid>. They must not be dates alone. Reject path separators, dot segments, collisions with an existing session, and reuse of an ID for a different evidence receipt or build.
+Resolve the repository root and canonicalize every supplied path before reading
+content. Load every applicable `AGENTS.md` from the repository root to each
+selected file in root-to-target order and list them in the output. Hash exact raw
+bytes for every selected protocol, manifest, registry, policy, bundle, ledger,
+context, report, and receipt. Recompute all hashes immediately before output. If
+any selected byte changes, return `ERROR — INPUT CHANGED DURING ANALYSIS` without
+a final report, evidence record, or gate state.
 
-Use this canonical layout and no alternate result location:
+Supported schemas are:
 
-~~~text
-production/playtests/
-  _protocols/<protocol-id>.md
-  <session-id>/
-    manifest.md
-    raw/<receipt-id>.<source-extension>
-    observations.md
-    report.md
-    reviews/creative-director.md
-~~~
+- `cgs.playtest-protocol/v2` for preregistered questions, hypotheses, metrics,
+  samples, consent requirements, and analysis rules;
+- `cgs.playtest-session/v2` for immutable session/build/participant identity;
+- `cgs.playtest-evidence-bundle/v1` for raw receipts, observation ledger, and
+  transformation receipts;
+- `cgs.playtest-observation-ledger/v1` for source-bound observations;
+- `cgs.playtest-metric-registry/v1` and
+  `cgs.playtest-statistics-policy/v1` for units, denominators, aggregation,
+  missingness, and uncertainty;
+- `cgs.playtest-evidence-adapter-registry/v1` and
+  `cgs.playtest-adapter-receipt/v1` for non-native evidence formats;
+- `cgs.playtest-report/v2` for final report payloads; and
+- `cgs.playtest-report-recorder-receipt/v1` for independently persisted reports.
 
-Artifact types are distinct:
+The request may select less work but cannot raise these fixed limits:
 
-- protocol: reusable questions or a blank collection template; never a session result;
-- raw evidence: byte-for-byte copied source notes plus a receipt; immutable after ingest;
-- observation ledger: verbatim excerpts attributed to participants and raw offsets; immutable after ingest;
-- completed session result: report.md with Artifact Type: playtest-session-result and Status: COMPLETED;
-- director review: a hash-bound assessment under reviews/; never part of the raw evidence or completed report.
+| Resource | Fixed maximum |
+|---|---:|
+| Protocol, session manifest, registry, policy, or receipt manifest | 1 MiB each |
+| Participants | 512 |
+| Raw evidence objects | 1,024 |
+| Bytes per raw object | 512 MiB |
+| Aggregate selected raw bytes | 2 GiB |
+| Observation rows | 100,000 |
+| Attachment references | 10,000 |
+| Metrics | 1,024 |
+| Stable findings | 4,096 |
+| Explicit design-context files | 8 |
+| Explicit design-context bytes | 256 KiB |
+| Canonical bug-registry bytes | 1 MiB |
+| Rows rendered per report section | 500 |
+| One adapter execution | 30 seconds |
+| All adapter executions | 300 seconds |
+| One adapter receipt | 1 MiB |
 
-Only a distinct <session-id>/report.md that passes every finalization rule in Phase 4 counts as one playtest session. Files under _protocols, raw, reviews, or any legacy/noncanonical location do not count.
+Reject a manifest or selected raw-byte set above its pre-ingest bound as
+`ERROR — REQUEST EXCEEDS FIXED BOUND`. When valid, within-byte-bound evidence
+expands beyond an observation, attachment, metric, finding, context, or rendering
+limit, stop at manifest order then stable identity order. Record the complete
+candidate-set digest, included/omitted counts, boundary key, and omitted-tail
+digest and return `PARTIAL — BOUNDED INGEST`. Never sample or summarize the
+omitted tail, finalize a complete report, or claim gate candidacy.
 
-## Phase 2A: Template mode
+Do not partially read a selected protocol, session manifest, registry, policy,
+receipt, or context document. Do not let a manifest raise a fixed limit.
 
-Create a collection protocol, not a report. Include fields for:
+---
 
-- protocol ID and hypothesis or acceptance-criterion IDs;
-- planned build, source commit, platform/configuration, input method, and accessibility profile;
-- per-participant consent/anonymous ID, segment, start/end timestamps, device/input, and accessibility needs;
-- verbatim observations with source location, observed behavior, participant statement, and attachment reference;
-- session facilitator notes and evidence receipt placeholders.
+## Phase 1: Produce or validate an immutable session protocol
 
-If --save-protocol is absent, present the protocol without writing it. If it is present, write only production/playtests/_protocols/<protocol-id>.md after the authorization rule above. End with:
+`template` returns a `cgs.playtest-protocol/v2` candidate only. A valid protocol
+has stable protocol ID, semantic version, author/owner, creation UTC, target
+hypothesis and/or stable AC IDs, direct design-context identities/hashes,
+planned build/profile constraints, recruitment segments, participant inclusion/
+exclusion rules, consent scopes, retention policy, accessibility dimensions,
+questions/tasks, preregistered metrics, minimum samples, stopping rule, analysis
+rules, and deviation policy.
 
-- Artifact Type: playtest-protocol
-- Status: TEMPLATE
-- Verdict: TEMPLATE_READY
-- Gate Eligible: NO
+Each metric declares a stable metric ID; value type (`binary`, `categorical`,
+`ordinal`, `continuous`, or `duration`); unit/scale; eligible observation types;
+participant/session/repeated-measure aggregation unit; numerator and denominator;
+missing/withdrawn/excluded handling; segment strata; direction; threshold or
+explicit `NONE`; minimum usable N; and statistics/uncertainty rule. Do not invent
+success thresholds from prose or observed data.
 
-Never create a session directory, report.md, Status: COMPLETED, or Verdict: COMPLETE in template mode.
+When `--source` is supplied, validate and normalize only that source; otherwise
+return a blank collection protocol whose unanswered fields remain explicit. A
+blank candidate is `TEMPLATE READY`, never a session, completed result, evidence,
+or gate candidate. This skill does not persist it.
 
-## Phase 2B: Ingest immutable evidence
+For `ingest` and `finalize`, the session manifest must reference an independently
+recorded protocol by exact path, version, and raw-byte SHA-256. The protocol must
+have been finalized no later than session start. A post-session or changed
+protocol is `RETROSPECTIVE PROTOCOL`; observations may be described, but all
+preregistered hypothesis/metric claims and gate candidacy are invalid. Declared
+session deviations retain their own IDs, timestamps, reasons, affected tasks/
+metrics, and approver; an undeclared material deviation makes finalization
+partial.
 
-Read the validated source bytes once and calculate SHA-256 before interpretation. Create a new session changeset containing:
+---
 
-1. manifest.md with Artifact Type: playtest-session-manifest, Schema Version: 1, Session ID, Status: IN_PROGRESS, protocol/hypothesis or acceptance-criterion IDs, build version, build hash, source commit, platform/configuration, start/end timestamps, participant count, participant anonymous IDs, consent/retention classification, source path, receipt ID, raw SHA-256, and intended report path;
-2. raw/<receipt-id>.<extension>, copied byte-for-byte from the input and never overwritten;
-3. observations.md containing only the immutable observation layer.
+## Phase 2: Validate immutable session, build, participant, and consent identity
 
-Each observation row must contain a stable Observation ID (OBS-...), participant anonymous ID, source receipt ID, exact source line/range or timestamp, a verbatim excerpt, device/input/accessibility context, and attachment references. Preserve tester language. Do not paraphrase, classify, infer cause, assign priority, or overwrite the source in this ledger. Mark ambiguous attribution as UNKNOWN rather than inventing it.
+Require one exact `cgs.playtest-session/v2` manifest with:
 
-For multiple participants, preserve separate observation rows. Never merge minority feedback into a majority summary at ingest time.
+- stable session ID `PT-<lowercase-kebab-or-uuid>` that is not a date alone;
+- protocol ID/version/path/hash and hypothesis/AC IDs with direct source hashes;
+- build ID/version, artifact SHA-256, source commit, source-tree state, engine
+  product/version, build configuration, content/data version, and build receipt;
+- platform profile ID/version/hash, hardware/device class, OS/runtime/driver,
+  locale, network profile or `NONE`, graphics/profile settings, input method and
+  device, and accessibility configuration;
+- facilitator and recorder role IDs, scheduled/start/end UTC, monotonic duration,
+  location/remote profile, session sequence, and prior-session relationship or
+  `NONE`;
+- declared participant count and ordered pseudonymous participant IDs; and
+- evidence-bundle path/hash, metric/statistics registries and hashes, consent and
+  retention policy versions/hashes, and canonical intended report path
+  `production/playtests/<session-id>/report.md`.
 
-Before writing, preview the complete three-file changeset. Write it transactionally: stage all candidates, verify their hashes and internal references, then publish all or none. Reject existing session paths. End with Status: IN_PROGRESS and Verdict: EVIDENCE_INGESTED. This mode is not gate eligible and never returns COMPLETE.
+Every participant row independently declares pseudonymous participant ID,
+recruitment segment, cohort attributes allowed by consent, session participation
+start/end, device/input, accessibility needs/accommodations or `NONE`, consent
+receipt ID/path/hash, consent-policy version/hash, scopes for notes/quotes/
+telemetry/audio/video/attachments, retention deadline, withdrawal status/time,
+and exclusion reason or `NONE`.
 
-## Phase 3: Build derived findings for finalization
+Names, emails, account identifiers, contact details, or unapproved sensitive
+attributes are forbidden in normalized observations and reports. The external
+recorder must redact them before this workflow and provide a transformation
+receipt binding source and redacted hashes. Do not read an unredacted object when
+the bundle labels it restricted. Missing, expired, scope-incompatible, or
+withdrawn consent excludes that participant and every linked observation/metric.
+List the pseudonymous ID and reason without reproducing restricted content.
 
-Finalize reads only the canonical manifest, copied raw evidence, and observation ledger for the requested session. Recalculate the raw evidence SHA-256 and compare it with both manifest.md and observations.md. Any mismatch, missing artifact, invalid reference, or changed byte is ERROR.
+Manifest identity is immutable. Missing/duplicate/conflicting participant IDs,
+impossible timestamps, reused session ID for another build/bundle, build or
+profile hash mismatch, missing consent, or changed protocol/build/bundle bytes
+produces `PARTIAL — SESSION IDENTITY` when safe local evidence remains, otherwise
+`ERROR`. Never substitute current Git, host, build, time, platform, or user prose.
 
-Read design context only when the manifest explicitly names hypothesis, acceptance-criterion, or GDD IDs. Follow only those direct references. List missing or omitted context; do not silently broaden the scan.
+---
 
-Create interpretations separately from observations. Every finding must contain:
+## Phase 3: Validate raw evidence and the observation layer
 
-- Finding ID (FND-...) and Interpretation Type: DERIVED;
-- one or more Observation IDs and the verified raw evidence SHA-256;
-- category: Feel/Accessibility, Bug, Design Feedback, Balance, or Polish;
-- observed frequency as n/N and participant segment, including majority and minority counts;
-- impact, confidence, and evidence limitations;
-- severity for observed impact, separate from product priority;
-- proposed next step and owner candidate;
-- for bugs, an occurrence ID and normalized fingerprint, plus a link to a matching canonical bug ID when one exists.
+The evidence bundle lists immutable raw objects, recorder receipts, observation
+ledger, redaction/transcription/normalization receipts, attachments, and exact
+hashes. Each raw receipt binds stable object ID, media/data type, source device,
+capture start/end, participant IDs or `NONE`, session/build IDs, byte length,
+SHA-256, recorder product/version/hash, and chain-of-custody timestamps. Raw
+objects remain external and byte-identical; this skill never copies or edits them.
 
-A derived finding may summarize or hypothesize, but it must not alter a verbatim excerpt or claim that an inference is an observed fact. A design-intent conflict is an interpretation tied to named design context, not a rewrite of the observation.
+Native observation-ledger rows require:
 
-Produce these report sections:
+- stable observation ID and type `PARTICIPANT_QUOTE`, `OBSERVED_BEHAVIOR`,
+  `TELEMETRY_EVENT`, or `FACILITATOR_NOTE`;
+- session ID, pseudonymous participant ID or `NONE`, task/question/metric IDs;
+- raw object/receipt ID and exact byte/line/event/timecode range;
+- verbatim excerpt or exact normalized event value;
+- device/input/accessibility/segment context; and
+- transformation receipt IDs for redaction, transcription, or normalization.
 
-1. Provenance and Completion Receipt
-2. Session Profile and Participant Denominators
-3. Feel and Accessibility
-4. Bugs Observed
-5. Design Feedback
-6. Balance and Polish
-7. Majority and Minority Signals
-8. Next Steps
-9. Finding Traceability Matrix
+An observation records what was said, seen, or measured. It cannot contain cause,
+design intent, severity, priority, sentiment added by the model, or a proposed
+solution. Facilitator notes remain their own observation type and are not promoted
+to participant statements. Validate source ranges and recompute every reachable
+raw/transformed hash. Ambiguous attribution is `UNKNOWN`, never guessed.
 
-Top priorities must cite finding IDs. Rank impact, confidence, and frequency independently before proposing product priority.
+For non-native formats, select exactly one adapter by evidence type, producer/
+exporter version, schema/version, and platform profile. The registry entry must
+bind adapter ID/version/package SHA-256, deterministic arguments, supported
+matrix, `cgs.playtest-observation-ledger/v1` output, validator receipts, and a
+sandbox prohibiting network, project writes, undeclared reads, and child-process
+expansion. Validate `cgs.playtest-adapter-receipt/v1` tool/argv/time/status/raw/
+output hashes and warnings. Unsupported, ambiguous, malformed, truncated,
+timed-out, nonzero, hash-mismatched, or unvalidated transformation excludes that
+object and makes coverage `PARTIAL — INGEST`; never parse by loose text matching.
 
-## Phase 4: Finalize a completed session result
+`ingest` stops after returning identity, chain-of-custody, consent, observation,
+adapter, and omission ledgers. It returns `INGEST VALIDATED` only for complete
+coverage; otherwise a precise `PARTIAL`. It never produces findings, finalizes a
+session, or becomes gate evidence.
 
-Finalization fails with Verdict: ERROR and writes no report.md unless all required fields are present and valid:
+---
 
-- unique Session ID and Schema Version;
-- build version, build hash, source commit, platform/configuration, and input method;
-- hypothesis or acceptance-criterion ID;
-- tester/facilitator identifier and at least one consented or anonymous participant ID;
-- start and end timestamps with end later than start;
-- at least one answered, non-placeholder observation;
-- evidence receipt ID, copied raw evidence, matching SHA-256, and observation-to-source locations;
-- at least one derived finding whose Observation IDs resolve;
-- explicit participant count and valid n/N denominators;
-- canonical path production/playtests/<session-id>/report.md.
+## Phase 4: Load only explicit context and resolve bug occurrences
 
-The completed report header must contain exactly these machine-readable fields:
+`finalize` may read only design sources directly named by exact path/hash and
+stable GDD/hypothesis/AC ID in the frozen protocol/session. Follow no second-level
+links, fuzzy names, or “related” documents. Select in protocol declaration order
+within the eight-file/256-KiB budget. List loaded and omitted identities, exact
+bytes, hashes, and reasons. Missing, changed, conflicting, or over-budget required
+context yields `PARTIAL — CONTEXT`; raw/observation facts remain reportable, but
+design-intent findings and gate candidacy are unavailable.
 
-~~~text
-Artifact Type: playtest-session-result
-Schema Version: 1
-Session ID: <session-id>
-Status: COMPLETED
-Gate Eligible: YES
-Build Version: <version>
-Build Hash: <sha256-or-build-id>
-Source Commit: <commit>
-Platform Configuration: <platform/profile>
-Hypothesis/AC IDs: <ids>
-Started At: <ISO-8601>
-Ended At: <ISO-8601>
-Participant Count: <N>
-Evidence Receipt ID: <receipt-id>
-Raw Evidence SHA-256: <sha256>
-Manifest SHA-256: <sha256>
-Observation Ledger SHA-256: <sha256>
-~~~
+For every bug-like observation cluster, compute a stable occurrence ID and
+normalized fingerprint from session ID, build artifact hash, platform-profile
+ID, canonical symptom code, affected task/system ID, and observation IDs. Query
+only the canonical bug registry explicitly identified and hash-bound by the
+session manifest. Link an existing bug only on exact fingerprint or exact stable
+bug ID. Ambiguous/missing registry evidence yields an unlinked `BUG REPORT
+CANDIDATE`; never claim a duplicate, create a bug, or invoke another workflow.
 
-Compute the manifest and observation ledger hashes from the exact bytes used. Preview the complete report changeset, then write report.md atomically without modifying the raw evidence or observation ledger. Reject overwrite of an existing completed report; a new build or evidence set requires a new session ID.
+---
 
-Only after the canonical report is durably written and re-read with all checks passing, return:
+## Phase 5: Calculate preregistered metrics and sample uncertainty
 
-- Session Status: COMPLETED
-- Verdict: COMPLETE
-- Gate Eligible: YES
-- Canonical Result: production/playtests/<session-id>/report.md
-- Completion Receipt: session ID plus report, manifest, ledger, and raw evidence hashes
+Compute each metric only from eligible observations and participants under its
+frozen definition. Report total recruited, consented, withdrawn, excluded,
+started, completed, answered/observed, usable N, and missing N, plus reasons.
+Preserve every segment denominator and minority result; never merge participant
+statements or let an overall majority erase a segment reversal.
 
-A template, an ingest-only session, a malformed report, a duplicate session ID, or a legacy-path file can never produce this verdict.
+Use these deterministic summaries unless the frozen statistics policy is more
+restrictive:
 
-## Phase 5: Optional creative-director review
+- binary: count `n/N`, proportion, and two-sided 95% Wilson interval for `N >= 2`
+  using `z = 1.959963984540054` and the same exact Wilson formula declared in the
+  policy; below two, counts only;
+- categorical: count and proportion for every category including `OTHER` and
+  missing, with denominator basis;
+- ordinal: usable N, minimum, p25, median, p75, and maximum using the policy's
+  exact quantile algorithm; never treat scale distance as continuous implicitly;
+- continuous/duration: usable N, unit, min/p25/median/p75/max, and mean/sample-SD
+  only when preregistered and `N >= 2`;
+- repeated measures: first aggregate within the declared participant/session
+  unit, then across independent units; never count events as participants.
 
-Director review is derived commentary and cannot change session completion or evidence.
+Keep raw precision for decisions and round only for display. Report metric
+threshold, direction, minimum usable N, achieved N, missingness, exclusions,
+segment coverage, and protocol deviations. A percentage never substitutes for
+`n/N`; a confidence interval is sampling uncertainty, not general population
+proof. Do not generalize beyond recruitment frame, platform/build/profile, or
+observed sample.
 
-- solo: skip and report Director Review Status: SKIPPED_SOLO.
-- lean: skip and report Director Review Status: SKIPPED_LEAN.
-- full: after successful finalization, invoke the CD-PLAYTEST gate using the exact completed report bytes, report SHA-256, named game pillars/core fantasy if available, and the tested hypothesis. Require the response to echo the same report hash.
+Unregistered analyses are labeled `EXPLORATORY`, with exact derivation and no
+success/failure or gate claim. A preregistered metric below minimum N, invalid
+denominator, unhandled missingness, consent exclusion that breaks sample rules,
+or absent required segment makes finalization `PARTIAL — SAMPLE COVERAGE`.
 
-Write any valid response only to production/playtests/<session-id>/reviews/creative-director.md with:
+---
 
-- Artifact Type: playtest-director-review
-- Session ID and immutable report SHA-256
-- Review Status: COMPLETE
-- Verdict: APPROVE, CONCERNS, or REJECT
-- assessment and feedback explicitly labelled DIRECTOR INTERPRETATION
+## Phase 6: Derive stable findings without rewriting facts
 
-Never copy the verdict into report.md or rewrite observations. If the director is unavailable, times out, returns malformed output, or echoes a different hash, do not fabricate approval. Leave the completed session untouched and return Session Verdict: COMPLETE plus Director Review Status: PARTIAL and the failure reason. A director verdict never authorizes a design change.
+Every finding uses:
 
-The review command applies this phase to an already completed canonical report. It rejects missing, non-completed, stale, or hash-mismatched reports with ERROR.
+```yaml
+id: PTF-<category-slug>-<12-lowercase-hex>
+category: FEEL | ACCESSIBILITY | BUG | DESIGN | BALANCE | POLISH
+interpretation_type: DERIVED
+session_id: <stable ID>
+protocol_id: <stable ID/version/hash>
+hypothesis_or_ac_ids: [<stable IDs>]
+metric_ids: [<stable IDs>]
+observation_ids: [<stable IDs>]
+raw_receipt_ids: [<stable IDs>]
+participant_evidence:
+  segment: <stable segment ID or ALL>
+  n: <supporting participants>
+  denominator: <eligible participants>
+  minority_n: <contrary participants>
+  missing_n: <count>
+observed_fact: <source-faithful summary>
+inference: <explicit interpretation or NONE>
+impact: LOW | MEDIUM | HIGH | CRITICAL
+evidence_confidence: LOW | MEDIUM | HIGH
+product_priority_candidate: NONE | LOW | MEDIUM | HIGH
+limitations: [<specific limitations>]
+acceptance_or_next_evidence: <falsifiable condition>
+owner_handoff: <role or NONE>
+bug_occurrence_id: <stable ID or NONE>
+linked_bug_id: <stable ID or NONE>
+```
 
-## Phase 6: Action routing and next steps
+Impact describes observed player/session effect; evidence confidence describes
+support quality; product priority is a proposal for a product owner. They never
+substitute for each other, and the model cannot assign an authoritative product
+priority. “Top” ordering is deterministic by explicit product priority when
+provided by an authorized source, then impact, evidence confidence, affected
+participant count, and finding ID. Otherwise call it an evidence ordering, not
+product priority.
 
-Emit candidates only; do not invoke another workflow or mutate a bug, GDD, balance, or backlog artifact automatically.
+Compute the finding suffix from SHA-256 of UTF-8 canonical JSON containing only
+repository identity, session ID, protocol ID/version, category, sorted
+hypothesis/AC IDs, sorted metric IDs, sorted observation IDs, and bug occurrence
+ID or `NONE`. Do not include paths, excerpts, participant names, counts,
+percentages, interval values, impact, confidence, priority, status, timestamps,
+current report/build hash, or reviewer result. Coalesce identical identities,
+retain all evidence, and sort by category then finding ID.
 
-- Bug findings: link an existing canonical bug when the fingerprint matches; otherwise propose a bug-report candidate with occurrence and finding IDs.
-- Design findings: propose impact analysis against the named GDD/hypothesis before any design edit.
-- Balance findings: propose verification against the named system and evidence.
-- Polish findings: propose a backlog entry carrying session, finding, and observation IDs.
+Every inference cites resolvable observation and raw receipt IDs. Preserve exact
+observation text separately; never back-edit raw or observation artifacts. A
+design-intent conflict requires loaded exact design context and remains an
+interpretation. Causal claims require a separately identified controlled study;
+otherwise use hypothesis language.
 
-End every invocation with the mode, session/protocol ID when applicable, artifact paths, hashes produced, Status, Gate Eligible, director review status, and exactly one verdict appropriate to that mode. Do not call an incomplete artifact COMPLETE.
+---
+
+## Phase 7: Finalize a report candidate and optional review
+
+Finalization is complete only when all protocol/session/build/platform/
+participant/consent/raw/observation/context/metric/finding requirements validate,
+the session has at least one eligible participant and answered non-placeholder
+observation, all required metrics meet sample rules, and no bounded omission or
+material undeclared deviation exists.
+
+Return a canonical `cgs.playtest-report/v2` payload with:
+
+1. `Result and Gate State`
+2. `Protocol, Session, Build, and Platform Identity`
+3. `Participant, Consent, and Sample Ledger`
+4. `Raw Evidence and Transformation Receipts`
+5. `Observation Ledger References`
+6. `Context Coverage`
+7. `Preregistered Metrics and Statistics`
+8. `Feel and Accessibility`
+9. `Bug Occurrences and Registry Links`
+10. `Design, Balance, and Polish Findings`
+11. `Majority, Minority, Missing, and Segment Signals`
+12. `Stable Finding Traceability`
+13. `Limitations and Exploratory Analyses`
+14. `Owner Handoffs`
+15. `Evidence Record`
+
+Canonicalize the machine payload as UTF-8 JSON with lexicographically sorted
+object keys, preserved array order, JSON number grammar, and no insignificant
+whitespace. Include all identities/hashes, limits, included/excluded evidence,
+coverage ledgers, statistics, findings, omissions, producer
+`playtest-report@cgs.playtest-report/v2`, UUIDv4 run ID, and RFC 3339 UTC time.
+Report bytes are the exact rendered report plus embedded canonical payload, but
+exclude the separate evidence record and any later recorder receipt.
+
+Complete finalization returns `FINALIZATION READY`, session status `COMPLETED`,
+canonical intended path `production/playtests/<session-id>/report.md`, and gate
+state `REQUIRES RECORDER`. Partial finalization returns the exact `PARTIAL` state,
+no completed session status, and gate state `INELIGIBLE`.
+
+For complete finalization only, emit one fenced `analysis-evidence` record using
+`cgs.review-evidence/v1`, bound to exact report bytes/hash, session/build/protocol/
+bundle identities, finding IDs, producer, run/time, coverage COMPLETE, and:
+
+```yaml
+artifact_kind: playtest-session-report-candidate
+session_status: COMPLETED
+persistence: NONE
+recorder_receipt: NONE
+gate_evidence_candidate: true
+gate_eligible: false
+gate_reason: REQUIRES INDEPENDENT RECORDER
+```
+
+Template, ingest, error, retrospective protocol, partial, truncated, insufficient
+sample, or context-incomplete output emits no completed evidence record and is
+gate-ineligible.
+
+When `--review full`, at most one creative-director may receive only the bounded
+final report candidate/hash, named pillars, and tested hypotheses after all
+deterministic calculations finish. Wait at most three times for 60 seconds each,
+with no retry/replacement/nested delegation. A valid response echoes the report
+hash and becomes a separate `cgs.playtest-director-review/v1` candidate labeled
+`DIRECTOR INTERPRETATION`. It cannot alter observations, findings, metrics,
+session completion, or gate state. Timeout/unavailable/malformed/hash mismatch
+sets review status and coverage `PARTIAL` without fabricating approval or changing
+complete session analysis. `lean` and `solo` skip review explicitly.
+
+---
+
+## Phase 8: Verify independent recording and stop
+
+`verify-recording` accepts only the canonical path
+`production/playtests/<session-id>/report.md` and one independent
+`cgs.playtest-report-recorder-receipt/v1`. Validate report schema/payload/hash,
+session/protocol/build/bundle identities, candidate evidence record ID, recorder
+identity/version, exact target path, persisted-file SHA-256, write/read-back UTC,
+atomic-write result, and recorder separation from this analysis run. Rehash every
+dependency referenced by the report or require a recorder snapshot receipt that
+binds the same exact hashes.
+
+Reconstruct the candidate evidence record deterministically from the report
+payload/run metadata and recompute its record ID; never trust the receipt's
+claimed candidate record ID by itself.
+
+Return `RECORDED COMPLETED — GATE ELIGIBLE` only when the report is complete,
+unmodified, unique by session ID, on the canonical path, and every receipt/hash/
+dependency validates. A directory count, filename, protocol, raw object,
+observation ledger, review, candidate response, legacy-path report, duplicate
+session ID, changed build/profile, missing receipt, or partial report never
+counts. Gate consumers must count distinct verified session IDs and display each
+build artifact and platform profile.
+
+Verification is read-only and does not amend the report. Invalid recording
+returns `RECORDING INVALID — GATE INELIGIBLE` with reasons and no replacement
+artifact. The recorder cannot change report bytes, findings, metrics, verdict, or
+evidence to make them eligible.
+
+After any mode output, stop. Do not persist an artifact, create a bug, revise a
+design, set product priority, approve a director interpretation, update a gate,
+or chain into another workflow.

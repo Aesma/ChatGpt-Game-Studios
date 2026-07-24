@@ -2,260 +2,328 @@
 
 ## Skill Summary
 
-`$changelog` generates local, reproducible internal and optional sanitized player
-narratives from an explicit immutable Git range. Claims require surviving net-diff
-evidence; sprint/GDD context cannot prove inclusion. Version label, tag, commit range,
-candidate build, deployment, local write, and publication are independent states.
-Persistence is limited to a keyed insert/revise that preserves every historical byte;
-whole-file overwrite is forbidden.
+`$changelog` produces a deterministic local candidate from one explicit immutable Git
+range. Every narrative claim is bound to surviving net-diff evidence; plans and design
+documents remain explanatory context. Version, date, intended target, candidate,
+deployment, local creation, and publication are distinct identities and states. The
+default mode is read-only; persistence may only create one absent immutable artifact
+through create-only CAS and never edits changelog history.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-- [ ] Frontmatter contains only matching `name` and non-empty `description`
-- [ ] Invocation requires a manifest with explicit from_ref/to_ref and rejects
-  version/sprint ambiguity
-- [ ] Refs resolve to immutable full commits/trees with ancestry and merge-base checks
-- [ ] Commit enumeration and final tree diff have no count/tag truncation
-- [ ] Merge/revert/fixup/net-zero semantics are explicit and claim the surviving net
-  result only
-- [ ] Every claim has stable ID, commit/diff evidence and optional context links;
-  ambiguous classification is UNRESOLVED rather than guessed
-- [ ] Sprint/GDD/story/issue state is explanatory context, never release/build/deploy
-  evidence
-- [ ] Version label/tag, commit range, candidate, deployment, narrative, local artifact
-  and publication states are machine-readably separate
-- [ ] Candidate and deployment claims require exact chained receipts matching
-  to_commit/to_tree/artifact hashes
-- [ ] Player draft uses deterministic secret/PII/internal/security filtering and is
-  explicitly unreviewed/unpublished
-- [ ] Persistence permits only marker-keyed insert/revise with duplicate/range checks,
-  preserved-history hashes, CAS and read-back
-- [ ] Whole-file overwrite, deletion, truncate, historical rewrite and automatic
-  publishing are prohibited
-- [ ] No-Git, ref drift, ancestry, receipt, sanitization, duplicate, authorization and
-  CAS failure statuses are defined; result is not always COMPLETE
+- [ ] Frontmatter has only matching `name` and non-empty `description`
+- [ ] Invocation requires `--request` plus `--expect-request`; request schema is
+  `cgs.changelog-request/v2`
+- [ ] Request supplies exact from/to refs, expected commits/trees, repository identity,
+  merge-base/ancestry policy, and no latest/recent/count-based discovery
+- [ ] Release identity separately hashes version, source-backed date, intended target,
+  and immutable Git range
+- [ ] Every claim binds surviving path/patch/hunk hashes and supporting commits;
+  non-Git sources are context only
+- [ ] Merge, revert, partial-revert, fixup, net-zero and claim-dedup semantics use final
+  surviving hunks
+- [ ] Categories are a fixed enum with frozen policy predicates/precedence;
+  no/multiple matches become `UNRESOLVED`
+- [ ] Candidate and deployment receipts are distinct, exactly chained, and cannot
+  substitute for source, target, release, or publication evidence
+- [ ] Player projection is independently rendered, default-denies security/privacy
+  ambiguity, and never stores removed secret/PII bytes in redaction receipts
+- [ ] Internal category and claim ordering are deterministic and identical evidence
+  yields identical hashed narrative bytes
+- [ ] Analysis is read-only and persistence is only one ABSENT-target atomic
+  create-new guarded by full-input CAS/read-back
+- [ ] Append, insert, revise, upsert, overwrite, truncate, delete, historical rewrite,
+  external messaging, and publication are forbidden
+- [ ] Non-Git, parse, ref, ancestry, evidence, sanitization, target-exists, CAS, and
+  read-back failures have truthful non-COMPLETE terminal states
+- [ ] Phases are uniquely numbered 1 through 8 with explicit input/output boundaries
 
 ---
 
-## Case 1: Release range longer than 100 commits is complete
+## Traceability to audited P1 findings
 
-**Fixture:** Explicit from/to refs resolve to an ancestor range containing 237 commits.
-The latest repository HEAD is newer than to_ref.
+| Finding | Required regression |
+|---|---|
+| CL-003 | Cases 1 and 2: claims require commit/tree/net-hunk evidence; context cannot prove inclusion |
+| CL-004 | Cases 3 and 4: fixed categories, frozen rules, deterministic precedence, UNRESOLVED |
+| CL-005 | Cases 5 and 6: merge/revert/fixup/net-zero/dedup preserve only surviving semantics |
+| CL-006 | Cases 7 and 8: secrets, PII, internal IDs, and security details are default-denied without echo |
+| CL-007 | Cases 1 and 9: full refs/commits/trees/merge-base/repo state plus version/date/target identities |
+| CL-008 | Cases 12 and 13: no-Git and failure paths are BLOCKED/PARTIAL with zero unsafe writes |
+| CL-009 | Static phase assertion and Case 14: unique ordered phase contracts and terminal vocabulary |
 
-**Expected behavior:** Resolve immutable full commits, enumerate all 237 range commits,
-compute the final from/to tree diff, and exclude newer HEAD commits.
+---
+
+## Canonical phase contract
+
+| Phase | Input | Output | Mutation |
+|---|---|---|---|
+| 1 — Parse, resolve, and pin | Hash-pinned v2 request, repository objects, frozen policies | Validated request, full refs/commits/trees/merge-base and repository-state identity | None |
+| 2 — Enumerate and compute | Verified range | Complete topology, commit-list hash, surviving net diff, revert/net-zero trace | None |
+| 3 — Claim and classify | Surviving hunks, frozen classification policy, exact context | Source-bound deduplicated claims or UNRESOLVED records | None |
+| 4 — Verify release evidence | Version/date/target declarations and optional candidate/deployment receipts | Independent identity hashes and evidence states | None |
+| 5 — Render internal entry | Verified identities and claims | Deterministically ordered internal candidate bytes/hash | None |
+| 6 — Sanitize player projection | Eligible claims and frozen redaction policy | Player candidate or SANITIZATION_BLOCKED, plus non-secret receipts | None |
+| 7 — Create-only CAS | Explicit mutation authority, candidate hash, ABSENT target | One verified new file, BLOCKED, or RECOVERY_REQUIRED | Create one absent target only |
+| 8 — Terminal result | All prior receipts/states | Final status, identities, non-writes, blockers, one legal next action | None |
+
+No other phase number or implicit post-processing stage is allowed.
+
+---
+
+## Case 1: Exact range and provenance are reproducible
+
+**Fixture:** The request pins from/to ref text, full expected commits and trees,
+repository identity, and a range of 237 commits. HEAD contains newer work.
+
+**Expected behavior:** Resolve and compare every object, verify ancestry and merge base,
+enumerate all 237 commits, compute the complete from/to net diff, and exclude newer
+HEAD plus dirty/untracked bytes.
 
 **Assertions:**
 
-- [ ] No 30/100/N commit cap is used
-- [ ] No recent/latest tag selection occurs
-- [ ] Commit-list count/hash and final net-diff hash are recorded
-- [ ] HEAD bytes outside to_commit are not included
+- [ ] No 30/100/N commit or tag cap is used
+- [ ] Range, commit-list, net-diff, repository-state and provenance hashes are recorded
+- [ ] Original refs and resolved full commits/trees/merge-base are retained
+- [ ] A budget stop is PARTIAL, never a truncated success
 
 ---
 
-## Case 2: Explicit HEAD is a commit-range draft, not a release
+## Case 2: Sprint and GDD are context, not release proof
 
-**Fixture:** Manifest explicitly uses HEAD as to_ref with `scope_kind: commit-range`;
-no tag, candidate or deployment receipt exists.
+**Fixture:** A sprint report says Story-X is done and a GDD says Feature-Y is complete,
+but neither maps to a surviving net hunk in the selected range.
 
-**Expected behavior:** Resolve and pin exact HEAD commit, recheck it before output, and
-label the narrative as a commit-range draft with candidate/deployment not proven and
-publication NOT_PUBLISHED.
+**Expected behavior:** Record both as `CONTEXT_ONLY_NOT_RELEASE_EVIDENCE` with exact
+path/hash and create no X/Y changelog claim.
 
 **Assertions:**
 
-- [ ] Version label, if supplied, remains LABEL_ONLY
-- [ ] No released/shipped/live/available/deployed wording appears
-- [ ] Moving HEAD invalidates analysis and write authorization
+- [ ] Context cannot prove commit inclusion, build, deployment, rationale, or ownership
+- [ ] Every displayed claim has exact surviving hunk/patch and commit evidence
+- [ ] Balance rationale without both value diff and attested design source is unresolved
 
 ---
 
-## Case 3: Full revert creates no published net-change claim
+## Case 3: Ambiguous classification remains unresolved
 
-**Fixture:** Commit A adds a feature and later commit B fully reverts its exact patch;
-the final from/to tree diff contains none of that feature.
+**Fixture:** A surviving diff has a `misc changes` message and file paths that might
+suggest several categories, but no frozen rule or human attestation resolves it.
 
-**Expected behavior:** Preserve A/B in internal revert provenance, mark the change
-EXCLUDED_NET_ZERO, and omit it from internal current-change and player claims.
+**Expected behavior:** Produce one internal `UNRESOLVED` claim, exclude it from the
+player projection, and report `narrative_status: HAS_UNRESOLVED`.
 
 **Assertions:**
 
-- [ ] Revert message alone is not the only verification
-- [ ] Net tree/hunk evidence determines survival
-- [ ] Narrative cleanup cannot resurrect net-zero work
+- [ ] Message, path, author, and model judgment do not force a category
+- [ ] Git authors are not treated as owners or approvers
+- [ ] Exactly one unresolved question and safe next action are reported
 
 ---
 
-## Case 4: Merge, fixup and partial revert preserve surviving semantics
+## Case 4: Category policy is deterministic
 
-**Fixture:** A merge contains commits also reachable elsewhere, fixups alter a change,
-and a later partial revert removes half the hunks.
+**Fixture:** Frozen policy predicates match both security and fix rules for one hunk;
+another hunk matches no rule. Evidence order is shuffled between two runs.
 
-**Expected behavior:** Record topology/provenance once, avoid duplicate merge claims,
-and describe only surviving hunks while linking original/fixup/revert commits.
+**Expected behavior:** Apply the declared precedence so security wins for the first;
+classify the second UNRESOLVED; produce identical ordered claim bytes/hashes in both
+runs.
 
 **Assertions:**
 
-- [ ] Claim IDs bind final net hunk hashes
-- [ ] Removed behavior is absent from current narrative
-- [ ] Surviving fix/failure semantics are not hidden by prose cleanup
+- [ ] Exact policy schema/version/hash and rule IDs are recorded
+- [ ] Fixed category order and claim-hash order are used
+- [ ] Multiple/no match never triggers an improvised category
 
 ---
 
-## Case 5: Ambiguous commit enters UNRESOLVED
+## Case 5: Full revert is net zero
 
-**Fixture:** Commit message is `misc changes`; diff shows several technical edits but
-does not establish player impact or feature category.
+**Fixture:** Commit A adds a feature and commit B fully reverts its exact patch before
+to_commit.
 
-**Expected behavior:** Create an evidence-bound internal UNRESOLVED claim, ask for
-human classification, and exclude it from player draft. Do not infer from filenames.
+**Expected behavior:** Preserve A/B and verified relationship in internal provenance,
+mark `EXCLUDED_NET_ZERO`, and emit no current or player claim.
 
 **Assertions:**
 
-- [ ] No forced feature/fix/improvement category
-- [ ] Git authors are not presented as owners
-- [ ] Narrative status is HAS_UNRESOLVED
+- [ ] Revert message alone is insufficient
+- [ ] Final tree/hunk evidence controls survival
+- [ ] Narrative cleanup cannot resurrect removed work
 
 ---
 
-## Case 6: Sprint and GDD do not prove release inclusion
+## Case 6: Merge, partial revert, fixup, and dedup
 
-**Fixture:** A sprint says Story-X is done and a GDD marks Feature-Y complete, but the
-selected range has no surviving diff linked to either.
+**Fixture:** A merge exposes the same surviving hunks through multiple parents, fixups
+change the implementation, a partial revert removes half, and two commits support the
+same remaining effect.
 
-**Expected behavior:** Record context as CONTEXT_ONLY_NOT_RELEASE_EVIDENCE and produce
-no changelog claim for X/Y.
+**Expected behavior:** Retain topology and all supporting IDs, describe only surviving
+hunks, and generate one claim per exact claim identity without duplicate merge claims.
 
 **Assertions:**
 
-- [ ] Completed documents cannot substitute for commit/diff/build evidence
-- [ ] Design rationale appears only when linked to a surviving claim
-- [ ] Balance rationale without approved/attested source remains unresolved
+- [ ] Partial reverts link original/revert commits and omit removed hunks
+- [ ] Claim identity uses sorted surviving hunk hashes and normalized observed effect
+- [ ] Similar prose cannot merge distinct effects
 
 ---
 
-## Case 7: Keyed insert preserves all history
+## Case 7: Player draft removes secrets, PII, and internals
 
-**Fixture:** Existing changelog contains release blocks v0.2 and v0.3 plus unmarked
-header/history text. New unique release/range is authorized for insert.
+**Fixture:** Eligible internal records contain a token-like value, developer email,
+private player identifier, issue ID, commit/path/host details, and deployment logs.
 
-**Expected behavior:** Parse markers, construct one keyed block, insert after the
-stable header, and verify every prior entry and non-entry byte hash is unchanged.
+**Expected behavior:** Independently render and scan the player projection, remove or
+block data per the frozen policy, and place only hashes/rule/reason codes in internal
+redaction receipts.
 
 **Assertions:**
 
-- [ ] New entry has unique release ID/range and complete provenance
-- [ ] Existing v0.2/v0.3 and unmarked history bytes remain exact
-- [ ] Whole-file overwrite is never offered
-- [ ] Read-back reparses all markers and hashes
+- [ ] Removed bytes are absent from public artifact, logs, and redaction receipts
+- [ ] Final public bytes receive a second deterministic scan
+- [ ] Header says `PLAYER CHANGELOG DRAFT — NOT REVIEWED OR PUBLISHED`
+- [ ] No message, upload, email, or publication occurs
 
 ---
 
-## Case 8: Duplicate ID/range and overwrite requests are rejected
+## Case 8: Security ambiguity blocks the public artifact
 
-**Fixture:** Inputs separately reuse an existing release ID, reuse an existing exact
-range under another ID, overlap without supersedes, and request whole-file overwrite.
+**Fixture:** A surviving security fix could reveal an unreleased exploit and the policy
+cannot safely generalize it.
 
-**Expected behavior:** Return BLOCKED before mutation with exact conflicting marker,
-ID/range/hash. Do not delete, truncate, normalize, reorder or overwrite history.
+**Expected behavior:** Keep a hashed `SECURITY_INTERNAL` claim, return
+SANITIZATION_BLOCKED for the player projection, and emit no public bytes.
 
 **Assertions:**
 
-- [ ] Revision requires exact existing entry ID and expected entry hash
-- [ ] Non-target entries remain immutable
-- [ ] Risk acceptance does not bypass history protection
+- [ ] Security is default-deny and wins category precedence
+- [ ] The blocker does not quote exploit, secret, or unsafe workaround details
+- [ ] Internal generation does not imply security/legal/publication approval
 
 ---
 
-## Case 9: No Git repository is BLOCKED with zero writes
+## Case 9: Version, date, and target identities do not collapse
 
-**Fixture:** Project root is not a work tree or required objects are unavailable due
-to a shallow boundary.
+**Fixture:** Version label is supplied, its tag points to another commit, a date lacks
+its declared source, and intended target differs from deployment environment.
 
-**Expected behavior:** Return Artifact Status BLOCKED, name the Git/ancestry failure,
-and write no changelog.
+**Expected behavior:** Preserve separate version/date/target hashes and mark each exact
+mismatch. Do not use generated-at, tag, commit, build, or deploy time as release date.
 
 **Assertions:**
 
-- [ ] Empty history is not treated as a valid release
-- [ ] No COMPLETE/GENERATED/WRITTEN success is emitted
-- [ ] Exactly one safe corrective action is provided
+- [ ] Release identity binds range plus independent version/date/target identities
+- [ ] Version label is presentation unless exact tag evidence matches to_commit
+- [ ] Intended target is distinct from actual deployment target
+- [ ] No released/live/available wording appears
 
 ---
 
-## Case 10: Player draft removes sensitive/internal material
+## Case 10: Candidate is not deployment
 
-**Fixture:** Internal claims contain a token-like value, developer email/name, private
-host/IP, internal story/path/hash, and an unreleased security vulnerability.
+**Fixture:** A valid candidate receipt binds to_commit/to_tree and artifact, but no
+deployment receipt exists. A second fixture has a deployment receipt for another
+artifact or target.
 
-**Expected behavior:** Apply the declared public policy, generate internal RED records
-without copying removed secrets into public output, and default-deny ambiguous content.
-If final scan fails, emit SANITIZATION_BLOCKED and no player draft.
+**Expected behavior:** First fixture is VERIFIED_CANDIDATE with deployment NOT_PROVIDED;
+second is deployment MISMATCH. Neither supports deployment/public-availability claims.
 
 **Assertions:**
 
-- [ ] Public draft is independently built and says NOT REVIEWED OR PUBLISHED
-- [ ] Secret/PII/security/internal details are absent
-- [ ] Redaction reasons remain internal and do not expose removed bytes
-- [ ] Nothing is posted or published
+- [ ] Tag/range/build success cannot substitute for deployment receipt
+- [ ] Deployment must chain to the exact candidate/artifact/source/tree and target
+- [ ] Publication status remains NOT_PUBLISHED even for verified deployment
 
 ---
 
-## Case 11: Candidate and deployment receipts cannot be substituted
+## Case 11: Analyze-only is strictly read-only
 
-**Fixture:** Version/tag/range are valid. Candidate receipt points to another tree, or
-deployment receipt points to another artifact/environment.
+**Fixture:** A valid request selects `analyze-only` and both internal and sanitized
+player candidates.
 
-**Expected behavior:** Mark exact receipt state MISMATCH, forbid candidate/deployed
-wording and make requested candidate/deployed scope PARTIAL/BLOCKED. Commit-range
-facts may remain valid.
+**Expected behavior:** Return deterministic candidate bytes and hashes with
+`Artifact Status: GENERATED` and an explicit zero-write/non-publication receipt.
 
 **Assertions:**
 
-- [ ] Tag is not a build/deployment receipt
-- [ ] Build success is not deployment success
-- [ ] Deployment receipt must chain to candidate artifact and to_commit/to_tree
-- [ ] Local changelog write remains NOT_PUBLISHED
+- [ ] No changelog/index/manifest/Git/context/receipt file changes
+- [ ] No temporary artifact escapes the response
+- [ ] Content approval is not filesystem or publication authority
 
 ---
 
-## Case 12: Authorization, ref drift and CAS failure
+## Case 12: Create-only uses absent-target CAS
 
-**Fixture:** Candidate entry is approved; before write, to_ref moves or target bytes
-change. Another test proposes publishing the player draft.
+**Fixture:** A request authorizes one candidate hash and target expected ABSENT. Test
+variants pre-create the target or drift a ref, policy, context, receipt, parent, or
+candidate hash before commit.
 
-**Expected behavior:** Re-resolve/re-hash all inputs. Drift invalidates mutation
-authority and writes nothing. External publishing is outside scope and not performed.
+**Expected behavior:** Any conflict returns BLOCKED with zero writes. With stable
+inputs, an atomic no-replace primitive creates exactly one file, which is flushed,
+strictly parsed, read back, and hash verified.
 
 **Assertions:**
 
-- [ ] Narrative approval is not filesystem authorization
-- [ ] Mutation manifest contains target/base/entry/file/history hashes and recorder
-- [ ] Concurrent user edits are not overwritten or silently reverted
-- [ ] Git refs/tags/commits, receipts and external systems are non-writes
+- [ ] CAS covers request, Git objects, repo state, policies, context, receipts,
+  candidate, parent identity, and ABSENT target
+- [ ] Append/insert/revise/upsert/overwrite/truncate/delete modes do not exist
+- [ ] Existing changelog/history bytes cannot be touched or reordered
+- [ ] Read-back mismatch is RECOVERY_REQUIRED, never silently overwritten/deleted
+
+---
+
+## Case 13: No Git or invalid evidence is fail-closed
+
+**Fixture:** The root is not a Git work tree; separate variants have missing shallow
+objects, malformed request/policy, unrelated ancestry, and mismatched expected hashes.
+
+**Expected behavior:** Return BLOCKED, identify the exact failed identity/check, write
+nothing, and provide exactly one safe corrective action.
+
+**Assertions:**
+
+- [ ] Empty/unavailable history is not a release narrative
+- [ ] No GENERATED/CREATED success is emitted for invalid evidence
+- [ ] Result is never unconditional COMPLETE
+
+---
+
+## Case 14: Phase and terminal contracts remain aligned
+
+**Fixture:** Statically inspect implementation and spec; exercise generated, created,
+partial, blocked, and post-create verification-failure paths.
+
+**Expected behavior:** Both artifacts define the same unique Phases 1–8, request and
+identity contracts, fixed category order, and terminal states.
+
+**Assertions:**
+
+- [ ] No duplicate/missing phase number exists
+- [ ] `GENERATED`, `CREATED`, `PARTIAL`, `BLOCKED`, and `RECOVERY_REQUIRED` meanings match
+- [ ] Terminal result includes all identities, hashes, statuses, non-writes, blockers,
+  and exactly one legal next action
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Exact from/to hashes reproduce the full untruncated range and net diff
-- [ ] Surviving commit/diff evidence backs every claim
-- [ ] Non-Git context only explains an already evidenced claim
-- [ ] Version, candidate, deployment, local persistence and publication never collapse
-  into one narrative state
-- [ ] Sensitive player output is independently sanitized and never auto-published
-- [ ] Keyed upsert preserves all history and has no overwrite escape hatch
-- [ ] Output includes provenance/claim/receipt/redaction/target hashes, statuses,
-  blockers and exactly one next action
+- [ ] Explicit immutable range and final net diff reproduce every source claim
+- [ ] Merge/revert/fixup/dedup logic reports only surviving semantics
+- [ ] Frozen deterministic categories never turn ambiguity into fact
+- [ ] Security/privacy filtering is independent, hash-bound, and does not echo secrets
+- [ ] Version/date/target/candidate/deployment/publication identities stay separate
+- [ ] Default behavior is read-only; optional persistence is ABSENT create-only CAS
+- [ ] Output is local and never auto-published
 
 ---
 
 ## Coverage Notes
 
-Cases 1–9 directly regress CL-001 and CL-002: count/tag-truncated Git ranges and
-destructive changelog replacement. Cases 3–6 and 10–12 cover the adjacent net-change,
-claim evidence, context, privacy, candidate/deployment, authorization and drift paths
-that could otherwise produce false release history or unsafe public drafts.
+Cases 1–14 cover CL-003 through CL-009 and retain the P0 protections for explicit,
+untruncated ranges and non-destructive history. The specification is behavioral only;
+unchecked boxes are required assertions, not claims of execution.

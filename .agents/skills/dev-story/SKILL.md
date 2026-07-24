@@ -1,470 +1,399 @@
 ---
 name: dev-story
-description: "Implement one story through a provenance-preserving, dependency-safe, explicitly authorized file transaction. Requires current traceability or a structured accepted-risk exception, fixes every write path and owner before approval, writes implementation plus tests, records deterministic evidence, and hands the story to code review and story-done."
+description: "Implement one exact, readiness-authorized story through a closed single-writer transaction; preserve source provenance, record deterministic test evidence, verify recorder-owned tracker lifecycle transitions with compare-and-swap, and stop at In Review."
 ---
-
-## Invocation and execution
-
-Invoke this workflow as `$dev-story [story-path]`.
-
-Treat the story path as optional only for story selection. This workflow never
-treats a story as ready merely because its header says `Status: Ready`.
-
-Before the first file mutation, present one complete changeset preview containing
-every normal and recovery-only target path, its unique write owner, intended
-operation, precondition hash, and acceptance-criterion coverage. Obtain one
-explicit approval for that exact plan. Approval is bound to the plan hash. Any
-new path, owner change, or materially different operation invalidates the
-approval and requires a revised preview.
 
 # Dev Story
 
-This skill implements one bounded story. It does not close a story:
+Implement one bounded story. This workflow owns implementation only. It may move
+the implementation lifecycle from `READY_FOR_DEV` to `IN_PROGRESS` and then to
+`IN_REVIEW`; it never writes `Complete`, `Done`, or an equivalent closure state.
+
+Read [implementation-transaction-v2.md](references/implementation-transaction-v2.md)
+completely before resolving inputs. That reference defines the canonical request,
+plan, ownership, readiness, status-recorder, test-evidence, finding, checkpoint,
+and result contracts. Missing, unreadable, or internally inconsistent contract
+bytes are `INPUT_ERROR` with zero writes.
+
+## Invocation
+
+Accept exactly:
 
 ```text
-$story-readiness [story-path] -> $dev-story [story-path]
-  -> $code-review [implementation files] -> $story-done [story-path]
+$dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
 ```
 
-The only successful lifecycle transition made here is `Ready -> In Progress ->
-In Review`. `Complete` and `Done` belong exclusively to `$story-done`.
-
-**Outputs:**
-
-- the approved implementation and test/evidence files;
-- synchronized story and sprint-tracker status;
-- test evidence containing command, exit code, timestamp, and log hash;
-- a recovery checkpoint when the transaction cannot complete cleanly; and
-- a handoff to `$code-review` and `$story-done`.
-
----
-
-## Phase 1: Resolve and freeze the input story
-
-### 1.1 Select the story
-
-- When a path is provided, resolve and read exactly that file.
-- With no path, read `production/session-state/active.md`. If it names an
-  active story, ask: "Continuing work on [story title] — is that correct?"
-- If there is no active story, ask which story to implement and list only story
-  files under `production/epics/**/*.md` whose recorded status is Ready or In
-  Progress. Exclude `EPIC.md`.
-
-Read the selected story in full before any delegation or mutation. Record its raw
-SHA-256 hash as `story_baseline_hash`.
-
-### 1.2 Load authoritative context
-
-Before implementation planning, load and hash the raw bytes of every input:
-
-1. the selected story;
-2. `docs/architecture/tr-registry.yaml`;
-3. every governing ADR referenced by the story;
-4. `docs/architecture/control-manifest.md`;
-5. `.codex/docs/technical-preferences.md`;
-6. the current sprint plan and `production/sprint-status.yaml`, when present;
-7. every dependency story; and
-8. every additional GDD, UX, asset, schema, or configuration source explicitly
-   referenced by the story.
-
-For each input retain `path`, `sha256:<64 lowercase hex>`, and the sections
-or fields used. Hash raw bytes, not normalized or copied text. Missing,
-unreadable, or structurally invalid required context is BLOCKED.
-
-Extract from the story:
-
-- ID, title, Status, Layer, Type, estimate, and scope boundaries;
-- exact active TR-ID values and the named GDD requirement;
-- governing ADR paths;
-- Manifest Version and Manifest Hash;
-- the `docs/architecture/control-manifest.md` entry in `## Source Snapshot`;
-- every acceptance criterion verbatim;
-- implementation notes and forbidden work;
-- exact test/evidence path;
-- dependency records; and
-- any existing implementation or dependency waiver.
-
-### 1.3 Fail-closed readiness preflight
-
-Do not trust a prior prose claim that a story is ready. Re-evaluate the
-implementation-blocking contract used by `$story-readiness`:
-
-- the TR registry must load and parse;
-- every production story must contain an exact registered TR-ID with
-  `status: active`;
-- every governing ADR must exist and have `Status: Accepted`;
-- acceptance criteria, scope, story type, and test evidence must be explicit;
-- unresolved design or architecture questions block implementation;
-- the current control manifest must have a parseable Manifest Version;
-- the story header version, header hash, and Source Snapshot manifest hash must
-  all bind to the current raw manifest bytes; and
-- dependencies must pass Phase 2 below.
-
-A prior `NEEDS WORK` or `BLOCKED` result remains non-ready. The only
-exception handled by this skill is the structured manifest accepted-risk branch
-in section 1.4, and it never relabels the readiness result as READY. No waiver
-can bypass a missing/invalid registry, inactive TR-ID, Proposed/missing ADR,
-unresolved architecture decision, ambiguous required behavior, or hard
-dependency.
-
-If an acceptance criterion is subjective for a non-Visual/Feel story, stop and
-ask the user for a concrete testable restatement. The clarified text and its
-story-file edit must appear in the exact changeset plan before implementation.
-
-### 1.4 Manifest provenance and stale-story choices
-
-Compute `current_hash` from the current raw bytes of
-`docs/architecture/control-manifest.md`. Read the story's captured
-`Manifest Hash` and Source Snapshot entry as `implemented_against_hash`. Treat this immutable captured value as the story's
-`source_manifest_hash`; do not repurpose `current_hash` as source provenance.
-
-The manifest binding passes only when all three story values match the current
-manifest: exact version, header hash, and Source Snapshot hash. A matching date
-alone never passes.
-
-When the binding is stale, missing, or inconsistent, report the captured and
-current values and offer exactly these paths:
-
-- **Stop** — make no mutation and end BLOCKED.
-- **Rebase** — make no mutation in `$dev-story`; route the story to its owning
-  authoring/update workflow to refresh the version, header hash, Source Snapshot,
-  and affected requirements, then require a new final `$story-readiness`
-  verdict before rerunning `$dev-story`.
-- **Structured accepted risk** — available only when the current manifest is
-  readable/valid, the story has a well-formed captured header hash, the Source
-  Snapshot contains the same captured hash, and every non-manifest readiness
-  check passes. Require an explicit user decision and add the following exact
-  record to the planned story edit:
-
-```yaml
-implementation_waiver:
-  waiver_id: MW-[stable-id]
-  kind: manifest-staleness
-  implemented_against_hash: sha256:[captured 64-hex hash]
-  current_hash: sha256:[current 64-hex hash]
-  accepted_by: user
-  accepted_at: [ISO-8601 timestamp]
-  provenance_status: ACCEPTED-RISK
-```
-
-A manifest waiver is invalid unless `waiver_id`,
-`implemented_against_hash`, and `current_hash` are exact and internally
-consistent. Free text, a Manifest-Note, or a generic "proceed anyway" response
-is not a waiver.
-
-On the accepted-risk path:
-
-- never change the story's captured Manifest Version, Manifest Hash, or Source
-  Snapshot entry;
-- never claim the captured hash is current;
-- keep the manifest/readiness result `STALE / ACCEPTED-RISK` in every preview,
-  checkpoint, status projection, and summary;
-- implement against the captured hash named by
-  `implemented_against_hash`; and
-- if the current manifest hash changes again before the first mutation, invalidate
-  the waiver and restart this section.
-
----
-
-## Phase 2: Validate dependencies
-
-Parse every dependency as a stable story ID plus a resolvable path. A dependency
-is hard by default. It is soft only when the story record explicitly contains
-`soft_dependency: true`.
-
-For each dependency, resolve its file and observed status from the file itself.
-Use this matrix:
-
-| Dependency | Complete/Done | Ready/In Progress | Draft/Blocked | Missing/unreadable |
-|---|---:|---:|---:|---:|
-| Hard or type omitted | PASS | BLOCKED | BLOCKED | BLOCKED |
-| Explicit soft, no valid waiver | PASS | BLOCKED | BLOCKED | BLOCKED |
-| Explicit soft with valid waiver | PASS | ACCEPTED-RISK | ACCEPTED-RISK | ACCEPTED-RISK |
-
-A soft-dependency waiver must be a structured story record containing all of:
-
-```yaml
-dependency_waiver:
-  waiver_id: DW-[stable-id]
-  dependency_id: [stable story ID]
-  observed_status: [exact status or MISSING]
-  accepted_by: user
-  accepted_at: [ISO-8601 timestamp]
-  reason: [specific bounded risk]
-```
-
-The waiver must match the dependency ID and the freshly observed status. Any
-mismatch, status change, missing field, or free-text override is BLOCKED. A user
-may approve adding a valid waiver only as part of the complete changeset preview.
-
-Never offer to mark a dependency Complete, never edit a dependency story, and
-never allow a waiver for a hard dependency. When blocked, identify the exact
-dependency ID, path, observed status, and required resolution, leave all files
-unchanged, and stop before planning implementation.
-
----
-
-## Phase 3: Build the exact file and ownership plan
-
-Planning is read-only. No tracker, story, source, test, waiver, session-state, or
-checkpoint file may change in this phase.
-
-### 3.1 Select one implementation writer
-
-Select exactly one primary implementation writer for all business artifacts:
-
-| Story context | Primary implementation writer |
-|---|---|
-| Foundation or engine/core infrastructure | `engine-programmer` |
-| UI | `ui-programmer` |
-| AI or pathfinding | `ai-programmer` |
-| Networking/replication | `network-programmer` |
-| Gameplay, Visual/Feel, or Config/Data | `gameplay-programmer` |
-
-If the named role is unavailable, the current agent may perform the same role,
-but the plan must still name one writer. Config/Data is not an inline exception.
-
-When engine-specific review is needed, consult at most one configured engine
-specialist during planning. The engine specialist is read-only and returns
-findings to the primary writer; it owns no files.
-
-The status recorder is the sole writer for:
-
-- the selected story;
-- `production/sprint-status.yaml`, when it exists;
-- `production/session-state/active.md`; and
-- `production/session-state/dev-story-[story-id].yaml`, a failure-only recovery
-  checkpoint.
-
-No path may have more than one write owner.
-
-### 3.2 Produce a closed plan
-
-Ask the primary writer for a read-only implementation plan. It must name every
-file it will create or modify; directory names, globs, "related files", and
-to-be-determined paths are not accepted. The declared test/evidence path must be
-included.
-
-Build one plan table with:
-
-- exact path;
-- create or modify;
-- unique owner;
-- intended semantic change;
-- acceptance criteria covered;
-- baseline SHA-256 or `ABSENT`;
-- applicable source-context hashes;
-- normal, success-only, or failure-only write condition; and
-- test command(s) that validate the file.
-
-Also include every status/waiver/session/checkpoint file owned by the status
-recorder. Capture a baseline raw hash for every existing target and an
-`ABSENT` precondition for every planned new file.
-
-Reject the plan when:
-
-- any acceptance criterion has no implementation or evidence mapping;
-- a target path or owner is unresolved;
-- two agents would write the same path;
-- a required test/evidence path is absent;
-- the writer cannot stay inside Out of Scope;
-- a required architectural decision is not covered by an Accepted ADR; or
-- the exact test command cannot be determined.
-
-An uncovered architecture choice is BLOCKED and must be routed to the ADR owner.
-It is never approved as an implementation detail inside this skill.
-
-### 3.3 Preview and authorize once
-
-Present:
-
-1. readiness/provenance state, including both manifest hashes;
-2. dependency matrix and all accepted-risk records;
-3. the complete file/owner plan;
-4. exact test commands;
-5. lifecycle transitions;
-6. rollback/checkpoint behavior; and
-7. a deterministic SHA-256 of the canonical plan, `plan_hash`.
-
-Ask once: "Approve implementation plan `[plan_hash]` and this complete
-changeset?"
-
-Approval covers only that plan. Before approval there are no writes. After
-approval, do not re-prompt per file. If any path, owner, operation, acceptance
-mapping, or required command changes, stop, rebuild the plan with fresh baseline
-hashes, and request approval for the new plan hash.
-
----
-
-## Phase 4: Execute the authorized transaction
-
-### 4.1 Compare-and-swap preflight
-
-Immediately before the first mutation, rehash every input and target. All must
-match the source and baseline hashes in the approved plan. Re-resolve dependency
-statuses and recompute the current manifest hash.
-
-If anything changed, make no mutation. Report the changed path and restart
-validation/planning. Never apply an approved plan to changed inputs.
-
-When a sprint tracker exists, validate its `sprint_id`, `active_sprint_id`,
-`plan_revision`, `story_set_hash`, and `updated_at` using the exact
-`$sprint-status` contract before mutation. Capture its raw-byte preimage hash.
-An invalid or conflicting tracker blocks the transaction; never repair it by
-guessing. Preserve `sprint_id`, `active_sprint_id`, and `plan_revision` during
-lifecycle updates.
-
-### 4.2 Start and synchronize
-
-Start the primary writer with the approved plan and source-hash package. Require
-an acknowledgement that it can write exactly its owned paths. A failure to start
-or acknowledge occurs before status mutation and leaves story/tracker unchanged.
-
-After acknowledgement and immediately before the first business-artifact write,
-the status recorder prepares synchronized replacements for the story and existing
-sprint tracker, changing both projections from Ready to In Progress. Apply them
-with compare-and-swap semantics. If both cannot be applied, restore the applied
-side from its captured bytes. If safe restoration is impossible, write the
-approved failure checkpoint and stop; never continue with divergent statuses.
-The tracker replacement must recompute `story_set_hash` from every current story
-using sorted `ID<TAB>path<TAB>raw-byte-hash` records and set a timezone-qualified
-`updated_at`; it must not change `plan_revision`.
-
-### 4.3 Implement only the plan
-
-The primary writer may create or modify only its owned, approved paths. It must:
-
-- follow the Accepted ADR and captured control rules;
-- preserve Out of Scope boundaries;
-- implement every mapped criterion;
-- write the planned automated test or evidence file in the same transaction; and
-- report actual paths and post-write hashes.
-
-An engine reviewer may inspect planned files and return findings but may not
-write. Any discovered need for an unplanned file stops the transaction. Do not
-silently expand scope.
-
-### 4.4 Run and record deterministic tests
-
-Run every approved command. For each command record:
-
-- exact command;
-- working directory;
-- start/end timestamps in ISO-8601;
-- exit code;
-- SHA-256 of the raw captured log; and
-- pass/fail/blocked result.
-
-Tests that were not run, returned a nonzero exit code, or lack a log hash are not
-passing evidence. Logic and Integration stories require their planned automated
-tests. Visual/Feel and UI stories require the planned manual-evidence artifact;
-Config/Data requires its planned smoke check. Do not ask the user to run blocking
-tests later as a substitute.
-
-### 4.5 Commit the status projection
-
-Only when all planned writes exist, ownership matches, target hashes are known,
-and every blocking test passes may the status recorder compare-and-swap both the
-story and existing sprint tracker to In Review. The story update also records:
-
-- plan hash;
-- exact implementation and evidence paths with post-write hashes;
-- test command evidence;
-- source-context hashes;
-- manifest provenance state and waiver IDs; and
-- dependency waiver IDs.
-
-Because the story bytes change, recompute the tracker `story_set_hash` from the
-complete current story set and update `updated_at` in the same compare-and-swap.
-Re-read both projections and verify the hash/identity contract before success.
-
-Update `production/session-state/active.md` within the same approved status
-recording step. Never set Complete or Done.
-
-Treat the authorized work as one logical transaction: either every approved
-business artifact and synchronized status projection reaches the success state,
-or the workflow emits the explicit partial/failure state below.
-
-### 4.6 Failure and partial-write recovery
-
-If the writer fails before any business-artifact mutation, restore both status
-projections to their captured pre-transaction bytes and report FAILED.
-
-If any business artifact was created or modified, do not describe the transaction
-as rolled back unless every affected path was restored byte-for-byte and verified
-against its baseline hash. Otherwise:
-
-1. keep story and tracker synchronized at In Progress;
-2. write the pre-authorized failure checkpoint at
-   `production/session-state/dev-story-[story-id].yaml`;
-3. record plan hash, source hashes, baseline and current target hashes, planned
-   and actual write sets, owner, completed criteria, test evidence, error, and
-   the exact safe resume point; and
-4. return PARTIAL or BLOCKED.
-
-The retained tracker must still carry the current story-set hash and
-timezone-qualified `updated_at`. The checkpoint records expected/current tracker
-hashes and the unchanged `plan_revision`. A checkpoint never substitutes for an
-invalid tracker.
-
-A failure checkpoint is evidence, not permission to expand the plan. Resume only
-after revalidating its hashes. Never move a partial or failed transaction to In
-Review.
-
----
-
-## Phase 5: Report and hand off
-
-Use one of `IMPLEMENTED`, `PARTIAL`, `BLOCKED`, or `FAILED`.
-
-```markdown
-## Dev Story: [story ID] — [IMPLEMENTED/PARTIAL/BLOCKED/FAILED]
-
-Plan: sha256:[plan hash]
-Story status: [In Review/In Progress/unchanged]
-Tracker status: [in_review/in_progress/not present/unchanged]
-Manifest provenance: [CURRENT or STALE / ACCEPTED-RISK]
-Implemented against: sha256:[hash]
-Current manifest: sha256:[hash]
-
-### Files and owners
-- [path] — [owner] — [created/modified] — sha256:[post-write hash]
-
-### Acceptance criteria
-- [criterion] — [implemented/tested/deferred/blocked] — [evidence]
-
-### Test evidence
-- [command] — exit [code] — log sha256:[hash] — [PASS/FAIL/BLOCKED]
-
-### Waivers
-- [waiver ID and exact bounded effect, or None]
-
-### Recovery
-- [checkpoint path and resume point, or None]
-```
-
-For `IMPLEMENTED`, hand off:
+The request schema is `cgs.dev-story-request/v2`. It names one exact story, one
+admission mode, one persisted readiness record and recorder receipt, one
+applicable sprint tracker, the tracker-owned story row, all source manifests, the
+intended implementation owner identity, the optional read-only engine-reviewer
+identity, the status recorder identity, the failure-checkpoint path, and fixed
+limits. The request is scope evidence, not write authorization.
+
+Reject no-argument calls, positional story paths, absolute paths, globs, unsafe
+paths, duplicate/unknown options, malformed hashes, mutable selectors such as
+`latest`, inferred active-session scope, or more than one story. Return
+`USAGE_ERROR` before reading project artifacts and write nothing.
+
+Paths use `/`, Unicode NFC, and project-relative canonical form. Reject traversal,
+URI/drive prefixes, symlink escape, case-ambiguous resolution, duplicate aliases,
+and any path outside the request's project root. Hash raw bytes with SHA-256.
+
+Run outcomes are exactly:
 
 ```text
-Ready for $code-review [exact implementation and test/evidence paths].
-After review, run $story-done [story-path]. Only $story-done may mark it Complete.
+IMPLEMENTED | PARTIAL | BLOCKED | FAILED | USAGE_ERROR | INPUT_ERROR
 ```
 
-For every other result, give only the remediation or safe resume action. Do not
-recommend review or closure.
+`IMPLEMENTED` means implementation is in review, not accepted or complete.
 
----
+## Authority and mutation boundary
+
+The request and frozen sources authorize analysis only. Before any mutation,
+produce one complete canonical plan, preview every deterministic candidate and
+runtime derivation contract, and obtain one explicit user authorization bound to
+`plan_hash`, exact target contracts, owners, and
+preconditions. A changed path, owner, operation, candidate, command, or required
+source invalidates that authorization.
+
+There are exactly two mutating roles:
+
+1. `implementation_owner` is the sole writer of every business, configuration,
+   data, test, raw-log, and manual-evidence artifact in the plan.
+2. `status_recorder` is the request's stable lifecycle owner. It prepares exact
+   transition proposals, invokes and verifies the tracker-declared
+   `lifecycle_recorder`, and owns only the failure checkpoint. It never replaces
+   the tracker or story directly. The canonical `cgs.sprint-tracker/v2` recorder
+   is the sole tracker writer.
+
+The orchestrator coordinates, verifies, and reports. It never writes a business
+artifact. If the orchestrator performs an unavailable delegated role, the plan
+must still name one stable role/task identity for that role; this does not merge
+the two ownership domains. No path may have two owners.
+
+At most one configured engine specialist may review a frozen packet. The
+specialist is read-only, owns no files, may not spawn a writer, and returns only a
+hash-bound finding set to the implementation owner. There is no concurrent
+primary/specialist write branch.
+
+## Phase 0 — Freeze workflow and request
+
+1. Hash this `SKILL.md`, the transaction reference, and the catalog-declared
+   dedicated spec. Record them as `workflow_contract`.
+2. Read the exact request bytes, verify its supplied hash and schema, enforce the
+   fixed limits, and canonicalize the request according to the reference.
+3. Capture project-root identity and a before-mutation snapshot over the complete
+   bounded target set. Do not enumerate siblings or recurse beyond a request
+   manifest.
+4. Require the tracker schema `cgs.sprint-tracker/v2`, a positive
+   `tracker_revision`, stable `event_id`, equal `sprint_id`/`active_sprint_id`,
+   `sprint_state: ACTIVE`, `lifecycle_owner` equal to the request's exact
+   `status_recorder`, and `lifecycle_recorder: cgs.sprint-tracker/v2`. Rehash the
+   exact tracker bytes independently; the raw hash is an external CAS binding,
+   never an invented tracker field. Require `plan_file`, exact raw-plan
+   `plan_sha256`, `plan_revision`, and `story_set_hash` to match the supplied plan,
+   and validate the typed capacity and complete story row. Reject any request that
+   gives the orchestrator a business path, gives the engine reviewer a write path,
+   assigns one path twice, omits the tracker or checkpoint, or permits an unlisted
+   output.
+
+Any failure in this phase is `INPUT_ERROR`; allowed write set remains empty.
+
+## Phase 1 — Admit one current implementation gate
+
+Read and hash the story before any delegation. Require `Schema: cgs.story/v2` or
+an explicitly versioned compatibility adapter named by the request. Never infer
+readiness from `Status`, `Story Status`, a sprint row, prose, or a conversational
+readiness result.
+
+Admission mode is exactly `CURRENT_READY` or `STRUCTURED_ACCEPTED_RISK`.
+
+`CURRENT_READY` requires all of the following:
+
+- one persisted `READY` record conforming to
+  `cgs.story-readiness-record/v1`, bound to the exact story ID/path/raw hash;
+- one valid `cgs.story-readiness-recorder-receipt/v1` proving `RECORDED` or
+  `ALREADY_RECORDED` for that exact record/candidate/readiness key and registry
+  final hash;
+- `implementation_gate_eligible: true` in the persisted record/receipt contract;
+- a complete stale key naming every story, GDD, systems-index, TR registry/entry,
+  ADR, control-manifest, dependency, asset, AC/Test/QA-plan, sprint/context,
+  review-mode, reviewer, checker, and ruleset identity used by the gate; and
+- fresh raw bytes, schemas, statuses, joins, and hashes for every stale-key entry.
+
+Independently rehash and revalidate the story, registry/TR entries, Approved GDD,
+systems index, every governing ADR, current control manifest, dependencies,
+declared assets/tests, technical preferences, engine-version reference, sprint
+plan/tracker, readiness registry, record, and receipt. A missing, unreadable,
+invalid, hash-mismatched, stale, partial, non-READY, or unpersisted ordinary gate
+is `BLOCKED` with zero writes. An old READY claim or changed story cannot
+substitute for this gate.
+
+`STRUCTURED_ACCEPTED_RISK` is the only non-READY branch. Require a persisted,
+complete `NEEDS_WORK` record and recorder receipt for the exact current story.
+Every check except exact control-manifest staleness and/or explicitly soft
+dependency incompleteness MUST pass; there may be no BLOCKED/UNVERIFIED check,
+architecture gap, hard dependency gap, ambiguous AC/Test mapping, invalid source,
+or unknown evidence. The complete plan MUST contain exact structured waiver
+records from the reference, and the approval question MUST name them. This mode
+never sets `implementation_gate_eligible: true`, never calls the story READY, and
+  labels preview, lifecycle transactions, checkpoint, and result `STALE /
+ACCEPTED-RISK` or `SOFT-DEPENDENCY / ACCEPTED-RISK` as applicable.
+
+Preserve captured provenance exactly. Never rewrite Manifest Version, Manifest
+Hash, Source Snapshot, source-manifest ID, or story-core hash to make evidence
+look current. Outside the exact structured-risk branch, a stale control binding
+is `BLOCKED` and routes to the story owner for re-authoring followed by a new
+readiness record. A risk waiver records both captured and current hashes and
+never relabels captured provenance as current.
+
+## Phase 2 — Revalidate dependencies and architecture
+
+Parse every dependency as a stable story ID, canonical path, explicit kind, raw
+hash, observed lifecycle, and resolution condition. Kind defaults to hard.
+
+- A hard dependency passes only at `Complete` or `Done` under its governing
+  lifecycle schema. Every other state, including missing/unreadable, blocks.
+- A soft dependency may continue when the admitted record already contains a
+  current structured waiver or when the accepted-risk plan contains a new exact
+  waiver bound to dependency ID/path/hash, observed state, reason, approver, and
+  expiry. A new waiver is recorded only in the approved plan and final result; it
+  never changes the dependency, story author artifact, readiness registry, or
+  tracker planning fields.
+- Never edit, waive, complete, or reinterpret a dependency story.
+
+Build an architecture coverage table from every planned semantic change to an
+exact Accepted ADR ID/path/hash/decision locator or to `NOT_ARCHITECTURAL` with a
+contract-defined reason. If any implementation choice changes module boundaries,
+public interfaces, persistence/schema ownership, threading, networking,
+security, platform/engine policy, or another architecture-controlled concern
+without an Accepted ADR, create a stable `DSF-<20-lower-hex>` blocker and stop.
+Route it to the catalog-declared architecture decision owner with the exact
+question and evidence. Do not offer “proceed anyway,” accept a local signature,
+draft an ADR, or implement the choice here.
+
+## Phase 3 — Build one closed plan
+
+Planning is read-only. Ask the named implementation owner for one read-only plan
+packet bound to the frozen request, story, readiness, sources, and target
+preimages. The owner must acknowledge one complete business write set. Config and
+data files are ordinary business artifacts: they have the same sole
+implementation owner and never become orchestrator writes.
+
+The canonical `cgs.dev-story-plan/v2` contains:
+
+- story/readiness/tracker/request/workflow identities and raw hashes;
+- every source path, status, raw hash, and exact field/section used;
+- one row per target with exact path, operation, unique owner, semantic change,
+  AC IDs, Test IDs, source bindings, expected preimage hash or `ABSENT`, either a
+  deterministic candidate hash or an approved runtime derivation-contract hash,
+  output bounds, write condition, and rollback classification;
+- exact argv-token arrays, working directory, environment allowlist, timeout,
+  runner/tool identity, expected result, and raw-log path for every required test;
+- architecture coverage and optional engine-review findings;
+- two tracker-row lifecycle transition proposals, stable event/transaction IDs,
+  the exact recorder CAS tuple, immutable planning-field assertions, recorder
+  result/receipt validation, and partial-publication behavior;
+- one create-only failure-checkpoint derivation contract, path, and owner; and
+- deterministic canonical serialization plus `plan_hash`.
+
+The status recorder owns exactly the transition proposal/verification and the
+checkpoint. It invokes the exact tracker-declared lifecycle recorder rather than
+writing the tracker. `cgs.story/v2` is an immutable author artifact throughout
+this workflow: its raw bytes, `Revision`, `Story Status`, readiness fields, source
+bindings, and `x-local-*` extensions do not change. Implementation lifecycle
+exists only in the canonical tracker story row. An admitted compatibility story
+schema has the same immutability rule. The sprint tracker remains the sole
+lifecycle authority.
+
+Reject a plan when any AC lacks both implementation and evidence mapping; a Test
+ID/command/log path is missing; a path is vague or unowned; one path has multiple
+owners; an owner writes outside its domain; a candidate/derivation/preimage is
+absent; Out-of-Scope work is required; rollback safety is unknown; the engine
+reviewer would write; or architecture coverage is incomplete. Runtime-derived
+  output is allowed only for raw test/manual logs, their execution records, the two
+  transition proposals/results/receipts, and the failure checkpoint; its
+  derivation, schema, inputs,
+limits, and validation MUST be fully fixed.
+
+If engine review is requested, send one immutable
+`cgs.dev-story-engine-review-packet/v1` after the planned file types are known.
+Accept only a matching `cgs.dev-story-engine-review-result/v1`; malformed,
+missing, wrong-hash, or write-proposing output is a blocker. The implementation
+owner alone decides how to resolve non-architectural findings within the existing
+closed paths. A new path or architectural finding invalidates the plan.
+
+## Phase 4 — Preview and authorize
+
+Render the complete plan, deterministic candidates, and exact runtime derivation
+contracts before any write. Present:
+
+1. admission mode, record/receipt, accepted-risk waivers if any, and fresh-source
+   evidence;
+2. dependency and architecture tables;
+3. every target, owner, preimage, candidate/derivation hash, AC/Test mapping,
+   output bound, and condition;
+4. exact test invocations and evidence paths;
+5. `READY_FOR_DEV -> IN_PROGRESS -> IN_REVIEW` tracker-row proposals;
+6. lifecycle-recorder CAS, result/receipt/read-back verification, immutable-story
+   and planning-field assertions, and partial-state behavior; and
+7. canonical `plan_hash`.
+
+Ask once: `Approve dev-story plan sha256:<plan_hash> and this exact changeset?`
+An approval is valid only for the displayed canonical plan/candidates and the
+current user/task. Refusal is `BLOCKED` with zero writes. Approval does not permit
+new paths, changed candidates, architecture decisions, or closure.
+
+## Phase 5 — Execute with CAS and unique ownership
+
+Immediately before the first mutation, rehash every request, source, readiness,
+registry, receipt, tracker, story, target, and workflow-contract input. Recompute
+   dependency states, tracker raw hash/identity/revision/event, immutable
+   plan-file/hash/revision/story-set tuple, stale key,
+deterministic candidates, derivation contracts, and plan hash. Any difference
+causes zero writes and `BLOCKED`; there is no hidden retry or last-writer-wins.
+
+Require both mutating roles to acknowledge their exact owned path sets and target
+contract hashes. A missing/malformed acknowledgement occurs before mutation and
+returns `FAILED` with all targets unchanged.
+
+The status recorder then requests the `IN_PROGRESS` tracker-row transaction:
+
+1. rehash the immutable story and exact tracker preimage;
+2. prepare one transition proposal carrying a stable `status_transaction_id` and
+   recorder `event_id`, requested lifecycle-owned row fields, and exact CAS tuple:
+   `expected_tracker_revision`, external `expected_tracker_sha256`,
+   `expected_plan_revision`, `expected_story_set_hash`, and
+   `requested_field_owners`;
+3. invoke only the declared `lifecycle_recorder: cgs.sprint-tracker/v2`;
+4. verify the recorder result/receipt, then reread and hash the tracker; and
+5. require revision increment by one, the exact event/transaction, row status
+   `in_progress` with timestamp/provenance, unchanged story bytes, unchanged
+   `plan_file`/`plan_sha256`/`plan_revision`/`story_set_hash`, and every unowned
+   tracker field unchanged.
+
+The workflow never writes the tracker directly or claims cross-file atomicity. A
+rejected/blocked recorder call with unchanged bytes stops before business writes.
+If tracker bytes changed without a fully verified recorder receipt, or the result
+is ambiguous/partial, stop all business writes, preserve observed bytes, write the
+pre-authorized checkpoint if its `ABSENT` CAS still holds, and return `PARTIAL`.
+Do not guess a compensating write or report synchronization.
+
+After verified `IN_PROGRESS`, the implementation owner alone writes the approved
+business targets in deterministic plan order. Before each replace/create, recheck
+that path's expected current hash/absence and all not-yet-written target
+preconditions. After each deterministic write, reread raw bytes and require the
+candidate hash. After each runtime-generated evidence write, reread raw bytes and
+verify its generator contract, schema, input identities, and byte bounds before
+recording the actual hash. The owner returns an ordered actual-write receipt. Any
+new path, owner change, candidate/derivation mismatch, CAS conflict, or write
+failure stops immediately.
+
+## Phase 6 — Execute and preserve test evidence
+
+Run every approved test exactly as an argv-token array; do not reinterpret it in
+a shell, append flags, change cwd/environment, or substitute a later user-run.
+For each test, persist the approved raw combined log through the implementation
+owner and record:
+
+- stable Test ID and mapped AC IDs;
+- exact argv tokens, cwd, environment allowlist, runner/tool version and hash;
+- source/build/configuration identity;
+- RFC 3339 UTC start/end timestamps, timeout state, and exit code or exact
+  unavailable reason;
+- raw log path, byte count, and SHA-256; and
+- normalized `PASS | FAIL | BLOCKED` result.
+
+Only the approved expected exit/result and required assertions may pass. Missing,
+unrun, timed-out, nonzero, malformed, stale, hashless, or truncated blocking
+evidence is not PASS. Any required non-PASS result prevents `IN_REVIEW` and enters
+Phase 8. Never ask the user to run a blocking test later.
+
+## Phase 7 — Publish In Review
+
+Only after every deterministic business candidate is present at its exact hash,
+every generated output satisfies its approved derivation contract, every required
+test is PASS, every AC has current evidence, and actual paths equal the planned set
+may the recorder derive and prepare `IN_REVIEW` candidates.
+
+The authoritative tracker row and verified status transaction record:
+
+- `plan_hash`, request/readiness record/receipt identities;
+- implementation owner, lifecycle owner, and lifecycle recorder identities;
+- exact implementation/test/evidence paths and post-write hashes;
+- complete per-Test-ID execution records and result-set hash;
+- source-context, dependency, architecture, and engine-review finding-set hashes;
+- admission mode, provenance label, and exact waiver IDs/hashes or `NONE`;
+- `status_transaction_id`, prior transaction ID, and current UTC time; and
+- next owner/action: code review followed by story-done.
+
+Submit an `IN_REVIEW` proposal through the same tracker recorder contract as
+`IN_PROGRESS`, with a new stable event/transaction ID and the exact current raw
+tracker CAS binding. Rehash and verify the recorder receipt and final tracker.
+Require row status `in_review`, revision increment by one, unchanged story bytes,
+and byte-for-byte preservation of `plan_file`, `plan_sha256`, `plan_revision`, and
+`story_set_hash`. An unverified or partial recorder publication is `PARTIAL`,
+never `IMPLEMENTED`.
+
+On success return `IMPLEMENTED`, with both tracker transactions verified and the
+authoritative row exactly `in_review`. Do not mutate session state, story bytes,
+readiness registry, source provenance,
+authoring status, review results, or closure state.
+
+## Phase 8 — Failure, checkpoint, and resume
+
+If failure occurs before any mutation, return `FAILED` or `BLOCKED` as classified
+and write nothing. After any mutation, do not say “rolled back” unless every
+changed path is safely restored from captured bytes and each raw hash is verified.
+Restoration itself must be an approved plan operation; there is no ad hoc revert.
+
+Otherwise the recorder writes only the pre-authorized, create-only
+`cgs.dev-story-checkpoint/v2` after verifying its `ABSENT` precondition. It records
+   the plan/request/readiness/source hashes, owners, expected and observed tracker
+   transaction states, immutable story hash, every planned/actual write and hash, completed AC/Test
+rows, raw-log evidence, failure, unexecuted work, and one exact safe resume point.
+The result is `PARTIAL`. If checkpoint creation also fails, report that failure
+and all observed states; never hide the partial writes.
+
+Resume is allowed only through a new request that names the exact checkpoint path
+and hash. Revalidate the checkpoint schema, original plan/authorization identity,
+all sources, every current target, ownership, and readiness-consumption evidence.
+Resume cannot add a path, change an owner/candidate/command, reuse stale READY,
+silently delete the checkpoint, or skip a failed test. Any mismatch is `BLOCKED`
+and requires a fresh plan and authorization.
+
+## Phase 9 — Return and route
+
+Return `cgs.dev-story-result/v2` with workflow/request/plan hashes, outcome,
+source coverage, readiness consumption, dependency/architecture results, owners,
+planned/actual write sets, per-file pre/post hashes, both exact tracker transition
+proposals/results/receipts, immutable story and planning-field verification,
+Test-ID evidence, AC coverage, checkpoint, and mutation snapshot.
+
+For `IMPLEMENTED`, route exactly:
+
+```text
+Implementation is IN REVIEW. Run the catalog-declared code-review workflow on
+the exact implementation/test paths, then run story-done for this exact story.
+Only story-done may close it.
+```
+
+For every other outcome, route only the stable finding owner/action or the exact
+checkpoint resume. Never invoke another project workflow, claim tests passed
+without execution, or recommend closure.
 
 ## Non-negotiable rules
 
-- Never overwrite captured manifest provenance to make a stale story look
-  current.
-- Never treat a waiver as READY.
-- Never bypass a hard, missing, Draft, Blocked, or incomplete dependency.
-- Never edit a dependency's status.
-- Never mutate any file before the exact plan is approved.
-- Never allow overlapping write ownership.
-- Never accept a changed input under an old plan hash.
-- Never report unexecuted or failing tests as passing.
-- Never set a story to Complete or Done.
-- Never hide partial writes; restore them byte-for-byte or checkpoint them.
+- One implementation owner writes every business/config/data/test/evidence path.
+- One status recorder owns proposals/verification/checkpoint; only the declared
+  `cgs.sprint-tracker/v2` lifecycle recorder writes tracker lifecycle fields.
+- An engine specialist is read-only and never overlaps the primary writer.
+- The tracker is lifecycle authority; `cgs.story/v2` bytes and Revision are immutable.
+- Raw tracker hash is an external CAS binding, never a tracker field.
+- Plan file/hash/revision/story-set fields are preserved by lifecycle transitions.
+- Required tests need exact execution receipts and raw-log hashes.
+- Uncovered architecture is BLOCKED and routed to the ADR owner.
+- Changed inputs, targets, deterministic candidates, derivation contracts, or
+  owners invalidate plan authorization.
+- Partial writes are restored with verified byte identity or exposed by checkpoint.
+- This workflow stops at `IN_REVIEW` and never writes `Complete` or `Done`.
