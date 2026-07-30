@@ -1,4 +1,4 @@
 interface:
   display_name: "Launch Checklist"
   short_description: "Assess immutable candidate evidence without launching"
-  default_prompt: "Use $launch-checklist with a hash-pinned v2 request to validate an exact launch candidate, platform-matrix test evidence, risk-derived soak and recovery objectives, external receipts and immutable owner attestations; expose stale/partial coverage, derive only the evidence-readiness verdict, and never record the user launch decision, deploy, or publish."
+  default_prompt: "Use $launch-checklist with a revision-pinned v2 request to validate an exact launch candidate, platform-matrix test evidence, risk-derived soak and recovery objectives, external receipts and immutable owner attestations; expose stale/partial coverage, derive only the evidence-readiness verdict, and never record the user launch decision, deploy, or publish."

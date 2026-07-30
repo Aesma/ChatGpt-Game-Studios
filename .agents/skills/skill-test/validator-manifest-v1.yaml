@@ -3,19 +3,17 @@
   "version": "1.0.0",
   "runner": {
     "path": ".agents/skills/skill-test/skill_test_rules.py",
-    "version": "1.0.0",
-    "sha256": "sha256:856f5e0a19818a2beccc98100858d36934b6ff73022706f83a1fd94c3d22ef28"
+    "version": "1.0.0"
   },
   "rules": {
     "path": ".agents/skills/skill-test/rules-v1.yaml",
-    "version": "1.0.0",
-    "sha256": "sha256:821ddf895c0e11529510f0d4f076db69f43f170a64e9b0bae554a005c2418a9d"
+    "version": "1.0.0"
   },
   "interpreter": {
     "name": "python",
     "minimum_version": "3.11.0",
     "maximum_exclusive_version": "3.14.0",
-    "record_resolved_path_version_and_sha256": true
+    "record_resolved_path_and_version": true
   },
   "allowed_argv": [
     ["--repo-root", "<exact-repository-root>", "--mode", "static", "--target", "<canonical-skill-name>"],

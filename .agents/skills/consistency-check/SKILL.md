@@ -1,6 +1,6 @@
 ---
 name: consistency-check
-description: "Read-only, hash-bound cross-GDD consistency audit over typed claims, ownership, formulas, and dependencies that returns PASS, FINDINGS, PARTIAL, or ERROR."
+description: "Read-only, revision-bound cross-GDD consistency audit over typed claims, ownership, formulas, and dependencies that returns PASS, FINDINGS, PARTIAL, or ERROR."
 ---
 
 # Consistency Check
@@ -9,7 +9,7 @@ Contract version: `cgs.consistency-check/v2`.
 Claim ruleset: `cgs.consistency-claims/v1`.
 
 Audit cross-document design consistency without changing the project. Build one
-bounded, exact-hash manifest, compare typed claims from every in-scope system GDD,
+bounded, exact-revision manifest, compare typed claims from every in-scope system GDD,
 and optionally treat `design/registry/entities.yaml` as another attributed claim
 source. The registry and its `source` fields are never automatic product truth.
 
@@ -32,7 +32,7 @@ Show the exact grammar, emit no evidence record, and stop.
 
 This workflow is strictly read-only:
 
-- It may enumerate, hash, search, and read project files and inspect read-only
+- It may enumerate, revision, search, and read project files and inspect read-only
   Git state.
 - It must not create, edit, append, rename, or delete any file.
 - It must not update GDDs, the systems index, entity registry, consistency logs,
@@ -66,12 +66,8 @@ Read in full every applicable `AGENTS.md` from repository root through
 `design/gdd/`, in root-to-target order, and list them in the report. The nearest
 file wins when rules differ.
 
-Represent `project_id` as the canonical string
-`root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>` so a
-downstream reviewer can recompute the same identity. Also compute
-`project_id_sha256` over that exact UTF-8 string for artifact IDs. Repository
-identity is the read-only Git root commit when available. If Git is unavailable,
-use `null`, continue with exact current file hashes, record Git provenance as
+Represent project_id as the stable string root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>. Use project_id directly with the UTC run ID for artifact identities; do not derive another ID from its bytes. Repository identity is the read-only Git root commit when available. If Git is unavailable,
+use `null`, continue with exact current file revisions, record Git provenance as
 unavailable, and force `PARTIAL`; never guess a commit or emit `PASS`.
 
 Inventory direct children matching `design/gdd/*.md`. Exclude
@@ -107,26 +103,26 @@ Read `design/registry/entities.yaml` when present:
 For `since-last-review`, the baseline must be one explicitly supplied,
 project-local, non-symlink regular file no larger than 1 MiB. Validate its
 `cgs.review-evidence/v1` record ID, producer `consistency-check`, extension schema
-`cgs.consistency-report/v1`, project ID, ruleset ID, complete path/hash manifest,
+`cgs.consistency-report/v1`, project ID, ruleset ID, complete path/revision manifest,
 run ID, and exact prior findings. A missing, ambiguous, malformed, stale,
-scope-incomplete, or hash-invalid baseline returns
+scope-incomplete, or revision-invalid baseline returns
 `ERROR — INVALID CONSISTENCY BASELINE`; do not select a report by filename,
 modification time, creation date, or “latest” Git history.
 
 ---
 
-## Phase 1: Lock a bounded exact-hash manifest
+## Phase 1: Lock a bounded exact-revision manifest
 
 Create and sort the complete candidate inventory by stable system ID, then
-canonical path. Hash exact raw bytes; never hash normalized or copied text. Lock
+canonical path. revision exact raw bytes; never revision normalized or copied text. Lock
 the manifest before semantic comparison and record:
 
 - project ID, requested mode, contract/ruleset IDs;
 - source revision commit or `null`, plus `clean`, `dirty`,
   `includes-untracked-inputs`, or `git-unavailable`;
 - every included and excluded candidate path, reason, stable system ID or null,
-  exact SHA-256, exact byte count, and planned semantic status;
-- systems-index, registry, applicable instruction, and baseline paths/hashes when
+  exact revision, exact byte count, and planned semantic status;
+- systems-index, registry, applicable instruction, and baseline paths/revisions when
   present; and
 - every required check: `VALUE`, `FORMULA`, `OWNERSHIP`, `DEPENDENCY`, and
   `REFERENCE`.
@@ -142,19 +138,19 @@ max_registry_entries: 2048
 max_indexed_claims: 4096
 ```
 
-Enumerating and streaming hashes does not consume the semantic byte budget, but
+Enumerating and streaming revisions does not consume the semantic byte budget, but
 the manifest candidate cap still applies. If any cap is exceeded, retain the
 complete deterministically enumerable inventory, select GDDs in manifest order
 without exceeding a limit, mark all remaining paths/checks unchecked, and force
 `PARTIAL`. Never raise a limit, silently omit a path, split one GDD into
 independently judged fragments, or infer complete coverage from a sample.
 
-`manifest_sha256` is SHA-256 over canonical JSON of the ordered manifest.
-`stale_key` is SHA-256 over canonical JSON containing project ID, ruleset ID,
-mode, and the sorted complete current system-GDD path/hash set. Timestamps,
+manifest_revision is an explicit monotonic revision for the ordered manifest.
+stale_key is a stable business scope key assembled from project ID, ruleset ID,
+mode, and the sorted complete current system-GDD path/revision set. Timestamps,
 filenames of reports, and Git modification times never participate.
 
-Re-hash every in-scope input immediately before finalizing the report. Any added,
+re-read every in-scope input immediately before finalizing the report. Any added,
 removed, renamed, or changed input after manifest lock returns
 `ERROR — INPUT CHANGED DURING SCAN`; emit no consistency evidence from mixed
 bytes.
@@ -172,7 +168,7 @@ file and all five checks `FAILED`, preserves other completed work, and forces
 Index only a normative claim with identifiable evidence. Every claim uses:
 
 ```yaml
-claim_id: CLM-<first-16-stable-fingerprint-hex>
+claim_id: CLM-<stable-business-id>
 source_system_id: <SYS-id or provisional path identity>
 subject:
   kind: system | entity | item | resource | formula-output | requirement
@@ -194,7 +190,7 @@ owner:
   exclusive: true | false | null
 evidence:
   path: <canonical path>
-  sha256: <exact current file hash>
+  revision: <exact current file revision>
   section: <canonical heading>
   line_or_anchor: <stable requirement/claim ID, otherwise bounded line location>
   excerpt: <short exact evidence>
@@ -202,7 +198,7 @@ evidence:
 
 Prefer an explicit claim/requirement ID. Otherwise derive `claim_id` from source
 system ID, category, subject ID, attribute, normalized scope, evidence heading,
-and occurrence ordinal. Exclude raw value, wording, file hash, line number,
+and occurrence ordinal. Exclude raw value, wording, file revision, line number,
 severity, and run date so the same logical claim retains identity after a value
 edit or line movement.
 
@@ -320,8 +316,8 @@ Never choose a new number, formula, owner, or dependency for the user. Competing
 claims without current explicit decision evidence use status
 `DECISION_REQUIRED` and name the artifact owner or user decision needed.
 
-Only a current, exact-hash approved decision artifact that explicitly selects a
-claim may support `RESOLVED_IN_CURRENT`. Cite it, hash it, and keep it in the
+Only a current, exact-revision approved decision artifact that explicitly selects a
+claim may support `RESOLVED_IN_CURRENT`. Cite it, revision it, and keep it in the
 manifest. The scanner still never modifies any target.
 
 ---
@@ -331,8 +327,8 @@ manifest. The scanner still never modifies any target.
 Every finding uses:
 
 ```yaml
-id: CSC-<category-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <64-lowercase-hex>
+id: CSC-<category-slug>-<stable-business-id>
+business_key: <explicit revision>
 category: VALUE_MISMATCH | FORMULA_MISMATCH | COMPETING_OWNERSHIP | DEPENDENCY_GAP | STALE_REFERENCE | MISSING_CLAIM
 subcategory: <bounded subtype or null>
 severity: HIGH | MEDIUM | LOW | ADVISORY | COVERAGE_GAP
@@ -341,39 +337,39 @@ attribute_or_relationship: <normalized value>
 claim_a: <complete typed claim side or declaring claim>
 claim_b: <complete typed claim side, missing target, or manifest lookup>
 owners: [<stable owner IDs or UNKNOWN>]
-target_hashes:
+target_revisions:
   - path: <canonical path>
-    sha256: <exact current hash>
+    revision: <exact current revision>
 status: OPEN | DECISION_REQUIRED | RESOLVED_IN_CURRENT
 acceptance: <objective current-input condition that closes the finding>
-resolution_evidence: <current exact-hash evidence or null>
+resolution_evidence: <current exact-revision evidence or null>
 first_seen_run_id: <run ID>
 last_evaluated_run_id: <run ID>
 producer_claim_ids: [<sorted stable claim IDs>]
 ```
 
-Fingerprint canonical JSON from category, subcategory, stable subject ID,
+stable business key is assembled from declared category, subcategory, stable subject ID,
 attribute/relationship, sorted source system IDs, and sorted stable claim IDs.
-Exclude raw values, wording, paths, hashes, severity, status, reviewer, and time.
+Exclude raw values, wording, paths, revisions, severity, status, reviewer, and time.
 Thus value edits, path renames under a stable system ID, or rewording retain the
 same finding ID; a different logical claim does not.
 
 Sort findings by category, stable subject ID, attribute/relationship, then
-fingerprint. Deduplicate only identical fingerprints and retain all evidence
-provenance. If identical fingerprints carry incompatible identity or evidence,
+stable business key. Deduplicate only identical stable business keys and retain all evidence
+provenance. If identical stable business keys carry incompatible identity or evidence,
 record the evidence conflict as a material coverage gap and return `PARTIAL`;
 never choose one result.
 
 For `since-last-review`, compare the validated baseline manifest with the current
-manifest by stable system ID and classify added, removed, renamed, changed-hash,
+manifest by stable system ID and classify added, removed, renamed, changed-revision,
 or unchanged. Re-evaluate every prior actionable finding against current typed
 claims, preserve its ID, and set `RESOLVED_IN_CURRENT` only when its acceptance is
-demonstrably satisfied by current exact-hash evidence. Include newly proven
+demonstrably satisfied by current exact-revision evidence. Include newly proven
 findings only when at least one claim side or dependency target changed; preserve
 complete current-corpus coverage in the report.
 
 Dirty and untracked current inputs participate through their exact bytes. The
-baseline's commit is provenance, not a substitute for file hashes. Git rename
+baseline's commit is provenance, not a substitute for file revisions. Git rename
 heuristics, modification time, report date, and filename recency never determine
 identity or scope.
 
@@ -387,9 +383,9 @@ and every required check:
 ```yaml
 path: <canonical path or channel ID>
 system_id: <stable ID or null>
-sha256: <hash or null>
+revision: <revision or null>
 bytes: <integer or null>
-status: HASHED_ONLY | INDEXED | PARTIAL | FAILED | EXCLUDED | MISSING
+status: IDENTIFIED_ONLY | INDEXED | PARTIAL | FAILED | EXCLUDED | MISSING
 checks:
   VALUE: DONE | PARTIAL | FAILED | NOT_APPLICABLE
   FORMULA: DONE | PARTIAL | FAILED | NOT_APPLICABLE
@@ -402,7 +398,7 @@ limitation: <none or exact bounded reason>
 Material coverage gaps include missing/empty/invalid registry, missing/malformed
 systems index, Git provenance unavailable, unreadable GDD, invalid baseline,
 manifest or semantic budget overflow, a material unnormalizable ID/unit/formula,
-hash mismatch, evidence conflict, and any required unchecked comparison.
+revision mismatch, evidence conflict, and any required unchecked comparison.
 
 Apply exactly this precedence:
 
@@ -419,7 +415,7 @@ or incomplete normalization.
 
 ---
 
-## Phase 6: Return one hash-bound consistency report
+## Phase 6: Return one revision-bound consistency report
 
 When a manifest was locked and useful evidence exists, return one authoritative
 machine block followed by a human projection. For invocation/scope errors before
@@ -431,11 +427,11 @@ Use this machine block:
 
 ```gate-evidence
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical record payload with record_id omitted>
+record_id: <stable business record ID plus run_id>
 artifact_id: consistency-scan:<project-id-prefix>:<manifest-prefix>
 artifacts:
   - path: <canonical repository-relative path>
-    sha256: <lowercase SHA-256 of an existing exact-byte input>
+    revision: <declared revision for an existing exact-byte input>
     role: system-gdd | systems-index | entity-registry | decision-evidence | baseline
     system_id: <stable System ID or null>
 reviewer: consistency-check:<run-id>
@@ -450,15 +446,15 @@ extension:
   ruleset_id: cgs.consistency-claims/v1
   run_id: <UTC timestamp>-<manifest prefix>
   project_id: <canonical root plus repository identity string>
-  project_id_sha256: <hash of exact project_id string>
+  project_revision: <explicit project revision>
   requested_mode: full | since-last-review | entity | item
   targeted_id: <exact ID or null>
   source_revision:
     commit: <commit ID or null>
     input_state: clean | dirty | includes-untracked-inputs | git-unavailable
-  manifest_sha256: <ordered manifest digest>
-  stale_key: <project/ruleset/mode/current-system-GDD-set digest>
-  skill_sha256: <exact current SKILL.md hash>
+  manifest_revision: <ordered manifest revision>
+  stale_key: <project/ruleset/mode/current-system-GDD-set revision>
+  skill_revision: <exact current SKILL.md revision>
   coverage_status: COMPLETE | PARTIAL | ERROR
   limits:
     max_manifest_candidates: 256
@@ -470,17 +466,17 @@ extension:
   baseline:
     path: <path or null>
     record_id: <record ID or null>
-    manifest_sha256: <hash or null>
+    manifest_revision: <revision or null>
     source_commit: <commit or null>
     deltas: []
   registry:
     status: AVAILABLE | MISSING | EMPTY | INVALID | UNREADABLE
     path: design/registry/entities.yaml
-    sha256: <hash or null>
+    revision: <revision or null>
     entries_indexed: <integer>
-  claim_index_sha256: <canonical typed claim index digest>
-  owner_map_sha256: <canonical owner map digest>
-  dependency_graph_sha256: <canonical directed graph digest>
+  claim_index_revision: <canonical typed claim index revision>
+  owner_map_revision: <canonical owner map revision>
+  dependency_graph_revision: <canonical directed graph revision>
   coverage: []
   findings: []
   advisory_notes: []
@@ -489,17 +485,11 @@ extension:
 The `artifacts` array must include every existing current system GDD in the
 complete review set, even when a semantic limit left it unchecked. Include
 existing supporting inputs actually used. Missing required inputs appear only in
-the coverage ledger with a null hash, never as a fake artifact. This lets
-`$review-all-gdds` verify exact current path/hash coverage without rereading or
+the coverage ledger with a null revision, never as a fake artifact. This lets
+`$review-all-gdds` verify exact current path/revision coverage without rereading or
 reinterpreting the registry.
 
-Compute `record_id` as SHA-256 over canonical JSON of the complete machine object
-with `record_id` omitted. Sort object keys lexicographically. Sort `artifacts` by
-role, system ID, then path; ID-only arrays lexicographically; coverage by system
-ID/path/check; findings by stable finding ID; and deltas by stable system ID then
-delta kind. Use UTF-8, lowercase hex, JSON `null` for required absent values, no
-insignificant whitespace, and preserve semantic array order only where specified.
-Recompute after final verdict and coverage are known.
+Set record_id from the stable project/check scope plus the UTC run ID. Serialize the complete machine object as canonical JSON with record_id omitted, lexicographically sorted object keys, deterministic array ordering, UTF-8, JSON null for required absent values, and no insignificant whitespace. Assign the explicit report revision after the final verdict and coverage are known.
 
 After the machine block, render from the same normalized data:
 
@@ -512,7 +502,7 @@ After the machine block, render from the same normalized data:
 7. Actionable Findings with stable IDs and both evidence sides;
 8. Advisory/Unverifiable Notes;
 9. Decision Handoff naming the responsible owner without choosing truth; and
-10. Staleness Contract stating that any changed path/hash invalidates the report.
+10. Staleness Contract stating that any changed path/revision invalidates the report.
 
 The machine block and projection must agree. A mismatch before delivery is report
 construction failure. Do not save the report, propose a report path, append a
@@ -520,7 +510,7 @@ failure log, update session state, or offer an in-workflow write.
 
 Return one concise handoff and stop:
 
-- `PASS`: provide `record_id`, manifest hash, and stale key for an already-planned
+- `PASS`: provide `record_id`, manifest revision, and stale key for an already-planned
   downstream consumer.
 - `FINDINGS`: route the highest-severity stable finding ID to its artifact owner
   or user for a separate decision/remediation task.
@@ -540,8 +530,8 @@ scanner's report-only behavior.
 | CSC-004 | Phase 0 treats missing or invalid registry authority as material uncertainty, never an empty success. |
 | CSC-005 | Phases 2b and 3 compare only typed, stable-identity, unit-compatible semantic claims. |
 | CSC-006 | Phases 2c and 2d build explicit owner and directed dependency indexes. |
-| CSC-007 | Phase 4 accepts only an immutable exact-hash incremental baseline. |
+| CSC-007 | Phase 4 accepts only an immutable exact-revision incremental baseline. |
 | CSC-008 | Phases 1 and 2 freeze the manifest and enforce visible file, byte, claim, and comparison budgets. |
-| CSC-009 | Phase 4 assigns stable finding identity, hashes, status, and resolution evidence. |
+| CSC-009 | Phase 4 assigns stable finding identity, revisions, status, and resolution evidence. |
 | CSC-010 | Phase 5 applies ERROR/PARTIAL precedence and reports every coverage gap. |
 | CSC-011 | Phase 6 returns canonical report bytes in conversation and explicitly performs no save-path write. |

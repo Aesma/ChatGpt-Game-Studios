@@ -3,7 +3,7 @@
 ## Skill summary
 
 `$consistency-check` contract `cgs.consistency-check/v2` is a strictly read-only,
-hash-bound cross-GDD scanner. It locks the complete system-GDD manifest, builds
+revision-bound cross-GDD scanner. It locks the complete system-GDD manifest, builds
 typed claim/owner/dependency indexes once, compares only semantically compatible
 claims, emits stable findings under `cgs.consistency-claims/v1`, and returns one
 `cgs.consistency-report/v1` evidence envelope.
@@ -23,9 +23,9 @@ are finding categories. `PARTIAL` takes precedence over proven findings.
 
 Behavioral tests run in an isolated disposable repository. The harness records:
 
-1. recursive path/type/SHA-256 snapshots before and after invocation;
+1. recursive path/type/revision snapshots before and after invocation;
 2. every attempted filesystem mutation;
-3. every enumerated, hashed, semantically read, skipped, and failed file with
+3. every enumerated, versioned, semantically read, skipped, and failed file with
    exact byte count and read count;
 4. Git command availability and exact read-only outputs used;
 5. the locked manifest and every active limit/counter;
@@ -43,7 +43,7 @@ an uninstrumented run.
 ## Static assertions
 
 - [ ] Frontmatter contains only `name` and non-empty `description`
-- [ ] Description says read-only, cross-GDD, and hash-bound; metadata remains an
+- [ ] Description says read-only, cross-GDD, and revision-bound; metadata remains an
   accurate read-only cross-GDD entry point
 - [ ] Contract/ruleset IDs are `cgs.consistency-check/v2` and
   `cgs.consistency-claims/v1`
@@ -53,16 +53,16 @@ an uninstrumented run.
   chained-skill branch
 - [ ] Verdict set and precedence are exactly ERROR, PARTIAL, FINDINGS, PASS
 - [ ] Missing/empty registry explicitly performs direct scan and cannot PASS
-- [ ] Complete exact-hash manifest and fixed file/byte/entry/claim limits exist
+- [ ] Complete exact-revision manifest and fixed file/byte/entry/claim limits exist
 - [ ] Typed claim, owner-map, directed dependency, coverage, and finding schemas
   are explicit
 - [ ] Semantic comparison requires stable identity, type, scope, normative status,
   and compatible units
-- [ ] Stable finding fingerprint excludes wording, values, paths, hashes,
+- [ ] Stable finding business key excludes wording, values, paths, revisions,
   severity, status, reviewer, and time
 - [ ] Every actionable finding contains two-sided or declaration-plus-manifest
-  evidence, owner, target hashes, status, and acceptance
-- [ ] Git/baseline/read/YAML/search/normalization/budget/hash failures have
+  evidence, owner, target revisions, status, and acceptance
+- [ ] Git/baseline/read/YAML/search/normalization/budget/revision failures have
   fail-closed PARTIAL or ERROR behavior
 - [ ] Machine evidence uses generic `cgs.review-evidence/v1` plus extension
   `cgs.consistency-report/v1`
@@ -110,7 +110,7 @@ missing, empty, malformed, unreadable, and valid non-empty registry variants.
 - [ ] First four variants return PARTIAL, never PASS or “nothing to check”
 - [ ] Valid registry may permit FINDINGS when all other coverage is complete
 - [ ] Registry is never repaired or rewritten
-- [ ] Report lists exact registry path/hash or null, status, and indexed count
+- [ ] Report lists exact registry path/revision or null, status, and indexed count
 
 A no-conflict missing-registry variant still returns PARTIAL after completing the
 direct scan.
@@ -150,7 +150,7 @@ differences, and missing symbol semantics.
   FORMULA_MISMATCH
 - [ ] Missing rule-critical semantics is COVERAGE_GAP/PARTIAL, not guessed
 - [ ] Non-listed dimensions never receive inferred conversion
-- [ ] Raw/normalized/unit/scope/tree/evidence hashes are reported
+- [ ] Raw/normalized/unit/scope/tree/evidence revisions are reported
 
 ---
 
@@ -179,14 +179,14 @@ exclusive/non-exclusive owners, and outgoing GDD dependencies.
 ## Case 6: Immutable incremental baseline
 
 Create a valid persisted baseline with record ID, project/ruleset, source commit,
-complete path/hash manifest, run ID, and stable findings. Change one value, rename
+complete path/revision manifest, run ID, and stable findings. Change one value, rename
 one GDD under the same system ID, add/remove GDDs, and leave one unchanged.
 
 - [ ] Baseline is selected only from the explicit path
 - [ ] Record/producer/schema/project/ruleset/manifest/findings are validated
 - [ ] Mtime, creation date, filename recency, Git rename heuristic, and “latest”
   search are never used
-- [ ] Added/removed/renamed/changed/unchanged use stable IDs and exact hashes
+- [ ] Added/removed/renamed/changed/unchanged use stable IDs and exact revisions
 - [ ] Dirty/untracked inputs participate by exact bytes
 - [ ] Complete current-corpus coverage remains in evidence
 - [ ] Prior IDs are re-evaluated and preserved
@@ -194,7 +194,7 @@ one GDD under the same system ID, add/remove GDDs, and leave one unchanged.
 
 Invalid, stale, ambiguous, or scope-incomplete baselines return
 `ERROR — INVALID CONSISTENCY BASELINE`. Git unavailable after a valid manifest
-permits useful hash comparison but forces PARTIAL.
+permits useful revision comparison but forces PARTIAL.
 
 ---
 
@@ -204,7 +204,7 @@ Independently exceed 256 manifest candidates, 32 analyzed GDDs, 196608 bytes for
 one GDD, 1048576 total semantic bytes, 2048 registry entries, and 4096 claims.
 
 - [ ] Complete deterministically enumerable inventory is retained within cap
-- [ ] Each candidate has stable ID/null, path, hash/bytes, status, and reason
+- [ ] Each candidate has stable ID/null, path, revision/bytes, status, and reason
 - [ ] Selection follows stable system ID then path
 - [ ] Oversized GDD is never split into independently judged fragments
 - [ ] Unchecked paths/checks are explicit
@@ -223,16 +223,16 @@ First run produces value, formula, ownership, and dependency findings. Persist a
 baseline externally; edit values/wording/line positions, rename a path under the
 same system ID, resolve two, and add one different logical conflict.
 
-- [ ] ID format is `CSC-<category-slug>-<12 fingerprint hex>`
-- [ ] Fingerprint uses category/subcategory, stable subject/attribute,
+- [ ] ID format is `CSC-<category-slug>-<stable-business-key>`
+- [ ] stable business key uses category/subcategory, stable subject/attribute,
   source-system IDs, and stable claim IDs
-- [ ] Value, wording, path, hash, severity, status, reviewer, and time do not
+- [ ] Value, wording, path, revision, severity, status, reviewer, and time do not
   change the same logical ID
 - [ ] Different logical claim gets a different ID
-- [ ] Duplicate fingerprint merges provenance; incompatible identity/evidence
+- [ ] Duplicate stable business key merges provenance; incompatible identity/evidence
   forces PARTIAL
-- [ ] RESOLVED_IN_CURRENT requires current exact-hash acceptance evidence
-- [ ] Findings contain sides, owners, target hashes, status, acceptance,
+- [ ] RESOLVED_IN_CURRENT requires current exact-revision acceptance evidence
+- [ ] Findings contain sides, owners, target revisions, status, acceptance,
   resolution, first/last run IDs, and producer claim IDs
 - [ ] Sort order is deterministic
 
@@ -242,7 +242,7 @@ same system ID, resolve two, and add one different logical conflict.
 
 Simulate Git unavailable, index missing/malformed, one/all unreadable GDDs,
 registry parse failure, semantic index failure, material unnormalizable
-identity/unit/formula, fingerprint evidence conflict, record construction failure,
+identity/unit/formula, stable business key evidence conflict, record construction failure,
 and one HIGH finding plus one coverage failure.
 
 - [ ] Each input/check has explicit status and per-check state
@@ -256,7 +256,7 @@ and one HIGH finding plus one coverage failure.
 
 ---
 
-## Case 10: Hash-bound review-all consumer interface
+## Case 10: revision-bound review-all consumer interface
 
 Run a complete valid-registry scan, persist exact returned bytes with a separate
 test recorder, and validate the producer contract without invoking the consumer.
@@ -266,12 +266,12 @@ test recorder, and validate the producer contract without invoking the consumer.
 - [ ] Producer is `consistency-check@cgs.consistency-check/v2`
 - [ ] Extension/ruleset are `cgs.consistency-report/v1` and
   `cgs.consistency-claims/v1`
-- [ ] Artifacts include every current GDD path/hash/system ID plus used support
+- [ ] Artifacts include every current GDD path/revision/system ID plus used support
 - [ ] Extension includes run/project/revision, mode/target, manifest, stale key,
-  skill hash, limits, baseline, registry, index digests, coverage, findings, notes
-- [ ] Canonical JSON sort rules reproduce record ID
+  skill revision, limits, baseline, registry, index revisions, coverage, findings, notes
+- [ ] Stable business scope and UTC run ID reproduce record ID
 - [ ] Human projection and machine block agree
-- [ ] Any changed GDD path/hash makes the report stale
+- [ ] Any changed GDD path/revision makes the report stale
 - [ ] review-all can verify current set, coverage, IDs/evidence, and verdict
   without loading registry
 
@@ -280,7 +280,7 @@ test recorder, and validate the producer contract without invoking the consumer.
 ## Case 11: Mutation, truth boundary, and report-only closing
 
 Fixture includes GDDs, index, registry, existing failure log/reports/session state,
-and competing claims with no current exact-hash decision evidence.
+and competing claims with no current exact-revision decision evidence.
 
 - [ ] Before/after recursive snapshots are identical
 - [ ] Mutation-attempt ledger is empty
@@ -288,7 +288,7 @@ and competing claims with no current exact-hash decision evidence.
 - [ ] No review mode read, agent/director spawn, or skill execution
 - [ ] Provenance/filename/status/recency/order/severity/majority never chooses truth
 - [ ] Conflicts use DECISION_REQUIRED and name owner/user decision
-- [ ] RESOLVED_IN_CURRENT needs approved exact-hash decision evidence
+- [ ] RESOLVED_IN_CURRENT needs approved exact-revision decision evidence
 - [ ] Scanner returns bytes only and never proposes a save path
 - [ ] One verdict handoff is returned, then stop
 
@@ -301,7 +301,7 @@ and competing claims with no current exact-hash decision evidence.
 | CSC-004 | Registry absence cannot produce PASS | Case 2 assertions |
 | CSC-005 | Typed semantic comparison replaces nearby-number heuristics | Cases 3 and 4 assertions |
 | CSC-006 | Owner map and directed dependency checks | Case 5 assertions |
-| CSC-007 | Immutable exact-hash incremental baseline | Case 6 assertions |
+| CSC-007 | Immutable exact-revision incremental baseline | Case 6 assertions |
 | CSC-008 | Fixed manifest and explicit semantic budgets | Case 7 assertions |
 | CSC-009 | Stable finding identity and resolution | Case 8 assertions |
 | CSC-010 | Failure, PARTIAL, and verdict precedence | Case 9 assertions |
@@ -313,13 +313,13 @@ and competing claims with no current exact-hash decision evidence.
 - [ ] Complete corpus is manifested before comparison
 - [ ] Only typed, stable-ID, normative, scope/unit-compatible claims are compared
 - [ ] Owner and directed dependency checks are implemented
-- [ ] Incremental baseline is explicit, immutable, hash-bound, reproducible
+- [ ] Incremental baseline is explicit, immutable, revision-bound, reproducible
 - [ ] Limits and unchecked scope are visible
-- [ ] Stable findings contain dual evidence, owner, hashes, status, acceptance,
+- [ ] Stable findings contain dual evidence, owner, revisions, status, acceptance,
   and resolution evidence
 - [ ] Material failure/uncertainty is PARTIAL and blocks PASS
 - [ ] Verdict precedence is ERROR > PARTIAL > FINDINGS > PASS
-- [ ] Report is canonical hash-bound `cgs.consistency-report/v1`
+- [ ] Report is canonical revision-bound `cgs.consistency-report/v1`
 - [ ] Scanner chooses no product truth and performs zero writes
 - [ ] SKILL, metadata, and spec describe one contract
 
@@ -331,4 +331,4 @@ scope. `review-all-gdds` consumes exact evidence but owns its own ruleset/verdic
 
 Do not fill catalog `last_static`, `last_spec`, or `last_category` until
 instrumented tests run. Record FAIL or UNTESTED when mutation attempts, read
-counts, hashes, typed indexes, Git failure, limits, or report bytes are unobserved.
+counts, revisions, typed indexes, Git failure, limits, or report bytes are unobserved.

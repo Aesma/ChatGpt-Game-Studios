@@ -22,11 +22,11 @@ This specification validates the `adopt` skill as a bounded, evidence-honest bro
 | `$adopt summary` | canonical inventory, registry/parser coverage, budgets, cost/page preview |
 | `$adopt full` | all registered classes, subject to hard ceilings and deterministic paging |
 | `$adopt gdds|adrs|stories|infra` | only the selected registered artifact class |
-| `--batch N` | one deterministic page anchored to snapshot and registry hashes |
-| `--analysis P --expect-analysis H` | accept only the exact validated `cgs.project-stage-detection/v2` packet |
-| `--prior-report P --expect-prior-report H` | focused re-audit anchored to one exact immutable report |
+| `--batch N` | one deterministic page anchored to snapshot and registry revisions |
+| `--analysis P` | accept only the exact validated `cgs.project-stage-detection/v2` packet |
+| `--prior-report P` | focused re-audit anchored to one exact immutable report |
 
-One option in either path/hash pair without the other must produce `ERROR`. Moving aliases such as `latest` must be rejected.
+One option in either path/revision pair without the other must produce `ERROR`. Moving aliases such as `latest` must be rejected.
 
 ## Required invariants
 
@@ -40,8 +40,8 @@ One option in either path/hash pair without the other must produce `ERROR`. Movi
 
 ### B. Canonical stage ownership — AD-004
 
-1. Stage context may come only from a hash-pinned packet with schema `cgs.project-stage-detection/v2`.
-2. Packet validation includes project-root identity, workflow-catalog version/hash, target-snapshot compatibility, and structural completeness.
+1. Stage context may come only from a version-pinned packet with schema `cgs.project-stage-detection/v2`.
+2. Packet validation includes project-root identity, workflow-catalog version/revision, target-snapshot compatibility, and structural completeness.
 3. Without a valid packet, stage is `UNKNOWN` or `UNVERIFIED`; the skill does not recreate stage analysis.
 4. The skill must not read `production/stage.txt` as stage authority or infer stage from directories, artifact existence, Git history, labels, or prose.
 5. Stage context is diagnostic and cannot convert a failed/unsupported rule into a pass.
@@ -49,10 +49,10 @@ One option in either path/hash pair without the other must produce `ERROR`. Movi
 ### C. Versioned format and rule provenance
 
 1. The canonical registry is discovered only through the project-declared catalog/index, never by newest-file or heading heuristics.
-2. Registry/index sources used in a decision carry path, schema/version, and raw SHA-256.
-3. Artifact format version, parser version, rule ID/version, and registry version/hash are separate fields.
+2. Registry/index sources used in a decision carry path, schema/version, and declared revision.
+3. Artifact format version, parser version, rule ID/version, and registry version/revision are separate fields.
 4. Rules specify supported schema IDs/versions/media/encoding, deterministic adapter, objective check, evidence contract, priority, owner, destination schemas, and closure receipt.
-5. Missing, ambiguous, unversioned, duplicated, or hash-mismatched rules produce `RULE_UNVERIFIED` and cap the result at `PARTIAL`; substitute rules are not invented.
+5. Missing, ambiguous, unversioned, duplicated, or revision-mismatched rules produce `RULE_UNVERIFIED` and cap the result at `PARTIAL`; substitute rules are not invented.
 6. Unsupported versions are not coerced into a nearby supported version.
 
 ### D. Bounded discovery — AD-005 and AD-011
@@ -62,7 +62,7 @@ One option in either path/hash pair without the other must produce `ERROR`. Movi
 3. Discovery operates through canonical indexed entries; unbounded recursive content scanning is forbidden.
 4. Default ceilings are testable: 256 enumerated entries, depth 6, 20 bodies/batch, 256 KiB/file, 250 KiB parsed/batch, 1 MiB artifact bytes/run, and 4 batches/run.
 5. Ordering is deterministic by artifact class, stable artifact identity, and normalized path.
-6. A ceiling stops before the next read and emits omitted counts/classes and resume tuple `(snapshot_hash, mode, next_ordinal, registry_hash)`. An initial/summary audit returns `PARTIAL`; a focused re-audit uses the stricter `BLOCKED` convergence terminal.
+6. A ceiling stops before the next read and emits omitted counts/classes and resume tuple `(snapshot_revision, mode, next_ordinal, registry_revision)`. An initial/summary audit returns `PARTIAL`; a focused re-audit uses the stricter `BLOCKED` convergence terminal.
 7. A summary contains counts, known sizes, support declarations, estimated pages/cost, ceilings, expected omissions, and `artifact_bodies_read: 0`.
 8. Summary cannot emit per-artifact verdicts or `NO FORMAT GAPS IN SCANNED SCOPE`.
 
@@ -83,35 +83,35 @@ One option in either path/hash pair without the other must produce `ERROR`. Movi
 ### G. Stable finding and evidence model — AD-007
 
 1. Every actionable/unresolved `FORMAT_GAP`, `COMPATIBILITY_RISK`, or `RULE_UNVERIFIED` record conforms to `cgs.adopt-finding/v1`.
-2. The finding includes stable ID, kind, priority policy, rule ID/version/source hash, registry identity, artifact identity/path/version/parser, exact target hash, snapshot hash, evidence IDs/locators, coverage/confidence, lifecycle, owner, handoff, closure condition, and prior delta.
-3. `finding_id` derives from `(artifact_class, stable_artifact_id_or_PATH_IDENTITY, rule_id, applicability_scope)` and excludes time, target hash, evidence wording, and rule version.
-4. Evidence IDs bind finding ID, rule version, target hash, normalized locator, and observation kind.
+2. The finding includes stable ID, kind, priority policy, rule ID/version/source revision, registry identity, artifact identity/path/version/parser, exact target revision, snapshot revision, evidence IDs/locators, coverage/confidence, lifecycle, owner, handoff, closure condition, and prior delta.
+3. `finding_id` derives from `(artifact_class, stable_artifact_id_or_PATH_IDENTITY, rule_id, applicability_scope)` and excludes time, target revision, evidence wording, and rule version.
+4. Evidence IDs bind finding ID, rule version, target revision, normalized locator, and observation kind.
 5. New target bytes change evidence identity without destabilizing the logical finding ID.
 6. Rule replacement follows declared lineage or creates a new finding with an explicit relationship.
 
 ### H. Focused re-audit closure — AD-008
 
-1. Re-audit requires the exact prior report path/hash and validates schema, run ID, root, snapshots, registry, coverage, findings, and handoffs.
+1. Re-audit requires the exact prior report path/revision and validates schema, run ID, root, snapshots, registry, coverage, findings, and handoffs.
 2. Scope is limited to prior unresolved findings, receipt targets, changed manifest entries, changed rules, and the registry-declared bounded regression set.
 3. Re-audit makes one deterministic bounded pass and never loops until green.
 4. Deltas are one of `UNCHANGED_OPEN`, `EVIDENCE_CHANGED_OPEN`, `CLOSED_IN_THIS_RUN`, `REGRESSION_IN_THIS_RUN`, `RESOLUTION_UNVERIFIED`, `NOT_RECHECKED_BUDGET`, or `NOT_RECHECKED_UNSUPPORTED`.
-5. Closure requires both a valid closure receipt and a current rule pass against the new exact target hash.
+5. Closure requires both a valid closure receipt and a current rule pass against the new exact target revision.
 6. Re-audit budget/one-pass exhaustion produces `BLOCKED` with partial coverage and a resume token. Invalid baseline, repeated snapshot change, or unsafe scope also produces `BLOCKED`.
 7. Earlier immutable reports and lifecycle states are never edited.
 
 ### I. Immutable run identity and historical diff — AD-009
 
-1. The report uses `ADOPT-RUN-<UTC-basic-milliseconds>-<snapshot8>-<registry8>-<mode>-bNN` and stores full hashes.
+1. The report uses `ADOPT-RUN-<UTC-basic-milliseconds>-<snapshot8>-<registry8>-<mode>-bNN` and stores full revisions.
 2. Report paths are unique run-ID paths, not date-only overwrite targets.
-3. A re-audit includes prior report path/hash and finding-by-finding deltas.
+3. A re-audit includes prior report path/revision and finding-by-finding deltas.
 4. Timestamps alone do not establish freshness or snapshot identity.
-5. Target manifest hash, registry hash, and individual target hashes remain distinguishable.
+5. Target manifest revision, registry revision, and individual target revisions remain distinguishable.
 
 ### J. Typed handoff and failure terminal — AD-010
 
 1. Each finding has a `cgs.adopt-handoff/v1` record with stable ID, linked evidence, owner/workflow, exact preconditions, required input/output schemas, bounded destinations, non-goals, closure receipt contract, and failure behavior.
 2. Every handoff starts `authorization_state: NOT_AUTHORIZED` and `auto_executed: false`.
-3. Closure receipts identify the finding/handoff, old/new hashes, applied format/rule version, producer run, verification evidence, result, and failure reason.
+3. Closure receipts identify the finding/handoff, old/new revisions, applied format/rule version, producer run, verification evidence, result, and failure reason.
 4. Missing destination, unsupported downstream behavior, invalid/no receipt, or failed verification leaves the finding `OPEN` or `RESOLUTION_UNVERIFIED` and the plan `BLOCKED`/`PARTIAL`.
 5. Assignment, a claimed edit, a newer file, or a zero exit status alone cannot close a finding.
 
@@ -130,7 +130,7 @@ Every outcome records run identity (or `NOT_MINTED`), mode/batch, index/registry
 
 ## Persistence protocol
 
-Before a write, the exact report bytes, destination, must-not-exist precondition, byte length, SHA-256, and changeset `(create 1, modify 0, delete 0)` must be shown. Any changed bytes/path require a new preview and approval. Immediately before the write, all expected hashes, snapshot/index/registry identities, input paths, and destination absence are revalidated. Mismatch produces `BLOCKED` and no write. After an authorized create, the written SHA-256 is verified.
+Before a write, the exact report bytes, destination, must-not-exist precondition, byte length, revision, and changeset `(create 1, modify 0, delete 0)` must be shown. Any changed bytes/path require a new preview and approval. Immediately before the write, all expected revisions, snapshot/index/registry identities, input paths, and destination absence are revalidated. Mismatch produces `BLOCKED` and no write. After an authorized create, the written revision is verified.
 
 ## Static test cases
 
@@ -138,10 +138,10 @@ Before a write, the exact report bytes, destination, must-not-exist precondition
 
 - Default invocation declares summary mode and zero artifact body reads.
 - Explicit `full` includes all registered classes but stops at the total run ceiling with deterministic resume data.
-- A valid hash-pinned detector v2 packet is copied as stage context without secondary stage analysis.
+- A valid version-pinned detector v2 packet is copied as stage context without secondary stage analysis.
 - Same rule/artifact identity across two snapshots retains the finding ID while producing a new evidence ID.
 - Focused re-audit closes a finding only when both a valid receipt and current exact-target pass exist.
-- An authorized report creates one previously absent run-ID path and verifies its hash.
+- An authorized report creates one previously absent run-ID path and verifies its revision.
 
 ### Negative
 
@@ -150,7 +150,7 @@ Before a write, the exact report bytes, destination, must-not-exist precondition
 - Unsupported format is parsed with a nearby supported adapter and reported as pass.
 - Full recursive scan has no entry, byte, depth, batch, or run ceiling.
 - Summary mode reads artifact bodies or emits per-artifact findings.
-- A finding ID contains a timestamp or target hash and therefore changes on every run.
+- A finding ID contains a timestamp or target revision and therefore changes on every run.
 - Re-audit loops until clean, silently drops prior open findings, or edits the earlier report.
 - Handoff execution is implied by report-write approval.
 - Existing date-named report is overwritten.

@@ -1,5 +1,7 @@
 # Milestone Review Rules v1
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs.
+
 This private contract is normative for `milestone-review`. It defines the
 canonical inputs, limits, derivations, identities, and immutable-write protocol.
 If this file conflicts with `SKILL.md`, stop with `run_status: ERROR`; do not
@@ -12,7 +14,7 @@ choose whichever rule is more permissive.
   the project after canonical resolution. Reject absolute paths, traversal,
   symlinks/reparse points escaping the project, device paths, and alternate data
   streams.
-- Raw artifact hashes are lowercase hexadecimal SHA-256 over exact file bytes.
+- Artifact revisions are explicit authority metadata and are never calculated from file bytes.
 - Contract objects use canonical JSON: UTF-8, LF, no insignificant whitespace,
   object keys sorted by Unicode code point, arrays kept in declared order, JSON
   strings escaped by the JSON grammar, integers in base ten, and no floats,
@@ -24,10 +26,7 @@ choose whichever rule is more permissive.
 - Stable IDs are compared byte-for-byte after schema validation. Do not trim,
   case-fold, or repair an ID.
 
-`source_snapshot_sha256` is SHA-256 over canonical JSON for the ordered evidence
-ledger. `evidence_draft_sha256`, producer `result_sha256`, scope-decision hashes,
-and `report_candidate_sha256` are hashes over their exact canonical bytes. A
-hash never stands in for schema, revision, build, or scope validation.
+`source_snapshot_revision`, `evidence_draft_revision`, producer `result_revision`, scope-decision revisions, and `report_candidate_revision` are explicit authority-supplied metadata. A revision never stands in for schema, build, or scope validation.
 
 ## Fixed bounds
 
@@ -89,7 +88,7 @@ The manifest schema is `cgs.milestone-evidence-manifest/v1` and contains:
 schema_version
 milestone_id
 milestone_revision
-milestone_sha256
+milestone_revision
 target_checkpoint
 target_build_id
 captured_at_utc
@@ -99,7 +98,7 @@ sources[]
 ```
 
 Each `sources[]` row contains stable `source_id`, `source_type`, canonical
-`path`, declared `revision`, raw `sha256`, required flag, and the applicable
+`path`, declared `revision`, raw `revision`, required flag, and the applicable
 milestone/sprint/build/hardware/scenario/unit/basis join keys. `freshness_policy`
 must identify which source types expire and their exact milestone-owned limits;
 absence of a required limit is `MALFORMED`, not permission to invent one.
@@ -113,12 +112,12 @@ Order ledger rows by `source_type`, `source_id`, then canonical path. For every
 expected row record one of:
 
 ```text
-VERIFIED | MISSING | EMPTY | MALFORMED | HASH_MISMATCH |
+VERIFIED | MISSING | EMPTY | MALFORMED | REVISION_MISMATCH |
 REVISION_CONFLICT | BUILD_CONFLICT | STALE | OUT_OF_SCOPE |
 OVER_LIMIT | UNKNOWN
 ```
 
-Also record declared and observed bytes/hash/revision/build, join result,
+Also record declared and observed records/version/revision/build, join result,
 freshness result, requirement IDs that consume the source, and a limitation.
 Unexpected manifest rows remain `OUT_OF_SCOPE`; missing expected rows are
 synthesized as ledger gaps. Neither condition may be silently ignored.
@@ -208,40 +207,37 @@ erased by another source gap; report both.
 
 ## Stable findings
 
-A finding object uses `cgs.milestone-review-finding/v1`. Its fingerprint input is
+A finding object uses `cgs.milestone-review-finding/v1`. Its finding key input is
 canonical JSON of:
 
 ```text
 {schema_version, milestone_id, finding_type, check_id, subject_ids}
 ```
 
-Sort and deduplicate `subject_ids`. `finding_id` is `MRF-` plus the first 20
-lowercase hex characters of the SHA-256 fingerprint. The full fingerprint hash
-is retained. Exclude prose, line numbers, source hashes, observed values,
+Sort and deduplicate `subject_ids`. Set `finding_id` to `MRF-<milestone-id>-<finding-type>-<check-id>-<sequence>`; retain the full stable finding key. Exclude prose, line numbers, source revisions, observed values,
 severity/classification, state, timestamps, reviewer, and verdict so the same
 logical finding remains stable across runs.
 
 The full row contains classification `BLOCKER|GAP|RISK|WARNING`, state, concise
 evidence-bound summary, source refs, affected requirement IDs, owner or
 `UNKNOWN`, external action, deadline or `UNKNOWN`, and deterministic resolution
-condition. Duplicate fingerprints are merged by sorted unique evidence refs;
+condition. Duplicate finding keys are merged by sorted unique evidence refs;
 distinct checks are not collapsed.
 
 ## Scope candidates and decisions
 
 A candidate is `cgs.milestone-scope-candidate/v1` with `candidate_id`, action
 `PROTECT|SIMPLIFY|DEFER|CUT`, affected scope and criterion IDs, source refs and
-hashes, schedule-effect operands/formula/basis, verified pillar/player impact,
+revisions, schedule-effect operands/formula/basis, verified pillar/player impact,
 dependency/quality/risk impact, alternative, tradeoff, decision owner, and exact
 status `CANDIDATE_NOT_DECIDED`.
 
-Its stable ID is `MSC-` plus the first 20 lowercase hex characters of SHA-256
-over canonical `{schema_version,milestone_id,action,scope_ids,criterion_ids}`.
+Set its stable ID to `MSC-<milestone-id>-<action>-<sequence>` and record scope and criterion IDs as separate fields.
 Sort/deduplicate ID arrays. Unknown effects remain unknown; do not turn an
 unsupported schedule estimate into a reason to cut.
 
 Only a separate `cgs.milestone-scope-decision/v1` supplied by the user can decide
-a candidate. It binds candidate ID and full candidate hash and records exact
+a candidate. It binds candidate ID and full candidate revision and records exact
 choice, decision-maker identity, UTC timestamp, rationale, accepted impacts, and
 follow-up owner/deadline. Invalid/stale decisions are quoted as gaps and never
 applied by this review.
@@ -255,7 +251,7 @@ schema_version
 milestone_identity
 target_identity
 review_mode
-source_snapshot_sha256
+source_snapshot_revision
 evidence_status
 evidence_ledger
 coverage
@@ -269,13 +265,13 @@ limitations
 ```
 
 It must not contain producer output, `risk_status`, `evidence_verdict`,
-`decision_status`, governance decision, write authorization, report path/hash,
+`decision_status`, governance decision, write authorization, report path/revision,
 or `artifact_write_status`. Freeze exact draft bytes before reviewer dispatch.
 
 A producer result uses `cgs.milestone-risk-review/v1`, echoes exact milestone,
-target, draft hash, and source-snapshot hash, and records reviewer ID, start/end
+target, draft revision, and source-snapshot revision, and records reviewer ID, start/end
 UTC timestamps, `ON_TRACK|AT_RISK|OFF_TRACK`, stable risks/mitigations with
-source refs and owner/deadline or `UNKNOWN`, limitations, and its own hash. Hash
+source refs and owner/deadline or `UNKNOWN`, limitations, and its own revision. Validate
 or identity mismatch, invalid schema, duplicated response, unsupported metric, or
 timeout is a reviewer gap: `risk_status: UNKNOWN` and objective `PARTIAL`.
 
@@ -297,17 +293,16 @@ input tuple. Accepted risk never changes that tuple or any objective field.
 
 A governance record is `cgs.milestone-governance-decision/v1` and binds
 milestone ID, target, source snapshot, evidence draft, producer result or skip,
-and objective verdict hashes. It contains `decision_status`, user-supplied
+and objective verdict revisions. It contains `decision_status`, user-supplied
 decision maker/time/rationale, accepted stable IDs, follow-up owners/deadlines,
-and record hash. Missing required user fields means `NOT_RECORDED`; do not fill
+and record revision. Missing required user fields means `NOT_RECORDED`; do not fill
 them from task/session identity.
 
 ## Immutable report transaction
 
 The path is exactly
 `production/milestones/reviews/<milestone-id>/<run-id>.md`, where `run-id` is the
-current review's frozen UTC second plus the first 12 characters of
-`source_snapshot_sha256`. A pre-existing path is a collision and blocks the
+current review's frozen UTC second plus the run sequence. A pre-existing path is a collision and blocks the
 write. Do not select another time, append a counter, or overwrite.
 
 Final report bytes use schema `cgs.milestone-review-report/v2`, UTF-8/LF, and a
@@ -317,18 +312,18 @@ supplied decisions; risk review/skip; objective verdict; separate governance
 decision; limits/limitations; immutable provenance; mutation/write receipt.
 
 Before authorization, preview canonical path, operation `CREATE_NEW`, exact
-candidate hash/size, frozen source base set, and singleton allowed write set. An
+candidate revision/size, frozen source base set, and singleton allowed write set. An
 authorization is valid only for all those values. After authorization:
 
-1. Re-resolve and raw-hash every source and authority file; require the identical
+1. Re-resolve and raw-revision every source and authority file; require the identical
    frozen base set and require target absence.
 2. Prepare exact bytes in the report's directory without exposing the target.
 3. Atomically create the target with create-new/no-replace semantics.
-4. Reread target, verify exact bytes/hash, and rehash sources again.
+4. Reread target, verify schema, stable identity, and explicit revision, and revalidate sources again.
 5. Record success only if every check passes. Clean up only the workflow-owned
    temporary file after validating its exact path; never modify the target.
 
 Any pre-write change invalidates the candidate and authorization. Any ambiguous
-post-write state is `artifact_write_status: ERROR` with an honest existence/hash
+post-write state is `artifact_write_status: ERROR` with an honest existence/revision
 observation, never claimed success. Successful persistence changes no readiness
 or decision field.

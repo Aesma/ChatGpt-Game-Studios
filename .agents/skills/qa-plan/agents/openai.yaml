@@ -1,4 +1,4 @@
 interface:
   display_name: "QA Plan"
   short_description: "Create an immutable bounded QA dependency and coverage plan"
-  default_prompt: "Use $qa-plan with one exact cgs-qa-plan-scope/v1 manifest to bind story, build and requirement hashes; assign owned stable Test IDs and evidence levels; preserve partial/unknown gaps; and CAS-publish one immutable QA plan without story, state or catalog writes."
+  default_prompt: "Use $qa-plan with one exact cgs-qa-plan-scope/v1 manifest to bind story, build and requirement revisions; assign owned stable Test IDs and evidence levels; preserve partial/unknown gaps; and version and existence conflict check-publish one immutable QA plan without story, state or catalog writes."

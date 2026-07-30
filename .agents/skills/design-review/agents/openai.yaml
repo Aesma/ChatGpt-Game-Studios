@@ -1,4 +1,4 @@
 interface:
   display_name: "Design Review"
   short_description: "Read-only quality gate for one system GDD."
-  default_prompt: "Use $design-review to review one design/gdd/<system-slug>.md read-only, return one hash-bound report, and do not edit files."
+  default_prompt: "Use $design-review to review one design/gdd/<system-slug>.md read-only, return one revision-bound report, and do not edit files."

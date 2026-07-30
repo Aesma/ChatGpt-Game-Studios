@@ -1,4 +1,4 @@
 interface:
   display_name: "Tech Debt"
-  short_description: "Read-only debt evidence, lifecycle views, and CAS-safe recorder proposals"
-  default_prompt: "Use $tech-debt in scan, add, prioritize, or report mode. Keep heuristics as owner-triaged candidates, require versioned analyzer receipts, validate the v3 append-only lifecycle register, preserve stable fingerprints, and return only hash-bound proposals for a separately authorized CAS recorder; never mutate the register in this skill."
+  short_description: "Read-only debt evidence, lifecycle views, and conflict-safe recorder proposals"
+  default_prompt: "Use $tech-debt in scan, add, prioritize, or report mode. Keep heuristics as owner-triaged candidates, require versioned analyzer receipts, validate the v3 append-only lifecycle register, preserve stable keys, and return only revision-bound proposals for a separately authorized atomic conflict check recorder; never mutate the register in this skill."

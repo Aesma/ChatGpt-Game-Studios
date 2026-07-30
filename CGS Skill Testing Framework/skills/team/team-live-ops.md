@@ -13,7 +13,7 @@ agents, implementation, tests, experiments, publication, release or deployment.
 
 ## Fixtures and harness rules
 
-Positive fixtures contain exact raw bytes and full lowercase SHA-256 for:
+Positive fixtures contain canonical paths, stable IDs, schemas, and explicit revisions for:
 
 - `cgs.team-live-ops-request/v2` and `cgs.live-ops-context-manifest/v2`;
 - stable season-ID reservation or prior-plan revision identity;
@@ -33,7 +33,7 @@ a separately authorized real execution produces receipts.
 ## Structural assertions
 
 - [ ] Frontmatter contains only `name` and non-empty `description`; name is `team-live-ops`.
-- [ ] Invocation is exactly `$team-live-ops --request <path> --expect-request <sha256>`.
+- [ ] Invocation is exactly `$team-live-ops --request <path> --request-revision <revision>`.
 - [ ] PLAN, REVISE, REVIEW, RECORD, STATUS and RESUME are explicit request operations.
 - [ ] Missing required ethics policy or an unresolved policy violation cannot yield PLAN COMPLETE.
 - [ ] Whole-plan review covers economy, retention, experiment, telemetry, communication, audience, content and operations.
@@ -45,7 +45,7 @@ a separately authorized real execution produces receipts.
 - [ ] Context comes only from an exact manifest with hard file/byte/depth/object/agent/response/time budgets.
 - [ ] Full, lean and solo modes have concrete staffing/fallback behavior but identical gates.
 - [ ] Dispatch counts all live/nested agents and records deadlines, timeout, cancel, retry and late-result states.
-- [ ] Checkpoints are immutable, predecessor-linked, hash-addressed and resumable without replay.
+- [ ] Checkpoints are immutable, predecessor-linked, revision_addressed and resumable without replay.
 - [ ] Every experiment has preregistration, exposure/sample, metrics, privacy/fairness, stop, kill and rollback protections.
 - [ ] Proposal/review agents are read-only and final artifact writers are unique, sequential and path-confined.
 - [ ] Shared QA/release consumers cannot treat plan completion as test, release or action evidence.
@@ -75,8 +75,8 @@ subjective finding without new evidence.
 
 **Expected**
 
-- IDs derive from domain/rule/proposal evidence and persist across revisions;
-- only finding state, reviewed round and exact evidence hash change;
+- IDs use declared domain, rule, and proposal identifiers, are collision-checked, and persist across revisions;
+- only finding state, reviewed round and exact evidence revision change;
 - each revision diff is frozen and re-reviewed by a non-author;
 - self-review without another eligible reviewer yields
   `PARTIAL / BLOCKED — INDEPENDENT REVIEW REQUIRED`;
@@ -96,23 +96,23 @@ change one reward ID to create F2.
 - dependency-free scaffolds may run before freeze;
 - telemetry fields, experiment events, reward copy, eligibility, pricing/odds and
   communication rows wait for F1;
-- eligible work runs only in dependency-safe batches and binds F1 hash;
+- eligible work runs only in dependency-safe batches and binds F1 revision;
 - F2 invalidates all F1-dependent proposals, review and approval;
 - no test forces analytics/economy or phase groups to be independent when data
   dependencies exist.
 
 ## Case 3 — PLAN COMPLETE is not production readiness — TLO-008
 
-Complete, approve and hash-verify all planning artifacts while content, localization,
+Complete, approve and revision_verify all planning artifacts while content, localization,
 store configuration, telemetry, QA, platform approvals, rollback tooling and on-call
 evidence remain unimplemented or unavailable.
 
 **Expected**
 
-- planning verdict may be `PLAN COMPLETE` only when all plan-specific hashes, owners,
+- planning verdict may be `PLAN COMPLETE` only when all plan-specific revisions, owners,
   proposals, review, findings, approval and four writes verify;
 - readiness matrix lists every implementation/QA/platform/operations dependency with
-  status, owner and required evidence path/hash;
+  status, owner and required evidence path/revision;
 - output remains `Production Readiness: NOT_EVALUATED` and
   `Production Handoff Eligible: NO`;
 - no PLAN COMPLETE, design approval or artifact count becomes PRODUCTION READY,
@@ -129,7 +129,7 @@ an added shared index path and RECORD authorization issued before exact filename
 
 - no next-number scan, guessed season ID or mtime selection occurs;
 - only the exact reservation/existing revision identity determines paths;
-- artifact manifest binds four exact targets, bytes/hashes, unique writers, write order,
+- artifact manifest binds four exact targets, bytes/revisions, unique writers, write order,
   preimages, parents and non-writes before RECORD authority;
 - early/unknown-path authorization is unusable;
 - changed byte/path/index produces a new manifest and authority request;
@@ -144,9 +144,9 @@ season document or let narrative/economy writers edit it.
 **Expected**
 
 - exact `cgs.live-ops-content-manifest/v2` is the fourth artifact at its own path;
-- it owns stable content IDs, dependency hashes/readiness, owners, draft-copy references,
+- it owns stable content IDs, dependency revisions/readiness, owners, draft-copy references,
   targets and `NOT_IMPLEMENTED` state;
-- season plan references the content path/hash rather than silently absorbing it;
+- season plan references the content path/revision rather than silently absorbing it;
 - writer is the unique content-manifest writer; narrative/economy roles remain
   proposal-only;
 - content manifest is not implementation, localization, asset or publication evidence.
@@ -159,7 +159,7 @@ exists with a newer mtime.
 
 **Expected**
 
-- only explicitly listed first-order sources and declared hash-bound dependencies load;
+- only explicitly listed first-order sources and declared revision-bound dependencies load;
 - no directory scan or recent-file substitution occurs;
 - whole closures are admitted deterministically and never partially truncated;
 - selected/loaded/missing/unreadable/invalid/omitted/unprocessed rows plus byte/depth
@@ -195,7 +195,7 @@ is cancelled. A timed-out result arrives after review freeze.
 
 - available/dispatch slots are three and actual concurrency never exceeds three;
 - nested delegates consume the same budget;
-- every assignment records input hashes, exclusive slot, deadline, response limit,
+- every assignment records input revision, exclusive slot, deadline, response limit,
   attempt and state;
 - at most one retry occurs before freeze with identical inputs and new attempt ID;
 - partial/timeout/cancelled required work yields `PARTIAL / BLOCKED` and prevents
@@ -206,15 +206,15 @@ is cancelled. A timed-out result arrives after review freeze.
 ## Case 9 — Immutable checkpoints and idempotent resume — TLO-014
 
 Interrupt after foundation freeze, review and the second artifact write. Resume from
-each exact checkpoint, then vary predecessor hash, policy byte, foundation identity,
+each exact checkpoint, then vary predecessor revision, policy byte, foundation identity,
 writer outcome and next target existence.
 
 **Expected**
 
-- each checkpoint is a new hash-addressed create-only file with predecessor, all input/
+- each checkpoint is a new revision_addressed create-only file with predecessor, all input/
   proposal/finding/decision/artifact identities, agent/writer states, budgets and one
   next operation;
-- valid resume re-hashes the chain, reconciles writer state and never replays successful
+- valid resume revalidates the chain, reconciles writer state and never replays successful
   assignments/writes;
 - drift/broken chain/ambiguous write/collision blocks and preserves old history;
 - changed work uses a new identity and authorization;
@@ -262,7 +262,7 @@ Run document-structure lint and shared-consumer fixtures.
 
 **Expected**
 
-- variant 1 is hash-bound design input only and retains NOT_IMPLEMENTED;
+- variant 1 is revision-bound design input only and retains NOT_IMPLEMENTED;
 - variant 2 still requires requirements, architecture, story-readiness and its own
   authorized implementation workflow;
 - variant 3 is not build/test evidence and cannot affect QA verdict;
@@ -284,7 +284,7 @@ Retain these safety properties from the prior candidate:
    sequential/path-confined;
 7. final recording requires independent review, exact design approval and exact write
    authority;
-8. partial writes list actual mutations/hashes and never claim rollback;
+8. partial writes list actual mutations/revisions and never claim rollback;
 9. no test, analytics, platform, localization, implementation, publication or release
    evidence is fabricated; and
 10. every non-complete outcome recommends only the single action that addresses its

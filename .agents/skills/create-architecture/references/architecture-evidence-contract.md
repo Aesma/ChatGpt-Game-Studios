@@ -11,7 +11,7 @@ the only permitted compare-and-set transaction.
 |---|---|---|
 | Player-facing/product requirement | Current approved GDD requirement and its lifecycle evidence | Derived source reference only |
 | Cross-GDD consistency/review state | Current `review-all-gdds` evidence for the exact GDD manifest | Admission/readiness evidence, never product truth |
-| Binding technical decision | Current Accepted ADR plus lifecycle evidence | Derived projection citing exact ADR/lifecycle hashes |
+| Binding technical decision | Current Accepted ADR plus lifecycle evidence | Derived projection citing exact ADR/lifecycle revisions |
 | Proposed/missing technical decision | ADR author/lifecycle owner | Non-binding `DECISION-*` gap only |
 | Engine/API fact | Pinned engine reference with current provenance and applicable coverage | Verified observation or explicit UNVERIFIED marker |
 | Architecture review verdict | Independent `architecture-review` evidence | External currentness reference only |
@@ -37,7 +37,7 @@ owned outputs.
 
 Freeze one repository-root identity and one UTC snapshot. Record exact raw bytes,
 normalized project-relative path, real-path/root check, role, stable source ID,
-selected scope, source state, revision when declared, and lowercase SHA-256 or an
+selected scope, source state, revision when declared, and declared revision or an
 explicit `ABSENT`/`UNREADABLE` marker.
 
 Hard ceilings:
@@ -69,9 +69,9 @@ Use layered loading:
 2. parse their typed indexes/manifests without loading every referenced body;
 3. construct the complete intended path/record manifest;
 4. load only the exact source sections required by the selected profile; and
-5. re-hash all complete source files before candidate approval and CAS.
+5. re-read all complete source files before candidate approval and CAS.
 
-Hashing a source does not authorize full-context ingestion. When a required file,
+revision validation a source does not authorize full-context ingestion. When a required file,
 record, typed index, or section exceeds a limit, is ambiguous/unreadable, changes
 during the snapshot, or cannot fit the manifest, use `PARTIAL` with exact
 `CONTEXT_BUDGET_EXCEEDED`, `SOURCE_UNREADABLE`, `SOURCE_CHANGED`, or schema reason.
@@ -82,7 +82,7 @@ by role, stable source ID, normalized path, then consumed scope; UTF-8/LF; no
 insignificant whitespace. Its identity is:
 
 ```text
-source_manifest_id: sha256:<canonical ordered manifest>
+source_manifest_id: <stable manifest business ID plus UTC run ID>
 ```
 
 Every candidate and final result binds this ID. A changed path, byte, state,
@@ -91,7 +91,7 @@ the manifest stale.
 
 ## 3. Current GDD and cross-GDD evidence
 
-One cross-GDD evidence input may be supplied by exact path plus expected raw hash,
+One cross-GDD evidence input may be supplied by exact path plus expected raw revision,
 or as exactly one explicit inline record. Never discover a report by timestamp or
 filename.
 
@@ -100,18 +100,18 @@ A usable cross-GDD record must be:
 - envelope schema `cgs.review-evidence/v1`;
 - producer `review-all-gdds` with extension schema
   `cgs.cross-gdd-review/v2`;
-- internally valid `record_id` over the canonical payload;
+- internally valid `record_id bound to the stable artifact ID and UTC run ID;
 - bound to the same project/root, ruleset, complete ordered GDD/supporting manifest,
-  `manifest_sha256`, and current exact source hashes;
+  `manifest_revision`, and current exact source revisions;
 - coverage `COMPLETE`; and
 - verdict `PASS`, `CONCERNS`, `FAIL`, or `PARTIAL` preserved exactly.
 
-For every GDD used, recompute its exact hash and its per-GDD approval evidence:
+For every GDD used, validate declared its exact revision and its per-GDD approval evidence:
 envelope `cgs.review-evidence/v1`, producer `design-review`, exact artifact
-path/hash, current record hash, and verdict `APPROVED`. Classify each source:
+path/revision, current record revision, and verdict `APPROVED`. Classify each source:
 
 - `APPROVED_CURRENT` — exact current independent APPROVED evidence;
-- `PROVISIONAL_EXPLICIT` — user explicitly admitted the exact path/hash for Draft
+- `PROVISIONAL_EXPLICIT` — user explicitly admitted the exact path/revision for Draft
   work despite missing/non-current approval;
 - `STALE` — approval/cross-GDD evidence targets different bytes/manifest;
 - `UNBOUND` — record identity/path/project does not bind;
@@ -152,29 +152,25 @@ source_artifact_id
 source_path
 source_locator
 exact_normative_text
-source_sha256
+source_revision
 approval_record_id
-approval_record_sha256
+approval_record_revision
 class: EXPLICIT_REQUIREMENT | CONFIRMED_REQUIREMENT
 currentness: CURRENT | CHANGED | STALE | UNBOUND
-adr_ids_and_hashes
+adr_ids_and_revisions
 mapping_state: DERIVED_COVERED | DECISION_GAP | SOURCE_BLOCKED
 ```
 
 ID construction:
 
-1. When the approved source owns a stable requirement ID, derive the initial TR ID
-   from the canonical tuple `(source_artifact_id, source_requirement_id)` using
-   `TR-` plus the first 16 lowercase hexadecimal characters of SHA-256.
-2. Without a source ID, derive the initial TR ID from
-   `(source_artifact_id, normalized source path, stable locator,
-   normalized exact normative text)` using the same prefix/hash form.
+1. When the approved source owns a stable requirement ID, use TR-<source-artifact-id>-<source-requirement-id>.
+2. Without a source ID, allocate TR-<source-artifact-id>-<locator-business-id> once in the persisted mapping ledger from the approved locator business key; reuse it on later runs.
 3. Preserve every persisted TR ID exactly on resume/focus. Never regenerate or
    renumber the full set because order or unrelated source content changed.
 
-If a source-owned requirement ID remains the same but text/hash changes, preserve
+If a source-owned requirement ID remains the same but text/revision changes, preserve
 the TR ID and mark `CHANGED` until current approval evidence covers the new bytes.
-If a fingerprint-based source changes identity/text/locator, propose a new TR ID
+If a stable business key-based source changes identity/text/locator, propose a new TR ID
 and an explicit `TR-MIGRATION-*` old→new/superseded record; never silently retarget.
 Duplicate source identities, collisions, ambiguous locators, missing exact text,
 or conflicting prior mappings block publication.
@@ -182,21 +178,21 @@ or conflicting prior mappings block publication.
 Inferred technical needs never enter this map. An inference appears only as
 `INFERRED_CANDIDATE` with rationale/source provenance. Explicit user/technical-owner
 confirmation may create `CONFIRMED_REQUIREMENT` only when the confirmation record
-names the candidate, exact source context/hash, confirmer identity, decision ID,
+names the candidate, exact source context/revision, confirmer identity, decision ID,
 timestamp, and bounded requirement text. Confirmation does not approve a GDD or an
 ADR and cannot upgrade a provisional source.
 
 ## 5. ADR decision authority and derived ledger
 
-For every in-scope ADR, record path, ADR ID/title, exact hash, declared status,
+For every in-scope ADR, record path, ADR ID/title, exact revision, declared status,
 requirements addressed, decision domains, dependency/supersession IDs, and exact
-lifecycle/review evidence paths/hashes.
+lifecycle/review evidence paths/revisions.
 
 An ADR is `ACCEPTED_CURRENT` only when all are true:
 
 - one unique valid stable ADR ID and `Status: Accepted`;
-- exact current bytes/hash in the source manifest;
-- a current catalog-compatible lifecycle record binds ADR path/hash, transition to
+- exact current bytes/revision in the source manifest;
+- a current catalog-compatible lifecycle record binds ADR path/revision, transition to
   Accepted, recorder identity/time, and independent review evidence;
 - any required supersession/dependency chain is complete and current; and
 - no conflicting Accepted lifecycle record or registry projection exists.
@@ -208,16 +204,16 @@ Only `ACCEPTED_CURRENT` ADR decisions may create a binding-looking derived
 statement. Each such statement includes:
 
 ```text
-DERIVED — <ADR-ID>@<ADR-SHA256>
+DERIVED — <ADR-ID>@<ADR-revision>
 lifecycle_record_id: <ID>
-lifecycle_record_sha256: <hash>
+lifecycle_record_revision: <revision>
 source_tr_ids: [<TR IDs>]
 ```
 
 Every technical choice without one current Accepted owner is a non-binding gap:
 
 ```text
-NON-BINDING — DECISION-<stable fingerprint>
+NON-BINDING — DECISION-<stable business key>
 blocked_tr_ids: [<TR IDs>]
 observed_adr_state: <state-or-NONE>
 ```
@@ -236,7 +232,7 @@ non-binding DRAFT unless a selected profile cannot render safely.
 ## 6. Engine knowledge state
 
 The pinned engine/version and references are evidence, not capability truth.
-For each consumed domain record engine, version, reference path/hash, publication
+For each consumed domain record engine, version, reference path/revision, publication
 or snapshot date, applicable API/module scope, source revision, and coverage.
 
 Classify:
@@ -261,7 +257,7 @@ verified.
 The exact UTF-8/LF candidate follows `cgs.master-architecture/v3` and contains:
 
 1. Document Status — schema, artifact revision, `DRAFT|PARTIAL`, manifest ID,
-   prior artifact hash, and external review state/reference;
+   prior artifact revision, and external review state/reference;
 2. Authority Boundary;
 3. Source Manifest projection;
 4. Current GDD/Cross-GDD Evidence;
@@ -277,14 +273,11 @@ The exact UTF-8/LF candidate follows `cgs.master-architecture/v3` and contains:
 14. Open Questions and READY Blockers; and
 15. Immutable Revision/Provenance History.
 
-Do not embed the document's own current hash in the hashed bytes. Compute
-`candidate_sha256` over exact candidate bytes and report/store it only in the
-transaction/result or a later external review record. The document stores its
-prior artifact hash and source manifest identity, avoiding a self-referential hash.
+Assign candidate_revision from the explicit base revision plus one, or 1 for create, before rendering. Store that revision and the source manifest business ID in the document and transaction result. Do not derive either value from candidate bytes.
 
 Every content change authored here sets document status `DRAFT` or `PARTIAL`,
 external review state `NOT_CURRENT`, and appends one immutable provenance event:
-event ID, profile/focus scope, base hash/absence, candidate manifest ID, decision
+event ID, profile/focus scope, base revision/absence, candidate manifest ID, decision
 IDs, changed sections, timestamp, and author-side task identity. Prior events are
 never edited, deleted, reordered, or rewritten.
 
@@ -312,9 +305,9 @@ explicitly authorized profile/owner not defined by this skill.
 ## 9. Approval, CAS, and atomic publication
 
 Show the complete candidate or lossless representation, structured three-way diff,
-manifest entries/hash/limits, TR migrations, ADR/engine states, blockers, exact
-candidate bytes/hash, and one-file changeset. Obtain one user approval bound to
-candidate hash, manifest ID, profile/focus, decision IDs, and exact diff. Content
+manifest entries/revision/limits, TR migrations, ADR/engine states, blockers, exact
+candidate bytes/revision, and one-file changeset. Obtain one user approval bound to
+candidate revision, manifest ID, profile/focus, decision IDs, and exact diff. Content
 approval is neither ADR acceptance nor architecture review/READY approval.
 
 The preview binds:
@@ -325,14 +318,14 @@ The preview binds:
 - ADR/registry/lifecycle/review evidence;
 - engine references and project standards;
 - every enumerated directory identity/membership used;
-- source manifest ID, exact candidate bytes/hash, immutable history preimage, and
+- source manifest ID, exact candidate bytes/revision, immutable history preimage, and
   ordered decision IDs.
 
-Immediately before mutation, re-read and re-hash the complete closure, rebuild the
-canonical manifest, reapply BASE+INTENT, and require every bound state/hash plus
-candidate hash to match the preview.
+Immediately before mutation, re-read the complete closure, rebuild the
+canonical manifest, reapply BASE+INTENT, and require every bound state/revision plus
+candidate revision to match the preview.
 
-Any difference is `CONFLICT`: write nothing; report exact old/new hashes or states;
+Any difference is `CONFLICT`: write nothing; report exact old/new revisions or states;
 do not merge, refresh, retry, overwrite, update session state, or ask the user to
 implicitly accept changed bytes.
 
@@ -341,7 +334,7 @@ After CAS succeeds:
 1. write exact candidate bytes to one same-directory temporary file;
 2. flush/close as supported;
 3. atomically create/replace only `docs/architecture/architecture.md`;
-4. re-read and verify exact candidate hash;
+4. re-read and verify exact candidate revision;
 5. reparse and validate v3 schema, manifest ID, TR identities/migrations, ADR
    citations, profile mutation boundary, immutable provenance chain, DRAFT/PARTIAL
    status, and external review `NOT_CURRENT`; and
@@ -362,7 +355,7 @@ A usable independent review record is `cgs.review-evidence/v1` with producer
 `architecture-review`, extension `cgs.architecture-review/v2`, current record
 identity, complete coverage, and verdict `PASS|BLOCKED|PARTIAL`. Its manifest must
 contain `docs/architecture/architecture.md` with role `architecture-derived` and
-the exact candidate/current artifact hash, plus every source identity/hash needed
+the exact candidate/current artifact revision, plus every source identity/revision needed
 to reproduce or explicitly bind the document's `source_manifest_id`. Missing or
 different architecture/source entries make the record stale or unbound. `PASS` is
 necessary but not sufficient for READY and becomes stale after any artifact,
@@ -371,7 +364,7 @@ source-manifest, mode, target, scope, profile, or ruleset change. Only a current
 declared scope.
 
 Only a separate catalog-declared recorder may set READY after independently
-validating current PASS, exact candidate hash, approved/current GDD sources,
+validating current PASS, exact candidate revision, approved/current GDD sources,
 cross-GDD PASS, complete Accepted ADR coverage, no blocking DECISION/TR/engine gap,
 and its own compare-and-set policy. This authoring workflow returns one
 catalog-derived review/ADR/evidence action or `Stop` and never executes it.

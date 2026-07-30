@@ -10,7 +10,7 @@ phase is partial, but never use it to hide a required gap.
 3. Resolve one canonical repository root without following links outside it.
 4. Validate prior record path containment, immutable bytes, generic/extension
    schema, canonical record ID, persistence identity, project relation, profile,
-   hashes, and stable findings.
+   revisions, and stable findings.
 
 Invalid invocation/root/prior identity is `ERROR` with null verdict. Do not guess
 the profile, workspace, last audit, or prior record.
@@ -20,10 +20,10 @@ the profile, workspace, last audit, or prior record.
 Freeze the empty allowed-write set. Run only a proven read-only VCS identity
 command, if available, and capture a complete tool receipt. Record commit/ref,
 dirty/untracked state, executable/version/argv/cwd, timestamps, exit, and redacted
-log hash. Do not infer clean state from an absent status line.
+log revision. Do not infer clean state from an absent status line.
 
-Create a sorted streaming project snapshot of path, size, and complete SHA-256.
-Process at most 256 paths in memory per chunk, hash chunks, and fold them into
+Create a sorted streaming project snapshot of path, size, and complete revision.
+Process at most 256 paths in memory per chunk, revision chunks, and fold them into
 `before_root`. Exclude only version-control internals and exact owner-approved
 ephemeral paths. Do not read policy-denied secret/environment paths; record a
 category-level permission gap without exposing their name/value.
@@ -33,7 +33,7 @@ scope remains, otherwise `ERROR`.
 
 ## Phase 3: Load configuration and freeze threat scope
 
-Read/hash applicable root-to-target AGENTS rules, technical preferences, engine
+Read/revision applicable root-to-target AGENTS rules, technical preferences, engine
 version evidence, configured source roots, target platforms, export/build presets,
 online/backend/platform services, mod/plugin declarations, data classifications,
 and owner-approved security adapter registry.
@@ -48,7 +48,7 @@ Build `cgs.security-threat-scope/v1` before planning checks:
 6. assign every profile category `APPLICABLE`, evidence-backed
    `NOT_APPLICABLE`, `UNKNOWN`, or `UNSUPPORTED`;
 7. preserve assumptions and unresolved questions; and
-8. canonicalize/hash the frozen record.
+8. canonicalize and validate the frozen record.
 
 Do not use file absence as N/A. A positively configured single-player build may
 exclude network only when current engine/platform/backend/export evidence also
@@ -62,13 +62,13 @@ and supplied artifact roots. Do not follow escaping links. Keep inclusion,
 exclusion, unsupported, denied-category, unreadable, parser, oversize, and limit
 states as explicit rows.
 
-Apply all fixed bounds. Hash complete canonical rows for the source scope, build
+Apply all fixed bounds. revision complete canonical rows for the source scope, build
 config, and component inventory. If no meaningful evidence target exists, stop
 with `ERROR`.
 
 For every required applicable category, map each target subset to an exact check
 ID, adapter, evidence method, tool/rule/config version constraints, deadline, and
-expected zero side effects. Keep unsupported/missing methods in the plan. Hash
+expected zero side effects. Keep unsupported/missing methods in the plan. revision
 the complete plan before executing anything.
 
 ## Phase 5: Route engine/platform evidence and reviewers
@@ -92,7 +92,7 @@ has one attempt and a 120-second deadline. A pre-dispatch unavailable
 when all assigned manual receipts are actually produced. Do not fall back after
 timeout/block/error or impersonate engine/platform roles.
 
-Validate worker schema, profile, source-manifest/threat-scope hashes, assignments,
+Validate worker schema, profile, source-manifest/threat-scope revisions, assignments,
 receipt completeness, and secret safety. Any unsafe output is quarantined and
 never forwarded.
 
@@ -100,7 +100,7 @@ never forwarded.
 
 For each planned check in stable order:
 
-1. revalidate adapter/tool/rule/config and target-subset hashes;
+1. revalidate adapter/tool/rule/config and target-subset revisions;
 2. prove the invocation has no writes, cache, update, build, download, or network
    side effect under current authority;
 3. skip unsafe/unsupported invocation and record its precise coverage state;
@@ -112,7 +112,7 @@ For each planned check in stable order:
 
 Keyword search is candidate discovery only. A vulnerable data/authority path
 requires a compatible dataflow result or a complete manual-flow receipt. Manual
-review must identify exact hashed targets and stable source/validator/sink/
+review must identify exact versioned targets and stable source/validator/sink/
 boundary symbols without quoting secret-bearing source.
 
 Tool missing/version unknown, stale rulepack, timeout, unexplained exit, partial
@@ -121,13 +121,13 @@ mutation is not a pass. Mark the plan row `UNVERIFIED` or `UNSUPPORTED`.
 
 ## Phase 7: Evaluate dependencies and advisories
 
-Build the inventory only from current hashed lockfiles/manifests/vendor metadata
+Build the inventory only from current versioned lockfiles/manifests/vendor metadata
 or an already available secret-safe SBOM receipt. Do not generate/update a
 lockfile/SBOM or fetch advisory data.
 
 Use only a compatible local immutable advisory snapshot and successful query
-receipt. Validate provider/scanner versions, snapshot ID/hash/time, owner-approved
-freshness policy, component ecosystems/versions/digests, and range reasoning.
+receipt. Validate provider/scanner versions, snapshot ID/revision/time, owner-approved
+freshness policy, component ecosystems/versions/identifiers, and range reasoning.
 
 When evidence is incomplete, output `UNVERIFIED` or `UNSUPPORTED` and never “no
 known CVEs.” When complete with zero matches, use only the scoped snapshot-bound
@@ -141,7 +141,7 @@ For each result/manual receipt:
 1. discard generic keyword-only candidates from finding admission;
 2. classify evidence as CONFIRMED, SUPPORTED, or CANDIDATE;
 3. admit only CONFIRMED/SUPPORTED findings;
-4. compute the stable fingerprint/SEC ID without hashes, line, title, secret,
+4. compute the stable identity/SEC ID without revisions, line, title, secret,
    HMAC, confidence, severity, reviewer, or timestamp;
 5. choose I/E/X factors from current threat/evidence rows and compute
    `CGS-SEC-IEX/v1`; use `UNRATED` when a factor is unsupported;
@@ -162,7 +162,7 @@ severity upgrade.
 ## Phase 9: Validate risk references without changing state
 
 For every supplied risk-acceptance reference, validate all admission fields,
-authority, signature, hashes/scope, controls, expiry/review trigger, and originating
+authority, signature, revisions/scope, controls, expiry/review trigger, and originating
 audit. Mark invalid references as such without quoting secret contents.
 
 Never create an acceptance record or change a finding. A valid unexpired reference
@@ -177,7 +177,7 @@ When prior review is valid:
 3. verify its original closure condition with current target/tool/test evidence;
 4. inspect changed assets, actors, boundaries, authority, entry points, flows,
    platforms, dependencies, build/export configuration, and adapter coverage;
-5. reuse stable IDs for unchanged fingerprints; and
+5. reuse stable IDs for unchanged identities; and
 6. record only STILL_OPEN, CANDIDATE_RESOLVED, REGRESSED, SUPERSEDED, or
    UNVERIFIED observations.
 
@@ -202,9 +202,9 @@ Apply outcome precedence:
 Preserve confirmed findings under `PARTIAL`. Do not turn uncertainty into a
 finding or no-finding conclusion.
 
-## Phase 12: Re-hash, close mutation guard, and render
+## Phase 12: revalidate, close mutation guard, and render
 
-Re-hash every evidence artifact. Any target/config/build/adapter/tool/rule/
+revalidate every evidence artifact. Any target/config/build/adapter/tool/rule/
 advisory/prior-record mismatch invalidates dependent evidence and forces partial
 or error.
 
@@ -221,7 +221,7 @@ Freeze the complete generic envelope and extension, compute canonical `record_id
 and validate all secret-safe fields. Return:
 
 1. outcome and `NOT A SHIP/RELEASE APPROVAL`;
-2. target/source/build/threat/check/stale hashes;
+2. target/source/build/threat/check/stale revisions;
 3. bounded manifests and engine/platform/adapter routing;
 4. category/dimension coverage and exact gaps;
 5. versioned tool/manual/reviewer/advisory evidence;

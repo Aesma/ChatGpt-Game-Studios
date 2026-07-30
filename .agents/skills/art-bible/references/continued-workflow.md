@@ -23,7 +23,7 @@ Every material statement used by a section references one or more stable
 | Class | Authority and treatment |
 |---|---|
 | `product-choice` | Named product owner selects one option after meaningful tradeoffs; only this class can choose visual identity, mood, composition, palette role, typography personality, character/environment direction, HUD/VFX language, or production-facing preference. |
-| `evidence-backed-hard-constraint` | Current owned source directly requires a platform/accessibility/engine/budget/legal constraint; preserve exact source ID/owner/path/locator/hash and do not ask the user to vote it away. |
+| `evidence-backed-hard-constraint` | Current owned source directly requires a platform/accessibility/engine/budget/legal constraint; preserve exact source ID/owner/path/locator/revision and do not ask the user to vote it away. |
 | `derived-design-constraint` | Author derives a visual implication from accepted product choices/current hard evidence; show derivation/assumptions and require named product-owner acceptance before use. |
 | `technical-handoff` | Implementation/architecture/pipeline/test question is routed to its external owner and remains outside the Art Bible product truth. |
 
@@ -39,7 +39,7 @@ Record:
     options: [{id, value, tradeoffs, evidence_refs}]
     selected: <option ID / hard constraint / handoff>
     rationale: <owner rationale or derivation>
-    source_refs: [{id, owner, path, locator, sha256}]
+    source_refs: [{id, owner, path, locator, revision}]
     assumptions: []
     dependent_assertion_ids: []
     status: ACCEPTED | PROVISIONAL | ROUTED | SUPERSEDED
@@ -77,12 +77,12 @@ Before approval:
 
 1. run every applicable `cgs.art-bible-content-profile/v2` assertion;
 2. confirm every material statement maps to accepted decision IDs;
-3. confirm source paths/locators/hashes and owner boundaries are current;
+3. confirm source paths/locators/revisions and owner boundaries are current;
 4. reject copied product truth owned by concept/GDD/UX/accessibility/technical
    artifacts; reference their stable IDs instead;
 5. identify contradictions, unresolved handoffs, provisional assumptions,
    unlicensed references, and implementation prescriptions;
-6. re-hash target, section baseline, used external context, authorization, and
+6. re-read target, section baseline, used external context, authorization, and
    approved draft bytes; and
 7. list dependency findings before asking for approval.
 
@@ -92,12 +92,12 @@ bytes. Store:
     id: ABAPR-<artifact-id>-<section-id>-<NNN>
     owner: <actual product-decision owner>
     section_id: <AB ID>
-    approved_body_sha256: <hash>
+    approved_body_revision: <revision>
     decision_ids: []
-    assertion_result_sha256: <hash>
-    context_manifest_sha256: <hash>
-    target_baseline_sha256: <hash>
-    authorization_sha256: <hash>
+    assertion_result_revision: <revision>
+    context_manifest_revision: <revision>
+    target_baseline_revision: <revision>
+    authorization_revision: <revision>
     approved_at_utc: <RFC3339 seconds Z>
 
 Approval denied or exhausted revision rounds leaves the section INCOMPLETE and
@@ -108,13 +108,13 @@ appends a PARTIAL checkpoint with the next unresolved decision; never infer yes.
 Immediately before every target write, one transaction attempt must pass:
 
 1. **Target CAS** — current raw target equals expected baseline/previous verified
-   write hash;
+   write revision;
 2. **Section CAS** — selected stable-ID body equals its approved baseline and
    unique anchors remain unambiguous;
 3. **Context CAS** — every external source used by the body and the ordered
-   context-manifest digest still match; mutable target is excluded here;
-4. **Authorization CAS** — manifest/hash/authority, exact operation/section/path,
-   approved-body hash, and limits still match; and
+   context-manifest revision still match; mutable target is excluded here;
+4. **Authorization CAS** — manifest/revision/authority, exact operation/section/path,
+   approved-body revision, and limits still match; and
 5. **Writer CAS** — actual target writer identity equals the authorized identity.
 
 Mismatch returns `ERROR — CONCURRENT TARGET CHANGE`,
@@ -128,14 +128,14 @@ range unchanged. Then append:
     id: ABREV-<artifact-id>-<section-id>-<NNN>
     mode: create | fill-gaps | revise-sections | migrate-schema
     section_id: <AB ID>
-    before_target_sha256: <hash>
-    after_target_sha256: <hash>
-    before_section_sha256: <hash or ABSENT>
-    after_section_sha256: <hash>
+    before_target_revision: <revision>
+    after_target_revision: <revision>
+    before_section_revision: <revision or ABSENT>
+    after_section_revision: <revision>
     decision_ids: []
     approval_id: <ABAPR ID>
-    source_hashes: []
-    authorization_sha256: <hash>
+    source_revisions: []
+    authorization_revision: <revision>
     writer_task_id: <actual identity>
     operation: insert | replace | move-without-edit
     timestamp_utc: <RFC3339 seconds Z>
@@ -143,7 +143,7 @@ range unchanged. Then append:
 Append its `cgs.art-bible-checkpoint/v2` through predecessor/create-if-absent
 CAS. If checkpoint persistence fails after verified target bytes, preserve the
 content, return Workflow Verdict PARTIAL, report the exact unreceipted target
-hash, emit no review handoff, and never replay the target patch.
+revision, emit no review handoff, and never replay the target patch.
 
 ## Phase 6: cgs.art-bible-content-profile/v2 assertions
 
@@ -182,7 +182,7 @@ owner, and failure reason. Non-placeholder length is never sufficient.
 - `AB4-02`: dominance/accent/neutral/feedback area or contrast relationships are
   measurable;
 - `AB4-03`: every critical color meaning has a non-color backup cue;
-- `AB4-04`: accessibility requirements reference their external owner/ID/hash;
+- `AB4-04`: accessibility requirements reference their external owner/ID/revision;
 - `AB4-05`: lighting/post-process interactions and exceptions are covered.
 
 ### AB-05 Typography & Iconography
@@ -217,7 +217,7 @@ owner, and failure reason. Non-placeholder length is never sufficient.
 ### AB-08 UI/HUD & VFX Visual Language
 
 - `AB8-01`: HUD/UI hierarchy, surfaces, motion, icon/color relationships reference
-  current UX IDs/hashes;
+  current UX IDs/revisions;
 - `AB8-02`: VFX grammar covers shape, timing, intensity, semantic family, and
   contention/readability limits;
 - `AB8-03`: reduced-motion, photosensitivity, non-color, and text/readability
@@ -227,7 +227,7 @@ owner, and failure reason. Non-placeholder length is never sufficient.
 
 ### AB-09 Asset Standards, References & Prohibitions
 
-- `AB9-01`: engine/platform/profile IDs, versions, paths, and hashes are current;
+- `AB9-01`: engine/platform/profile IDs, versions, paths, and revisions are current;
 - `AB9-02`: sourced hard budgets distinguish geometry, texture, shader, animation,
   VFX, UI, memory, and performance applicability;
 - `AB9-03`: formats, color spaces, naming, variants, LOD/import/validation handoffs
@@ -247,8 +247,8 @@ itself is optional.
 ### Concept evidence
 
 Treat a concept file's existence as evidence of bytes only. Current approval
-requires exact artifact ID/path/hash/status plus an immutable approval record
-ID/path/hash/reviewer and a matching approved concept hash. Missing, stale,
+requires exact artifact ID/path/revision/status plus an immutable approval record
+ID/path/revision/reviewer and a matching approved concept revision. Missing, stale,
 unapproved, or self-reported evidence permits safe DRAFT/PARTIAL authoring but:
 
 - creates an OPEN BLOCKING `concept-approval` finding;
@@ -258,7 +258,7 @@ unapproved, or self-reported evidence permits safe DRAFT/PARTIAL authoring but:
 
 ### Platform/engine evidence
 
-Persist current platform and engine profile IDs, versions, paths, hashes, owners,
+Persist current platform and engine profile IDs, versions, paths, revisions, owners,
 and applicable budget locators in the checkpoint and AB-09 evidence refs.
 Temporary user answers may be PROVISIONAL derived constraints but cannot replace
 owned profiles. Missing profiles make AB-09 PROVISIONAL/INCOMPLETE. When a profile
@@ -268,21 +268,21 @@ appears or changes, mark AB-09 and dependent sections STALE before further claim
 
 Use `cgs.art-bible-dependency-finding/v1`:
 
-    id: ARBF-<artifact-id>-<check-id>-<fingerprint>
+    id: ARBF-<artifact-id>-<check-id>-<stable business key>
     severity: BLOCKING | ADVISORY
     category: concept-approval | platform-engine | accessibility | ux |
       product-owner | technical-owner | rights | schema | provenance | catalog
-    evidence: {path, artifact_or_requirement_id, locator, sha256, observed}
+    evidence: {path, artifact_or_requirement_id, locator, revision, observed}
     expected: <objective rule>
     owner: <resolution owner>
     destination: <artifact/workflow>
     acceptance: <objective close condition>
-    first_seen_target_sha256: <hash>
-    last_evaluated_target_sha256: <hash>
+    first_seen_target_revision: <revision>
+    last_evaluated_target_revision: <revision>
     status: OPEN | RESOLVED | WAIVED
-    resolution: <current-hash evidence or null>
+    resolution: <current-revision evidence or null>
 
-Fingerprint deterministically covers category, owner, source ID/locator,
+stable business key deterministically covers category, owner, source ID/locator,
 expected, and normalized observed facts. Preserve IDs across reevaluation.
 RESOLVED requires current evidence satisfying acceptance. `BLOCKING WAIVED`
 remains unresolved and prevents COMPLETE/review handoff/production eligibility;
@@ -316,12 +316,12 @@ Record:
     section_id: <AB ID>
     role: ux-designer | technical-artist | accessibility-specialist | other-declared
     question: <one evidence question>
-    input_paths_sha256: []
+    input_paths_revision: []
     required: true | false
     started_at_utc: <timestamp>
     deadline_seconds: 60
     status: complete | partial | timeout | failed | side-effect | skipped
-    output_sha256: <canonical hash or null>
+    output_revision: <canonical revision or null>
     evidence_summary: <bounded evidence or null>
     fallback: none | explicit-product-decision | section-blocked
 
@@ -334,7 +334,7 @@ checkpoint, and stops that section. Never fabricate or merge quarantined output.
 ## Phase 9: Artifact completeness, final CAS, and authoring receipt
 
 Re-evaluate all nine sections, assertions, current concept approval, external
-context hashes, findings, decisions, approvals, revisions, migration disposition,
+context revisions, findings, decisions, approvals, revisions, migration disposition,
 and platform/engine state. Distinguish:
 
 - `selected_scope_complete`: every selected section reached WRITTEN and its body
@@ -346,8 +346,8 @@ Selected scope may be complete while artifact status remains PARTIAL.
 Before final status/header write, rerun the five-part CAS and prove only authorized
 header fields change. Read back final target and append the final
 `cgs.art-bible-authoring-receipt/v1` only after stable final bytes exist. Receipt
-verification recomputes target, all section/revision/decision/approval hashes,
-context digest, authorization, roles, findings, and final checkpoint predecessor.
+verification revalidates declared target, all section/revision/decision/approval revisions,
+context revision, authorization, roles, findings, and final checkpoint predecessor.
 
 Set artifact status from content only, then Workflow Verdict separately:
 
@@ -358,7 +358,7 @@ Set artifact status from content only, then Workflow Verdict separately:
   review handoff, production blocked;
 - COMPLETE target but receipt persistence/verification failure: retain target
   status COMPLETE, Workflow Verdict PARTIAL, no review handoff, report exact
-  unreceipted target hash;
+  unreceipted target revision;
 - unsafe identity/authorization/owner/drift: preserve last safe content status,
   Workflow Verdict BLOCKED;
 - invalid unsupported input/corrupt evidence before safe work: ERROR with no false
@@ -371,20 +371,20 @@ Never report APPROVED or production eligible from authoring evidence.
 For eligible full mode, return a conversation handoff for a fresh independent
 `art-director` task using `AD-ART-BIBLE`. Do not spawn it. Bind:
 
-- exact target path/current SHA-256 and AB-1/profile/author schema;
-- all nine section hashes and assertion-result digest;
-- concept/platform/engine/accessibility/UX/product evidence paths and hashes;
-- context-manifest digest, decisions/approvals/revisions/findings;
-- authoring receipt ID/path/hash and author/consultant/recorder identities; and
+- exact target path/current revision and AB-1/profile/author schema;
+- all nine section revisions and assertion-result revision;
+- concept/platform/engine/accessibility/UX/product evidence paths and revisions;
+- context-manifest revision, decisions/approvals/revisions/findings;
+- authoring receipt ID/path/revision and author/consultant/recorder identities; and
 - required immutable review output contract `cgs.art-bible-review/v1`.
 
 The future reviewer must be fresh, different from every author/consultant/
-recorder, artifact-read-only, re-hash before and after, review all nine sections,
+recorder, artifact-read-only, re-read before and after, review all nine sections,
 and create one separately authorized immutable record with verdict `APPROVE`,
 `CONCERNS`, or `REJECT`. It never edits the Art Bible or authoring receipt.
 
 Only a separately verified `APPROVE` record matching current target, authoring
-receipt, section/dependency hashes, role separation, and `AD-ART-BIBLE` may make
+receipt, section/dependency revisions, role separation, and `AD-ART-BIBLE` may make
 production use eligible. `CONCERNS`, `REJECT`, stale/missing receipt, wrong role,
 self-review, changed target/context, or user risk acceptance remains blocked. A
 changed target requires a new authoring receipt and fresh review record; never
@@ -397,7 +397,7 @@ On `resume`, validate exact request/checkpoint roots and full
 authorization, target/context, roles, section axes/assertions, decisions/
 approvals/revisions, consultations/findings, budgets, and absence of late writes.
 
-- all hashes current: resume APPROVED_NOT_WRITTEN exact bytes first, otherwise the
+- all revisions current: resume APPROVED_NOT_WRITTEN exact bytes first, otherwise the
   next PENDING legal section;
 - target mismatch: BLOCKED — TARGET/AUTHORIZATION DRIFT, zero write;
 - external source mismatch: mark only dependent sections STALE, invalidate active
@@ -407,10 +407,10 @@ approvals/revisions, consultations/findings, budgets, and absence of late writes
 - missing checkpoint: resume unavailable.
 
 Conversation memory never reconstructs approval, decision provenance, receipt,
-review, or hashes.
+review, or revisions.
 
 Determine the next workflow only from the exact request-declared workflow-catalog
-artifact/row/locator/hash and its explicit stable prerequisite artifact IDs,
+artifact/row/locator/revision and its explicit stable prerequisite artifact IDs,
 statuses, and receipts. Do not treat `design/gdd/*.md`, a concept/index filename,
 directory existence, or arbitrary documents as evidence that design-system is
 done. If catalog evidence is missing, stale, ambiguous, or does not identify one
@@ -418,8 +418,8 @@ legal successor, return `STOP — WORKFLOW STATUS UNKNOWN` with one named eviden
 gap. Never modify shared catalog/workflow files here.
 
 Final result lists artifact/run IDs, operation/scope and both completion states,
-profile/content/author schema, target pre/post/hash, context digest, concept/
+profile/content/author schema, target pre/post/revision, context revision, concept/
 platform evidence, section axes/assertions, decision/approval/revision IDs,
 consultations/findings, authorization/writer/recorder identities, checkpoint and
-receipt ID/path/hash, review-handoff eligibility, production-use decision,
+receipt ID/path/revision, review-handoff eligibility, production-use decision,
 preserved legacy content, non-writes, and exactly one evidence-backed next action.

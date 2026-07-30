@@ -1,6 +1,6 @@
 ---
 name: art-bible
-description: "Author or safely revise one versioned nine-section Art Bible through bounded evidence, explicit product decisions, content-profile assertions, transactional section writes, and a hash-bound independent-review handoff."
+description: "Author or safely revise one versioned nine-section Art Bible through bounded evidence, explicit product decisions, content-profile assertions, transactional section writes, and a revision-bound independent-review handoff."
 ---
 
 # Art Bible
@@ -25,12 +25,12 @@ The manifest declares `contract: cgs.art-bible-request/v2` and:
   `revise-sections`, `migrate-schema`, or `resume`;
 - exact scope alias (`full`, `core`, `asset-standards`, or `custom`) plus ordered
   stable section IDs; aliases never redefine whole-artifact completeness;
-- exact target path, checkpoint root, expected target SHA-256 or `ABSENT`, and
-  expected latest checkpoint ID/hash or `ABSENT`;
-- declared legacy input path/hash and migration disposition when applicable;
+- exact target path, checkpoint root, expected target revision or `ABSENT`, and
+  expected latest checkpoint ID/revision or `ABSENT`;
+- declared legacy input path/revision and migration disposition when applicable;
 - exact concept artifact/approval evidence, platform/engine profile evidence,
   accessibility/UX owners, technical constraints, workflow-catalog row, and
-  reference-source evidence, each with path, stable ID/owner, locator, raw hash,
+  reference-source evidence, each with path, stable ID/owner, locator, raw revision,
   and required/optional role;
 - context budgets no larger than 16 files and 524288 exact bytes;
 - `review_mode: full | lean | solo` and
@@ -40,10 +40,10 @@ The manifest declares `contract: cgs.art-bible-request/v2` and:
   roles require separation;
 - max revision rounds, consultation limits at or below this contract, and exact
   non-writes; and
-- authorization manifest ID/hash/authority or an instruction to collect one
+- authorization manifest ID/revision/authority or an instruction to collect one
   explicit bounded authorization after inventory.
 
-Reject ambiguous IDs, duplicate paths/section IDs, non-lowercase SHA-256 values,
+Reject ambiguous IDs, duplicate paths/section IDs, malformed or missing declared revision values,
 target/checkpoint aliasing, target outside `design/art/`, checkpoint root outside
 the declared session-state root, a writer equal to mutation authority when the
 request separates them, a future reviewer equal to any author/consultant/recorder,
@@ -73,7 +73,7 @@ writer, or larger limit requires a revised manifest and new authorization.
 
 The author contract version is:
 
-    art-bible-author-sha256:<sha256(SKILL.md exact bytes || 0x00 || references/continued-workflow.md exact bytes)>
+    art-bible-author-revision:<explicit skill release revision>
 
 The document profile is `art-bible-profile-schema-v2`; the content assertion
 contract is `cgs.art-bible-content-profile/v2`. Stable IDs, not display titles,
@@ -98,18 +98,18 @@ Every target begins with:
     > **Schema**: AB-1
     > **Profile Version**: art-bible-profile-schema-v2
     > **Content Profile**: cgs.art-bible-content-profile/v2
-    > **Author Schema**: art-bible-author-sha256:<hash>
+    > **Author Schema**: art-bible-author-<explicit revision>
     > **Artifact ID**: <stable ID>
     > **Artifact Status**: DRAFT | PARTIAL | COMPLETE
-    > **Production Use**: BLOCKED — independent current-hash approval required
+    > **Production Use**: BLOCKED — independent current-revision approval required
     > **Concept Evidence ID**: <stable approval ID | MISSING>
     > **Platform/Engine Profile IDs**: <stable IDs | MISSING>
-    > **Context Manifest SHA-256**: <hash>
+    > **Context Manifest revision**: <revision>
     > **Authoring Receipt ID**: <stable ID | PENDING>
 
-Do not write `APPROVED`, reviewer identity/signature/date, a review-record hash,
-or authoring-receipt path/hash into the Art Bible. External records bind final
-target bytes and avoid a target/receipt hash cycle.
+Do not write `APPROVED`, reviewer identity/signature/date, a review-record revision,
+or authoring-receipt path/revision into the Art Bible. External records bind final
+target bytes and avoid a target/receipt revision cycle.
 
 ## Independent state axes
 
@@ -144,9 +144,9 @@ Production remains blocked unless a separate immutable
 `cgs.art-bible-review/v1` record from a fresh independent `art-director`:
 
 1. declares gate `AD-ART-BIBLE` and verdict `APPROVE`;
-2. names `AB-1`, all nine section hashes, current dependencies, and author IDs;
+2. names `AB-1`, all nine section revisions, current dependencies, and author IDs;
 3. proves reviewer separation;
-4. binds the current complete target hash and verified authoring receipt; and
+4. binds the current complete target revision and verified authoring receipt; and
 5. still matches current target/context bytes.
 
 A user risk acceptance, section approval/review, scoped completion, authoring
@@ -155,7 +155,7 @@ receipt, `CONCERNS`, or status text inside the target cannot replace this gate.
 ## Phase 0: Parse request and resolve independent modes
 
 Parse the invocation and request before any authoring context. Validate contract,
-IDs, paths, hashes, roles, budgets, operation, scope, and non-writes.
+IDs, paths, revisions, roles, budgets, operation, scope, and non-writes.
 
 Resolve modes independently:
 
@@ -175,7 +175,7 @@ identity/authorization evidence returns `BLOCKED` with zero target writes.
 
 Read only applicable `AGENTS.md`, exact request, target if present, and profile
 sources needed to identify the mutation. Inventory raw target bytes, header,
-stable-ID anchors/ranges, duplicates, unknown content, per-section hashes, current
+stable-ID anchors/ranges, duplicates, unknown content, per-section revisions, current
 artifact/review status, and expected checkpoint head.
 
 Operation rules:
@@ -192,18 +192,18 @@ Operation rules:
 Present one mutation manifest before broader context loading:
 
     Operation / scope / stable section IDs
-    Target / expected target SHA-256 or ABSENT
-    Checkpoint root / expected predecessor ID and SHA-256
+    Target / expected target revision or ABSENT
+    Checkpoint root / expected predecessor ID and revision
     Deterministic checkpoint and authoring-receipt names
     Artifact/run/profile/content/author-schema IDs
     Writer/recorder identities and limits
     Exact non-writes
 
 Obtain one explicit authorization from the named mutation authority if the
-request does not already bind a current authorization hash. Do not ask again for
+request does not already bind a current authorization revision. Do not ask again for
 filesystem permission for later approved section bodies inside this boundary.
 
-## Phase 2: Load bounded hash-manifested context
+## Phase 2: Load bounded revision-manifested context
 
 After authorization, select candidates in stable order:
 
@@ -221,16 +221,16 @@ file, including AGENTS, target, checkpoint, and evidence, against hard maxima 16
 files and 524288 exact bytes. Determine size before load; never truncate.
 
 The context manifest records ordered path, role, stable IDs/owners, locator,
-bytes, raw SHA-256, dependency edge, loaded/omitted state, and reason. Canonicalize
+bytes, raw revision, dependency edge, loaded/omitted state, and reason. Canonicalize
 the manifest as UTF-8 LF, fixed field order, no trailing whitespace, one final
-newline, then store its digest.
+newline, then store its revision.
 
 Mark an existing target `mutable-target-baseline`: its baseline remains
 provenance, but target currentness is checked by Target/Section CAS rather than as
-external context after an authorized write. Re-hash every external context entry
+external context after an authorized write. re-read every external context entry
 before each dependent write and final handoff.
 
-If mandatory context exceeds budget, is absent, or mismatches its declared hash,
+If mandatory context exceeds budget, is absent, or mismatches its declared revision,
 append at most one authorized PARTIAL checkpoint with reason
 `CONTEXT_BUDGET_EXCEEDED` or `CONTEXT_EVIDENCE_INVALID`, leave target unchanged,
 list loaded/omitted evidence, and stop. Required evidence is never silently
@@ -247,15 +247,15 @@ text alone never proves completeness. Reject duplicate/missing IDs and ambiguous
 anchors before writes.
 
 For legacy/unknown schema, create a read-only mapping proposal containing every
-source byte range/hash, proposed AB-1 destinations, move/split/merge action,
+source byte range/revision, proposed AB-1 destinations, move/split/merge action,
 ambiguity, preserved bytes, and `UNMAPPED` disposition. Show exact before/after
 diff. Only `migrate-schema` plus accepted mapping and current CAS may rewrite.
 Preserve unresolved content in an explicit appendix; unresolved mapping blocks
 COMPLETE and review handoff. Migration alone grants no completeness or approval.
 
-Build an ordered plan for selected sections with assertion results, source hashes,
+Build an ordered plan for selected sections with assertion results, source revisions,
 decision dependencies, exact byte anchors/baselines, writer, and expected
-operation. Re-hash target, authorization, and used context after plan approval;
+operation. re-read target, authorization, and used context after plan approval;
 mismatch returns `ERROR — TARGET/CONTEXT/AUTHORIZATION CHANGED`, zero write.
 
 ## Phase 4: Create/migrate skeleton and initialize checkpoint chain
@@ -269,20 +269,20 @@ Migration writes only the accepted lossless mapping, header, and nine-section
 structure; do not mix migration with invented content.
 
 Append a create-only `cgs.art-bible-checkpoint/v2` record containing request/
-authorization/context/target/profile hashes, roles, modes, full section axes,
+authorization/context/target/profile revisions, roles, modes, full section axes,
 assertions, decisions/revisions, operation ledger, consultations/findings,
-budgets, predecessor ID/hash, next legal transition, and UTC timestamp. Canonical
-payload hash excludes its own `record_sha256`; predecessor CAS prevents forks.
+budgets, predecessor ID/revision, next legal transition, and UTC timestamp. Canonical
+payload revision excludes its own `record_revision`; predecessor CAS prevents forks.
 
 The final create-only `cgs.art-bible-authoring-receipt/v1` is written only after
-final target content/header CAS and read-back hash. It binds pre/post target
-hashes, context digest, author/profile/content schema, all section/revision/
+final target content/header CAS and read-back revision. It binds pre/post target
+revisions, context revision, author/profile/content schema, all section/revision/
 decision IDs, authorization, writer/recorder identities, final checkpoint, and
 target path. It is authoring evidence, never review approval.
 
 If checkpoint/receipt persistence fails after a verified target write, leave the
 content-derived artifact status intact, report Workflow Verdict PARTIAL with the
-exact unreceipted target hash, emit no review handoff, and never replay the write.
+exact unreceipted target revision, emit no review handoff, and never replay the write.
 
 ## Required continuation
 
@@ -295,7 +295,7 @@ close behavior.
 ## Non-implementation and review boundary
 
 This workflow stops after authoring evidence and, when eligible, a review handoff
-for exact target/receipt/context hashes. It does not invoke `AD-ART-BIBLE`, create
+for exact target/receipt/context revisions. It does not invoke `AD-ART-BIBLE`, create
 or modify review records, mark itself approved, update shared catalogs, generate
 assets, configure engines, or implement UI/art. Conversation memory, self-review,
-the wrong role, stale hashes, or missing receipts cannot authorize production.
+the wrong role, stale revisions, or missing receipts cannot authorize production.

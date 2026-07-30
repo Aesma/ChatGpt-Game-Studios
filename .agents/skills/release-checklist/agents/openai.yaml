@@ -1,4 +1,4 @@
 interface:
   display_name: "Release Checklist"
   short_description: "Normalize candidate-bound evidence without a release verdict"
-  default_prompt: "Use $release-checklist with a hash-pinned v2 request to normalize only exact indexed candidate/build/deployment/platform/legal/manual evidence into PASS, FAIL, UNKNOWN, or authorized N/A rows; keep waivers separate, return no gate or publication decision, and remain read-only unless a recorder has one absent checklist target under full CAS."
+  default_prompt: "Use $release-checklist with a revision-pinned v2 request to normalize only exact indexed candidate/build/deployment/platform/legal/manual evidence into PASS, FAIL, UNKNOWN, or authorized N/A rows; keep waivers separate, return no gate or publication decision, and remain read-only unless a recorder has one absent checklist target under full CAS."

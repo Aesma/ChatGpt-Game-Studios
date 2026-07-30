@@ -15,12 +15,12 @@ by an authorized test workflow.
 
 ## Fixtures and observation
 
-Each fixture freezes exact bytes and SHA-256 values for:
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 - project root and resolved workflow-catalog path;
 - one supported catalog document and every selected catalog entry;
 - an optional path-supplied or inline `cgs.project-stage-detection/v2` packet;
-- every packet-bound snapshot, manifest, receipt, and source hash;
+- every packet-bound snapshot, manifest, receipt, and source revision;
 - current `production/stage.txt` bytes or absence;
 - current review-mode configuration bytes or absence;
 - existing `production/onboarding/preferences.yaml` bytes or absence;
@@ -28,7 +28,7 @@ Each fixture freezes exact bytes and SHA-256 values for:
 - any `cgs.gate-record/v2` document used as transition evidence.
 
 The harness records all reads, prompts, proposed changes, directory/file mutations,
-read-back hashes, route decisions, and attempted downstream invocations. A test
+read-back revisions, route decisions, and attempted downstream invocations. A test
 fails if the workflow reads an unlisted project artifact in order to infer stage or
 completion, selects a route not declared by the fixture catalog, mutates an
 authoritative configuration, or invokes another workflow.
@@ -40,7 +40,7 @@ authoritative configuration, or invokes another workflow.
 - [ ] Metadata describes canonical-packet onboarding, catalog routing, optional
   preference persistence, and the no-stage/no-review/no-auto-run boundary.
 - [ ] Invocation accepts either one exact `--analysis <path>` with
-  `--expect-analysis <sha256>` or one explicitly supplied inline canonical packet,
+  `declared revision <revision>` or one explicitly supplied inline canonical packet,
   never both and never an inferred newest file.
 - [ ] `--persist` is the only preference-write request; it does not authorize stage,
   review-mode, catalog, packet, or workflow mutation.
@@ -80,9 +80,9 @@ authoritative configuration, or invokes another workflow.
 - [ ] Preference state records observed authoritative configuration separately from
   desired preferences and never edits the observed configuration.
 - [ ] Every write has a complete changeset/directory preview, schema validation,
-  raw-byte compare-and-set checks, atomic replacement, and read-back verification.
-- [ ] CAS binds catalog, packet/source, authoritative observed configuration,
-  preference preimage, and previewed parent-directory states.
+  raw-byte atomic conflict check checks, atomic replacement, and read-back verification.
+- [ ] atomic conflict check binds catalog, packet/source, authoritative observed configuration,
+  preference prior state, and previewed parent-directory states.
 - [ ] Concurrent drift produces `CONFLICT` with no merge, overwrite, partial repair,
   or hidden success.
 - [ ] Exactly one catalog-derived action, one manual diagnostic action, or `Stop` is
@@ -95,12 +95,12 @@ authoritative configuration, or invokes another workflow.
 ### Case 1: exact path-supplied canonical packet
 
 Supply one complete current `cgs.project-stage-detection/v2` packet by exact path
-and matching `--expect-analysis` SHA-256. Packet root, bound catalog, snapshot,
-manifest, receipt counts, and source hashes all match the frozen fixtures.
+and matching `declared revision` revision. Packet root, bound catalog, snapshot,
+manifest, receipt counts, and source revisions all match the frozen fixtures.
 
 **Expected**
 
-The packet state is `CURRENT`; its packet ID and hash are reported. It constrains
+The packet state is `CURRENT`; its packet ID and revision are reported. It constrains
 route evidence but is not treated as completion or transition proof. No other stage
 analysis file is discovered or selected.
 
@@ -118,7 +118,7 @@ detector first persist a copy.
 ### Case 3: ambiguous packet inputs
 
 Supply both a path packet and inline packet, two inline packets, or a path without
-`--expect-analysis`.
+`declared revision`.
 
 **Expected**
 
@@ -138,7 +138,7 @@ detector/diagnostic action or `Stop`, never a guessed production workflow.
 
 ### Case 5: invalid, stale, mismatched, or unreadable packet
 
-Test each independently: unsupported schema, byte-hash mismatch, duplicate packet
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 ID field, changed bound catalog, changed source, incomplete receipt counts,
 `UNKNOWN`, `CONFLICT`, stale snapshot, project-root mismatch, and unreadable path.
 
@@ -154,7 +154,7 @@ Provide any value in `production/stage.txt`, with and without a canonical packet
 
 **Expected**
 
-The file is reported only as `LEGACY_DECLARATION` with its observed hash. It is not
+The file is reported only as `LEGACY_DECLARATION` with its observed revision. It is not
 created, normalized, edited, or used as proof and cannot repair missing packet or
 receipt evidence.
 
@@ -168,7 +168,7 @@ or prerequisite contract for the same stable workflow ID.
 **Expected**
 
 The recommendation follows each fixture without changing the skill. Output reports
-the catalog version/hash and selected stable workflow ID. No stale hardcoded command
+the catalog version/revision and selected stable workflow ID. No stale hardcoded command
 or copied studio roadmap appears.
 
 ### Case 8: invalid catalog contract
@@ -234,7 +234,7 @@ Invoke with `--persist`; no preference file and neither parent directory exists.
 Operation is `INITIALIZE`. Preview names creation of `production/`,
 `production/onboarding/`, and exactly
 `production/onboarding/preferences.yaml`, including expected absence markers and
-output hash. After approval and successful CAS, atomic write/read-back produces a
+output revision. After approval and successful atomic conflict check, atomic write/read-back produces a
 valid `cgs.onboarding-preferences/v2` document. No other path changes.
 
 ### Case 14: valid update preserves history
@@ -246,12 +246,12 @@ chosen route.
 
 Operation is `UPDATE`; an exact field-level diff is shown. Unrelated fields and all
 prior decision/risk records are preserved, and one immutable decision event is
-appended. The preimage and output hashes are reported.
+appended. The prior state and output revisions are reported.
 
 ### Case 15: invalid existing preference blocks replacement
 
 Test unsupported schema/version, missing required field, invalid enum, duplicate
-decision ID, duplicate risk ID, invalid hash, or invalid authority marker.
+decision ID, duplicate risk ID, invalid revision, or invalid authority marker.
 
 **Expected**
 
@@ -261,7 +261,7 @@ or replacement occurs. Read-only guidance may continue with the limitation visib
 ### Case 16: atomic write or verification failure
 
 Inject failure before rename, during atomic replacement, or after replacement at
-read-back/hash verification.
+read-back/revision verification.
 
 **Expected**
 
@@ -277,7 +277,7 @@ Observed authoritative review mode is `lean`; the user chooses preference `full`
 
 **Expected**
 
-The v2 document records the observed configuration path/hash/value separately from
+The v2 document records the observed configuration path/revision/value separately from
 the desired preference. Preview shows only the preference-file change. The review
 configuration remains byte-identical and the mismatch stays visible.
 
@@ -310,15 +310,15 @@ current packet, and the proposed preference selects the safe current route.
 The preview identifies the observed-versus-desired conflict and exact changed
 fields. It never silently normalizes the old choice or changes project state.
 
-## ST-009 — compare-and-set concurrency
+## ST-009 — atomic conflict check concurrency
 
-### Case 21: preference preimage changes after preview
+### Case 21: preference prior state changes after preview
 
 Another actor changes preference bytes after preview and before commit.
 
 **Expected**
 
-CAS returns `CONFLICT`; there is no merge or overwrite and no write is reported as
+atomic conflict check returns `CONFLICT`; there is no merge or overwrite and no write is reported as
 successful.
 
 ### Case 22: catalog or packet binding changes after preview
@@ -338,7 +338,7 @@ configuration.
 
 **Expected**
 
-Each raw-byte preimage mismatch produces `CONFLICT`, even though start would not
+Each raw-byte prior state mismatch produces `CONFLICT`, even though start would not
 write those files. The preferences are not persisted with stale observations.
 
 ### Case 24: parent directory state changes
@@ -348,7 +348,7 @@ or replaces a previewed parent path.
 
 **Expected**
 
-CAS produces `CONFLICT`; start does not proceed into an unreviewed filesystem state
+atomic conflict check produces `CONFLICT`; start does not proceed into an unreviewed filesystem state
 or try to repair it.
 
 ## ST-010 — first unmet required step and exact transitions
@@ -393,7 +393,7 @@ the transition.
 
 Vary the gate record to `CONCERNS`, `FAIL`, coverage `PARTIAL`,
 `decision.advancement_disposition: NOT_ELIGIBLE`, mutation guard not passed,
-`stage_mutated: true`, stale target hash, wrong transition ID, or accepted risk.
+`stage_mutated: true`, stale target revision, wrong transition ID, or accepted risk.
 
 **Expected**
 
@@ -467,14 +467,14 @@ the only result.
 
 ### Case 35: transparent partial and conflict output
 
-Exercise each packet limitation, catalog gap, persistence decline, CAS conflict, and
+Exercise each packet limitation, catalog gap, persistence decline, atomic conflict check conflict, and
 write failure.
 
 **Expected**
 
 Output preserves the exact state and reason codes, catalog/packet identifiers and
-hashes, selected action or `Stop`, prerequisite classification, preference
-operation/path/hashes, and conflicts. It always says `Stage Mutation: NONE`,
+revisions, selected action or `Stop`, prerequisite classification, preference
+operation/path/revisions, and conflicts. It always says `Stage Mutation: NONE`,
 `Review Mode Mutation: NONE`, and `Auto Executed: false`.
 
 ### Case 36: no automatic handoff
@@ -497,10 +497,18 @@ started. `COMPLETE` is explicitly limited to onboarding completion.
   explicit.
 - [ ] ST-008: initialization, update, unchanged, decline, and observed-versus-desired
   review state remain distinct.
-- [ ] ST-009: all bound preimages participate in compare-and-set conflict handling.
+- [ ] ST-009: all bound prior states participate in atomic conflict check conflict handling.
 - [ ] ST-010: first unmet required-step routing uses verified receipts and exact
   passing transition gates; no later-step guess is possible.
 - [ ] Concept artifacts use only catalog-declared compatible review contracts.
 - [ ] Accepted risk remains visible, bounded, and non-passing.
 - [ ] The workflow stops after one recommendation and never mutates authoritative
   project progress.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

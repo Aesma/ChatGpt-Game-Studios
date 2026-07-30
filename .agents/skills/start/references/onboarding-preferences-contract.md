@@ -3,7 +3,7 @@
 This contract is normative for the only file `$start` may create or update:
 `production/onboarding/preferences.yaml`. It defines schema, validation,
 initialization/update behavior, canonical identity, authorization preview,
-compare-and-set, and read-back verification. Preferences are non-authoritative
+atomic conflict check, and read-back verification. Preferences are non-authoritative
 user intent; they never establish stage, gate, completion, engine selection, or
 workflow execution.
 
@@ -23,7 +23,7 @@ The only preference operations are:
 - `UNCHANGED` — proposed canonical bytes equal current bytes;
 - `NOT_REQUESTED` — user did not request persistence;
 - `DECLINED` — exact preview was declined;
-- `CONFLICT` — a preimage, dependency, path, or directory state changed;
+- `CONFLICT` — a prior state, dependency, path, or directory state changed;
 - `FAILED` — authorized atomic write/read-back failed; or
 - `BLOCKED_INVALID_EXISTING` — existing target is unsupported or invalid.
 
@@ -42,23 +42,23 @@ values. Use this field order:
 ```yaml
 schema: cgs.onboarding-preferences/v2
 schema_version: 2
-preference_id: <stable UUID or sha256-based ID>
+preference_id: <stable UUID or revision-based ID>
 project:
-  root_id: sha256:<canonical real-root identity>
+  root_id: <stable allocated ID>
 created_at: <ISO-8601 with timezone>
 updated_at: <ISO-8601 with timezone>
 catalog:
   path: .codex/docs/workflow-catalog.yaml
   schema_version: <catalog schema version>
   catalog_version: <catalog version>
-  raw_sha256: sha256:<64 lowercase hex>
+  raw_revision: <positive integer>
 stage_packet:
   state: CURRENT | MISSING | INVALID | STALE | PROJECT_MISMATCH | UNREADABLE
   source: INLINE | PATH | NONE
   source_path: <repository-relative path or null>
-  raw_sha256: <sha256 or null for INLINE/NONE>
-  packet_id: <sha256 or null>
-  snapshot_manifest_sha256: <sha256 or null>
+  raw_revision: <revision or null for INLINE/NONE>
+  packet_id: <revision or null>
+  snapshot_manifest_revision: <revision or null>
   result: DETECTED | CONFLICT | UNKNOWN | ERROR | UNAVAILABLE
   resolution_state: CLEAR | BLOCKED | UNAVAILABLE
   detected_stage: Concept | Systems Design | Technical Setup | Pre-Production | Production | Polish | Release | UNKNOWN
@@ -66,13 +66,13 @@ observed_configuration:
   legacy_stage:
     path: production/stage.txt
     source_state: PRESENT | ABSENT | UNREADABLE
-    raw_sha256: <sha256 | ABSENT | UNVERIFIED>
+    raw_revision: <revision | ABSENT | UNVERIFIED>
     value: <bounded raw value | UNKNOWN>
     authority: LEGACY_DECLARATION_ONLY
   review_mode:
     path: production/review-mode.txt
     source_state: PRESENT | ABSENT | UNREADABLE
-    raw_sha256: <sha256 | ABSENT | UNVERIFIED>
+    raw_revision: <revision | ABSENT | UNVERIFIED>
     value: full | lean | solo | INVALID | UNKNOWN
 preferences:
   self_reported_start_state: NO_IDEA | VAGUE_IDEA | CLEAR_UNFORMALIZED_CONCEPT | EXISTING_WORK | OTHER
@@ -97,8 +97,8 @@ risk_records:
     accepted_at: <ISO-8601 with timezone>
     expires_or_review_at: <timestamp or milestone ID>
     remediation_catalog_step_id: <first missing concept step ID>
-    catalog_sha256: <sha256>
-    stage_packet_id: <sha256 or null>
+    catalog_revision: <revision>
+    stage_packet_id: <revision or null>
 decision_history:
   - decision_id: <stable append-only ID>
     decision_owner: <explicit user identity>
@@ -106,8 +106,8 @@ decision_history:
     operation: INITIALIZE | UPDATE
     changed_fields: [<canonical field paths>]
     route_catalog_step_id: <stable ID | NONE>
-    catalog_sha256: <sha256>
-    stage_packet_id: <sha256 or null>
+    catalog_revision: <revision>
+    stage_packet_id: <revision or null>
 authority_boundary:
   stage_mutation: NONE
   review_mode_mutation: NONE
@@ -127,16 +127,16 @@ For an existing document, require:
 - unique preference, decision, and risk IDs;
 - monotonic append-only decision/risk history;
 - parseable timezone-bearing timestamps with `created_at <= updated_at`;
-- valid lowercase SHA-256 values or exact allowed null/state marker;
+- valid positive integer revisions or exact allowed null/state marker;
 - a catalog step/command pair that matches the recorded catalog bytes, unless
   route state is UNKNOWN/BLOCKED/NO_ROUTE and both are NONE;
 - risk records whose decision/remediation/catalog/packet references resolve;
 - authority boundary fixed to no stage/review mutation and no auto execution; and
 - no unknown required field, duplicate key, placeholder, or self-approval claim.
 
-An old catalog or packet hash in a structurally valid existing file is historical
+An old catalog or packet revision in a structurally valid existing file is historical
 provenance, not corruption. New route/preferences use the current catalog/packet
-and append a decision event; never rewrite prior history to current hashes.
+and append a decision event; never rewrite prior history to current revisions.
 
 ## 4. Initialize versus update
 
@@ -145,7 +145,7 @@ and append a decision event; never rewrite prior history to current hashes.
 Use only when the target was confirmed absent at snapshot time. Generate a new
 preference ID and one decision event. Show complete proposed bytes and directory/
 file operations. Immediately before writing, require target and every parent
-directory existence state to equal the previewed preimage.
+directory existence state to equal the previewed prior state.
 
 ### UPDATE
 
@@ -163,7 +163,7 @@ deduplicate historical records.
 Show a field-level old/new diff and the full proposed output bytes. In particular,
 show independently:
 
-- observed review-mode value/hash;
+- observed review-mode value/revision;
 - requested review-mode preference;
 - whether they agree or differ; and
 - `review_mode_mutation: NONE`.
@@ -178,12 +178,12 @@ Before any mutation, show:
 
 - operation and exact target path;
 - every directory to create;
-- existing preference preimage hash or ABSENT;
-- current catalog path/version/hash;
-- stage-packet source/ID/snapshot hash/state;
-- observed legacy-stage and review-mode path/hash/state;
+- existing preference prior state revision or ABSENT;
+- current catalog path/version/revision;
+- stage-packet source/ID/snapshot revision/state;
+- observed legacy-stage and review-mode path/revision/state;
 - complete field diff for UPDATE;
-- complete proposed file bytes and output hash;
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - risk/decision IDs appended;
 - stage/review-mode files explicitly unchanged; and
 - no downstream workflow execution.
@@ -192,9 +192,9 @@ An explicit bounded `--persist` request may authorize this exact preview. Withou
 such authorization, ask once. Authorization is invalidated by any changed preview
 input or output byte and never extends to another file/workflow.
 
-## 6. Compare-and-set transaction
+## 6. atomic conflict check transaction
 
-Immediately before mutation, re-read/re-hash:
+Immediately before mutation, re-read/re-read:
 
 1. workflow catalog;
 2. path-supplied stage packet and every packet snapshot entry, or revalidate the
@@ -205,16 +205,16 @@ Immediately before mutation, re-read/re-hash:
 
 Require equality with the preview snapshot. Any difference, including a changed
 observed review mode, produces `CONFLICT`, writes nothing, and reports exact old/
-new hashes or state markers. Do not merge, refresh the preview implicitly, retry,
+new revisions or state markers. Do not merge, refresh the preview implicitly, retry,
 or overwrite another actor's change.
 
-After CAS succeeds:
+After atomic conflict check succeeds:
 
 1. create only previewed missing directories;
 2. write proposed bytes to a same-directory temporary file;
 3. flush/close as supported and atomically replace/create the exact target;
 4. re-read exact target bytes;
-5. require output hash and parsed schema/IDs/history/references to equal preview;
+5. require output revision and parsed schema/IDs/history/references to equal preview;
 6. verify stage/review-mode bytes or source states remain unchanged by this
    workflow; and
 7. report `WRITTEN` only after every verification succeeds.
@@ -235,7 +235,7 @@ but the file is never replaced.
 Every path reports:
 
 - preference operation and persistence separately;
-- exact path/preimage/output hash or absence marker;
+- exact path/prior state/output revision or absence marker;
 - stage/review-mode mutation `NONE`;
 - workflow auto-executed `false`; and
 - conflicts, declines, failures, and unsupported schema without hiding them.

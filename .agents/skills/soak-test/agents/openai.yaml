@@ -1,4 +1,4 @@
 interface:
   display_name: "Soak Test"
   short_description: "Finalize unit-safe immutable endurance evidence"
-  default_prompt: "Use $soak-test with exact candidate, build, protocol, and run manifests to expand endurance checkpoints, ingest immutable unit-bound resource evidence, classify timeout and recovery states, and publish only a CAS-verified conclusive handoff."
+  default_prompt: "Use $soak-test with exact candidate, build, protocol, and run manifests to expand endurance checkpoints, ingest immutable unit-bound resource evidence, classify timeout and recovery states, and publish only a version and existence conflict check-verified conclusive handoff."

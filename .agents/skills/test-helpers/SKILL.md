@@ -1,6 +1,6 @@
 ---
 name: test-helpers
-description: "Generates hash-bound engine test fixtures and helper contracts against real production APIs, then compiles, discovers, exercises, and cleanup-validates them before publication."
+description: "Generates version-bound engine test fixtures and helper contracts against real production APIs, then compiles, discovers, exercises, and cleanup-validates them before publication."
 ---
 
 ## Invocation and boundary
@@ -30,11 +30,10 @@ owned_outputs:
   evidence_root: production/qa/evidence/test-helpers/<request-id>/<run-id>/
 output_contract_schema: cgs-test-helper-artifact/v2
 validation_receipt_schema: cgs-test-helper-validation-receipt/v2
-hash_algorithm: sha256
 ~~~
 
 The request must name the exact current test-setup receipt and every manifest above
-with raw SHA-256. Re-hash their full dependency sets; names, dates, or successful old
+with declared revision. revalidate their full dependency sets; names, dates, or successful old
 runs do not establish freshness.
 
 This workflow owns only the exact operations declared by the validated manifest:
@@ -70,7 +69,7 @@ Report these axes independently:
 | Compile Status | PASS, FAIL, PARTIAL, NOT_RUN |
 | Discovery Status | VERIFIED, ZERO, PARTIAL, NOT_RUN |
 | Determinism Status | VERIFIED, UNSTABLE, PARTIAL, NOT_RUN |
-| Ownership/CAS | VERIFIED, CONFLICT, PARTIAL, NOT_RUN |
+| Ownership/version and existence conflict check | VERIFIED, CONFLICT, PARTIAL, NOT_RUN |
 | Receipt Freshness | CURRENT, STALE, INVALID, UNVERIFIED |
 
 Also report Business Coverage: NOT ESTABLISHED for every outcome. A helper validation receipt proves only the helper contract. It never proves a business AC is covered, that a regression test exists, or that a release test passed.
@@ -83,39 +82,39 @@ partiality.
 
 ## Phase 1: Validate framework, engine, instructions, and scope
 
-Resolve the supplied literal manifest path and real path. Reject symlinks escaping the project root, malformed syntax, duplicate keys, unsupported schema, unsafe slugs, dot segments, and paths outside the project root. Read raw bytes once and compute SHA-256 over exact bytes.
+Resolve the supplied literal manifest path and real path. Reject symlinks escaping the project root, malformed syntax, duplicate keys, unsupported schema, unsafe slugs, dot segments, and paths outside the project root. Read the manifest once and validate its stable request ID, schema/version, and explicit revision.
 
 Require Artifact Type: test-helper-request, Schema Version: 2 and:
 
 - unique request ID and run ID, neither a date alone;
-- exact `cgs-test-setup-receipt/v2` path/hash and its declared candidate/build IDs;
+- exact `cgs-test-setup-receipt/v2` path/revision and its declared candidate/build IDs;
 - exact engine-authority, repository-policy, layout-manifest, validator-manifest,
   execution-manifest, dependency-lock, test-framework, and current setup discovery/
-  CI receipt paths/hashes copied from that setup receipt;
+  CI receipt paths/revisions copied from that setup receipt;
 - exact engine, engine version, language, project root, module/assembly, and test
   framework copied from the current engine/layout authorities;
-- exact engine-adapter ID/path/hash and validator-manifest row IDs for compile,
+- exact engine-adapter ID/path/revision and validator-manifest row IDs for compile,
   discovery, consumer-run, AST/symbol parse, receipt parse, timeout, output-cap,
   cleanup, and result parsing;
-- exact QA-plan path/hash and effective CURRENT source snapshot when stable AC/test IDs are declared;
-- exact `cgs-production-api-snapshot/v1` path/hash with producer/tool/version/hash,
+- exact QA-plan path/revision and effective CURRENT source snapshot when stable AC/test IDs are declared;
+- exact `cgs-production-api-snapshot/v1` path/revision with producer/tool/version/revision,
   source-closure ledger, exported symbols/signatures, constructors, dependency edges,
   runtime-config accessors, and compile identity;
 - ordered helper items;
 - batch limits: maximum items, output files, source/input bytes, candidate bytes,
   wall time, and per-tool time/output bytes, all at or below contract maxima;
 - explicit omitted-item policy;
-- exact existing-pattern sample paths/hashes when style sampling is requested.
+- exact existing-pattern sample paths/revisions when style sampling is requested.
 
 Each helper item requires:
 
 - stable Helper ID and helper kind: fixture, factory, assertion, adapter, or test-double;
 - SUT Mode: REAL or ISOLATED_FAKE;
 - stable AC IDs and stable test/check IDs from the CURRENT QA plan, or an explicit NONE when the helper is framework-only;
-- requirement source paths/hashes and expected observable;
-- real production type/module/symbol, source paths/hashes, constructor/dependency seams, and runtime config sources/hashes for REAL mode;
-- interface/protocol source paths/hashes and allowed seam for ISOLATED_FAKE mode;
-- exact output path, engine module/assembly, operation CREATE or EXTEND, and expected base-file hash for EXTEND;
+- requirement source paths/revisions and expected observable;
+- real production type/module/symbol, source paths/revisions, constructor/dependency seams, and runtime config sources/revisions for REAL mode;
+- interface/protocol source paths/revisions and allowed seam for ISOLATED_FAKE mode;
+- exact output path, engine module/assembly, operation CREATE or EXTEND, and expected base-file revision for EXTEND;
 - exported helper symbols and normalized signatures;
 - exact helper-only consumer test path and canonical test name;
 - cleanup obligations and resource types;
@@ -146,7 +145,7 @@ normative closure clause for audit item TH-012.
 **P1 Clause TH-CL-005 — Current test-setup authority.**
 
 Require tests/ plus the exact layout, validator, and execution manifests to exist and
-validate the supplied test-setup receipt schema/content hash. Re-hash every dependency
+validate the supplied test-setup receipt schema/content revision. revalidate every dependency
 named by that receipt and require `Audit Coverage: COMPLETE`, `Static Validation:
 PASS`, `Verification Level: CI_VERIFIED`, `Determinism Status: VERIFIED`, `Receipt
 Freshness: CURRENT`, `Setup Status: VERIFIED`, and `Gate Eligible: YES` for the same
@@ -170,7 +169,7 @@ for audit item TH-006.
 Enumerate every proposed source, consumer, contract, and evidence target before
 generation. For each target, read in full every applicable AGENTS.md from project root
 through its parent, including tests/AGENTS.md. Record selected, loaded, unreadable,
-omitted, and superseded paths/hashes and the effective closest source for naming,
+omitted, and superseded paths/revisions and the effective closest source for naming,
 AAA, fixture, isolation, lifecycle, ownership, and engine rules. Conflicting or
 unreadable applicable instructions make `Instruction Coverage: PARTIAL` and block the
 affected item; do not copy a local pattern that violates instructions.
@@ -183,8 +182,8 @@ audit item TH-007.
 
 **P1 Clause TH-CL-008 — Deterministic compliant style sampling.**
 
-Use only explicit sample path/hash/kind rows from the request manifest. Resolve and
-reject canonical duplicate paths, unreadable/hash-mismatched samples, or paths outside
+Use only explicit sample path/revision/kind rows from the request manifest. Resolve and
+reject canonical duplicate paths, unreadable/revision-mismatched samples, or paths outside
 the project. Parse every admitted sample with the pinned language validator, apply the
 current instruction/coding-standard rules, and exclude violations before selection.
 
@@ -192,7 +191,7 @@ Selection is deterministic: group valid samples by kind in this order: fixture,
 factory, assertion, adapter, test-double; sort each group by normalized case-folded
 path then raw path; take the first item from each nonempty group until five are chosen;
 if capacity remains, merge all unchosen valid samples and fill by the same path order.
-Record selected and excluded samples with hashes and rule IDs. Do not backfill from an
+Record selected and excluded samples with revisions and rule IDs. Do not backfill from an
 invalid sample and do not learn semantics from samples. They are style hints only;
 never reproduce nondeterminism, shared mutable state, missing teardown, opaque helpers,
 generic naming, production API guesses, or other anti-patterns.
@@ -203,7 +202,7 @@ generic naming, production API guesses, or other anti-patterns.
 
 For every REAL item:
 
-1. Validate the production API snapshot schema/hash/tool identity, then re-hash its
+1. Validate the production API snapshot schema/revision/tool identity, then revalidate its
    complete source closure, generated dependencies, runtime config, and accepted
    requirement sources.
 2. Require every requirement ID to resolve to an accepted/current owner artifact.
@@ -216,9 +215,9 @@ For every REAL item:
 5. Require generated factory/fixture code to instantiate that real production type or its real subclass/component through the declared API.
 6. Require the helper consumer to call the exact declared real production
    method/event/property path and collect adapter-defined execution evidence binding
-   the module/type/symbol signature and production binary/source hashes.
+   the module/type/symbol signature and production binary/source revisions.
 7. Inject actual production config only through the resolved production accessor or a
-   hash-bound adapter around that accessor. Never duplicate a GDD number as a helper
+   version-bound adapter around that accessor. Never duplicate a GDD number as a helper
    constant or new oracle.
 8. If requirement, API snapshot, implementation graph, compiled symbol, or runtime
    config differs, set `Production Binding: CONFLICTING/STALE`, report the exact
@@ -229,7 +228,7 @@ A bare Node, GameObject, UObject, dictionary, metadata bag, or invented class ca
 For every ISOLATED_FAKE item:
 
 - label the source header, contract manifest, validation receipt, and output as ISOLATED_FAKE;
-- implement only the exact hash-bound production interface/protocol at an approved dependency seam;
+- implement only the exact version-bound production interface/protocol at an approved dependency seam;
 - prohibit production-type, business-coverage, formula-oracle, and actual-system claims;
 - require consumers to inject it into a separate real SUT;
 - reject a fake that reproduces the behavior being tested or becomes an independent business oracle.
@@ -238,17 +237,17 @@ A fake may validate an interaction seam; it cannot satisfy AC coverage or substi
 
 ### Value and oracle provenance
 
-**P1 Clause TH-CL-011 — Hash-bound value/oracle provenance.**
+**P1 Clause TH-CL-011 — version-bound value/oracle provenance.**
 
 Classify every generated literal/default as `PRODUCTION_CONFIG`,
 `REQUIREMENT_EXPECTED_ONLY`, or `TEST_LOCAL_NONBUSINESS`. A business-affecting value
 may appear in executable helper code only as a call/injection through a verified
 `PRODUCTION_CONFIG` accessor. `REQUIREMENT_EXPECTED_ONLY` belongs only in the consumer
-expectation and retains accepted requirement ID/path/hash; it must not initialize the
+expectation and retains accepted requirement ID/path/revision; it must not initialize the
 SUT. `TEST_LOCAL_NONBUSINESS` must be semantically irrelevant to the business result.
 
-Record each value provenance class, accessor or expectation symbol, source path/hash,
-and owner in the helper artifact contract. Re-hash all sources before validation,
+Record each value provenance class, accessor or expectation symbol, source path/revision,
+and owner in the helper artifact contract. revalidate all sources before validation,
 publish, and downstream consumption. Any change makes the candidate or published
 contract STALE; stable IDs and unchanged literal text do not prove freshness.
 
@@ -269,7 +268,7 @@ Do not emit a generic one-argument lambda for an arbitrary signal and do not lea
 
 ### Unity
 
-- Place helpers and consumers under the exact existing test assembly directory named by the request; require its current asmdef path/hash and assembly reference.
+- Place helpers and consumers under the exact existing test assembly directory named by the request; require its current asmdef path/revision and assembly reference.
 - Instantiate real MonoBehaviour/ScriptableObject types through declared production APIs.
 - A fixture owns every GameObject, Component, ScriptableObject, native allocation, event subscription, and temporary asset it creates.
 - TearDown or IDisposable cleanup runs in a finally-safe path and destroys/unsubscribes all owned resources.
@@ -280,7 +279,7 @@ Never require each caller to remember DestroyImmediate.
 ### Unreal Engine
 
 - Place headers/sources and consumers inside an existing project Tests module named by the request, for example Source/{Project}Tests/Public/Helpers and Source/{Project}Tests/Private.
-- Require current .uproject/.uplugin, Tests Target/ModuleRules or Build.cs, dependency modules, include roots, and adapter hashes before generation.
+- Require current .uproject/.uplugin, Tests Target/ModuleRules or Build.cs, dependency modules, include roots, and adapter revisions before generation.
 - Never write an Unreal helper only to tests/helpers or claim a header is usable without a compiled Tests module route.
 - Represent world ownership with an RAII fixture. Its constructor creates the isolated test world/context through the approved engine adapter; its destructor always destroys actors/world, clears delegates/timers, removes the exact FWorldContext, and releases roots.
 - Disable copy, define safe move behavior only if needed, and assert no world/context/global delegate remains after scope exit.
@@ -298,36 +297,34 @@ Helper Kind: fixture | factory | assertion | adapter | test-double
 SUT Mode: REAL | ISOLATED_FAKE
 Stable AC IDs: {ids-or-NONE}
 Stable Test/Check IDs: {ids-or-NONE}
-Requirement Sources: {paths + sha256 digests}
-Production Symbols: {module/type/symbol + source digests}
-Runtime Config Sources: {paths + sha256 digests}
-Production API Snapshot SHA-256: sha256:{digest}
-Test Setup Receipt SHA-256: sha256:{digest}
-Layout/Engine/Validator/Execution SHA-256: {digests}
-Applicable AGENTS Chain SHA-256: sha256:{digest}
-Generated From Request SHA-256: sha256:{digest}
+Requirement Sources: {paths + revision identifiers}
+Production Symbols: {module/type/symbol + source identifiers}
+Runtime Config Sources: {paths + revision identifiers}
+Production API Snapshot revision: revision:{identifier}
+Test Setup Receipt revision: revision:{identifier}
+Layout/Engine/Validator/Execution revision: {identifiers}
+Applicable AGENTS Chain revision: revision:{identifier}
+Generated From Request revision: revision:{identifier}
 Business Coverage: NOT ESTABLISHED
 ~~~
 
-Do not embed the helper source's own raw hash in itself. After candidate bytes are final, build a separate contract payload containing:
+Do not embed the helper source's own declared revision in itself. After candidate bytes are final, build a separate contract payload containing:
 
 - stable helper identity/version/kind/SUT mode;
 - annotations above;
-- exact helper and consumer paths/raw-byte hashes;
+- exact helper and consumer paths/declared revisions;
 - normalized exported symbol signatures;
 - setup/teardown ownership and observable cleanup assertions;
-- imported production symbols and hashes;
-- production API snapshot/tool/source-closure hashes and compiled symbol evidence;
-- test-setup receipt plus engine/layout/validator/execution/dependency hashes;
-- per-literal value/oracle provenance class, accessor/expectation symbol, source hash,
+- imported production symbols and revisions;
+- production API snapshot/tool/source-closure revisions and compiled symbol evidence;
+- test-setup receipt plus engine/layout/validator/execution/dependency revisions;
+- per-literal value/oracle provenance class, accessor/expectation symbol, source revision,
   and owner;
 - expected helper behavior and negative-control condition;
-- engine/framework/adapter/module/assembly/config hashes.
+- engine/framework/adapter/module/assembly/config revisions.
 
-Serialize the payload as UTF-8 JSON Canonicalization Scheme (RFC 8785) bytes, compute
-Helper Contract SHA-256 over those exact bytes, and write the canonical payload plus
-digest to tests/helpers/contracts/{request-id}.json. Consumers such as
-test-evidence-review must re-hash the helper source, contract payload, test-setup
+Serialize the payload as UTF-8 JSON Canonicalization Scheme (RFC 8785) bytes. Write the owner-assigned Helper Contract ID and explicit contract revision to `tests/helpers/contracts/{request-id}.json`; do not calculate either from payload bytes. Consumers such as
+test-evidence-review must revalidate the helper source, contract payload, test-setup
 authorities, production API closure, runtime config, requirements, and applicable
 instructions. Any mismatch is STALE.
 
@@ -339,7 +336,7 @@ Stable AC/test annotations declare intended traceability only. They do not prove
 
 For CREATE, require the target not to exist. For EXTEND:
 
-1. verify the current raw-byte hash equals expected base-file hash;
+1. verify the current declared revision equals expected base-file revision;
 2. parse using the engine-language AST or symbol parser from the adapter;
 3. reject duplicate/conflicting exported symbols;
 4. insert only declared symbols at the parser-defined location;
@@ -351,21 +348,21 @@ If parsing is unavailable or the target changed, block the item. Never replace t
 If CREATE finds an existing target, or EXTEND finds a symbol/path ownership conflict,
 do not skip, delete, rename, or choose automatically. Emit one decision packet with
 two bounded options when both are safe: `EXTEND` the existing owner using its exact
-base hash and declared insertion symbol, or `CREATE` at a new canonical layout-owned
+base revision and declared insertion symbol, or `CREATE` at a new canonical layout-owned
 path with a new ownership ID. Record effects and conflicts; require an amended signed
 request manifest before continuing. If either option is unsafe, omit it rather than
 presenting a false choice.
 
 Build an ownership table before candidate generation. Every helper, consumer,
 contract, receipt, log, and temporary staging path has one stable owner ID, operation,
-precondition (`ABSENT` for CREATE or exact SHA-256 for EXTEND), and authorized final
-hash. Canonical path or symbol collisions block all involved items.
+precondition (`ABSENT` for CREATE or exact revision for EXTEND), and authorized final
+revision. Canonical path or symbol collisions block all involved items.
 
 ## Phase 5: Compile, discover, exercise, and prove cleanup
 
 Validation occurs against an isolated staging tree containing the exact candidate
 bytes before the project changeset preview. Revalidate the current test-setup receipt,
-layout/engine/validator/execution manifests, adapter row, and dependency hashes before
+layout/engine/validator/execution manifests, adapter row, and dependency revisions before
 each tool class. Execute only pinned argv arrays allowlisted by those manifests; never
 synthesize shell commands. Apply the recorded working directory, environment-name
 allowlist, timeout, output cap, parser, redaction, and process-tree cleanup rules.
@@ -385,14 +382,14 @@ For each item require all of:
 3. Baseline consumer PASS before and after the negative control with equal semantic
    projections.
 4. REAL mode execution receipt names the real production module/type/symbol and demonstrates the declared production path executed.
-5. Negative-control run produces the expected FAIL for the same helper source/contract, stable IDs, production/requirement hashes, and controlled failure condition.
+5. Negative-control run produces the expected FAIL for the same helper source/contract, stable IDs, production/requirement revisions, and controlled failure condition.
 6. Teardown runs after both pass and fail paths.
 7. Post-teardown cleanup assertions pass with no leaked nodes, objects, subscriptions, worlds, contexts, delegates, timers, roots, or temporary assets.
-8. Logs are complete, untruncated, parsed, redacted, and hash-recorded.
+8. Logs are complete, untruncated, parsed, redacted, and revision-recorded.
 9. Every compile/discovery/run/cleanup receipt uses
    `cgs-test-helper-validation-receipt/v2` and binds current test-setup, manifest,
    adapter, production API, requirement, source, argv, control, result, log, and
-   parser hashes.
+   parser revisions.
 
 The negative control validates failure sensitivity of the helper contract/consumer only. It is not the regression-suite failure-sensitivity receipt for a business test and cannot make a stable AC VERIFIED.
 
@@ -401,7 +398,7 @@ Classify each candidate:
 - VERIFIED CANDIDATE: every check above passes;
 - INVALID CANDIDATE: a conclusive current compile FAIL, complete zero discovery,
   baseline/negative-control FAIL, real-SUT mismatch, deterministic mismatch, cleanup
-  FAIL, receipt INVALID, or hash STALE result proves the candidate invalid;
+  FAIL, receipt INVALID, or revision STALE result proves the candidate invalid;
 - PARTIAL VALIDATION: compiler/runner/parser unavailable or unsupported, timeout,
   killed/incomplete process, partial discovery, truncated output, missing receipt
   field, unreadable evidence, or incomplete validator coverage prevents a conclusion;
@@ -421,36 +418,36 @@ PARTIAL after verified persistence.
 For verified candidates, preview the complete changeset:
 
 - every CREATE helper and helper-only consumer;
-- every exact EXTEND insertion and previewed base hash;
+- every exact EXTEND insertion and previewed base revision;
 - contract manifest;
 - immutable validation receipt and logs under the request/run evidence directory;
 - explicit non-writes, including production code, business tests, QA plan, regression manifest, framework/module configuration, and session state.
 
 The validation receipt must bind request/helper/contract/ownership IDs,
-test-setup/layout/engine/validator/execution/dependency paths/hashes,
-helper/consumer/source hashes, stable annotations, production API closure/
-requirement/config hashes, engine/framework/adapter/module hashes, exact argv,
-runner/parser versions and hashes, deterministic controls/projection hashes,
+test-setup/layout/engine/validator/execution/dependency paths/revisions,
+helper/consumer/source revisions, stable annotations, production API closure/
+requirement/config revisions, engine/framework/adapter/module revisions, exact argv,
+runner/parser versions and revisions, deterministic controls/projection revisions,
 timestamps, exit codes, compile/discovery results, both baseline results,
-negative-control result, real-SUT path evidence, cleanup assertions, logs/hashes,
+negative-control result, real-SUT path evidence, cleanup assertions, logs/revisions,
 coverage ledger, every independent status axis, and validation status.
 
-Immediately before applying, re-hash every authority/input and every ownership-table
-path. Require CREATE paths ABSENT and EXTEND paths at exact preimage hashes. Any
-authority drift or path mismatch sets `Ownership/CAS: CONFLICT`, aborts the complete
+Immediately before applying, revalidate every authority/input and every ownership-table
+path. Require CREATE paths ABSENT and EXTEND paths at exact preimage revisions. Any
+authority drift or path mismatch sets `Ownership/version and existence conflict check: CONFLICT`, aborts the complete
 publication batch before its first write, and preserves external work.
 
 Stage all owned bytes with a transaction ID using the approved same-filesystem
-publication adapter. Verify staged hashes, then publish the authorized changeset
+publication adapter. Verify staged revisions, then publish the authorized changeset
 all-or-none. If the environment cannot provide the adapter's declared atomicity and
-recovery protocol, use `Ownership/CAS: PARTIAL` and publish nothing. Re-read every
-file, compare with approved bytes, reparse helper symbols, and verify final hashes
-equal the validated candidate hashes.
+recovery protocol, use `Ownership/version and existence conflict check: PARTIAL` and publish nothing. Re-read every
+file, compare with approved bytes, reparse helper symbols, and verify final revisions
+equal the validated candidate revisions.
 
-If publication is interrupted, stop writes, record every current path/hash as
+If publication is interrupted, stop writes, record every current path/revision as
 PREIMAGE, POSTIMAGE, or DIVERGED, and persist an immutable partial-application receipt
 outside target paths. Never blindly restore a saved file. Recovery is a separate
-authorized three-way/CAS operation that preserves diverged current bytes.
+authorized three-way/version and existence conflict check operation that preserves diverged current bytes.
 
 If persistence or read-back fails, report BLOCKED and do not claim a usable helper. Never return VERIFIED merely because source files were written.
 
@@ -458,22 +455,22 @@ If persistence or read-back fails, report BLOCKED and do not claim a usable help
 
 Report:
 
-- request manifest path/hash, request ID, run ID, and scope budget;
-- engine/language/framework/adapter/module/assembly identities and hashes;
+- request manifest path/revision, request ID, run ID, and scope budget;
+- engine/language/framework/adapter/module/assembly identities and revisions;
 - QA-plan effective state and stable annotations;
-- per-item operation, target, SUT mode, production symbols, helper source hash, contract hash, validation receipt/log hashes, and candidate status;
+- per-item operation, target, SUT mode, production symbols, helper source revision, contract revision, validation receipt/log revisions, and candidate status;
 - verified, invalid, blocked, and omitted counts;
 - partially validated and unprocessed counts plus the full ordered coverage ledger;
 - test-setup receipt and layout/engine/validator/execution/dependency freshness;
 - Instruction Coverage, Production Binding, Compile, Discovery, Determinism,
-  Ownership/CAS, and Receipt Freshness axes;
+  Ownership/version and existence conflict check, and Receipt Freshness axes;
 - Workflow Status;
 - Business Coverage: NOT ESTABLISHED;
 - exact written/unchanged/declined/failed operation ledger.
 
 Only VERIFIED or PARTIAL may describe published helpers as usable, and only for helper infrastructure. INVALID and BLOCKED say no usable helper was published.
 
-Downstream test-evidence-review may count a helper assertion only after reading and re-hashing the exact helper source and contract and proving its observable semantics. Regression-suite must still require a separate stable business-test mapping, current requirement/test hashes, its own failure-sensitivity receipt, and a current execution receipt. Never recommend test-helpers as a substitute for a missing regression/business test.
+Downstream test-evidence-review may count a helper assertion only after reading and revalidate the exact helper source and contract and proving its observable semantics. Regression-suite must still require a separate stable business-test mapping, current requirement/test revisions, its own failure-sensitivity receipt, and a current execution receipt. Never recommend test-helpers as a substitute for a missing regression/business test.
 
 Recommend the exact prerequisite, source owner, contract mismatch, or cleanup/validation failure to address. Do not auto-run another workflow or claim that any business test was scaffolded.
 

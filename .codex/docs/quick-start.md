@@ -130,7 +130,7 @@ Ask yourself: "What department would handle this in a real studio?"
 | `$hotfix` | Emergency fix with audit trail |
 | `$day-one-patch` | Prepare a focused day-one patch for known issues discovered after gold master |
 | `$prototype` | Concept prototype — validate the core idea before committing to detailed GDDs (Phase 1) |
-| `$vertical-slice` | Plan and independently evaluate a hash-bound vertical-slice candidate in separate tasks (Phase 4) |
+| `$vertical-slice` | Plan and independently evaluate a version-bound vertical-slice candidate in separate tasks (Phase 4) |
 | `$localize` | Localization scan, extract, validate |
 | `$team-combat` | Orchestrate full combat team pipeline |
 | `$team-narrative` | Orchestrate full narrative team pipeline |

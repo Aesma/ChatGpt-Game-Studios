@@ -10,15 +10,15 @@ canon, authorize fixes, or record the final result.
 Require:
 
 - `content_id`, `run_id`, operation, review round, and stable reviewer/attempt IDs;
-- frozen canon-manifest path/hash and `canon_baseline_sha256`;
-- final artifact manifest path/hash and `final_artifact_set_sha256`;
-- exact artifact ID/type/path/byte-count/raw-hash/owner rows;
+- frozen canon-manifest path/revision and `canon_baseline_revision`;
+- final artifact manifest path/revision and `final_artifact_set_revision`;
+- exact artifact ID/type/path/byte-count/declared revision/owner rows;
 - context, role, artifact, ownership, string-constraint, localization-review,
-  trigger-contract, spoiler/access, and content-rating evidence hashes;
+  trigger-contract, spoiler/access, and content-rating evidence revisions;
 - changed artifact and declared-dependent set for scoped re-review; and
-- prior review/finding hashes when verifying fixes.
+- prior review/finding revisions when verifying fixes.
 
-Reject missing/ambiguous identity, unhashed inputs, artifact bytes that do not
+Reject missing/ambiguous identity, unversioned inputs, artifact bytes that do not
 match the manifest, stale canon, incomplete declared dependents, reviewer identity
 overlap, revoked attempt token, or an input set above the approved context budget.
 Return PARTIAL/BLOCKED evidence; do not guess or approve a subset as the whole.
@@ -40,7 +40,7 @@ review and produces PARTIAL.
 ### NR-CANON — Canon and provenance
 
 - Every narrative claim that depends on canon resolves to a stable canon ID and
-  current source path/locator/hash.
+  current source path/locator/revision.
 - Character, faction, location, chronology, terminology, and relationship claims
   agree with the frozen baseline.
 - No unresolved NCF finding or unverified canon-promotion projection is hidden in
@@ -68,7 +68,7 @@ review and produces PARTIAL.
 - Trigger/discovery/pacing contracts name stable level/gameplay IDs, preconditions,
   event, audience, state transition, repeatability, priority, and fallback.
 - Narrative documents specify observable contracts, not engine implementation.
-- Every referenced gameplay/level source matches the declared current hash.
+- Every referenced gameplay/level source matches the declared current revision.
 - Dependent artifact IDs are complete for scoped re-review.
 
 ### NR-TRUTH — Mystery and spoiler partition
@@ -86,7 +86,7 @@ review and produces PARTIAL.
   placeholder/plural/gender/grammar contract.
 - Concatenation, dates, numbers, names, markup, and culturally sensitive concepts
   are represented through declared current systems.
-- Each relevant surface uses its actual UI/string constraint source/hash and
+- Each relevant surface uses its actual UI/string constraint source/revision and
   locale/test profile. Universal character limits or generic expansion percentages
   are not accepted substitutes.
 - `UNKNOWN` required constraints and every blocking LOC finding prevent
@@ -103,10 +103,10 @@ review and produces PARTIAL.
 
 ### NR-REF — Identity, reference, and artifact integrity
 
-- Artifact IDs, paths, schemas, owners, hashes, dependencies, string IDs, truth IDs,
+- Artifact IDs, paths, schemas, owners, revisions, dependencies, string IDs, truth IDs,
   trigger IDs, and proposal IDs agree across all manifests.
 - Every requested artifact is present exactly once and no unlisted artifact appears.
-- Create/revise classification, candidate/final hash, and read-back evidence agree.
+- Create/revise classification, candidate/final revision, and read-back evidence agree.
 - Operational checkpoint/result chains are linear, current, and owned by one
   recorder.
 
@@ -122,8 +122,8 @@ run_id: <id>
 round: <nonnegative integer>
 reviewer_identity: <independent identity>
 attempt_token: <active token>
-canon_baseline_sha256: <sha256>
-final_artifact_set_sha256: <sha256>
+canon_baseline_revision: <revision>
+final_artifact_set_revision: <revision>
 scope_artifact_ids: []
 dependent_artifact_ids: []
 coverage:
@@ -140,9 +140,9 @@ disposition: PASS | CONCERNS | FAIL | PARTIAL
 reviewed_at: <RFC3339 timestamp>
 ```
 
-Every finding uses stable `NRF-<profile-check>-<artifact-id>-<fingerprint>` and
+Every finding uses stable `NRF-<profile-check>-<artifact-id>-<stable business key>` and
 contains severity `BLOCKER | CONCERN | ADVISORY`, status `OPEN | ROUTED |
-RESOLVED`, artifact/string/truth/trigger IDs, exact evidence path/locator/hash,
+RESOLVED`, artifact/string/truth/trigger IDs, exact evidence path/locator/revision,
 owner, destination, acceptance condition, and resolution evidence.
 
 `NOT_APPLICABLE` requires an auditable reason and cannot be used for a requested
@@ -152,11 +152,11 @@ findings and still require owner routing/review points.
 
 ## Staleness and re-review
 
-The result is current only while both canon-baseline and final-artifact-set hashes
+The result is current only while both canon-baseline and final-artifact-set revisions
 match. Any artifact, dependency, constraint, localization evidence, trigger source,
 truth boundary, owner, or canon change invalidates the affected result.
 
-After an authorized fix, recompute the entire final artifact-set hash and review
+After an authorized fix, re-read and validate the declared entire final artifact-set revision and review
 every changed artifact plus its declared dependents with a fresh independent
 identity/token. Prior findings remain evidence and receive explicit transitions;
 they are not deleted or silently renumbered.

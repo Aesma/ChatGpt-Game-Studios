@@ -1,9 +1,11 @@
 ---
 name: vertical-slice
-description: "Plan and independently evaluate one hash-bound vertical-slice hypothesis using complete prerequisite/scope manifests, finite implementation budgets, immutable build/playtest/velocity evidence, network-aware thresholds, and a deterministic non-overridable verdict."
+description: "Plan and independently evaluate one revision-bound vertical-slice hypothesis using complete prerequisite/scope manifests, finite implementation budgets, immutable build/playtest/velocity evidence, network-aware thresholds, and a deterministic non-overridable verdict."
 ---
 
 # Vertical Slice
+
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs for identity and currentness.
 
 Test whether one representative core loop meets approved experience, technical,
 quality, network, and production-feasibility thresholds. Planning, implementation,
@@ -23,16 +25,16 @@ return `INPUT_ERROR` with zero writes.
 Accept exactly one mode:
 
 ```text
-$vertical-slice plan --request <project-relative-plan-request>@sha256:<64-lower-hex>
-$vertical-slice evaluate --request <project-relative-evaluation-request>@sha256:<64-lower-hex> [--persist]
-$vertical-slice status --report <project-relative-report>@sha256:<64-lower-hex>
+$vertical-slice plan --request <project-relative-plan-request>
+$vertical-slice evaluate --request <project-relative-evaluation-request> [--persist]
+$vertical-slice status --report <project-relative-report>
 ```
 
 Reject no-argument calls, positional inputs, duplicate/unknown flags, malformed
-hashes, absolute/unsafe/case-ambiguous paths, globs, directories, symlink escape,
+revisions, absolute/unsafe/case-ambiguous paths, globs, directories, symlink escape,
 and selectors such as `latest`, mtime, active session, or “current slice.” Paths
-use project-relative canonical `/` form and Unicode NFC. Hash exact raw bytes with
-SHA-256.
+use project-relative canonical `/` form and Unicode NFC. Validate exact raw bytes with
+revision.
 
 The skill owns only:
 
@@ -67,12 +69,12 @@ advisory-only result advances Pre-Production.
 
 ## Phase 0 — Freeze request, workflow, and mutation boundary
 
-1. Hash this skill, the private contract, catalog-declared dedicated spec, exact
+1. Record the declared version and revision of this skill, the private contract, catalog-declared dedicated spec, exact
    request, and project root/worktree identity.
 2. Validate `cgs.vertical-slice-plan-request/v2` or
    `cgs.vertical-slice-evaluation-request/v2` exactly and apply fixed limits.
 3. Build the complete ordered source/target manifest. Record path, schema/status,
-   raw hash or `ABSENT`, stable IDs, exact fields used, and authority.
+   declared revision or `ABSENT`, stable IDs, exact fields used, and authority.
 4. Capture before-mutation state for every allowed target. Do not recursively
    discover scope or infer missing input.
 
@@ -85,12 +87,12 @@ candidate preview and bounded authorization immediately before a write.
 
 Read only the exact `cgs.vertical-slice-prerequisites/v2` manifest and its bounded
 source rows. Require project/stage/root/worktree identity, source commit/tree,
-engine/version, target platform/configuration, generated-at UTC, manifest hash,
+engine/version, target platform/configuration, generated-at UTC, manifest revision,
 and exactly one row for every required source role defined by the private
 contract.
 
 Re-read every row and verify canonical path, unique stable ID, schema, exact
-lifecycle status, raw hash, required fields/locators, and cross-source identity.
+lifecycle status, declared revision, required fields/locators, and cross-source identity.
 The project stage must be exactly `PRE_PRODUCTION`. The required sources include
 game concept/pillars, systems index, every in-scope system GDD, architecture,
 control manifest, every governing ADR, current TR registry/entries when used,
@@ -99,7 +101,7 @@ evidence used to set thresholds.
 
 Missing, duplicate, unreadable, invalid, stale, unapproved, unsupported,
 over-limit, or contradictory prerequisites produce stable `VSF-*` findings with
-exact path/status/hash/owner/resolution. Return BLOCKED/INCONCLUSIVE with zero
+exact path/status/revision/owner/resolution. Return BLOCKED/INCONCLUSIVE with zero
 writes. “Key GDDs,” a filename match, quoted prose, template text, or user
 assurance cannot satisfy a source role.
 
@@ -114,7 +116,7 @@ the product owner's explicit scope decision and contains:
 - explicit dependency edges and required asset/UX/network bindings;
 - selected/non-selected rows with bounded reasons;
 - non-goals, target quality, platform/configuration, and evidence profile; and
-- product-owner identity, decision timestamp, and proposal hash.
+- product-owner identity, decision timestamp, and proposal revision.
 
 Compute scope closure against current systems-index/GDD/TR/control evidence. Every
 system/AC marked slice-required, every dependency needed for the start→challenge→
@@ -124,10 +126,10 @@ unresolved dependency, or untraceable “all core systems” statement is BLOCKE
 Changing the core fantasy to justify an omission requires a new hypothesis, not a
 local scope edit.
 
-Freeze `cgs.vertical-slice-scope/v2` inside the plan and compute `scope_sha256`
-over ordered identity/edge/quality/environment/evidence rows and prerequisite
-hashes. The persisted plan candidate is presented to the user in full; approval
-binds this scope hash. A later scope change requires a new plan and cannot be
+Freeze `cgs.vertical-slice-scope/v2` inside the plan and record `scope_revision`
+for the declared ordered identity/edge/quality/environment/evidence rows and prerequisite
+revisions. The persisted plan candidate is presented to the user in full; approval
+binds this scope revision. A later scope change requires a new plan and cannot be
 absorbed by an implementation batch.
 
 ### Phase 3 — Freeze hypothesis and attempt budget
@@ -137,17 +139,17 @@ One `VS-H-*` hypothesis permits exactly attempt `01` and one targeted attempt
 writes.
 
 Require one current `cgs.vertical-slice-attempt-reservation/v2` receipt from the
-separate hypothesis-history recorder. It binds registry path/hash/revision/head,
-hypothesis, attempt, run ID, request hash, prior report when applicable, unique
+separate hypothesis-history recorder. It binds registry path/version/revision/head,
+hypothesis, attempt, run ID, request revision, prior report when applicable, unique
 reservation ID, owner, and expiry. Attempt 01 requires no prior attempt in the
 registry; attempt 02 requires exactly one finalized attempt-01 PIVOT and no prior
 attempt-02 reservation/plan. Missing, expired, duplicate, conflicting, or stale
 history/reservation evidence is BLOCKED. A new run ID cannot reset an attempt.
 
-Compute `hypothesis_definition_sha256` from question, core fantasy, proceed
+record `hypothesis_definition_revision` for question, core fantasy, proceed
 criteria, kill rules, measurement definitions, required evidence/network profile,
 and decision-matrix contract. Attempt 02 requires the exact CURRENT persisted
-attempt-01 PIVOT report and its raw hash; it preserves hypothesis definition,
+attempt-01 PIVOT report and its declared revision; it preserves hypothesis definition,
 threshold meanings, and measurement rules and targets only stable prior findings
 plus explicit regressions. Changed meaning requires a new hypothesis ID/attempt
 01. A second PIVOT cannot schedule another same-hypothesis run.
@@ -176,11 +178,11 @@ BLOCKED. It cannot continue “until playable,” retry under a new bug label, o
 silently start a third batch.
 
 No implementation batch may start until a separate history-recorder receipt
-proves that the exact persisted plan hash consumed the reservation under registry
-CAS. This skill never invokes or simulates that recorder.
+proves that the exact persisted plan revision consumed the reservation under registry
+version and existence conflict check. This skill never invokes or simulates that recorder.
 
 Each batch receipt is immutable, create-only, and records manifest/pre/post tree
-hashes, actual path hashes, commands/exits/log hashes, timestamps, active/blocked
+revisions, actual path revisions, commands/exits/log revisions, timestamps, active/blocked
 intervals, checkpoint rows, build/candidate IDs, completed scope units, findings,
 and result. After all passing planned batches, a separate build owner produces one
 final candidate manifest binding exact source/build/platform identity. Any later
@@ -207,9 +209,9 @@ Every planned cell names session ID/pattern, tester cohort/role, build/platform/
 device/input/environment, start/end conditions, observation method, criteria,
 required raw artifacts, and independence rules. Each immutable session receipt
 binds one tester/session to the exact candidate/build and records UTC times,
-steps/events, completion/blockers, raw path/hash, producer/observer identities,
+steps/events, completion/blockers, raw path/revision, producer/observer identities,
 and attestation. Duplicate testers/sessions, chat answers, summaries, recollected
-observations, or unhashed media do not increase cardinality.
+observations, or unversioned media do not increase cardinality.
 
 Missing testers, sessions, required cohorts/cells, raw captures, build bindings,
 or attestations marks affected rows NOT_RUN/UNKNOWN/INVALID and guarantees
@@ -254,18 +256,18 @@ missing network sample, and the result is never unconditional PROCEED.
 Render `cgs.vertical-slice-plan/v2` at the request's exact create-only path. It
 includes request/workflow/prerequisite identities, hypothesis history/reservation,
 frozen scope, all thresholds, story/batch/checkpoint budgets, session/network
-matrix, velocity schema, verdict matrix, owner/non-write contract, and plan hash.
+matrix, velocity schema, verdict matrix, owner/non-write contract, and plan revision.
 It states `implementation_authorized: false`.
 
 Show the full candidate and exact one-file changeset. Obtain one bounded
 authorization unless the request already authorizes that exact path/candidate.
-Immediately rehash every input and target; any change writes nothing. Create via
+Immediately revalidate every input and target; any change writes nothing. Create via
 same-directory prepared file and atomic replace, flush, reread, validate, and
-report the raw plan hash. Failed persistence does not freeze a plan. Stop; do not
+report the raw plan revision. Failed persistence does not freeze a plan. Stop; do not
 implement, build, capture evidence, or evaluate in this task.
 
-The next owner is the hypothesis-history recorder, which must independently CAS
-append the exact plan hash and emit a reservation-finalization receipt. Until that
+The next owner is the hypothesis-history recorder, which must independently version and existence conflict check
+append the exact plan revision and emit a reservation-finalization receipt. Until that
 receipt exists, `implementation_authorized: false` remains effective.
 
 ## EVALUATE mode
@@ -276,10 +278,10 @@ The evaluation task identity must differ from every plan, implementation, build,
 capture, evidence-manifest, and creative-concern owner. Read only the exact
 `cgs.vertical-slice-evaluation-request/v2`, frozen plan, and
 `cgs.vertical-slice-evidence-manifest/v2`. Recursively follow only their bounded
-ordered manifests, enforce limits, and rehash every referenced raw byte.
+ordered manifests, enforce limits, and revalidate every referenced raw byte.
 
 Require exact agreement on run/hypothesis/attempt, history reservation and plan-
-finalization receipt, hypothesis/scope/plan hashes, prerequisites, source commit/
+finalization receipt, hypothesis/scope/plan revisions, prerequisites, source commit/
 tree, engine/version, platform/configuration, final candidate/build artifact,
 batch receipt set, session/raw-evidence set, velocity ledger, network profile,
 criteria, decision matrix, and owner separation. Preserve
@@ -287,7 +289,7 @@ missing, wrong-build, stale, malformed, duplicate, unsupported, over-limit, or
 partial rows; never omit them to improve a verdict.
 
 Recompute session cardinality/independence, velocity arithmetic, network coverage,
-every criterion and kill predicate, and all set hashes. Agent summaries and
+every criterion and kill predicate, and all set revisions. Agent summaries and
 manifest labels are claims until the referenced evidence validates.
 
 ### Phase 8 — Derive non-overridable evidence and workflow results
@@ -328,7 +330,7 @@ BLOCKED_PRODUCT_DECISION_REQUIRED.
 
 ### Phase 10 — Persist one immutable evaluation report
 
-Render `cgs.vertical-slice-evaluation-report/v2` with every identity/set hash,
+Render `cgs.vertical-slice-evaluation-report/v2` with every identity/set revision,
 prerequisite/scope/build evidence, criterion rows, complete playtest matrix,
 network coverage, velocity operands/arithmetic, missing/invalid evidence,
 deterministic derivation, advisory concerns, user decision, attempt history,
@@ -341,15 +343,15 @@ single-session counts, or recommendation field as proof.
 If `--persist` is absent or declined, return the calculated result with Gate
 Eligible NO and Persistence NOT_REQUESTED/DECLINED. If persistence is requested,
 show the exact one-file CREATE and full candidate, obtain bounded authorization,
-rehash the entire graph and output absence, then create/flush/reread/schema/hash
+revalidate the entire graph and output absence, then create/flush/reread/schema/revision
 verify. Only a verified CURRENT COMPLETE/PROCEED/PROCEED/PROCEED report returns
 Gate Eligible YES. A write failure returns Persistence FAILED and Gate Eligible
 NO. Never update an index/stage/gate in compensation.
 
 ## STATUS mode — read-only currentness
 
-Read the exact report bytes and verify the caller-supplied raw hash before parsing.
-Rehash its complete bounded referenced graph. CURRENT requires every report, plan,
+Read the exact report bytes and verify the caller-supplied declared revision before parsing.
+revalidate its complete bounded referenced graph. CURRENT requires every report, plan,
 prerequisite, scope, source/tree, candidate/build, batch, session/raw artifact,
 velocity, network, concerns, product decision, workflow contract, and decision-
 matrix identity to match.
@@ -361,7 +363,7 @@ not preserve identity. Write nothing and do not refresh the report.
 ## Final response and stop
 
 Every mode returns `cgs.vertical-slice-run-result/v2` with normalized invocation,
-workflow-contract hash, exact IDs/paths/hashes, prerequisite/scope coverage,
+workflow-contract revision, exact IDs/paths/revisions, prerequisite/scope coverage,
 attempt/batch budget, evidence/velocity/network completeness, all status axes,
 stable findings, mutation snapshot, and next separate owner.
 

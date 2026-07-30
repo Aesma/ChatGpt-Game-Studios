@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Stories"
   short_description: "Author bounded stable story candidates from current evidence"
-  default_prompt: "Use $create-stories to author one bounded batch of vertically sliced cgs.story/v2 planning artifacts with stable story, AC, and Test IDs; preserve per-story partial blockers and append-only trace, use full CAS, and leave final READY to exact-hash story-readiness evidence."
+  default_prompt: "Use $create-stories to author one bounded batch of vertically sliced cgs.story/v2 planning artifacts with stable story, AC, and Test IDs; preserve per-story partial blockers and append-only trace, use full CAS, and leave final READY to exact-revision story-readiness evidence."

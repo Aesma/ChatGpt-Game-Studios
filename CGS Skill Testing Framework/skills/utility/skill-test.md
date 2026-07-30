@@ -41,7 +41,7 @@ The workflow never executes the target skill.
 - [ ] **[ST-SA-005]** Behavioral specs are preflighted against
   `cgs-skill-spec/v2` before target grading.
 - [ ] **[ST-SA-006]** Immutable receipts contain target/authority/validator/
-  fixture hashes.
+  fixture revisions.
 - [ ] **[ST-SA-007]** Catalog and legacy `last_*` fields are explicit
   non-writes.
 - [ ] **[ST-SA-008]** Invalid or partial infrastructure cannot aggregate to
@@ -49,7 +49,7 @@ The workflow never executes the target skill.
 - [ ] **[ST-SA-009]** One versioned rules authority defines discovery,
   normalization, exclusions, legacy tokens, placeholder contexts, budgets, and
   aggregation.
-- [ ] **[ST-SA-010]** A package-local runner is pinned by path, version, hash,
+- [ ] **[ST-SA-010]** A package-local runner is pinned by path, version, revision,
   allowed argv, timeout, interpreter constraint, and JSON output schema.
 - [ ] **[ST-SA-011]** Every all/audit run reports deterministic
   selected/loaded/failed/omitted/excluded ledgers.
@@ -155,7 +155,7 @@ when fixture bytes cannot be read; malformed fixture content is expected
 
 #### Fixture
 
-- A valid persisted receipt records raw-byte hashes for target `SKILL.md`,
+- A valid persisted receipt records declared revisions for target `SKILL.md`,
   metadata, catalog entry, spec, rubric, validator rules, and fixture snapshot.
 - Each dependency initially matches.
 - Test variants change exactly one byte in each dependency in turn.
@@ -178,18 +178,18 @@ when fixture bytes cannot be read; malformed fixture content is expected
 
 #### Expected behavior
 
-1. Each dependency is rehashed from current raw bytes.
+1. Each dependency is revalidate from current raw bytes.
 2. Every one-byte variant returns freshness `STALE`.
 3. The stored validation verdict remains historical and is not displayed as
    current `COMPLIANT`.
 
 #### Assertions
 
-- [ ] **[ST-C03-A01]** SKILL hash change is stale.
-- [ ] **[ST-C03-A02]** Metadata hash change is stale.
-- [ ] **[ST-C03-A03]** Spec or rubric hash change is stale.
+- [ ] **[ST-C03-A01]** SKILL revision change is stale.
+- [ ] **[ST-C03-A02]** Metadata revision change is stale.
+- [ ] **[ST-C03-A03]** Spec or rubric revision change is stale.
 - [ ] **[ST-C03-A04]** Validator/ruleset or fixture change is stale.
-- [ ] **[ST-C03-A05]** Timestamps cannot override hash staleness.
+- [ ] **[ST-C03-A05]** Timestamps cannot override revision staleness.
 
 #### Case Verdict
 
@@ -203,8 +203,8 @@ when fixture bytes cannot be read; malformed fixture content is expected
 
 - `demo-skill` has valid target files, catalog entry, `VALID SPEC`, rubric,
   contract manifest, and fixtures.
-- A pinned external validator is used successfully with known version, hash,
-  argv, exit code, and output-log hashes.
+- A pinned external validator is used successfully with known version, revision,
+  argv, exit code, and output-log revisions.
 - `--persist-receipt` is supplied.
 - The user approves the exact one-file receipt changeset.
 
@@ -228,10 +228,10 @@ when fixture bytes cannot be read; malformed fixture content is expected
 
 #### Expected behavior
 
-1. Receipt records every required path/hash and validator execution fact.
+1. Receipt records every required path/revision and validator execution fact.
 2. It records every stable assertion result and aggregation trace.
-3. Dependencies are rehashed immediately before the write.
-4. Read-back verifies receipt bytes and SHA-256.
+3. Dependencies are revalidate immediately before the write.
+4. Read-back verifies receipt bytes and revision.
 5. Operation is `RECEIPT_WRITTEN`.
 
 #### Assertions
@@ -342,7 +342,7 @@ write; `PARTIAL` only for a documented pre-write dependency read failure.
 #### Fixture
 
 - Built-in structural/semantic inputs are readable.
-- The pinned external validator manifest is missing, its hash mismatches, it
+- The pinned external validator manifest is missing, its version mismatches, it
   times out, or its output is invalid.
 - All checks that can safely continue pass.
 
@@ -371,7 +371,7 @@ write; `PARTIAL` only for a documented pre-write dependency read failure.
 #### Assertions
 
 - [ ] **[ST-C07-A01]** Missing validation coverage is not silently skipped.
-- [ ] **[ST-C07-A02]** Validator argv/version/hash/timeout evidence is reported
+- [ ] **[ST-C07-A02]** Validator argv/path/version/timeout evidence is reported
   when available.
 - [ ] **[ST-C07-A03]** Aggregation follows the fixed truth table.
 
@@ -680,7 +680,7 @@ comparison; otherwise `FAIL`.
 - [ ] **[ST-PC-006]** Legacy catalog `last_*` fields are never written.
 - [ ] **[ST-PC-007]** No target skill is executed or modified.
 - [ ] **[ST-PC-008]** Every finding includes stable ID and direct evidence.
-- [ ] **[ST-PC-009]** Pinned runner and rules hashes are validated before use.
+- [ ] **[ST-PC-009]** Pinned runner and rules revisions are validated before use.
 - [ ] **[ST-PC-010]** Recursive discovery, exact exclusions, budgets, and name
   normalization are shared across modes.
 

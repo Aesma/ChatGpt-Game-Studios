@@ -17,9 +17,9 @@ downstream work.
 
 - [ ] BRS-S001: Frontmatter contains only matching `name` and non-empty `description`
 - [ ] BRS-S002: Invocation requires one cgs.brainstorm-request/v2 manifest; no-arg stops before repository reads
-- [ ] BRS-S003: Author schema hashes exact SKILL bytes, NUL, and required continuation bytes
+- [ ] BRS-S003: Author schema revisions exact SKILL bytes, NUL, and required continuation bytes
 - [ ] BRS-S004: Operation is exactly new/resume/revise; review and research modes are independent
-- [ ] BRS-S005: New requires ABSENT; resume/revise bind exact raw target/checkpoint hashes and never select latest
+- [ ] BRS-S005: New requires ABSENT; resume/revise bind exact raw target/checkpoint revisions and never select latest
 - [ ] BRS-S006: One mutation authorization covers exact target sections plus deterministic checkpoint/receipt creates
 - [ ] BRS-S007: Product choices and exact-body approval remain user/named-owner decisions, not filesystem authority
 - [ ] BRS-S008: GC-1/profile/content contracts define all canonical stable section IDs
@@ -43,8 +43,8 @@ downstream work.
 - [ ] BRS-S026: Lean marks all gates NOT_RUN_BY_MODE; solo additionally spawns zero subagents
 - [ ] BRS-S027: BRSAPR binds exact selected bodies/full draft, decisions, assertions, gates, context, target baseline, and authorization
 - [ ] BRS-S028: Final target write uses Target/Section/Context/Authorization/Writer CAS
-- [ ] BRS-S029: BRSREV binds before/after target/section, decision, approval, source/gate, authorization, and writer hashes/IDs
-- [ ] BRS-S030: cgs.brainstorm-authoring-receipt/v1 is external authoring evidence without target/receipt hash cycle
+- [ ] BRS-S029: BRSREV binds before/after target/section, decision, approval, source/gate, authorization, and writer revisions/IDs
+- [ ] BRS-S030: cgs.brainstorm-authoring-receipt/v1 is external authoring evidence without target/receipt revision cycle
 - [ ] BRS-S031: Receipt/checkpoint failure preserves content status but returns workflow PARTIAL with no review handoff
 - [ ] BRS-S032: Target CONTENT_COMPLETE, Workflow READY_FOR_REVIEW, and external APPROVED are distinct
 - [ ] BRS-S033: Review handoff is cgs.concept-review-request/v1 for fresh independent CONCEPT-CONTENT-v1 read-only review
@@ -96,7 +96,7 @@ is silently selected or inserted.
 
 ### Case 3: new refuses to replace an existing concept
 
-**Fixture:** request operation new but canonical target exists at hash H1.
+**Fixture:** request operation new but canonical target exists at revision H1.
 
 **Expected behavior:** validation returns BLOCKED before authorization/ideation/
 checkpoint; target remains H1; exact resume/revise request correction is reported.
@@ -111,7 +111,7 @@ checkpoint; target remains H1; exact resume/revise request correction is reporte
 ### Case 4: resume selects open sections and preserves custom bytes
 
 **Fixture:** current GC-1 has COMPLETE identity/pillars, OPEN MVP/risks, and two
-custom user sections with known ranges/hashes. User selects MVP/risks.
+custom user sections with known ranges/revisions. User selects MVP/risks.
 
 **Expected behavior:** only selected IDs enter plan; complete and custom sections
 remain PRESERVED; final diff/CAS proves exact byte equality outside selected/header
@@ -119,7 +119,7 @@ ranges.
 
 **Assertions:**
 
-- [ ] BRS-C04-A: Inventory records owners/states/hashes/provenance
+- [ ] BRS-C04-A: Inventory records owners/states/revisions/provenance
 - [ ] BRS-C04-B: Selecting a section does not select its dependencies
 - [ ] BRS-C04-C: Custom prose is neither normalized nor dropped
 
@@ -200,23 +200,23 @@ variants include missing predecessor, fork/collision, changed source, and late g
 write.
 
 **Expected behavior:** valid chain restores draft/selected/preserved IDs, decisions,
-counters, evidence/gates, target hash, and first incomplete transition. Invalid
+counters, evidence/gates, target revision, and first incomplete transition. Invalid
 variants stop without replay/newest-file selection.
 
 **Assertions:**
 
-- [ ] BRS-C09-A: Records are immutable and predecessor/hash-bound
+- [ ] BRS-C09-A: Records are immutable and predecessor/revision-bound
 - [ ] BRS-C09-B: APPROVED_NOT_WRITTEN exact body is resumed before new questions
 - [ ] BRS-C09-C: Conversation memory cannot reconstruct checkpoint state
 
 ---
 
-### Case 10: full gate DAG is sequential and hash-bound
+### Case 10: full gate DAG is sequential and revision-bound
 
 **Fixture:** full mode, current content/decisions, all nodes complete PASS.
 
 **Expected behavior:** CD -> AD -> user visual selection -> TD -> user scope draft ->
-PR. One node active; every result binds exact input and predecessor receipt hashes.
+PR. One node active; every result binds exact input and predecessor receipt revisions.
 
 **Assertions:**
 
@@ -245,9 +245,9 @@ node is labeled PASS.
 ### Case 12: gate timeout, partial, side effect, and late output fail closed
 
 **Fixture variants:** AD times out; TD partial/malformed; PR edits a file; late CD
-result references old input hash.
+result references old input revision.
 
-**Expected behavior:** one BRSGATE result records typed status, deadline, hashes,
+**Expected behavior:** one BRSGATE result records typed status, deadline, revisions,
 omissions/output/quarantine; no retry/nesting; dependents/final substantive write
 stop; Workflow PARTIAL checkpoint identifies one recovery.
 
@@ -351,18 +351,18 @@ review point. Only valid full profile becomes CONTENT_COMPLETE.
 checkpoint/authoring receipt append fails or receipt verification mismatches.
 
 **Expected behavior:** target content status remains CONTENT_COMPLETE; Workflow
-Verdict PARTIAL; exact unreceipted target hash; no independent review handoff;
+Verdict PARTIAL; exact unreceipted target revision; no independent review handoff;
 target is not replayed/reverted.
 
 **Assertions:**
 
 - [ ] BRS-C18-A: Content, workflow, and approval states remain separate
-- [ ] BRS-C18-B: Receipt stays external without target/hash cycle
+- [ ] BRS-C18-B: Receipt stays external without target/revision cycle
 - [ ] BRS-C18-C: Missing receipt cannot support approval or downstream work
 
 ---
 
-### Case 19: independent concept review and approval remain current-hash-bound
+### Case 19: independent concept review and approval remain current-revision-bound
 
 **Fixture variants:** CONTENT_COMPLETE+verified receipt; wrong system-GDD reviewer;
 self-review; external APPROVE; CONCERNS/REJECT; target/context/receipt changed after
@@ -376,7 +376,7 @@ variants remain unapproved and immutable history is preserved.
 **Assertions:**
 
 - [ ] BRS-C19-A: No design-review invocation or system-GDD rubric
-- [ ] BRS-C19-B: Handoff binds target/sections/context/receipt/provenance hashes
+- [ ] BRS-C19-B: Handoff binds target/sections/context/receipt/provenance revisions
 - [ ] BRS-C19-C: H2 cannot be approved by H1 evidence
 - [ ] BRS-C19-D: Reviewer/approval record never edits the concept
 

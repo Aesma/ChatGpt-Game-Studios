@@ -12,10 +12,10 @@ external tests, bug creation, release gates or deployment.
 
 ## Fixtures and harness rules
 
-Positive fixtures contain exact raw bytes and full lowercase SHA-256 for:
+Positive fixtures contain canonical paths, stable IDs, schemas, and explicit revisions for:
 
 - `cgs.team-qa-request/v2` and `cgs.team-qa-scope-manifest/v2`;
-- stable sprint/scope/story/requirement/AC/Test IDs and ordered source hashes;
+- stable sprint/scope/story/requirement/AC/Test IDs and ordered source revision;
 - candidate, build receipt, artifact, source and target matrix;
 - P1 QA plan, smoke receipt, regression selection and runner receipts;
 - manual, playtest and soak evidence where required;
@@ -31,10 +31,10 @@ not a real test run.
 ## Structural assertions
 
 - [ ] Frontmatter contains only `name` and non-empty `description`; name is `team-qa`.
-- [ ] Invocation is exactly `$team-qa --request <path> --expect-request <sha256>`.
+- [ ] Invocation is exactly `$team-qa --request <path> --request-revision <revision>`.
 - [ ] The strict request exposes START, INGEST, FREEZE, FINALIZE, STATUS and RESUME.
 - [ ] There are exactly six phases; Phase 6 consumes only frozen Phase 1–5 evidence plus independent review.
-- [ ] Scope, candidate, build, QA plan, smoke, evidence, review and signoff use exact path/hash identities.
+- [ ] Scope, candidate, build, QA plan, smoke, evidence, review and signoff use exact path/revision identities.
 - [ ] Controller write, test/manual execution, bug creation, evidence review and release/deployment authorities remain separate.
 - [ ] START cannot pre-authorize future evidence, bug or signoff paths.
 - [ ] Concurrency counts controller and nested agents and never exceeds actual available slots.
@@ -71,8 +71,8 @@ not a real test run.
 ## Case 1 — Unique stable scope, never glob or mtime — TQA-007
 
 Provide exact scope `SPRINT-12` with one stable sprint manifest and ordered story
-hashes. Test these variants independently: two matching sprint files; a directory or
-glob instead of manifest; “latest sprint”; date-only scope/run ID; changed story hash;
+revisions. Test these variants independently: two matching sprint files; a directory or
+glob instead of manifest; “latest sprint”; date-only scope/run ID; changed story revision;
 duplicate canonical story path; and exact valid scope.
 
 **Expected**
@@ -81,7 +81,7 @@ duplicate canonical story path; and exact valid scope.
 - every ambiguous/multiple/unsafe/mismatched variant is
   `WORKFLOW_BLOCKED_AT_ENTRY / QA_INCOMPLETE / Gate Eligible NO`;
 - no directory enumeration, mtime tie-break or automatic sprint choice occurs;
-- scope ID, ordered membership and scope identity hash appear in every later artifact;
+- scope ID, ordered membership and scope identity revision appear in every later artifact;
   and
 - a changed scope/build requires a new QA run ID.
 
@@ -96,7 +96,7 @@ not yet known. Later, two evidence receipts and one unmatched finding arrive.
 - START authority does not cover later evidence, freeze, signoff or bug paths;
 - each INGEST, FREEZE and FINALIZE presents a new exact closed changeset only after its
   IDs and bytes are known;
-- Team QA never writes `production/qa/bugs/**`; the exact occurrence/fingerprint/evidence
+- Team QA never writes `production/qa/bugs/**`; the exact occurrence/stable finding key/evidence
   is handed to one serialized bug-report owner under separate authority;
 - expanded scope or changed output membership stops for a new request/authority;
 - no prose claims that all future files were pre-authorized.
@@ -151,7 +151,7 @@ required NOT_RUN. Test a downstream parser that sees only the word COMPLETE.
 
 Start two runs on the same calendar date, test a date-only ID, and attempt to write
 `production/session-state/active.md` using legacy PASS/FAIL/CONCERNS values. Provide one
-valid UUID run with checkpoint/signoff hashes.
+valid UUID run with checkpoint/signoff revisions.
 
 **Expected**
 
@@ -161,19 +161,19 @@ valid UUID run with checkpoint/signoff hashes.
   state;
 - checkpoints/signoff use the same Workflow State, QA Verdict, Gate Eligible, phase
   and persistence enumerations;
-- every checkpoint binds build, evidence-manifest and report/signoff hashes or explicit
+- every checkpoint binds build, evidence-manifest and report/signoff revisions or explicit
   NONE, preventing path/date drift.
 
 ## Case 7 — Milestone checkpoints and exact resume — TQA-013
 
 Interrupt after phases 1, 3 and 5. Resume each from its exact checkpoint. Then vary a
-predecessor hash, candidate byte, evidence receipt and already-existing next target.
+predecessor revision, candidate byte, evidence receipt and already-existing next target.
 
 **Expected**
 
 - phases 01–05 each have an immutable predecessor-linked checkpoint with inputs,
   outputs, status axes, assignment ledger, budget use and legal next operation;
-- valid resume re-hashes the entire predecessor/input chain and continues only the
+- valid resume revalidates the entire predecessor/input chain and continues only the
   recorded next operation without replaying complete work;
 - changed/broken/ambiguous fixtures block and name the exact owner/action;
 - existing target or CAS drift never overwrites and writes nothing further;
@@ -183,7 +183,7 @@ predecessor hash, candidate byte, evidence receipt and already-existing next tar
 
 Run four required assignments: one succeeds, one returns half a schema, one times out,
 and one is cancelled. Let the timeout return after Phase 5 freeze. Also test a retry
-whose candidate hash changed.
+whose candidate revision changed.
 
 **Expected**
 
@@ -242,7 +242,7 @@ Only variant 1 may satisfy the plan authority; it never proves execution.
 ### Smoke variants
 
 1. exact canonical `cgs-smoke-check-receipt/v2`, sprint PASS, Persistence VERIFIED,
-   Handoff Eligible YES and matching selected-scope/member hashes;
+   Handoff Eligible YES and matching selected-scope/member revisions;
 2. quick/targeted pass, wrong build, partial, warning/unknown, unpersisted or handoff NO.
 
 Only variant 1 passes entry.
@@ -283,7 +283,7 @@ The harness must retain these prior safety properties:
 
 1. missing/unknown/stale/wrong-build smoke blocks at entry with no execution/signoff;
 2. automated NOT_RUN/STALE/INVALID/UNKNOWN never becomes PASS;
-3. manual PASS requires tester/device/time/per-step actuals/attestation/attachment hash;
+3. manual PASS requires tester/device/time/per-step actuals/attestation/attachment revision;
 4. required BLOCKED/NOT_RUN prevents QA_APPROVED and remains in denominator arithmetic;
 5. Team QA never allocates numeric bug IDs or writes canonical bug files;
 6. a current FAIL takes QA_NOT_APPROVED precedence while incomplete rows remain visible;

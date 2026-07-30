@@ -15,7 +15,7 @@ Every material concept statement references a stable
 | Class | Authority and treatment |
 |---|---|
 | `product-choice` | Named product owner selects an experience/fantasy/loop/pillar/visual/audience/platform-intent/MVP/scope/risk/deferral option after tradeoffs. |
-| `evidence-backed-hard-constraint` | Current owned evidence directly constrains the concept; record stable owner/path-or-URL/locator/hash/observed date and do not ask the user to vote it away. |
+| `evidence-backed-hard-constraint` | Current owned evidence directly constrains the concept; record stable owner/path-or-URL/locator/revision/observed date and do not ask the user to vote it away. |
 | `derived-design-constraint` | Author derives a concept implication from accepted choices/current evidence; show derivation/assumptions and require product-owner acceptance. |
 | `technical-handoff` | Engine/platform feasibility, architecture, formal estimate, implementation, test, or production question is routed to its external owner and stays out of authoritative concept truth. |
 
@@ -31,7 +31,7 @@ Record:
     options: [{id, value, tradeoffs, evidence_refs}]
     selected: <option / hard constraint / routed destination>
     rationale: <owner rationale or derivation>
-    source_refs: [{id, owner, path_or_url, locator, sha256, observed_at}]
+    source_refs: [{id, owner, path_or_url, locator, revision, observed_at}]
     assumptions: []
     dependent_assertion_ids: []
     status: ACCEPTED | PROVISIONAL | ROUTED | SUPERSEDED
@@ -74,7 +74,7 @@ bounded round, keep checkpoint/stop, or stop. Combination identifies exact sourc
 proposal elements and creates a new selected-proposal ID; the author never
 silently blends or chooses. After the second rejected round, checkpoint and stop.
 
-Persist `BRSIDEA` proposal hashes and the `BRSDEC` selection with alternatives and
+Persist `BRSIDEA` proposal revisions and the `BRSDEC` selection with alternatives and
 rationale. Selection is product approval of direction, not file authorization,
 concept completeness, independent review, or formal approval.
 
@@ -108,7 +108,7 @@ Use one label per market/audience/comparable/demand/price/trend claim:
 
 - `SOURCED_CURRENT`: `cgs.brainstorm-research-receipt/v1` includes URL/source,
   publisher, claim locator, published/updated date when available, observed-at
-  UTC, relevant bounded claim, snapshot/content hash, and researcher identity;
+  UTC, relevant bounded claim, snapshot/content revision, and researcher identity;
 - `USER_ASSUMPTION`: actual product owner supplied the assumption;
 - `MODEL_HYPOTHESIS`: creative hypothesis only, explicitly not validation; or
 - `UNKNOWN`: evidence unavailable/insufficient/conflicting.
@@ -137,7 +137,7 @@ selects, installs, or configures an engine. Feasibility questions use
 Label every duration/date/team-capacity/content-count/cost statement:
 
 - `USER BUDGET` or `USER ASSUMPTION` with actual owner;
-- `SOURCED ESTIMATE` only from exact current `cgs.estimate-evidence/v1` path/hash,
+- `SOURCED ESTIMATE` only from exact current `cgs.estimate-evidence/v1` path/revision,
   scope/profile/units/assumptions, estimator identity, and confidence; or
 - `UNKNOWN`.
 
@@ -223,33 +223,33 @@ lean/solo record every node `NOT_RUN_BY_MODE` and spawn none.
 Dependencies:
 
 1. `CD-PILLARS` receives selected concept, identity, fantasy/hook, loop, pillars,
-   tests, anti-pillars, decision IDs, and exact draft hashes.
+   tests, anti-pillars, decision IDs, and exact draft revisions.
 2. `AD-CONCEPT-VISUAL` runs only after current CD disposition and receives pillar
-   hashes. It proposes visual evidence/options; user owns anchor selection.
+   revisions. It proposes visual evidence/options; user owns anchor selection.
 3. `TD-FEASIBILITY` runs only after current visual-anchor decision and receives
-   loop/platform intent/visual/MVP/risk/assumption hashes. It records constraints,
+   loop/platform intent/visual/MVP/risk/assumption revisions. It records constraints,
    unknowns, and handoffs; never chooses engine/schedule/scope.
 4. `PR-SCOPE` runs only after current TD disposition and after product-owner scope
    draft exists. It advises risks; user owns final tiers.
 
-Each node gets one bounded question, exact current input hashes, required
-predecessor receipt hash, one 60-second attempt, no retry, and no nested
+Each node gets one bounded question, exact current input revisions, required
+predecessor receipt revision, one 60-second attempt, no retry, and no nested
 delegation. Return `cgs.brainstorm-gate-result/v1`:
 
     id: BRSGATE-<run-id>-<node>
     node: CD-PILLARS | AD-CONCEPT-VISUAL | TD-FEASIBILITY | PR-SCOPE
     role: <declared role>
-    input_target_or_draft_sha256: <hash>
-    input_section_hashes: {}
+    input_target_or_draft_revision: <revision>
+    input_section_revisions: {}
     decision_ids: []
-    predecessor_receipt_sha256: <hash or null>
+    predecessor_receipt_revision: <revision or null>
     started_at_utc: <timestamp>
     deadline_seconds: 60
     status: complete | partial | timeout | failed | side-effect | skipped
     verdict: PASS | CONCERNS | REJECT | null
     findings: []
     omissions: []
-    output_sha256: <canonical hash or null>
+    output_revision: <canonical revision or null>
     reviewer_task_id: <actual identity or null>
 
 Result semantics:
@@ -273,21 +273,21 @@ from the first stale node under a fresh bounded request.
 
 Build exact final bytes for every selected section from accepted BRSDEC records,
 permitted evidence labels, and current gate results. Do not copy product truth
-owned by another artifact; reference its stable ID/owner/path/locator/hash.
+owned by another artifact; reference its stable ID/owner/path/locator/revision.
 
 Before approval:
 
 1. run all applicable content assertions and whole-concept consistency;
 2. verify every material statement's decision/source/label/owner;
-3. verify gate DAG order, identities, current input/receipt hashes, and status;
+3. verify gate DAG order, identities, current input/receipt revisions, and status;
 4. list blocking versus explicitly deferred nonblocking open questions;
 5. verify custom/non-selected byte preservation plan;
-6. re-hash target, selected sections, external context, authorization, and exact
+6. re-read target, selected sections, external context, authorization, and exact
    draft bytes; and
 7. list findings/unknowns/concerns without converting them to facts.
 
 Show the complete proposed selected bodies plus full unified target diff and
-preserved-range hashes. Ask product owner to Accept exact bodies, Revise one named
+preserved-range revisions. Ask product owner to Accept exact bodies, Revise one named
 section, Keep checkpoint/stop, or Stop. Permit at most two final-preflight revision
 rounds. Changed bytes invalidate prior approval.
 
@@ -296,14 +296,14 @@ Store:
     id: BRSAPR-<concept-id>-<NNN>
     owner: <actual product owner>
     selected_section_ids: []
-    approved_body_sha256_by_section: {}
-    complete_target_draft_sha256: <hash>
+    approved_body_revision_by_section: {}
+    complete_target_draft_revision: <revision>
     decision_ids: []
-    assertion_result_sha256: <hash>
-    gate_result_ids_and_hashes: []
-    context_manifest_sha256: <hash>
-    target_baseline_sha256: <hash or ABSENT>
-    authorization_sha256: <hash>
+    assertion_result_revision: <revision>
+    gate_result_ids_and_revisions: []
+    context_manifest_revision: <revision>
+    target_baseline_revision: <revision or ABSENT>
+    authorization_revision: <revision>
     approved_at_utc: <RFC3339 seconds Z>
 
 Denial/Stop/round exhaustion appends checkpoint and leaves existing substantive
@@ -315,11 +315,11 @@ Immediately before final target write, one attempt must pass:
 
 1. **Target CAS** — current raw target equals authorized skeleton/source baseline;
 2. **Section CAS** — every selected section equals its approved preimage and every
-   non-selected/custom range equals its preservation hash with unique anchors;
-3. **Context CAS** — every external source used and ordered context digest match;
+   non-selected/custom range equals its preservation revision with unique anchors;
+3. **Context CAS** — every external source used and ordered context revision match;
    mutable target is checked only by Target/Section CAS;
-4. **Authorization CAS** — exact path/operation/selected set/limits, approval hash,
-   and authorization identity/hash match; and
+4. **Authorization CAS** — exact path/operation/selected set/limits, approval revision,
+   and authorization identity/revision match; and
 5. **Writer CAS** — actual target writer equals authorized identity.
 
 Failure returns the precise `ERROR — CONCURRENT TARGET CHANGE`,
@@ -336,37 +336,37 @@ revision per selected section:
     id: BRSREV-<concept-id>-<section-id>-<NNN>
     operation: new | resume | revise
     section_id: <stable ID>
-    before_target_sha256: <hash>
-    after_target_sha256: <hash>
-    before_section_sha256: <hash or ABSENT>
-    after_section_sha256: <hash>
+    before_target_revision: <revision>
+    after_target_revision: <revision>
+    before_section_revision: <revision or ABSENT>
+    after_section_revision: <revision>
     decision_ids: []
     approval_id: <BRSAPR ID>
-    source_and_gate_hashes: []
-    authorization_sha256: <hash>
+    source_and_gate_revisions: []
+    authorization_revision: <revision>
     writer_task_id: <actual identity>
     timestamp_utc: <RFC3339 seconds Z>
 
 Append final checkpoint by predecessor/create-if-absent CAS. Then, only after the
-final content/header CAS and stable read-back hash, create
+final content/header CAS and stable read-back revision, create
 `cgs.brainstorm-authoring-receipt/v1` binding request/operation, pre/post target,
-selected/preserved section hashes, decisions/approval/revisions, content/profile/
-author schema, context digest, research/estimate/gate evidence, findings/open
+selected/preserved section revisions, decisions/approval/revisions, content/profile/
+author schema, context revision, research/estimate/gate evidence, findings/open
 questions, authorization, author/writer/recorder, checkpoint head, and target path.
 
-Receipt ID may appear in the target header; its path/hash cannot. The external
+Receipt ID may appear in the target header; its path/revision cannot. The external
 receipt binds already-final bytes and is authoring evidence, not concept review or
 approval.
 
 If checkpoint/receipt persistence fails after verified target bytes, leave
 content-derived status intact, return Workflow Verdict PARTIAL, report exact
-unreceipted target hash, emit no review handoff, and never replay/revert the write.
+unreceipted target revision, emit no review handoff, and never replay/revert the write.
 
 ## Phase 10: Content result and independent read-only review handoff
 
 Re-evaluate every canonical section, custom preservation, assertion, evidence
 label, decision/approval/revision, gate result, finding/open question, target/
-context hash, and receipt.
+context revision, and receipt.
 
 Set target Content Status from content only:
 
@@ -382,7 +382,7 @@ Set Workflow Verdict separately:
 - CONTENT_COMPLETE plus verified authoring receipt: READY_FOR_REVIEW and exact
   independent concept-review handoff;
 - CONTENT_COMPLETE but receipt append/verification failed: PARTIAL, no handoff,
-  exact unreceipted target hash;
+  exact unreceipted target revision;
 - unsafe source/authorization/identity/drift: BLOCKED with last safe target;
 - invalid request/corrupt evidence before safe work: ERROR, no false target state.
 
@@ -390,16 +390,16 @@ Handoff contract `cgs.concept-review-request/v1` names a fresh independent
 concept-review task using profile `CONCEPT-CONTENT-v1` and default reviewer role
 `creative-director`. It binds:
 
-- target path/current SHA-256, GC-1/profile/content/author schema;
-- all section/assertion hashes and custom preservation evidence;
+- target path/current revision, GC-1/profile/content/author schema;
+- all section/assertion revisions and custom preservation evidence;
 - decisions/approval/revisions, research/estimate/gate results, findings/questions;
-- context digest, authoring receipt ID/path/hash, and all author/gate/writer/
+- context revision, authoring receipt ID/path/revision, and all author/gate/writer/
   recorder identities; and
 - required immutable output `cgs.concept-approval/v1` with verdict APPROVE,
   CONCERNS, or REJECT.
 
 Do not invoke the reviewer. It must be fresh, role-separated, target/receipt/
-context read-only, recompute hashes, use the concept profile rather than a system-
+context read-only, validate declared revisions, use the concept profile rather than a system-
 GDD rubric, and create only a separately authorized immutable approval record.
 
 Only a current matching APPROVE may establish concept approval. Any target/
@@ -409,12 +409,12 @@ receipt plus fresh review. Never overwrite immutable evidence.
 ## Phase 11: Resume, finite recovery, output, and stop
 
 Resume validates exact request/checkpoint paths and full v2 predecessor/payload
-chain, source ABSENT/hash, target/context, schema, authorization, identities,
+chain, source ABSENT/revision, target/context, schema, authorization, identities,
 selected/preserved sections, draft snapshot, decisions/approvals/revisions, gate/
 research/estimate evidence, convergence counters, findings/questions, and absence
 of late writes.
 
-- all hashes current: continue first incomplete idempotent transition, prioritizing
+- all revisions current: continue first incomplete idempotent transition, prioritizing
   APPROVED_NOT_WRITTEN exact bodies;
 - target/selected/preserved mismatch: CONFLICT/BLOCKED, zero write, show exact diff;
 - external context changed: mark dependent sections/gates STALE, invalidate active
@@ -427,10 +427,10 @@ Conversation memory never reconstructs source bytes, decisions, approval, gate
 receipts, context, checkpoints, authoring receipt, or independent approval.
 
 Final response lists operation/session/concept IDs, review/research modes,
-convergence counters, source/output hashes, section state/change/preservation
+convergence counters, source/output revisions, section state/change/preservation
 table, decisions/approval/revisions, evidence labels and research/estimate/gate
 receipts, findings/questions, authorization/roles, checkpoint/authoring-receipt
-paths/hashes, content/workflow/approval states, non-writes, and exactly one next
+paths/revisions, content/workflow/approval states, non-writes, and exactly one next
 action or Stop.
 
 Choose at most one next action from current evidence: resume one named question,

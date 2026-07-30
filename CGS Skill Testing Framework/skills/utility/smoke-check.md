@@ -1,5 +1,7 @@
 # Skill Spec: $smoke-check
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 > **Spec ID**: smoke-check-v2
 > **Spec Schema**: cgs-skill-spec/v2
 > **Category**: utility
@@ -23,20 +25,20 @@
 - **SC-STA-009**: Wall-clock, inactivity, output, result, record, and cleanup budgets are required.
 - **SC-STA-010**: Timeout, partial, parser, truncation, and cleanup states force INCOMPLETE.
 - **SC-STA-011**: Coverage is keyed by stable requirement, acceptance, Coverage Unit, Test, and Smoke Check IDs.
-- **SC-STA-012**: Sprint and quick selection rules are deterministic and scope-hashed.
+- **SC-STA-012**: Sprint and quick selection rules are deterministic and scope-versioned.
 - **SC-STA-013**: Manual silence is UNKNOWN and unapproved substitution cannot pass an automated Test ID.
 - **SC-STA-014**: Manual and platform rows bind device, OS, runtime, build, observer, method, and evidence.
 - **SC-STA-015**: Verbatim free text is excluded from persisted receipts and bounded redaction metadata is required.
 - **SC-STA-016**: The canonical evidence root is `production/qa/evidence/smoke/{candidate-id}/{run-id}/`.
 - **SC-STA-017**: The unified receipt schema is `cgs-smoke-check-receipt/v2`.
 - **SC-STA-018**: Observed verdict, persistence state, and handoff eligibility are independent.
-- **SC-STA-019**: Publication uses absent-target CAS, atomic directory publish, and read-back verification.
+- **SC-STA-019**: Publication uses absent-target version and existence conflict check, atomic directory publish, and read-back verification.
 - **SC-STA-020**: Only a persisted sprint PASS is handoff eligible.
 
 ## Protocol Assertions
 
-- **SC-PRO-001**: Hash raw authority bytes before parsing and reject duplicate keys.
-- **SC-PRO-002**: Reject missing, stale, partial, invalid, conflicting, or hash-mismatched authorities before execution.
+- **SC-PRO-001**: Validate raw authority bytes before parsing and reject duplicate keys.
+- **SC-PRO-002**: Reject missing, stale, partial, invalid, conflicting, or revision mismatched authorities before execution.
 - **SC-PRO-003**: Never infer coverage from files or discover tests at execution time.
 - **SC-PRO-004**: Never build a shell command or fall back to an undeclared runner.
 - **SC-PRO-005**: Terminate the full process tree after timeout or output overflow.
@@ -45,7 +47,7 @@
 - **SC-PRO-008**: Never publish new smoke evidence to a legacy evidence root.
 - **SC-PRO-009**: Apply the exhaustive verdict table in priority order.
 - **SC-PRO-010**: A declined or failed write preserves the observed verdict but removes handoff eligibility.
-- **SC-PRO-011**: Downstream consumers receive and re-hash the exact receipt path and hash.
+- **SC-PRO-011**: Downstream consumers receive and revalidate the exact receipt path and revision.
 - **SC-PRO-012**: The workflow never edits product, test, plan, selection, build, or shared workflow artifacts.
 
 ## Test Cases
@@ -54,7 +56,7 @@
 
 #### Fixture
 
-A current sprint run manifest binds build `build-a`, artifact hash `a` repeated 64 times, Godot 4.6.3, Windows debug configuration, runner row `RUN-01`, and an ordered argv array. The local project also contains a convenient but different runner command.
+A current sprint run manifest binds build `build-a`, artifact revision `a` repeated 64 times, Godot 4.6.3, Windows debug configuration, runner row `RUN-01`, and an ordered argv array. The local project also contains a convenient but different runner command.
 
 #### Input
 
@@ -62,7 +64,7 @@ Invoke `$smoke-check sprint --run-manifest fixtures/smoke/run-a.yaml`.
 
 #### Expected reads
 
-The exact run manifest and its hash-bound build candidate, build receipt, QA plan, regression selection, test layout, validator manifest, execution manifest, artifact metadata, and runner binary identity.
+The exact run manifest and its revision-bound build candidate, build receipt, QA plan, regression selection, test layout, validator manifest, execution manifest, artifact metadata, and runner binary identity.
 
 #### Expected writes
 
@@ -108,7 +110,7 @@ No unbounded log, retry manifest, altered argv, changed seed, or result outside 
 
 #### Expected behavior
 
-The full process tree is terminated; complete records are preserved; the trailing record and missing expected rows are PARTIAL; output hashes and cleanup result are recorded; no retry changes execution controls.
+The full process tree is terminated; complete records are preserved; the trailing record and missing expected rows are PARTIAL; output revisions and cleanup result are recorded; no retry changes execution controls.
 
 #### Assertions
 
@@ -152,11 +154,11 @@ SC-STA-011, SC-PRO-003, SC-PRO-012.
 
 INCOMPLETE.
 
-### Case 4 — Current QA-plan and regression-selection hashes are mandatory
+### Case 4 — Current QA-plan and regression-selection revisions are mandatory
 
 #### Fixture
 
-The run manifest pins QA plan hash `plan-old` and selection revision 4. The files now contain a different QA plan hash and selection revision 5.
+The run manifest pins QA plan revision `plan-old` and selection revision 4. The files now contain a different QA plan revision and selection revision 5.
 
 #### Input
 
@@ -176,7 +178,7 @@ No refreshed manifest, no execution receipt, no inferred newest selection, and n
 
 #### Expected behavior
 
-The workflow detects the hash/revision mismatch before execution, marks the corresponding axes stale or invalid, and refuses to substitute the newer files.
+The workflow detects the version/revision mismatch before execution, marks the corresponding axes stale or invalid, and refuses to substitute the newer files.
 
 #### Assertions
 
@@ -202,7 +204,7 @@ The manual contract, redaction rules, evidence reference metadata, and exact bui
 
 #### Expected writes
 
-Only the approved bounded redacted summary, its hash, redaction rule IDs, and raw-reference path/hash/size/media-type/retention/owner record.
+Only the approved bounded redacted summary, its revision, redaction rule IDs, and raw-reference path/revision/size/media-type/retention/owner record.
 
 #### Expected non-writes
 
@@ -232,7 +234,7 @@ Render the candidate receipt and report.
 
 #### Expected reads
 
-Frozen stable-check ledger, authority hashes, execution outcomes, manual rows, platform matrix, and evidence hashes.
+Frozen stable-check ledger, authority revisions, execution outcomes, manual rows, platform matrix, and evidence revisions.
 
 #### Expected writes
 
@@ -244,7 +246,7 @@ No ad hoc second receipt schema, ID-less checklist, unbound evidence path, or le
 
 #### Expected behavior
 
-Every row includes stable Check ID and the relevant requirement, Test, candidate, build, runner, platform, and evidence hashes. The report exposes the same identities and status axes.
+Every row includes stable Check ID and the relevant requirement, Test, candidate, build, runner, platform, and evidence revisions. The report exposes the same identities and status axes.
 
 #### Assertions
 
@@ -252,7 +254,7 @@ SC-STA-011, SC-STA-016, SC-STA-017, SC-PRO-008.
 
 #### Case Verdict
 
-PASS when all unified schema fields and member hashes validate; otherwise INCOMPLETE.
+PASS when all unified schema fields and member revisions validate; otherwise INCOMPLETE.
 
 ### Case 7 — Declined persistence does not rewrite the observed verdict
 
@@ -266,7 +268,7 @@ Finalize the run after presenting the bounded changeset preview.
 
 #### Expected reads
 
-The complete in-memory result and rendered preview hashes.
+The complete in-memory result and rendered preview revisions.
 
 #### Expected writes
 
@@ -334,7 +336,7 @@ Attempt to use the manual observation as substitute evidence.
 
 #### Expected reads
 
-The exact QA-plan substitution table, stable-check ledger, build identity, manual row, and evidence hash.
+The exact QA-plan substitution table, stable-check ledger, build identity, manual row, and evidence revision.
 
 #### Expected writes
 
@@ -368,7 +370,7 @@ Authorize report persistence.
 
 #### Expected reads
 
-The declared destination, target-absence precondition, authority index, and rendered member hashes.
+The declared destination, target-absence precondition, authority index, and rendered member revisions.
 
 #### Expected writes
 
@@ -448,7 +450,7 @@ No run manifest, evidence root, QA-plan edit, inferred scope, or execution.
 
 #### Expected behavior
 
-Both invocations are rejected. The caller is instructed to nominate a valid `cgs-smoke-run-manifest/v1` containing exact stable IDs and authority hashes.
+Both invocations are rejected. The caller is instructed to nominate a valid `cgs-smoke-run-manifest/v1` containing exact stable IDs and authority revisions.
 
 #### Assertions
 
@@ -458,11 +460,11 @@ SC-STA-002, SC-STA-003, SC-PRO-012.
 
 INCOMPLETE input; no test verdict or handoff.
 
-### Case 13 — Deterministic selection and scope hash
+### Case 13 — Deterministic selection and scope revision
 
 #### Fixture
 
-The QA plan lists stable checks in reverse order and includes duplicate prose labels. The run manifest pins a canonical selected-scope hash and quick requests three exact Smoke Check IDs.
+The QA plan lists stable checks in reverse order and includes duplicate prose labels. The run manifest pins a canonical selected-scope revision and quick requests three exact Smoke Check IDs.
 
 #### Input
 
@@ -482,7 +484,7 @@ No filesystem-discovered tests, prose-filtered rows, affected-system expansion, 
 
 #### Expected behavior
 
-Both runs filter only declared versioned fields, sort by the documented bytewise key, reject duplicate stable keys, and produce identical selected-scope bytes and SHA-256.
+Both runs filter only declared versioned fields, sort by the documented bytewise key, reject duplicate stable keys, and produce identical selected-scope bytes and revision.
 
 #### Assertions
 
@@ -526,7 +528,7 @@ SC-STA-018, SC-STA-020, SC-PRO-009.
 
 PASS only if all four outcomes and handoff decisions match the exhaustive table.
 
-### Case 15 — Immutable CAS detects authority drift and target conflict
+### Case 15 — Immutable version and existence conflict check detects authority drift and target conflict
 
 #### Fixture
 
@@ -550,7 +552,7 @@ No overwrite, merge, partial final directory, reused run ID, or authority rollba
 
 #### Expected behavior
 
-The changed hash and appeared target fail CAS. The workflow preserves the observed verdict, sets persistence CONFLICT, forces handoff NO, and requires a new run ID.
+The changed revision and appeared target fail version and existence conflict check. The workflow preserves the observed verdict, sets persistence CONFLICT, forces handoff NO, and requires a new run ID.
 
 #### Assertions
 
@@ -564,11 +566,11 @@ Observed result preserved; persistence CONFLICT; handoff NO.
 
 #### Fixture
 
-All authorities are current and hash-matched; deterministic selection is complete; exact runner rows and permitted manual rows conclusively pass; the canonical target is absent.
+All authorities are current and revision-matched; deterministic selection is complete; exact runner rows and permitted manual rows conclusively pass; the canonical target is absent.
 
 #### Input
 
-Invoke sprint mode, authorize persistence, then hand the exact receipt path and hash to a downstream consumer.
+Invoke sprint mode, authorize persistence, then hand the exact receipt path and revision to a downstream consumer.
 
 #### Expected reads
 
@@ -584,7 +586,7 @@ No authority changes, legacy evidence, quick receipt, unindexed member, or mutab
 
 #### Expected behavior
 
-The workflow verifies every binding, applies rule 4, CAS-publishes, reads back every member, sets `Persistence: VERIFIED`, and returns the exact receipt path/hash with candidate/build/artifact identities. The consumer re-hashes the receipt and every indexed member before accepting handoff.
+The workflow verifies every binding, applies rule 4, version and existence conflict check-publishes, reads back every member, sets `Persistence: VERIFIED`, and returns the exact receipt path/revision with candidate/build/artifact identities. The consumer revalidate the receipt and every indexed member before accepting handoff.
 
 #### Assertions
 
@@ -592,7 +594,7 @@ SC-STA-001 through SC-STA-020; SC-PRO-001 through SC-PRO-012.
 
 #### Case Verdict
 
-PASS with Handoff Eligible YES only after verified immutable publication and consumer hash verification.
+PASS with Handoff Eligible YES only after verified immutable publication and consumer revision verification.
 
 ---
 
@@ -603,7 +605,7 @@ PASS with Handoff Eligible YES only after verified immutable publication and con
 | `SC-005` | `SKILL.md` Phase 3 exact project runner validation | Case 1 “Exact runner argv and build binding”; `SC-STA-007`; `SC-STA-008`; `SC-PRO-004` |
 | `SC-006` | `SKILL.md` Phase 4 bounded execution, cleanup, and partial parsing | Case 2 “Timeout, output cap, cleanup, and partial parsing”; `SC-STA-009`; `SC-STA-010`; `SC-PRO-005`; `SC-PRO-006` |
 | `SC-007` | `SKILL.md` Phase 2 stable-ID coverage ledger and high-risk blocker | Case 3 “Stable coverage blocks an unmapped high-risk requirement”; `SC-STA-011`; `SC-PRO-003` |
-| `SC-008` | `SKILL.md` Phase 1 current QA-plan/selection/candidate authority binding | Case 4 “Current QA-plan and regression-selection hashes are mandatory”; `SC-STA-004`; `SC-STA-005`; `SC-STA-006`; `SC-PRO-001`; `SC-PRO-002` |
+| `SC-008` | `SKILL.md` Phase 1 current QA-plan/selection/candidate authority binding | Case 4 “Current QA-plan and regression-selection revisions are mandatory”; `SC-STA-004`; `SC-STA-005`; `SC-STA-006`; `SC-PRO-001`; `SC-PRO-002` |
 | `SC-009` | `SKILL.md` Phase 5 bounded redacted manual evidence | Case 5 “Manual text is previewed, bounded, and redacted”; `SC-STA-015`; `SC-PRO-012` |
 | `SC-010` | `SKILL.md` Phase 2 ledger plus Phase 7 unified receipt | Case 6 “Unified stable-check evidence schema”; `SC-STA-011`; `SC-STA-016`; `SC-STA-017`; `SC-PRO-008` |
 | `SC-011` | `SKILL.md` Phase 8 independent observed verdict/persistence/handoff axes | Case 7 “Declined persistence does not rewrite the observed verdict”; `SC-STA-018`; `SC-PRO-010` |

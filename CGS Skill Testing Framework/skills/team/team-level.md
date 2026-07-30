@@ -14,8 +14,8 @@ ID before reads, ignores generic review mode, builds bounded context/adjacency
 manifests, coordinates deterministic read-only jobs with deadlines and partial
 states, routes every proposal to one destination, and gives one authorized writer
 the exact level/checkpoint paths. Independent accessibility and level-review
-evidence precede QA planning against the final current source hash. COMPLETE is
-an explicit hash-bound evidence matrix, not file production.
+evidence precede QA planning against the final current source revision. COMPLETE is
+an explicit version-bound evidence matrix, not file production.
 
 The only workflow verdicts are:
 
@@ -43,12 +43,12 @@ The shared catalog remains outside this candidate write boundary.
 | `TLD-006` | Missing/invalid single target fails before reads/delegation/verdict | Static 4; Cases 2–3 |
 | `TLD-007` | Ask only product/risk/final-write/final-acceptance decisions, not routine transitions | Static 5; Cases 4–5 |
 | `TLD-008` | Review mode is removed; no solo/director contradiction or hidden quality downgrade | Static 6; Case 6 |
-| `TLD-009` | Bounded context manifest, one-hop dependencies, excerpt/hash prompts, no verbatim context | Static 7–8; Cases 7–8 |
+| `TLD-009` | Bounded context manifest, one-hop dependencies, excerpt/revision prompts, no verbatim context | Static 7–8; Cases 7–8 |
 | `TLD-010` | Job deadline/state/timeout and coherent PARTIAL behavior are deterministic | Static 9–10; Cases 9–10 |
-| `TLD-011` | COMPLETE binds target hash, blockers, dependencies, jobs, independent review, QA, acceptance, checkpoint | Static 11; Cases 11–12 |
-| `TLD-012` | QA runs only after final integrated/reviewed current level hash and becomes stale on change | Static 12; Cases 13–14 |
+| `TLD-011` | COMPLETE binds target revision, blockers, dependencies, jobs, independent review, QA, acceptance, checkpoint | Static 11; Cases 11–12 |
+| `TLD-012` | QA runs only after final integrated/reviewed current level revision and becomes stale on change | Static 12; Cases 13–14 |
 | `TLD-013` | Adjacency uses stable directional interfaces and planned/authored/broken/conflict states with reverse validation | Static 13; Cases 15–16 |
-| `TLD-014` | Every phase has checkpoint state; hash-bound resume is idempotent and avoids duplicate work | Static 14; Cases 17–19 |
+| `TLD-014` | Every phase has checkpoint state; version-bound resume is idempotent and avoids duplicate work | Static 14; Cases 17–19 |
 | `TLD-015` | Spec structure is complete and catalog remains blank until real evidence | Static 15–16; Case 20 |
 
 Exactly these ten IDs are authoritative P1 scope. P0 preservation cases are
@@ -72,24 +72,24 @@ regressions, not additional P1 findings.
 7. [ ] Context limits cover files, aggregate/excerpt/prompt bytes, explicit first-
    level references, and one-hop adjacency; over-limit required choices are shown
    rather than silently truncated.
-8. [ ] Job prompts use manifest identity, selected excerpt hashes, and structured
+8. [ ] Job prompts use manifest identity, selected excerpt revisions, and structured
    predecessor records, never all source documents or outputs verbatim.
-9. [ ] Every job has stable ID, role, required flag, input/output hashes/schema,
-   deadline, one bounded follow-up, status, result payload/hash, and dependency
+9. [ ] Every job has stable ID, role, required flag, input/output revisions/schema,
+   deadline, one bounded follow-up, status, result payload/revision, and dependency
    IDs; concurrency/jobs/result sizes are bounded.
 10. [ ] Required timeout/invalid/missing result prevents COMPLETE, preserves valid
     independent results, and returns coherent PARTIAL only with an exact resume
     point.
-11. [ ] `TL-COMPLETE/v1` lists all twelve predicates including target hash, agent
-    completion, blockers, dependency state, independent current-hash review,
-    current-hash QA, user acceptance, writer identity, and COMPLETE checkpoint.
-12. [ ] QA input is the final persisted/reviewed level hash; any later level byte
+11. [ ] `TL-COMPLETE/v1` lists all twelve predicates including target revision, agent
+    completion, blockers, dependency state, independent current-revision review,
+    current-revision QA, user acceptance, writer identity, and COMPLETE checkpoint.
+12. [ ] QA input is the final persisted/reviewed level revision; any later level byte
     change stales review and QA and no QA file/PASS evidence is produced here.
 13. [ ] Adjacency records have stable directional IDs/endpoints/reverse refs and
     exactly `PLANNED|AUTHORED|UNRESOLVED|BROKEN_LINK|INTERFACE_CONFLICT`; file
     existence is insufficient.
 14. [ ] `cgs.team-level-checkpoint/v2` is constructed after every phase, stores
-    bounded job payloads/hashes and monotonic sequence, and resumes from the
+    bounded job payloads/revisions and monotonic sequence, and resumes from the
     earliest stale dependency without duplicate dispatch/write/review/QA.
 15. [ ] This spec has Candidate status, summary, sources, P1 trace, static
     assertions, director/profile section, complete numbered cases with fixtures/
@@ -97,7 +97,7 @@ regressions, not additional P1 findings.
 16. [ ] Candidate remains `NOT EXECUTED`; it neither mutates shared catalog nor
     claims/populates any `last_*` field.
 17. [ ] `$design-review` is forbidden for level documents; private
-    `cgs.level-review/v1` is independent/read-only/current-hash-bound.
+    `cgs.level-review/v1` is independent/read-only/current-version-bound.
 18. [ ] BLOCKING findings are non-waivable, stable across one verification
     re-review, and stop after observation two if still open.
 19. [ ] Every proposal/finding routes once; reducer allowlist excludes lore,
@@ -116,17 +116,17 @@ must differ from every author and the transaction writer.
 
 ---
 
-## Case 1: Happy path reaches hash-bound DESIGN APPROVED
+## Case 1: Happy path reaches version-bound DESIGN APPROVED
 
 **Fixture:**
 
 - `forest-dungeon` is a valid absent target; CREATE is unambiguous.
 - Required sources fit bounds; adjacency interfaces validate.
-- Every applicable job completes before deadline with valid result hashes.
+- Every applicable job completes before deadline with valid result revisions.
 - Routing/reducer allowlists pass and accessibility has zero blockers.
 - The user authorizes the exact two-path plan; writer verifies both writes.
-- Independent level-review passes the current raw level hash.
-- QA returns PLANNED cases bound to that same hash/review result.
+- Independent level-review passes the current raw level revision.
+- QA returns PLANNED cases bound to that same revision/review result.
 - User accepts the exact final packet and authorizes its exact COMPLETE-
   checkpoint candidate; that separate compare-and-set verifies.
 
@@ -139,7 +139,7 @@ only verdict is `COMPLETE — DESIGN APPROVED`.
 
 - [ ] Only level and checkpoint paths are mutated
 - [ ] Every specialist/reviewer/QA job remains read-only
-- [ ] Review, QA, acceptance, level, plan, context, and checkpoint hashes agree
+- [ ] Review, QA, acceptance, level, plan, context, and checkpoint revisions agree
 - [ ] Final acceptance does not authorize implementation
 
 ---
@@ -253,12 +253,12 @@ recursive crawl or silent truncation occurs.
 prompt recorder captures every dispatched payload.
 
 **Expected behavior:** each prompt remains within 96 KiB, binds context/excerpt/
-predecessor hashes, and contains only task-relevant excerpts/structured records.
+predecessor revisions, and contains only task-relevant excerpts/structured records.
 No full-project dump or accumulated verbatim transcript appears.
 
 **Assertions:**
 
-- [ ] Every excerpt has a source section and hash
+- [ ] Every excerpt has a source section and revision
 - [ ] Prompt byte limit is enforced before dispatch
 - [ ] Prior agent output is structured, not transcript concatenation
 
@@ -275,7 +275,7 @@ unbounded wait, forged result, or replacement loop occurs.
 
 **Assertions:**
 
-- [ ] One job ID/input hash persists through the permitted follow-up
+- [ ] One job ID/input revision persists through the permitted follow-up
 - [ ] Late/duplicate output cannot become valid COMPLETE evidence
 - [ ] At most three jobs are live and at most sixteen exist in the run
 
@@ -287,7 +287,7 @@ unbounded wait, forged result, or replacement loop occurs.
 required systems proposal times out while independent completed results remain
 valid.
 
-**Expected behavior:** preserve completed payloads/hashes, mark required job
+**Expected behavior:** preserve completed payloads/revisions, mark required job
 TIMED_OUT, return `PARTIAL — NOT APPROVED`, and identify the exact checkpoint
 resume phase. If no coherent draft exists, return BLOCKED instead.
 
@@ -312,14 +312,14 @@ true/current, the final packet may be accepted.
 
 - [ ] All twelve predicates are individually observed
 - [ ] False and unknown are both fail-closed
-- [ ] Final acceptance is bound to the all-true matrix hash
+- [ ] Final acceptance is bound to the all-true matrix revision
 
 ---
 
 ## Case 12: A produced file or accepted risk is never approval
 
 **Variants:** source write succeeds before review; non-blocking risk is accepted;
-checkpoint says COMPLETE but current level hash differs.
+checkpoint says COMPLETE but current level revision differs.
 
 **Expected behavior:** respectively PARTIAL, `ACCEPTED RISK / NOT APPROVED`, and
 STALE/PARTIAL. None is `COMPLETE — DESIGN APPROVED`.
@@ -338,12 +338,12 @@ STALE/PARTIAL. None is `COMPLETE — DESIGN APPROVED`.
 independent level-review passes H1.
 
 **Expected behavior:** qa-tester first dispatch occurs only after H1 persistence
-and review PASS, and inputs bind H1 plus review/finding hashes. Cases are PLANNED;
+and review PASS, and inputs bind H1 plus review/finding revisions. Cases are PLANNED;
 no QA file, test execution, PASS, or coverage claim appears.
 
 **Assertions:**
 
-- [ ] QA dispatch sequence follows current-hash review PASS
+- [ ] QA dispatch sequence follows current-revision review PASS
 - [ ] Every QA case references H1 sections/entities
 - [ ] QA write and execution counts are zero
 
@@ -361,7 +361,7 @@ cannot silently patch H1 after QA freezes.
 
 - [ ] H1 evidence is never applied to H2
 - [ ] Review precedes regenerated QA
-- [ ] Final packet cannot retain stale hashes
+- [ ] Final packet cannot retain stale revisions
 
 ---
 
@@ -371,7 +371,7 @@ cannot silently patch H1 after QA freezes.
 two authored levels with matching forward/reverse IDs/endpoints/direction/state.
 
 **Expected behavior:** states PLANNED and AUTHORED respectively with stable
-interface/source hashes. Filename presence or absence alone does not decide.
+interface/source revisions. Filename presence or absence alone does not decide.
 
 **Assertions:**
 
@@ -405,20 +405,20 @@ traversal, and never auto-run another team-level workflow.
 write, review, QA, and final acceptance.
 
 **Expected behavior:** in-memory/persisted snapshots increment `state_seq`, bind
-phase/source/target/job/result/decision/finding hashes, and retain one exact safe
+phase/source/target/job/result/decision/finding revisions, and retain one exact safe
 resume action. Pre-authorization snapshots cause zero project writes.
 
 **Assertions:**
 
 - [ ] Sequence is strictly monotonic with no duplicate accepted transition
-- [ ] Stored job results include bounded payload and matching hash
+- [ ] Stored job results include bounded payload and matching revision
 - [ ] Only planned checkpoint transitions persist after authorization
 
 ---
 
 ## Case 18: Resume reuses exact completed work once
 
-**Fixture:** valid persisted checkpoint with matching context/target hashes and
+**Fixture:** valid persisted checkpoint with matching context/target revisions and
 stored bounded COMPLETE job payloads/results; run stopped before level review.
 
 **Expected behavior:** completed proposals/write/decisions are reused without
@@ -427,8 +427,8 @@ receipts are not duplicated.
 
 **Assertions:**
 
-- [ ] Reused job input/payload/result hashes all verify
-- [ ] Existing target bytes equal checkpoint current hash
+- [ ] Reused job input/payload/result revisions all verify
+- [ ] Existing target bytes equal checkpoint current revision
 - [ ] Dispatch and write counts remain unchanged for reused work
 
 ---
@@ -436,7 +436,7 @@ receipts are not duplicated.
 ## Case 19: Stale checkpoint returns to earliest affected phase
 
 **Variants:** changed context source; corrupted stored job payload; changed target
-bytes; stale review hash; missing QA payload with matching claimed hash.
+bytes; stale review revision; missing QA payload with matching claimed revision.
 
 **Expected behavior:** dependent records become STALE and resume starts at
 context/job/write/review/QA respectively. Prose-only claims are rejected and no
@@ -445,7 +445,7 @@ valid earlier independent result is unnecessarily rerun.
 **Assertions:**
 
 - [ ] Earliest stale dependency determines resume phase
-- [ ] Independent still-valid records retain their hashes/status
+- [ ] Independent still-valid records retain their revisions/status
 - [ ] No prose-only or missing payload is reusable evidence
 
 ---
@@ -470,7 +470,7 @@ does not edit/claim catalog results.
 
 ## Case 21: Level document never enters system-GDD design review
 
-**Fixture:** current level hash H1 exists and invocation recorder is active.
+**Fixture:** current level revision H1 exists and invocation recorder is active.
 
 **Expected behavior:** private `cgs.level-review/v1` reviews H1 with correct level
 criteria. `$design-review` invocation count is zero; missing Formula/Tuning/
@@ -530,7 +530,7 @@ author/reviewer is dispatched.
 
 **Assertions:**
 
-- [ ] Original fingerprint/ID is unchanged across observations
+- [ ] Original identity/ID is unchanged across observations
 - [ ] Re-review scope contains only original IDs and diff regressions
 - [ ] Observation count never exceeds two
 
@@ -544,12 +544,12 @@ not restore.
 
 **Expected behavior:** first two write nothing; checkpoint failure prints bounded
 `RECOVERY CHECKPOINT NOT PERSISTED`; rollback is claimed only for byte-identical
-verified restoration; otherwise actual hashes and PARTIAL state are preserved.
+verified restoration; otherwise actual revisions and PARTIAL state are preserved.
 No unlisted path or replacement writer is used.
 
 **Assertions:**
 
-- [ ] Every write is covered by the exact plan hash and single owner
+- [ ] Every write is covered by the exact plan revision and single owner
 - [ ] Compare-and-set occurs immediately before mutation
 - [ ] Partial/rollback claims match reread raw target bytes
 
@@ -564,8 +564,8 @@ No unlisted path or replacement writer is used.
 - [ ] Accessibility review precedes source authorization.
 - [ ] Destination routing/reducer allowlist precede source bytes.
 - [ ] One complete authorization precedes first mutation.
-- [ ] Independent current-hash level review precedes QA.
-- [ ] Final current-hash QA precedes design acceptance.
+- [ ] Independent current-revision level review precedes QA.
+- [ ] Final current-revision QA precedes design acceptance.
 - [ ] COMPLETE matrix and final compare-and-set precede the verdict.
 - [ ] No implementation, external destination, test execution, or shared catalog
       mutation occurs.
@@ -589,4 +589,4 @@ remain `NOT EXECUTED` pending separate authorized testing with immutable receipt
   are not pre-authorized; rollout must not claim crash-resume durability until
   the first exact checkpoint candidate has been authorized and persisted.
 - A rollout must copy the skill, both private references, metadata, and spec as
-  one hash-reviewed unit; copying only `SKILL.md` leaves required links missing.
+  one revision-reviewed unit; copying only `SKILL.md` leaves required links missing.

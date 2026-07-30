@@ -9,7 +9,7 @@ and must be read before any report or receipt approval request.
 Run review only after the baseline/current pair, stable diff, bounded source
 manifest, coverage table, complete currently known graph, stable impacts/findings,
 active-work freezes, owner routes, report candidate, and receipt candidate are
-hash-stable.
+revision-stable.
 
 ### Full mode
 
@@ -19,7 +19,7 @@ hash-stable.
 - The reviewer cannot delegate, edit, approve, authorize, record, or stand in for
   an artifact owner.
 - Pass exact baseline/current, diff, source-manifest, graph, impact-plan, report,
-  and receipt candidate hashes.
+  and receipt candidate revision.
 - Require `cgs.pdc-technical-review-result/v2`:
 
 ```yaml
@@ -30,25 +30,25 @@ status: complete | partial | timeout | failed | side-effect
 disposition: APPROVE | CONCERNS | REJECT | null
 analysis_author_identity: <identity>
 reviewer_identity: <different identity>
-baseline_sha256: <sha256>
-current_sha256: <sha256>
-diff_sha256: <sha256>
-source_manifest_sha256: <sha256>
-graph_sha256: <sha256>
-impact_plan_sha256: <sha256>
-report_candidate_sha256: <sha256>
+baseline_revision: <revision>
+current_revision: <revision>
+diff_revision: <revision>
+source_manifest_revision: <revision>
+graph_revision: <revision>
+impact_plan_revision: <revision>
+report_candidate_revision: <revision>
 finding_ids: []
 omissions: []
 ```
 
-`partial`, `timeout`, `failed`, `side-effect`, missing independence, or hash
+`partial`, `timeout`, `failed`, `side-effect`, missing independence, or revision
 mismatch yields PARTIAL. It forbids any downstream resolution write and cannot be
 replaced by self-review or an inferred pass. A PARTIAL impact report/result
 receipt may still be proposed as evidence if all report-only gates pass.
 
 For `CONCERNS` or `REJECT`, the planning owner may stop or authorize exactly one
 targeted analysis revision addressing named stable finding IDs. Recompute all
-affected diff/manifest/graph/impact/plan/report/receipt hashes, re-inventory the
+affected diff/manifest/graph/impact/plan/report/receipt revision, re-inventory the
 complete target set, and make exactly one re-review call. No second revision or
 third review is permitted. Continued rejection, blocking concern, incomplete
 review, or non-convergence yields PARTIAL or
@@ -73,17 +73,17 @@ coverage, ambiguous identity, active-work coordination, or missing owner evidenc
 
 After bounded owner decisions and review, present one exact preview containing:
 
-- change ID and immutable baseline/current locators, paths, byte counts, hashes,
+- change ID and immutable baseline/current locators, paths, byte counts, revisions,
   and diff range;
-- diff/source-manifest/coverage/graph hashes and every continuation omission;
+- diff/source-manifest/coverage/graph revisions and every continuation omission;
 - every stable delta, impact, finding, artifact snapshot, lifecycle, dependency,
   active-work freeze, and owner route;
 - accepted/deferred decisions with rationale, owner, review point, and evidence;
 - technical-review result and stable findings;
-- report path, expected preimage, full candidate hash or existing immutable report
-  hash;
+- report path, expected preimage, candidate ID and revision or existing immutable report
+  revision;
 - prior receipt-chain head, proposed sequence/path, expected ABSENT preimage, and
-  receipt candidate hash; and
+  receipt candidate revision; and
 - every source and downstream non-write path/category.
 
 Approval uses `cgs.pdc-report-plan-approval/v2`:
@@ -93,19 +93,19 @@ schema: cgs.pdc-report-plan-approval/v2
 approval_id: <stable id>
 planning_owner: <identity>
 change_id: <id>
-baseline_sha256: <sha256>
-current_sha256: <sha256>
-diff_sha256: <sha256>
-source_manifest_sha256: <sha256>
-graph_sha256: <sha256>
-impact_plan_sha256: <sha256>
-technical_review_sha256: <sha256 or null>
+baseline_revision: <revision>
+current_revision: <revision>
+diff_revision: <revision>
+source_manifest_revision: <revision>
+graph_revision: <revision>
+impact_plan_revision: <revision>
+technical_review_revision: <revision or null>
 report_path: production/change-impact/<change_id>.md
-report_expected_preimage_sha256: <sha256 or ABSENT>
-report_candidate_or_root_sha256: <sha256>
-previous_receipt_sha256: <sha256 or ROOT>
+report_expected_preimage_revision: <revision or ABSENT>
+report_candidate_or_root_revision: <revision>
+previous_receipt_revision: <revision or ROOT>
 receipt_path: <normalized create-only path>
-receipt_candidate_sha256: <sha256>
+receipt_candidate_revision: <revision>
 decision: approved
 approved_at: <RFC3339 timestamp>
 ```
@@ -113,7 +113,7 @@ approved_at: <RFC3339 timestamp>
 Approval confirms report and route-plan content. It does not approve or authorize
 any GDD, registry, ADR, architecture, epic, story, sprint, implementation, test,
 owner-record, or readiness mutation. A scope, route, lifecycle, candidate byte,
-source hash, receipt head, identity, or path change invalidates approval.
+source revision, receipt head, identity, or path change invalidates approval.
 
 ## 3. Report-only mutation authorization
 
@@ -123,8 +123,8 @@ After plan approval, request one explicit authorization for exactly:
 2. one create-only result/convergence receipt at the exact proposed path.
 
 For a continuation run with an existing valid report, authorize only the new
-receipt. The authorization binds approval ID/hash, change ID, report root hash,
-receipt-chain head, exact target paths/preimages/candidate hashes, writer,
+receipt. The authorization binds approval ID/revision, change ID, report root revision,
+receipt-chain head, exact target paths/preimages/candidate revision, writer,
 recorder, and explicit non-write categories. Never ask per impact or per owner.
 
 A request to “apply the design change,” owner-route approval, reviewer approval,
@@ -142,34 +142,34 @@ and requires re-analysis or a new preview.
 ### Baseline/current and source CAS
 
 - Re-read immutable baseline bytes and current GDD bytes and require the approved
-  paths, resolved locator IDs, byte counts, and SHA-256 hashes.
+  paths, resolved locator IDs, byte counts, and declared revisions.
 - Re-read every source-manifest path and inventory authority; require exact bytes,
-  hashes, parse/coverage states, loaded/omitted set, node/edge/impact counts, and
+  revisions, parse/coverage states, loaded/omitted set, node/edge/impact counts, and
   deterministic continuation boundary.
 - Recompute diff, manifest, coverage, graph, impact, finding, owner-route, and
-  technical-review input hashes.
+  technical-review input revision.
 
 ### Impact and owner-evidence CAS
 
 - Re-derive every stable change/delta/impact/finding/artifact ID.
 - Revalidate TR and dependency closure, artifact snapshots, ownership, active-work
-  status/updated-at/hash, coordination receipts, and owner-resolution receipts.
-- Require all receipt identities, schemas, target hashes, transitions, and
+  status/updated-at/revision, coordination receipts, and owner-resolution receipts.
+- Require all receipt identities, schemas, target revisions, transitions, and
   verification evidence to match the approved fold.
 
 ### Immutable target and chain CAS
 
 - If creating the report, require its target to remain `ABSENT`.
-- If continuing, require the existing report bytes/hash/schema/change ID to equal
+- If continuing, require the existing report bytes/revision/schema/change ID to equal
   the approved immutable root.
 - Inventory the bounded receipt directory and require exactly one linear chain,
   the approved head, no fork/gap/duplicate predecessor, and the proposed receipt
   target `ABSENT`.
-- Recompute the deterministic folded state and proposed sequence/digest prefix.
+- Recompute the deterministic folded state and proposed sequence/reference ID prefix.
 
 ### Approval, authorization, and role CAS
 
-- Require current bytes/state to match every hash in the report-plan approval.
+- Require current bytes/state to match every revision in the report-plan approval.
 - Require mutation authorization to bind only the current report/receipt set.
 - Require active analysis author, reviewer, planning owner, writer, and recorder
   identities to match their evidence. In full mode enforce reviewer independence.
@@ -179,10 +179,10 @@ and requires re-analysis or a new preview.
 After all CAS gates pass:
 
 1. If the report is absent, create it using atomic single-file creation where
-   supported; read it back and verify exact candidate bytes and SHA-256.
+   supported; read it back and verify exact candidate bytes and revision.
 2. If the report already exists, do not rewrite, touch, reformat, or timestamp it.
 3. Create the result/convergence receipt last; read it back and verify exact bytes
-   and SHA-256.
+   and revision.
 4. Re-read the report root and predecessor receipt and verify that the new receipt
    extends the authorized linear chain.
 5. Do not perform any downstream or owner-plan write before, between, or after
@@ -191,7 +191,7 @@ After all CAS gates pass:
 Atomic single-file creation does not make the two-file initial run atomic. Never
 claim multi-file rollback. If the report is created but receipt creation or
 verification fails, return PARTIAL with an unreceipted immutable report root,
-stop further writes, and preserve exact expected/observed hashes. Do not delete or
+stop further writes, and preserve exact expected/observed revisions. Do not delete or
 overwrite the report. A later authorized recovery receipt may attach to that root.
 
 If receipt creation succeeds but final chain verification fails, return PARTIAL,
@@ -209,19 +209,19 @@ change_id: <id>
 sequence: <positive integer>
 status: PARTIAL | NO_IMPACT | ANALYSIS_COMPLETE | CONVERGED
 report_path: production/change-impact/<change_id>.md
-report_sha256: <sha256>
-previous_receipt_sha256: <sha256 or ROOT>
-baseline_sha256: <sha256>
-current_sha256: <sha256>
-diff_sha256: <sha256>
-source_manifest_sha256: <sha256>
-graph_sha256: <sha256>
-impact_plan_sha256: <sha256>
-technical_review_sha256: <sha256 or null>
+report_revision: <revision>
+previous_receipt_revision: <revision or ROOT>
+baseline_revision: <revision>
+current_revision: <revision>
+diff_revision: <revision>
+source_manifest_revision: <revision>
+graph_revision: <revision>
+impact_plan_revision: <revision>
+technical_review_revision: <revision or null>
 plan_approval_id: <id>
-plan_approval_sha256: <sha256>
+plan_approval_revision: <revision>
 mutation_authorization_id: <id>
-mutation_authorization_sha256: <sha256>
+mutation_authorization_revision: <revision>
 writer_identity: <identity>
 recorder_identity: <identity>
 coverage_transitions: []
@@ -235,12 +235,12 @@ continuation_shards: []
 recorded_at: <RFC3339 timestamp>
 ```
 
-Every transition records prior/current lifecycle, evidence path/hash, owner, and
+Every transition records prior/current lifecycle, evidence path/revision, owner, and
 acceptance condition. A receipt cannot rewrite the report, authorize downstream
 work, manufacture an owner resolution, close a missing edge, or skip a sequence.
 
 Receipt IDs and paths are derived from `change_id`, sequence, and canonical
-candidate digest. The receipt does not embed its own final hash.
+candidate reference ID. The receipt does not embed its own final revision.
 
 ## 7. Fold and convergence verification
 
@@ -267,7 +267,7 @@ work is PARTIAL with one deterministic continuation shard; never loop until pass
 
 ## 8. Terminal outcomes
 
-- `NO_CHANGE`: verified hashes equal; no report, receipt, approval, or write.
+- `NO_CHANGE`: verified revisions equal; no report, receipt, approval, or write.
 - `NEW_GDD`: valid baseline proves absence; report the new-file condition without
   claiming downstream no-impact and perform no automatic propagation.
 - `BLOCKED`: baseline/change identity, immutable target, chain, approval,
@@ -292,5 +292,5 @@ successfully scanned empty subsets, or report creation.
 Return exactly one next action. Prefer the highest-priority open coordination,
 coverage, owner, TR, or dependency finding. Otherwise route one named impact to
 its declared owner workflow, binding change/impact/artifact IDs, report/receipt
-hashes, artifact preimage hash, requested action, acceptance condition, and
+revisions, artifact base revision, requested action, acceptance condition, and
 required resolution receipt schema. Do not invoke the workflow automatically.

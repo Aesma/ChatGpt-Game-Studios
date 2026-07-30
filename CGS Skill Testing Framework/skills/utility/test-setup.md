@@ -12,7 +12,7 @@ test-setup audits, scaffolds, verifies, or performs ID-keyed repair of
 engine-specific test infrastructure. It binds an owner-approved structured engine
 manifest, repository policy, canonical layout manifest, argv-only execution
 manifest, reviewed dependency lock, deterministic pass/failure canaries, and
-current hash-bound local and CI receipts.
+current revision-bound local and CI receipts.
 
 Owned writes are limited to authorized managed test infrastructure, the managed
 cgs-tests workflow job, and immutable evidence below
@@ -23,7 +23,7 @@ unmanaged workflow jobs, and human-authored tests are non-writes.
 Workflow statuses are COMPLETE, PARTIAL, BLOCKED, and ERROR. A missing,
 unreadable, timed-out, unsupported, stale, unverifiable, or partially covered
 required check is never PASS. Gate eligibility requires every verification rung
-through CI_VERIFIED for the same current hashes.
+through CI_VERIFIED for the same current revisions.
 
 ---
 
@@ -32,20 +32,20 @@ through CI_VERIFIED for the same current hashes.
 - [ ] **[TSU-SA-001]** Frontmatter contains exactly non-empty name and description,
   and name is test-setup.
 - [ ] **[TSU-SA-002]** A normative cgs-test-setup-contract/v1 declares modes,
-  authorities, owned outputs, non-writes, receipt schema, and hash algorithm.
+  authorities, owned outputs, non-writes, receipt schema, and revision format.
 - [ ] **[TSU-SA-003]** Audit is read-only and no mode auto-invokes a gate, skill,
   commit, or publication.
 - [ ] **[TSU-SA-004]** Existing infrastructure is parsed semantically; path
   existence cannot establish validity.
-- [ ] **[TSU-SA-005]** Repair operations are stable-ID keyed, hash-preconditioned,
+- [ ] **[TSU-SA-005]** Repair operations are stable-ID keyed, revision-preconditioned,
   diff-bound, backed up, compare-and-set, and preserve unmanaged content.
-- [ ] **[TSU-SA-006]** The full root-to-target AGENTS chain is hashed and closest
+- [ ] **[TSU-SA-006]** The full root-to-target AGENTS chain is versioned and closest
   applicable rules control every target.
 - [ ] **[TSU-SA-007]** Manual evidence routes only to production/qa/evidence and
   never to tests/evidence.
 - [ ] **[TSU-SA-008]** One versioned layout manifest owns unit, integration,
   performance, playtest, setup-canary, and evidence-route declarations.
-- [ ] **[TSU-SA-008A]** The three downstream manifests expose exactly `cgs-test-layout/v1`, `cgs-test-validator-manifest/v1`, and `cgs-test-execution-manifest/v1` through matching `artifact_type`, integer `manifest_version: 1`, and `schema`; every consumer binding includes canonical path and raw SHA-256.
+- [ ] **[TSU-SA-008A]** The three downstream manifests expose exactly `cgs-test-layout/v1`, `cgs-test-validator-manifest/v1`, and `cgs-test-execution-manifest/v1` through matching `artifact_type`, integer `manifest_version: 1`, and `schema`; every consumer binding includes canonical path and raw revision.
 - [ ] **[TSU-SA-008B]** Legacy producer identities `cgs-test-layout-manifest` and `cgs-test-setup-validator-manifest` are rejected rather than aliased.
 - [ ] **[TSU-SA-009]** Structured engine authority agrees with actual descriptor,
   version, language, project root, and module or assembly identity.
@@ -56,13 +56,13 @@ through CI_VERIFIED for the same current hashes.
 - [ ] **[TSU-SA-012]** Verification advances monotonically from audit through
   static, discovery, canary, failure sensitivity, determinism, and trusted CI.
 - [ ] **[TSU-SA-013]** Static validators, runners, parsers, manifests, sources,
-  logs, and receipts carry exact version and raw SHA-256 bindings.
+  logs, and receipts carry exact version and raw revision bindings.
 - [ ] **[TSU-SA-014]** Deterministic controls are frozen before execution and pass
   semantic projections must match without post-result retries.
 - [ ] **[TSU-SA-015]** Partial, unavailable, timeout, unsupported, stale, or
   invalid evidence forces Gate Eligible NO.
 - [ ] **[TSU-SA-016]** Every third-party action has a reviewed source, immutable
-  full commit SHA, license/security disposition, and review-receipt hash.
+  full commit SHA, license/security disposition, and review-receipt revision.
 - [ ] **[TSU-SA-017]** COMPLETE requires nonzero discovery, pass, intentional
   conclusive fail, isolated equal post-probe pass, and current trusted CI proof.
 - [ ] **[TSU-SA-018]** cgs-test-setup-receipt/v2 binds every authority, manifest,
@@ -77,7 +77,7 @@ through CI_VERIFIED for the same current hashes.
 #### Fixture
 
 - The tests tree and tests workflow already exist.
-- The execution manifest points at a stale runner hash.
+- The execution manifest points at a stale runner revision.
 - The managed cgs-tests job omits receipt upload.
 - Human jobs and human-authored tests are present.
 
@@ -88,9 +88,9 @@ through CI_VERIFIED for the same current hashes.
 
 #### Expected reads
 
-- Every managed artifact in full, its schema, references, stable IDs, and raw hash.
+- Every managed artifact in full, its schema, references, stable IDs, and declared revision.
 - Existing cgs-tests YAML subtree and all unmanaged sibling identities.
-- Applicable validators and their pinned versions and hashes.
+- Applicable validators and their pinned versions and revisions.
 
 #### Expected writes
 
@@ -107,8 +107,8 @@ through CI_VERIFIED for the same current hashes.
 
 - Path existence never yields VALID.
 - Each expected artifact gets a semantic outcome and validator evidence.
-- Repair operations carry stable ID, bounded pointer or anchor, preimage hash,
-  before/after value hashes, patch hash, and all-file compare-and-set.
+- Repair operations carry stable ID, bounded pointer or anchor, base revision,
+  before/after value revisions, patch revision, and all-file compare-and-set.
 - A preimage mismatch writes no managed target.
 
 #### Assertions
@@ -121,7 +121,7 @@ through CI_VERIFIED for the same current hashes.
 #### Case Verdict
 
 PASS when audit is complete and repair preserves unmanaged bytes with verified
-preimage, diff, postimage, and read-back hashes; otherwise PARTIAL, BLOCKED, or
+preimage, diff, postimage, and read-back revisions; otherwise PARTIAL, BLOCKED, or
 FAIL with Gate Eligible NO.
 
 ---
@@ -141,7 +141,7 @@ FAIL with Gate Eligible NO.
 #### Expected reads
 
 - The repository-root-to-parent instruction chain for every proposed target.
-- Raw bytes and SHA-256 of each selected instruction file.
+- Raw bytes and revision of each selected instruction file.
 
 #### Expected writes
 
@@ -156,7 +156,7 @@ FAIL with Gate Eligible NO.
 
 - Precedence is resolved separately per target and the closest rule wins.
 - Effective naming, evidence, isolation, cleanup, and engine rules record their
-  source path and hash.
+  source path and revision.
 - The current repository naming example is not used as a fallback elsewhere.
 
 #### Assertions
@@ -168,7 +168,7 @@ FAIL with Gate Eligible NO.
 
 #### Case Verdict
 
-PASS only with a complete hash-bound chain and correct per-target precedence;
+PASS only with a complete revision-bound chain and correct per-target precedence;
 otherwise BLOCKED with Gate Eligible NO.
 
 ---
@@ -202,14 +202,14 @@ otherwise BLOCKED with Gate Eligible NO.
 
 - tests/evidence is classified CONFLICTING.
 - Manual evidence and setup automation evidence resolve from one versioned layout
-  manifest path and hash.
+  manifest path and revision.
 - Conflicting external consumers produce an owner handoff rather than an inferred
   local rewrite.
 
 #### Assertions
 
 - [ ] No generated text routes visual or UI proof under tests.
-- [ ] README and execution manifest bind the exact layout-manifest hash.
+- [ ] README and execution manifest bind the exact layout-manifest revision.
 - [ ] Shared consumers are never silently edited.
 - [ ] Conflicting routes prevent COMPLETE.
 
@@ -258,7 +258,7 @@ forbidden route remains; otherwise BLOCKED or INCOMPLETE.
 
 - [ ] Every required directory ID resolves to one contained path.
 - [ ] Changed-path claims match actual tracked files.
-- [ ] The execution manifest binds the layout-manifest hash.
+- [ ] The execution manifest binds the layout-manifest revision.
 - [ ] No empty-path or directory-existence claim implies completion.
 
 #### Case Verdict
@@ -273,10 +273,10 @@ otherwise INCOMPLETE with Gate Eligible NO.
 #### Fixture
 
 - A cgs-test-setup-engine-manifest/v1 identifies engine, aliases, exact version,
-  language, project root, descriptor hash, and module or assembly.
+  language, project root, descriptor revision, and module or assembly.
 - Actual project descriptor and version authority are available.
 - Variants contain an alias not listed, a second project root, or a version,
-  language, descriptor-hash, or module mismatch.
+  language, descriptor_revision, or module mismatch.
 
 #### Input
 
@@ -299,7 +299,7 @@ otherwise INCOMPLETE with Gate Eligible NO.
 #### Expected behavior
 
 - Only enumerated aliases normalize.
-- Project root containment and descriptor raw hash are verified.
+- Project root containment and descriptor declared revision are verified.
 - Free-text engine labels cannot establish identity.
 - Every conflict is explicit and fail-closed.
 
@@ -333,7 +333,7 @@ target write.
 
 #### Expected reads
 
-- Repository-policy bytes/hash, verifiable VCS branch reference when available,
+- Repository-policy bytes/revision, verifiable VCS branch reference when available,
   dependency lock, workflow, and execution manifest.
 
 #### Expected writes
@@ -347,8 +347,8 @@ target write.
 #### Expected behavior
 
 - CI generation derives every governed field from the policy.
-- Cache keys bind engine/framework/dependency/tool hashes; restored bytes are
-  rehashed before use.
+- Cache keys bind engine/framework/dependency/tool revisions; restored bytes are
+  Revalidate before use.
 - Missing or conflicting policy leaves active CI unmodified and SETUP_PENDING.
 
 #### Assertions
@@ -360,7 +360,7 @@ target write.
 
 #### Case Verdict
 
-PASS when active CI exactly matches a current policy hash; SETUP_PENDING or
+PASS when active CI exactly matches a current policy revision; SETUP_PENDING or
 INVALID otherwise.
 
 ---
@@ -371,7 +371,7 @@ INVALID otherwise.
 
 - A workflow contains cgs-tests, lint, and package jobs.
 - Another workflow contains a job named test.
-- cgs-tests uses a wrong runner argv and stale execution-manifest hash.
+- cgs-tests uses a wrong runner argv and stale execution-manifest revision.
 
 #### Input
 
@@ -380,7 +380,7 @@ INVALID otherwise.
 #### Expected reads
 
 - Complete parsed workflow trees, exact cgs-tests node, manifests, dependency
-  review receipts, and current runner argv/hash.
+  review receipts, and current runner argv/revision.
 
 #### Expected writes
 
@@ -394,7 +394,7 @@ INVALID otherwise.
 #### Expected behavior
 
 - Presence of a workflow or generic test job provides no evidence.
-- The exact job ID, event policy, manifest hash, argv array, logs, receipts,
+- The exact job ID, event policy, manifest revision, argv array, logs, receipts,
   secrets, actions, timeout, cache, and runner prerequisites are validated.
 - Repair uses a structured pointer and all-file compare-and-set.
 
@@ -407,7 +407,7 @@ INVALID otherwise.
 
 #### Case Verdict
 
-PASS when exact-job semantics and preservation hashes verify; otherwise FAIL,
+PASS when exact-job semantics and preservation revisions verify; otherwise FAIL,
 PARTIAL, or BLOCKED.
 
 ---
@@ -426,7 +426,7 @@ PARTIAL, or BLOCKED.
 
 #### Expected reads
 
-- Contract, all authority and manifest hashes, pinned validator manifest,
+- Contract, all authority and manifest revision, pinned validator manifest,
   execution receipts, logs, and CI receipt dependencies.
 
 #### Expected writes
@@ -467,7 +467,7 @@ overclaim is FAIL.
 
 - The dependency lock lists framework, parser, launcher, and CI actions.
 - Variants use a major tag, a full SHA without review, missing license or security
-  disposition, a stale review-receipt hash, or changed transitive lock bytes.
+  disposition, a stale review-receipt revision, or changed transitive lock bytes.
 
 #### Input
 
@@ -475,8 +475,8 @@ overclaim is FAIL.
 
 #### Expected reads
 
-- Dependency lock, source identities, immutable SHAs or digests, transitive locks,
-  review receipt paths/hashes, and installed bytes.
+- Dependency lock, source identities, immutable SHAs or reference IDs, transitive locks,
+  review receipt paths/revisions, and installed bytes.
 
 #### Expected writes
 
@@ -490,7 +490,7 @@ overclaim is FAIL.
 #### Expected behavior
 
 - Immutable identity and approval are independent required predicates.
-- Every installed or restored dependency is rehashed.
+- Every installed or restored dependency is Revalidate.
 - Any dependency or review change invalidates prior setup and CI receipts.
 - Missing external approval produces SETUP_PENDING.
 
@@ -499,7 +499,7 @@ overclaim is FAIL.
 - [ ] Major tags fail immutable identity.
 - [ ] Full commit SHA alone does not prove review.
 - [ ] Reviewer identity, license, security/deprecation disposition, and receipt
-  hash are present.
+  revision are present.
 - [ ] Cache restore is checked against the lock.
 
 #### Case Verdict
@@ -514,7 +514,7 @@ INVALID, or BLOCKED with Gate Eligible NO.
 #### Fixture
 
 - Version-matched adapter, runner, parser, canary sources, and execution manifest
-  all hash-match.
+  all revision_match.
 - Stable pass and setup-only failure IDs each discover exactly once.
 - Seed, order, locale, timezone, environment-name set, parallelism, timeout, and
   normalization are frozen before execution.
@@ -615,7 +615,7 @@ otherwise.
 #### Fixture
 
 - Local static, execution, setup, and CI receipts are supplied.
-- Variants have missing schema or signature, prior layout hash, changed source,
+- Variants have missing schema or signature, prior layout revision, changed source,
   changed runner/parser/workflow/dependency review, unavailable remote log, or
   complete current bindings.
 
@@ -647,9 +647,9 @@ otherwise.
 
 #### Assertions
 
-- [ ] Receipt schema, producer/tool hash, dependency set, and receipt hash or
+- [ ] Receipt schema, producer/tool revision, dependency set, and receipt revision or
   signature are required.
-- [ ] Every local dependency is rehashed.
+- [ ] Every local dependency is Revalidate.
 - [ ] Partial and stale receipts cannot advance the ladder.
 - [ ] CI receipt binds deterministic controls and equal pass projections.
 
@@ -665,17 +665,17 @@ CURRENT is FAIL.
 #### Fixture
 
 - An authorized repair plan spans multiple managed files.
-- All preimage and backup hashes initially match.
+- All preimage and backup revisions initially match.
 - One path changes after preview and before apply.
 
 #### Input
 
-- Repair with the frozen operation IDs and patch hash.
+- Repair with the frozen operation IDs and patch revision.
 
 #### Expected reads
 
 - Current bytes for every path immediately before any write, repair plan,
-  preimages, backup hashes, and exact diff.
+  preimages, backup revisions, and exact diff.
 
 #### Expected writes
 
@@ -690,12 +690,12 @@ CURRENT is FAIL.
 - All-file compare-and-set detects the changed path before the first write.
 - The repair returns BLOCKED — CONCURRENT CHANGE.
 - Recovery handoff describes a separately authorized three-way patch using
-  current/base/candidate hashes; it never recommends copying a backup over work.
+  current/base/candidate revision; it never recommends copying a backup over work.
 
 #### Assertions
 
 - [ ] Zero target files change.
-- [ ] First divergent path and observed hash are recorded.
+- [ ] First divergent path and observed revision are recorded.
 - [ ] Backup presence does not authorize restoration.
 - [ ] Replanning requires a new repair identity and approval boundary.
 
@@ -711,7 +711,7 @@ edits; any partial overwrite is FAIL.
 #### Fixture
 
 - Instruction, engine, repository, layout, execution, dependency, source,
-  validator, runner, parser, workflow, and receipt hashes are current.
+  validator, runner, parser, workflow, and receipt revision are current.
 - Audit coverage is complete.
 - Static validation and nonzero discovery pass.
 - Pass, intentional conclusive failure, and equal isolated post-probe pass verify.
@@ -748,7 +748,7 @@ edits; any partial overwrite is FAIL.
 #### Assertions
 
 - [ ] Report header contains all v2 machine-readable fields.
-- [ ] Changed, unchanged, unmanaged, rejected, backup, diff, and receipt hashes
+- [ ] Changed, unchanged, unmanaged, rejected, backup, diff, and receipt revision
   are internally consistent.
 - [ ] A report persistence or read-back failure removes gate eligibility.
 - [ ] Every negative variant stops at the last proven rung.
@@ -767,7 +767,7 @@ Eligible NO.
 - [ ] **[TSU-PC-002]** Bounded authorization covers exact writes and argv arrays.
 - [ ] **[TSU-PC-003]** Audit performs no write and no process execution.
 - [ ] **[TSU-PC-004]** Instruction, engine, repository, dependency, layout, and
-  execution authorities are raw-hash bound.
+  execution authorities are raw-revision-bound.
 - [ ] **[TSU-PC-005]** Semantic validator coverage is complete or explicitly
   PARTIAL and fail-closed.
 - [ ] **[TSU-PC-006]** Multi-file repair uses all-file compare-and-set, backup,
@@ -780,7 +780,7 @@ Eligible NO.
   as a conclusive failure probe.
 - [ ] **[TSU-PC-010]** Deterministic controls and semantic projections are frozen
   before observation and never score-gamed with ad hoc retries.
-- [ ] **[TSU-PC-011]** Current receipt status is derived by dependency rehash and
+- [ ] **[TSU-PC-011]** Current receipt status is derived by dependency Revalidate and
   signature verification, not name, date, badge, or mtime.
 - [ ] **[TSU-PC-012]** No catalog, shared QA contract, downstream skill, gate,
   commit, push, or publication is mutated or invoked.
@@ -794,7 +794,7 @@ Eligible NO.
 | `TSU-005` | Phase 2 semantic audit/repair | Case 1: stale semantics despite paths; partial coverage blocks repair/gate |
 | `TSU-006` | Phases 1/3 instruction authority and naming | Case 2: closest tests rule; unreadable rule yields PARTIAL |
 | `TSU-007` | Contract evidence route; Phase 3 layout | Case 3: no visual/UI proof under tests; no shared-consumer edit |
-| `TSU-008` | Phase 3 versioned manifest contract | Case 4: directory IDs resolve once; execution manifest binds layout hash |
+| `TSU-008` | Phase 3 versioned manifest contract | Case 4: directory IDs resolve once; execution manifest binds layout revision |
 | `TSU-009` | Phase 1 engine/project authority | Case 5: no identity guessing; conflicts BLOCKED |
 | `TSU-010` | Phase 1 repository policy; Phase 5 CI | Case 6: no invented CI defaults; policy mismatch blocks VERIFIED |
 | `TSU-011` | Phase 5 exact managed job patch | Case 7: wrong argv detected; whole-workflow replacement prohibited |

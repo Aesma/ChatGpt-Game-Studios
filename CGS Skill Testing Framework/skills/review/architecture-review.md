@@ -1,8 +1,10 @@
 # Skill Test Spec: $architecture-review
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
-`$architecture-review` is a bounded, hash-bound, read-only architecture
+`$architecture-review` is a bounded, revision-bound, read-only architecture
 traceability gate. It reviews only explicit owner-approved requirements, current
 ADR decisions, exact Requirement → ADR → Story → Test Run links, pinned engine
 evidence, and profile-permitted independent reviewer results against one
@@ -42,16 +44,16 @@ verdict precedence.
       accepted risk, and session state
 - [ ] Explicitly forbids using or proposing `Needs Revision` as a systems-index
       status
-- [ ] Defines streaming before/after path/size/SHA-256 mutation guard batches
-- [ ] Requires a complete canonical target manifest, ruleset hash,
-      skill-bundle hash, target manifest hash, and stale key
+- [ ] Defines streaming before/after path/size/revision mutation guard batches
+- [ ] Requires a complete canonical target manifest, ruleset revision,
+      skill-bundle revision, target manifest revision, and stale key
 - [ ] Defines numeric artifact/index/edge/byte/snapshot/reviewer limits and
       exposes every planned shard/check plus unchecked scope
 - [ ] Replaces ADR all-pairs comparison with explicit typed-key candidate groups
       and directed dependency graph checks
 - [ ] Defines a strict six-mode phase/input/reviewer matrix with FORBIDDEN and
       NOT_APPLICABLE behavior
-- [ ] Requires owner, approval, timestamp, immutable text, source path/hash,
+- [ ] Requires owner, approval, timestamp, immutable text, source path/revision,
       lifecycle, and exact ID before admitting a requirement
 - [ ] Classifies inferred prose as CANDIDATE_REQUIREMENT and never allocates IDs
 - [ ] Requires exact IDs for ADR/story/test links and classifies implicit links
@@ -82,7 +84,7 @@ verdict precedence.
 
 No reviewer or delegated role owns the gate verdict. Reviewers return bounded
 `cgs.architecture-review-worker/v1` evidence only. The coordinator applies the
-versioned matrix mechanically after validating all hashes and coverage.
+versioned matrix mechanically after validating all revisions and coverage.
 
 ---
 
@@ -104,7 +106,7 @@ Input: `$architecture-review full`
 
 Assertions:
 
-- [ ] Every input class, path/hash, index record, edge, shard, check, and reviewer
+- [ ] Every input class, path/revision, index record, edge, shard, check, and reviewer
       is accounted
 - [ ] Only explicit approved requirements enter the baseline
 - [ ] Verdict is PASS and no legacy verdict appears
@@ -120,9 +122,9 @@ Assertions:
 
 - [ ] Conversational review permits zero changed paths
 - [ ] Approved save creates only
-      `docs/architecture/reviews/architecture-review-<fractional-UTC>-<manifest12>-<uuid8>.md`
+      `docs/architecture/reviews/architecture-review-<fractional-UTC>-<uuid8>.md`
 - [ ] Existing target is refused without overwrite/append/rename
-- [ ] Saved bytes are re-read and record/manifest/file hashes are verified
+- [ ] Saved bytes are re-read and record/manifest/file revisions are verified
 - [ ] Unauthorized changed paths are all named and produce BLOCKED
 - [ ] Reviewer never hides, repairs, normalizes, or reverts a mutation
 
@@ -134,7 +136,7 @@ source-bound lifecycle, current owner approval, or explicit classification.
 Assertions:
 
 - [ ] Sentence is excluded from admitted baseline
-- [ ] Stable CANDIDATE_REQUIREMENT finding cites exact path/hash/location and
+- [ ] Stable CANDIDATE_REQUIREMENT finding cites exact path/revision/location and
       missing fields
 - [ ] No ID is allocated/reused and registry remains byte-identical
 - [ ] Verdict is PARTIAL when no independent blocker exists
@@ -165,7 +167,7 @@ Use otherwise current RTM fixtures:
 
 Assertions:
 
-- [ ] Run ID, result, timestamp, exact test hash, linked IDs, and target revision
+- [ ] Run ID, result, timestamp, exact test revision, linked IDs, and target revision
       or manifest are mandatory
 - [ ] Absence never becomes NOT_APPLICABLE without explicit current contract
 - [ ] Only EXECUTED_PASS counts as passing
@@ -173,12 +175,12 @@ Assertions:
 ### Case 6: Prior-report staleness and accepted risk
 
 Fixture: A report for H1 is identified by exact path/record ID; one target,
-scope, mode, or ruleset hash changes to H2. Separately test current, expired,
+scope, mode, or ruleset revision changes to H2. Separately test current, expired,
 stale, and unbound accepted-risk records.
 
 Assertions:
 
-- [ ] Any identity/scope/hash change marks prior report STALE
+- [ ] Any identity/scope/revision change marks prior report STALE
 - [ ] Prior verdict and report bytes remain unchanged
 - [ ] Risk validates report/finding IDs, exact scope/manifest, owner/signature,
       timestamp, and expiry separately
@@ -218,7 +220,7 @@ Assertions:
 - [ ] Artifacts/index records/groups/edges sort deterministically into shards
 - [ ] No shard exceeds 12 artifacts, 96 records, 48 edges, or 262144 input bytes
 - [ ] No worker receives the whole target; shards run in bounded batches
-- [ ] Mutation tree hashes at most 256 paths per streaming batch without loading
+- [ ] Mutation tree revisions at most 256 paths per streaming batch without loading
       file content into review context
 - [ ] Every intended artifact/record/group/edge/check maps to coverage
 - [ ] Oversized single file or uncompleted shard yields PARTIAL with exact
@@ -262,7 +264,7 @@ Assertions:
 ### Case 12: Reviewer failure and contradiction protocol (ARR-009)
 
 Fixture: For each required reviewer exercise DONE, DECLINED, TIMEOUT, ERROR,
-wrong manifest, omitted check, and same-fingerprint contradictory evidence.
+wrong manifest, omitted check, and same-finding key contradictory evidence.
 
 Assertions:
 
@@ -270,8 +272,8 @@ Assertions:
 - [ ] Two-role profiles start in parallel and all profiles cap at two
 - [ ] Any required non-DONE/mismatch/unchecked result prevents PASS and produces
       PARTIAL absent an independent blocker
-- [ ] Identical fingerprints deduplicate with all provenance
-- [ ] Contradictory same-fingerprint evidence becomes EVIDENCE_CONFLICT and
+- [ ] Identical finding keys deduplicate with all provenance
+- [ ] Contradictory same-finding key evidence becomes EVIDENCE_CONFLICT and
       PARTIAL, never majority vote
 - [ ] Reviewer never emits/overrides the gate verdict
 
@@ -290,7 +292,7 @@ Exercise independently:
 
 Assertions:
 
-- [ ] Every blocker satisfies all current authority/scope/lifecycle/hash proof
+- [ ] Every blocker satisfies all current authority/scope/lifecycle/revision proof
       conditions
 - [ ] Foundation/Core/required ADR is never inferred from prose
 - [ ] Unknown/stale/unchecked evidence cannot PASS and cannot be guessed into a
@@ -323,7 +325,7 @@ Assertions:
 - [ ] Run/path use fractional UTC, manifest prefix, and one preserved UUID and
       cannot overwrite
 - [ ] Prior evidence is selected only by exact path or unique exact record ID
-- [ ] Review index resolution verifies indexed path/record hash/project/mode/
+- [ ] Review index resolution verifies indexed path/record revision/project/mode/
       target/manifest before use
 - [ ] Filename date, mtime, directory order, and vague latest are forbidden
 - [ ] Any target-manifest or stale-key change removes gate currency
@@ -337,7 +339,7 @@ missing target, and outside-project path.
 Assertions:
 
 - [ ] Canonical path and unique stable ID select the same exact target
-- [ ] `id:` resolution hashes and records the systems index as an input; a path
+- [ ] `id:` resolution revisions and records the systems index as an input; a path
       selector does not silently depend on an unrecorded index
 - [ ] Title/system-name search is never performed
 - [ ] Zero/multiple/collision/disagreement returns ERROR with no verdict
@@ -370,7 +372,7 @@ spec, report schemas, and path contract together.
 Assertions:
 
 - [ ] Catalog entry resolves exactly to this spec path
-- [ ] Metadata names bounded hash-bound traceability, read-only surface, and
+- [ ] Metadata names bounded revision-bound traceability, read-only surface, and
       PASS/BLOCKED/PARTIAL semantics
 - [ ] Each mode's accepted syntax, allowed inputs, forbidden phases, reviewers,
       output schema, and verdict match across all owned files
@@ -390,7 +392,7 @@ Assertions:
 - [ ] Generic fields contain canonical record ID, artifact ID, complete artifact
       set, reviewer, verdict, timestamp, finding IDs, and producer version
 - [ ] Extension parses as `cgs.architecture-review/v2` with exact target,
-      ruleset/skill hashes, manifest/stale identity, limits, classes, coverage,
+      ruleset/skill revisions, manifest/stale identity, limits, classes, coverage,
       reviewers, baseline, traceability, test evidence, findings, reasons,
       mutation guard, and risk references
 - [ ] Canonical record ID reproduces after omitting record_id and sorting the
@@ -417,7 +419,7 @@ Assertions:
 
 - [ ] Inventory is mode-bounded and all excluded classes are explicit
 - [ ] Full reads and reviewer prompts obey artifact/record/edge/byte limits
-- [ ] Exact source authority and current hashes precede conclusions
+- [ ] Exact source authority and current revisions precede conclusions
 - [ ] Only explicit approved IDs enter the baseline
 - [ ] Exact links and actual current run evidence are mandatory
 - [ ] Reviewers are profile-driven, capped, read-only, and non-authoritative

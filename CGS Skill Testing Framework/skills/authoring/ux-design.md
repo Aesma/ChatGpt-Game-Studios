@@ -19,34 +19,34 @@ independent approval or implementation readiness.
 - [ ] UXD-S001: Frontmatter contains only matching name and non-empty description
 - [ ] UXD-S002: Invocation requires exact manifest; no-arg stops before repository read
 - [ ] UXD-S003: Request contract is cgs.ux-design-request/v2
-- [ ] UXD-S004: Author schema hashes exact SKILL, NUL, and continuation bytes
+- [ ] UXD-S004: Author schema revisions exact SKILL, NUL, and continuation bytes
 - [ ] UXD-S005: Profile version is ux-profile-schema-v2
 - [ ] UXD-S006: Content profile is cgs.ux-content-profile/v2
 - [ ] UXD-S007: ux-spec, HUD, and pattern profiles have stable IDs and exact headings
 - [ ] UXD-S008: Artifact header records profile/content/author schema and stable artifact/screen IDs
-- [ ] UXD-S009: Header records platform profile ID, version, SHA-256, input IDs, and stable receipt ID without receipt hash self-reference
+- [ ] UXD-S009: Header records platform profile ID, version, revision, input IDs, and stable receipt ID without receipt revision self-reference
 - [ ] UXD-S010: Temporary platform answers are PROVISIONAL and cannot produce READY
 - [ ] UXD-S011: Modes are create/fill-gaps/revise-sections/migrate-schema
 - [ ] UXD-S012: Section content/evidence/workflow/assertion state axes are separate
 - [ ] UXD-S013: fill-gaps cannot rewrite substantive content
 - [ ] UXD-S014: revise-sections may explicitly revise substantive CURRENT/STALE content
-- [ ] UXD-S015: Migration preserves hashes and blocks on unmappable fragments
+- [ ] UXD-S015: Migration preserves revisions and blocks on unmappable fragments
 - [ ] UXD-S016: One mutation authorization covers exact target/checkpoint/sections
 - [ ] UXD-S017: Per-section product approval never reauthorizes files
 - [ ] UXD-S018: Context selection order is fixed with hard 16-file/524288-byte limits
 - [ ] UXD-S019: Context overflow may write only authorized PARTIAL checkpoint and not target
 - [ ] UXD-S020: Four decision classes match other P1 authoring contracts
-- [ ] UXD-S021: Revision records bind before/after target/section/source/authorization hashes
-- [ ] UXD-S022: Every target write uses target, section, context, authorization, writer CAS
+- [ ] UXD-S021: Revision records bind before/after target/section/source/authorization revisions
+- [ ] UXD-S022: Every target write uses target, section, context, authorization, writer version and existence conflict check
 - [ ] UXD-S023: Platform/accessibility/global pattern owners remain external
 - [ ] UXD-S024: Cross-reference findings use cgs.ux-dependency-finding/v1 stable state
 - [ ] UXD-S025: BLOCKING WAIVED remains unresolved and prevents READY
 - [ ] UXD-S026: Acceptance criteria reference requirement/decision IDs without copying product rules
 - [ ] UXD-S027: Consultation is one/section, three/run, two concurrent, one 60-second attempt, no retry/delegation
-- [ ] UXD-S028: Checkpoints use cgs.ux-design-checkpoint/v2 append-only predecessor CAS
+- [ ] UXD-S028: Checkpoints use cgs.ux-design-checkpoint/v2 append-only predecessor version and existence conflict check
 - [ ] UXD-S029: Final receipt is cgs.ux-authoring-receipt/v1 and is not approval
 - [ ] UXD-S030: Author statuses exclude COMPLETE, APPROVED, IMPLEMENTATION READY
-- [ ] UXD-S031: Fresh independent review handoff binds target/schema/context/receipt hashes
+- [ ] UXD-S031: Fresh independent review handoff binds target/schema/context/receipt revisions
 - [ ] UXD-S032: Metadata names UX consistently and describes all three profile boundaries
 
 ---
@@ -81,10 +81,10 @@ navigation, budgets, identities, mutation boundary, and checkpoint root.
 2. UXS-01..14 skeleton and complete header are planned.
 3. One mutation authorization covers target/checkpoints/all required sections.
 4. Stable ordered context fits hard budgets.
-5. Sections use decisions, semantic preflight, approval, CAS, revision,
+5. Sections use decisions, semantic preflight, approval, version and existence conflict check, revision,
    checkpoint.
 6. Content/cross-reference checks pass; final receipt revalidates.
-7. READY_FOR_REVIEW handoff names exact target/receipt hashes.
+7. READY_FOR_REVIEW handoff names exact target/receipt revisions.
 
 **Assertions:**
 
@@ -110,7 +110,7 @@ interaction-patterns.md.
 
 - [ ] UXD-C03-A: ux-spec headings are not imposed on HUD/pattern
 - [ ] UXD-C03-B: Screen/HUD cannot merge global pattern
-- [ ] UXD-C03-C: Dedicated pattern run uses pattern-entry CAS
+- [ ] UXD-C03-C: Dedicated pattern run uses pattern-entry version and existence conflict check
 
 ---
 
@@ -124,7 +124,7 @@ UXS-11 SUBSTANTIVE/STALE; UXS-12 MISSING.
 - fill-gaps can select UXS-06/12 only.
 - revise-sections may select explicit UXS-11 and update its source evidence.
 - Unselected bodies remain byte-identical.
-- Validation uses assertion results and evidence hashes, not placeholder text
+- Validation uses assertion results and evidence revisions, not placeholder text
   alone.
 
 **Assertions:**
@@ -142,7 +142,7 @@ and one unmappable fragment.
 
 **Expected behavior:**
 
-1. migrate-schema records old heading/content hashes and stable-ID mappings.
+1. migrate-schema records old heading/content revisions and stable-ID mappings.
 2. Approved moves preserve exact bytes where not edited.
 3. Duplicate/unmappable content becomes blocking decision/finding.
 4. No silent drop, duplication, or automatic rewrite.
@@ -165,13 +165,13 @@ after one-hop neighbors.
 1. Candidate order follows instructions, target, platform, accessibility,
    requirements, neighbors, patterns, journey, art.
 2. No second-hop/fuzzy/global scan or partial file read.
-3. Authorized checkpoint records loaded/omitted path/role/IDs/bytes/hash/reason
+3. Authorized checkpoint records loaded/omitted path/role/IDs/bytes/revision/reason
    and CONTEXT_BUDGET_EXCEEDED.
 4. Target remains unchanged and result PARTIAL.
 
 **Assertions:**
 
-- [ ] UXD-C06-A: Same inputs produce same manifest digest
+- [ ] UXD-C06-A: Same inputs produce same manifest identifier
 - [ ] UXD-C06-B: Manifest-requested budget cannot exceed hard cap
 - [ ] UXD-C06-C: Required omission is never silently accepted
 
@@ -206,7 +206,7 @@ focus order is derived; engine widget question appears; consultant advises.
 1. Product/hard/derived/technical UXDEC records carry real authority/evidence.
 2. User is decision owner but not falsely named target author.
 3. Consultant is evidence source only.
-4. UXREV binds decision IDs and before/after target/section/source hashes to
+4. UXREV binds decision IDs and before/after target/section/source revisions to
    actual writer.
 
 **Assertions:**
@@ -219,7 +219,7 @@ focus order is derived; engine widget question appears; consultant advises.
 
 ### Case 9: platform/input profile is persistent or provisional
 
-**Fixture:** A has current platform profile ID/version/path/hash; B has MISSING
+**Fixture:** A has current platform profile ID/version/path/revision; B has MISSING
 profile and user gives temporary controller/resolution answer.
 
 **Expected behavior:**
@@ -231,7 +231,7 @@ profile and user gives temporary controller/resolution answer.
 
 **Assertions:**
 
-- [ ] UXD-C09-A: Header includes platform ID/version/hash
+- [ ] UXD-C09-A: Header includes platform ID/version/revision
 - [ ] UXD-C09-B: Missing profile prevents READY
 - [ ] UXD-C09-C: Input/resolution assumptions are not conversation-only
 
@@ -244,9 +244,9 @@ requirement has no owner.
 
 **Expected behavior:**
 
-1. Findings use cgs.ux-dependency-finding/v1 deterministic fingerprints.
+1. Findings use cgs.ux-dependency-finding/v1 deterministic identities.
 2. OPEN records include current evidence, expected/observed, owner,
-   destination, acceptance, first/last hashes.
+   destination, acceptance, first/last revisions.
 3. Only current resolution evidence may mark RESOLVED.
 4. BLOCKING WAIVED remains unresolved; READY prohibited.
 
@@ -265,7 +265,7 @@ disabled action feedback.
 
 **Expected behavior:**
 
-1. UXAC references INV-042 owner/path/locator/hash and UXDEC IDs.
+1. UXAC references INV-042 owner/path/locator/revision and UXDEC IDs.
 2. It states local screen precondition, input, observable UX response,
    platform/accessibility variants, evidence method, validation owner.
 3. It does not copy/restate inventory product rule.
@@ -295,7 +295,7 @@ late result attempts a patch.
 **Assertions:**
 
 - [ ] UXD-C12-A: complete/partial/timeout/failed/side-effect/skipped are recorded
-- [ ] UXD-C12-B: Input/output hashes and fallback are explicit
+- [ ] UXD-C12-B: Input/output revisions and fallback are explicit
 - [ ] UXD-C12-C: Consultant never writes/approves/owns foundation
 
 ---
@@ -307,7 +307,7 @@ approves three drafts; fourth draft proposes new section/path.
 
 **Expected behavior:**
 
-- First three writes use existing authorization plus CAS, no file reprompt.
+- First three writes use existing authorization plus version and existence conflict check, no file reprompt.
 - Fourth stops for revised mutation manifest.
 - Product approval is recorded as UXDEC, not filesystem authority.
 
@@ -319,7 +319,7 @@ approves three drafts; fourth draft proposes new section/path.
 
 ---
 
-### Case 14: target/context CAS blocks concurrent drift
+### Case 14: target/context version and existence conflict check blocks concurrent drift
 
 **Fixture:** target changes after approval in A; platform profile changes in B;
 checkpoint sequence is concurrently occupied in C.
@@ -328,11 +328,11 @@ checkpoint sequence is concurrently occupied in C.
 
 - A returns CONCURRENT TARGET CHANGE with no transaction.
 - B returns CONTEXT EVIDENCE CHANGED; dependent section becomes stale.
-- C create-if-absent checkpoint CAS fails and never overwrites predecessor.
+- C create-if-absent checkpoint version and existence conflict check fails and never overwrites predecessor.
 
 **Assertions:**
 
-- [ ] UXD-C14-A: Approved draft bytes do not bypass rehash
+- [ ] UXD-C14-A: Approved draft bytes do not bypass revalidate
 - [ ] UXD-C14-B: Out-of-scope bytes remain protected
 - [ ] UXD-C14-C: Concurrent receipt/checkpoint record is append-only safe
 
@@ -380,14 +380,14 @@ foundation are missing.
 
 ### Case 17: final receipt and independent review remain separate
 
-**Fixture:** all assertions/current dependencies pass and final target hash H1
+**Fixture:** all assertions/current dependencies pass and final target revision H1
 is stable.
 
 **Expected behavior:**
 
 1. Checkpoint recorder appends cgs.ux-authoring-receipt/v1 binding target
    pre/post, context, decisions/revisions/findings/schema/auth/writer identities.
-2. Header names only stable receipt ID; response names external receipt path/hash
+2. Header names only stable receipt ID; response names external receipt path/revision
    and READY_FOR_REVIEW without a target/receipt self-reference cycle.
 3. Fresh reviewer differs from author/recorder and consumes exact H1/schema/
    context/receipt.
@@ -409,7 +409,7 @@ catalog results are not assumed current.
 
 **Expected behavior:**
 
-1. Static/spec/category axes map assertions to current file SHA-256 values.
+1. Static/spec/category axes map assertions to current file revision values.
 2. PASS/FAIL/UNEXECUTED remain separate.
 3. Shared catalog is updated only by its owner after real execution.
 4. Stale/copied/empty fields are not evidence.
@@ -418,7 +418,7 @@ catalog results are not assumed current.
 
 - [ ] UXD-C18-A: Spec covers UXD-001 through UXD-013
 - [ ] UXD-C18-B: This candidate does not edit catalog
-- [ ] UXD-C18-C: All four exclusive-file hashes are recorded for registration
+- [ ] UXD-C18-C: All four exclusive-file revisions are recorded for registration
 
 ---
 
@@ -426,7 +426,7 @@ catalog results are not assumed current.
 
 - [ ] UXD-X001: Content/evidence/workflow state mirrors P1 authoring patterns
 - [ ] UXD-X002: Decision classes/provenance match design-system and quick-design
-- [ ] UXD-X003: Context manifest uses deterministic bounded selection/hash digest
+- [ ] UXD-X003: Context manifest uses deterministic bounded selection/revision identifier
 - [ ] UXD-X004: Target/context/checkpoint writes use compare-and-set
 - [ ] UXD-X005: Authoring receipt is immutable evidence but never review approval
 - [ ] UXD-X006: Reviewer consumes current target/profile/schema/context/receipt
@@ -453,5 +453,5 @@ This matrix traces every exact P1 ID from the 2026-07-20 ux-design audit.
 UXD-001 through UXD-004 are separately classified P0 findings. Further slug
 collision matrices, pattern-entry concurrency mechanics, responsive schematic
 tooling, foundation workflow ownership, and downstream review persistence remain
-UXD-014..018 except where P1 authority/CAS boundaries require explicit
+UXD-014..018 except where P1 authority/version and existence conflict check boundaries require explicit
 compatibility. These rows are written-contract coverage, not executed results.

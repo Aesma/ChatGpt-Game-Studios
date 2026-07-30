@@ -4,7 +4,7 @@
 
 `$gate-check` is a strictly read-only assessment of one catalog-authorized,
 adjacent phase transition. It validates a versioned authority record, evaluates
-one bounded versioned profile, normalizes current hash-bound evidence, treats the
+one bounded versioned profile, normalizes current revision-bound evidence, treats the
 director panel as advisory, and emits `PASS`, `CONCERNS`, `FAIL`, or `PARTIAL`
 plus `cgs.gate-record/v2`. It never advances stage. Plain
 `production/stage.txt` is legacy observation only.
@@ -34,7 +34,7 @@ Evaluate all four files. A test that reads only the entry file is incomplete.
       advisory-only, and all-pass paths.
 - [ ] A confirmed blocking failure remains FAIL when coverage is also partial.
 - [ ] Six profile IDs have stable check IDs, fixed scope rules, and numeric hard
-      limits for manifest/files/context/hash/actions/time.
+      limits for manifest/files/context/revision/actions/time.
 - [ ] Native producer adapters preserve native verdict and currentness.
 - [ ] Producer adapters allowlist exact current envelope/extension or native
       schema versions and fail closed on unknown versions without legacy fallback.
@@ -56,16 +56,15 @@ Evaluate all four files. A test that reads only the entry file is incomplete.
 
 Every executable case freezes:
 
-- repository identity/ref/dirty state and a before-tree path/hash snapshot;
-- shared catalog hash with versioned stage schema, graph, owner, canonical
-  authority path, receipt/freshness policy;
-- valid authority record path/hash/prior chain/receipt for the tested origin;
+- repository identity/ref/dirty state and a before-tree path/revision snapshot;
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+- valid authority record path/revision/prior chain/receipt for the tested origin;
 - selected profile ID and complete bounded input manifest;
-- explicitly named producer records and all dependency hashes;
+- explicitly named producer records and all dependency revisions;
 - review mode and director fixture results; and
 - after-tree snapshot plus authority/history/stage-file bytes.
 
-Fixtures never identify evidence by mtime or `latest`. Hash changes create a new
+Fixtures never identify evidence by mtime or `latest`. revision changes create a new
 fixture identity. Unless a case says otherwise, all profile checks pass, coverage
 is complete, directors return READY in lean/full, and mutation guard passes.
 
@@ -113,7 +112,7 @@ Assertions for every row:
 
 With no transition ID and one valid outgoing catalog edge:
 
-- [ ] Show exact edge and authority path/hash before checks.
+- [ ] Show exact edge and authority path/revision before checks.
 - [ ] Rejection stops with no gate record.
 - [ ] Confirmation records `AUTHORITY_AUTO_CONFIRMED` and `true`.
 - [ ] An explicitly supplied ID records `EXPLICIT` and null confirmation.
@@ -180,13 +179,13 @@ majority-vote, or let accepted risk change the expected row.
 | lean/full one NOT READY | advisory finding; cannot directly create FAIL |
 | lean/full one TIMEOUT | one NOT_EVALUATED; panel PARTIAL; cannot PASS |
 | lean/full BLOCKED/ERROR/MALFORMED/missing | same incomplete behavior as timeout |
-| response for older manifest hash | STALE panel result; panel PARTIAL |
+| response for older manifest revision | STALE panel result; panel PARTIAL |
 | response after 120-second deadline | exclude as late; TIMEOUT retained |
 
 Assertions:
 
 - [ ] Four dispatches are issued before waiting in lean/full.
-- [ ] Each has exact transition/profile/manifest hash, one attempt, and deadline.
+- [ ] Each has exact transition/profile/manifest revision, one attempt, and deadline.
 - [ ] No silent retry, local-agent substitution, persistence, or blocking-check
       override.
 - [ ] Available director results remain visible in a partial panel.
@@ -202,7 +201,7 @@ Assertions:
 | E03 | two unreferenced reports match a broad historical glob | neither selected; explicit identity still required |
 | E04 | authoritative manifest has ambiguous/duplicate path identity | coverage gap; PARTIAL absent blocker |
 | E05 | manifest-entry ceiling would be exceeded | stop before ceiling; BUDGET_EXCEEDED; PARTIAL |
-| E06 | context-byte/full-file/hash/action/time ceiling would be exceeded | same; no sampling-to-PASS |
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 | E07 | required input unreadable or root-escaping symlink | coverage gap or ERROR per preflight; never PASS |
 | E08 | input changes after manifest freeze | SNAPSHOT_CHANGED/STALE; recalculate once |
 | E09 | authority changes during evaluation | ERROR / AUTHORITY_CHANGED_DURING_CHECK; no gate record |
@@ -224,21 +223,21 @@ Use a profile row that explicitly allows attestation (`CSD-M01` or `PPP-M01`).
 | F02 | complete/current `NO` on blocking row | FAIL |
 | F03 | explicit `UNKNOWN` | UNKNOWN; overall PARTIAL absent blocker |
 | F04 | unanswered/ambiguous prose | NOT_EVALUATED; PARTIAL |
-| F05 | missing operator/time/question/profile/scope/subject hash | UNBOUND; FAIL |
-| F06 | expired or subject/scope hash changed | STALE; FAIL |
+| F05 | missing operator/time/question/profile/scope/subject revision | UNBOUND; FAIL |
+| F06 | expired or subject/scope revision changed | STALE; FAIL |
 | F07 | attestation supplied for objective test/performance/legal check | reject; required objective check remains unsatisfied |
 | F08 | skill invents operator/signature or persists attestation | spec failure |
 
 Assert the record preserves complete `cgs.gate-attestation/v1`, ID, exact question,
-normalized answer, operator assurance, times, and subject hashes.
+normalized answer, operator assurance, times, and subject revisions.
 
 ---
 
 ## Table G: Producer adapter thresholds
 
-All passing rows also require exact current path/hash/build/scope, required
+All passing rows also require exact current path/revision/build/scope, required
 persistence, and complete native dependency fields. Missing binding -> UNBOUND;
-hash/currentness mismatch -> STALE regardless of verdict.
+revision/currentness mismatch -> STALE regardless of verdict.
 
 | Adapter | Passing native state | Non-passing examples |
 |---|---|---|
@@ -246,16 +245,16 @@ hash/currentness mismatch -> STALE regardless of verdict.
 | PA-CROSS-GDD-1 | persisted `cgs.review-evidence/v1` + `cgs.cross-gdd-review/v2`; full/full PASS + COMPLETE coverage | CONCERNS, FAIL, PARTIAL, v1 extension, envelope-only |
 | PA-ARCH-REVIEW-1 | PASS current manifest | BLOCKED, PARTIAL |
 | PA-UX-REVIEW-1 | none under current `cgs.review-evidence/v1` + `cgs.ux-review/v2` producer contract | APPROVED with NOT_PERSISTED/false eligibility, NEEDS/MAJOR/PARTIAL/null/error, invented recorder |
-| PA-ART-BIBLE-1 | external independent APPROVE exact complete AB-1 hash | internal self-signoff, CONCERNS/REJECT/PARTIAL |
+| PA-ART-BIBLE-1 | external independent APPROVE exact complete AB-1 revision | internal self-signoff, CONCERNS/REJECT/PARTIAL |
 | PA-VERTICAL-SLICE-1 | persisted/current `cgs.vertical-slice-evaluation-report/v2`; COMPLETE + Evidence/Product/Final PROCEED + VERIFIED/YES | schema 1, skipped/PARTIAL/INCONCLUSIVE/PIVOT/KILL/BLOCKED |
 | PA-SMOKE-1 | persisted `cgs-smoke-check-receipt/v2`; sprint PASS + VERIFIED + Handoff Eligible YES, no warnings | schema 1, quick TARGETED CHECK PASSED, FAIL/INCOMPLETE/warnings |
 | PA-TEAM-QA-1 | persisted `cgs.team-qa-signoff/v2`; WORKFLOW_COMPLETED + QA_APPROVED + VERIFIED/YES | old COMPLETE/APPROVED vocabulary, QA_APPROVED_WITH_CONDITIONS, QA_NOT_APPROVED, QA_INCOMPLETE |
 | PA-PLAYTEST-1 | canonical unique `cgs.playtest-report/v2` + `cgs.playtest-report-recorder-receipt/v1`; RECORDED COMPLETED — GATE ELIGIBLE | candidate envelope alone, REQUIRES RECORDER, protocol/template/duplicate/legacy/stale |
 | PA-REGRESSION-1 | selection + exact runner receipt; all required pass | selection only, awaiting, missing sensitivity, failure |
 | PA-TEST-EVIDENCE-1 | persisted `cgs-test-evidence-review-report/v2`; COMPLETE/ADEQUATE/ADMISSIBLE/PASS/CURRENT/COMPLETE/FULL/Closure Eligible YES | schema 1, missing/unknown/stale/not-run/closure-ineligible row |
-| PA-PERFORMANCE-1 | current `cgs.review-evidence/v1` + `cgs.performance-report/v1` + `cgs.performance-budget/v2` + independent `cgs.performance-report-recorder-receipt/v1`; full matrix, unchanged WITHIN BUDGET, candidate/target flags true, RECORDED, targets met true, gate eligible true, create-only CAS/read-back verified | analyzer candidate alone, missing/invalid receipt, CONCERNS/OVER BUDGET, false target flag, wrong canonical path/bytes/identity, self-recording, static/plan/partial |
+| PA-PERFORMANCE-1 | current `cgs.review-evidence/v1` + `cgs.performance-report/v1` + `cgs.performance-budget/v2` + independent `cgs.performance-report-recorder-receipt/v1`; full matrix, unchanged WITHIN BUDGET, candidate/target flags true, RECORDED, targets met true, gate eligible true, create-only atomic conflict check/read-back verified | analyzer candidate alone, missing/invalid receipt, CONCERNS/OVER BUDGET, false target flag, wrong canonical path/bytes/identity, self-recording, static/plan/partial |
 | PA-RELEASE-COLLECTOR-1 | all HARD PASS/authorized N/A; NOT EVALUATED collector field | HARD FAIL/UNKNOWN/stale/invalid N/A |
-| PA-LOCALIZATION-1 | exact non-persisted `cgs.review-evidence/v1` candidate from `localize/evidence-review@cgs.localize-evidence-review/v1` plus independent current `cgs.localization-evidence-review-recorder-receipt/v1`; exact path/raw-hash-bound `cgs.localization-evidence-manifest/v2` extension; `cgs.localization-request/v2`, `cgs.localization-manifest/v2`, declared `cgs.localization-catalog/v2` path/raw hash/`catalog_identity_sha256`, ordered `cgs.localization-package/v1` path/raw-hash/ID/payload and per-key/locale/translation/freeze/build/font/UI/runtime rows; native QA_EVIDENCE_VERIFIED for every required locale/page; canonical create-only `production/qa/evidence/localization/<localization_candidate_sha256>/reports/<record_id_sha256>.md` and `production/qa/evidence/localization/<localization_candidate_sha256>/receipts/<record_id_sha256>.yaml`; `expected_report_preimage: ABSENT`; `expected_receipt_preimage: ABSENT`; CREATED CAS; exact `persisted_report_sha256`/bytes; matching `read_back_sha256`; VERIFIED read-back; RECORDED persistence; unchanged verdict; and gate eligibility | generic candidate alone; QA_EVIDENCE_REJECTED/PARTIAL_EVIDENCE; UNKNOWN/NOT_RUN/STALE; missing locale/page or distinct recorder; missing/invalid receipt; self-recording; wrong/reused canonical target; failed/non-created CAS; changed verdict; missing ordered binding; mismatched path/hash/currentness/expiry; unsupported producer/envelope/extension/receipt/request/manifest/catalog/package version |
+| PA-LOCALIZATION-1 | exact non-persisted `cgs.review-evidence/v1` candidate from `localize/evidence-review@cgs.localize-evidence-review/v1` plus independent current `cgs.localization-evidence-review-recorder-receipt/v1`; exact path/schema/revision-bound `cgs.localization-evidence-manifest/v2` extension; `cgs.localization-request/v2`, `cgs.localization-manifest/v2`, declared `cgs.localization-catalog/v2` path/declared revision/`catalog_identity_revision`, ordered `cgs.localization-package/v1` path/declared-revision/ID/payload and per-key/locale/translation/freeze/build/font/UI/runtime rows; native QA_EVIDENCE_VERIFIED for every required locale/page; canonical create-only `production/qa/evidence/localization/<localization-candidate-id>/reports/<record-id>.md` and `production/qa/evidence/localization/<localization-candidate-id>/receipts/<record-id>.yaml`; `expected_state: ABSENT`; `expected_state: ABSENT`; CREATED atomic conflict check; exact `persisted_report_revision`/bytes; matching `read_back_revision`; VERIFIED read-back; RECORDED persistence; unchanged verdict; and gate eligibility | generic candidate alone; QA_EVIDENCE_REJECTED/PARTIAL_EVIDENCE; UNKNOWN/NOT_RUN/STALE; missing locale/page or distinct recorder; missing/invalid receipt; self-recording; wrong/reused canonical target; failed/non-created atomic conflict check; changed verdict; missing ordered binding; mismatched path/revision/currentness/expiry; unsupported producer/envelope/extension/receipt/request/manifest/catalog/package version |
 
 Additional drift assertions:
 
@@ -275,21 +274,18 @@ Additional drift assertions:
       incomplete without exact `cgs.performance-report-recorder-receipt/v1`.
 - [ ] Localization generic candidate alone cannot pass: require producer
       `localize/evidence-review@cgs.localize-evidence-review/v1`, exact
-      `cgs.localization-evidence-manifest/v2` extension path/raw hash, and one
+      `cgs.localization-evidence-manifest/v2` extension path/declared revision, and one
       independent `cgs.localization-evidence-review-recorder-receipt/v1`.
-- [ ] Localization rejects v1/unknown request, evidence-manifest,
-      localization-manifest or catalog schema and rejects v2/unknown locale
-      packages; catalog path/raw hash/catalog identity, package path/hash and
-      currentness are mandatory rather than inferred from a verdict string.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - [ ] Localization candidate remains `persistence: NONE` and
       `recorder_receipt: NONE`; the receipt must prove distinct identities,
-      canonical create-only report/receipt targets, both ABSENT preimages,
-      `compare_and_set: CREATED`, exact returned-review hash/bytes,
+      canonical create-only report/receipt targets, both ABSENT prior states,
+      `write_result: CREATED`, exact returned-review revision/bytes,
       `read_back: VERIFIED`, unchanged native verdict,
       `evidence_persistence: RECORDED`, and `gate_evidence_eligible: true`.
 - [ ] A current independent performance receipt with matching WITHIN BUDGET,
       `evidence_persistence: RECORDED`, `performance_targets_met: true`,
-      `gate_evidence_eligible: true`, create-only CAS, and verified read-back can
+      `gate_evidence_eligible: true`, create-only atomic conflict check, and verified read-back can
       pass; CONCERNS/OVER BUDGET remain conclusive non-passing evidence.
 - [ ] Unknown envelope, extension, payload, native-record, budget, and companion
       receipt versions normalize to INCOMPLETE/NOT_EVALUATED, never PASS.
@@ -319,10 +315,9 @@ For PASS, CONCERNS, FAIL, PARTIAL, ERROR, and accepted-risk paths:
 - [ ] `cgs.gate-record/v2` contains all required authority/scope/budget/check/
       attestation/panel/finding/verification/mutation fields.
 - [ ] Check ordering follows the selected profile; every ID appears once.
-- [ ] Canonical record hash excludes only `record_id`; one-byte change produces a
-      different ID.
-- [ ] Final authority/evidence/scope hashes are revalidated exactly once.
-- [ ] Repository path/hash snapshot, authority/history, and `stage.txt` bytes are
+- Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
+- [ ] Final authority/evidence/scope revisions are revalidated exactly once.
+- [ ] Repository path/revision snapshot, authority/history, and `stage.txt` bytes are
       unchanged by the workflow.
 - [ ] No report, attestation, gate record, advance request, checkpoint, session
       state, or director status is persisted.
@@ -336,7 +331,7 @@ For PASS, CONCERNS, FAIL, PARTIAL, ERROR, and accepted-risk paths:
 ### Concept → Systems Design
 
 - [ ] Uses the concept-specific deterministic profile, not the system-GDD rubric.
-- [ ] Owner attestation binds the exact concept and scope hashes.
+- [ ] Owner attestation binds the exact concept and scope revisions.
 - [ ] Prototype absence is advisory only.
 
 ### Systems Design → Technical Setup
@@ -387,7 +382,7 @@ enumerated coverage.
 | `GTC-008` | `SKILL.md` invocation validation and Phase 1 catalog-backed authority/adjacency | Table A `A01`; `A02`; `A03`; `A08`; `A10`; `A11`; `A12`; `A13`; `A15` |
 | `GTC-009` | `SKILL.md` Phase 2 bounded manifest and every versioned profile's numeric limits | Table E `E04`; `E05`; `E06`; `E10`; `E11`; assertion “no sampling-to-PASS” |
 | `GTC-010` | `SKILL.md` Phase 4 and `evaluation-contract.md` section 7 `cgs.gate-attestation/v1` | Table F `F01`; `F03`; `F04`; `F05`; `F06`; `F07`; `F08` |
-| `GTC-011` | `SKILL.md` prior-result checks, canonical evidence invariants, and `transition-profiles.md` exact adapter registry | Table G `PA-DESIGN-REVIEW-1`; `PA-CROSS-GDD-1`; `PA-UX-REVIEW-1`; `PA-LOCALIZATION-1`; localization envelope/extension, schema/path/hash/currentness and recorder assertions; assertion “Concept profile never invokes system-GDD-only design-review”; assertion “Cross-GDD CONCERNS does not become required approval PASS”; unknown-version fail-closed assertion |
+| `GTC-011` | `SKILL.md` prior-result checks, canonical evidence invariants, and `transition-profiles.md` exact adapter registry | Table G `PA-DESIGN-REVIEW-1`; `PA-CROSS-GDD-1`; `PA-UX-REVIEW-1`; `PA-LOCALIZATION-1`; localization envelope/extension, schema/path/revision/currentness and recorder assertions; assertion “Concept profile never invokes system-GDD-only design-review”; assertion “Cross-GDD CONCERNS does not become required approval PASS”; unknown-version fail-closed assertion |
 | `GTC-012` | Complete four-file oracle, six versioned transition profiles, output mutation guard, and honest execution-result boundary | Table B `concept-to-systems-design`; `systems-design-to-technical-setup`; `technical-setup-to-pre-production`; `pre-production-to-production`; `production-to-polish`; `polish-to-release`; Table C `C02`; `C03`; `C06`; Table G `PA-VERTICAL-SLICE-1`; Table I mutation assertions; Execution-result integrity assertion |
 
 ---
@@ -407,5 +402,13 @@ enumerated coverage.
 This specification defines intended behavior; it is not an execution receipt.
 Do not update `CGS Skill Testing Framework/catalog.yaml` result fields until the
 relevant static/spec/category runs actually execute and their immutable result
-artifacts identify this exact package hash. Empty result fields remain honest
+artifacts identify this exact package revision. Empty result fields remain honest
 until then.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

@@ -3,6 +3,16 @@ name: sprint-plan
 description: "Create or update a sprint from registry-bound AUTHOR_COMPLETE stories with current persisted implementation-eligible readiness records, resolving carryover and deterministic dependency order before one revision-checked plan/tracker transaction."
 ---
 
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
+
 ## Invocation and execution
 
 Invoke this workflow as `$sprint-plan`.
@@ -13,7 +23,7 @@ Treat bracketed values as optional unless the workflow says otherwise.
 Before the first file change, present the complete proposed changeset, listing
 every file and its exact proposed content or complete diff, and obtain one
 explicit approval. After approval, make only those changes. If scope, candidate
-bytes, findings, or target preimages change, stop, rebuild the complete preview,
+bytes, findings, or target prior states change, stop, rebuild the complete preview,
 and obtain new approval when the changeset changed materially.
 
 This workflow owns only sprint planning. `$sprint-status` owns status reports.
@@ -79,7 +89,7 @@ Read:
 - `production/session-state/active.md`, when present;
 - any versioned project-stage or current-milestone declaration that explicitly
   carries `active_sprint_id`;
-- one current owner-issued capacity receipt with stable ID/path/revision/raw hash,
+- one current owner-issued capacity receipt with stable ID/path/revision/declared revision,
   exact estimate unit, total/reserved/released values, and estimates in that unit;
   and
 - the latest relevant risk register entries under `production/risk-register/`.
@@ -105,7 +115,7 @@ identity is ambiguous, stop before carryover selection. Derive the proposed new
 number only after the authoritative previous identity and all existing declared
 sprint IDs are known; collision with any existing plan is **BLOCKED**.
 
-Capture the exact raw-byte SHA-256 of every selector, plan, and tracker used.
+Capture the exact declared revision of every selector, plan, and tracker used.
 
 ### 2.2 Consume the canonical story registry and story artifacts
 
@@ -113,22 +123,22 @@ The only source of sprint work is a sibling `STORIES.md` current registry produc
 by the story authoring workflow. Enumerate only
 `production/epics/*/STORIES.md`; each consumed registry must declare exact schema
 `cgs.story-registry/v2`, one stable epic identity, a positive monotonic registry
-revision, prior/current payload hashes, and an internally consistent Current Story
+revision, prior/current payload revisions, and an internally consistent Current Story
 Registry plus append-only identity/history ledgers. `EPIC.md` remains a read-only
 source named by the registry; its former `## Stories` table is not a sprint
 registry and its row status is never an eligibility predicate.
 
 A current registry row is structurally valid only when all of the following hold:
 
-- stable Story ID, never-reused slot, canonical project-relative path, revision,
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
   priority, dependency IDs, and current author status are present and unique;
 - the path is a direct-child `story-NNN-<slug>.md` regular file under the same
   canonical `production/epics/<epic-slug>/` root, with no traversal, symlink,
   case-fold, ID, slot, or path collision;
 - the file declares exact schema `cgs.story/v2`, the same Story ID, slot, epic ID,
-  canonical path, revision, dependencies, priority, and current registry status;
-- its exact raw-byte SHA-256 and declared Story Core SHA-256 reproduce; and
-- registry payload/ledger hashes and the referenced EPIC/create-stories receipt
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+- its exact declared revision and declared Story Core revision reproduce; and
+- registry payload/ledger revisions and the referenced EPIC/create-stories receipt
   identities are current and internally consistent.
 
 Use the registry's stable Story ID verbatim as tracker `story_id`; store the exact
@@ -148,17 +158,12 @@ A valid registry row becomes an eligible new candidate only when:
 
 1. the registry and exact `cgs.story/v2` artifact both say
    `Story Status: AUTHOR_COMPLETE`;
-2. SHA-256 of the exact current story bytes and Story Core SHA-256 are captured;
-3. exactly one persisted `cgs.story-readiness-record/v1` binds the same stable
-   Story ID, canonical path, raw story hash, story/core revision, context/source
-   snapshot, checker/ruleset, review mode, readiness key, and stale key;
+2. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+3. Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 4. that record has final verdict `READY`, complete evaluation state, persistence
    state `PERSISTED`, and `implementation_gate_eligible: true`;
-5. exactly one current `cgs.story-readiness-recorder-receipt/v1` reports
-   `RECORDED` or exact `ALREADY_RECORDED` and binds the record candidate/hash,
-   persisted record/hash, authorization, base/final readiness-registry
-   path/hash/revision/head, atomic/CAS result, and receipt hash; and
-6. immediate re-read/re-hash of the story, `STORIES.md`, readiness record,
+5. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+6. immediate re-read/re-read of the story, `STORIES.md`, readiness record,
    recorder receipt, readiness registry, and every stale-key source reproduces all
    captured values. Any change makes the item ineligible until independently
    reevaluated and recorded.
@@ -170,11 +175,7 @@ A record candidate with `NOT_PERSISTED` or `implementation_gate_eligible: false`
 a bare verdict, missing receipt, stale source, mismatched review mode, or user risk
 acceptance is insufficient.
 
-Record the stable Story ID, canonical path, registry revision/payload hash,
-`cgs.story/v2` revision/raw/core hashes, AUTHOR_COMPLETE status, readiness record
-ID/hash/key/stale key, recorder receipt ID/hash/result, readiness-registry
-revision/head, review mode, dependencies, priority, type, and estimate in the
-candidate manifest.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Non-AUTHOR_COMPLETE, non-READY, unpersisted, ineligible, or stale rows remain
 visible as exact exclusions but cannot enter proposed additions. If no eligible
@@ -205,24 +206,24 @@ fields. The recorder requires an exact compare-and-swap tuple:
 
 ```text
 expected_tracker_revision
-expected_tracker_sha256
+expected_tracker_revision
 expected_plan_revision
-expected_story_set_hash
+expected_story_set_revision
 requested_field_owners
 event_id
 ```
 
-For an absent tracker, the expected revision/hash are `ABSENT` and the candidate
+For an absent tracker, the expected state is `ABSENT` and the candidate
 starts at `tracker_revision: 1`. For an existing tracker, require a positive
-integer `tracker_revision`, capture the raw-byte tracker SHA-256, and require its
-`plan_revision` and `story_set_hash` to match the selected plan before drafting.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+`plan_revision` and `story_set_revision` to match the selected plan before drafting.
 The candidate increments the revision by exactly one. `event_id` is unique and
 stable across retries. Reusing an event with different requested bytes, bypassing
 the recorder, an unknown field owner, or any expected/current mismatch is
 **BLOCKED**; it must never be resolved by last-writer-wins.
 
 Sprint-plan owns sprint identity, dates, goal, selected story set, canonical
-paths, priority, estimates, dependency order, and planning hashes. Lifecycle
+paths, priority, estimates, dependency order, and planning revisions. Lifecycle
 workflows own only allowed status-transition fields. A recorder request that
 crosses those field boundaries is **BLOCKED**.
 
@@ -305,8 +306,8 @@ Render the complete Markdown candidate in memory:
 ```yaml
 schema_version: "cgs.sprint-plan/v2"
 sprint_id: "sprint-[NNN]"
-plan_revision: "sha256:[canonical planning-payload digest]"
-story_set_hash: "sha256:[canonical story-set digest]"
+plan_revision: "[positive integer]"
+story_set_revision: "[positive integer]"
 tracker_revision: [positive integer]
 updated_at: "[ISO-8601 instant with offset]"
 goal: "[sprint goal]"
@@ -318,7 +319,7 @@ capacity:
   receipt_id: "[stable capacity receipt ID]"
   receipt_path: "[canonical project-relative path]"
   receipt_revision: [positive integer]
-  receipt_sha256: "sha256:[64 lowercase hexadecimal characters]"
+  receipt_revision: [positive integer]
   unit: "[same exact value as estimate_unit]"
   total: [non-negative integer]
   committed: [sum of selected story estimates]
@@ -329,7 +330,7 @@ stories:
   - story_id: "STORY-0123456789abcdef"
     file: "production/epics/[epic-slug]/story-[NNN]-[slug].md"
     registry_revision: [positive integer]
-    registry_payload_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    registry_payload_revision: [positive integer]
     author_status: "AUTHOR_COMPLETE"
     story_revision: [positive integer]
     priority: "must_have"
@@ -337,12 +338,12 @@ stories:
     estimate: [non-negative integer]
     owner: "[owner or UNKNOWN]"
     dependencies: []
-    source_sha256: "sha256:[64 lowercase hexadecimal characters]"
-    story_core_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    source_revision: [positive integer]
+    story_core_revision: [positive integer]
     readiness_record_id: "[stable record ID]"
-    readiness_record_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_record_revision: [positive integer]
     readiness_receipt_id: "[stable recorder receipt ID]"
-    readiness_receipt_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_receipt_revision: [positive integer]
     implementation_gate_eligible: true
 ```
 
@@ -358,9 +359,9 @@ stories:
 - Remaining: [Total - Committed - Reserved + Released]
 
 ## Work Items
-| Order | Story ID | Story | File | Layer | Priority | Owner | Estimate | Dependencies | Source SHA-256 |
+| Order | Story ID | Story | File | Layer | Priority | Owner | Estimate | Dependencies | Source revision |
 |---:|---|---|---|---|---|---|---:|---|---|
-| 1 | STORY-0123456789abcdef | [existing title] | `production/epics/[epic-slug]/story-[NNN]-[slug].md` | Foundation | must_have | [owner] | [integer] | [stable STORY-* IDs or None] | `sha256:...` |
+| 1 | STORY-0123456789abcdef | [existing title] | `production/epics/[epic-slug]/story-[NNN]-[slug].md` | Foundation | must_have | [owner] | [integer] | [stable STORY-* IDs or None] | `<declared revision>` |
 
 ## Carryover Decisions
 | Story ID | Origin Sprint | Current Status | Decision | Reason |
@@ -371,7 +372,7 @@ stories:
 |---|---|---|
 
 ## Implementation Eligibility Evidence
-| Story ID | Author Status | Story SHA-256 / Core SHA-256 | Readiness Record ID / SHA-256 | Recorder Receipt ID / SHA-256 | Eligible |
+| Story ID | Author Status | Story revision / Core revision | Readiness Record ID / revision | Recorder Receipt ID / revision | Eligible |
 |---|---|---|---|---|---|
 
 ## QA Plan
@@ -415,9 +416,9 @@ sprint_state: "ACTIVE"
 lifecycle_owner: "[stable authority/owner ID]"
 lifecycle_recorder: "cgs.sprint-tracker/v2"
 plan_file: "production/sprints/sprint-[NNN].md"
-plan_sha256: "sha256:[exact final plan raw-byte hash]"
-plan_revision: "sha256:[canonical planning-payload digest]"
-story_set_hash: "sha256:[canonical story-set digest]"
+plan_revision: [positive integer]
+plan_revision: "[positive integer]"
+story_set_revision: "[positive integer]"
 updated_at: "[ISO-8601 timestamp with timezone]"
 goal: "[sprint goal]"
 start_date: "[YYYY-MM-DD]"
@@ -428,7 +429,7 @@ capacity:
   receipt_id: "[same stable capacity receipt ID as plan]"
   receipt_path: "[same canonical project-relative path as plan]"
   receipt_revision: [same positive integer as plan]
-  receipt_sha256: "sha256:[same exact raw receipt hash as plan]"
+  receipt_revision: [same positive integer as plan receipt]
   unit: "[same exact value as plan estimate_unit]"
   total: [same non-negative integer as plan]
   committed: [same selected-estimate sum as plan]
@@ -452,20 +453,20 @@ stories:
       recorder: "cgs.sprint-tracker/v2"
       reason: "initial sprint admission"
       prior_status: "ABSENT"
-      source_story_sha256: "sha256:[exact story raw-byte hash]"
+      source_story_revision: [positive integer]
     story_schema: "cgs.story/v2"
     author_status: "AUTHOR_COMPLETE"
     story_revision: [positive integer]
-    source_sha256: "sha256:[64 lowercase hexadecimal characters]"
-    story_core_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    source_revision: [positive integer]
+    story_core_revision: [positive integer]
     readiness_verdict: "READY"
     readiness_review_mode: "[full|lean|solo]"
     readiness_record_id: "[stable record ID]"
-    readiness_record_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_record_revision: [positive integer]
     readiness_key: "[stable readiness key]"
     readiness_stale_key: "[current stale key]"
     readiness_receipt_id: "[stable recorder receipt ID]"
-    readiness_receipt_sha256: "sha256:[64 lowercase hexadecimal characters]"
+    readiness_receipt_revision: [positive integer]
     implementation_gate_eligible: true
     origin_sprint: ""
     owner: ""
@@ -475,38 +476,17 @@ stories:
     completed: ""
 ```
 
-Before any gate, assert that Markdown and YAML contain exactly the same sprint
-ID, tracker revision, `ACTIVE` state, stable lifecycle owner/recorder,
-start/end dates, IANA timezone, estimate unit, capacity receipt
-ID/path/revision/raw hash/unit and exact
-`remaining = total - committed - reserved + released` operands, ordered story
-IDs, canonical paths, canonical priorities, integer estimates, owners,
-dependencies, story/core hashes, readiness record/receipt identities, eligibility,
-lifecycle meanings, status-update timestamps/provenance, and carryover origins.
-The plan schema is exactly `cgs.sprint-plan/v2`; the tracker schema is exactly
-`cgs.sprint-tracker/v2`, and tracker `plan_sha256` is the exact raw hash of the
-rendered plan bytes. Re-resolve every canonical story path and require it to
-exist as the same regular `cgs.story/v2` file in the same current
-`cgs.story-registry/v2` row.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
-Compute `story_set_hash` using the same consumer algorithm as `$sprint-status`:
-for every selected item render
-`<story-id>\t<normalized-project-relative-path>\t<sha256-of-current-raw-story-bytes>`,
-sort records by stable story ID using code-point order, join with LF and no
-trailing LF, hash the exact UTF-8 bytes, and prefix the lowercase digest with
-`sha256:`. Duplicate/missing IDs, unreadable paths, or path/hash disagreement
-blocks the write.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 After QA findings, producer findings/dispositions, carryover decisions, and all
-scope values are resolved, compute `plan_revision` over UTF-8 canonical JSON for
-the complete planning payload: sprint identity/dates/goal/capacity unit and
-values, timezone, estimate unit, capacity receipt/operands, ordered work items with canonical priority,
-status-update provenance, and registry/story/readiness-record/receipt identities,
-`story_set_hash`, carryover decisions, exclusions,
-QA state, risks, producer finding IDs/evidence/dispositions, and tracker revision.
-The payload excludes only `plan_revision` itself. Use one exact `updated_at` in
-both files. Re-render both drafts before preview; any later change requires new
-hashes and, when bytes change materially, new authorization.
+scope values are resolved, assign the next positive `plan_revision` through the
+single recorder. The plan and tracker must agree on sprint identity, dates, goal,
+capacity, ordered work items, provenance, source record IDs/revisions, carryover,
+exclusions, QA state, risks, findings, and tracker revision. Use one exact
+`updated_at` in both files. Re-render both drafts before preview; any later
+material change requires a new preview and authorization.
 
 ---
 
@@ -540,7 +520,7 @@ or after either target is written.
 ## Phase 5: Bounded producer feasibility gate before authorization
 
 The gate input is the full current Markdown/YAML draft, including stable sprint
-selectors, deterministic order, readiness hashes, carryover decisions, exclusions,
+selectors, deterministic order, readiness revisions, carryover decisions, exclusions,
 recorder preconditions, and QA finding.
 
 - `solo`: do not spawn; report `[PR-SPRINT] skipped — Solo mode`.
@@ -585,15 +565,15 @@ Freeze the exact UTF-8 bytes for:
 - `production/sprints/sprint-[NNN].md`; and
 - `production/sprint-status.yaml`.
 
-Record SHA-256 of each target's current exact bytes, or `ABSENT`, plus SHA-256 of
-each frozen candidate. For an existing tracker also show the exact recorder CAS
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+each frozen candidate. For an existing tracker also show the exact recorder atomic conflict check
 tuple from Phase 2.5. Present one complete changeset preview containing both
-paths, preimages, candidate hashes, and complete new content or complete unified
+paths, prior states, candidate revisions, and complete new content or complete unified
 diff. State that no other file, including `production/review-mode.txt`, changes.
 
 Obtain one explicit authorization for this exact pair. If declined, write
 nothing and finish **BLOCKED — changeset not authorized**. Authorization of an
-earlier draft does not authorize a later warning, finding, story hash, recorder
+earlier draft does not authorize a later warning, finding, story revision, recorder
 revision, or scope change.
 
 ### 6.2 Compare-and-swap preconditions
@@ -602,16 +582,16 @@ Immediately before the first mutation, perform one read-only preflight:
 
 - every selected/carryover story still exists at its canonical path, remains the
   same current `cgs.story-registry/v2` row and `cgs.story/v2` artifact, and matches
-  the previewed raw/core hashes;
+  the previewed raw/core revisions;
 - every readiness record, recorder receipt, readiness-registry revision/head, and
   stale-key source remains current and still proves
   `implementation_gate_eligible: true`;
-- the capacity receipt still has the previewed ID/path/revision/raw hash/unit and
+- the capacity receipt still has the previewed ID/path/revision/declared revision/unit and
   operands, and its remaining-capacity equation still reproduces;
-- every active sprint selector still has its previewed hash and value;
-- both plan/tracker targets still match their previewed preimages or remain absent;
-- the current tracker still matches the expected tracker revision, raw hash,
-  plan revision, and story-set hash;
+- every active sprint selector still has its previewed revision and value;
+- both plan/tracker targets still match their previewed prior states or remain absent;
+- the current tracker still matches the expected tracker revision, declared revision,
+  plan revision, and story-set revision;
 - the `event_id` is unused or is an exact idempotent replay of the same bytes; and
 - the plan/tracker candidates still have identical ordered work-item sets.
 - both candidates still declare their exact schema versions and identical
@@ -628,18 +608,14 @@ Treat the plan and recorder commit as one transaction:
 
 1. Create same-directory temporary siblings containing only the authorized
    candidate bytes; increment `write_count` only for authorized transaction writes.
-2. Re-read temporary files and verify their hashes against the preview.
-3. Recheck all preimages and the recorder CAS tuple once more.
+2. Re-read temporary files and verify their revisions against the preview.
+3. Recheck all prior states and the recorder atomic conflict check tuple once more.
 4. Replace the plan and commit the tracker through the one recorder while keeping
-   both captured preimages until both operations verify.
-5. If replacement, recorder commit, or verification fails, restore both preimages
+   both captured prior states until both operations verify.
+5. If replacement, recorder commit, or verification fails, restore both prior states
    (or remove only a newly created target), report every path that may have
    changed, and finish **BLOCKED**. Never report one-file success as COMPLETE.
-6. Re-read both finals; verify exact hashes, tracker revision increment, event ID,
-   sprint identity, versioned schemas, date/timezone/unit/capacity equality, ordered set
-   equivalence, per-row status-update provenance, and registry/story/readiness-record/
-   receipt identity/hash/currentness for every canonical story path. Remove
-   transaction temporaries only after successful verification.
+6. Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Do not write either final target before QA resolution, the bounded producer gate,
 complete preview, and authorization have all resolved.
@@ -649,7 +625,7 @@ complete preview, and authorization have all resolved.
 ## Phase 7: Verdict and handoff
 
 Emit **Verdict: COMPLETE** only after both authorized final files exist and pass
-exact hash/identity/revision verification. Report final hashes, previous and new
+exact revision/identity/revision verification. Report final revisions, previous and new
 tracker revisions, recorder event ID, producer rerun count, and counts of selected,
 carried, deferred, cancelled-from-scope, and excluded work items.
 

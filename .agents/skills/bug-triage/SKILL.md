@@ -15,7 +15,7 @@ $bug-triage trend --window <sprint-window-id>
 
 Contract version: `cgs.bug-triage/v2`.
 
-This skill is strictly read-only. It returns a hash-bound snapshot and proposals
+This skill is strictly read-only. It returns a revision-bound snapshot and proposals
 in conversation. It never creates or edits a bug, report, sprint, capacity,
 priority, disposition, waiver, risk, registry, issue, tracker, or session-state
 artifact; never closes, merges, assigns, defers, accepts, or fixes a bug; and
@@ -41,10 +41,10 @@ symlink, or fall back to `production/bugs/`, QA-plan/playtest/soak tables, prior
 triage output, issue text, filenames, or “latest” artifacts.
 
 Require policy `production/qa/triage-policy.yaml` with schema
-`cgs.bug-triage-policy/v1`, exact version/hash, canonical severity definitions,
+`cgs.bug-triage-policy/v1`, exact version/revision, canonical severity definitions,
 evidence-to-recommendation rules, priority-recommendation rules, duplicate
 normalization/thresholds, stable sorting, estimate-unit rules, and health mapping.
-Prose elsewhere cannot override it. A missing/malformed/hash-inconsistent policy
+Prose elsewhere cannot override it. A missing/malformed/revision-inconsistent policy
 blocks conclusions; do not invent common severity or capacity rules.
 
 These fixed limits cannot be raised by policy or project input:
@@ -65,13 +65,12 @@ These fixed limits cannot be raised by policy or project input:
 Enumerate normalized repository-relative paths in ordinal order. If discovery,
 aggregate bytes, history, pair generation, findings, or rendering exceeds a
 limit, stop at the stated lexical/stable-ID boundary. Record the complete
-candidate-name digest, included/omitted counts, boundary key, and omitted-tail
-digest and return `operation_status: PARTIAL_TRIAGE`, snapshot coverage
+candidate-name revision, included/omitted counts, boundary key, and omitted-tail
+revision and return `operation_status: PARTIAL_TRIAGE`, snapshot coverage
 `PARTIAL — BOUNDED REGISTRY`, and `backlog_health: UNKNOWN`. Never sample the
 omitted tail or infer a healthy/empty backlog.
 
-Read selected configuration artifacts in full and compute SHA-256 from exact raw
-bytes before parsing. Recompute every selected hash immediately before output. If
+Read selected configuration artifacts in full and record their declared producer revisions before parsing. Re-read the exact bytes and validate every selected declared revision immediately before output. If
 anything changes, return `BLOCKED — INPUT CHANGED DURING TRIAGE` without findings,
 health, proposals, or evidence.
 
@@ -87,9 +86,9 @@ Each record requires the producer schema `cgs-bug-record/v2` and:
 
 - unique stable `BUG-[0-9]{4,}` ID, title, system ID, owner or `UNASSIGNED`;
 - canonical status, severity, reported UTC, last-transition event ID/UTC;
-- build ID/artifact SHA-256/source commit and platform-profile ID/hash;
+- build ID/artifact revision/source commit and platform-profile ID/revision;
 - numbered reproduction steps, expected result, actual result, frequency or
-  `UNKNOWN`, and evidence receipt IDs/hashes;
+  `UNKNOWN`, and evidence receipt IDs/revisions;
 
 The dotted legacy spelling `cgs.bug-record/v2`, an absent schema, or any other
 schema is unsupported and makes that record malformed. Never normalize schema
@@ -98,7 +97,7 @@ punctuation or infer producer compatibility from matching fields.
   reason, and transaction ID or `NONE`;
 - estimate value/unit/source receipt or explicit `UNKNOWN`;
 - observed priority decision and disposition decision or `NONE`, each with owner,
-  authority, UTC, snapshot/preimage hashes, and transaction ID when present; and
+  authority, UTC, snapshot/preimage revisions, and transaction ID when present; and
 - linked sprint transaction and risk-waiver identity or `NONE`.
 
 Canonical statuses are exactly:
@@ -112,11 +111,11 @@ aliases. Missing/unknown status is malformed and excluded from health counts.
 Only `Open` and `Reopened` enter the triage backlog. Keep verification/closed
 counts separately; never reclassify a fallback table row as a bug.
 
-For every discovered file record normalized path, raw SHA-256, byte count, parse
+For every discovered file record normalized path, raw revision, byte count, parse
 state, stable bug ID or `NONE`, and canonical status or `NONE`. Track exact counts
 for `discovered`, `loaded`, `failed`, `duplicate_id`, `oversized`, `omitted`,
 `unresolved`, `verification_queue`, and `closed`. An unreadable, malformed,
-oversized, duplicate-ID, hash-changed, or omitted canonical record sets snapshot
+oversized, duplicate-ID, revision-changed, or omitted canonical record sets snapshot
 coverage PARTIAL and `operation_status: PARTIAL_TRIAGE`; list every path/reason.
 The loaded subset can never represent the whole backlog or produce health other
 than `UNKNOWN`.
@@ -125,7 +124,7 @@ Noncanonical bug-like evidence explicitly supplied in conversation is listed
 only as `UNREGISTERED CANDIDATE` with its source identity when safe; it is excluded
 from counts, severity, trends, duplicates, and health, and no bug is created.
 
-Compute `registry_snapshot_sha256` over UTF-8 canonical JSON containing contract/
+Assign an explicit monotonic registry_snapshot_revision. UTF-8 canonical JSON contains contract/
 policy identities, ordered discovery rows, exact counters, and later sprint/
 history context. Use sorted object keys, preserved ordered arrays, JSON number
 grammar, and no insignificant whitespace.
@@ -135,49 +134,49 @@ grammar, and no insignificant whitespace.
 ## Phase 2: Resolve the active sprint from authority, never recency
 
 Only `sprint` mode loads active-sprint context. Read the exact raw bytes and
-SHA-256 of `production/sprint-status.yaml`, then dispatch only by its explicit
+revision of `production/sprint-status.yaml`, then dispatch only by its explicit
 top-level schema through one of these versioned read-only adapters:
 
 1. `cgs.sprint-tracker/v2` (canonical producer): require positive
    `tracker_revision`, stable `event_id`, equal `sprint_id` and
    `active_sprint_id`, exact `sprint_state: ACTIVE`, stable `lifecycle_owner`,
    exact `lifecycle_recorder: cgs.sprint-tracker/v2`, `plan_file`, exact raw
-   `plan_sha256`, `plan_revision`, `story_set_hash`, `updated_at`, `start_date`,
+   `plan_revision`, `plan_revision`, `story_set_revision`, `updated_at`, `start_date`,
    `end_date`, IANA `timezone`, `estimate_unit`, complete `stories[]`, and the
    typed capacity object: `receipt_id`, `receipt_path`, positive
-   `receipt_revision`, exact raw `receipt_sha256`, exact `unit`, and integer
+   `receipt_revision`, exact raw `receipt_revision`, exact `unit`, and integer
    `total`, `committed`, `reserved`, `released`, and `remaining`.
 2. `cgs.sprint-status/v2` (explicit legacy adapter): require its declared
    revision/event identity and the same normalized active-sprint, exact plan
-   path/raw hash/revision/story-set binding, date/timezone/unit, capacity-receipt
+   path/raw version/revision/story-set binding, date/timezone/unit, capacity-receipt
    identity/operands, and complete story-set fields. Missing any normalized field
    is unsupported; the adapter never invents it from prose or a plan filename.
 
 Both adapters emit the same immutable in-memory authority record containing
-source schema, tracker/status revision, raw source SHA-256, active sprint
-ID/state, lifecycle owner/recorder, plan path/raw hash/revision/story-set hash,
-start/end/timezone/unit, capacity receipt ID/path/revision/raw hash/unit and
-operands, stories hash, update time, and last transaction/event ID. Any absent,
+source schema, tracker/status revision, raw source revision, active sprint
+ID/state, lifecycle owner/recorder, plan path/raw version/revision/story-set revision,
+start/end/timezone/unit, capacity receipt ID/path/revision/raw revision/unit and
+operands, stories revision, update time, and last transaction/event ID. Any absent,
 unknown, unversioned, duplicate-key, or malformed schema is
 `UNSUPPORTED_SPRINT_SCHEMA`: set active sprint unresolved and capacity unknown;
 never try the other adapter heuristically.
 
 When `production/session-state/active.md` exists, read its stable active-sprint
 field as corroboration. Each source may declare exactly one active sprint ID. All
-present declarations must agree. Re-read and raw-hash the referenced
+present declarations must agree. Re-read the referenced
 `cgs.sprint-plan/v2`; validate exact schema, ID, raw bytes against
-`plan_sha256`, plan revision, story-set hash, dates/timezone/unit, stable story
+`plan_revision`, plan revision, story-set revision, dates/timezone/unit, stable story
 join, and typed capacity object against
 the normalized authority record.
 
-Missing, duplicate, conflicting, dangling, inactive, out-of-window, or hash-
+Missing, duplicate, conflicting, dangling, inactive, out-of-window, or revision-
 mismatched authority sets `active_sprint_status: UNRESOLVED`, keeps all bugs
 unassigned, and makes operation at least `PARTIAL_TRIAGE`. Never inspect mtimes,
 filename order, Git recency, or historical plans to choose another sprint.
 
 Capacity is `VERIFIED` only when plan, normalized sprint adapter, and the exact
-raw-hashed capacity receipt agree on sprint ID/hashes, receipt
-ID/path/revision/hash, one exact estimate unit, total, committed, reserved,
+raw-versioned capacity receipt agree on sprint ID/revisions, receipt
+ID/path/version/revision, one exact estimate unit, total, committed, reserved,
 completed/released amount, and remaining, with:
 
 ```text
@@ -186,7 +185,7 @@ remaining = total - committed - reserved + released
 
 All values must be finite nonnegative integers and the recomputed remaining must
 equal the declared value. Mixed units, missing estimates, negative or inconsistent
-values, stale source hashes, or one-sided transactions yield
+values, stale source revisions, or one-sided transactions yield
 `capacity_status: UNKNOWN` and no active-sprint assignment proposal.
 
 `full` and `trend` do not resolve or simulate active capacity. Their
@@ -202,7 +201,7 @@ planning or `NOT_APPLICABLE` for trends.
 
 Tag `NEEDS_REPRO_INFO` when any required numbered step, expected result, actual
 result, build identity, platform profile, or evidence receipt is absent, empty,
-placeholder, malformed, or hash-invalid. Report each missing field. Keep the bug
+placeholder, malformed, or revision-invalid. Report each missing field. Keep the bug
 visible, but do not invent content or use incomplete reproduction as confirmed
 impact evidence.
 
@@ -213,7 +212,7 @@ as `severity_observed`. Textual `CRITICAL/HIGH/MEDIUM/LOW`, missing, or unsuppor
 values become `NEEDS_TRIAGE_DATA`; never silently convert them.
 
 An optional `severity_recommendation` is separate and must include policy rule ID,
-recommended S1-S4 value, raw impact facts, exact evidence receipt IDs/hashes and
+recommended S1-S4 value, raw impact facts, exact evidence receipt IDs/revisions and
 record locations, contradictions, limitations, rationale, and confidence
 `LOW|MEDIUM|HIGH` computed by the policy's declared evidence-coverage rule. If the
 rule inputs are missing or conflict, recommendation is `NEEDS_TRIAGE_DATA` and
@@ -223,7 +222,7 @@ recommendation into observed severity.
 ### Product priority
 
 Report canonical product priority decision as `priority_decision` only when its
-owner/authority, decision UTC, affected bug ID, source snapshot hash, reason, and
+owner/authority, decision UTC, affected bug ID, source snapshot revision, reason, and
 transaction ID all validate. Otherwise it is `UNDECIDED` or
 `INVALID_PRIORITY_DECISION`.
 
@@ -238,7 +237,7 @@ accepted risk. Product-owner choice and recorder transaction remain separate.
 - `WONT_FIX_CANDIDATE` is an undecided proposal, never closure or waiver; and
 - `ACCEPTED_RISK` is valid only with exact product-owner identity/authority,
   affected bug/scope, reason, decision UTC, expiry or review UTC, source snapshot
-  and preimage hashes, and a recorder transaction referenced consistently by all
+  and preimage revisions, and a recorder transaction referenced consistently by all
   affected canonical records.
 
 Missing/inconsistent fields produce `INVALID_ACCEPTED_RISK_CLAIM` and
@@ -250,9 +249,9 @@ not suppress health risk. Conversation cannot create or renew any disposition.
 ## Phase 4: Detect deterministic duplicate candidates without merging
 
 For records with sufficient reproduction identity, compute a normalized symptom
-fingerprint using the policy's versioned normalization over system ID, canonical
+stable business key using the policy's versioned normalization over system ID, canonical
 symptom code, affected operation/task, expected/actual outcome codes, platform
-scope, and build lineage. Exact fingerprints form a strong duplicate candidate.
+scope, and build lineage. Exact stable business keys form a strong duplicate candidate.
 
 The policy may additionally define token normalization and a Jaccard threshold
 for title/reproduction similarity. Calculate intersection/union over the exact
@@ -261,7 +260,7 @@ system and compatible build/platform/severity scopes. Missing required fields
 means `DUPLICATE_DATA_INSUFFICIENT`, not a match.
 
 Each candidate has stable pair ID, ordered two bug IDs, match method, policy rule,
-fingerprints, score/threshold or `NONE`, shared/differing evidence, and confidence.
+stable business keys, score/threshold or `NONE`, shared/differing evidence, and confidence.
 Classify every qualifying pair exactly as `POSSIBLE_DUPLICATE`; nonqualifying or
 insufficient pairs receive no duplicate state.
 Never choose a survivor, merge, close, delete, rewrite, or exclude either bug.
@@ -308,8 +307,8 @@ capacity. In `trend`, emit no assignment fields.
 
 Only `trend --window <id>` loads `production/sprints/history.yaml` with schema
 `cgs.sprint-history/v1`. Resolve exactly one immutable entry with the requested
-stable ID, start/end UTC, ordered predecessor/successor IDs, plan/status hashes,
-and history receipt. Duplicate, missing, overlapping, unordered, hash-mismatched,
+stable ID, start/end UTC, ordered predecessor/successor IDs, plan/status revisions,
+and history receipt. Duplicate, missing, overlapping, unordered, revision-mismatched,
 or open-ended windows make trend coverage partial; do not substitute calendar
 dates or active sprint.
 
@@ -338,24 +337,24 @@ Create findings only for data, reproduction, severity, duplicate, transaction,
 capacity, history, or risk facts:
 
 ```yaml
-id: BTF-<category-slug>-<12-lowercase-hex>
+id: BTF-<category-slug>-<stable-business-key>
 category: DATA | REPRO | SEVERITY | DUPLICATE | TRANSACTION | CAPACITY | HISTORY | RISK
 bug_ids: [<sorted stable IDs>]
 sprint_or_window_id: <stable ID or NONE>
 policy_rule_id: <stable ID or NONE>
 state: OBSERVED
 evidence:
-  registry_snapshot_sha256: <hash>
-  source_paths_and_hashes: [<identities>]
+  registry_snapshot_revision: <revision>
+  source_paths_and_revisions: [<identities>]
 claim_boundary: <fact, recommendation, or limitation>
 owner_handoff: <role or NONE>
 ```
 
-Compute the suffix from SHA-256 of UTF-8 canonical JSON containing repository
+Build the suffix from declared business IDs and the UTC run ID, using repository
 identity, category, sorted bug IDs, sprint/window ID, policy rule ID, and stable
 transaction/waiver/pair ID or `NONE`. Exclude paths, titles, descriptions,
 observed values, severity/priority recommendations, confidence, status,
-timestamps, current snapshot/report hashes, and owner names. Coalesce identical
+timestamps, current snapshot/report revisions, and owner names. Coalesce identical
 identities, preserve all evidence, and sort by category then ID.
 
 Apply backlog health in this exact order:
@@ -430,7 +429,7 @@ recommendations, duplicates, capacity ledger, trends, health, findings, all resu
 axes, producer `bug-triage@cgs.bug-triage/v2`, UUIDv4 run ID, and RFC 3339 UTC.
 
 For every non-blocked snapshot, emit one `cgs.review-evidence/v1` record bound to
-the payload hash, exact source identities, finding IDs, coverage, health, producer,
+the payload revision, exact source identities, finding IDs, coverage, health, producer,
 run/time, and:
 
 ```yaml
@@ -448,7 +447,7 @@ healthy backlog or transaction.
 When a product/QA/sprint owner wants to apply a priority, assignment, deferral,
 Won't Fix, or risk decision, return a
 `cgs.bug-triage-transaction-proposal/v1` candidate with proposal/snapshot IDs,
-decision owner/authority, affected bug IDs and exact preimage hashes, sprint plan/
+decision owner/authority, affected bug IDs and exact preimage revisions, sprint plan/
 status/capacity preimages, single estimate unit, capacity before/requested/after/
 overflow, exact two-sided changes, risk scope/reason/time/expiry when applicable,
 all-or-nothing rule, and intended transaction ID. This skill does not apply it.

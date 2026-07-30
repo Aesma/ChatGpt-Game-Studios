@@ -20,11 +20,11 @@ memory.
 
 The allowed write set is empty. Produce a sorted streaming snapshot of all regular
 project files except version-control internals and exact owner-approved ephemeral
-cache exclusions. Each row contains canonical path, size, and complete SHA-256.
-Process at most 256 paths in memory per chunk; hash each chunk, then fold ordered
-chunk hashes into `before_root`.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+Process at most 256 paths in memory per chunk; revision each chunk, then fold ordered
+chunk revisions into `before_root`.
 
-If an in-scope path cannot be enumerated or hashed, keep reviewing observable
+If an in-scope path cannot be enumerated or versioned, keep reviewing observable
 evidence but record `MUTATION_BASELINE_INCOMPLETE`; final verdict must be
 `PARTIAL`. The snapshot is mutation evidence, not permission to read excluded
 credentials or other denied paths.
@@ -40,23 +40,22 @@ For each direct target:
   by the rules reference.
 - Record every encountered candidate row before applying file/byte bounds.
 
-Sort and case-normalize for collision detection. Hash all eligible files before
+Sort and case-normalize for collision detection. revision all eligible files before
 selection. Enforce 64 files, 524288 bytes per file, and 4194304 total exact bytes.
 Preserve overflow and enumeration failures as manifest rows. If the manifest has
 no eligible source file, return input `ERROR`; otherwise any unreadable/error/
 unchecked eligible row makes target coverage partial.
 
-Freeze the canonical manifest and `target_manifest_hash`. Reviewers and tool
-receipts must bind to that exact hash.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## Phase 4: Load rules per target
 
 For each eligible selected file independently:
 
-1. Read/hash repository-root `AGENTS.md`.
-2. Walk root-to-parent and read/hash every nested `AGENTS.md`.
+1. Read/revision repository-root `AGENTS.md`.
+2. Walk root-to-parent and read/revision every nested `AGENTS.md`.
 3. Follow only direct subject-applicable standards links from that chain.
-4. Read/hash current coding standards and technical preferences when linked or
+4. Read/revision current coding standards and technical preferences when linked or
    otherwise explicitly governed by the chain.
 5. Parse the optional story's stable ID, type, acceptance criteria, QA scope,
    explicit target mapping, and explicit ADR IDs.
@@ -83,7 +82,7 @@ authoritative index records. Do not choose by filename similarity or commit
 recency. Record commit-message matches only under `non_authoritative_clues`; they
 cannot add to the ADR set.
 
-For each ADR, hash bytes and validate stable ID, unique resolution, status,
+For each ADR, revision bytes and validate stable ID, unique resolution, status,
 Decision, Consequences, scope, and supersession links. Admit only current
 `Accepted` decisions to the rule ledger. A readable non-Accepted ADR receives
 `ADR_NOT_EVALUATED`; missing/ambiguous/stale/invalid evidence is partial. If
@@ -95,13 +94,12 @@ gap rather than declaring compliance.
 Create every applicable rule check before evaluation. For each target/rule pair:
 
 1. Select the required evidence method.
-2. Verify current target and rule-source hashes.
+2. Verify current target and rule-source revisions.
 3. Use direct source evidence only for local facts it can prove.
 4. For AST, linter, graph, profiler, runtime, build, or test claims, find a current
    compatible `cgs.code-analysis-receipt/v1` or execute only a configured analyzer
    invocation proven to make no writes.
-5. Validate tool version, configuration hash, input hashes, capability, output
-   hash, and status.
+5. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 6. Set exactly one check state and retain exact evidence.
 
 Never install a tool, generate an analysis project, compile, build, run tests, or
@@ -128,23 +126,23 @@ Dispatch up to three required roles once in parallel with exact worker packets.
 Allow at most one retry for a transient no-response inside the same 120-second
 total per-role deadline. Do not wait indefinitely. A required overflow role is
 `NOT_DISPATCHED_LIMIT`; unavailable, decline, block, timeout, error, malformed
-schema, out-of-scope evidence, or manifest/target hash mismatch is recorded by
+schema, out-of-scope evidence, or manifest/target revision mismatch is recorded by
 exact status and makes reviewer coverage partial.
 
 When `lead-programmer` is unavailable, the current agent may complete that exact
 integrated responsibility and record `DONE_LOCAL_FALLBACK`. Do not use this to
 impersonate a configured engine or QA specialist. Reviewer findings remain
-candidate observations until locally mapped to a current rule and target hash.
+candidate observations until locally mapped to a current rule and target revision.
 
 ## Phase 8: Normalize ownership and findings
 
 For each verified failure or source-accepted specialist judgment:
 
-1. Establish canonical target path and current target SHA-256.
-2. Establish stable symbol/subject, rule ID/path/hash, and normalized defect class.
-3. Compute fingerprint and stable `CRF` ID.
+1. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+2. Establish stable symbol/subject, rule ID/path/revision, and normalized defect class.
+3. Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 4. Derive severity from the rule ledger or use `INFO / REVIEWER-ADVICE`.
-5. Cite exact evidence location without including the line in the fingerprint.
+5. Cite exact evidence location without including the line in the stable key.
 6. State source-bound consequence, owner, and bounded remediation.
 
 Code-quality and Accepted-ADR conformity stay with code/architecture ownership.
@@ -174,9 +172,9 @@ Apply verdict precedence mechanically:
 Preserve confirmed blocking/warning findings under `PARTIAL`; incompleteness takes
 precedence because the review cannot certify its total severity.
 
-## Phase 10: Re-hash and close mutation guard
+## Phase 10: re-read and close mutation guard
 
-Re-read and hash every reviewed target and evidence artifact. A mismatch is
+Re-read every reviewed target and evidence artifact and record its declared revision. A mismatch is
 `TARGET_CHANGED_DURING_REVIEW` or `EVIDENCE_CHANGED_DURING_REVIEW`, invalidates
 dependent claims, and forces `PARTIAL`.
 
@@ -193,7 +191,7 @@ Do not repair, revert, stage, or otherwise alter a changed file.
 ## Phase 11: Render one evidence record
 
 Freeze the complete generic envelope and `cgs.code-review/v2` extension. Include
-all target/evidence artifact hashes, the complete manifest including exclusions
+all target/evidence artifact revisions, the complete manifest including exclusions
 and unchecked rows, rule sources and checks, ADRs, tool receipts, reviewer plan/
 results, coverage, findings, mutation guard, and stale key.
 
@@ -203,7 +201,7 @@ omitted. Validate it once after all fields are frozen. State that direct output 
 
 Present:
 
-1. manifest identity/hash and verdict;
+1. manifest identity/revision and verdict;
 2. coverage summary and every gap;
 3. findings ordered `BLOCKING`, `WARNING`, `INFO`;
 4. rule, ADR, analysis, reviewer, and mutation evidence;

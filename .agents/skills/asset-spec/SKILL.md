@@ -3,6 +3,16 @@ name: asset-spec
 description: Generate provenance-bound per-asset production briefs from bounded sources, explicit or confirmed requirements, and finite art/technical review, then publish each specification with its manifest rows as one collision-safe transaction.
 ---
 
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
+
 # Asset Spec
 
 Create asset specifications without orphan specs, dangling manifest rows, duplicate IDs, hidden inferred requirements, unsafe reuse, path collisions, or incomplete validation appearing production-ready. This workflow does not generate binary assets, invoke another project workflow, or grant production approval on behalf of a reviewer.
@@ -10,19 +20,18 @@ Create asset specifications without orphan specs, dangling manifest rows, duplic
 ## Invocation
 
 ```text
-$asset-spec --manifest <asset-spec-request-path> --expect-manifest <sha256:...>
+$asset-spec --manifest <asset-spec-request-path>
 ```
 
-Both arguments are required exactly once. With no manifest, show usage and stop with zero project-source reads, reviewers, writes, or verdict. Reject unknown/repeated flags, missing values, directories, moving aliases such as `latest`, malformed hashes, traversal, symlink/junction/reparse escape, schema mismatch, and expected/actual hash mismatch.
+The manifest argument is required exactly once. With no manifest, show usage and stop with zero project-source reads, reviewers, writes, or verdict. Reject unknown/repeated flags, missing values, directories, moving aliases such as `latest`, traversal, symlink/junction/reparse escape, and schema mismatch.
 
 The request conforms to `cgs.asset-spec-request/v2` and includes:
 
 - stable request/run/target IDs, target display name, asset-spec intent, and exact approved content scope;
-- exact source inventory with normalized path, expected SHA-256/size/type, stable locator set, inclusion reason, priority, and sensitivity class;
-- expected asset-manifest path/hash or ABSENT, optional exact existing target-spec path/hash, and proposed target ownership;
-- canonical global review-mode source path/expected SHA-256/schema;
+- exact source inventory with normalized path, declared size/type, stable locator set, inclusion reason, priority, and sensitivity class;
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - engine, asset-pipeline, target platform/configuration, performance/memory, and packaging constraints with source IDs;
-- asset reuse candidates with exact manifest/spec/license/source hashes;
+- asset reuse candidates with exact manifest/spec/license/source revisions;
 - source/reviewer/regeneration/time/byte budgets that may only lower hard ceilings;
 - output owner, manifest owner, evidence recorder, unique writers, transaction adapter/rollback policy, and explicit non-writes.
 
@@ -46,7 +55,7 @@ There are separate user decisions for inferred-requirement confirmation, conflic
 
 Read only individually declared regular project files. Do not scan “all available sources,” recurse a directory, follow an undeclared reference, read external/home/temp paths, or inspect secrets/configuration unrelated to the target.
 
-Normalize project-relative paths to `/`, Unicode NFC, and case-preserving text. Resolve real paths and reject outside-root paths, symlinks/junctions/reparse points, special files, duplicate/case-colliding entries, declared/actual type-size-hash mismatch, and disallowed sensitivity classes.
+Normalize project-relative paths to `/`, Unicode NFC, and case-preserving text. Resolve real paths and reject outside-root paths, symlinks/junctions/reparse points, special files, duplicate/case-colliding entries, declared/actual type-size-revision mismatch, and disallowed sensitivity classes.
 
 Default hard ceilings per invocation:
 
@@ -60,15 +69,15 @@ Default hard ceilings per invocation:
 | source-analysis elapsed time | 15 minutes |
 | existing reuse candidates | 32 |
 
-The effective value is `min(requested, hard ceiling)`. Unparseable/non-positive values are ERROR. Sort sources by `(priority, normalized_path, expected_hash)` and stop before the next read would exceed a ceiling.
+The effective value is `min(requested, hard ceiling)`. Unparseable/non-positive values are ERROR. Sort sources by `(priority, normalized_path)` and stop before the next read would exceed a ceiling.
 
-For every omitted/unsupported entry record path, expected hash/size/type, locator scope, inclusion reason, and disposition `OMITTED_BUDGET | UNSUPPORTED_TYPE | SENSITIVITY_EXCLUDED | UNREADABLE | HASH_MISMATCH`. Never silently sample or claim omitted sources agree.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Sensitive sources default to excluded. Never read or persist credentials, tokens, private keys, `.env` content, personal participant data, or unrelated confidential material. A required excluded/unreadable/omitted source yields `BLOCKED_NOT_FOR_PRODUCTION`; if no trustworthy target source can be read, return ERROR and write nothing.
 
 ## Global review-mode contract — ASSET-P1-003
 
-Review participation is governed only by the exact manifest-declared canonical global policy with schema `cgs.review-mode/v1`. Validate its path/hash, project identity, effective scope, mode, policy version, and owner. Do not infer mode from a local flag, reviewer availability, task phrasing, or current file contents outside that policy.
+Review participation is governed only by the exact manifest-declared canonical global policy with schema `cgs.review-mode/v1`. Validate its path/revision, project identity, effective scope, mode, policy version, and owner. Do not infer mode from a local flag, reviewer availability, task phrasing, or current file contents outside that policy.
 
 Accepted modes:
 
@@ -87,25 +96,25 @@ Build a requirement ledger before drafting. Every entry conforms to `cgs.asset-r
 - `INFERRED_CANDIDATE` — the model/reviewer believes it follows from evidence but it is not stated;
 - `REUSE_CANDIDATE` — an existing asset may satisfy some need subject to the reuse matrix.
 
-Every entry records source path/SHA-256/bytes/type, exact heading/key/line-range locator, locator text hash, normalized claim, request/source snapshot hashes, rationale, confidence basis, affected asset keys, and confirmation state.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
-An inferred candidate is displayed separately from explicit requirements. It stays `origin: INFERRED_CANDIDATE` even after confirmation. Before inclusion in READY content, record one user response conforming to `cgs.asset-confirmation/v1`: exact question/options, exact answer `CONFIRM | REJECT | REVISE`, requirement IDs, displayed proposal hash, timestamp, and canonical record SHA-256. Silence, reviewer agreement, confidence, or content approval is not confirmation.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Unconfirmed inference must be excluded or keep the synchronized pair BLOCKED. Confirmation does not prove feasibility, license, reuse, or production approval.
 
 Create `cgs.asset-spec-provenance/v1` containing:
 
-- request path/schema/expected/actual hash and skill/metadata source hashes;
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - target/project/run identity, normalized/collision keys, source inventory/snapshot and every included/omitted source disposition;
-- global review-mode path/schema/version/hash;
-- every requirement/confirmation ID and source locator/hash;
+- global review-mode path/schema/version/revision;
+- every requirement/confirmation ID and source locator/revision;
 - engine/pipeline/platform source identities;
-- art/technical reviewer role, exact agent/config/version identity, prompt/proposal/source hashes, attempt token, start/end, timeout/status, response hash, missing fields, and conflict IDs;
-- regeneration round inputs/constraints/proposal/review hashes;
-- reuse/license/variant/LOD/platform decisions and confirmation hashes;
-- manifest/spec bases, provisional IDs, transaction/candidate hashes, owner/authorization IDs, and final read-back receipt when committed.
+- art/technical reviewer role, exact agent/config/version identity, prompt/proposal/source revisions, attempt token, start/end, timeout/status, response revision, missing fields, and conflict IDs;
+- regeneration round inputs/constraints/proposal/review revisions;
+- reuse/license/variant/LOD/platform decisions and confirmation revisions;
+- manifest/spec bases, provisional IDs, transaction/candidate revisions, owner/authorization IDs, and final read-back receipt when committed.
 
-Timestamps and prose never replace exact hashes/locators.
+Timestamps and prose never replace exact revisions/locators.
 
 ## Canonical target path and collision contract — ASSET-P1-008
 
@@ -116,14 +125,14 @@ Reject empty/ambiguous transliteration, leading/trailing dot/space, control char
 Compute:
 
 ```text
-target_key = sha256(project_id + "\n" + stable_target_id)
+target_key = <stable allocated ID>
 collision_key = Unicode-NFC + casefold + separator-normalized canonical relative path
 new_spec_path = design/assets/specs/<slug>--<target_key8>-assets.md
 ```
 
 The stable target-key suffix is mandatory for new specs. Before drafting, compare collision keys against the filesystem, manifest, and registered spec paths. If the exact path exists, it is an UPDATE only when its embedded stable target ID and manifest ownership match; otherwise return `PATH_COLLISION` and write nothing. Never add an ad hoc numeric suffix, overwrite a case variant, or reuse another target's path.
 
-Existing legacy specs may be updated only through the exact manifest-bound path/base hash; do not silently rename/migrate them. Absolute paths and traversal are forbidden.
+Existing legacy specs may be updated only through the exact manifest-bound path/base revision; do not silently rename/migrate them. Absolute paths and traversal are forbidden.
 
 ## Inventory and per-asset specification
 
@@ -137,12 +146,12 @@ Do not generate a binary asset.
 
 Description similarity alone never establishes reuse. For each candidate, validate:
 
-- existing asset ID/key/owner/status plus exact manifest/spec/source hashes;
+- existing asset ID/key/owner/status plus exact manifest/spec/source revisions;
 - intended function/context, visual identity, variant/state/localization/accessibility needs;
 - geometry/topology/scale/pivot/rig/skeleton/bone/animation/material/shader/texture compatibility;
 - resolution, texture sets, LOD count/thresholds, impostor/collision/physics needs;
 - per-platform format/compression/memory/performance/render-pipeline/import constraints;
-- license/provenance source path/hash, rights holder, permitted use/modification/derivative/redistribution, attribution, territory/platform, expiry/version, AI-training/generation restrictions when stated, and downstream/outsourcing constraints;
+- license/provenance source path/revision, rights holder, permitted use/modification/derivative/redistribution, attribution, territory/platform, expiry/version, AI-training/generation restrictions when stated, and downstream/outsourcing constraints;
 - required modifications, derivative ownership, acceptance checks, dependencies, and cost/risk.
 
 Classify exactly:
@@ -157,7 +166,7 @@ Reuse requires an exact user decision/confirmation plus owner authorization wher
 
 ## Bounded art and technical review — ASSET-P1-004
 
-Reviewers are read-only and receive the exact proposal hash, source snapshot, review-mode hash, check IDs, and response schema `cgs.asset-review/v1`. They cannot edit candidates, approve publication, add confirmed requirements, or delegate.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Hard review ceilings:
 
@@ -168,9 +177,9 @@ Hard review ceilings:
 - no child delegation;
 - response maximum 64 KiB per role.
 
-Each response reports every assigned check ID as `PASS | BLOCKED | NOT_RUN`, exact finding/evidence/requirement IDs, proposal/source hashes, reviewer role/config/version, start/end, and limitations. Missing fields/checks, malformed schema, stale proposal hash, timeout, late response, or partial response is NOT_RUN/BLOCKED. Revoke timed-out attempt tokens; ignore/quarantine late results.
+Each response reports every assigned check ID as `PASS | BLOCKED | NOT_RUN`, exact finding/evidence/requirement IDs, proposal/source revisions, reviewer role/config/version, start/end, and limitations. Missing fields/checks, malformed schema, stale proposal revision, timeout, late response, or partial response is NOT_RUN/BLOCKED. Revoke timed-out attempt tokens; ignore/quarantine late results.
 
-Build a conflict matrix for art-vs-technical, reviewer-vs-source, reviewer-vs-user-confirmation, and reviewer-vs-platform/license claims. Reviewers cannot override sources or confirmed user decisions. Present conflicts with options/tradeoffs to the user; a resolution creates a hash-bound decision record and a new proposal. Unresolved conflict blocks READY.
+Build a conflict matrix for art-vs-technical, reviewer-vs-source, reviewer-vs-user-confirmation, and reviewer-vs-platform/license claims. Reviewers cannot override sources or confirmed user decisions. Present conflicts with options/tradeoffs to the user; a resolution creates a revision-bound decision record and a new proposal. Unresolved conflict blocks READY.
 
 FULL requires both complete current reviews. LEAN/SOLO follow global participation rules but cannot mark absent required validation PASS.
 
@@ -178,14 +187,14 @@ FULL requires both complete current reviews. LEAN/SOLO follow global participati
 
 Allow at most two regeneration rounds after the initial candidate. Counters are monotonic and stored in provenance.
 
-Each regenerate request must introduce at least one hash-bound new input:
+Each regenerate request must introduce at least one revision-bound new input:
 
 - user-confirmed new/revised constraint;
-- changed authoritative source with new hash/locator;
+- changed authoritative source with new revision/locator;
 - explicit conflict-resolution decision;
 - corrected technical/platform/license evidence.
 
-“Try again,” reviewer dissatisfaction without a new constraint, or an unchanged prompt is insufficient. Record exact delta and affected requirements; render a new proposal hash and rerun every affected source/reuse/art/technical/integrity check.
+“Try again,” reviewer dissatisfaction without a new constraint, or an unchanged prompt is insufficient. Record exact delta and affected requirements; render a new proposal revision and rerun every affected source/reuse/art/technical/integrity check.
 
 On round limit, timeout, or repeated unchanged proposal, stop reviewer/tool calls. Return the best current DRAFT/BLOCKED proposal with `REGENERATION_LIMIT_REACHED`; do not expand the limit or loop until approval.
 
@@ -201,34 +210,34 @@ Required checks for the exact candidate:
 - path/slug/collision safety;
 - manifest/spec/asset-key/ID/status/transaction integrity.
 
-Each validation is PASS/BLOCKED/NOT_RUN with evidence hash/time. Any non-PASS required check yields BLOCKED_NOT_FOR_PRODUCTION.
+Each validation is PASS/BLOCKED/NOT_RUN with evidence revision/time. Any non-PASS required check yields BLOCKED_NOT_FOR_PRODUCTION.
 
-Preserve `ASSET-NNN` only with manifest CAS:
+Preserve `ASSET-NNN` only with manifest atomic conflict check:
 
 1. read current manifest and referenced IDs needed for global uniqueness;
 2. detect existing duplicate/malformed ownership and stop;
-3. record manifest and target-spec base hashes;
+3. record manifest and target-spec base revisions;
 4. allocate contiguous provisional IDs inside this transaction;
-5. render both files with one transaction ID/status/provenance hash;
-6. immediately before commit rehash sources, policy, confirmation/reviews, reuse/license evidence, manifest/spec bases, path collision set, IDs, and candidates;
+5. render both files with one transaction ID/status/provenance revision;
+6. immediately before commit re-read sources, policy, confirmation/reviews, reuse/license evidence, manifest/spec bases, path collision set, IDs, and candidates;
 7. any drift publishes nothing, reallocates/rerenders when necessary, creates a new transaction/preview, and requires fresh authorization;
 8. never silently change an authorized ID/path/status.
 
 ## Exact preview and atomic commit
 
-Show one indivisible preview with transaction ID, exact spec/manifest paths, CREATE/UPDATE operations, owner/writer, base hash/ABSENT, full candidate hash, provisional IDs, synchronized status, provenance hash, validation/blocker matrix, rollback plan, and complete content/diff sufficient for informed review.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Ask once for that exact two-file authorization. Declining/changing either part commits neither. Any content/ID/path/status/base/blocker/evidence/owner change invalidates approval.
 
-After authorization, revalidate every bound hash and collision. Prepare complete candidates in isolated non-final siblings and validate as a pair. Use an all-or-none transaction with exact rollback; if unavailable, write neither. Never leave one final file and promise repair.
+After authorization, revalidate every bound revision and collision. Prepare complete candidates in isolated non-final siblings and validate as a pair. Use an all-or-none transaction with exact rollback; if unavailable, write neither. Never leave one final file and promise repair.
 
-Read back both paths and require authorized hashes, same transaction/status/provenance, one-to-one rows/spec assets, global ID uniqueness, exact target ownership/path, and READY only with all PASS. Failure rolls both back. Unproven rollback reports a critical incident with exact divergent paths/hashes and never claims commit success.
+Read back both paths and require authorized revisions, same transaction/status/provenance, one-to-one rows/spec assets, global ID uniqueness, exact target ownership/path, and READY only with all PASS. Failure rolls both back. Unproven rollback reports a critical incident with exact divergent paths/revisions and never claims commit success.
 
 ## Required fields and completion
 
 Specification includes target/stable target ID/slug/collision key/transaction; status/production eligibility; source/provenance/requirement/confirmation tables; review mode/reviewer receipts/conflicts/regeneration history; reuse/license/LOD/platform matrix; validation/blocker matrix; asset key-ID table; detailed requirements/acceptance/prompts/dependencies/destinations; and history.
 
-Manifest rows include asset ID/key/target ID/spec path/type/status/transaction/provenance hash/dependency state/reuse classification/platform/LOD/license state.
+Manifest rows include asset ID/key/target ID/spec path/type/status/transaction/provenance revision/dependency state/reuse classification/platform/LOD/license state.
 
 Return exactly one:
 
@@ -237,4 +246,4 @@ Return exactly one:
 - `NOT_COMMITTED` — declined/stale/conflicted/collision/atomicity/preparation/rollback-restored outcome;
 - `CRITICAL_INCONSISTENCY` — rollback could not restore/prove both bases.
 
-Report both final paths/hashes when committed, IDs, source/review/reuse/provenance evidence, omissions/blockers, regeneration count, collision retry, production-handoff permission, and `auto_executed: false`. Never claim success from a preview, one-file write, unverified pair, partial source/reviewer response, or inferred requirement without confirmation.
+Report both final paths/revisions when committed, IDs, source/review/reuse/provenance evidence, omissions/blockers, regeneration count, collision retry, production-handoff permission, and `auto_executed: false`. Never claim success from a preview, one-file write, unverified pair, partial source/reviewer response, or inferred requirement without confirmation.

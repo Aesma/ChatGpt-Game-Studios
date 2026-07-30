@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Review"
-  short_description: "Bounded, hash-bound, read-only source review"
-  default_prompt: "Use $code-review with explicit --target paths to produce a rule-sourced, coverage-gated review with exact target hashes and bounded specialist evidence, without editing files."
+  short_description: "Bounded, revision-bound, read-only source review"
+  default_prompt: "Use $code-review with explicit --target paths to produce a rule-sourced, coverage-gated review with exact target revisions and bounded specialist evidence, without editing files."

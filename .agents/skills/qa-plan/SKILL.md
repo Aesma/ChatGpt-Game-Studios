@@ -30,7 +30,7 @@ input_schema: cgs-qa-plan-scope/v1
 output_schema: cgs-qa-plan/v2
 owned_output: production/qa/plans/<plan-id>.md
 test_id_ownership_schema: cgs-test-id-ownership-snapshot/v1
-hash_algorithm: sha256
+revision_source: declared_metadata
 states: [CURRENT, PARTIAL, STALE, UNKNOWN, BLOCKED]
 never_writes:
   - story-gdd-adr-or-requirement-authority
@@ -45,6 +45,8 @@ read-only proposals, but only that owner assembles the final source/requirement/
 dependency matrix, previews the exact bytes, and performs the compare-and-set write.
 
 # QA Plan
+
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs for identity and currentness.
 
 This skill generates a structured, version-bound QA plan for a sprint, feature,
 or individual story. It tells developers what to automate, what to verify
@@ -109,22 +111,22 @@ changeset is empty.
 
 Resolve the literal scope-manifest path and real path inside the project. Reject a
 directory, symlink escape, malformed/duplicate-key document, unsupported schema,
-unsafe ID, ambiguous canonical path, or digest that is not lowercase SHA-256.
+unsafe ID, ambiguous canonical path, or identifier that is not explicit revision.
 Read exact bytes once and require `cgs-qa-plan-scope/v1` with:
 
 - stable plan ID, scope ID, scope kind `SPRINT`, `FEATURE`, or `STORY`, human name,
   and optional superseded plan ID;
-- one authoritative scope source path/hash: active sprint manifest, epic/feature
+- one authoritative scope source path/revision: active sprint manifest, epic/feature
   manifest, or exact story; never newest-file, mtime, title, substring, or glob-match
   selection;
-- an ordered list of stable story IDs and exact story paths/hashes;
-- expected GDD, ADR, control/requirement and dependency authority paths/hashes for
+- an ordered list of stable story IDs and exact story paths/revisions;
+- expected GDD, ADR, control/requirement and dependency authority paths/revisions for
   each story/AC;
-- build binding: either exact candidate-manifest path/hash, build ID/artifact
-  path/hash, source commit, platform/configuration; or the literal state
+- build binding: either exact candidate-manifest path/revision, build ID/artifact
+  path/revision, source commit, platform/configuration; or the literal state
   `PRE_IMPLEMENTATION` with owner and reason;
-- exact `cgs-test-id-ownership-snapshot/v1` path/hash and snapshot owner/revision;
-- optional existing test/evidence receipt paths/hashes used only to classify evidence
+- exact `cgs-test-id-ownership-snapshot/v1` path/revision and snapshot owner/revision;
+- optional existing test/evidence receipt paths/revisions used only to classify evidence
   levels;
 - budgets for maximum stories, authorities, files, input bytes, extracted requirement
   spans, dependency edges, plan items, output bytes, and wall time, all at or below
@@ -148,39 +150,39 @@ a complete downstream planning/gate input.
 
 ## Phase 2: Load versioned inputs
 
-### 2.1 Hash raw source bytes
+### 2.1 Validate raw source bytes
 
-For every source, read the raw file bytes once, compute SHA-256 over those exact
-bytes, and parse content from the same bytes. Format every digest as
-`sha256:<64 lowercase hexadecimal characters>`. Never hash normalized text,
-copied excerpts, a user-supplied digest, or reconstructed content.
+For every source, read the raw file bytes once, record revision for those exact
+bytes, and parse content from the same bytes. Format every identifier as
+`<explicit-revision>`. Never revision normalized text,
+copied excerpts, a user-supplied identifier, or reconstructed content.
 
 Record each source as `loaded`, `missing`, `unreadable`, or `invalid`. Capture:
 
 - every in-scope story file, in full;
-- every GDD referenced by an in-scope story, in full for hashing, even when only
+- every GDD referenced by an in-scope story, in full for validation, even when only
   Acceptance Criteria, Formulas, and Edge Cases are used to build tests;
-- every ADR referenced by an in-scope story, in full for hashing, even when only
+- every ADR referenced by an in-scope story, in full for validation, even when only
   selected sections are used;
 - the exact scope-defining sprint/epic/story authority;
 - only the scope-manifest-declared systems index, control/requirement manifest,
   dependency authority, build candidate/receipt, ID-ownership snapshot, and evidence
-  receipt paths/hashes.
+  receipt paths/revisions.
 
 The manifest must contain a source record for every story/GDD/ADR path expected
-by scope, including a non-loaded status when no digest can be computed. Missing,
+by scope, including a non-loaded status when no identifier can be computed. Missing,
 unreadable, invalid, or ambiguously referenced story/GDD/ADR input makes the plan
-`PARTIAL`; never invent a digest or silently omit the path.
+`PARTIAL`; never invent a identifier or silently omit the path.
 
 For every story AC and supporting GDD/ADR/control requirement, record a stable
-Requirement Binding ID, owning artifact/owner, exact raw file hash, parser/tool
-identity/version/hash, byte-span start/end, and SHA-256 over the exact raw span bytes.
-The span hash supports precise change review but never replaces the full-file hash.
+Requirement Binding ID, owning artifact/owner, exact raw file revision, parser/tool
+identity/version/revision, byte-span start/end, and explicit source revision for the span.
+The span revision supports precise change review but never replaces the full-file revision.
 If a parser cannot produce an unambiguous raw byte span, keep the path in the ledger,
 set requirement status `UNKNOWN`, and make the plan `PARTIAL`.
 
 Validate build binding independently. `BOUND` requires the candidate manifest and
-local artifact or trusted build receipt to rehash, with exact build ID, artifact hash,
+local artifact or trusted build receipt to revalidate, with exact build ID, artifact revision,
 source commit, platform, and configuration. `PRE_IMPLEMENTATION` is allowed only when
 the scope authority says no build should exist yet; every plan item remains Evidence
 Level `PLANNED`, and the plan itself is never execution evidence. A required but
@@ -210,10 +212,10 @@ For each story:
 
 Read the test-ID ownership snapshot as a read-only authority. Each existing Test ID
 must bind exactly one stable AC ID, owner plan ID, lifecycle state, source plan
-path/hash, and non-reuse tombstone when retired. New deterministic IDs are `PROPOSED`
+path/revision, and non-reuse tombstone when retired. New deterministic IDs are `PROPOSED`
 and owned by this plan ID only after the immutable plan is published. Reject any Test
 ID mapped to another AC, multiple owners, recycled tombstone, conflicting plan, or
-snapshot hash/revision drift. Record `Ownership Status: OWNED`, `PROPOSED`, or
+snapshot version/revision drift. Record `Ownership Status: OWNED`, `PROPOSED`, or
 `CONFLICT`; a conflict makes the plan `PARTIAL` and prevents COMPLETE.
 
 ### 2.3 Load bounded supporting context
@@ -222,11 +224,11 @@ From loaded GDDs use the Acceptance Criteria, Formulas, and Edge Cases sections.
 If Edge Cases is absent, record that edge-case coverage is inferred from the
 GDD acceptance criteria and story ACs. Use the control manifest only for
 applicable test guardrails. Do not turn a source excerpt into a substitute for
-the full-file source hash.
+the full-file source revision.
 
 Build one dependency graph over stories, ACs, production systems, configuration,
 required test fixtures/environments, Test IDs, and expected evidence artifacts. Every
-edge records source authority/path/hash and relation type. Detect missing endpoints,
+edge records source authority/path/revision and relation type. Detect missing endpoints,
 unknown owners, duplicate edges, and cycles that make execution order ambiguous.
 Preserve all gaps in a dependency/coverage matrix; do not infer an edge from similar
 names or scan an unbounded control manifest.
@@ -281,7 +283,7 @@ IDs remain stable when criterion wording/order changes and are never recycled fo
 different AC. Duplicate IDs, owner conflicts, or ID/AC/method mismatch are gaps that
 make the plan `PARTIAL`.
 
-Each plan item records: story path/hash, requirement binding/span hashes, stable AC/
+Each plan item records: story path/revision, requirement binding/span revisions, stable AC/
 coverage/Test IDs, ID owner/status, declared type, all observable/risk tags, method,
 dependencies, build binding, test/evidence path/schema, Given/When/Then or
 Setup/Verify/Pass condition, edge cases, required sign-off, coverage status, and
@@ -289,7 +291,7 @@ Evidence Level.
 
 Evidence Level is one of `PLANNED`, `IMPLEMENTED`, `DISCOVERED`, `EXECUTED`,
 `VERIFIED`, or `UNKNOWN`. Promotion requires current exact source/manifest/build/log/
-receipt hashes at each rung; a missing, partial, stale, unsupported, or unreadable
+receipt revisions at each rung; a missing, partial, stale, unsupported, or unreadable
 required receipt yields `UNKNOWN`, never an inferred higher level. A pre-implementation
 item without expected execution evidence remains `PLANNED` and is not itself a gap.
 The QA plan always declares `Gate Evidence: NO`; downstream gates need the current plan
@@ -312,7 +314,7 @@ Generate a complete document with this structure:
 **Generated**: [ISO-8601 timestamp]
 **Generated by**: $qa-plan
 **Scope ID / Kind**: [stable scope ID] / [SPRINT | FEATURE | STORY]
-**Scope Manifest**: [path] / sha256:[digest]
+**Scope Manifest**: [path] / revision:[identifier]
 **Engine**: [engine or Not configured]
 **Plan State at Generation**: [CURRENT | PARTIAL]
 **Effective State at Generation**: [CURRENT | UNKNOWN]
@@ -323,7 +325,7 @@ Generate a complete document with this structure:
 ## Plan Manifest
 
 `manifest_version: 2`
-`hash_algorithm: sha256`
+`revision_source: declared_metadata`
 
 ### Scope and Budget Ledger
 
@@ -332,31 +334,31 @@ Generate a complete document with this structure:
 
 ### Build Binding
 
-| Status | Candidate Manifest + Hash | Build ID | Artifact + Hash | Source Commit | Platform / Configuration |
+| Status | Candidate Manifest + Validate | Build ID | Artifact + Validate | Source Commit | Platform / Configuration |
 |---|---|---|---|---|---|
 
 ### Sources
 
-| Role | Owner | Path | Status | SHA-256 | Omission/Unknown Reason |
+| Role | Owner | Path | Status | revision | Omission/Unknown Reason |
 |---|---|---|---|---|---|
-| story | [owner] | [path] | loaded | sha256:[digest] | NONE |
-| gdd | [owner] | [path] | loaded | sha256:[digest] | NONE |
-| adr | [owner] | [path] | loaded | sha256:[digest] | NONE |
+| story | [owner] | [path] | loaded | revision:[identifier] | NONE |
+| gdd | [owner] | [path] | loaded | revision:[identifier] | NONE |
+| adr | [owner] | [path] | loaded | revision:[identifier] | NONE |
 
 ### Story Requirement Bindings
 
-| Story ID | Story Path | Story Hash | GDD Paths + Hashes | ADR Paths + Hashes | Stable AC IDs | Coverage |
+| Story ID | Story Path | Story Validate | GDD Paths + Revisions | ADR Paths + Revisions | Stable AC IDs | Coverage |
 |---|---|---|---|---|---|---|
-| [stable ID] | [path] | sha256:[digest] | [path + digest] | [path + digest] | [IDs] | complete/gaps |
+| [stable ID] | [path] | revision:[identifier] | [path + identifier] | [path + identifier] | [IDs] | complete/gaps |
 
 ### Exact Requirement Bindings
 
-| Binding ID | AC/Requirement ID | Owner | Path | File Hash | Raw Byte Span | Span Hash | Status |
+| Binding ID | AC/Requirement ID | Owner | Path | File Validate | Raw Byte Span | Span Validate | Status |
 |---|---|---|---|---|---|---|---|
 
 ### Test ID Ownership
 
-| Test ID | Stable AC ID | Method Family | Owner Plan ID | Ownership Status | Snapshot Revision + Hash |
+| Test ID | Stable AC ID | Method Family | Owner Plan ID | Ownership Status | Snapshot Revision + Validate |
 |---|---|---|---|---|---|
 
 ### Dependency and Coverage Matrix
@@ -367,8 +369,8 @@ Generate a complete document with this structure:
 ### Plan State Rules
 
 - CURRENT: every required story/GDD/ADR loaded and every AC has one stable test/check ID.
-- PARTIAL: a required source/hash/AC binding is missing, invalid, or ambiguous.
-- STALE: any current source bytes no longer match the captured hash, or a captured source disappears.
+- PARTIAL: a required source/revision/AC binding is missing, invalid, or ambiguous.
+- STALE: any current source identity, version, status, or revision no longer matches the captured source record, or a captured source disappears.
 - UNKNOWN: a required source, span, dependency, build, ownership, or evidence result cannot be conclusively classified.
 
 ## Coverage Gaps
@@ -409,14 +411,14 @@ Playtest evidence must use the current producer pair: canonical
 `cgs.playtest-report/v2` payload, plus an independent current
 `cgs.playtest-report-recorder-receipt/v1`. A plan item may name the report path and
 receipt path as expected evidence, but neither path alone advances Evidence Level.
-Validate the report's exact raw hash and canonical payload, session status
+Validate the report's exact declared revision and canonical payload, session status
 `COMPLETED`, protocol/session/build/platform/source/requirement identities, candidate
 `cgs.review-evidence/v1` record identity with
 `artifact_kind: playtest-session-report-candidate`, and candidate gate state
-`REQUIRES RECORDER`. Then validate receipt schema and raw hash, recorder
-identity/version and separation, exact canonical target path, persisted-file hash,
+`REQUIRES RECORDER`. Then validate receipt schema and declared revision, recorder
+identity/version and separation, exact canonical target path, persisted-file revision,
 write/read-back UTC and atomic result, candidate record ID, and every bound dependency
-hash. Reconstruct the candidate record ID rather than trusting the receipt claim.
+revision. Reconstruct the candidate record ID rather than trusting the receipt claim.
 Only the complete current pair that would yield `RECORDED COMPLETED — GATE ELIGIBLE`
 may advance the Evidence Level or count one distinct completed session. A template,
 protocol, raw log, review, ingest-only session, legacy report/schema, partial report,
@@ -437,7 +439,7 @@ remains `UNKNOWN` or the prior lower evidence level. The QA plan itself remains
 ```
 
 The source table and story binding table are mandatory. `PARTIAL` plans retain
-all known records and gaps; they must not disguise an absent hash as current.
+all known records and gaps; they must not disguise an absent revision as current.
 
 ### Effective-state revalidation contract
 
@@ -445,17 +447,17 @@ Before this plan is reused, imported into a story, or consumed by
 `$smoke-check`, `$story-done`, `$regression-suite`, or another gate:
 
 1. Read every captured scope/story/GDD/ADR/control/requirement/build/ownership/
-   dependency/test/evidence source path and hash its current raw bytes.
+   dependency/test/evidence source path and revision its current raw bytes.
 2. Revalidate raw requirement spans, build identity/artifact, ownership revision,
    dependency edges, evidence receipt schemas and all referenced dependencies.
-3. Compare current digests and source availability with the manifest.
+3. Compare current identifiers and source availability with the manifest.
 4. Treat any mismatch, disappearance, or newly unreadable captured source as `STALE`,
    regardless of the stored `Plan State at Generation` label.
 5. Treat an unavailable verifier/remote receipt, partial coverage, unsupported schema,
    or unresolved new dependency as `UNKNOWN`; never infer currentness.
 6. Reject `PARTIAL`, `STALE`, and `UNKNOWN` as a complete planning/gate input.
    Regenerate the immutable plan from current sources under a new plan/revision ID.
-7. Preserve valid stable AC and owned test/check IDs when regenerating; update hashes and
+7. Preserve valid stable AC and owned test/check IDs when regenerating; update revisions and
    requirement text from current sources.
 
 This computed effective state avoids mutating the plan merely to mark it stale.
@@ -467,16 +469,16 @@ This computed effective state avoids mutating the plan merely to mark it stale.
 ### 5.1 Preview one complete changeset
 
 Show the complete generated plan bytes or a lossless inspectable artifact/diff whose
-manifest records total bytes, raw SHA-256, section order, and byte-range/hash for every
+manifest records total bytes, declared revision, section order, and byte-range/revision for every
 chunk. If display limits require pagination, present every chunk with no omitted or
-ellipsis content before approval and verify the concatenated hash. A summary, sampled
+ellipsis content before approval and verify the concatenated revision. A summary, sampled
 matrix, collapsed middle, or changed-section list is not approval evidence.
 
 Then show:
 
 ```text template
 Proposed changeset
-- CREATE production/qa/plans/<plan-id>.md (sha256:<candidate-digest>)
+- CREATE production/qa/plans/<plan-id>.md (<explicit-revision>)
 
 Explicit non-writes
 - all in-scope story files
@@ -490,7 +492,7 @@ Require the target absent at preview. If it already exists and is byte-for-byte
 identical to the candidate, preview a verified no-op; if bytes differ, return
 `BLOCKED — IMMUTABLE PLAN ID CONFLICT` and require a new plan/revision ID. Never
 preview or perform UPDATE of an existing plan. Ask once whether to apply the exact
-one-file candidate bytes/hash or accept the exact verified no-op.
+one-file candidate records/revision or accept the exact verified no-op.
 
 There is no story-backfill or session-state option. If the user asks for one,
 explain that the story/checkpoint owner must perform it and do not include it in
@@ -500,18 +502,18 @@ this changeset.
 
 If approved, immediately before writing:
 
-- re-hash the scope manifest and every loaded scope/story/GDD/ADR/control/
-  requirement-span/build/dependency/ownership/evidence source and abort if any digest,
+- revalidate the scope manifest and every loaded scope/story/GDD/ADR/control/
+  requirement-span/build/dependency/ownership/evidence source and abort if any identifier,
   availability, ownership revision, or effective state changed since generation;
 - require the immutable target still absent, or identical only for the previewed
   no-op; and
-- stage only the plan file bytes/hash, exactly as previewed.
+- stage only the plan file records/revision, exactly as previewed.
 
 Create using an exclusive/compare-and-set publication primitive through a same-
-filesystem staged file. If the target appears concurrently, compare raw hashes: report
+filesystem staged file. If the target appears concurrently, compare declared revisions: report
 `unchanged` only when identical; otherwise preserve it and block. After creation, read
 the plan back as raw bytes, verify byte-for-byte equality with approved content, parse
-all internal references, and report SHA-256. A write/read-back/internal-reference
+all internal references, and report revision. A write/read-back/internal-reference
 failure is BLOCKED and never produces written status.
 
 Do not create a checkpoint and do not append to session state after the write.
@@ -520,9 +522,9 @@ Do not create a checkpoint and do not append to session state after the write.
 
 Report each proposed operation independently:
 
-| Operation | Artifact | Result | SHA-256 / Evidence |
+| Operation | Artifact | Result | revision / Evidence |
 |---|---|---|---|
-| write-qa-plan | approved immutable plan path | written / unchanged / declined / failed | verified digest or exact reason |
+| write-qa-plan | approved immutable plan path | written / unchanged / declined / failed | verified identifier or exact reason |
 
 Use `written` only after the read-back verification succeeds. Never report a
 path as written, created, updated, registered, or checkpointed when that action
@@ -538,13 +540,13 @@ Final verdicts:
 - **Verdict: PARTIAL** — the approved plan was verified written but has declared
   source or AC/test binding gaps; it is not gate evidence.
 - **Verdict: BLOCKED** — approval was declined, a source/target changed before
-  write, immutable plan ID conflicted, the CAS/write/read-back failed, or no valid
+  write, immutable plan ID conflicted, the version and existence conflict check/write/read-back failed, or no valid
   owned operation was selected.
 
 Only after a verified write may the response say:
-`QA plan written to [path] (sha256:[digest]).`
+`QA plan written to [path] (revision:[identifier]).`
 For a verified no-op, say instead:
-`QA plan already current at [path] (sha256:[digest]); no write performed.`
+`QA plan already current at [path] (revision:[identifier]); no write performed.`
 
 ---
 
@@ -556,8 +558,8 @@ do not claim that any case was executed.
 
 | Audit ID | Normative clause | Dedicated spec evidence |
 |---|---|---|
-| `QP-004` | Phase 1 exact scope-manifest resolution | Case 1 — assertions `The exact scope authority hash is recorded` and `No undeclared story is read for planning` |
-| `QP-005` | Phase 1 ledger/partial coverage and Phase 4 Plan State Rules | Case 2 — assertions `Missing paths have no fabricated hash`, `Verdict is PARTIAL`, and `Gate Evidence remains NO` |
+| `QP-004` | Phase 1 exact scope-manifest resolution | Case 1 — assertions `The exact scope authority revision is recorded` and `No undeclared story is read for planning` |
+| `QP-005` | Phase 1 ledger/partial coverage and Phase 4 Plan State Rules | Case 2 — assertions `Missing paths have no fabricated revision`, `Verdict is PARTIAL`, and `Gate Evidence remains NO` |
 | `QP-006` | Phase 1 hard budgets and Phase 2 bounded context | Case 3 — assertions `Counts reconcile to every declared story and authority`, `No half-loaded closure becomes current`, and `Scope Coverage is PARTIAL` |
 | `QP-007` | Phase 2.2 preserve declared story type and record mismatch | Case 4 — assertions `Story bytes remain unchanged` and `Finding records declared type, derived tags and source bindings` |
 | `QP-008` | Phase 3 multi-label coverage without a forced primary | Case 5 — assertions `Secondary coverage is not dropped` and `No risk-score tie breaker selects a primary` |
@@ -572,7 +574,7 @@ do not claim that any case was executed.
 - Require the exact scope manifest. If it is absent, stop with the supported invocation
   and perform no discovery or write; never infer scope through a conversational choice.
   Use one complete changeset authorization before the first write.
-- Keep source gaps visible; do not guess hashes, AC IDs, test IDs, formulas, or
+- Keep source gaps visible; do not guess revisions, AC IDs, test IDs, formulas, or
   acceptance criteria.
 - Keep story and checkpoint ownership explicit. Offer a handoff to the owning
   workflow, but never perform that write from `$qa-plan`.

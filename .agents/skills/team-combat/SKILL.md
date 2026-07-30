@@ -13,11 +13,11 @@ chooses an engine, fabricates a test/performance result, or closes a story/relea
 
 Invoke only as:
 
-`$team-combat --request <path> --expect-request <sha256>`
+`$team-combat --request <path> --request <revision>`
 
 Require both flags exactly once. Reject unknown/duplicate keys, missing values,
 directories, globs, unsafe/escaping/symlink paths, mutable aliases, unsupported schemas
-and request-hash drift. Stop before project discovery, delegation or writes on invalid
+and request-revision drift. Stop before project discovery, delegation or writes on invalid
 invocation.
 
 The strict request is `cgs.team-combat-request/v2` with one operation:
@@ -32,7 +32,7 @@ recorder receipt; Accepted ADR ledger; approved tech spec and independent review
 control manifest, QA plan, test-ID ownership, engine profile/version, context manifest,
 file-ownership manifest and mutation authorization as applicable; expected predecessor
 checkpoint; fixed file/byte/dependency/agent/response/time budgets; and applicable
-root-to-target `AGENTS.md` path/hash chain.
+root-to-target `AGENTS.md` path/revision chain.
 
 A free-text feature, story status text, conversation approval, role recommendation,
 accepted-risk prose or previous run is not admission. Never infer newest evidence,
@@ -42,7 +42,7 @@ current story, engine, reviewer, ADR, tech spec, manifest, checkpoint or target.
 
 Before exact manifest approval, every activity is read-only and all planners have
 `mutation_authority: NONE`. After approval, only named owners may create/update exact
-manifest rows whose base hash/ABSENT precondition still matches. Globs, directories,
+manifest rows whose base revision/ABSENT precondition still matches. Globs, directories,
 “related files,” broad feature authority and retroactive authorization are invalid.
 
 Keep GDD/ADR/story/readiness/control/QA-plan lifecycle, implementation, shared-file
@@ -73,17 +73,17 @@ deterministic completion record below and still does not close or merge the stor
 
 ## Phase 0 — Validate approved inputs
 
-Read exact bytes once and compute full lowercase SHA-256 for the request, story, GDD,
+Read each declared input once and validate explicit version/revision metadata for
 review/readiness records, every ADR, architecture/tech package, control manifest, QA
 plan, engine profile, instruction chain and context manifest.
 
 Require:
 
-- independent P1 design review with formal `APPROVED`, exact GDD path/current hash,
+- independent P1 design review with formal `APPROVED`, exact GDD path/current revision,
   reviewer/author separation, complete coverage and zero unresolved blocker;
 - persisted `cgs.story-readiness-record/v1` verdict `READY` for the exact story ID/path/
-  raw hash plus `cgs.story-readiness-recorder-receipt/v1` result `RECORDED` or
-  `ALREADY_RECORDED`, `implementation_gate_eligible: true`, current registry hash and
+  raw revision plus `cgs.story-readiness-recorder-receipt/v1` result `RECORDED` or
+  `ALREADY_RECORDED`, `implementation_gate_eligible: true`, current registry revision and
   exact dependencies;
 - complete testable acceptance criteria with stable TR/AC/Test IDs and evidence targets;
 - current control-manifest identity and P1 `cgs-qa-plan`, Schema Version 2, generation
@@ -109,7 +109,7 @@ Classify every planned semantic change before implementation:
 - `NOT_ARCHITECTURAL` only with a contract-defined reason and exact governing source.
 
 For ADR_REQUIRED, consume only an exact Accepted ADR with decision locator, lifecycle
-record/hash and independent architecture-review evidence. The P1 architecture-decision
+record/revision and independent architecture-review evidence. The P1 architecture-decision
 authoring output remains Proposed and is not enough. If absent, emit a stable blocker
 and route the exact question to the architecture owner; do not draft or accept it here.
 
@@ -117,8 +117,8 @@ For TECH_SPEC_REQUIRED, require persisted `cgs.combat-tech-spec/v2` with stable 
 story/GDD/ADR/control/engine identities, components, data/control flow, event/payload/
 AI/VFX/audio/tuning interfaces, failure/rollback, observability, performance strategy,
 test seams, target files and supersession identity. Require an independent
-`cgs.combat-tech-spec-review/v1` path/hash with reviewer/author separation, exact target
-hash and `APPROVED` verdict. Session sketches and planner summaries are not durable
+`cgs.combat-tech-spec-review/v1` path/revision with reviewer/author separation, exact target
+revision and `APPROVED` verdict. Session sketches and planner summaries are not durable
 technical authority.
 
 ### Missing-engine branch — TCB-014
@@ -130,13 +130,13 @@ authority or write manifest, and cannot proceed to EXECUTE.
 Planning then freezes `cgs.combat-interface-contract/v2`, strictly derived from the
 approved architecture package: gameplay events/payloads, AI hooks, VFX hooks, audio
 events, tuning schema, deterministic fixtures and versioned compatibility rules. Every
-planner proposal binds its hash. Disagreement or a new architecture decision blocks.
+planner proposal binds its revision. Disagreement or a new architecture decision blocks.
 
 ## Bounded context protocol — TCB-012
 
 `cgs.combat-context-manifest/v2` is the only context authority. It lists exact
 story/GDD/ADR/control/QA/tech/engine sources; component/interface excerpts and raw-byte
-span hashes; expected target paths/base hashes; explicit first-order dependencies; and
+span revisions; expected target paths/base revisions; explicit first-order dependencies; and
 fixed budgets.
 
 Default hard ceilings are 32 files, 2 MiB, dependency depth 2, 64 interface rows, 6
@@ -147,7 +147,7 @@ scope disagreement.
 Load only declared paths and dependencies. Admit whole dependency/interface closures;
 record selected, loaded, missing, unreadable, invalid, omitted and unprocessed rows with
 bytes/depth/reason. Required omission or budget exhaustion blocks implementation. Each
-delegate receives paths/hashes, minimal interface excerpts and target diff context, not
+delegate receives paths/revisions, minimal interface excerpts and target diff context, not
 full repository context. Returned proposals are bounded schema rows plus summaries.
 
 ## Staffing without review mode — TCB-011
@@ -176,7 +176,7 @@ paths/interfaces. Missing product rule blocks; programmers may not decide it.
 
 Before implementation authorization, require `cgs.combat-test-contract/v2` produced by
 the test owner and independently reviewed against the current QA plan. It binds run/
-story/GDD/ADR/control/tech/interface/engine/platform hashes; every stable AC/Test ID;
+story/GDD/ADR/control/tech/interface/engine/platform revisions; every stable AC/Test ID;
 preconditions, inputs, expected observables, deterministic fixtures, negative/boundary/
 integration/performance coverage; exact test source/evidence paths; approved commands,
 runner/parser/tool versions, environment/config; pass/fail/skip/not-run semantics; and
@@ -192,8 +192,8 @@ stale/unreviewed test contract blocks EXECUTE.
 Build `cgs.combat-file-ownership-manifest/v2` before any writer. Every sorted row has:
 
 ```text
-path, operation CREATE|UPDATE, sole owner, raw base sha256|ABSENT, purpose,
-story/TR/AC/Test IDs, input/interface/test-contract hashes, shared true|false,
+path, operation CREATE|UPDATE, sole owner, raw base revision|ABSENT, purpose,
+story/TR/AC/Test IDs, input/interface/test-contract revisions, shared true|false,
 preconditions, expected postcondition and rollback/recovery rule
 ```
 
@@ -204,12 +204,7 @@ Every path has one owner. Shared controllers/event buses/registries/scenes/prefa
 resources/integration fixtures belong only to the named integration owner. Domain
 writers may submit read-only shared-path patch proposals but cannot write them.
 
-Choose the integration owner before approval. Compute manifest identity over input,
-architecture, interface, test-contract, engine and sorted row hashes. Present exact
-paths/operations/owners/bases, dependency batches, deadlines/retry, integration owner,
-commands/evidence destinations and checkpoint targets. Obtain one authorization for
-that exact identity. New path, owner, operation, bytes or base returns
-`SCOPE_CHANGE_REQUEST` without writing and requires a revised manifest/authorization.
+Choose the integration owner before approval. Allocate manifest_id as TCM-{story-id}-{UTC-run-id} and assign an explicit monotonic manifest_revision. Bind input, architecture, interface, test-contract, engine, and sorted row revisions to that record. Present exact paths/operations/owners/bases, dependency batches, deadlines/retry, integration owner, commands/evidence destinations, and checkpoint targets. Obtain one authorization for that exact manifest ID and revision. A new path, owner, operation, byte sequence, or base returns SCOPE_CHANGE_REQUEST without writing and requires a revised manifest/authorization.
 
 ## Immutable checkpoint and recovery — TCB-013
 
@@ -217,18 +212,18 @@ The integration owner is sole writer for approved checkpoints at:
 
 ```text
 production/combat/runs/{run-id}/checkpoints/
-  {sequence}-{checkpoint-identity-sha256}.yaml
+  {sequence}-{checkpoint-identity-revision}.yaml
 ```
 
 Each create-only `cgs.combat-checkpoint/v2` binds request/input/context/architecture/
-interface/test-contract/engine/manifest/authorization identities; predecessor path/hash;
+interface/test-contract/engine/manifest/authorization identities; predecessor path/revision;
 phase/verdict; assignment IDs/owners/paths/deadlines/retry/cancel/late states; written
-pre/post hashes; mutation audit; build/test/performance/review evidence; unresolved rows;
+pre/post revisions; mutation audit; build/test/performance/review evidence; unresolved rows;
 and exactly one next action. Never update shared `production/session-state/active.md`.
 
-RESUME requires exact checkpoint path/hash and predecessor chain. Re-hash every source,
+RESUME requires exact checkpoint path/revision and predecessor chain. re-read every source,
 manifest target, written output and evidence; verify next-target preconditions and
-reconcile ambiguous task/writer outcomes. Do not rerun COMPLETE tasks whose post hashes
+reconcile ambiguous task/writer outcomes. Do not rerun COMPLETE tasks whose post revisions
 match, revive canceled/superseded attempts, apply late patches or expand scope. Broken
 chain, drift, unknown outcome or collision blocks. STATUS validates read-only and never
 repairs a checkpoint.
@@ -244,12 +239,12 @@ Use `dispatch_slots = min(4, request_worker_limit, available_child_slots)`. Inva
 unknown configuration/count runs serially. Nested delegation consumes the same slots.
 
 Parallel eligibility requires disjoint paths, identical frozen input/interface/test
-hashes, no producer/consumer edge and complete prerequisites. Gather/audit a whole batch
+revisions, no producer/consumer edge and complete prerequisites. Gather/audit a whole batch
 before dependents. Real AI/VFX/audio event dependencies wait for the interface and any
 producing task; never label them independent for concurrency.
 
 Each `cgs.combat-task-request/v2` declares stable task/attempt ID, exact manifest subset,
-base hashes, deadline, cancellation token, retry budget at most one, response limit and
+base revisions, deadline, cancellation token, retry budget at most one, response limit and
 result schema. On timeout cancel, inspect owned paths read-only, and retry only if no
 unknown/partial mutation exists, bases still match and authorization covers the attempt.
 Never run overlapping attempts.
@@ -260,7 +255,7 @@ LATE_IGNORED result prevents dependent integration and COMPLETE. Preserve verifi
 independent work in a partial report.
 
 After every batch independently inventory declared targets and relevant workspace
-change evidence. Verify no unowned/unapproved path changed, sole owner/base/post hashes
+change evidence. Verify no unowned/unapproved path changed, sole owner/base/post revisions
 match and no domain owner touched a shared file. Any unauthorized/overlapping mutation
 is BLOCKED and cannot be retroactively waived.
 
@@ -269,41 +264,41 @@ is BLOCKED and cannot be retroactively waived.
 Only the approved integration owner may apply compatible proposals to shared rows after
 every required upstream result is complete and audited. Recheck each base immediately
 before write, apply dependency order within the frozen interface, verify cross-domain
-references, re-hash every target and confirm no out-of-manifest change. Conflict,
+references, re-read every target and confirm no out-of-manifest change. Conflict,
 stale base or incomplete predecessor writes nothing to the affected shared path and
 blocks. The orchestrator/domain writers cannot integrate as fallback.
 
 ## Functional and performance execution — TCB-007/TCB-015
 
 After integration, build/test execution is independent from implementation writers and
-binds the exact integrated manifest/post-hash set.
+binds the exact integrated manifest/post-revision set.
 
 ### Functional evidence
 
 For every actual command, `cgs.combat-test-execution-receipt/v2` records exact command/
-argv, cwd, engine/platform/version, runner/parser/tool and environment/config hashes,
+argv, cwd, engine/platform/version, runner/parser/tool and environment/config revisions,
 start/end, exit code, pass/fail/skip/not-run counts, per-Test/AC rows, integrated post
-hashes, raw log/result paths/hashes, producer identity and persistence/read-back state.
+revisions, raw log/result paths/revisions, producer identity and persistence/read-back state.
 Proposed commands, inspection, transcript prose or generic CI success are NOT_RUN.
 
 ### Performance evidence
 
 When story/QA/tech policy requires performance, consume an exact numeric platform budget
-with rule/metric/unit/threshold/profile/hardware/scenario hashes. `performance-analyst`,
+with rule/metric/unit/threshold/profile/hardware/scenario revisions. `performance-analyst`,
 not qa-tester, owns capture/analysis. Require an exact `cgs.performance-request/v2`,
 approved profiler/tool/adapter versions, capture command/environment, warm-up/window/
-sample/repetition rules and raw export hashes. Consume the exact three-part producer
+sample/repetition rules and raw export revisions. Consume the exact three-part producer
 chain: canonical `cgs.performance-report/v1` payload, its matching
 `cgs.review-evidence/v1` record, and a separately produced
-`cgs.performance-report-recorder-receipt/v1`. Re-hash raw bytes independently. The
-report and evidence record must agree on report/artifact hash, record/run IDs, complete
+`cgs.performance-report-recorder-receipt/v1`. re-read raw bytes independently. The
+report and evidence record must agree on report/artifact revision, record/run IDs, complete
 coverage and policy verdict; they must bind this current candidate, integrated build,
 platform/hardware/scenario, numeric budget/rules, profiler/adapter and raw input set.
 
 The recorder must be independent from the performance producer and implementation
-writers. Its exact path and raw hash must bind the unchanged report raw SHA-256,
-evidence record ID/hash, current candidate/build/platform/budget/input identities,
-persisted destination and read-back hash, with persistence proven and
+writers. Its exact path and raw revision must bind the unchanged report raw revision,
+evidence record ID/revision, current candidate/build/platform/budget/input identities,
+persisted destination and read-back revision, with persistence proven and
 `decision.evidence_persistence: RECORDED` and
 `decision.gate_evidence_eligible: true`. A conversation block, report filename, producer label, copied or
 renamed schema, self-recording, or receipt for different bytes cannot supply durability
@@ -318,8 +313,8 @@ and prevents COMPLETE when performance is required.
 ## Independent evidence review — TCB-015
 
 After execution, require the exact persisted P1 test-evidence-review report at its
-hash-addressed canonical path. It must bind this story/QA plan/candidate/build/artifact/
-integrated post hashes/test and performance receipt set, with `Persistence: WRITTEN` and
+ID-addressed canonical path. It must bind this story/QA plan/candidate/build/artifact/
+integrated post revisions/test and performance receipt set, with `Persistence: WRITTEN` and
 all closure axes simultaneously:
 
 - `Workflow Status: COMPLETE`;
@@ -341,7 +336,7 @@ Freeze `cgs.combat-completion-record/v2` over:
 - all input, architecture, interface, test-contract, engine, context, manifest,
   authorization and checkpoint identities;
 - required/planned/completed/partial/blocked/timed-out/cancelled/late task counts;
-- every allowed mutation owner/base/post hash and unauthorized/conflict count;
+- every allowed mutation owner/base/post revision and unauthorized/conflict count;
 - build and functional/performance command/receipt identities and counts;
 - complete AC/Test evidence matrix, independent review axes, open defect/blocker ledger,
   residual gaps and accountable owners.
@@ -368,7 +363,7 @@ remains NO.
 
 Return `cgs.team-combat-result/v2` with every identity above, exact verdict/persistence,
 task/concurrency/deadline/retry ledger, mutation audit, changed paths with owners/pre/
-post hashes, commands/evidence hashes, AC matrix, checkpoints, late/conflict/unauthorized
+post revisions, commands/evidence revisions, AC matrix, checkpoints, late/conflict/unauthorized
 rows, remaining owners, explicit non-writes and exactly one legal next action.
 
 Shared consumers must preserve boundaries:

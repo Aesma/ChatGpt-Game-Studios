@@ -42,7 +42,7 @@ file or silently change modes during a run.
 ## 2. Attempt, timeout, cancellation, and late-output rules
 
 For each delegate create `cgs.narrative-attempt/v2` with role, identity, task,
-input hashes, allowed artifact/proposal IDs, prohibited paths, token, start time,
+input revisions, allowed artifact/proposal IDs, prohibited paths, token, start time,
 deadline, retry ordinal, and parent phase.
 
 Hard limits:
@@ -68,9 +68,9 @@ On timeout, cancellation, invalid payload, or detected side effect:
 7. return PARTIAL if the required result remains unavailable.
 
 A result arriving after deadline/cancellation/revocation is `LATE`. Preserve its
-hash/path or payload digest in quarantine evidence, but never merge, authorize,
+revision/path or payload revision in quarantine evidence, but never merge, authorize,
 write, review, or count it as completion. A detected late write is not reverted;
-stop BLOCKED/PARTIAL, preserve exact pre/post hashes, and require the artifact owner
+stop BLOCKED/PARTIAL, preserve exact pre/post revisions, and require the artifact owner
 to resolve it.
 
 ## 3. Immutable checkpoint chain
@@ -85,24 +85,24 @@ run_id: <stable id>
 sequence: <positive integer>
 phase: REQUEST_VALIDATED | CONTEXT_FROZEN | CANON_DECIDED | CANON_FROZEN | BRIEF_READY | PROPOSALS_READY | PLAN_APPROVED | LOCALIZATION_REVIEWED | AUTHORIZED | WRITES_VERIFIED | FINAL_REVIEWED | TERMINAL
 status: COMPLETE | PARTIAL | BLOCKED
-previous_checkpoint_sha256: <sha256 or ROOT>
-request_sha256: <sha256>
-context_manifest_sha256: <sha256 or null>
-role_matrix_sha256: <sha256>
-canon_decision_sha256: <sha256 or null>
-canon_baseline_sha256: <sha256 or null>
-artifact_plan_sha256: <sha256 or null>
-ownership_manifest_sha256: <sha256 or null>
-localization_review_sha256: <sha256 or null>
-mutation_authorization_sha256: <sha256 or null>
-final_artifact_set_sha256: <sha256 or null>
-narrative_review_sha256: <sha256 or null>
+previous_checkpoint_revision: <revision or ROOT>
+request_revision: <revision>
+context_manifest_revision: <revision or null>
+role_matrix_revision: <revision>
+canon_decision_revision: <revision or null>
+canon_baseline_revision: <revision or null>
+artifact_plan_revision: <revision or null>
+ownership_manifest_revision: <revision or null>
+localization_review_revision: <revision or null>
+mutation_authorization_revision: <revision or null>
+final_artifact_set_revision: <revision or null>
+narrative_review_revision: <revision or null>
 active_attempt_tokens: []
 revoked_attempt_tokens: []
 completed_work: []
 pending_work: []
 finding_ids: []
-observed_target_hashes: {}
+observed_target_revisions: {}
 next_safe_phase: <phase or NONE>
 recorder_identity: <identity>
 recorded_at: <RFC3339 timestamp>
@@ -110,7 +110,7 @@ recorded_at: <RFC3339 timestamp>
 
 Checkpoints are create-only and linearly chained. A duplicate sequence,
 predecessor mismatch, fork, overwritten checkpoint, missing phase dependency, or
-schema/hash mismatch is BLOCKED. A checkpoint records evidence state; it does not
+schema/revision mismatch is BLOCKED. A checkpoint records evidence state; it does not
 approve canon, approve content, authorize writes, or close a finding.
 
 Write a checkpoint after request validation, context freeze, canon decision,
@@ -121,22 +121,22 @@ and return BLOCKED before any project mutation.
 
 ## 4. Idempotent resume
 
-`--resume` must identify one exact checkpoint path/hash. Rebuild the checkpoint
+`--resume` must identify one exact checkpoint path/revision. Rebuild the checkpoint
 inventory under the declared operational root within the request budget and require
 one linear chain ending at that checkpoint.
 
 Before resuming:
 
-- require matching content ID, run ID, operation, request hash, mode, role matrix,
+- require matching content ID, run ID, operation, request revision, mode, role matrix,
   identities, and record authorization;
-- rehash every checkpoint-bound source, canon file/registry, proposal payload,
+- re-read every checkpoint-bound source, canon file/registry, proposal payload,
   artifact pre/postimage, operational record, and authorization;
-- recompute the canon baseline and final artifact-set hash when present;
+- re-read and validate the declared canon baseline and final artifact-set revision when present;
 - revalidate all active/revoked tokens and scan target/prohibited paths for late
   writes; and
 - require the recorded `next_safe_phase` to have every prerequisite complete.
 
-If any evidence drifts, return BLOCKED with exact path/expected/observed hash.
+If any evidence drifts, return BLOCKED with exact path/expected/observed revision.
 Never silently restart, advance canon, reuse stale proposals, replay a write, or
 reuse an old reviewer verdict.
 
@@ -153,10 +153,10 @@ workflow and are separate from narrative content.
 
 Content approval uses `cgs.narrative-content-plan-approval/v2` and binds:
 
-- content/run IDs, operation, mode, request/context/role/canon/brief hashes;
+- content/run IDs, operation, mode, request/context/role/canon/brief revisions;
 - exact artifact and ownership manifests;
 - every artifact ID/path/operation/preimage/candidate/owner/dependency;
-- constraint/localization review and handoff-interface hashes;
+- constraint/localization review and handoff-interface revisions;
 - open/accepted findings with owner/rationale/review point;
 - proposed checkpoint/result paths and expected preimages; and
 - explicit non-writes.
@@ -164,10 +164,10 @@ Content approval uses `cgs.narrative-content-plan-approval/v2` and binds:
 Approval accepts content and routing only. It does not authorize mutation.
 
 Mutation authorization uses `cgs.narrative-mutation-authorization/v2` and binds the
-approval ID/hash, exact current candidate set, writer/recorder identities,
-deterministic order, source/canon/target hashes, operational receipts, and non-
+approval ID/revision, exact current candidate set, writer/recorder identities,
+deterministic order, source/canon/target revisions, operational receipts, and non-
 writes. A new path, candidate byte, owner, dependency, finding disposition, canon
-hash, constraint, or record target invalidates both preview and authorization.
+revision, constraint, or record target invalidates both preview and authorization.
 
 ## 6. Pre-write CAS
 
@@ -176,8 +176,8 @@ Run every gate in one read-only pass immediately before the first content write:
 ### Source and canon CAS
 
 - request, context sources/inventories, UX/string/localization interface, canon
-  files/registry, product decision, promotion receipt, and canon-baseline digest;
-- brief/proposal payload hashes and attempt-token validity; and
+  files/registry, product decision, promotion receipt, and canon-baseline revision;
+- brief/proposal payload revisions and attempt-token validity; and
 - budget counts, loaded/omitted sets, graph nodes/edges, cycles, and references.
 
 ### Target and ownership CAS
@@ -185,11 +185,11 @@ Run every gate in one read-only pass immediately before the first content write:
 - every artifact and operational-record preimage or ABSENT marker;
 - unique artifact/path identity, create/revise/no-op/conflict classification;
 - one writer per normalized path, disjoint writer sets, one shared recorder; and
-- exact candidate bytes/hashes, size limits, dependencies, and write order.
+- exact candidate bytes/revisions, size limits, dependencies, and write order.
 
 ### Review, approval, and role CAS
 
-- localization findings/readiness and actual constraint-source hashes;
+- localization findings/readiness and actual constraint-source revisions;
 - plan approval and mutation authorization over the current bytes;
 - active writer/recorder/authority identities and mode-required roles; and
 - checkpoint chain head, next sequence, result path, and all active/revoked tokens.
@@ -207,7 +207,7 @@ On failure after one or more writes:
 
 - stop ordinary writes and do not delete, overwrite, or roll back verified output;
 - inventory every authorized target and record action `APPLIED | NO_OP |
-  NOT_APPLIED | CONFLICT | UNKNOWN` with preimage/candidate/observed hashes;
+  NOT_APPLIED | CONFLICT | UNKNOWN` with preimage/candidate/observed revisions;
 - revoke active attempts and prevent late patches;
 - write an authorized PARTIAL checkpoint/result receipt if safely possible; and
 - require fresh inventory/authorization for recovery.
@@ -226,8 +226,8 @@ review. Each round must:
    fresh plan approval and mutation authorization unless current authorization
    already binds those exact bytes;
 3. recheck preimages/authorization and apply through the same unique writers;
-4. read back and recompute the complete final artifact-set hash;
-5. mark every prior review bound to another hash stale; and
+4. read back and re-read and validate the declared complete final artifact-set revision;
+5. mark every prior review bound to another revision stale; and
 6. run a fresh independent scoped review over changed artifacts and declared
    dependents.
 
@@ -249,20 +249,20 @@ operation: create | revise
 mode: full | lean | solo
 verdict: COMPLETE | PARTIAL | BLOCKED
 readiness: LOCALIZATION_READY | NOT_LOCALIZATION_READY | NOT_INDEPENDENTLY_REVIEWED | LOCALIZATION_HANDOFF_UNVERIFIED
-request_sha256: <sha256>
-checkpoint_sha256: <sha256>
-canon_baseline_sha256: <sha256 or null>
-artifact_plan_sha256: <sha256 or null>
-final_artifact_set_sha256: <sha256 or null>
+request_revision: <revision>
+checkpoint_revision: <revision>
+canon_baseline_revision: <revision or null>
+artifact_plan_revision: <revision or null>
+final_artifact_set_revision: <revision or null>
 artifacts: []
-ownership_manifest_sha256: <sha256 or null>
-content_plan_approval_sha256: <sha256 or null>
-mutation_authorization_sha256: <sha256 or null>
-localization_review_sha256: <sha256 or null>
+ownership_manifest_revision: <revision or null>
+content_plan_approval_revision: <revision or null>
+mutation_authorization_revision: <revision or null>
+localization_review_revision: <revision or null>
 localization_handoff_path: <canonical path or null when not persisted>
-localization_handoff_sha256: <sha256 or null>
+localization_handoff_revision: <revision or null>
 localization_handoff_adapter: cgs.narrative-localization-handoff-v2-adapter/v1 | null
-narrative_review_sha256: <sha256 or null>
+narrative_review_revision: <revision or null>
 attempt_summary: []
 late_or_unauthorized_writes: []
 open_finding_ids: []

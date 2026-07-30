@@ -11,7 +11,7 @@ are static or fixture-driven and never execute the skill against a real release.
 ## Fixtures and harness rules
 
 All positive fixtures use strict versioned artifacts, stable IDs, and full lowercase
-`sha256:<64 hexadecimal>` digests. The harness freezes exact raw bytes for:
+`<revision>` reference IDs. The harness freezes exact raw bytes for:
 
 - `cgs.team-release-request/v2` and `cgs.release-orchestration-manifest/v2`;
 - stable milestone, semver/version policy and local/remote/tag/release/registry state;
@@ -33,22 +33,22 @@ mutation. A fixture result is not catalog execution evidence; catalog `Result` a
 ## Static assertions
 
 - [ ] Frontmatter contains only `name` and non-empty `description`; name matches the directory.
-- [ ] Invocation is exactly `$team-release --request <path> --expect-request <sha256>` and names one mode/action.
+- [ ] Invocation is exactly `$team-release --request <path> --request-revision <revision>` and names one mode/action.
 - [ ] Read, controller CREATE, repository mutation, staging, production/rollback, publication and status update are separate authorities.
 - [ ] Release-manager is manifest/coordination owner; devops-engineer uniquely owns build, repository, deployment, rollback and reconciliation execution.
 - [ ] Candidate identity contains commit/tree, artifact, SBOM, signature/provenance, toolchain/configuration and full platform matrix.
 - [ ] Version uses exact milestone/policy/registry/ref observations and checks semver monotonicity, uniqueness, collisions and tag binding.
-- [ ] Build is a strict predecessor of every candidate-bound execution; the adapter accepts exact `cgs-build-receipt/v1`, hash/status/source/candidate-validates it, and losslessly normalizes it in memory to internal `cgs.build-receipt/v2` without treating schema renaming as authority.
+- [ ] Build is a strict predecessor of every candidate-bound execution; the adapter accepts exact `cgs-build-receipt/v1`, revision/status/source/candidate-validates it, and losslessly normalizes it in memory to internal `cgs.build-receipt/v2` without treating schema renaming as authority.
 - [ ] Risk dimensions are explicit tri-state data; missing/ambiguous/UNKNOWN activates plausible hard gates and blocks.
-- [ ] Gate receipts contain command, runner/tool, environment, timestamps, exit/result, raw output hashes, producer proof and exact identity.
+- [ ] Gate receipts contain command, runner/tool, environment, timestamps, exit/result, raw output revision, producer proof and exact identity.
 - [ ] Dispatch uses live count and configured `max_threads`, reserves nested slots, orders core hard gates first and gathers each batch.
-- [ ] Release checklist consumption requires Schema Version 2, full identity-hash path, recorder CREATED, Gate Decision NOT_EVALUATED and all authority NONE.
-- [ ] Launch consumption requires exact v2 identities, hash-addressed assessment path, Launch Decision NOT_RECORDED and authority NONE.
+- [ ] Release checklist consumption requires Schema Version 2, full identity_revision path, recorder CREATED, Gate Decision NOT_EVALUATED and all authority NONE.
+- [ ] Launch consumption requires exact v2 identities, revision_addressed assessment path, Launch Decision NOT_RECORDED and authority NONE.
 - [ ] Day-one result, readiness label, smoke request and deployment observation plan remain evidence/proposals, never permission.
 - [ ] Non-waivable blockers have no override; accepted advisory/S1 risk preserves the original non-PASS row and exact policy scope.
 - [ ] Every external action has exact preconditions, timeout, retry budget, idempotency, reconciliation, compensation and canonical `cgs.release-action-receipt/v2` receipts.
 - [ ] Timeout, transport loss and interruption become unknown; reconciliation precedes retry and blind replay is forbidden.
-- [ ] Immutable checkpoints/receipts form a predecessor chain and resume re-hashes local state plus reconciles external state.
+- [ ] Immutable checkpoints/receipts form a predecessor chain and resume revalidates local state plus reconciles external state.
 - [ ] Production success yields DEPLOYED/STABILIZING, never COMPLETE; degraded, rollback and communications-pending states stay explicit.
 - [ ] STABILIZED requires the full elapsed policy window and raw current monitoring evidence; a scheduled reminder is insufficient.
 - [ ] Terminal output is `cgs.team-release-result/v2` and carries exact identities, rows, states, authorities, receipts and one legal next action.
@@ -74,7 +74,7 @@ mutation. A fixture result is not catalog execution evidence; catalog `Result` a
 
 Prepare one valid release whose source commit/tree, build receipt, artifact, SBOM,
 signature/provenance and every target agree. Then change one fact at a time: artifact
-bytes, SBOM digest, source tree, signature verification, platform entry, policy bytes,
+bytes, SBOM reference ID, source tree, signature verification, platform entry, policy bytes,
 or one report's candidate identity.
 
 **Expected**
@@ -111,8 +111,8 @@ performance, localization, analytics and advisory gates.
 Provide six candidate-bound gates while the exact build does not yet exist. Also
 provide two pure policy/schema checks that do not depend on candidate bytes. Exercise
 both a native internal `cgs.build-receipt/v2` and a producer
-`cgs-build-receipt/v1` pinned by raw hash with exact SUCCESS, source and candidate/build
-bindings; vary one v1 hash, status, source tree and candidate identity at a time.
+`cgs-build-receipt/v1` pinned by declared revision with exact SUCCESS, source and candidate/build
+bindings; vary one v1 revision, status, source tree and candidate identity at a time.
 
 **Expected**
 
@@ -120,11 +120,11 @@ bindings; vary one v1 hash, status, source tree and candidate identity at a time
 - devops build/package/sign completes and emits a trusted build receipt before QA,
   security, performance, localization, analytics or network execution begins;
 - a valid v1 receipt is preserved byte-for-byte and losslessly normalized in memory to
-  v2 with producer schema/payload/path/raw hash/status and field-source mapping retained;
-- v1 hash, non-SUCCESS status, source or candidate mismatch is BLOCKED, while a missing
+  v2 with producer schema/payload/path/declared revision/status and field-source mapping retained;
+- v1 revision, non-SUCCESS status, source or candidate mismatch is BLOCKED, while a missing
   v2-required fact remains UNKNOWN rather than invented;
 - normalization writes no renamed receipt and grants no action authority;
-- every downstream request and receipt binds the resulting digest and build identity;
+- every downstream request and receipt binds the resulting reference ID and build identity;
 - rebuild/repack/resign produces a new candidate identity and invalidates all dependent
   evidence and unexecuted authority; and
 - no gate against a floating “release branch” or anticipated build is accepted.
@@ -144,14 +144,14 @@ platform/legal and economy dimensions.
   assigns UNKNOWN and blocks;
 - model judgment, staffing, `lean`, `solo`, schedule or prior-release similarity cannot
   classify or remove risk; and
-- the output records risk-manifest hash, predicate/rule and routing rationale per gate.
+- the output records risk-manifest revision, predicate/rule and routing rationale per gate.
 
 ## Case 5 — Reproducible gate request and receipt schema — TRL-011
 
 For QA, CI, security, performance, localization and analytics, provide one complete
 `cgs.release-gate-request/v2`/`receipt/v2` pair. Then remove one field at a time:
-command/argv, runner/tool version, environment/container hash, start/end time, exit
-code/result, log/output hash, producer proof, completeness or candidate/platform binding.
+command/argv, runner/tool version, environment/container revision, start/end time, exit
+code/result, log/output revision, producer proof, completeness or candidate/platform binding.
 
 **Expected**
 
@@ -161,7 +161,7 @@ code/result, log/output hash, producer proof, completeness or candidate/platform
 - a current complete conclusive negative remains FAIL;
 - prose summaries, role claims, checkboxes, scheduled jobs and conversation results are
   not receipts; and
-- terminal output includes exact request/receipt/log hashes and freshness reasoning.
+- terminal output includes exact request/receipt/log revisions and freshness reasoning.
 
 ## Case 6 — Unique writer and release-manager/devops boundary — TRL-012
 
@@ -207,7 +207,7 @@ required communication still pending.
 - a reminder, future schedule, dashboard summary or pre-deploy sample is not evidence;
 - only an independent later STABILIZE invocation with a complete current monitoring
   receipt for all 48 elapsed hours may set STABILIZED;
-- exact deployment/artifact/target, query sources, samples, raw hashes, thresholds and
+- exact deployment/artifact/target, query sources, samples, declared revision, thresholds and
   incidents bind the receipt; and
 - COMPLETE additionally requires all communication obligations receipted or current
   policy-authorized N/A.
@@ -251,20 +251,20 @@ dispatch, lost receipt, and a retry request with one changed target field.
 
 Interrupt immediately before action, after external mutation before receipt return,
 after receipt persistence and during stabilization. Resume from a correct checkpoint,
-then from a checkpoint with a changed predecessor hash, changed local candidate bytes,
+then from a checkpoint with a changed predecessor revision, changed local candidate bytes,
 or external state inconsistent with the receipt.
 
 **Expected**
 
 - every boundary produces an absent-target immutable checkpoint/action receipt with
-  predecessor hash, identities, authority/idempotency state and observed external state;
-- correct resume re-hashes all local inputs and reconciles the remote target before
+  predecessor revision, identities, authority/idempotency state and observed external state;
+- correct resume revalidates all local inputs and reconciles the remote target before
   continuing from verified state;
 - drift, broken predecessor chain or inconsistent external observation blocks with no
   replay or overwrite;
 - existing checkpoint/report targets are never overwritten and failed CAS writes
   nothing;
-- read-back verification reports exact paths and hashes.
+- read-back verification reports exact paths and revisions.
 
 ## Case 12 — Complete spec and adjacent P1 integration — TRL-018
 
@@ -272,7 +272,7 @@ Run static coverage over the skill/spec pair and test each adjacent input indepe
 
 ### Release checklist variants
 
-1. exact Schema Version 2, full candidate/checklist hash path, recorder CREATED,
+1. exact Schema Version 2, full candidate/checklist revision path, recorder CREATED,
    identities/rows current, Gate Decision NOT_EVALUATED and all authority NONE;
 2. old Schema Version 1 or old release-manifest path;
 3. NORMALIZED/PASS counts but a stale dependency;
@@ -282,7 +282,7 @@ Only variant 1 is consumable normalized evidence; it does not itself yield GO.
 
 ### Launch checklist variants
 
-1. exact `cgs.launch-checklist-result/v2`, hash-addressed launch-candidate/assessment
+1. exact `cgs.launch-checklist-result/v2`, revision_addressed launch-candidate/assessment
    path, current identities/rows, Launch Decision NOT_RECORDED and authority NONE;
 2. old assessment path or wrong candidate identity;
 3. LAUNCH_READY but no independent release authorization;
@@ -295,7 +295,7 @@ production or publication. Variants 2–5 block or follow narrow policy acceptan
 ### Day-one variants
 
 1. same-new-candidate `cgs.day-one-patch-result/v2`, exact plan/evidence/gate/rollback/
-   smoke/S1/recorder hashes and fresh release checklist;
+   smoke/S1/recorder revisions and fresh release checklist;
 2. DAY_ONE_PATCH_READY from another candidate;
 3. `cgs.day-one-smoke-request/v2` without independently persisted response;
 4. deployment-observation proposal presented as deployment authority;

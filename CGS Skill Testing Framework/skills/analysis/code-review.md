@@ -2,7 +2,7 @@
 
 ## Skill Summary
 
-`$code-review` performs a strictly read-only, hash-bound review of explicit
+`$code-review` performs a strictly read-only, revision-bound review of explicit
 project source targets. It builds a bounded target manifest, loads the complete
 root-to-target rule chain, admits only explicit current ADR evidence, distinguishes
 tool-verified facts from unverified judgment, routes at most three deduplicated
@@ -44,11 +44,11 @@ invokes or offers a bypass into story completion.
 - [ ] Reviewer planning uses exact configured Engine Specialists/type routing,
       deduplicates roles, caps total reviewers at three, and defines timeout/
       overflow/invalid-response partial behavior
-- [ ] Findings have stable fingerprints/IDs and exact target/rule hashes
+- [ ] Findings have stable keys/IDs and exact target/rule revisions
 - [ ] Output schema is `cgs.review-evidence/v1` plus `cgs.code-review/v2`
 - [ ] Direct output is `NOT_PERSISTED`, gate-ineligible, and strictly zero-write
 - [ ] Metadata has an untruncated description and names explicit targets,
-      rule-sourced coverage, exact hashes, bounded specialists, and read-only use
+      rule-sourced coverage, exact revisions, bounded specialists, and read-only use
 - [ ] No next-step text suggests bypassing review or equates it with story done
 
 ---
@@ -73,9 +73,9 @@ Assertions:
 
 - [ ] Input normalizes to `cgs.code-review-input/v1`
 - [ ] Manifest contains the canonical path, type, size, origin, and complete
-      SHA-256
-- [ ] Target-manifest hash binds the sorted canonical row
-- [ ] Final record re-hashes the same exact target bytes
+      revision
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+- [ ] Final record re-reads the same exact target bytes
 
 ---
 
@@ -119,7 +119,7 @@ generation marker, owner-declared vendor content, and a folder merely named
 Assertions:
 
 - [ ] Source files and project-owned `vendor`-named files remain eligible
-- [ ] Generated/vendor exclusions cite exact rule/marker path and hash
+- [ ] Generated/vendor exclusions cite exact rule/marker path and revision
 - [ ] Directory name alone never excludes a file
 - [ ] Excluded rows remain visible in the complete manifest
 
@@ -145,9 +145,9 @@ distinct rules; target is `src/ui/menu.gd`.
 
 Assertions:
 
-- [ ] All three files are read completely and exact-hash recorded root-to-leaf
+- [ ] All three files are read completely and exact-revision recorded root-to-leaf
 - [ ] Nearest rule wins only under the documented closest-file precedence
-- [ ] Rule ledger records path/hash/location/scope/precedence for every rule
+- [ ] Rule ledger records path/revision/location/scope/precedence for every rule
 - [ ] Broken applicable direct standards links force `PARTIAL`
 
 ---
@@ -161,7 +161,7 @@ Assertions:
 
 - [ ] Each target has an independent rule chain
 - [ ] UI-only rules do not apply to the network target and vice versa
-- [ ] Shared ancestor rules retain their current exact hashes for both
+- [ ] Shared ancestor rules retain their current exact revisions for both
 - [ ] Coverage denominators are target-specific
 
 ---
@@ -207,7 +207,7 @@ Assertions:
       `UNRESOLVED`
 - [ ] Ambiguous modality makes coverage partial instead of inventing severity
 - [ ] Reviewer-proposed severity cannot override the rule ledger
-- [ ] Stable rule IDs retain source path/hash/location
+- [ ] Stable rule IDs retain source path/revision/location
 
 ---
 
@@ -220,7 +220,7 @@ Assertions:
 
 - [ ] Compatible receipt produces `VERIFIED_PASS` or `VERIFIED_FAIL`
 - [ ] Inspection-only and stale receipt produce `UNVERIFIED`
-- [ ] Tool/version/configuration/input/result hashes are recorded
+- [ ] Tool/version/configuration/input/result revisions are recorded
 - [ ] Required unverified complexity makes verdict `PARTIAL`
 
 ---
@@ -241,7 +241,7 @@ Assertions:
 
 ### Case 13: Analysis receipt must bind exact capabilities and inputs
 
-Fixture: A receipt has correct schema/tool version but omits one target hash and
+Fixture: A receipt has correct schema/tool version but omits one target revision and
 claims a capability the tool configuration does not enable.
 
 Assertions:
@@ -257,12 +257,12 @@ Assertions:
 
 Fixture: Story and source header both cite the same stable ADR ID/path. The unique
 current ADR is `Accepted`, has Decision/Consequences, and applies to both target
-hashes.
+revisions.
 
 Assertions:
 
 - [ ] Declarations deduplicate without losing provenance
-- [ ] ADR ID/path/hash/status/scope are recorded
+- [ ] ADR ID/path/revision/status/scope are recorded
 - [ ] Decision and Consequences become source-bound rule rows
 - [ ] Compliance is evaluated only against that exact Accepted evidence
 
@@ -285,7 +285,7 @@ Assertions:
 
 ### Case 16: Proposed, stale, ambiguous, and multiple ADRs are honest
 
-Fixtures: A readable Proposed ADR; a stale declared path/hash; duplicate files
+Fixtures: A readable Proposed ADR; a stale declared path/revision; duplicate files
 with the same ID; and two unique current Accepted ADRs.
 
 Assertions:
@@ -306,7 +306,7 @@ configured language and shader file types.
 
 Assertions:
 
-- [ ] Preferences path/hash and matching routing rows are recorded
+- [ ] Preferences path/revision and matching routing rows are recorded
 - [ ] Roles are mapped by configured target type, not filename guesswork
 - [ ] Duplicate Primary/language role is merged with combined assignments
 - [ ] No unrelated engine family or specialist is invented
@@ -330,13 +330,13 @@ Assertions:
 ### Case 19: Timeout and invalid reviewer evidence are partial
 
 Fixtures: Required reviewer times out beyond one 120-second total deadline; retry
-exceeds two attempts; response has wrong manifest hash; response writes a file.
+exceeds two attempts; response has wrong manifest revision; response writes a file.
 
 Assertions:
 
 - [ ] Exact status is `TIMEOUT` or `INVALID_RESPONSE`
 - [ ] Retry does not reset the deadline and attempt count never exceeds two
-- [ ] Silence/hash mismatch is not inferred clean
+- [ ] Silence/revision mismatch is not inferred clean
 - [ ] Mutation or required-reviewer failure forces `PARTIAL`
 
 ---
@@ -371,17 +371,17 @@ Assertions:
 
 ---
 
-### Case 22: Stable findings retain identity while hashes expose staleness
+### Case 22: Stable findings retain identity while revisions expose staleness
 
 Fixture: A violation remains on the same stable symbol/rule after unrelated lines
 and target bytes change; then the rule source bytes change.
 
 Assertions:
 
-- [ ] Fingerprint/CRF ID remains stable for the same defect
-- [ ] Target and rule SHA-256 fields update independently
+- [ ] stable key/CRF ID remains stable for the same defect
+- [ ] Target and rule revision fields update independently
 - [ ] Line numbers, wording, timestamps, reviewer, and severity are absent from
-      fingerprint material
+      stable key material
 - [ ] Prior record stale key changes when target/rule/evidence inputs change
 
 ---
@@ -416,7 +416,7 @@ Assertions:
 
 ## Protocol Compliance
 
-- [ ] Exact named inputs produce one bounded hash-bound manifest
+- [ ] Exact named inputs produce one bounded revision-bound manifest
 - [ ] Every target loads its complete applicable AGENTS/standards chain
 - [ ] Rule applicability and severity come from current source evidence
 - [ ] Complex semantic/runtime claims use compatible analysis evidence or remain
@@ -427,7 +427,7 @@ Assertions:
 - [ ] Coverage is reported for targets, rule sources, checks, ADRs, reviewers,
       and mutation guard before verdict
 - [ ] Verdict uses exactly `APPROVED`, `CONCERNS`, `NEEDS CHANGES`, or `PARTIAL`
-- [ ] Every finding is stable-ID and exact target/rule-hash bound
+- [ ] Every finding is stable-ID and exact target/rule-revision-bound
 - [ ] Generic and code-specific evidence schemas are complete and non-persisted
 - [ ] Skill edits nothing and never acts as or bypasses story completion
 
@@ -444,7 +444,15 @@ Assertions:
 - CDR-009: Case 21 plus rule-severity static assertions.
 - CDR-010: Case 24.
 
-Case 22 verifies the requested stable-finding and exact-hash contract; Case 23
+Case 22 verifies the requested stable-finding and exact-revision contract; Case 23
 verifies strict read-only mutation evidence. Persistence and downstream gate
 consumption remain external: direct `$code-review` output is always
 `NOT_PERSISTED` and gate-ineligible.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

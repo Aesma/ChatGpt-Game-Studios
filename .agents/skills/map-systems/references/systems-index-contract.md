@@ -33,7 +33,7 @@ does not change either value.
 ## 2. Frozen bounded context
 
 Freeze one repository-root identity and one UTC snapshot. Read exact raw bytes
-once, normalize no source in place, and record lowercase SHA-256 or an explicit
+once, normalize no source in place, and record the declared revision or an explicit
 `ABSENT`/`UNREADABLE` marker.
 
 The base closure and hard ceilings are:
@@ -74,9 +74,9 @@ repository template where necessary and contains:
 ```text
 Schema: cgs.systems-index/v2
 Status: Draft
-Catalog SHA-256: <bound raw catalog hash>
-Concept SHA-256: <bound raw concept hash>
-Base Index SHA-256: <hash-or-ABSENT>
+Catalog revision: <bound raw catalog revision>
+Concept revision: <bound raw concept revision>
+Base Index revision: <revision-or-ABSENT>
 Decision IDs: <ordered IDs>
 Formal Sign-off: NOT_PERFORMED
 ```
@@ -195,7 +195,7 @@ ties.
 
 For an existing valid or explicitly migrated index, construct:
 
-1. `BASE` — exact parsed base bytes/model and hash;
+1. `BASE` — exact parsed base bytes/model and revision;
 2. `INTENT` — only user-approved operations and decision IDs; and
 3. `CANDIDATE` — deterministic application of INTENT to BASE.
 
@@ -217,7 +217,7 @@ Show a lossless three-way diff organized as:
 - reordered-only rows;
 - new retirement records;
 - blocked/ambiguous requested changes; and
-- downstream references read and their exact hashes.
+- downstream references read and their exact revisions.
 
 A requested operation not represented in the diff is not authorized. A candidate
 must never silently delete, renumber, normalize, infer progress, or drop manual
@@ -229,20 +229,20 @@ The user owns all product decisions: system inclusion, combination/split, stable
 IDs before first persistence, dependencies, cycle resolution, priority, layer,
 order, and retirement intent. Use Question → Options → Decision → Draft → Approval.
 
-After all decisions, render one exact candidate and compute:
+After all decisions, assign candidate_revision from the explicit base revision plus one, or 1 for create, and render one exact candidate:
 
 ```text
-candidate_sha256: sha256:<exact UTF-8/LF candidate bytes>
+candidate_revision: <explicit candidate revision>
 ```
 
 Show the complete bytes or a lossless reviewable representation, three-way diff,
-input hashes, context-budget use, unresolved risks, and the one-file changeset.
-Obtain one approval bound to the candidate hash and decision IDs. An earlier
+input revisions, context-budget use, unresolved risks, and the one-file changeset.
+Obtain one approval bound to the candidate revision and decision IDs. An earlier
 enumeration/dependency/priority decision is not final filesystem approval. A
 bounded explicit instruction to apply the displayed candidate may serve as that
 one approval; do not ask again per section or field.
 
-Any content or decision change creates a new candidate hash and invalidates the
+Any content or decision change creates a new candidate revision and invalidates the
 old approval. Formal sign-off is outside this approval and outside this workflow.
 
 ## 9. Compare-and-set and atomic publication
@@ -250,16 +250,16 @@ old approval. Formal sign-off is outside this approval and outside this workflow
 The preview binds:
 
 - repository root identity;
-- catalog, template, concept, and optional pillar raw hashes/source states;
-- base index raw hash or `ABSENT`;
-- every bounded downstream-reference path/hash/source state read;
+- catalog, template, concept, and optional pillar raw revisions/source states;
+- base index raw revision or `ABSENT`;
+- every bounded downstream-reference path/revision/source state read;
 - every enumerated directory identity and count used for that closure;
-- candidate bytes/hash and ordered decision IDs; and
+- candidate bytes/revision and ordered decision IDs; and
 - destination parent existence/type/real-path state.
 
-Immediately before mutation, re-read and re-hash the complete bound closure.
+Immediately before mutation, re-read the complete bound closure.
 Require every value and source state to equal the preview. Re-render the candidate
-from the frozen BASE and INTENT and require the same candidate hash.
+from the frozen BASE and INTENT and require the same candidate revision.
 
 Any difference is `CONFLICT`: write nothing, preserve both observed states, and do
 not merge, refresh, retry, or ask the user to accept changed bytes implicitly.
@@ -269,7 +269,7 @@ After CAS succeeds:
 1. write the exact candidate bytes to a same-directory temporary file;
 2. flush and close as supported;
 3. atomically create or replace only `design/gdd/systems-index.md`;
-4. re-read exact bytes and verify candidate hash;
+4. re-read exact bytes and verify candidate revision;
 5. reparse and validate schema, stable IDs, references, graph, order, decisions,
    and `Status: Draft`/`Formal Sign-off: NOT_PERFORMED`; and
 6. verify that no other workflow-owned path changed because of this run.

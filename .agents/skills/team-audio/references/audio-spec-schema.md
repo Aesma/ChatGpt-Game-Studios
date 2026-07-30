@@ -16,22 +16,22 @@ the top include:
 
 - schema/version, artifact ID, title, create/revise operation, spec status;
 - request, context-manifest, source snapshot, direction-decision, and destination-
-  ledger hashes;
-- engine validation `CURRENT | DEFERRED`, engine/version evidence hash or null,
+  ledger revisions;
+- engine validation `CURRENT | DEFERRED`, engine/version evidence revision or null,
   and exact revalidation trigger when deferred;
 - stable proposal, accessibility finding, external dependency, and acceptance IDs;
 - artifact owner, transaction writer, and last approved candidate ID; and
 - explicit `IMPLEMENTATION NOT PRESENT`, `QA NOT RUN`, and `PLAYBACK NOT RUN`.
 
-The spec does not embed its own final raw hash. The write plan/checkpoint/review/
-acceptance evidence records that hash externally.
+The spec does not embed its own final declared revision. The write plan/checkpoint/review/
+acceptance evidence records that revision externally.
 
 ## 2. Required headings
 
 ### 1. Identity, Purpose, and Scope
 
 - artifact ID, feature/area identity, intended audience/platform scope;
-- source snapshot references by path/locator/hash;
+- source snapshot references by path/locator/revision;
 - player experience purpose and explicit inclusions/exclusions; and
 - create/revise history references without duplicating checkpoint prose.
 
@@ -93,7 +93,7 @@ evidence and are referenced by ID.
 ### 7. Destination and Dependency Ledger
 
 Reference every non-AUDIO_SPEC proposal exactly once by stable ID, destination,
-owner, acceptance condition, dependency status, and evidence hash:
+owner, acceptance condition, dependency status, and evidence revision:
 
 - AUDIO_ASSET_BRIEF;
 - TECHNICAL_ADR_OR_SPEC;
@@ -107,9 +107,9 @@ Accepted/open/unknown state without inventing a decision.
 
 ### 8. Engine Validation State
 
-When current, reference engine/version and validation proposal hashes and list only
+When current, reference engine/version and validation proposal revisions and list only
 player-facing consequences. When deferred, state `ENGINE VALIDATION DEFERRED`, the
-configuration evidence hash, affected IDs, owner, and exact revalidation trigger.
+configuration evidence revision, affected IDs, owner, and exact revalidation trigger.
 Do not guess engine-specific implementation.
 
 ### 9. Design Acceptance Criteria
@@ -123,7 +123,7 @@ it has been proved.
 
 - open product/dependency/finding IDs with owner and acceptance condition;
 - engine state and implementation-readiness prohibition;
-- context/direction/ledger/proposal hashes;
+- context/direction/ledger/proposal revisions;
 - current spec status; and
 - planned QA proposal IDs separate from executed QA/playback evidence.
 
@@ -154,9 +154,9 @@ artifact_id: <id>
 reviewer_identity: <independent identity>
 attempt_token: <active token>
 spec_path: design/audio/audio-<artifact-id>.md
-spec_sha256: <sha256>
-context_manifest_sha256: <sha256>
-destination_ledger_sha256: <sha256>
+spec_revision: <revision>
+context_manifest_revision: <revision>
+destination_ledger_revision: <revision>
 engine_state: CURRENT | DEFERRED
 coverage:
   direction: COMPLETE | PARTIAL
@@ -176,9 +176,9 @@ Reviewer identity/token differs from author and transaction writer. The reviewer
 read-only and may not delegate, edit, approve product direction, authorize fixes,
 or write the checkpoint.
 
-Findings use `AR-<artifact-id>-<check>-<fingerprint>` and contain severity
+Findings use `AR-<artifact-id>-<check>-<stable key>` and contain severity
 `BLOCKING | CONCERN | ADVISORY`, status `OPEN | ROUTED | RESOLVED`, exact section/
-event/acceptance locator and spec hash, required outcome, owner, destination, and
+event/acceptance locator and spec revision, required outcome, owner, destination, and
 resolution evidence.
 
 Any required PARTIAL coverage makes the whole review PARTIAL. Any open BLOCKING
@@ -186,20 +186,18 @@ finding makes it FAIL. CONCERNS may contain only non-blocking items with owner a
 review point; accepting them yields `ACCEPTED RISK — NOT APPROVED`, not SPEC
 COMPLETE.
 
-The review is current only while the spec raw hash, context-manifest hash,
-destination-ledger hash, and engine state match. Any change stales review, planned
-QA proposal, and user acceptance.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## 5. Completion evidence distinction
 
 `SPEC COMPLETE` proves only that:
 
-- the exact spec path exists with the accepted current hash;
+- the exact spec path exists with the accepted current revision;
 - required sections/schema/destination hygiene pass;
 - context is complete, accessibility/review blockers are zero, and product choices
   are resolved;
 - external technical/asset/budget/QA/backlog work is explicitly routed;
-- current independent review and PLANNED QA proposal bind that hash; and
+- current independent review and PLANNED QA proposal bind that revision; and
 - product acceptance/checkpoint record the same evidence.
 
 It never proves code exists, audio assets exist, a build ran, QA executed, playback

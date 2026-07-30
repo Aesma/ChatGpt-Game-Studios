@@ -1,6 +1,6 @@
 ---
 name: skill-test
-description: "Validate skill packages through versioned structural rules, machine-readable semantic contracts, and preflighted behavioral specs. Optional immutable result receipts are hash-bound to every tested authority; invalid infrastructure, partial coverage, or stale dependencies can never be reported COMPLIANT."
+description: "Validate skill packages through versioned structural rules, machine-readable semantic contracts, and preflighted behavioral specs. Optional immutable result receipts are version-bound to every tested authority; invalid infrastructure, partial coverage, or stale dependencies can never be reported COMPLIANT."
 ---
 
 # Skill Test
@@ -78,8 +78,7 @@ that contradicts it is a semantic failure in this skill itself.
 
 ## Phase 1: Load and validate testing authorities
 
-Read raw bytes once and compute
-`sha256:<64 lowercase hexadecimal characters>` for each selected authority:
+Read each selected authority once. Validate its repository-local path, required schema, and explicit version or revision where the authority declares one:
 
 - target `SKILL.md`;
 - target `agents/openai.yaml`;
@@ -94,8 +93,7 @@ Read raw bytes once and compute
 - any separately pinned external validator manifest/binary/script actually used;
 - every fixture or repository input used for an assertion.
 
-Parse content from those same bytes. Never hash normalized, copied, or
-user-supplied text.
+Parse content from those same reads. Never invent a revision from normalized, copied, or user-supplied text.
 
 ### Authority status
 
@@ -117,17 +115,16 @@ the catalog entry before using it:
 The required deterministic supplement is declared by
 `.agents/skills/skill-test/validator-manifest-v1.yaml`. That file is
 JSON-compatible YAML so its exact bytes can be parsed without an unpinned YAML
-dependency. Before invocation, validate its schema, runner path/version/hash,
-rules path/version/hash, interpreter constraints, allowed argv templates,
+dependency. Before invocation, validate its schema, runner path/version,
+rules path/version, interpreter constraints, allowed argv templates,
 timeout, and output schema. Reject extra argv or paths outside the repository.
 
 Invoke only the pinned package-local runner with one allowed argv template. Its
 stdout must be exactly one `cgs-skill-test-runner-output/v1` JSON document;
-diagnostics belong on stderr. Record the resolved interpreter path/version/hash,
-runner and rules hashes, argv, exit code, duration, stdout/stderr hashes, and
-parsed result in the receipt.
+diagnostics belong on stderr. Record the resolved interpreter path/version, runner and rules paths/versions, argv,
+exit code, duration, stdout/stderr summaries, and parsed result in the receipt.
 
-If the manifest/runner/rules are absent, unreadable, hash-mismatched, outside the
+If the manifest/runner/rules are absent, unreadable, version-mismatched, outside the
 repository, incompatible with the interpreter, timed out, non-zero, or emit an
 invalid result, record `VAL-001-PINNED-RUNNER: PARTIAL`. Continue safe
 prose/semantic checks, but aggregate to `PARTIAL_VALIDATION` unless a
@@ -301,7 +298,7 @@ A target whose contract is invalid or whose semantic rule fails is
 
 For one target or all recursively discovered skills:
 
-1. Load/hashes per Phase 1.
+1. Load/revisions per Phase 1.
 2. Run structural rules from Phase 3.
 3. Run semantic contract rules from Phase 4.
 4. Report Structural and Semantic results separately.
@@ -320,8 +317,8 @@ as audit mode. Any enumeration/read/budget/timeout gap is `PARTIAL`.
 3. Only for `VALID SPEC`, evaluate every Case and Protocol assertion.
 4. Record `PASS`, `WARN`, `FAIL`, `INVALID`, or `PARTIAL` per stable assertion ID
    with direct evidence.
-5. Record selected fixtures and exact hashes. Inline fixture blocks are hashed
-   as exact spec byte ranges; filesystem fixtures are hashed from raw bytes.
+5. Record selected fixtures and exact revisions. Inline fixture blocks are versioned
+   as exact spec byte ranges; filesystem fixtures are versioned from raw bytes.
 6. Do not execute the target skill; evaluate its written contract and declared
    behavior against the fixture.
 
@@ -411,22 +408,19 @@ With `--persist-receipt`, generate
 `cgs-skill-test-receipt/v2` containing:
 
 - receipt ID, schema, timestamp, mode, target/scope, operation, validation;
-- target `SKILL.md` path/hash;
-- target `agents/openai.yaml` path/hash;
-- catalog path/hash and exact target-entry byte-range hash;
-- spec path/hash and `VALID SPEC` preflight result, or explicit N/A;
-- rubric path/hash and category-section byte-range hash, or explicit N/A;
-- validator skill path/hash, ruleset IDs/versions/hashes;
-- rules manifest and pinned-runner manifest path/hash;
-- external validator manifest/tool/version/hash/argv/exit/log hashes, or the
-  explicit coverage reduction;
-- fixture snapshot: every selected inline block/file path plus raw-byte/range
-  hash;
+- target `SKILL.md` path and declared skill name;
+- target `agents/openai.yaml` path and presence status;
+- catalog path and exact target-entry locator;
+- spec path and `VALID SPEC` preflight result, or explicit N/A;
+- rubric path and category-section locator, or explicit N/A;
+- validator skill path and ruleset IDs/versions;
+- rules manifest and runner manifest paths, schemas, and versions;
+- external validator manifest/tool/version/argv/exit/log references, or the explicit coverage reduction;
+- fixture snapshot: every selected inline block or file path plus stable fixture ID;
 - discovery selected/loaded/failed/omitted/excluded sets;
 - every stable rule/assertion ID, outcome, evidence path/line, and message;
 - aggregation trace;
-- receipt content hash computed over the canonical receipt payload before its
-  outer hash field.
+- owner-assigned receipt ID and explicit receipt schema version.
 
 The receipt is immutable. If its path already exists with different bytes, fail;
 never overwrite or “refresh” it.
@@ -434,7 +428,7 @@ never overwrite or “refresh” it.
 ### 7.2 Freshness
 
 When `--check-receipt [receipt-path]` is supplied, read that exact receipt.
-Before displaying or referencing a persisted result, re-hash every dependency
+Before displaying or referencing a persisted result, revalidate every dependency
 recorded in the receipt. Any mismatch, disappearance, validator version change,
 fixture change, or selected-set change makes freshness `STALE`. Missing or
 malformed receipt data is `INVALID`; absent receipt is `UNVERIFIED`.
@@ -445,8 +439,8 @@ A stale, invalid, or unverified receipt cannot be displayed as current
 ### 7.3 Write protocol
 
 Show the complete receipt and exact one-file changeset, obtain one approval,
-then immediately re-hash every dependency. Abort on any change. Write only the
-new receipt, read it back byte-for-byte, and report its raw SHA-256.
+then immediately revalidate every dependency. Abort on any change. Write only the
+new receipt, read it back byte-for-byte, and report its declared revision.
 
 - verified write → `Operation: RECEIPT_WRITTEN`;
 - identical existing immutable receipt → `RECEIPT_UNCHANGED`;
@@ -459,9 +453,9 @@ This version never writes `CGS Skill Testing Framework/catalog.yaml` and never
 populates or repurposes legacy `last_*` date/result fields.
 
 A future catalog schema may reference only an existing verified receipt ID and
-receipt hash. Until that schema is independently migrated and validated, report
+receipt revision. Until that schema is independently migrated and validated, report
 the missing reference capability; do not fabricate dates, PASS strings, receipt
-IDs, hashes, or last-test results.
+IDs, revisions, or last-test results.
 
 ---
 
@@ -489,7 +483,7 @@ This table records exact enforcement already defined above; it adds no validator
 | ST-005 | Contract Manifest + Phase 5.4 — agent discovery is recursive over canonical TOML inputs and reports included/excluded sets | Case 8; ST-C08-A01–A04 and ST-PC-010 |
 | ST-006 | Phase 1 Canonical P1 rule authority — versioned rule IDs, exact patterns, severities, and bounded labelled contexts replace subjective legacy detection | Case 9; ST-C09-A01–A03 |
 | ST-007 | Phase 3 Template-aware placeholder parsing — fence/heading/format state distinguishes declared templates from active config/executable placeholders | Case 10; ST-C10-A01–A03 |
-| ST-008 | Phase 1 Pinned validator handling — path/version/hash/argv/timeout/exit/log are required and missing/failing validator reduces coverage | Case 7; ST-C07-A01–A03, ST-SA-010, ST-PC-009 |
+| ST-008 | Phase 1 Pinned validator handling — path/version/revision/argv/timeout/exit/log are required and missing/failing validator reduces coverage | Case 7; ST-C07-A01–A03, ST-SA-010, ST-PC-009 |
 | ST-009 | Phase 6 Deterministic aggregation — the fixed truth table prevents INVALID/PARTIAL/FAIL or empty coverage from COMPLIANT | Case 12; ST-C12-A01–A04 and ST-SA-008 |
 | ST-010 | Phase 5 all/audit execution — bounded files/bytes/concurrency/timeouts and selected/loaded/failed/omitted/excluded ledger yield partial validation on gaps | Case 11; ST-C11-A01–A04 and ST-SA-011 |
 | ST-011 | Phase 5.4 + Phase 6 — canonical name grammar, Unicode/case/path identity, duplicate detection before set comparison, and exact diffs are deterministic | Case 13; ST-C13-A01–A04 and Case 8 ST-C08-A03 |

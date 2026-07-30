@@ -4,7 +4,7 @@
 
 $quick-design creates one immutable cgs.quick-design-proposal/v2 artifact for an
 evidence-proven low-structural-risk delta against explicit target, indexed owner,
-sections, and current hashes, or for an isolated prototype hypothesis. It never
+sections, and current revisions, or for an isolated prototype hypothesis. It never
 edits authoritative design/data/index/story/application/review/lifecycle/code/
 test artifacts. Application, independent review, lifecycle recording, and
 implementation are separate.
@@ -19,14 +19,14 @@ current GDD, and independent review evidence v1 all revalidate.
 
 - [ ] QDS-S001: Frontmatter contains only name and non-empty description; name is quick-design
 - [ ] QDS-S002: propose and read-only status forms are distinct
-- [ ] QDS-S003: Production propose requires exact target, target ID, one-or-more exact sections, and expect-base
+- [ ] QDS-S003: Production propose requires exact target, target ID, and one-or-more exact sections; it accepts no caller-supplied base token
 - [ ] QDS-S003A: Stable section ID is SYS-id#canonical-heading-key and normalization collisions fail
 - [ ] QDS-S004: Experiment form forbids production target/base arguments
 - [ ] QDS-S005: Proposal ID is change-id@version and path is design/quick-specs/change-id/version/proposal.md
 - [ ] QDS-S006: Created At UTC is RFC3339 seconds Z; path uniqueness never depends on date
 - [ ] QDS-S007: Existing path uses atomic CREATE_IF_ABSENT and cannot be overwritten
 - [ ] QDS-S008: Revisions require fresh version, exact predecessor, and current rebased evidence
-- [ ] QDS-S009: Risk uses cgs.quick-design-risk/v2 with fixed IDs, YES/NO/UNKNOWN, owner, evidence, derivation, and digest
+- [ ] QDS-S009: Risk uses cgs.quick-design-risk/v2 with fixed IDs, YES/NO/UNKNOWN, owner, evidence, derivation, and reference ID
 - [ ] QDS-S010: User label/effort cannot override a current risk fact
 - [ ] QDS-S011: Any YES redirects and any UNKNOWN blocks before proposal creation
 - [ ] QDS-S012: New system/owner/index row always redirects
@@ -34,11 +34,11 @@ current GDD, and independent review evidence v1 all revalidate.
 - [ ] QDS-S014: QD-COSMETIC is restricted to presentation inside an existing indexed owner
 - [ ] QDS-S015: QD-TUNING, QD-COSMETIC, QD-LOCAL, EXPERIMENT_ONLY have fact-derived review rules
 - [ ] QDS-S016: Product, hard-evidence, derived, and technical decision classes match design-system P1
-- [ ] QDS-S017: Every material delta references stable decision IDs and exact section hashes
+- [ ] QDS-S017: Every material delta references stable decision IDs and exact section revisions
 - [ ] QDS-S018: Proposal contract is cgs.quick-design-proposal/v2 with exactly seven required sections
 - [ ] QDS-S019: The only propose write is proposal.md; all authoritative and downstream artifacts are non-writes
-- [ ] QDS-S020: Transaction preflight re-hashes target, sections, index, dependencies, owner evidence, predecessor, and risk digest
-- [ ] QDS-S021: Application evidence contract cgs.design-application/v1 binds pre/post hashes, delta IDs, patch/ranges, task, and payload
+- [ ] QDS-S020: Transaction preflight re-reads target, sections, index, dependencies, owner evidence, predecessor, and risk reference ID
+- [ ] QDS-S021: Application evidence contract cgs.design-application/v1 binds pre/post revisions, delta IDs, patch/ranges, task, and payload
 - [ ] QDS-S022: Re-review passes prior report plus application receipt as revision evidence
 - [ ] QDS-S022A: Prior re-review report contract is cgs.design-review/v2
 - [ ] QDS-S023: Review evidence contract cgs.review-evidence/v1 is independent/current/depth-bound
@@ -60,7 +60,7 @@ current GDD, and independent review evidence v1 all revalidate.
 
 - movement GDD is indexed exactly as SYS-movement.
 - Tuning Knobs uniquely defines jump_height default 5.0, range 4.0–7.0, unit m.
-- Target/index/section/dependency hashes are current.
+- Target/index/section/dependency revisions are current.
 - Risk rows QDR-001..009 are all NO.
 - Canonical v001 path is absent.
 
@@ -69,12 +69,12 @@ current GDD, and independent review evidence v1 all revalidate.
     $quick-design propose "set jump_height to 6.0"
       --change-id QD-jump-height --version v001
       --target design/gdd/movement.md --target-id SYS-movement
-      --section "Tuning Knobs" --expect-base sha256:<current>
+      --section "Tuning Knobs"
 
 **Expected behavior:**
 
-1. Exact row, target, section, owner, and hashes are verified.
-2. Risk contract/digest derives QD-TUNING; effort is non-gating.
+1. Exact row, target, section, owner, and revisions are verified.
+2. Risk contract/reference ID derives QD-TUNING; effort is non-gating.
 3. Product owner selects 6.0 and QDD record binds source/range/decision.
 4. Atomic create-if-absent writes one proposal v2 and verifies raw bytes.
 5. Result is COMPLETE/PROPOSED/CURRENT/NO/VERIFIED/PROPOSAL_CREATED.
@@ -148,7 +148,7 @@ unsupported document profile, directory, symlink, or non-UTF-readable bytes.
 **Assertions:**
 
 - [ ] QDS-C04-A: Date never controls path uniqueness
-- [ ] QDS-C04-B: Predecessor path/hash/version chain is explicit
+- [ ] QDS-C04-B: Predecessor path/revision/version chain is explicit
 - [ ] QDS-C04-C: Existing bytes are never updated in place
 
 ---
@@ -160,9 +160,9 @@ HUD presentation consumes the range.
 
 **Expected behavior:**
 
-1. QDR-008 is YES with knob/range/unit/owner/hash.
+1. QDR-008 is YES with knob/range/unit/owner/revision.
 2. No quick proposal or range/data edit is created.
-3. Conversation handoff names target ID/section/hash, requested value, product
+3. Conversation handoff names target ID/section/revision, requested value, product
    decision owner, dependent owner, and design-system revise-section.
 4. Full authoring decides the new range and later propagation/review.
 
@@ -201,21 +201,21 @@ HUD presentation consumes the range.
 
 **Fixture:**
 
-- Draft binds target hash A/section hashes.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - Target becomes B before write.
 - Another variant has an APPLIED v001 against A and wants same delta on C.
 
 **Expected behavior:**
 
-1. Pre-create rehash detects A/B mismatch and writes nothing.
+1. Pre-create re-read detects A/B mismatch and writes nothing.
 2. Returns ERROR, STALE, REBASE REQUIRED; never silently edits draft binding.
 3. APPLIED v001 is not reapplied to C.
-4. Follow-up requires v002, --supersedes exact v001 path/hash, base C, fresh
+4. Follow-up requires v002, --supersedes exact v001 path/revision, base C, fresh
    decisions/risk/application/review/record.
 
 **Assertions:**
 
-- [ ] QDS-C07-A: Compare-and-set covers all source evidence
+- [ ] QDS-C07-A: atomic conflict check covers all source evidence
 - [ ] QDS-C07-B: Conversation memory is not currentness evidence
 - [ ] QDS-C07-C: Re-application cannot bypass new version review
 
@@ -234,7 +234,7 @@ HUD presentation consumes the range.
 
 1. Four QDD records use product-choice, evidence-backed-hard-constraint,
    derived-design-constraint, and technical-handoff correctly.
-2. Hard evidence includes owner path/ID/locator/hash.
+2. Hard evidence includes owner path/ID/locator/revision.
 3. Derived record includes inputs/derivation/assumptions and acceptance.
 4. Technical question is routed and absent from design delta.
 
@@ -305,7 +305,7 @@ implement immediately.
 
 - [ ] QDS-C11-A: No GDD Update Required No escape exists
 - [ ] QDS-C11-B: Proposal cannot instruct programmer to implement
-- [ ] QDS-C11-C: Risk digest canonicalization is recorded
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ---
 
@@ -316,11 +316,11 @@ Knobs.
 
 **Expected behavior:**
 
-1. Separate application author revalidates proposal/base/section/evidence hashes.
+1. Separate application author revalidates proposal/base/section/evidence revisions.
 2. Each section uses design-system revise-section with separate authorization,
    decision owner preserved, and no quick-design write expansion.
 3. External immutable cgs.design-application/v1 receipt binds proposal,
-   pre/post GDD hashes, delta IDs, exact ranges/patch, task, timestamp, payload.
+   pre/post GDD revisions, delta IDs, exact ranges/patch, task, timestamp, payload.
 4. Base mismatch requires new proposal version, not application improvisation.
 
 **Assertions:**
@@ -336,14 +336,14 @@ Knobs.
 **Fixture:**
 
 - Updated GDD and application receipt exist.
-- For re-review, prior design-review v2 report targets receipt pre-hash.
+- For re-review, prior design-review v2 report targets receipt prior-state.
 - Variants use self-review, solo, partial, weak depth, stale target, malformed
   report/evidence payload, or valid independent approval.
 
 **Expected behavior:**
 
 - Re-review gets exact prior report plus application receipt revision evidence.
-- Receipt post-hash equals current GDD and review target.
+- Receipt post-revision equals current GDD and review target.
 - Only formal independent APPROVED cgs.review-evidence/v1 at profile depth can
   support APPLIED.
 - Invalid variants remain NO and are never repaired by status.
@@ -352,7 +352,7 @@ Knobs.
 
 - [ ] QDS-C13-A: QD-LOCAL requires full review
 - [ ] QDS-C13-B: Tuning/cosmetic accept lean or full formal review
-- [ ] QDS-C13-C: Review report/evidence hashes recompute
+- [ ] QDS-C13-C: Review report/evidence revisions recompute
 - [ ] QDS-C13-D: Reviewer identity differs from both authors
 
 ---
@@ -385,7 +385,7 @@ record, and a story cites only proposal path.
 
 **Fixture:** proposal v2, application receipt v1, current post-GDD, independent
 APPROVED review evidence v1 at required depth, lifecycle v2 record, identities,
-hashes, and predecessor all revalidate.
+revisions, and predecessor all revalidate.
 
 **Expected behavior:**
 
@@ -429,7 +429,7 @@ catalog last-result fields are not assumed current.
 
 **Expected behavior:**
 
-1. Static/spec/category evaluation maps every assertion to current file hashes.
+1. Static/spec/category evaluation maps every assertion to current file revisions.
 2. Each axis reports PASS/FAIL/UNEXECUTED separately.
 3. A separately owned shared catalog update occurs only after actual execution.
 4. Empty/stale/copied fields are not test evidence.
@@ -438,7 +438,7 @@ catalog last-result fields are not assumed current.
 
 - [ ] QDS-C17-A: Spec covers QDS-001 through QDS-012
 - [ ] QDS-C17-B: This candidate does not edit shared catalog
-- [ ] QDS-C17-C: Current implementation/metadata/spec hashes are required
+- [ ] QDS-C17-C: Current implementation/metadata/spec revisions are required
 
 ---
 
@@ -472,3 +472,11 @@ This contract covers QDS-001 through QDS-012. Filename normalization hardening,
 project-specific implementation-value formats, dependent-owner tooling, and
 downstream story policy refinements remain separate QDS-013..017 work except
 where required to preserve the P1 authority boundary.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

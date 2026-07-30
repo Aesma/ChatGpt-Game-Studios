@@ -13,11 +13,11 @@ Present one compact report before the machine record:
 
 - Profile: <profile-id>
 - Selection: <EXPLICIT | AUTHORITY_AUTO_CONFIRMED>
-- Authority: <record path>@<sha256> (schema <version>)
-- Legacy stage declaration (`LEGACY_DECLARATION`): <NONE | value/path/hash; advisory only>
+- Authority: <record path>@<revision> (schema <version>)
+- Legacy stage declaration (`LEGACY_DECLARATION`): <NONE | value/path/revision; advisory only>
 - Review mode: <full | lean | solo>
 - Scope: <included count>; <excluded count>; <coverage gaps count>
-- Budget: <entries/full files/context bytes/hash bytes/actions/elapsed used vs limit>
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - Coverage: <COMPLETE | PARTIAL>
 
 ### Blocking checks
@@ -50,14 +50,11 @@ as passed. `ELIGIBLE` applies only to PASS; the other verdicts are
 
 ## Phase 8: Emit one immutable gate record
 
-After the human report, emit the complete record in conversation. Canonicalize
-mapping keys lexicographically, preserve array order from the selected profile,
-encode UTF-8/LF, omit no required field, and compute `record_id` as SHA-256 of the
-canonical record excluding `record_id`. A changed byte requires a new record ID.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ```yaml
 schema: cgs.gate-record/v2
-record_id: sha256:<canonical record excluding record_id>
+record_id: <stable allocated ID>
 run_id: <stable run ID>
 generated_at: <ISO-8601 timestamp with timezone>
 gate:
@@ -72,19 +69,19 @@ transition:
   auto_selection_confirmed: true | false | null
 authority:
   catalog_path: <path>
-  catalog_sha256: <hash>
+  catalog_revision: <revision>
   stage_schema_version: <version>
   transition_graph_version: <version>
   record_path: <path>
-  record_sha256: <hash>
+  record_revision: <revision>
   owner: <validated owner>
-  source_snapshot_hash: <hash>
-  prior_record_sha256: <hash-or-null-under-schema>
+  source_snapshot_revision: <revision>
+  prior_record_revision: <revision-or-null-under-schema>
   receipt_id: <validated receipt ID or null under schema>
-  receipt_sha256: <hash or null under schema>
+  receipt_revision: <revision or null under schema>
 legacy_declaration:
   path: production/stage.txt | null
-  sha256: <hash-or-null>
+  revision: <revision-or-null>
   value: <value-or-null>
   relationship: ABSENT | AGREES_ADVISORY_ONLY | CONTRADICTS_AUTHORITY
 snapshot:
@@ -95,9 +92,9 @@ snapshot:
   finalized_at: <ISO-8601>
 review_mode: full | lean | solo
 scope:
-  manifest_sha256: <canonical complete scope manifest hash>
+  manifest_<stable allocated ID>
   manifest_entries: <integer>
-  included: [<path/role/hash/read-mode records>]
+  included: [<path/role/revision/read-mode records>]
   excluded: [<path/rule/reason records>]
   unreadable: [<path/reason records>]
   ambiguous: [<identity/candidate records>]
@@ -105,7 +102,7 @@ scope:
     manifest_entries: {used: <n>, limit: <n>}
     full_content_files: {used: <n>, limit: <n>}
     context_bytes: {used: <n>, limit: <n>}
-    hash_bytes: {used: <n>, limit: <n>}
+    content_read_bytes: {used: <n>, limit: <n>}
     tool_actions: {used: <n>, limit: <n>}
     elapsed_seconds: {used: <n>, limit: <n>}
 checks:
@@ -116,7 +113,7 @@ checks:
     status: PASS | FAIL | ADVISORY | UNKNOWN | NOT_EVALUATED | NOT_APPLICABLE | UNBOUND | STALE
     expected: <profile predicate>
     observed: <redacted exact observation>
-    artifact_sha256: [<current hashes>]
+    artifact_revision: [<current revisions>]
     evidence_record_ids: [<IDs>]
     producer_adapter_id: <adapter ID or null>
     producer_native_verdict: <exact native value or null>
@@ -132,7 +129,7 @@ director_panel:
     - gate_id: <ID>
       agent_role: <role>
       attempt: 1
-      scope_manifest_sha256: <hash>
+      scope_manifest_revision: <revision>
       started_at: <time-or-null>
       ended_at: <time-or-null>
       native_verdict: READY | CONCERNS | NOT_READY | null
@@ -143,7 +140,7 @@ findings:
     check_id: <check ID>
     severity: BLOCKING | ADVISORY | COVERAGE_GAP
     status: OPEN | RESOLVED | ACCEPTED_RISK_REQUESTED
-    evidence_location: <path/hash/field or panel result>
+    evidence_location: <path/revision/field or panel result>
     destination_owner: <owner>
     acceptance_test: <specific test>
 coverage:
@@ -156,7 +153,7 @@ decision:
 verification:
   high_risk_rechecks: [<check/evidence/action/result>]
   check_set_complete: true
-  final_rehash_passed: true
+  final_reread_passed: true
   draft_verdict: <verdict>
   final_verdict: <verdict>
 mutation_guard:
@@ -174,10 +171,10 @@ verify the record ID and currentness.
 
 Immediately before returning:
 
-1. Re-read the catalog and authority record and require their hashes to equal the
+1. Re-read the catalog and authority record and require their revisions to equal the
    record. If authority changed, discard the draft gate record and return
    `ERROR — AUTHORITY CHANGED DURING CHECK`; do not emit a stale record.
-2. Re-hash every scope entry and accepted evidence/attestation dependency required
+2. re-read every scope entry and accepted evidence/attestation dependency required
    by the profile. If any differs, update the affected status to STALE or the scope
    gap to SNAPSHOT_CHANGED, rerun the decision table and record ID, then recheck
    once. Do not loop.
@@ -202,7 +199,7 @@ Keep the immutable gate record unchanged and emit:
 
 ```yaml
 schema: cgs.advance-request/v2
-request_id: sha256:<canonical payload excluding request_id>
+request_id: <stable allocated ID>
 transition_id: <exact transition ID>
 profile_id: <profile ID>
 gate_record_id: <cgs.gate-record/v2 ID>
@@ -212,8 +209,8 @@ requested_disposition: PROCEED_WITH_ACCEPTED_RISK
 operator: <explicit accountable user identity>
 identity_assurance: USER_ASSERTED | VERIFIED
 timestamp: <ISO-8601 with timezone>
-authority_record_sha256: <hash used by gate>
-scope_manifest_sha256: <hash used by gate>
+authority_record_revision: <revision used by gate>
+scope_manifest_revision: <revision used by gate>
 accepted_finding_ids: [<explicit IDs>]
 accepted_coverage_gap_ids: [<explicit IDs>]
 evidence_record_ids: [<IDs from gate record>]

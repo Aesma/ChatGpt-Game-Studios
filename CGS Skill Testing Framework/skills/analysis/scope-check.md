@@ -1,9 +1,11 @@
 # Skill Test Spec: $scope-check
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
 `$scope-check` is a strictly read-only comparator for one exact immutable approved
-baseline and one exact current scope manifest. Inputs use `path@sha256`; versioned
+baseline and one exact current scope manifest. Inputs use `path@revision`; versioned
 schemas and stable Scope IDs produce deterministic semantic deltas; independent
 decision records determine whether additions/removals/modifications are allowed;
 separate evidence receipts support effort/schedule/quality/integration statements.
@@ -18,29 +20,29 @@ schedule, quality, planning, gate, mutation, or re-baseline authority.
 
 - [ ] Frontmatter contains exactly `name: scope-check` and a non-empty description
 - [ ] `compare` and `inspect` require baseline/current
-      `path@sha256:<64-lowercase-hex>`; inspect also requires one exact evidence
+      `path`; inspect also requires one exact evidence
       identity
 - [ ] `discover` and no-argument behavior cannot choose or compare active scope
 - [ ] Baseline/current contracts require exact schema/artifact IDs/versions,
       revisions, parent/timebox, completeness, stable Scope IDs, and compatible
       normalization schema
 - [ ] Baseline approval binds exact bytes to authorized product-owner authority,
-      timestamp, and immutable signature/record hash
+      timestamp, and immutable signature/record revision
 - [ ] Current scope comes only from the current manifest; Git/code/TODO/issue/
       build evidence cannot create scope or approval
 - [ ] Delta and allowed classifications are exact enumerations with deterministic
       tables
-- [ ] Stable Delta ID excludes byte hashes, title, row/line, timestamps, decision,
+- [ ] Stable Delta ID excludes source revisions, title, row/line, timestamps, decision,
       risk, and impact state
 - [ ] Change decision, risk acceptance, and re-baseline use separate versioned
       authority schemas and never substitute for one another
 - [ ] Fixed numeric bounds cover artifact bytes/entries/semantic bytes,
       allowlisted paths/bytes/commits, decisions/risks/receipts, dependency edges,
-      test mappings, and re-hash batches
+      test mappings, and revalidate batches
 - [ ] Effort interval, schedule, quality, and integration algorithms are explicit;
       no item-count percentage, intuitive Low/Medium/High, or overall risk score
 - [ ] Result precedence uses exactly the six canonical values
-- [ ] Output is `cgs.review-evidence/v1` plus `cgs.scope-check/v2`, exact-hash
+- [ ] Output is `cgs.review-evidence/v1` plus `cgs.scope-check/v2`, exact-revision
       bound, `NOT_PERSISTED`, gate-ineligible, and READ_ONLY
 - [ ] Skill never recommends/chooses/applies Cut/Keep/Defer, invokes another
       workflow, mutates planning/Git/session state, or silently re-baselines
@@ -60,13 +62,13 @@ agent, planner, producer, estimator, or gate is invoked.
 
 ### Case 1: Exact equal semantics produce NO SCOPE DELTA
 
-Fixture: Exact baseline/current path@hash inputs have compatible schemas, current
-links the exact approved baseline, stable IDs/semantic hashes are identical, and
+Fixture: Exact baseline/current path@revision inputs have compatible schemas, current
+links the exact approved baseline, stable IDs/semantic revisions are identical, and
 only ordering/Markdown formatting differs.
 
 Assertions:
 
-- [ ] Exact paths, byte lengths, SHA-256, IDs, versions, revisions, parent/timebox,
+- [ ] Exact paths, byte lengths, revision, IDs, versions, revisions, parent/timebox,
       approval, completeness, and normalizer are reported
 - [ ] Presentation changes create no delta
 - [ ] Result is `NO SCOPE DELTA`
@@ -76,22 +78,22 @@ Assertions:
 
 ### Case 2: Bare baseline path never identifies immutable bytes
 
-Input: `$scope-check compare --baseline plans/m3.md --current plans/current.md@sha256:<hash>`
+Input: `$scope-check compare --baseline plans/m3.md --current plans/current.md`
 
 Assertions:
 
 - [ ] Returns `ERROR` for invalid exact identity syntax
-- [ ] Does not hash/select the bare path and continue implicitly
+- [ ] Does not revision/select the bare path and continue implicitly
 - [ ] No similarly named/newer baseline is considered
 - [ ] No comparison verdict is emitted
 
 ---
 
-### Case 3: Hash, approval, and ambiguity fail closed
+### Case 3: Validate, approval, and ambiguity fail closed
 
-Variants: invocation hash mismatch; two approval records; missing approver
+Variants: invocation revision mismatch; two approval records; missing approver
 authority; baseline internal ID/version differs; current references another
-baseline hash; identical aliased pair paths.
+baseline revision; identical aliased pair paths.
 
 Assertions:
 
@@ -109,7 +111,7 @@ baseline; a similarly named milestone also exists.
 
 Assertions:
 
-- [ ] Only exact path@hash links are followed
+- [ ] Only exact path@revision links are followed
 - [ ] Parent/timebox and baseline identities must match
 - [ ] Similar milestone is ignored
 - [ ] Missing/ambiguous companion link is `INSUFFICIENT EVIDENCE`
@@ -132,7 +134,7 @@ Assertions:
 
 ### Case 6: Allowlisted Git/code evidence proves activity only
 
-Fixture: Inspect evidence manifest allowlists exact commit and code paths/hashes
+Fixture: Inspect evidence manifest allowlists exact commit and code paths/revisions
 for delta A.
 
 Assertions:
@@ -163,7 +165,7 @@ Assertions:
 
 Fixture: Inspect evidence allowlists one final `cgs.scope-change-decision/v1`
 record for addition A, binding
-operation, Scope/Delta IDs, exact pair/entry hashes, parent/timebox, authorized
+operation, Scope/Delta IDs, exact pair/entry revisions, parent/timebox, authorized
 owner/authority, rationale, timestamp, signature, and no conflict.
 
 Assertions:
@@ -222,7 +224,7 @@ Assertions:
 
 ### Case 12: Invalid risk acceptance is rejected
 
-Variants: expired, unsigned, wrong Delta/Scope ID, wrong pair/evidence hash,
+Variants: expired, unsigned, wrong Delta/Scope ID, wrong pair/evidence revision,
 unverifiable owner authority, self-authored model/agent record, missing controls.
 
 Assertions:
@@ -258,7 +260,7 @@ Assertions:
 
 - [ ] States are respectively SUPPORTED_NO_EXPOSURE, SUPPORTED_EXPOSURE,
       INDETERMINATE, UNVERIFIED, and NOT_APPLICABLE
-- [ ] Units/method/pair/evidence hashes must match
+- [ ] Units/method/pair/evidence revisions must match
 - [ ] No Low/Medium/High or intuitive schedule score appears
 - [ ] Accepted risk reference cannot change the state
 
@@ -274,7 +276,7 @@ Assertions:
 
 - [ ] States follow the five-state quality algorithm exactly
 - [ ] Header/test-file existence alone is not coverage
-- [ ] Denominator and mapping rows are stable-ID/hash bound
+- [ ] Denominator and mapping rows are stable-ID/revision-bound
 - [ ] Zero denominator is NOT_APPLICABLE, not 100%
 
 ---
@@ -301,7 +303,7 @@ Fixture: Active state has one candidate pair, then multiple candidate pairs.
 Assertions:
 
 - [ ] No arguments returns `INPUT REQUIRED`
-- [ ] `discover` lists exact path@hash identities only and returns INPUT REQUIRED
+- [ ] `discover` lists exact path@revision identities only and returns INPUT REQUIRED
 - [ ] Even one pair is not analyzed in the same invocation
 - [ ] Multiple candidates are never ranked or auto-selected
 
@@ -310,7 +312,7 @@ Assertions:
 ### Case 18: Error, insufficient, and partial are distinct
 
 Variants: invalid syntax/path/schema; stale/missing core approval/link/ID; valid
-core pair with declared inspect evidence hash mismatch/unsupported/overflow.
+core pair with declared inspect evidence revision mismatch/unsupported/overflow.
 
 Assertions:
 
@@ -323,7 +325,7 @@ Assertions:
 
 ### Case 19: Evidence manifest is a closed exact allowlist
 
-Fixture: Valid evidence manifest binds exact pair and includes exact path@hash/
+Fixture: Valid evidence manifest binds exact pair and includes exact path@revision/
 purpose/source IDs plus exact Git IDs; neighboring relevant files also exist.
 
 Assertions:
@@ -401,7 +403,7 @@ Assertions:
 - [ ] Core change discards deltas and yields INSUFFICIENT EVIDENCE
 - [ ] Approval/normalizer change invalidates core identity
 - [ ] Optional evidence change preserves core deltas but yields PARTIAL
-- [ ] Re-hash processing uses batches of at most 64 paths without dropping inputs
+- [ ] revalidate processing uses batches of at most 64 paths without dropping inputs
 - [ ] No changed input is repaired, restored, or adopted
 
 ---
@@ -409,12 +411,12 @@ Assertions:
 ### Case 25: Stable Delta IDs survive unrelated byte changes
 
 Fixture: Same baseline ID/version, parent, Scope ID, and MODIFIED delta remains
-while presentation/current hash/line/title/decision/risk/impact changes.
+while presentation/current revision/line/title/decision/risk/impact changes.
 
 Assertions:
 
-- [ ] Fingerprint and Delta ID remain stable
-- [ ] Exact artifact/entry hashes expose current staleness separately
+- [ ] finding key and Delta ID remain stable
+- [ ] Exact artifact/entry revisions expose current staleness separately
 - [ ] Changing delta type or baseline version creates a new identity
 - [ ] Two identical immutable runs sort/output the same deltas
 
@@ -428,7 +430,7 @@ row split/merge; no compatible estimates.
 Assertions:
 
 - [ ] Each actual stable-ID change is classified without relative magnitude claim
-- [ ] Row split/merge with equal stable semantic hashes is unchanged
+- [ ] Row split/merge with equal stable semantic revisions is unchanged
 - [ ] Effort remains UNVERIFIED
 - [ ] No bloat/creep/item-count/file-count percentage verdict appears
 
@@ -454,12 +456,12 @@ Assertions:
 ### Case 28: Output is read-only evidence with neutral options
 
 Fixture: Inspect finds approved addition, unapproved removal, valid and invalid
-risk refs, partial impact evidence, and unchanged input hashes.
+risk refs, partial impact evidence, and unchanged input revisions.
 
 Assertions:
 
 - [ ] Generic envelope and v2 extension contain exact identities, normalizer,
-      deltas, authority/allowed/risk/impact, coverage, unchecked, re-hashes,
+      deltas, authority/allowed/risk/impact, coverage, unchecked, revalidate,
       comparison/stale keys, result, and producer version
 - [ ] `NOT_PERSISTED`, gate-ineligible, and READ_ONLY are explicit
 - [ ] Two or three options are unranked and name Scope/Delta IDs, unknowns,
@@ -474,15 +476,15 @@ Assertions:
 - [ ] Reads only exact immutable pair plus validated evidence allowlist
 - [ ] Scope and semantic identity use stable IDs/versioned normalizer, not fuzzy
       text or counts
-- [ ] Every delta binds both artifact/entry hashes while retaining stable identity
+- [ ] Every delta binds both artifact/entry revisions while retaining stable identity
 - [ ] Added/removed/modified and allowed/unapproved/conflict classifications are
       deterministic and separate
 - [ ] Change, risk, and re-baseline authority are distinct and independently
       verified
 - [ ] Impact statements use exact receipts and fixed algorithms or UNVERIFIED
-- [ ] Budget/rehash gaps are explicit and fail closed
+- [ ] Budget/revalidate gaps are explicit and fail closed
 - [ ] Result follows the canonical six-state precedence
-- [ ] Output is hash-bound, non-persisted, gate-ineligible, and strictly read-only
+- [ ] Output is revision-bound, non-persisted, gate-ineligible, and strictly read-only
 - [ ] Product decisions and mutations remain with authorized external owners
 
 ---
@@ -498,4 +500,4 @@ Assertions:
 - SCP-010: Cases 22–24.
 
 Cases 25–28 additionally verify stable findings, count-independent semantics,
-deterministic results, exact re-hashing, neutral ownership, and read-only evidence.
+deterministic results, exact revalidate, neutral ownership, and read-only evidence.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Balance Check"
   short_description: "Read-only typed, bounded balance evidence"
-  default_prompt: "Use $balance-check with one exact project-local manifest to analyze authoritative targets, typed units and formula provenance, and bounded reproducible scenarios or simulations; return hash-bound PASS, FINDINGS, PARTIAL, or ERROR evidence without editing or selecting product values."
+  default_prompt: "Use $balance-check with one exact project-local manifest to analyze authoritative targets, typed units and formula provenance, and bounded reproducible scenarios or simulations; return revision-bound PASS, FINDINGS, PARTIAL, or ERROR evidence without editing or selecting product values."

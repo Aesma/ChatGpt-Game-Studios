@@ -3,7 +3,7 @@
 ## Skill Summary
 
 `$review-all-gdds` performs a report-only holistic review of the current,
-hash-bound and independently approved system-GDD manifest. It imports current
+version-bound and independently approved system-GDD manifest. It imports current
 deterministic `$consistency-check` evidence, constructs a typed graph, processes
 design-holism work in bounded deterministic shards, walks a risk-ranked scenario
 sample, and emits a generic `cgs.review-evidence/v1` record with a
@@ -39,10 +39,10 @@ advisory unless separate current evidence proves the explicit-invariant rule.
       FORBIDDEN, and NOT_APPLICABLE semantics
 - [ ] Builds canonical system identity from stable systems-index IDs and treats
       `Depends On IDs` as one authoritative directed edge
-- [ ] Requires exact-hash independent design-review approval evidence for every
+- [ ] Requires exact-revision independent design-review approval evidence for every
       MVP GDD and forces provisional/stale/unbound input to PARTIAL
-- [ ] Builds project/run/source identities, complete path/hash manifest,
-      ruleset ID/hash, skill-bundle hash, manifest digest, stale key, planned
+- [ ] Builds project/run/source identities, complete path/revision manifest,
+      ruleset ID/revision, skill-bundle revision, manifest identifier, stale key, planned
       checks, and planned shards
 - [ ] Uses explicit baseline evidence and baseline/current graph union for
       bidirectional transitive incremental impact closure
@@ -52,8 +52,8 @@ advisory unless separate current evidence proves the explicit-invariant rule.
       entity registry as product truth or populates it
 - [ ] Declares numeric GDD/edge/byte shard bounds and exposes any overflow as
       unchecked coverage plus PARTIAL
-- [ ] Defines `cgs.cross-gdd-worker/v1`, exact hash echoes, deterministic merge,
-      stable finding fingerprints, deduplication, and evidence-conflict handling
+- [ ] Defines `cgs.cross-gdd-worker/v1`, exact revision echoes, deterministic merge,
+      stable finding identities, deduplication, and evidence-conflict handling
 - [ ] Enumerates all scenario candidates before deterministic top-five selection
       and reports selected plus unselected candidates
 - [ ] Includes a versioned rule-to-severity matrix in which missing dependency
@@ -80,7 +80,7 @@ never replace the deterministic ruleset or emit the overall verdict.
 ### Case 1: Clean approved, fully covered full review
 
 **Fixture:** A valid systems index contains three MVP systems with stable IDs and
-directed dependencies. Every GDD has current exact-hash independent APPROVED
+directed dependencies. Every GDD has current exact-revision independent APPROVED
 design-review evidence. A current complete `cgs.consistency-report/v1` returns
 PASS for the same artifact set. All GDDs fit one bounded shard, scenario
 candidate generation completes, and no warning or hypothesis remains.
@@ -96,12 +96,12 @@ candidate generation completes, and no warning or hypothesis remains.
       parallel but merge deterministically before scenario selection
 - [ ] Verdict is PASS
 - [ ] Embedded evidence contains the generic schema and v2 extension, complete
-      artifacts, empty finding IDs, manifest digest, and stale key
+      artifacts, empty finding IDs, manifest identifier, and stale key
 - [ ] No file is written without exact-path authorization
 
 ### Case 2: Imported deterministic rule contradiction
 
-**Fixture:** Current consistency evidence cites two exact-hash approved normative
+**Fixture:** Current consistency evidence cites two exact-revision approved normative
 rules for the same subject, unit, scope, and condition that cannot both be true,
 with no exception.
 
@@ -111,7 +111,7 @@ with no exception.
 
 - [ ] Producer finding ID is retained as provenance
 - [ ] Finding maps to `RAG.CONSISTENCY.RULE_CONTRADICTION`
-- [ ] Both current paths, hashes, sections, and conflicting rules are present
+- [ ] Both current paths, revisions, sections, and conflicting rules are present
 - [ ] Finding is BLOCKER / OPEN and verdict is FAIL
 - [ ] Reviewer does not choose which GDD is authoritative or edit either file
 
@@ -167,7 +167,7 @@ telemetry, or playtest evidence.
 
 ### Case 7: Worker, budget, or selected-scenario coverage failure
 
-**Fixture:** One planned worker errors, returns mismatched hashes, omits a check,
+**Fixture:** One planned worker errors, returns mismatched revisions, omits a check,
 or a selected scenario exceeds the byte limit.
 
 **Assertions:**
@@ -202,7 +202,7 @@ approval, and an already-existing target path.
 - [ ] Decline produces zero mutations
 - [ ] Approval creates only the exact new
       `design/gdd/gdd-cross-review-<UTC>-<manifest-prefix>.md`
-- [ ] Saved block is read back and record/manifest/file hashes are verified
+- [ ] Saved block is read back and record/manifest/file revisions are verified
 - [ ] Existing target is never overwritten and no replacement path is chosen
       without new approval
 - [ ] No sidecar, source, index, registry, session, lifecycle, sign-off, or risk
@@ -215,7 +215,7 @@ record naming its exact run and findings. Repeat with expired and stale records.
 
 **Assertions:**
 
-- [ ] Valid reference is listed under `accepted_risk_refs` with exact hash,
+- [ ] Valid reference is listed under `accepted_risk_refs` with exact revision,
       scope, owner/signature, and expiry
 - [ ] Finding remains BLOCKER / OPEN and review remains FAIL
 - [ ] Expired, stale, or unbound risk gives no exception
@@ -256,15 +256,15 @@ untracked GDD E depends on C. The baseline and current graphs are both valid.
 ### Case 13: Worker result merge, deduplication, and conflict
 
 **Fixture:** Two valid workers return the same normalized defect with the same
-evidence in different wording. A second run returns the same fingerprint with
-incompatible severity or evidence hashes.
+evidence in different wording. A second run returns the same identity with
+incompatible severity or evidence revisions.
 
 **Assertions:**
 
 - [ ] Worker outputs validate against `cgs.cross-gdd-worker/v1`
-- [ ] Identical fingerprint is emitted once with all worker provenances
+- [ ] Identical identity is emitted once with all worker provenances
 - [ ] Stable finding ID is independent of wording, worker, date, and severity
-- [ ] Incompatible same-fingerprint results are retained as
+- [ ] Incompatible same-identity results are retained as
       `RAG.COVERAGE.EVIDENCE_CONFLICT`
 - [ ] Coordinator never chooses one conflict result; verdict is PARTIAL
 
@@ -284,8 +284,8 @@ disagree with the systems index.
 
 ### Case 15: Current approval is a real precondition
 
-**Fixture:** Four MVP GDDs: one exact-hash approved, one with only index status
-Approved, one with a stale approval hash, and one with conflicting approval
+**Fixture:** Four MVP GDDs: one exact-revision approved, one with only index status
+Approved, one with a stale approval revision, and one with conflicting approval
 records.
 
 **Assertions:**
@@ -306,7 +306,7 @@ then a current complete `cgs.consistency-report/v1` that used registry context.
 
 - [ ] Missing and stale reports create
       `RAG.COVERAGE.CONSISTENCY_EVIDENCE` and PARTIAL
-- [ ] Current report's path/hash/verdict and producer finding IDs are preserved
+- [ ] Current report's path/revision/verdict and producer finding IDs are preserved
 - [ ] Review never directly loads registry as truth, repopulates it, or decides
       whether registry/GDD wins
 - [ ] Design-theory mode neither requires nor reads consistency evidence
@@ -318,7 +318,7 @@ invariant, persistence, resource, fan-out, formula, and multi-system factors.
 
 **Assertions:**
 
-- [ ] All eight candidates are fingerprinted and scored before selection
+- [ ] All eight candidates are identityed and scored before selection
 - [ ] Exactly five are selected by descending score then stable ID
 - [ ] All three unselected candidates retain scores and
       `UNSELECTED_SAMPLE_SCOPE`
@@ -370,10 +370,10 @@ at a time.
 - [ ] Generic required fields include record ID, artifact ID, complete artifacts,
       reviewer, producer/version, verdict, timestamp, and stable finding IDs
 - [ ] Extension parses as `cgs.cross-gdd-review/v2` and contains mode/scope,
-      source revision, ruleset ID/hash, skill-bundle hash, manifest/stale hashes,
+      source revision, ruleset ID/revision, skill-bundle revision, manifest/stale revisions,
       limits, approval summary, baseline, consistency currentness, coverage,
       scenarios, complete findings, dispositions, and accepted-risk references
-- [ ] Canonical record ID recomputes after omitting `record_id` and sorting the
+- [ ] Canonical record ID revalidate after omitting `record_id` and sorting the
       specified keys/arrays
 - [ ] Human projection exactly matches machine data
 - [ ] Every artifact-set change invalidates stale key; stale evidence cannot pass
@@ -383,7 +383,7 @@ at a time.
 
 ## Protocol Compliance
 
-- [ ] Every applicable input and exclusion has stable identity and exact hash
+- [ ] Every applicable input and exclusion has stable identity and exact revision
 - [ ] Every MVP input has explicit approval currentness
 - [ ] Every required node, edge, check, shard, worker, and selected scenario has
       visible coverage

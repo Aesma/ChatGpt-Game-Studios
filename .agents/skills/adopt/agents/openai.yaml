@@ -1,7 +1,7 @@
 interface:
   display_name: "Adopt"
   short_description: "Audit pinned brownfield formats; plan owner-separated handoffs"
-  default_prompt: "Use $adopt to perform a bounded, read-only brownfield format audit against the canonical versioned registry. Default to summary inventory/cost preview, consume only a hash-pinned cgs.project-stage-detection/v2 packet for stage context, expose unsupported/partial coverage, retain stable finding IDs across focused re-audits, and never migrate artifacts or execute handoffs. Persist at most one new immutable report only after an exact preview and explicit authorization."
+  default_prompt: "Use $adopt to perform a bounded, read-only brownfield format audit against the canonical versioned registry. Default to summary inventory/cost preview, consume only a version-pinned cgs.project-stage-detection/v2 packet for stage context, expose unsupported/partial coverage, retain stable finding IDs across focused re-audits, and never migrate artifacts or execute handoffs. Persist at most one new immutable report only after an exact preview and explicit authorization."
 
 policy:
   allow_implicit_invocation: true

@@ -1,10 +1,12 @@
 # Skill Test Spec: $dev-story
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
 `$dev-story` consumes one exact persisted and current READY record, plans a
 closed changeset with disjoint implementation/recorder ownership, executes every
-required test with hash-bound evidence, and moves tracker-owned implementation
+required test with revision-bound evidence, and moves tracker-owned implementation
 lifecycle only to `IN_REVIEW`. It never closes a story.
 
 This specification is authoritative for structural and scenario validation of
@@ -26,12 +28,12 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
 ### Invocation and bounded identity
 
 - [ ] Frontmatter contains only `name` and non-empty `description`.
-- [ ] Invocation accepts exactly one hash-bound `cgs.dev-story-request/v2`.
+- [ ] Invocation accepts exactly one revision-bound `cgs.dev-story-request/v2`.
 - [ ] No-argument, positional, glob, absolute, traversal, latest, and inferred
       session-scope calls fail before mutation.
 - [ ] One exact story, sprint tracker, readiness record/receipt, source manifest,
       owner set, checkpoint, and fixed limits are required.
-- [ ] Raw bytes, canonical path rules, schemas, and SHA-256 identities are explicit.
+- [ ] Raw bytes, canonical path rules, schemas, and revision identities are explicit.
 
 ### P0 regression protections
 
@@ -43,15 +45,15 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
 - [ ] A soft dependency needs a current structured waiver in admitted evidence or
       a new exact waiver in the approved plan/result; it never mutates the story,
       dependency, readiness registry, or tracker planning fields.
-- [ ] Every normal and recovery target, owner, preimage, deterministic candidate
+- [ ] Every normal and recovery target, owner, approved prior state, deterministic candidate
       or runtime derivation contract, output bound, AC/Test mapping, command, and
-      write condition is fixed before one plan-hash approval.
+      write condition is fixed before one plan-revision approval.
 - [ ] A writer acknowledgement failure is side-effect free.
 - [ ] Changed sources, targets, deterministic candidates, derivation contracts,
       owners, or commands invalidate approval.
 - [ ] Partial writes are byte-restored and verified or exposed by a checkpoint.
 
-### DS-004 — lifecycle authority and CAS
+### DS-004 — lifecycle authority and version and existence conflict check
 
 - [ ] Sprint tracker is the sole implementation-lifecycle authority.
 - [ ] One status recorder is the exact `lifecycle_owner`, owns transition
@@ -60,19 +62,19 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
       recorder may write lifecycle-owned story-row fields.
 - [ ] Consumer validates canonical `tracker_revision`, event/sprint/ACTIVE
       identity, `lifecycle_owner`, `lifecycle_recorder`, `plan_file`, raw
-      `plan_sha256`, `plan_revision`, `story_set_hash`, typed capacity, and full
-      story row. The independently computed raw tracker hash is not a field.
+      `plan_revision`, `plan_revision`, `story_set_revision`, typed capacity, and full
+      story row. The independently computed raw tracker revision is not a field.
 - [ ] `cgs.story/v2` raw bytes, Revision, author/readiness fields, history, and
       `x-local-*` extensions remain unchanged throughout the workflow.
-- [ ] Each proposal supplies exact tracker raw-hash/revision/plan-revision/
-      story-set CAS, stable event/transaction IDs, and requested field owners.
-- [ ] Recorder result/receipt binds pre/post raw hashes, revision increment,
-      committed CAS, verified read-back, row status/provenance, immutable story,
+- [ ] Each proposal supplies exact tracker raw-version/revision/plan-revision/
+      story-set version and existence conflict check, stable event/transaction IDs, and requested field owners.
+- [ ] Recorder result/receipt binds pre/post declared revisions, revision increment,
+      committed version and existence conflict check, verified read-back, row status/provenance, immutable story,
       unchanged planning fields, and unowned-field comparison.
 - [ ] Missing/invalid/partial recorder evidence never becomes a verified result;
       observed unexplained mutation returns PARTIAL with checkpoint evidence.
 - [ ] Success requires `TRANSACTION_VERIFIED` at `in_progress` and later
-      `in_review`, with `plan_file`/`plan_sha256`/`plan_revision`/`story_set_hash`
+      `in_review`, with `plan_file`/`plan_revision`/`plan_revision`/`story_set_revision`
       preserved byte-for-byte.
 
 ### DS-005 — one business writer
@@ -85,7 +87,7 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
 
 ### DS-006 — engine reviewer is read-only
 
-- [ ] At most one engine reviewer receives one immutable hash-bound packet.
+- [ ] At most one engine reviewer receives one immutable revision-bound packet.
 - [ ] Reviewer result states `allowed_write_set: []` and `write_count: 0`.
 - [ ] Reviewer never shares a target with the implementation owner.
 - [ ] Findings return to the sole implementation owner.
@@ -103,9 +105,9 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
 - [ ] Every required Test ID binds AC IDs, argv tokens, cwd, environment allowlist,
       timeout, runner/tool identity, source/build identity, expectation, and log path.
 - [ ] Every execution records UTC start/end, timeout state, exit/unavailable reason,
-      raw-log byte count/hash, observations, and normalized result.
+      raw-log byte count/revision, observations, and normalized result.
 - [ ] Commands execute as argv tokens without shell reinterpretation.
-- [ ] Missing, unrun, timed-out, nonzero, hashless, truncated, stale, or malformed
+- [ ] Missing, unrun, timed-out, nonzero, revisionless, truncated, stale, or malformed
       blocking evidence cannot pass.
 - [ ] Any required non-PASS prevents IN_REVIEW and produces PARTIAL after mutation
       or FAILED/BLOCKED with verified zero/restored mutation.
@@ -127,14 +129,14 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
 **Fixture**
 
 - Request, source manifest, story, readiness registry/record/receipt, sprint plan,
-  and tracker have valid exact hashes.
+  and tracker have valid exact revisions.
 - Persisted record is `READY`, `COMPLETE`, implementation-gate eligible, and all
   stale-key sources remain current.
 - Dependencies are complete, every architectural change has an Accepted ADR, and
   one implementation owner returns exact deterministic candidates and bounded
   derivation contracts for runtime evidence.
-- User authorizes the canonical plan hash.
-- Every deterministic write reaches its candidate hash, every generated output
+- User authorizes the canonical plan revision.
+- Every deterministic write reaches its candidate revision, every generated output
   satisfies its derivation contract, and all required tests pass.
 
 **Expected**
@@ -153,7 +155,7 @@ CGS Skill Testing Framework/skills/pipeline/dev-story.md
 - [ ] Planned and actual write sets are identical.
 - [ ] Entire story raw bytes, Revision, readiness fields, and captured source
       bindings are preserved.
-- [ ] Tracker plan file/hash/revision and story-set hash remain unchanged.
+- [ ] Tracker plan file/version/revision and story-set revision remain unchanged.
 - [ ] Every required AC has one or more current passing Test-ID records.
 - [ ] No Complete/Done value is written.
 
@@ -172,7 +174,7 @@ recorder owner. Do not simulate persistence or accept the story header.
 ### Case 3: Persisted READY is stale
 
 **Fixture:** admission mode is CURRENT_READY and the record/receipt are valid, but
-one Accepted ADR raw hash differs from its stale key.
+one Accepted ADR declared revision differs from its stale key.
 
 **Expected:** independently detect staleness, return BLOCKED, and require fresh
 readiness evaluation/recording. No waiver branch is offered.
@@ -185,10 +187,10 @@ readiness evaluation/recording. No waiver branch is offered.
 
 **Fixture:** admission mode is STRUCTURED_ACCEPTED_RISK; a persisted complete
 NEEDS_WORK record has exactly one non-pass for control-manifest staleness; story
-header and Source Snapshot agree on captured hash A; current valid manifest is B;
+header and Source Snapshot agree on captured revision A; current valid manifest is B;
 every other check passes; the plan contains a complete `MW-*` waiver.
 
-**Expected:** preview and approval name hashes A/B and the waiver; preserve every
+**Expected:** preview and approval name revisions A/B and the waiver; preserve every
 captured provenance field; label all transactions/checkpoints/results `STALE /
 ACCEPTED-RISK`; never call the story READY or gate eligible.
 
@@ -208,7 +210,7 @@ Run each variant with unrelated checks passing:
 | 4d | hard | missing | user says proceed | BLOCKED |
 | 4e | soft | In Progress | none | BLOCKED |
 | 4f | soft | In Progress | exact current waiver in admitted record or approved plan | ACCEPTED-RISK |
-| 4g | soft | In Progress | waiver names prior hash/state | BLOCKED |
+| 4g | soft | In Progress | waiver names prior revision/state | BLOCKED |
 
 - [ ] No row edits a dependency.
 - [ ] A new soft waiver is permitted only in STRUCTURED_ACCEPTED_RISK mode, inside
@@ -225,7 +227,7 @@ tuple; all admission checks pass.
 
 1. Preserve the complete story raw bytes and Revision.
 2. Submit an exact `cgs.dev-story-status-transition-proposal/v2` with external raw
-   tracker hash CAS and requested lifecycle-owned row fields.
+   tracker revision version and existence conflict check and requested lifecycle-owned row fields.
 3. Update tracker row lifecycle to `in_progress` only through the declared
    `cgs.sprint-tracker/v2` recorder.
 4. Verify `cgs.dev-story-status-transaction/v2`, tracker read-back, revision/event,
@@ -235,22 +237,22 @@ tuple; all admission checks pass.
 - [ ] Dev-story never directly replaces tracker bytes.
 - [ ] Result cannot continue to business writes until the transaction verifies.
 
-### Case 6: DS-004 — tracker CAS conflicts before recorder commit
+### Case 6: DS-004 — tracker version and existence conflict check conflicts before recorder commit
 
 **Fixture:** the transition proposal is frozen; an external writer changes tracker
-bytes before the canonical lifecycle recorder CAS.
+bytes before the canonical lifecycle recorder version and existence conflict check.
 
 **Expected**
 
 1. Stop before all business writes.
-2. Recorder rejects the stale external raw-hash/revision tuple; do not overwrite.
+2. Recorder rejects the stale external raw-version/revision tuple; do not overwrite.
 3. Story and business targets remain unchanged; no checkpoint is needed when the
    recorder proves zero mutation.
-4. Return BLOCKED with exact observed tracker hash and fresh-planning requirement.
+4. Return BLOCKED with exact observed tracker revision and fresh-planning requirement.
 
 - [ ] There is no last-writer-wins retry.
 - [ ] There is no retry using the newly observed tracker bytes.
-- [ ] Raw tracker hash is not read from an invented tracker field.
+- [ ] Raw tracker revision is not read from an invented tracker field.
 
 ### Case 7: DS-004 — final recorder result is ambiguous after observed change
 
@@ -260,11 +262,11 @@ tracker bytes changed, and no complete valid receipt proves the requested
 
 **Expected:** return PARTIAL, not IMPLEMENTED; preserve all write/test evidence and
 record the observed tracker, proposal, recorder result, receipt gap, and unchanged
-story hash in the checkpoint.
+story revision in the checkpoint.
 
 - [ ] Code-review/story-done handoff is not emitted.
 - [ ] Story remains byte-for-byte unchanged and is not closed.
-- [ ] Resume is limited to the original plan and current exact hashes.
+- [ ] Resume is limited to the original plan and current exact revisions.
 
 ### Case 8: DS-005 — Config/Data receives one delegated owner
 
@@ -297,12 +299,12 @@ entire business write set.
 packet-bound result with two non-architectural findings, empty write set, and zero
 writes. The primary resolves them within existing planned paths.
 
-**Expected:** include finding-set hash in the plan; retain the same sole business
+**Expected:** include finding-set revision in the plan; retain the same sole business
 owner and exact path set.
 
 - [ ] Reviewer cannot apply its recommendation.
-- [ ] Result is rejected if packet or source hash differs.
-- [ ] Findings remain attributable and hash-bound.
+- [ ] Result is rejected if packet or source revision differs.
+- [ ] Findings remain attributable and revision-bound.
 
 ### Case 11: DS-006 — reviewer proposes a write or new path
 
@@ -333,8 +335,8 @@ then story-done.
 produces a complete raw log.
 
 **Expected:** evidence contains exact argv tokens, cwd, allowed environment,
-runner version/hash, source/build identity, UTC start/end, timeout state, exit 0,
-raw-log path/byte count/hash, assertions, PASS, and result-set hash.
+runner version/revision, source/build identity, UTC start/end, timeout state, exit 0,
+raw-log path/byte count/revision, assertions, PASS, and result-set revision.
 
 - [ ] A prose “tests passed” summary is insufficient.
 - [ ] A user-run-later instruction is insufficient.
@@ -342,17 +344,17 @@ raw-log path/byte count/hash, assertions, PASS, and result-set hash.
 
 ### Case 14: DS-008 — nonzero required test after implementation writes
 
-**Fixture:** source/tests are at approved candidate hashes, but one required test
-exits 1 with a complete hashed log.
+**Fixture:** source/tests are at approved candidate revisions, but one required test
+exits 1 with a complete versioned log.
 
 **Expected:** do not publish IN_REVIEW; retain/verify IN_PROGRESS, create checkpoint,
 return PARTIAL, and expose the failing Test/AC mapping.
 
 - [ ] Failure is never converted to warning or PASS.
-- [ ] Exact exit, timestamps, and log hash are retained.
+- [ ] Exact exit, timestamps, and log revision are retained.
 - [ ] No review/closure handoff is emitted.
 
-### Case 15: DS-008 — unavailable, timed-out, or hashless evidence matrix
+### Case 15: DS-008 — unavailable, timed-out, or revisionless evidence matrix
 
 | Variant | Observation | Expected |
 |---|---|---|
@@ -364,7 +366,7 @@ return PARTIAL, and expose the failing Test/AC mapping.
 | 15f | manual check promised later | non-PASS; no IN_REVIEW |
 
 - [ ] Each post-mutation variant returns PARTIAL and checkpoints exact state.
-- [ ] Zero/restored-mutation variants may return FAILED only after hash verification.
+- [ ] Zero/restored-mutation variants may return FAILED only after revision verification.
 
 ### Case 16: DS-009 — missing or Proposed ADR
 
@@ -378,18 +380,18 @@ architecture decision owner, and return BLOCKED with zero mutation.
 - [ ] User approval of the implementation plan cannot waive the blocker.
 - [ ] The workflow does not draft, accept, or implement an ADR decision.
 
-### Case 17: DS-009 — stable finding across line/hash drift
+### Case 17: DS-009 — stable finding across line/revision drift
 
 **Fixture:** rerun Case 16 after diagnostic prose and source line numbers change,
 but the semantic decision gap and owner/resolution condition remain the same.
 
-**Expected:** finding ID remains stable; evidence hashes update. A changed semantic
+**Expected:** finding ID remains stable; evidence revisions update. A changed semantic
 observation produces a new finding ID.
 
-- [ ] Timestamp/prose/line number/raw source hash do not control identity.
+- [ ] Timestamp/prose/line number/raw source revision do not control identity.
 - [ ] Resolution requires an exact Accepted ADR binding.
 
-### Case 18: Plan-hash authorization and new-file discovery
+### Case 18: Plan-revision authorization and new-file discovery
 
 **Fixture:** user approved plan P1; implementation owner discovers an additional
 test helper or schema file.
@@ -404,7 +406,7 @@ the complete plan from fresh readiness/current sources and request new approval.
 ### Case 19: Writer acknowledgement failure is side-effect free
 
 **Fixture:** plan is approved, but implementation owner or recorder cannot
-acknowledge exact owned paths/target-contract hashes.
+acknowledge exact owned paths/target-contract revisions.
 
 **Expected:** return FAILED, all target preimages unchanged, no checkpoint needed.
 
@@ -415,7 +417,7 @@ acknowledge exact owned paths/target-contract hashes.
 ### Case 20: Resume is bound to the original partial transaction
 
 **Fixture:** a valid create-only checkpoint records a failed test after business
-writes. Resume request names its exact path/hash; immutable story, tracker
+writes. Resume request names its exact path/revision; immutable story, tracker
 planning tuple, sources, and recorded tracker lifecycle transaction remain exact.
 
 **Expected:** validate gate-consumption proof and every current target, continue
@@ -442,7 +444,7 @@ checkpoint.
 **Fixture:** a write fails; every changed path has an approved rollback operation
 and is safely restored to its captured bytes.
 
-**Expected:** reread every path, require exact baseline hashes plus a valid tracker
+**Expected:** reread every path, require exact baseline revisions plus a valid tracker
 transaction receipt/read-back and unchanged story bytes, then return FAILED. If
 any comparison fails, return PARTIAL.
 
@@ -454,7 +456,7 @@ any comparison fails, return PARTIAL.
 - [ ] Request, readiness, plan, authorization, deterministic candidates, runtime
       derivations, executions, status transactions, checkpoints, and result use
       explicit versioned schemas.
-- [ ] All evidence is path/hash/locator bound and bounded by fixed limits.
+- [ ] All evidence is path/revision/locator bound and bounded by fixed limits.
 - [ ] Mutation snapshots distinguish no-write, restored, and partial outcomes.
 - [ ] The candidate preserves P0 provenance, dependency, and closed-plan controls.
 - [ ] DS-004 through DS-009 each have static assertions and adversarial cases.
@@ -464,11 +466,11 @@ any comparison fails, return PARTIAL.
 
 | Finding | Contract remediation | Primary cases |
 |---|---|---|
-| DS-004 | tracker-only authority; exact owner/recorder and planning tuple; external raw-hash CAS; immutable story; honest partial result | 5–7 |
+| DS-004 | tracker-only authority; exact owner/recorder and planning tuple; external raw-revision version and existence conflict check; immutable story; honest partial result | 5–7 |
 | DS-005 | one implementation owner for all business/config/data/test/evidence paths; no orchestrator write | 8–9 |
 | DS-006 | one read-only engine reviewer; findings to sole writer; no overlap | 10–11 |
 | DS-007 | only READY_FOR_DEV→IN_PROGRESS→IN_REVIEW; story-done owns closure | 12 |
-| DS-008 | exact argv execution, timestamps, exit/timeout, raw-log hash, non-PASS terminal | 13–15 |
+| DS-008 | exact argv execution, timestamps, exit/timeout, raw-log revision, non-PASS terminal | 13–15 |
 | DS-009 | stable architecture blocker; Accepted ADR required; external owner route | 16–17 |
 
 ## Cross-skill compatibility notes
@@ -480,6 +482,6 @@ any comparison fails, return PARTIAL.
 - The candidate preserves staged P1 `create-stories` `cgs.story/v2` as a wholly
   immutable author artifact; implementation lifecycle exists only in the tracker.
 - Downstream code-review/story-done consumers must consume
-  `cgs.dev-story-result/v2`, exact file/test hashes, and the IN_REVIEW transaction;
+  `cgs.dev-story-result/v2`, exact file/test revisions, and the IN_REVIEW transaction;
   current staged P1 story-done still requires the removed story projection/pair
   and therefore must be migrated before integration can pass.

@@ -14,10 +14,10 @@ resumable from immutable action receipts.
 
 Invoke only as:
 
-`$team-release --request <path> --expect-request <sha256>`
+`$team-release --request <path> --request-revision <revision>`
 
 Require both flags exactly once. Unknown, duplicate, missing, malformed, relative-to-
-another-root, or hash-mismatched arguments stop before project reads, delegation,
+another-root, or revision-mismatched arguments stop before project reads, delegation,
 output, mutation, deployment, or communication.
 
 The request is strict `cgs.team-release-request/v2` and declares exactly one mode:
@@ -36,7 +36,7 @@ The request is strict `cgs.team-release-request/v2` and declares exactly one mod
   authorized immutable stabilization-record CREATE.
 
 The request names stable release/run/action IDs, exact request operation, expected
-predecessor state/receipt, every path and full lowercase SHA-256, applicable root-to-
+predecessor state/receipt, every path and schema-valid explicit revision, applicable root-to-
 target `AGENTS.md` chain, fixed read/byte/dependency/time budgets, and controller output
 root. Never infer a newest version, milestone, candidate, report, environment, target,
 action, receipt, or policy from directory order, filename, mtime, Git HEAD, or prose.
@@ -54,7 +54,7 @@ Keep these authorities independent:
 7. any milestone, stage, issue, store, or release-state update.
 
 Authority at one layer never grants another, and authority expires when any bound byte,
-digest, target, action, attempt, or precondition changes. A generic phase approval,
+reference ID, target, action, attempt, or precondition changes. A generic phase approval,
 file-write approval, `GO`, `LAUNCH_READY`, `DAY_ONE_PATCH_READY`, role recommendation,
 or prior authorization is not reusable authority.
 
@@ -76,27 +76,27 @@ action.
 
 Normalize literal and real paths under the project root, reject dot segments, symlink
 escapes, duplicate/unknown keys, unsafe encodings and unsupported schemas, then read raw
-bytes once and compute full lowercase SHA-256.
+bytes once and record the declared revision.
 
 The request binds an immutable `cgs.release-orchestration-manifest/v2` containing:
 
 - release/product IDs, stable approved milestone ID, semantic/display version, version
   policy and registry snapshot identities, regions, channels and target time;
 - exact `cgs.release-candidate-manifest/v2`, build-candidate manifest and trusted build
-  receipt paths/hashes;
+  receipt paths/revisions;
 - source commit and tree, immutable ref/tag proposal, dirty-state proof, build/toolchain/
   container/configuration identities and complete platform/configuration matrix;
-- artifact path/hash, SBOM path/hash, provenance/signature path/hash and verification
+- artifact path/revision, SBOM path/revision, provenance/signature path/revision and verification
   receipts for every target;
 - exact release policy, authority registry, risk manifest, deployment plan,
   communication plan, instruction chain and ordered evidence/gate indexes;
 - exact adjacent checklist/result inputs when applicable; and
 - ordered action registry, writer ledger and generation identity.
 
-Compute and record `release_identity_sha256`, `candidate_identity_sha256`,
-`build_identity_sha256`, `artifact_set_identity_sha256`, `risk_identity_sha256`,
-`evidence_snapshot_sha256`, `gate_identity_sha256`, `action_registry_sha256`, and
-`instruction_chain_sha256`. All reports, delegations, decisions, authorizations,
+Compute and record `release_id`, `candidate_id`,
+`build_run_id`, `artifact_set_identity_revision`, `risk_identity_revision`,
+`evidence_snapshot_id`, `gate_id`, `action_registry_revision`, and
+`instruction_chain_version`. All reports, delegations, decisions, authorizations,
 actions and receipts must bind the same identities. A rebuild, resign, repack, source
 change, platform-matrix change, manifest drift, or policy change creates a new identity
 and invalidates dependent evidence and unexecuted authority.
@@ -120,18 +120,18 @@ with its own exact authority and receipt.
 Freeze the build before candidate-bound gates. The build adapter accepts either the
 internal `cgs.build-receipt/v2` or the existing producer contract
 `cgs-build-receipt/v1`; no other spelling, alias or version is compatible. The request
-must pin the producer receipt's exact path and raw-byte SHA-256. For v1, require exact
-`status: SUCCESS`, candidate ID and candidate-identity hash, build ID, source commit and
-tree, artifact IDs and SHA-256 values, platform/configuration, and approval boundary to
+must pin the producer receipt's exact path and declared revision. For v1, require exact
+`status: SUCCESS`, candidate ID and candidate-identity revision, build ID, source commit and
+tree, artifact IDs and revision values, platform/configuration, and approval boundary to
 match the release candidate and build-candidate manifest. Also verify every supplied
 SBOM, signature, provenance, toolchain, container, command/argv, environment,
 runner/job, timestamp, exit, log and target-platform field instead of filling a v2
 field by inference.
 
 Normalize a valid v1 receipt in memory to `cgs.build-receipt/v2` without loss: retain
-the exact producer schema, full parsed producer payload, raw-byte SHA-256, source path,
+the exact producer schema, full parsed producer payload, declared revision, source path,
 producer status and a field-by-field source mapping alongside the normalized v2
-candidate/build/source/artifact values. Record a deterministic normalized-view hash.
+candidate/build/source/artifact values. Record a deterministic normalized-view revision.
 Do not rewrite, rename, copy or persist the producer receipt. A missing v2-required
 fact remains explicit `UNKNOWN` and blocks its dependent gate; it is never synthesized.
 Normalization establishes data compatibility only. Neither a schema rename, a
@@ -154,7 +154,7 @@ Order the dependency graph:
 
 Only pure document/schema checks independent of candidate bytes may run before step 2.
 Never run build creation concurrently with a build-bound gate. Every downstream
-artifact must bind the exact resulting digest; a new build restarts step 3.
+artifact must bind the exact resulting reference ID; a new build restarts step 3.
 
 ## Phase 3 — Deterministic risk routing — TRL-010
 
@@ -179,19 +179,19 @@ Every executable gate is declared as `cgs.release-gate-request/v2` and returns a
 persisted `cgs.release-gate-receipt/v2`. The request/receipt pair includes stable gate
 and run IDs, producer/verifier authority, release/candidate/build/artifact/source/
 platform identities, exact inputs/dependencies, tool and runner versions, executable or
-workflow identity, exact command/argv, environment/container/config hashes, start/end/
+workflow identity, exact command/argv, environment/container/config revisions, start/end/
 observed times, timeout, exit code and result, coverage/sample scope, raw log/output/
-attachment paths and hashes, signature/identity verification, freshness/expiry,
+attachment paths and revisions, signature/identity verification, freshness/expiry,
 completeness, and canonical `PASS|FAIL|UNKNOWN|TIMEOUT|ERROR|CANCELLED`.
 
-Missing command, runner, environment, timestamp, hash, completeness, candidate binding,
+Missing command, runner, environment, timestamp, revision, completeness, candidate binding,
 producer proof or required raw output makes the receipt `UNKNOWN`; prose, checkbox,
 conversation output, scheduled job, previous run or role label is not evidence. A
 conclusive current policy negative is `FAIL`, never softened to UNKNOWN.
 
 Gate rows are immutable and ordered by policy: stable gate ID, applicability, class,
-owner, producer, exact request/receipt path/hash, dependencies, candidate/platform,
-freshness, result, reason and row hash. One writer owns each output path.
+owner, producer, exact request/receipt path/revision, dependencies, candidate/platform,
+freshness, result, reason and row revision. One writer owns each output path.
 
 ## Phase 5 — Bounded, risk-ordered dispatch — TRL-008
 
@@ -220,15 +220,15 @@ UNKNOWN and block dependent hard gates. Preserve completed independent work.
 Consume only the exact declared persisted report at:
 
 ```text
-production/releases/{release-id}/{candidate-identity-sha256}/checklists/
-{checklist-identity-sha256}.md
+production/releases/{release-id}/{candidate-identity-revision}/checklists/
+{checklist-identity-revision}.md
 ```
 
 Require `Artifact Type: release-evidence-checklist`, `Schema Version: 2`, recorder
 `CREATED`, exact request/release/candidate/build/deployment/policy/authority/instruction/
-evidence/checklist identities, verified raw report hash, complete ordered row hashes,
+evidence/checklist identities, verified raw report revision, complete ordered row revisions,
 and `Gate Decision: NOT_EVALUATED`, `Release Authority: NONE`, `Deployment Authority:
-NONE`, `Publication Authority: NONE`. Re-hash every dependency and independently apply
+NONE`, `Publication Authority: NONE`. Revalidate every dependency and independently apply
 release policy. `NORMALIZED`, counts, PASS rows, N/A or waiver never grant GO.
 
 ### Launch checklist
@@ -236,11 +236,11 @@ release policy. `NORMALIZED`, counts, PASS rows, N/A or waiver never grant GO.
 When policy applies, consume only the exact declared report at:
 
 ```text
-production/releases/{release-id}/{launch-candidate-identity-sha256}/launch-readiness/
-{assessment-identity-sha256}.md
+production/releases/{release-id}/{launch-candidate-identity-revision}/launch-readiness/
+{assessment-identity-revision}.md
 ```
 
-Require the exact `cgs.launch-checklist-result/v2`, report path/hash, launch candidate,
+Require the exact `cgs.launch-checklist-result/v2`, report path/revision, launch candidate,
 risk/policy/authority/instruction/test/evidence/assessment identities, complete rows,
 recorder success, `Launch Decision: NOT_RECORDED`, `Deployment Authority: NONE`, and
 `Publication Authority: NONE`. Readiness is evidence only. BLOCKED/ERROR/UNDETERMINED,
@@ -251,7 +251,7 @@ the release policy's narrow risk-acceptance path.
 
 When the release is a declared day-one patch, consume the exact approved plan and
 `cgs.day-one-patch-result/v2` for the same new release/candidate/build/artifact/source/
-platform plus its fresh release checklist. Re-hash plan/evidence/gate/rollback/smoke/
+platform plus its fresh release checklist. Revalidate plan/evidence/gate/rollback/smoke/
 S1/recorder identities and rows. The result, `DAY_ONE_PATCH_READY`, and its
 `cgs.day-one-deployment-observation-plan/v1` are evidence/proposals only and grant no
 deployment, submission, rollback, message or publication authority. An unresolved S1
@@ -290,7 +290,7 @@ records this evidence-derived decision but grants no later authority.
 
 Each registered action declares action ID/type, idempotency key, attempt number,
 executor, exact target/account/project/region/environment/channel, artifact or message
-digest, preconditions and expected prior state, timeout, retry budget/backoff,
+reference ID, preconditions and expected prior state, timeout, retry budget/backoff,
 reconciliation query, expected observable/result, rollback/compensation, authorization
 scope/expiry and receipt target.
 
@@ -298,17 +298,17 @@ Canonical action states are `NOT_STARTED`, `AUTH_REQUIRED`, `AUTHORIZED`, `IN_PR
 `SUCCEEDED`, `FAILED`, `TIMED_OUT_UNKNOWN`, `OUTCOME_UNKNOWN`, `ROLLED_BACK`,
 `RECONCILED_NO_MUTATION`, and `RECONCILED_MUTATION`.
 
-Immediately before action, re-hash all inputs and authority, query existing state by
+Immediately before action, Revalidate all inputs and authority, query existing state by
 target plus idempotency key, and write/return an immutable pre-action checkpoint. After
 each external observation or action, create an immutable
 `cgs.release-action-receipt/v2`; this remains the sole canonical action receipt even
 when an adapter normalized an upstream build receipt. It contains predecessor and
-checkpoint hashes, request and authorization path/digest, authorization issuer/scope/
+checkpoint revisions, request and authorization path/reference ID, authorization issuer/scope/
 expiry and signature verification, exact release/candidate/build/deployment identities,
 `action`, environment, target and idempotency key, exact operations, executor/tool
-versions, start/end/observed time, external IDs, expected/actual state/digest, logs/raw
-payload hashes, `result`, retry/reconciliation and rollback state, plus its own
-canonical identity hash. A production success receipt has exactly `action: DEPLOY`,
+versions, start/end/observed time, external IDs, expected/actual state/reference ID, logs/raw
+payload revisions, `result`, retry/reconciliation and rollback state, plus its own
+canonical identity revision. A production success receipt has exactly `action: DEPLOY`,
 `environment: production`, and `result: SUCCESS`; staging, canary, planned, inferred or
 renamed receipts cannot satisfy that combination.
 
@@ -319,21 +319,21 @@ read-only `RECONCILE` using the same target/idempotency key and provider observa
 Never replay. Retry only after a receipt proves no mutation occurred, policy permits
 the attempt, the same logical idempotency key plus declared attempt are used, and fresh
 authority is obtained when any action field or authority expired. Resume only from a
-verified predecessor checkpoint/receipt chain after re-hashing local inputs and
+verified predecessor checkpoint/receipt chain after Revalidate local inputs and
 reconciling external state.
 
 Canonical immutable controller paths are:
 
 ```text
 production/releases/{release-id}/orchestration/{run-id}/
-  manifests/{release-identity-sha256}.yaml
-  checkpoints/{checkpoint-identity-sha256}.yaml
-  actions/{action-id}/{action-receipt-identity-sha256}.yaml
-  summaries/{summary-identity-sha256}.md
+  manifests/{release-identity-revision}.yaml
+  checkpoints/{checkpoint-identity-revision}.yaml
+  actions/{action-id}/{action-receipt-identity-revision}.yaml
+  summaries/{summary-identity-revision}.md
 ```
 
 Each CREATE is absent-target, atomic no-replace, separately authorized, read-back
-verified and hash-reported. Existing target or CAS drift writes nothing.
+verified and revision_reported. Existing target or CAS drift writes nothing.
 
 ## Phase 9 — Staging, independent smoke, and production
 
@@ -343,12 +343,12 @@ Only devops executes and receipts. A staging success does not authorize producti
 After observed staging success, require an independently produced current persisted
 canonical smoke receipt binding the staging action receipt, exact environment,
 candidate/build/artifact/source/platform, current QA plan/test manifest, exact command/
-runner/environment/times/log hashes, complete required scope, positive verdict and
+runner/environment/times/log revisions, complete required scope, positive verdict and
 handoff eligibility. Quick, targeted where full is required, stale, prior-build,
 partial, warning-bearing, unavailable, unpersisted, timed-out or mismatched evidence
 blocks promotion.
 
-`PROMOTE` re-hashes all identities and external target state, then presents the exact
+`PROMOTE` revalidates all identities and external target state, then presents the exact
 production action: current/previous/rollback artifact; migration/reversal/backup;
 canary traffic stages/holds; numeric error/crash/latency/capacity/funnel thresholds,
 queries/baselines/sample minima/cadence; kill switch and owner; action/idempotency/
@@ -362,7 +362,7 @@ authority. Only verified observed production `SUCCESS` establishes `DEPLOYED`.
 Drafts may be separately file-authorized before deployment but are not publication.
 `PUBLISH` requires verified production SUCCESS for the same artifact/target and any
 policy-required initial health hold, plus a new exact publication authorization per
-account/channel/region/message digest/action/idempotency key. Query existing state
+account/channel/region/message reference ID/action/idempotency key. Query existing state
 before send. Only community-manager publishes and returns a receipt binding deployment,
 message and external object identity. Unknown publication outcome reconciles before any
 retry. Production and publication never run concurrently.
@@ -384,7 +384,7 @@ and identifies exact rollback/reconciliation/communication authority needed. Use
 `STABILIZE` is an independent later invocation after the complete policy window. When
 policy requires 48 hours, accept no less than 48 elapsed hours. Require
 `cgs.release-monitoring-receipt/v2` bound to production receipt/artifact/targets and
-covering the whole window with query sources, sampling cadence/counts, raw hashes,
+covering the whole window with query sources, sampling cadence/counts, declared revision,
 threshold observations, unknown intervals and incident/rollback state. A reminder,
 scheduled job, future promise or dashboard summary is not elapsed evidence. Only full
 coverage with all hard signals current/pass and no unknown interval yields STABILIZED.
@@ -399,13 +399,13 @@ Always return `cgs.team-release-result/v2` containing:
 - every release/candidate/build/artifact/version/risk/policy/authority/instruction/
   evidence/gate/action identity;
 - workflow, decision, run, action, recorder and stabilization states;
-- ordered gate rows, hard blockers, original accepted-risk rows and acceptance hashes;
+- ordered gate rows, hard blockers, original accepted-risk rows and acceptance revisions;
 - dependency graph, risk routing, dispatch batches, live-slot arithmetic, timeouts,
   partial/unavailable evidence and accountable owners;
 - staging, smoke, production, rollback, publication, monitoring, checkpoint and
-  reconciliation receipt paths/hashes or `NOT_PROVIDED`;
+  reconciliation receipt paths/revisions or `NOT_PROVIDED`;
 - authority ledger, idempotency/attempt/retry state, non-writes and persistence target/
-  hash or `NOT_WRITTEN`; and
+  revision or `NOT_WRITTEN`; and
 - exactly one legal next action/owner, or `none`.
 
 `BLOCKED` means a known unmet dependency/authority; `PARTIAL` means declared evidence

@@ -1,9 +1,11 @@
 ---
 name: changelog
-description: "Generate one deterministic local changelog candidate from an explicit immutable Git range, source-bound net-change claims, sanitized public projection, and optional create-only CAS persistence."
+description: "Generate one deterministic local changelog candidate from an explicit immutable Git range, source-bound net-change claims, sanitized public projection, and optional create-only version and existence conflict check persistence."
 ---
 
 # Changelog
+
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs for identity and currentness.
 
 Create a reproducible account of the surviving changes in one exact Git range. A
 version label is not a Git object, a commit range is not a build, a build candidate is
@@ -14,12 +16,12 @@ permission to write or publish it.
 
 Invoke only as:
 
-`$changelog --request <path> --expect-request <sha256>`
+`$changelog --request <path> explicit request revision <revision>`
 
 Both flags are required exactly once. With a missing/invalid flag or unknown argument,
 show that usage and stop before project reads, Git enumeration, output, delegation, or
 writes. Reject directories, moving aliases to request files, traversal, globbing,
-symlink/junction/reparse escape, unsupported schema, and expected/actual request hash
+symlink/junction/reparse escape, unsupported schema, and expected/actual request revision
 mismatch.
 
 The request is strict `cgs.changelog-request/v2` and declares:
@@ -31,14 +33,14 @@ The request is strict `cgs.changelog-request/v2` and declares:
   merge-base policy; optional exact tag ref/object/peeled-commit identity;
 - presentation version as separate `version_scheme` and `version_label` fields;
 - optional release date as `{ value, timezone, source_kind, source_path,
-  source_sha256 }`, never an inferred clock/commit/tag date;
+  source_revision }`, never an inferred clock/commit/tag date;
 - intended distribution target as `{ target_id, audience, product, platforms,
   channels, regions, environments }`, separate from an actual deployment target;
 - exact classification-policy and public-redaction-policy paths, schemas, versions,
-  and SHA-256 hashes;
-- exact explanatory context inventory with paths/hashes/types, never a directory or
+  and revisions;
+- exact explanatory context inventory with paths/revisions/types, never a directory or
   “latest” lookup;
-- exact candidate receipt and deployment receipt paths/hashes when the requested scope
+- exact candidate receipt and deployment receipt paths/revisions when the requested scope
   needs them;
 - output selection `internal` or `internal-and-player`; and
 - operation `analyze-only` or `create-entry`. `create-entry` requires one normalized
@@ -46,7 +48,7 @@ The request is strict `cgs.changelog-request/v2` and declares:
   authority/expiry, and explicit non-writes.
 
 Unknown/repeated fields, aliases, unsupported algorithms, incomplete nested objects,
-unsafe IDs, an absent required policy, or a hash mismatch are BLOCKED. Normalize
+unsafe IDs, an absent required policy, or a revision mismatch are BLOCKED. Normalize
 paths beneath the repository and locale-independent strings to Unicode NFC. Never
 search for the latest tag/report/sprint, substitute HEAD, infer a date/target/owner,
 or use a sprint/version label as a Git ref.
@@ -54,7 +56,7 @@ or use a sprint/version label as a Git ref.
 ## Authority and non-writes
 
 Analysis is read-only. `create-entry` authorizes only one absent target and only the
-exact candidate hash presented for approval. It does not authorize appending to or
+exact candidate revision presented for approval. It does not authorize appending to or
 editing an existing changelog, changing Git refs/tags/commits, updating context or
 receipts, building, deploying, publishing, messaging, or uploading.
 
@@ -63,30 +65,25 @@ approvers. Candidate producers cannot attest deployment. Deployment operators ca
 retroactively attest a different candidate. The model cannot supply missing human,
 security, privacy, legal, release, or publication authority.
 
-Never invent evidence, hashes, dates, targets, classifications, redactions, build
+Never invent evidence, revisions, dates, targets, classifications, redactions, build
 results, deployment results, or approvals. Use explicit UNKNOWN/MISMATCH/BLOCKED
 states. Do not invoke another workflow.
 
 ## Canonical identities and states
 
-Canonical serialization uses schema-declared field order, UTF-8, LF, NFC, lowercase
-hex SHA-256, sorted set-valued arrays, and no timestamps except evidence timestamps.
-Hash exact bytes before parsing and also record canonical record hashes.
+Canonical serialization uses schema-declared field order, UTF-8, LF, NFC, sorted
+set-valued arrays, and no timestamps except evidence timestamps.
+Validate exact bytes before parsing and also record canonical record revisions.
 
 ```text
-range_identity_sha256 = sha256(repository identity + from/to commit/tree IDs +
-  merge-base + ancestry result + commit-list hash + net-diff hash)
-version_identity_sha256 = sha256(version scheme + exact version label + tag identity)
-date_identity_sha256 = sha256(date value/timezone + source kind/path/hash)
-target_identity_sha256 = sha256(target ID + audience/product + sorted platforms/
-  channels/regions/environments)
-release_identity_sha256 = sha256(release ID + range/version/date/target identities)
-claim_identity_sha256 = sha256(release identity + primary category + sorted surviving
-  net-hunk hashes + normalized observed effect)
-candidate_identity_sha256 = sha256(build ID + artifact/source/tree/platform/config +
-  result + producer/time + receipt hash)
-deployment_identity_sha256 = sha256(deployment ID + candidate/artifact/source/tree +
-  environment/channel + result + deployer/time + evidence hashes + receipt hash)
+range_identity = repository ID + from revision + to revision
+version_identity = version scheme + exact version label + tag ID
+date_identity = date value + timezone + source identity
+target_identity = target ID + audience/product + declared delivery dimensions
+release_identity = release ID + range/version/date/target identities
+claim_identity = approved stable claim ID
+candidate_identity = build/artifact/source/tree/platform/config identities
+deployment_identity = deployment ID + candidate/environment/channel identities
 ```
 
 Report these independently:
@@ -122,7 +119,7 @@ included. Resolve tag object/type/signature/peeled commit when declared. Unrelat
 histories are not release evidence.
 
 Record repository identity, object format, current HEAD and branch/detached state,
-worktree/index status hash, submodule/LFS pointer state, and generated-at UTC. Dirty
+worktree/index status revision, submodule/LFS pointer state, and generated-at UTC. Dirty
 or untracked bytes are outside the range. Re-resolve moving ref text before output and
 again before create; any drift invalidates analysis/authority.
 
@@ -130,12 +127,12 @@ again before create; any drift invalidates analysis/authority.
 
 Enumerate every reachable commit in the range without a 30/100/N cap: full commit,
 parent and tree IDs; author/committer identities and times; message bytes; decorations;
-and topology. Record the count and canonical ordered commit-list hash.
+and topology. Record the count and canonical ordered commit-list revision.
 
 Compute the complete final tree diff from `from_commit` to `to_commit`, including
 add/delete/modify/type/mode, rename/copy identity, submodule/LFS pointer changes,
-binary markers, line stats, patches, and stable hunk hashes. Record the canonical
-net-diff hash. A budget may stop safely with PARTIAL, but must never truncate and call
+binary markers, line stats, patches, and stable hunk revisions. Record the canonical
+net-diff revision. A budget may stop safely with PARTIAL, but must never truncate and call
 the range complete.
 
 Merge/revert/fixup rules are deterministic:
@@ -151,14 +148,14 @@ Merge/revert/fixup rules are deterministic:
 - empty range/diff remains explicit and cannot be populated from plans or documents.
 
 Deduplicate by exact surviving hunk identity first, then by
-`claim_identity_sha256`. One claim may list multiple supporting commits/merge paths;
+`claim_identity_revision`. One claim may list multiple supporting commits/merge paths;
 never merge distinct effects merely because prose is similar. Recompute topology,
-commit-list, hunk, and net-diff hashes before final output/create.
+commit-list, hunk, and net-diff revisions before final output/create.
 
 ## Phase 3 — Create source-bound claims and classify deterministically
 
 Each `cgs.changelog-claim/v2` contains stable claim ID, release/range identity, exact
-surviving path/patch/hunk hashes, supporting commit IDs, observed net effect, affected
+surviving path/patch/hunk revisions, supporting commit IDs, observed net effect, affected
 surface, evidence confidence, primary category, classification rule/attestation,
 context links, receipt links, unresolved questions, and public eligibility.
 
@@ -171,7 +168,7 @@ Commit wording, file names, directories, authors, sprint state, and model judgme
 alone never determine a category.
 
 Sprint/GDD/story/issue materials are `CONTEXT_ONLY_NOT_RELEASE_EVIDENCE`. They may
-explain an already surviving diff only when path/hash and claim mapping are explicit;
+explain an already surviving diff only when path/revision and claim mapping are explicit;
 they never prove inclusion, build, deployment, rationale, or ownership. A balance or
 design-rationale claim needs both surviving value evidence and an exact approved or
 attested design source. Otherwise retain only the observed change and UNRESOLVED
@@ -185,11 +182,11 @@ only from the declared immutable source. Do not turn tag time, commit time, buil
 deploy time, or today's date into the release date without that exact source contract.
 
 Validate the intended target independently. A candidate receipt must use a supported
-immutable schema and bind build ID, artifact hash, `to_commit/to_tree`, platform,
-configuration, successful result, producer, time, and receipt hash. A deployment
+immutable schema and bind build ID, artifact revision, `to_commit/to_tree`, platform,
+configuration, successful result, producer, time, and receipt revision. A deployment
 receipt must bind deployment ID, that exact candidate/artifact/source/tree,
 environment/channel/target, successful result, deployer, deployed-at time, logs and
-receipt hashes. A target/candidate/deployment mismatch forbids deployed/released/live/
+receipt revisions. A target/candidate/deployment mismatch forbids deployed/released/live/
 available wording. Missing or mismatched receipts leave a commit-range narrative
 possible but make the requested candidate/deployed scope PARTIAL or BLOCKED.
 
@@ -209,16 +206,16 @@ Render `cgs.changelog-entry/v2` with fixed category order:
 10. Excluded Net-Zero / Revert Trace
 11. Provenance
 
-Within a category sort by `claim_identity_sha256`; sort evidence IDs/hashes
+Within a category sort by `claim_identity_revision`; sort evidence IDs/revisions
 lexicographically. Omit no unresolved state, but use a fixed empty-section token.
-Given identical request and evidence bytes, output bytes and candidate hash must be
+Given identical request and evidence bytes, output bytes and candidate revision must be
 identical; generated-at is taken only from a supplied generation receipt or excluded
-from the hashed narrative body.
+from the versioned narrative body.
 
 The header records release/version/date/target/range identities and independent
 candidate/deployment/publication states. Each claim shows its ID and source evidence.
 Provenance records original/resolved refs, commit/tree/tag/merge-base IDs, repository
-state, commit-list/net-diff hashes and counts, policy/context/receipt hashes, schema and
+state, commit-list/net-diff revisions and counts, policy/context/receipt revisions, schema and
 tool version. A commit-range is labelled draft; a candidate is labelled candidate.
 
 ## Phase 6 — Build an optional sanitized player projection
@@ -230,15 +227,15 @@ both source fields and final bytes for:
 - credentials, tokens, keys, authorization headers, connection strings, secrets, and
   suspicious high-entropy values;
 - personal data, names/emails/usernames, private player/customer data, and identifiers;
-- internal issue/story IDs, commit hashes, paths, hosts/IPs/domains, logs,
+- internal issue/story IDs, commit revisions, paths, hosts/IPs/domains, logs,
   infrastructure, build/deploy internals, and security-control details; and
 - unreleased vulnerabilities/exploits, anti-cheat or abuse detection, embargoed
   content, legal/privacy matters, and unsafe workaround instructions.
 
 `SECURITY_INTERNAL` is default-deny. Ambiguous sensitive material is excluded, never
 softened speculatively. Redaction receipt `cgs.changelog-redaction/v1` contains only
-claim/input hashes, rule/version/hash, action, reason code, scanner result, and output
-hash—never removed secret/PII bytes. Pseudonymize identities in internal summaries
+claim/input revisions, rule/version/revision, action, reason code, scanner result, and output
+revision—never removed secret/PII bytes. Pseudonymize identities in internal summaries
 where policy requires it.
 
 Re-scan final public bytes. Any policy/scanner uncertainty or finding returns
@@ -247,40 +244,40 @@ SANITIZATION_BLOCKED and no player artifact. A successful draft begins
 version/date/target/candidate/deployment statuses, and never claims more availability
 than receipts prove. Never post, upload, email, message, or publish it.
 
-## Phase 7 — Optional create-only CAS persistence
+## Phase 7 — Optional create-only version and existence conflict check persistence
 
-`analyze-only` writes nothing and returns exact candidate bytes/hash in the response.
+`analyze-only` writes nothing and returns exact candidate records/revision in the response.
 `create-entry` may create one immutable new file only. The normalized target must be
 inside the authorized root, its parent must already exist, and target state must be
 ABSENT at request validation, preview, authorization, and commit. Existing files,
 entries, indexes, manifests, and history are immutable; there is no append, insert,
 revise, upsert, overwrite, truncate, normalize, delete, or rename-existing mode.
 
-Preview one mutation manifest with request/range/release/policy/context/receipt hashes,
-target path and expected ABSENT state, exact candidate hash/bytes, creator, create-only
+Preview one mutation manifest with request/range/release/policy/context/receipt revisions,
+target path and expected ABSENT state, exact candidate revision/bytes, creator, create-only
 primitive, maximum bytes, authority/expiry, and non-writes. Narrative approval is not
 mutation approval.
 
-Immediately before create, CAS the request, refs/objects/trees, repository state,
+Immediately before create, version and existence conflict check the request, refs/objects/trees, repository state,
 policies, context, receipts, candidate bytes, parent identity, and target ABSENT state.
 Use an atomic no-replace/create-new primitive; if unavailable, write nothing. If the
 target appears or any input drifts, write nothing and return BLOCKED. Flush, close,
-read back, strictly parse, and hash the created file. A post-create mismatch is
-RECOVERY_REQUIRED; report exact target/expected/actual hashes and do not overwrite or
+read back, strictly parse, and revision the created file. A post-create mismatch is
+RECOVERY_REQUIRED; report exact target/approved/observed revisions and do not overwrite or
 silently delete evidence.
 
 ## Phase 8 — Terminal result
 
-Return release/run/scope IDs; all canonical identities and source hashes; original and
+Return release/run/scope IDs; all canonical identities and source revisions; original and
 resolved refs; ancestry/topology/counts; net/revert/dedup summary; claim/category/
 evidence/unresolved records; privacy scan counts without sensitive bytes;
 version/date/target/candidate/deployment/publication states; candidate/output/target
-hashes; exact reads/non-writes; blockers; and exactly one legal next action.
+revisions; exact reads/non-writes; blockers; and exactly one legal next action.
 
 Use only:
 
 - `Artifact Status: GENERATED` — deterministic local candidate returned, zero writes;
-- `Artifact Status: CREATED` — one absent target created by CAS and verified;
+- `Artifact Status: CREATED` — one absent target created by version and existence conflict check and verified;
 - `Artifact Status: PARTIAL` — bounded truthful analysis exists but required evidence
   or classification is incomplete;
 - `Artifact Status: BLOCKED` — safe analysis/create cannot proceed; or

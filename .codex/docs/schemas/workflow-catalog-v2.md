@@ -16,7 +16,7 @@ The catalog may describe a separately configured external stage recorder only th
 - `schema` MUST equal `cgs.workflow-catalog/v2`; `schema_version` MUST equal `2`.
 - `catalog_version`, `canonical_path`, `schema_reference`, and `canonicalization` are required.
 - IDs are case-sensitive. Phase, step, transition, policy, verification, risk, and limit IDs MUST be unique in their namespaces.
-- Consumers hash exact raw catalog bytes. They MUST NOT repair, merge, choose newest, or silently upgrade an unversioned catalog.
+- Consumers validate the catalog schema and declared version. They MUST NOT repair, merge, choose newest, or silently upgrade an unversioned catalog.
 
 ## Top-level keys
 
@@ -83,7 +83,7 @@ An input with no project-workflow producer is allowed only when either:
 
 `EXTERNAL_BOUNDARY` means the project workflow set neither produces nor invokes
 that input. The consumer must independently validate its producer identity,
-authorization, canonical path, raw hash, currentness, and source binding. An
+authorization, canonical path, declared version, currentness, and source binding. An
 external-boundary input cannot prove completion of an upstream project step,
 grant write authority, or be silently treated as an internally produced schema.
 
@@ -95,7 +95,7 @@ There is no generic P1 producer for `cgs.workflow-step-completion-receipt/v2` or
 `native_evidence_schemas`. Persisted or gate-eligible completion is valid only
 when the named producer contract itself declares an exact persisted current
 artifact/receipt and the consumer verifies schema, producer identity, path, raw
-hash, source hashes, coverage, currentness, supersession, and read-back.
+version, source revisions, coverage, currentness, supersession, and read-back.
 Otherwise a persisted required step is `UNKNOWN_NO_ROUTE`; an optional step may
 be `SKIPPED_BY_POLICY` only under its explicit policy.
 
@@ -129,7 +129,7 @@ candidate schemas it binds, `persisted_and_current_required: true`,
 - the candidate producer MUST NOT create, invoke, simulate, or impersonate the
   external recorder; and
 - completion remains `UNKNOWN_NO_ROUTE` until every candidate and external
-  artifact/receipt identity, hash, currentness, persistence, eligibility, and binding
+  artifact/receipt identity, version, currentness, persistence, eligibility, and binding
   check passes.
 
 The catalog MUST NOT invent a generic review-recorder schema. An external
@@ -148,7 +148,7 @@ Accepted risk never changes evidence or prerequisite state.
 
 `stage_contract.stage_enum` is the complete ordered vocabulary. The initial-stage rule is authoritative: without a valid authority record created through the configured external recorder contract, stage is `UNKNOWN`. Artifacts and legacy `production/stage.txt` never initialize or advance stage.
 
-`authority_record` declares canonical path `production/stage/authority.json`, schema `cgs.project-stage-authority/v2`, and owner resolved from the external recorder contract. Each record binds catalog path/version/raw hash; project identity; current stage; transition ID/from/to; prior authority record path/raw hash; exact gate record ID/raw hash; external recorder owner/implementation/authorization; target commit/ref and dirty state; append-only history head; receipt ID/path/raw hash; UTC timestamp; and canonical record hash.
+`authority_record` declares canonical path `production/stage/authority.json`, schema `cgs.project-stage-authority/v2`, and owner resolved from the external recorder contract. Each record binds catalog path/version; project identity; current stage; transition ID/from/to; prior authority record path/revision; exact gate record ID/version; external recorder owner/implementation/authorization; target commit/ref and dirty state; append-only history head; receipt ID/path/version; and UTC timestamp.
 
 Receipt, continuity, target, freshness, manifest, and read-limit policies are mandatory. Missing, stale, dirty-unknown, superseded, oversized, unreadable, or contradictory evidence returns `UNKNOWN` or the declared blocker.
 
@@ -159,8 +159,8 @@ The only supported advancement boundary is `cgs.external-stage-transition-record
 A valid contract binds:
 
 - stable contract/project/owner identity, verified owner authority/scope/expiry;
-- external implementation name/version/digest;
-- exact catalog path/schema/version/raw hash;
+- external implementation name/version;
+- exact catalog path/schema/version;
 - authority-record path/schema and allowed adjacent transition IDs;
 - accepted gate schema exactly `cgs.gate-record/v2`;
 - receipt schema exactly `cgs.external-stage-transition-receipt/v1`;
@@ -169,9 +169,9 @@ A valid contract binds:
 - receipt create-only destination policy;
 - atomic commit/full rollback, crash recovery, read-back, byte/time limits, and idempotency rules.
 
-A transition request supplies the exact current conversation-produced `cgs.gate-record/v2` bytes and raw hash. The recorder independently validates record ID, transition/profile/catalog/authority identities, `PASS`, `COMPLETE` coverage, `ELIGIBLE`, current dependency hashes, source revision, dirty state, authorization, and authority preimage. It MUST NOT accept CONCERNS/FAIL/PARTIAL, accepted-risk requests, stale records, phase names, or conversation summaries.
+A transition request supplies the current conversation-produced `cgs.gate-record/v2` record. The recorder independently validates record ID/version, transition/profile/catalog/authority identities, `PASS`, `COMPLETE` coverage, `ELIGIBLE`, current dependency revisions, source revision, dirty state, authorization, and authority preimage revision. It MUST NOT accept CONCERNS/FAIL/PARTIAL, accepted-risk requests, stale records, phase names, or conversation summaries.
 
-A committed `cgs.external-stage-transition-receipt/v1` binds contract/owner/implementation/authorization; transition and gate record bytes/hash; authority pre/post bytes/hashes; prior/new history head; target revision/dirty state; exact owned field set; `COMMITTED`; rollback state `NOT_REQUIRED`; receipt path/hash; and independent read-back. Any partial, ambiguous, rejected, rolled-back, recovery-required, hash-mismatched, or unowned-field result does not advance stage.
+A committed `cgs.external-stage-transition-receipt/v1` binds contract/owner/implementation/authorization; transition and gate record IDs/versions; authority pre/post revisions; prior/new history head; target revision/dirty state; exact owned field set; `COMMITTED`; rollback state `NOT_REQUIRED`; receipt path/version; and independent read-back. Any partial, ambiguous, rejected, rolled-back, recovery-required, revision-mismatched, or unowned-field result does not advance stage.
 
 No P1 skill creates, configures, invokes, simulates, or impersonates this recorder. Missing/invalid contract or receipt returns `UNKNOWN_ADVANCEMENT_UNSUPPORTED`.
 
@@ -198,7 +198,7 @@ not eligible even when the candidate workflow itself is conversation-complete.
 
 ## Consumer algorithm
 
-1. Read and hash the canonical catalog once within limits.
+1. Read the canonical catalog once within limits and validate its schema/version.
 2. Validate schema/version, required fields, route exclusivity, command templates, artifact records, unique/contiguous IDs, references, dependency acyclicity, and transition adjacency.
 3. Bind the exact source SKILL invocation clause before presenting a command. An unresolved placeholder returns `INPUT_REQUIRED`.
 4. Read the exact authority and append-only receipt chain. Missing external recorder evidence means stage/advancement is unknown, not inferred.
@@ -207,4 +207,4 @@ not eligible even when the candidate workflow itself is conversation-complete.
 
 ## Compatibility failures
 
-Duplicate IDs, dangling references, cycles, invalid artifact keys, unresolved required command values presented as executable, route/source-contract mismatch, unknown schemas, stale hashes, ambiguous supersession, nonadjacent transitions, or a claimed project stage recorder invalidate the affected route or catalog. v1/unversioned records are not silently upgraded.
+Duplicate IDs, dangling references, cycles, invalid artifact keys, unresolved required command values presented as executable, route/source-contract mismatch, unknown schemas, stale revisions, ambiguous supersession, nonadjacent transitions, or a claimed project stage recorder invalidate the affected route or catalog. v1/unversioned records are not silently upgraded.

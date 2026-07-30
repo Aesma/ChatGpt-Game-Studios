@@ -12,10 +12,10 @@ Quality has separate axes. A result MUST NOT collapse them into one “works” 
 | QR-STRUCT | Structural conformance | exact candidate/spec bytes validated against `cgs-skill-spec/v2` | presence of a spec file |
 | QR-SEMANTIC | Semantic consistency | stable contradiction checks and exact clause references | keyword occurrence alone |
 | QR-STATIC | Instruction-level behavior | stable static assertions against bounded bytes | claiming runtime success |
-| QR-RUNTIME | Runtime behavior | current execution receipt, inputs, environment, outputs, logs, and hashes | prose, simulation, or stale run |
+| QR-RUNTIME | Runtime behavior | current execution receipt, inputs, environment, outputs, logs, and declared revisions | prose, simulation, or stale run |
 | QR-SIDEFX | Side effects | pre/post state manifests for files and external systems | “read-only” wording alone |
 | QR-RECOVERY | Timeout/recovery | bounded timeout/interruption/rollback/idempotency executions | a recovery paragraph alone |
-| QR-COMPAT | Contract compatibility | caller/callee/shared-schema matrix with exact versions and hashes | checking the callee in isolation |
+| QR-COMPAT | Contract compatibility | caller/callee/shared-schema matrix with exact versions and revisions | checking the callee in isolation |
 
 Each assertion verdict is `PASS`, `FAIL`, `WARN`, `NOT_RUN`, or `NOT_APPLICABLE`. `PASS` requires the evidence type declared by its axis. `NOT_RUN` is not PASS. Any required assertion with missing, stale, ambiguous, oversized, or unreadable evidence is `FAIL` or the skill's declared fail-closed verdict.
 
@@ -29,7 +29,7 @@ Every skill is evaluated by these stable IDs before category metrics:
 | QR-U02 — Case structure | Cases are numbered contiguously from 1, have unique stable Case IDs, and each contains Fixture, Input, Expected reads, Expected writes, Expected non-writes, Expected behavior, stable Assertions, and Case Verdict. |
 | QR-U03 — Interface reality | Every advertised command/mode/flag has a real handling path or fail-closed usage behavior; no inert interface exists. |
 | QR-U04 — Ownership | Producer, reviewer, recorder, and canonical owner boundaries are explicit; no role self-approves or crosses write ownership. |
-| QR-U05 — Typed evidence | Exact schema versions, paths, raw hashes, identities, currentness, supersession, and coverage are required where evidence is consumed. |
+| QR-U05 — Typed evidence | Exact schema versions, paths, declared revisions, identities, currentness, supersession, and coverage are required where evidence is consumed. |
 | QR-U06 — Bounded operation | Reads, waits, recursion, retries, writes, and external actions have limits and declared consequences. |
 | QR-U07 — Transaction safety | Mutating paths specify authorization, compare-and-swap/preimage checks, atomicity, rollback, idempotency, and persisted receipt as applicable. |
 | QR-U08 — Verdict honesty | Static, runtime, side-effect, and recovery conclusions stay separate; aggregation cannot upgrade unknown or not-run evidence. |
@@ -45,7 +45,7 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 | Metric | PASS criteria |
 |---|---|
 | QR-G01 — Read-only gate | Gate analysis cannot write canonical stage or source artifacts. |
-| QR-G02 — Stage authority | Versioned stage authority, transition, gate profile, target commit/ref, dirty state, current evidence, and recorder receipt are exact and hash-bound. |
+| QR-G02 — Stage authority | Versioned stage authority, transition, gate profile, target commit/ref, dirty state, current evidence, and recorder receipt are exact and version-bound. |
 | QR-G03 — Mode scope | Only declared consumers implement review mode. For `gate-check`, all four phase gates run in full and lean; solo contributes `N/A`. |
 | QR-G04 — No skipped safeguards | Mode never skips required QA, accessibility, security, evidence validation, separation, or non-waivable blockers. |
 | QR-G05 — No auto-advance | Eligibility is distinct from separately authorized stage advancement by the unique recorder. |
@@ -55,8 +55,8 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 | Metric | PASS criteria |
 |---|---|
 | QR-A01 — Read-only reviewer | Review/analysis does not mutate reviewed sources or authoritative state. |
-| QR-A02 — Bound findings | Findings have stable IDs, severity, exact source locations/hashes, and reproducible evidence. |
-| QR-A03 — Independent persistence | When durable evidence is needed, a distinct recorder persists unchanged result bytes and a hash-bound receipt. |
+| QR-A02 — Bound findings | Findings have stable IDs, severity, exact source locations and declared revisions, and reproducible evidence. |
+| QR-A03 — Independent persistence | When durable evidence is needed, a distinct recorder persists unchanged result bytes and a typed receipt that references the result ID and version. |
 | QR-A04 — Coverage honesty | Coverage, exclusions, unreadable inputs, and unsupported environments remain explicit. |
 | QR-A05 — No remediation inference | Findings or suggested patches do not claim applied/verified status without a separate authorized execution. |
 
@@ -65,7 +65,7 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 | Metric | PASS criteria |
 |---|---|
 | QR-AU01 — Decision ownership | Open design decisions follow Question → Options → Decision → Draft → Approval. |
-| QR-AU02 — Stable partial state | Skeleton/checkpoint strategy preserves stable IDs and source hashes when interruption recovery is supported. |
+| QR-AU02 — Stable partial state | Skeleton/checkpoint strategy preserves stable IDs and source revisions when interruption recovery is supported. |
 | QR-AU03 — Retrofit safety | Existing target bytes are classified and changed only through an authorized bounded transaction. |
 | QR-AU04 — Review separation | Author cannot be the independent reviewer/approval recorder of the same candidate. |
 | QR-AU05 — Canonical receipt | Authoring success is bound to exact output bytes and an owning recorder receipt when required. |
@@ -76,7 +76,7 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 |---|---|
 | QR-RD01 — Dimensions | Independent requirement, architecture, implementation, test/QA, and lifecycle dimensions are reported separately as applicable. |
 | QR-RD02 — Fail-closed aggregation | A blocking/unknown required dimension cannot be averaged away or upgraded by advisory evidence. |
-| QR-RD03 — Immutable inputs | Readiness/closure cannot rewrite requirement cores or planning hashes owned upstream. |
+| QR-RD03 — Immutable inputs | Readiness/closure cannot rewrite requirement cores or planning revisions owned upstream. |
 | QR-RD04 — Lifecycle ownership | Canonical status changes occur only through the unique tracker/state recorder with CAS, rollback, and receipt. |
 | QR-RD05 — Next route | Any next-work suggestion is derived from exact current tracker/catalog evidence and has no implicit mutation. |
 
@@ -84,7 +84,7 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 
 | Metric | PASS criteria |
 |---|---|
-| QR-P01 — Source provenance | Every output is bound to exact approved upstream artifacts, requirements, decisions, and hashes. |
+| QR-P01 — Source provenance | Every output is bound to exact approved upstream artifacts, requirements, decisions, and declared revisions. |
 | QR-P02 — Stable identities | Output IDs, membership, ordering, and cross-links are deterministic and collision-checked. |
 | QR-P03 — Bounded changeset | The complete authorized changeset has exact destinations, preimages, schemas, and rollback behavior. |
 | QR-P04 — Consumer compatibility | Every produced schema/version/path exactly matches registered consumers; changed shared schemas trigger impact analysis. |
@@ -104,8 +104,8 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 
 | Metric | PASS criteria |
 |---|---|
-| QR-SP01 — Canonical planning identity | Plan revision/hash, story-set membership/hash, tracker schema, and active sprint identity are explicit and current. |
-| QR-SP02 — Planning ownership | Only the planning owner changes plan/story-set hashes; lifecycle updates are tracker-only. |
+| QR-SP01 — Canonical planning identity | Plan revision, story-set membership/revision, tracker schema, and active sprint identity are explicit and current. |
+| QR-SP02 — Planning ownership | Only the planning owner changes plan/story-set revisions; lifecycle updates are tracker-only. |
 | QR-SP03 — Advisory mode | PR-SPRINT/PR-MILESTONE runs only in full for the declared consumer; lean/solo skip it without skipping mandatory evidence. |
 | QR-SP04 — Measured claims | Velocity, completion, capacity, and forecast claims cite reproducible source rows and formulas. |
 | QR-SP05 — Recorder transaction | Canonical sprint/tracker changes use one owner, CAS, rollback, idempotency, and a persisted receipt. |
@@ -122,7 +122,7 @@ Category metrics supplement, never replace, universal gates. A skill is evaluate
 
 A change to an invocation, verdict, path, schema, owner, completion rule, timeout, side effect, or recovery behavior requires a compatibility record with:
 
-1. changed producer clauses and exact candidate hashes;
+1. changed producer clauses and exact candidate versions or revisions;
 2. every direct caller and callee;
 3. every shared schema/catalog/guide reference;
 4. required metadata and dedicated-spec updates;

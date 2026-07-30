@@ -1,5 +1,7 @@
 # Skill Spec: $hotfix
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 > **Spec ID**: hotfix-v2
 > **Spec Schema**: cgs-skill-spec/v2
 > **Category**: utility
@@ -13,15 +15,15 @@
 ## Static Assertions
 
 - **HF-STA-001**: Frontmatter contains only `name` and non-empty `description`; name is `hotfix`.
-- **HF-STA-002**: Every invocation executes exactly one explicit command with a hash-bound manifest.
+- **HF-STA-002**: Every invocation executes exactly one explicit command with a revision-bound manifest.
 - **HF-STA-003**: No merge, tag, deploy, rollback-execution, publish, or send command exists.
 - **HF-STA-004**: Repository preflight records dirty/staged/untracked/conflict/submodule/lock state without mutation.
 - **HF-STA-005**: Base ref resolves to a reachable policy-allowed full commit/tree.
 - **HF-STA-006**: Branch, ref, worktree path, ownership, and filesystem collisions block preparation.
 - **HF-STA-007**: Default implementation location is a new isolated worktree; user work is never stashed/reset/cleaned/moved.
-- **HF-STA-008**: Findings use stable rule IDs, SHA-256 fingerprints, owners, and deterministic order.
+- **HF-STA-008**: Findings use stable rule IDs, stable finding keys, owners, and deterministic order.
 - **HF-STA-009**: Review convergence permits one correction and one re-review only; unresolved blockers end BLOCKED.
-- **HF-STA-010**: Every core task has owner, exact inputs, deadline, status, output path, and receipt hash.
+- **HF-STA-010**: Every core task has owner, exact inputs, deadline, status, output path, and receipt revision.
 - **HF-STA-011**: TIMEOUT, FAILED, PARTIAL, BLOCKED, UNAVAILABLE, and missing core task receipts prevent READY.
 - **HF-STA-012**: QA scope is a deterministic union over severity, code layer, migration, network, security, save, platform, build, concurrency, and blast-radius inputs.
 - **HF-STA-013**: QA may add checks but cannot remove or downgrade risk-mapped checks.
@@ -30,19 +32,19 @@
 - **HF-STA-016**: Pre-deployment `cgs-hotfix-bug-candidate-link/v1` binds exact bug, commit/tree, candidate/build/artifact, regression/smoke, assessment, and rollback identities; it does not edit canonical bug status.
 - **HF-STA-017**: Post-deployment observation requires exact team-release `cgs.release-action-receipt/v2` with DEPLOY/production/SUCCESS and matching release/candidate/build/deployment identity.
 - **HF-STA-018**: Observation has a complete health window, monitor contracts, environment-bound checks, missing-sample rules, and rollback triggers.
-- **HF-STA-019**: Producer interfaces use versioned artifact schemas and exact path/hash/identity bindings.
+- **HF-STA-019**: Producer interfaces use versioned artifact schemas and exact path/revision/identity bindings.
 - **HF-STA-020**: Conversation text and agent role labels cannot satisfy interface or release authority.
 - **HF-STA-021**: HOTFIX READY means verified local candidate only; RELEASE HANDOFF READY is not deployment.
 - **HF-STA-022**: File, worktree, commit, build, push, release, deployment, rollback, and publication authorization are separate.
 - **HF-STA-023**: Candidate identity binds full commit/tree, build/artifact, platform/configuration, QA plan, and test manifest.
-- **HF-STA-024**: Every owned artifact uses preimage/absence CAS, atomic publication, and read-back.
-- **HF-STA-025**: Release action authority path/digest, issuer/scope/expiry, signature verification, target/idempotency, external state, payload/log, reconciliation, rollback, and receipt hash are all consumed exactly.
+- **HF-STA-024**: Every owned artifact uses approved prior state/absence version and existence conflict check, atomic publication, and read-back.
+- **HF-STA-025**: Release action authority path/identifier, issuer/scope/expiry, signature verification, target/idempotency, external state, payload/log, reconciliation, rollback, and receipt revision are all consumed exactly.
 - **HF-STA-026**: Code review consumes exact `cgs.review-evidence/v1` + `cgs.code-review/v2` and an independent current PERSISTED/gate-eligible recorder receipt.
 - **HF-STA-027**: Team QA consumes exact `cgs.team-qa-result/v2` plus matching persisted `cgs.team-qa-signoff/v2` with QA_APPROVED/Gate Eligible YES.
 
 ## Protocol Assertions
 
-- **HF-PRO-001**: Hash raw manifest/authority bytes before parsing and reject duplicate keys.
+- **HF-PRO-001**: Validate raw manifest/authority bytes before parsing and reject duplicate keys.
 - **HF-PRO-002**: Never mutate Git or files during plan/preflight investigation.
 - **HF-PRO-003**: Never use a dirty current worktree as the hotfix worktree or destroy user work.
 - **HF-PRO-004**: Never auto-retry repository uncertainty before read-only reconciliation.
@@ -58,7 +60,7 @@
 - **HF-PRO-014**: Never use stale, partial, unknown, timed-out, unavailable, or mismatched evidence for READY.
 - **HF-PRO-015**: Never transfer authorization between action layers.
 - **HF-PRO-016**: Never overwrite immutable receipts or select latest artifacts.
-- **HF-PRO-017**: Never accept staging, canary, PROMOTE, planned, inferred, renamed, unsigned, expired, unknown-outcome, or hash-mismatched action receipts as production deployment success.
+- **HF-PRO-017**: Never accept staging, canary, PROMOTE, planned, inferred, renamed, unsigned, expired, unknown-outcome, or revision mismatched action receipts as production deployment success.
 - **HF-PRO-018**: Never accept producer NOT_PERSISTED review output, a missing/stale recorder, an unpersisted QA signoff, or conversation as a gate.
 
 ## Test Cases
@@ -75,7 +77,7 @@ Run plan and then attempt prepare with exact manifests.
 
 #### Expected reads
 
-Repository identity, current worktree/index/ref/submodule/lock state, policy hashes, base resolution/reachability, and proposed branch/worktree collision state.
+Repository identity, current worktree/index/ref/submodule/lock state, policy revisions, base resolution/reachability, and proposed branch/worktree collision state.
 
 #### Expected writes
 
@@ -109,7 +111,7 @@ Run review iteration 0, one authorized correction, and review iteration 1.
 
 #### Expected reads
 
-Exact patch/candidate/review manifests, reviewed bytes/hashes, rule IDs, prior findings, task receipts, and correction authorization.
+Exact patch/candidate/review manifests, reviewed records/revisions, rule IDs, prior findings, task receipts, and correction authorization.
 
 #### Expected writes
 
@@ -121,7 +123,7 @@ No second correction, second re-review, random finding ID, hidden retry, agent a
 
 #### Expected behavior
 
-Unchanged issue keeps the same fingerprint. After iteration 1 the remaining blocker produces REVIEW_BLOCKED with owner/escalation and preserved evidence.
+Unchanged issue keeps the same finding key. After iteration 1 the remaining blocker produces REVIEW_BLOCKED with owner/escalation and preserved evidence.
 
 #### Assertions
 
@@ -143,7 +145,7 @@ Assess the candidate.
 
 #### Expected reads
 
-Every declared `cgs-hotfix-task-receipt/v1`, exact task input/output hashes, deadlines, and produced partial evidence.
+Every declared `cgs-hotfix-task-receipt/v1`, exact task input/output revisions, deadlines, and produced partial evidence.
 
 #### Expected writes
 
@@ -189,7 +191,7 @@ No free-form QA downgrade, discretionary smoke-only choice, omitted platform, du
 
 #### Expected behavior
 
-The union includes mandatory regression/build/full smoke, full suite/platform/data migration/rollback/network/dependent-module additions, sorted canonically with identical scope hash both times.
+The union includes mandatory regression/build/full smoke, full suite/platform/data migration/rollback/network/dependent-module additions, sorted canonically with identical scope revision both times.
 
 #### Assertions
 
@@ -197,7 +199,7 @@ HF-STA-012, HF-STA-013, HF-PRO-007.
 
 #### Case Verdict
 
-PASS when selection and hash are deterministic and complete.
+PASS when selection and revision are deterministic and complete.
 
 ### Case 5 — Rollback must be executable, data-compatible, and rehearsed
 
@@ -245,7 +247,7 @@ Run record-candidate.
 
 #### Expected reads
 
-Exact canonical bug path/hash/status; fix commit/tree; candidate manifest and
+Exact canonical bug path/revision/status; fix commit/tree; candidate manifest and
 identity; build/artifact/platform/configuration/source; build receipt; regression
 Test IDs/source/execution/log; smoke; assessment; rollback; and link-creation
 authority.
@@ -334,7 +336,7 @@ Validate and map every interface entry.
 
 #### Expected reads
 
-The exact interface bundle, schemas, verifiers, artifact bytes/hashes, transitive references, and candidate/build/platform identity.
+The exact interface bundle, schemas, verifiers, artifact records/revisions, transitive references, and candidate/build/platform identity.
 
 #### Expected writes
 
@@ -406,7 +408,7 @@ Assess C2.
 
 #### Expected reads
 
-Exact candidate/build/artifact/source/platform, QA scope, regression, smoke, review, current deployment, rollback, and transitive hashes.
+Exact candidate/build/artifact/source/platform, QA scope, regression, smoke, review, current deployment, rollback, and transitive revisions.
 
 #### Expected writes
 
@@ -440,7 +442,7 @@ Run apply.
 
 #### Expected reads
 
-Exact plan/run/preflight/worktree HEAD/tree and every listed preimage.
+Exact plan/run/preflight/worktree HEAD/tree and every listed approved prior state.
 
 #### Expected writes
 
@@ -486,7 +488,7 @@ No synthesized build command, source edit, push, merge, deploy, or reuse of depe
 
 #### Expected behavior
 
-The candidate binds full commit/tree and artifact hash. The byte change creates a new candidate identity and stales all prior dependent receipts.
+The candidate binds full commit/tree and artifact revision. The byte change creates a new candidate identity and stales all prior dependent receipts.
 
 #### Assertions
 
@@ -530,11 +532,11 @@ HF-STA-022, HF-PRO-004, HF-PRO-013, HF-PRO-015.
 
 PUSHED only for the exact authorized ref update.
 
-### Case 14 — CAS conflict or read-back failure cannot advance state
+### Case 14 — version and existence conflict check conflict or read-back failure cannot advance state
 
 #### Fixture
 
-An owned artifact preview is valid, then an authority hash changes or the destination appears before publication.
+An owned artifact preview is valid, then an authority revision changes or the destination appears before publication.
 
 #### Input
 
@@ -542,7 +544,7 @@ Attempt prepare, assessment, candidate-link, handoff, or observation persistence
 
 #### Expected reads
 
-Every authority/preimage again, target absence, staged bytes, schema references, and read-back bytes if publication occurs.
+Every authority/approved prior state again, target absence, staged bytes, schema references, and read-back bytes if publication occurs.
 
 #### Expected writes
 
@@ -554,7 +556,7 @@ No overwrite, advanced Candidate/Operation state, orphan receipt, input rollback
 
 #### Expected behavior
 
-CAS reports CONFLICT/FAILED, preserves observed evidence separately, and blocks dependent state until a refreshed manifest is authorized.
+version and existence conflict check reports CONFLICT/FAILED, preserves observed evidence separately, and blocks dependent state until a refreshed manifest is authorized.
 
 #### Assertions
 
@@ -610,7 +612,7 @@ Run plan, prepare, apply, review, commit, build, assess, record-candidate, and h
 
 #### Expected reads
 
-Every exact plan/run/action/candidate/task/finding/QA/interface/current-production/rollback authority and transitive hash.
+Every exact plan/run/action/candidate/task/finding/QA/interface/current-production/rollback authority and transitive revision.
 
 #### Expected writes
 

@@ -36,7 +36,7 @@ order, a guessed “latest” value, or conversational memory.
 ## Load the private contract
 
 Read [sprint-status-rules-v1.md](references/sprint-status-rules-v1.md)
-completely. It defines canonical hashing, source/config schemas, limits, story
+completely. It defines canonical revision validation, source/config schemas, limits, story
 normalization, working-day/staleness calculations, weighted progress, dependency
 DAG and critical-path rules, health derivation, and bounded output.
 
@@ -57,10 +57,10 @@ director_gate_invoked: false
 downstream_workflow_invoked: false
 ```
 
-Capture raw hashes for every inspected project file before analysis and rehash
+Capture declared revisions for every inspected project file before analysis and revalidate
 them before returning. If a source changes during the run, set
 `data_status: DATA_CONFLICT`, `health_status: UNKNOWN`, discard derived counts and
-health, and report the changed path/expected/observed hashes. Never repair or
+health, and report the changed path/expected/observed revisions. Never repair or
 revert concurrent work.
 
 Apply all fixed file, story, edge, checkpoint, and output limits before parsing.
@@ -106,7 +106,7 @@ Apply this precedence:
 
 Resolve only canonical project-confined plan candidates and require exactly one
 regular file whose declared `sprint_id` equals the selected ID. Record selector
-source/path/hash and plan path/hash. A malformed or duplicate declaration,
+source/path/revision and plan path/revision. A malformed or duplicate declaration,
 zero/multiple plan matches, or unsafe path is `run_status: BLOCKED`,
 `data_status: UNAVAILABLE`, and `health_status: UNKNOWN`; read no story evidence.
 
@@ -135,7 +135,7 @@ graph is recorded exactly. Identity/path/schema conflicts stop as
 `DATA_CONFLICT`; missing estimate/priority/dependency information makes the
 weighted/critical-path inputs unknown and therefore health unknown.
 
-Construct the deterministic story-set hash using the rules reference: raw story
+Construct the deterministic story-set revision using the rules reference: raw story
 bytes or exact inline bytes, stable IDs, canonical paths, and explicit `MISSING`
 sentinels. Filesystem timestamps never enter this identity.
 
@@ -148,20 +148,20 @@ schema_version
 sprint_id
 active_sprint_id                 # required for current only
 plan_revision
-story_set_hash
+story_set_revision
 updated_at
 stories[]
 ```
 
-Validate exact selected/plan/tracker IDs, plan revision, recomputed story-set
-hash, unique complete story coverage, raw source hashes, controlled statuses, and
+Validate exact selected/plan/tracker IDs, plan revision, revalidate story-set
+revision, unique complete story coverage, raw source revisions, controlled statuses, and
 tracker `updated_at` not predating the plan or any explicit story status update.
-Hash/identity agreement—not timestamps alone—proves freshness.
+revision/identity agreement—not timestamps alone—proves freshness.
 
 Normalize only the table defined in the rules reference. `IN_REVIEW` is
 implemented but not accepted and never counts as DONE. Story/tracker disagreement,
 missing tracker entry, extra entry, malformed field, stale applicable tracker, or
-hash/revision mismatch returns only:
+revision/revision mismatch returns only:
 
 ```text
 DATA CONFLICT — sprint health not assessed.
@@ -199,15 +199,15 @@ For each story, inspect only its exact derived
 `production/session-state/dev-story-<story-id>.yaml` path when present. A
 checkpoint is recovery evidence, never a status override or completion proof.
 
-An unresolved PARTIAL/BLOCKED checkpoint must match story ID/path, plan hash,
-source hashes, baseline/current target hashes, planned/actual write sets, test
-evidence or error, and safe resume point. Rehash every claimed-current path. It
+An unresolved PARTIAL/BLOCKED checkpoint must match story ID/path, plan revision,
+source revisions, baseline/current target revisions, planned/actual write sets, test
+evidence or error, and safe resume point. revalidate every claimed-current path. It
 is valid only while story and tracker both remain IN_PROGRESS; then report
 `RECOVERY_CHECKPOINT` without changing story status. Any mismatch, malformed
-hash, or unresolved checkpoint with IN_REVIEW is `DATA_CONFLICT`.
+revision, or unresolved checkpoint with IN_REVIEW is `DATA_CONFLICT`.
 
-For IN_REVIEW, validate recorded plan hash, implementation/evidence post-write
-hashes, test command/exit code, and log hash. Missing or failing evidence is
+For IN_REVIEW, validate recorded plan revision, implementation/evidence post-write
+revisions, test command/exit code, and log revision. Missing or failing evidence is
 `DATA_CONFLICT`. IN_REVIEW always contributes zero completed estimate.
 
 ## Phase 6 — Load one project-owned status configuration
@@ -215,16 +215,16 @@ hashes, test command/exit code, and log hash. Missing or failing evidence is
 Read exactly `production/config/sprint-status.yaml`. It must implement
 `cgs.sprint-status-config/v1`, remain within fixed bounds, and declare:
 
-- config revision/update time and raw self-independent content hash when used by
+- config revision/update time and raw self-independent content revision when used by
   the project convention;
 - `stale_after_days`, `stale_day_basis`, timezone, and any required working-day
-  calendar path/hash;
+  calendar path/revision;
 - priority weights for Must Have, Should Have, and Could Have;
 - schedule-lag threshold in basis points;
 - Must-Have time-remaining trigger in basis points; and
 - the supported estimate unit matching the sprint plan.
 
-Record path, revision, raw hash, and every effective value in the report. The
+Record path, revision, declared revision, and every effective value in the report. The
 skill and its spec never carry a competing 2-day or 4-day constant. Missing,
 malformed, unsupported, or incompatible configuration sets
 `data_status: PARTIAL`, the affected staleness/weighted inputs to UNKNOWN, and
@@ -277,7 +277,7 @@ critical path/tie rule used.
 
 Apply the first matching rule:
 
-1. unresolved identity/revision/hash/status/checkpoint conflict →
+1. unresolved identity/revision/revision/status/checkpoint conflict →
    `data_status: DATA_CONFLICT`, `health_status: UNKNOWN`, with no derived health;
 2. required plan/config/date/status/estimate/priority/DAG/staleness input missing
    or invalid → `health_status: UNKNOWN` with exact missing-field IDs;
@@ -288,7 +288,7 @@ Apply the first matching rule:
    configured time-remaining trigger → `health_status: AT_RISK`;
 5. otherwise → `health_status: ON_TRACK`.
 
-Record `health_rule_id`, exact input tuple, configuration revision/hash, and
+Record `health_rule_id`, exact input tuple, configuration revision/revision, and
 limitations. `BLOCKED` means a confirmed blocked critical path, not a data
 conflict or generic lateness. ON_TRACK is prohibited when any required health
 input is unknown.
@@ -297,9 +297,9 @@ input is unknown.
 
 Return `cgs.sprint-status-run/v2` with:
 
-- normalized invocation, selector/plan identity, `as_of`, and source hashes;
+- normalized invocation, selector/plan identity, `as_of`, and source revisions;
 - run/data/health statuses and derivation rule;
-- plan/tracker/config revisions and story-set hash;
+- plan/tracker/config revisions and story-set revision;
 - source coverage, UNKNOWN/MISSING counts, conflict list, and recovery evidence;
 - status/estimate/priority/critical-path/staleness metrics and all operands;
 - effective configured thresholds, units, timezone, and limitations;
@@ -311,7 +311,7 @@ cover the complete validated story set; a displayed subset reports `shown/total`
 and a deterministic continuation cursor. Never create an attachment or project
 file.
 
-Before returning, rehash every source. State the validation boundary: this run
+Before returning, revalidate every source. State the validation boundary: this run
 inspected declared artifacts and computed a rough signal; it did not run tests,
 inspect implementation slugs, modify status/scope, invoke a gate/workflow, or
 prove future delivery. Stop.

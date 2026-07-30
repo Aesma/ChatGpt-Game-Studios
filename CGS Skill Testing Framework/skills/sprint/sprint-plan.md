@@ -35,16 +35,16 @@ Verdicts: `COMPLETE`, `COMPLETE — no changes required`, or `BLOCKED`.
   cancel-from-scope decision with preserved origin evidence.
 - [ ] Tracker rows separate stable `story_id` from canonical project-relative
   `file`, and both are uniqueness/existence checked.
-- [ ] Tracker writes use one logical recorder with expected revision, raw hash,
-  plan revision, story-set hash, field ownership, and stable event ID.
+- [ ] Tracker writes use one logical recorder with expected revision, declared revision,
+  plan revision, story-set revision, field ownership, and stable event ID.
 - [ ] The normative plan declares `cgs.sprint-plan/v2`; the tracker declares
   `cgs.sprint-tracker/v2`; both expose identical `start_date`, `end_date`, IANA
   `timezone`, `estimate_unit`, and complete `stories[]` identity.
-- [ ] Both schemas bind one current capacity receipt ID/path/revision/raw hash and
+- [ ] Both schemas bind one current capacity receipt ID/path/revision/declared revision and
   identical integer `total/committed/reserved/released/remaining` operands where
   `remaining = total - committed - reserved + released`.
-- [ ] Tracker `plan_file`, exact raw `plan_sha256`, `plan_revision`, and
-  `story_set_hash` bind the same final `cgs.sprint-plan/v2` bytes.
+- [ ] Tracker `plan_file`, exact declared `plan_file_revision`, `plan_revision`, and
+  `story_set_revision` bind the same final `cgs.sprint-plan/v2` bytes.
 - [ ] Tracker declares `sprint_state: ACTIVE`, a stable `lifecycle_owner`, and
   `lifecycle_recorder: cgs.sprint-tracker/v2`; these fields are recorder-owned
   and are never inferred by consumers.
@@ -52,15 +52,13 @@ Verdicts: `COMPLETE`, `COMPLETE — no changes required`, or `BLOCKED`.
   provenance from authoring `must-have|should-have|nice-to-have`.
 - [ ] Every tracker row has an explicit status-update instant and provenance;
   retained/carry rows preserve their prior values and new admission binds the
-  activation event plus exact story hash.
+  activation event plus exact story revision.
 - [ ] Update mode resolves exactly one `active_sprint_id` from explicit state,
   session, stage, and milestone declarations and never uses recency.
 - [ ] PR-SPRINT findings have stable IDs and at most one directed revision/rerun.
 - [ ] QA findings, producer findings, carryover, and final scope resolve before
   preview and authorization.
-- [ ] Completion requires exact post-write verification of plan, tracker revision,
-  event ID, ordered story set, canonical story paths, raw/core story hashes, and
-  readiness record/receipt/currentness identities.
+- Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 - [ ] Contains `COMPLETE`, `BLOCKED`, and at least two numbered phase headings.
 
 ---
@@ -74,10 +72,10 @@ Verdicts: `COMPLETE`, `COMPLETE — no changes required`, or `BLOCKED`.
   `AUTHOR_COMPLETE` artifacts with valid dependencies and fitting estimates.
 - Each has exactly one persisted current `READY` record and one matching recorder
   receipt proving `implementation_gate_eligible: true` for the exact story bytes,
-  core hash, current source closure, checker/ruleset, and resolved review mode.
+  core revision, current source closure, checker/ruleset, and resolved review mode.
 - The prior sprint has no open work.
 - A canonical QA plan exists; review mode is `lean`.
-- Both final targets have known preimages.
+- Both final targets have known prior states.
 
 ### Input
 
@@ -103,16 +101,16 @@ the recorder transaction.
 - [ ] New rows start canonical `ready_for_dev` without conflating lifecycle and
   priority.
 - [ ] Plan and tracker share sprint ID, tracker revision, plan revision,
-  story-set hash, and timestamp.
+  story-set revision, and timestamp.
 - [ ] Plan/tracker schema versions, dates, IANA timezone, estimate unit, canonical
   priorities, integer estimates, owners, and dependency arrays validate.
 - [ ] `sprint_state: ACTIVE`, stable lifecycle owner/recorder, active sprint ID,
-  capacity receipt identity, raw hash/revision, exact unit, and recomputed
+  capacity receipt identity, declared revision/revision, exact unit, and recomputed
   operands agree in the pair.
 - [ ] Each tracker row has controlled status plus `status_updated_at` and exact
   `status_update_provenance`.
 - [ ] Sprint-plan invokes neither readiness evaluation nor its recorder.
-- [ ] `COMPLETE` appears only after both exact final hashes verify.
+- [ ] `COMPLETE` appears only after both exact final revisions verify.
 
 ---
 
@@ -332,10 +330,10 @@ prior `status_updated_at` plus `status_update_provenance`.
   stable ID `STORY-a1b2c3d4e5f60708`, never-reused slot `S007`, and canonical path
   `production/epics/combat/story-007-parry.md`.
 - The matching file is `cgs.story/v2`, `AUTHOR_COMPLETE`, and reproduces registry
-  identity/revision/status plus raw/core hashes. Title punctuation differs from
+  identity/revision/status plus raw/core revisions. Title punctuation differs from
   filename slug but identity fields agree.
 - A current persisted readiness record and recorder receipt bind the same ID/path/
-  hashes and prove implementation eligibility.
+  revisions and prove implementation eligibility.
 
 ### Input
 
@@ -348,8 +346,8 @@ prior `status_updated_at` plus `status_update_provenance`.
 ### Expected behavior
 
 The tracker stores `story_id: STORY-a1b2c3d4e5f60708` and the exact canonical
-project-relative file separately. Registry revision/payload hash, story raw/core
-hashes, readiness record/receipt IDs/hashes, and eligibility are copied unchanged
+project-relative file separately. Registry revision/payload revision, story raw/core
+revisions, readiness record/receipt IDs/revisions, and eligibility are copied unchanged
 into the planning evidence and revalidated before and after commit.
 
 ### Assertions
@@ -381,7 +379,7 @@ resolution, or a path/record/receipt/stale-key source changed after preview.
 ### Expected behavior
 
 The skill reports the exact registry/story/readiness identity/path conflict. A
-pre-preview conflict blocks scope drafting; a post-preview change fails the CAS
+pre-preview conflict blocks scope drafting; a post-preview change fails the atomic conflict check
 preflight and invalidates authorization.
 
 ### Assertions
@@ -413,14 +411,14 @@ preflight and invalidates authorization.
 ### Expected behavior
 
 The recorder precondition is `expected_tracker_revision: ABSENT` and
-`expected_tracker_sha256: ABSENT`; the candidate tracker uses
+`expected_tracker_revision: ABSENT`; the candidate tracker uses
 `schema_version: cgs.sprint-tracker/v2`, `tracker_revision: 1`, and a stable event
 ID. Its matching plan uses `schema_version: cgs.sprint-plan/v2`.
 
 ### Assertions
 
 - [ ] The tracker has schema version, revision, event ID, plan revision, and
-  story-set hash.
+  story-set revision.
 - [ ] Plan and tracker contain the same `start_date`, `end_date`, IANA timezone,
   estimate unit, and complete stable STORY-* set.
 - [ ] Direct tracker replacement outside the recorder is forbidden.
@@ -433,10 +431,10 @@ ID. Its matching plan uses `schema_version: cgs.sprint-plan/v2`.
 
 ### Fixture
 
-- Active tracker revision is 8 with captured raw SHA-256, plan revision, and
-  story-set hash.
-- Another actor changes either raw bytes, revision, plan revision, or story-set
-  hash after preview but before commit.
+- Active tracker revision is 8 with captured declared revision, plan revision, and
+  story-set revision.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+  revision after preview but before commit.
 
 ### Input
 
@@ -513,7 +511,7 @@ bytes, and blocks requests outside declared field ownership.
 
 ### Expected behavior
 
-The skill records each selector path/value/hash, resolves sprint 006, and updates
+The skill records each selector path/value/revision, resolves sprint 006, and updates
 that exact pair regardless of file timestamps or higher-numbered historical plans.
 
 ### Assertions
@@ -678,7 +676,7 @@ converged candidate.
 ### Assertions
 
 - [ ] `gate_count` is 2 and `producer_rerun_count` is 1.
-- [ ] The pre-revision approval, if any, is not reused.
+- [ ] The prior-state approval, if any, is not reused.
 - [ ] Both drafts retain the same revised ordered story set.
 - [ ] Final finding history remains auditable.
 
@@ -721,14 +719,7 @@ never keeps revising until a favorable answer appears.
 
 - A fully ordered, carryover-resolved, QA- and producer-reviewed pair is
   authorized.
-- Run independently with a changed story hash, changed selector, changed target
-  preimage, changed `STORIES.md` revision/payload, changed story core hash,
-  stale/missing readiness record or receipt, changed readiness-registry head or
-  stale-key source, plan/tracker schema/date/timezone/estimate-unit mismatch,
-  changed capacity receipt ID/path/revision/raw hash/unit/operand, unknown priority,
-  missing row status-update timestamp/provenance, tracker
-  recorder revision conflict, temporary hash mismatch, second-operation failure,
-  or post-write canonical-path/hash mismatch.
+- Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ### Input
 
@@ -737,14 +728,14 @@ never keeps revising until a favorable answer appears.
 ### Expected writes
 
 - Preflight conflict variants: none.
-- Mid-transaction failure variants: both preimages are restored; only authorized
+- Mid-transaction failure variants: both prior states are restored; only authorized
   transaction temporaries may have been touched and are reported.
 - Success control: exactly the two final targets.
 
 ### Expected behavior
 
 Every stale input invalidates the frozen transaction. Mid-transaction failure
-restores the pair. Only a success control with matching final hashes, incremented
+restores the pair. Only a success control with matching final revisions, incremented
 tracker revision, event ID, ordered set, canonical source paths, and still-current
 persisted implementation eligibility can complete.
 
@@ -752,7 +743,7 @@ persisted implementation eligibility can complete.
 
 - [ ] One-file success is never reported as sprint success.
 - [ ] Changed evidence requires rebuild, invalidated checks, and a new preview.
-- [ ] Final verification covers both targets and every selected source path/hash.
+- [ ] Final verification covers both targets and every selected source path/revision.
 - [ ] Final verification covers exact schema versions, canonical priorities,
   date/timezone/unit/capacity equality, and per-row status update provenance.
 - [ ] All terminal branches report gate, producer-rerun, and write counts.
@@ -766,7 +757,7 @@ persisted implementation eligibility can complete.
 | SP-005 | Dependency-valid frontier, layer then canonical priority then stable ID, capacity fit | 1–4 |
 | SP-006 | Explicit exhaustive carry/defer/cancel-from-scope table with preserved origin/status | 5–7, 20 |
 | SP-007 | Stable story ID plus unique canonical existing project-relative path | 8–9, 20 |
-| SP-008 | One recorder, full CAS tuple, monotonic revision, event idempotency, field ownership | 10–12, 20 |
+| SP-008 | One recorder, full atomic conflict check tuple, monotonic revision, event idempotency, field ownership | 10–12, 20 |
 | SP-009 | Unique stable active-sprint selectors and exact plan/tracker match; no recency | 13–15, 20 |
 | SP-010 | Stable producer finding IDs and at most one directed revision/rerun | 16–20 |
 
@@ -779,7 +770,7 @@ persisted implementation eligibility can complete.
   authorization.
 - [ ] Review-mode configuration and prior sprint/story artifacts are outside the
   authorized final path set.
-- [ ] The final preview includes every target, preimage/CAS value, candidate hash,
+- [ ] The final preview includes every target, prior state/atomic conflict check value, candidate revision,
   and exact content or complete diff.
 - [ ] Status reporting is handed off to `$sprint-status`.
 - [ ] Next steps never offer `$dev-story` without a current persisted record and
@@ -796,3 +787,11 @@ persisted implementation eligibility can complete.
   delegation, injected concurrent writes, filesystem-atomicity guarantees, and
   migrations of separate consumer skills require integration evidence outside
   this specification.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

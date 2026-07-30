@@ -40,18 +40,18 @@ art sources, provenance/license policy/records, production-state sources, and
 effective limits.
 
 Every declared input has stable artifact/asset ID, canonical project-relative
-path, exact raw-byte SHA-256, schema/version, relationship, and expected status or
+path, exact declared revision, schema/version, relationship, and expected status or
 explicit absence. Resolve literal and real paths without following asset links.
-Duplicate ID/path, path escape, unapproved alias, hash mismatch before lock,
+Duplicate ID/path, path escape, unapproved alias, revision mismatch before lock,
 duplicate mapping key, unsupported schema, ambiguous engine/target/build, or an
 untrustworthy inventory identity makes the manifest invalid before adapters run.
 
 The asset inventory is the only scope authority. It contains stable asset ID,
-canonical path, exact raw hash/size, detected signature/container, declared type,
-category, target, import metadata path/hash or `ABSENT`, materialization/LFS state,
+canonical path, exact declared revision/size, detected signature/container, declared type,
+category, target, import metadata path/revision or `ABSENT`, materialization/LFS state,
 and provenance/license IDs. A registered inventory-completeness receipt binds all
-declared roots/exclusions, generator adapter/version/hash, ordered complete
-candidate digest, and inventory output digest. Missing/stale/incomplete receipt
+declared roots/exclusions, generator adapter/version/revision, ordered complete
+candidate revision, and inventory output revision. Missing/stale/incomplete receipt
 makes inventory coverage incomplete even when every listed item passes.
 
 Never recursively discover undeclared roots. Re-enumerate only declared roots at
@@ -79,9 +79,9 @@ max_total_adapter_wall_ms: 600000
 ```
 
 Sort complete identities by channel, stable asset/artifact ID or null, then
-canonical path. Hash the complete identity sequence. Retain bounded detailed rows;
+canonical path. Record an explicit revision for the complete identity sequence. Retain bounded detailed rows;
 for omitted rows record exact total/omitted count, first/last omitted sort key, and
-SHA-256 of the omitted canonical sequence. Do not inspect or judge omitted rows.
+the stable first and last omitted business keys. Do not inspect or judge omitted rows.
 Emit one `OVER_LIMIT` coverage finding and force `PARTIAL` absent a separately
 conclusive current HARD failure.
 
@@ -91,7 +91,7 @@ never establish complete coverage or `COMPLIANT`.
 
 ## 4. Deterministic rule precedence
 
-Load actual sources and raw hashes in this order:
+Load actual sources and raw revisions in this order:
 
 1. applicable `AGENTS.md` files root-to-target; the closest instruction wins the
    same explicit governance rule key;
@@ -112,10 +112,10 @@ relax technical safety or license obligations. Role opinion, model memory, prior
 report, common practice, and specialist consultation are not rule sources.
 
 Each normalized rule contains stable rule ID, domain, source artifact/path/raw
-hash/stable locator/schema, authority, applicable asset types, target/platform/
+revision/stable locator/schema, authority, applicable asset types, target/platform/
 configuration, typed expected value/schema, registered operator, adapter class and
 minimum version, `HARD|ADVISORY` severity, explicit N/A predicate, and remediation
-owner. Duplicate conflicting IDs, missing ID/source/hash/operator/owner, ambiguous
+owner. Duplicate conflicting IDs, missing ID/source/revision/operator/owner, ambiguous
 precedence, unreadable/stale required source, or missing compatible adapter makes
 coverage incomplete. Identical duplicates may deduplicate only while preserving
 all provenance.
@@ -123,7 +123,7 @@ all provenance.
 ## 5. Versioned adapter contract
 
 The adapter registry declares stable class/ID/semantic version, executable/tool
-identity and hash, supported engine/platform/configuration, signatures/containers/
+identity and revision, supported engine/platform/configuration, signatures/containers/
 schemas/operators, typed argv array, project-read-only mount, separate bounded
 scratch root, no network, timeout/output cap, no project/import/cache mutation,
 structured receipt/parser version, deterministic normalization, result semantics,
@@ -140,15 +140,15 @@ generate cache, contact network, or write project bytes, do not run and report
 ```text
 receipt ID/schema
 project/target/build/platform/configuration
-asset/import/rule IDs and raw hashes
-adapter class/ID/version/executable hash
-argv-array digest, canonical cwd and sandbox-policy hash
+asset/import/rule IDs and raw revisions
+adapter class/ID/version/executable revision
+argv-array revision, canonical cwd and sandbox-policy revision
 started/ended/deadline, exit/timeout state
-structured output/schema/parser version and digest
-bounded stdout/stderr digests and truncation state
-before/after project/import/cache snapshot digests
+structured output/schema/parser version and revision
+bounded stdout/stderr revisions and truncation state
+before/after project/import/cache snapshot revisions
 result: PASS | FAIL | NOT_RUN | UNSUPPORTED | PARSE_ERROR | TIMEOUT | INVALID_RECEIPT
-limitations and receipt hash
+limitations and receipt revision
 ```
 
 `PASS` proves an applicable rule for exact current bytes/target. `FAIL` is
@@ -174,21 +174,21 @@ syntax_id: <stable engine-specific syntax ID>
 syntax_version: <exact version>
 engine_range: <supported engine versions>
 source_types: [<scene/prefab/resource/config/package types>]
-parser_id_version_hash: <exact parser identity>
+parser_identity: <exact parser identity>
 reference_token_kind: PATH | UID | GUID | ADDRESS | SERIALIZED_ID | REMAP | REGISTRY_KEY | PACKAGE_ID
-normalizer_id_version_hash: <exact normalized-ID contract>
+normalizer_identity: <exact normalized-ID contract>
 dynamic_coverage: STATIC_ONLY | DECLARED_ROOTS | EXHAUSTIVE_FOR_TARGET
 ```
 
 `cgs.asset-reference-graph/v1` binds resolver ID/version/executable/parser/
-normalizer hashes; engine/target/build/artifact/inventory/dependency-manifest
+normalizer revisions; engine/target/build/artifact/inventory/dependency-manifest
 identities; supported/unsupported syntax set; declared dynamic roots/registries/
-packages; exact parsed edges; complete edge count/digest; start/end/result/log
-hash; and coverage/limitations.
+packages; exact parsed edges; complete edge count/revision; start/end/result/log
+revision; and coverage/limitations.
 
-Every edge contains stable edge ID, syntax ID/version, source artifact ID/path/hash,
-stable structural locator, raw reference-token hash (not required to expose secret
-or huge text), normalized ID kind/value, edge kind, resolved asset ID/path/hash or
+Every edge contains stable edge ID, syntax ID/version, source artifact ID/path/revision,
+stable structural locator, raw reference-token revision (not required to expose secret
+or huge text), normalized ID kind/value, edge kind, resolved asset ID/path/revision or
 explicit absent target, and target/build inclusion state. The normalized asset ID,
 not display path or source string, is the graph join key.
 
@@ -217,10 +217,10 @@ applicable HARD/ADVISORY policy rule. Never recommend automatic deletion.
 
 ## 7. Stable findings and severity
 
-Each finding follows the main `AAF-...` schema and is derived from canonical JSON
+Each finding follows the main `AAF-...` schema and is assembled from declared stable business fields
 of project ID, finding category, stable asset/rule/target IDs, stable provenance/
 license/reference/production record IDs, and platform/configuration. Paths,
-display names, wording, line, raw/content hashes, expected/actual values, severity,
+display names, wording, line, raw/content revisions, expected/actual values, severity,
 confidence, status, run ID, timestamp, and recommendation are excluded from
 identity. Preserve these values as evidence, not identity.
 
@@ -232,9 +232,9 @@ Severity comes only from the exact effective rule:
 - `COVERAGE`: missing/unverified/unsupported evidence yields PARTIAL, not a
   fabricated violation.
 
-Every finding contains complete evidence hashes/receipts, owner, open/current
+Every finding contains complete evidence revisions/receipts, owner, open/current
 status, objective closure condition, result, and limitation. Incompatible evidence
-under one fingerprint is a coverage conflict and forces PARTIAL absent a separate
+under one stable business key is a coverage conflict and forces PARTIAL absent a separate
 current HARD failure.
 
 ## 8. Deterministic aggregation
@@ -267,8 +267,7 @@ repair, revert, delete, or attribute the change.
 
 The analyzer never writes a report or invokes a recorder. Its conversation
 envelope is `NOT_PERSISTED`/not durable. A separate recorder would require fresh
-authorization over exact canonical envelope bytes, independently recompute every
-artifact/manifest/payload/envelope hash and target/build identity, CAS an
+authorization over exact canonical envelope bytes, independently re-read every artifact/manifest/payload/envelope and validate its declared revision and target/build identity, CAS an
 owner-declared destination, write atomically, and emit a persistence receipt.
 This workflow does not select that destination or simulate persistence.
 

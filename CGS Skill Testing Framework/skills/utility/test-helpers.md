@@ -34,21 +34,21 @@ unrelated files are non-writes.
   name is test-helpers.
 - [ ] **[TH-SA-002]** cgs-test-helpers-workflow-contract/v1 declares the v2
   request, required test-setup authorities, owned outputs, receipt schema, and
-  hash algorithm.
+  revision policy.
 - [ ] **[TH-SA-003]** Missing or non-current test-setup v2 receipt, layout,
   engine, validator, execution, or dependency evidence blocks with zero writes.
 - [ ] **[TH-SA-004]** Unknown or unsupported engine, language, framework,
   adapter, module, or schema is explicit invalid input and never continues.
-- [ ] **[TH-SA-005]** Every target resolves a complete raw-hash-bound root-to-
+- [ ] **[TH-SA-005]** Every target resolves a complete raw-version-bound root-to-
   parent AGENTS chain and closest applicable constraints.
-- [ ] **[TH-SA-006]** Deterministic style sampling uses explicit path/hash/kind
+- [ ] **[TH-SA-006]** Deterministic style sampling uses explicit path/revision/kind
   rows, canonical duplicate rejection, fixed kind order, and stable path order.
 - [ ] **[TH-SA-007]** Samples that violate instructions or coding standards are
   excluded and never copied.
 - [ ] **[TH-SA-008]** CREATE or EXTEND conflicts produce a bounded decision
   packet and require an amended request; no delete/regenerate shortcut exists.
 - [ ] **[TH-SA-009]** EXTEND is AST or symbol-parser aware, insertion-bounded,
-  base-hash guarded, symbol-checked, and reparsed.
+  base-revision guarded, symbol-checked, and reparsed.
 - [ ] **[TH-SA-010]** REAL mode validates the production API snapshot, complete
   source/dependency closure, compiled symbol, constructor seam and execution.
 - [ ] **[TH-SA-011]** GDD or requirement text supplies expected contract only
@@ -56,7 +56,7 @@ unrelated files are non-writes.
 - [ ] **[TH-SA-012]** Business values enter executable helpers only through
   verified production-config accessors.
 - [ ] **[TH-SA-013]** Helper contracts bind accepted requirement, production,
-  runtime-config, test-setup and instruction hashes; any drift is STALE.
+  runtime-config, test-setup and instruction revisions; any drift is STALE.
 - [ ] **[TH-SA-014]** Request budgets cover items, output files, input bytes,
   candidate bytes, wall time, and tool limits with a complete ordered ledger.
 - [ ] **[TH-SA-015]** Compile, discovery, runtime and receipt results distinguish
@@ -81,9 +81,9 @@ unrelated files are non-writes.
 #### Fixture
 
 - A helper request names exact setup receipt, layout, engine, repository policy,
-  validator, execution and dependency paths and hashes.
+  validator, execution and dependency paths and revisions.
 - Negative variants omit tests, use setup receipt schema v1, use a stale layout
-  hash, have partial validator coverage, or lack current discovery and CI proof.
+  revision, have partial validator coverage, or lack current discovery and CI proof.
 
 #### Input
 
@@ -93,7 +93,7 @@ unrelated files are non-writes.
 
 - Raw request bytes and every test-setup receipt dependency.
 - Current candidate/build identity, setup state axes and receipt signature or
-  content hash.
+  content revision.
 
 #### Expected writes
 
@@ -108,7 +108,7 @@ unrelated files are non-writes.
 
 #### Expected behavior
 
-- Recompute setup receipt freshness from all declared dependencies.
+- revalidate setup receipt freshness from all declared dependencies.
 - Require Audit Coverage COMPLETE, Static Validation PASS, Verification Level
   CI_VERIFIED, Determinism VERIFIED, Receipt Freshness CURRENT, Setup Status
   VERIFIED and Gate Eligible YES.
@@ -196,7 +196,7 @@ adapter is routable; otherwise FAIL.
 #### Expected reads
 
 - Complete root-to-parent instruction chain for every proposed target.
-- Raw hashes and precedence of selected instruction sources.
+- declared revisions and precedence of selected instruction sources.
 
 #### Expected writes
 
@@ -220,7 +220,7 @@ adapter is routable; otherwise FAIL.
 #### Assertions
 
 - [ ] No repository-specific naming fallback overrides a closer rule.
-- [ ] Every effective rule records source path and hash.
+- [ ] Every effective rule records source path and revision.
 - [ ] A style sample cannot override instruction authority.
 - [ ] Partial instruction coverage is never VERIFIED.
 
@@ -235,7 +235,7 @@ otherwise FAIL.
 
 #### Fixture
 
-- The request lists more than five explicit path/hash/kind sample rows in shuffled
+- The request lists more than five explicit path/revision/kind sample rows in shuffled
   order.
 - Two rows are canonical path duplicates.
 - Some samples contain shared mutable state, missing teardown or generic
@@ -262,12 +262,12 @@ otherwise FAIL.
 #### Expected behavior
 
 - Normalize paths with Unicode NFC, forward slashes and case-fold comparison.
-- Reject canonical duplicates and hash mismatches.
+- Reject canonical duplicates and revision mismatches.
 - Parse and exclude violations before selection.
 - Group valid rows in fixture, factory, assertion, adapter, test-double order;
   sort each group by normalized then raw path; select the first per kind up to
   five and fill any capacity from globally sorted remaining valid rows.
-- Record selected and excluded rows with hashes and rule IDs.
+- Record selected and excluded rows with revisions and rule IDs.
 
 #### Assertions
 
@@ -288,7 +288,7 @@ otherwise FAIL.
 #### Fixture
 
 - CREATE targets an existing owned helper.
-- An AST parser and current base hash support a safe EXTEND option.
+- An AST parser and current base revision support a safe EXTEND option.
 - A distinct canonical layout route can support a safe CREATE option.
 - Variants contain a symbol conflict, parser unavailability or concurrent base
   change.
@@ -300,7 +300,7 @@ otherwise FAIL.
 
 #### Expected reads
 
-- Existing raw bytes/hash, ownership table, AST or symbol table, layout routes,
+- Existing raw bytes/revision, ownership table, AST or symbol table, layout routes,
   parser row and requested exported signatures.
 
 #### Expected writes
@@ -319,7 +319,7 @@ otherwise FAIL.
 - Emit a bounded decision packet describing EXTEND and CREATE only when each is
   safe, including effects and conflicts.
 - Require amended signed request authority before continuing.
-- EXTEND verifies exact base hash, rejects symbol conflicts, inserts declared
+- EXTEND verifies exact base revision, rejects symbol conflicts, inserts declared
   symbols only, preserves outside bytes and reparses.
 - Parser unavailable or concurrent drift blocks the operation.
 
@@ -342,7 +342,7 @@ or overwrite is FAIL.
 #### Fixture
 
 - An accepted requirement describes an expected combat observable.
-- A cgs-production-api-snapshot/v1 binds producer/tool hash, source closure,
+- A cgs-production-api-snapshot/v1 binds producer/tool revision, source closure,
   compiled type/signature, constructor seam, dependency edges and config
   accessor.
 - Negative variants use a GDD-only type, stale source closure, invented
@@ -370,7 +370,7 @@ or overwrite is FAIL.
 
 #### Expected behavior
 
-- Rehash the API snapshot and complete source closure.
+- revalidate the API snapshot and complete source closure.
 - Resolve actual module, type, normalized signature, constructor or injection
   seam, dependency graph and config accessor.
 - Compile against the existing test module without adding configuration.
@@ -382,7 +382,7 @@ or overwrite is FAIL.
 
 - [ ] GDD expected behavior never proves implementation exists.
 - [ ] Bare Node, GameObject, UObject, metadata or invented class cannot be REAL.
-- [ ] Execution evidence names exact production symbol and hashes.
+- [ ] Execution evidence names exact production symbol and revisions.
 - [ ] ISOLATED_FAKE cannot be silently substituted.
 
 #### Case Verdict
@@ -425,16 +425,16 @@ with no published helper.
   TEST_LOCAL_NONBUSINESS.
 - Business setup values enter code only via verified production accessor.
 - Requirement expected values appear only in consumer expectations and retain
-  requirement path/hash.
-- Contract records class, symbol, source hash and owner for every value.
+  requirement path/revision.
+- Contract records class, symbol, source revision and owner for every value.
 - Source drift makes candidate or published contract STALE.
 
 #### Assertions
 
-- [ ] Stable IDs or unchanged text cannot override hash drift.
+- [ ] Stable IDs or unchanged text cannot override revision drift.
 - [ ] Requirement values never initialize the SUT.
 - [ ] Local values are shown irrelevant to business outcome.
-- [ ] Downstream consumer must rehash all value sources.
+- [ ] Downstream consumer must revalidate all value sources.
 
 #### Case Verdict
 
@@ -511,7 +511,7 @@ otherwise FAIL.
 
 #### Expected reads
 
-- Validator and execution manifests, adapter/dependency hashes, candidate source,
+- Validator and execution manifests, adapter/dependency revisions, candidate source,
   parser schemas and current setup receipt.
 
 #### Expected writes
@@ -530,8 +530,8 @@ otherwise FAIL.
 - Complete zero discovery maps Discovery Status ZERO.
 - Timeout, unavailable or unsupported tool, truncated/incomplete output,
   unreadable evidence or missing receipt fields map PARTIAL or NOT_RUN.
-- Every receipt binds argv, tool/parser versions and hashes, inputs, timestamps,
-  exit class, output/log hashes, rule coverage and producer.
+- Every receipt binds argv, tool/parser versions and revisions, inputs, timestamps,
+  exit class, output/log revisions, rule coverage and producer.
 
 #### Assertions
 
@@ -602,13 +602,13 @@ verified cleanup; otherwise INVALID or PARTIAL with no publication.
 
 ---
 
-### Case 11 [TH-C11]: Ownership table and all-file CAS preserve concurrent work
+### Case 11 [TH-C11]: Ownership table and all-file version and existence conflict check preserve concurrent work
 
 #### Fixture
 
 - A verified publication batch contains CREATE and EXTEND operations plus
   consumer, contract, receipt and log outputs.
-- Every path has one stable owner, precondition and final hash.
+- Every path has one stable owner, precondition and final revision.
 - One variant introduces canonical path/symbol collision.
 - Another changes one EXTEND base after preview.
 
@@ -635,20 +635,20 @@ verified cleanup; otherwise INVALID or PARTIAL with no publication.
 
 - Canonical path or symbol collisions block all involved items.
 - Immediately before first write, all authorities and path preconditions are
-  rehashed.
-- Unsupported atomic/recovery semantics yield Ownership/CAS PARTIAL and publish
+  revalidate.
+- Unsupported atomic/recovery semantics yield Ownership/version and existence conflict check PARTIAL and publish
   nothing.
-- Clean publish stages and verifies hashes, commits all-or-none, rereads bytes and
+- Clean publish stages and verifies revisions, commits all-or-none, rereads bytes and
   reparses symbols.
 - Interrupted publication records PREIMAGE, POSTIMAGE and DIVERGED states and
-  requires separate authorized three-way/CAS recovery.
+  requires separate authorized three-way/version and existence conflict check recovery.
 
 #### Assertions
 
 - [ ] Any preflight mismatch writes zero target files.
 - [ ] Each final path has exactly one owner.
 - [ ] Backups never overwrite divergent work automatically.
-- [ ] Read-back hashes equal validated candidate hashes.
+- [ ] Read-back revisions equal validated candidate revisions.
 
 #### Case Verdict
 
@@ -668,7 +668,7 @@ or partial overwrite is FAIL.
   module.
 - Equal isolated baselines surround the expected negative control and cleanup
   passes.
-- Ownership/CAS publication and read-back succeed.
+- Ownership/version and existence conflict check publication and read-back succeed.
 
 #### Input
 
@@ -693,7 +693,7 @@ or partial overwrite is FAIL.
 #### Expected behavior
 
 - All independent axes are current and verified.
-- Workflow Status is VERIFIED, Ownership/CAS is VERIFIED and Receipt Freshness is
+- Workflow Status is VERIFIED, Ownership/version and existence conflict check is VERIFIED and Receipt Freshness is
   CURRENT.
 - Helper is described as usable only for helper infrastructure.
 - Business Coverage remains NOT ESTABLISHED.
@@ -701,7 +701,7 @@ or partial overwrite is FAIL.
 
 #### Assertions
 
-- [ ] Contract binds all source and authority hashes and normalized symbols.
+- [ ] Contract binds all source and authority revisions and normalized symbols.
 - [ ] Receipt binds compile, discovery, both baselines, negative control,
   production path, determinism, cleanup, logs and publication.
 - [ ] Stable AC annotations do not claim coverage.
@@ -719,7 +719,7 @@ fails closed.
 - [ ] **[TH-PC-001]** Exact request path, schema, IDs, canonical paths and hard
   budgets validate before item source loading.
 - [ ] **[TH-PC-002]** Test-setup receipt and layout/engine/validator/execution/
-  dependency authorities are rehashed and current before generation.
+  dependency authorities are revalidate and current before generation.
 - [ ] **[TH-PC-003]** Every target has a complete closest-rule instruction chain.
 - [ ] **[TH-PC-004]** Production API and accepted-requirement owners remain
   distinct and discrepancies are explicit.
@@ -731,10 +731,10 @@ fails closed.
   converted to PASS or hidden as conclusive invalidity.
 - [ ] **[TH-PC-008]** Deterministic controls are frozen before execution and no
   post-observation retry policy is invented.
-- [ ] **[TH-PC-009]** CREATE and EXTEND ownership preconditions use all-file CAS.
+- [ ] **[TH-PC-009]** CREATE and EXTEND ownership preconditions use all-file version and existence conflict check.
 - [ ] **[TH-PC-010]** Only verified candidates enter the publication set and
   mixed outcomes retain a complete ledger.
-- [ ] **[TH-PC-011]** Multi-file persistence is transactionally staged, hash-
+- [ ] **[TH-PC-011]** Multi-file persistence is transactionally staged, revision-
   verified, read back and recovery-safe.
 - [ ] **[TH-PC-012]** No production/shared authority, downstream workflow, gate,
   commit, push or publication is modified or invoked.

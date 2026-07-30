@@ -31,17 +31,17 @@ decisions, approvals, revisions, and receipts.
 
 - [ ] ARB-S001: Frontmatter contains only matching `name` and non-empty `description`
 - [ ] ARB-S002: Invocation requires one cgs.art-bible-request/v2 manifest; no-arg stops before repository reads
-- [ ] ARB-S003: Author schema hashes exact SKILL bytes, NUL, and required continuation bytes
+- [ ] ARB-S003: Author schema revisions exact SKILL bytes, NUL, and required continuation bytes
 - [ ] ARB-S004: Profile/content contracts are art-bible-profile-schema-v2 and cgs.art-bible-content-profile/v2
 - [ ] ARB-S005: AB-01 through AB-09 occur exactly once and titles are not identity
-- [ ] ARB-S006: Target header has stable artifact/receipt IDs but no APPROVED, reviewer signature, receipt path, or receipt hash
+- [ ] ARB-S006: Target header has stable artifact/receipt IDs but no APPROVED, reviewer signature, receipt path, or receipt revision
 - [ ] ARB-S007: Content/evidence/workflow/assertion/section-status axes are independent
 - [ ] ARB-S008: review_mode and consultation_mode are separate contracts
 - [ ] ARB-S009: solo forces consultation none and spawns zero subagents/directors
 - [ ] ARB-S010: One mutation authorization covers exact target/checkpoint/sections; content approval does not reauthorize
 - [ ] ARB-S011: Context order is deterministic with hard 16-file/524288-byte limits
 - [ ] ARB-S012: Context overflow can append only one authorized PARTIAL checkpoint and leaves target unchanged
-- [ ] ARB-S013: Concept approval requires artifact/record identity and matching current hashes
+- [ ] ARB-S013: Concept approval requires artifact/record identity and matching current revisions
 - [ ] ARB-S014: Missing/stale/unapproved concept is DRAFT_ONLY and blocks COMPLETE/review handoff
 - [ ] ARB-S015: Four authoring decision classes have stable ABDEC records
 - [ ] ARB-S016: User/source/author/consultant identities are recorded truthfully
@@ -51,15 +51,15 @@ decisions, approvals, revisions, and receipts.
 - [ ] ARB-S020: fill-gaps/revise-sections/migrate-schema have distinct lossless mutation semantics
 - [ ] ARB-S021: Hard evidence constrains automatically; product visual tradeoffs require owner choice; conflicting hard sources block
 - [ ] ARB-S022: Missing engine/platform profile makes AB-09 PROVISIONAL/INCOMPLETE and later change makes dependencies STALE
-- [ ] ARB-S023: Dependency findings use cgs.art-bible-dependency-finding/v1 stable fingerprint/owner/resolution state
+- [ ] ARB-S023: Dependency findings use cgs.art-bible-dependency-finding/v1 stable business key/owner/resolution state
 - [ ] ARB-S024: Consultation is one/section, three/run, two concurrent, one 60-second attempt, no retry/nesting, typed failure/quarantine
 - [ ] ARB-S025: Every target write uses Target/Section/Context/Authorization/Writer CAS
-- [ ] ARB-S026: ABREV binds before/after target/section hashes, decisions, approval, sources, authorization, and actual writer
+- [ ] ARB-S026: ABREV binds before/after target/section revisions, decisions, approval, sources, authorization, and actual writer
 - [ ] ARB-S027: Checkpoints use cgs.art-bible-checkpoint/v2 append-only predecessor CAS
-- [ ] ARB-S028: cgs.art-bible-authoring-receipt/v1 is external authoring evidence without target/receipt hash cycle
+- [ ] ARB-S028: cgs.art-bible-authoring-receipt/v1 is external authoring evidence without target/receipt revision cycle
 - [ ] ARB-S029: Receipt/checkpoint failure preserves target content status but returns workflow PARTIAL with no review handoff
 - [ ] ARB-S030: Selected-scope completion and nine-section artifact COMPLETE are separate
-- [ ] ARB-S031: Eligible full mode emits only a hash-bound handoff to a fresh independent art-director AD-ART-BIBLE task
+- [ ] ARB-S031: Eligible full mode emits only a revision-bound handoff to a fresh independent art-director AD-ART-BIBLE task
 - [ ] ARB-S032: Authoring never invokes review, writes a review record, self-approves, or uses creative-director
 - [ ] ARB-S033: Production eligibility requires external cgs.art-bible-review/v1 APPROVE matching current target/receipt/context and separation
 - [ ] ARB-S034: Close uses exact workflow-catalog row/artifact/status/receipt evidence, never arbitrary GDD glob/existence
@@ -174,12 +174,12 @@ substantive bodies; revision requires explicit scope.
 
 ### Case 7: concept file existence is not approval
 
-**Fixture variants:** concept exists with no approval record; approval hash names
-old concept bytes; current immutable approval matches artifact ID/hash.
+**Fixture variants:** concept exists with no approval record; approval revision names
+old concept bytes; current immutable approval matches artifact ID/revision.
 
 **Expected behavior:** first two create stable BLOCKING concept findings and permit
 only DRAFT/PARTIAL authoring; third may satisfy concept dependency after full
-identity/hash validation.
+identity/revision validation.
 
 **Assertions:**
 
@@ -200,7 +200,7 @@ loaded/omitted evidence; target stays unchanged.
 
 **Assertions:**
 
-- [ ] ARB-C08-A: Same manifest yields same ordered context digest
+- [ ] ARB-C08-A: Same manifest yields same ordered context revision
 - [ ] ARB-C08-B: No truncation, broad GDD/art scan, or second-hop expansion
 - [ ] ARB-C08-C: CONTEXT_BUDGET_EXCEEDED and no target write
 
@@ -251,7 +251,7 @@ profile marks AB-09 and dependents STALE for re-preflight.
 
 **Assertions:**
 
-- [ ] ARB-C11-A: Profile IDs/versions/paths/hashes/owners are persisted when current
+- [ ] ARB-C11-A: Profile IDs/versions/paths/revisions/owners are persisted when current
 - [ ] ARB-C11-B: Artifact cannot become COMPLETE from provisional AB-09
 - [ ] ARB-C11-C: setup/engine configuration is a handoff, not performed here
 
@@ -262,7 +262,7 @@ profile marks AB-09 and dependents STALE for re-preflight.
 **Fixture:** old/duplicate/unknown headings, one combined UI/Typography/VFX body,
 and one unmapped paragraph.
 
-**Expected behavior:** read-only mapping covers every source byte range/hash,
+**Expected behavior:** read-only mapping covers every source byte range/revision,
 split/merge ambiguity, exact destination and preserved disposition; accepted
 migration CAS writes structure only; unmapped content remains appendix and blocks
 COMPLETE.
@@ -298,13 +298,13 @@ not overwritten.
 final checkpoint/authoring-receipt append then fails or verifies incorrectly.
 
 **Expected behavior:** target content status remains COMPLETE; Workflow Verdict is
-PARTIAL; exact unreceipted target hash is reported; no review handoff; target write
+PARTIAL; exact unreceipted target revision is reported; no review handoff; target write
 is not replayed/reverted.
 
 **Assertions:**
 
 - [ ] ARB-C14-A: Content status and workflow evidence remain separate
-- [ ] ARB-C14-B: Receipt path/hash stays external with no self-reference
+- [ ] ARB-C14-B: Receipt path/revision stays external and independently owned
 - [ ] ARB-C14-C: Missing receipt remains production blocking
 
 ---
@@ -314,24 +314,24 @@ is not replayed/reverted.
 **Fixture:** nine current COMPLETE sections; current approved concept/platform
 evidence; zero blocking findings; verified authoring receipt; full mode.
 
-**Expected behavior:** authoring stops with READY_FOR_REVIEW and a hash-bound
+**Expected behavior:** authoring stops with READY_FOR_REVIEW and a revision-bound
 handoff for a fresh independent `art-director` `AD-ART-BIBLE` task. It does not
 spawn reviewer or write review record. Wrong/self/author/consultant reviewer is
 ineligible.
 
 **Assertions:**
 
-- [ ] ARB-C15-A: Handoff binds target/sections/context/receipt/provenance hashes
+- [ ] ARB-C15-A: Handoff binds target/sections/context/receipt/provenance revisions
 - [ ] ARB-C15-B: Reviewer identity separation is explicit
 - [ ] ARB-C15-C: creative-director and inline self-review are prohibited
 - [ ] ARB-C15-D: READY_FOR_REVIEW is not APPROVED or production eligible
 
 ---
 
-### Case 16: external review remains hash-bound and immutable
+### Case 16: external review remains revision-bound and immutable
 
 **Fixture variants:** current valid external APPROVE; CONCERNS/REJECT; APPROVE for
-old target hash; artifact/receipt/context changed after approval.
+old target revision; artifact/receipt/context changed after approval.
 
 **Expected behavior:** only current matching APPROVE with role separation may make
 production eligible; all other variants remain blocked; immutable old records are
@@ -358,7 +358,7 @@ evidence returns `STOP — WORKFLOW STATUS UNKNOWN`; shared catalog is not edite
 **Assertions:**
 
 - [ ] ARB-C17-A: No `design/gdd/*.md` existence heuristic
-- [ ] ARB-C17-B: Next action cites exact catalog path/locator/hash and artifact IDs
+- [ ] ARB-C17-B: Next action cites exact catalog path/locator/revision and artifact IDs
 - [ ] ARB-C17-C: Unknown state fails closed with one evidence gap
 
 ---
@@ -398,7 +398,7 @@ or claim catalog result updates without an executed authorized test workflow.
 - ARB-005: Case 4 and ARB-S008/S009 separate review from consultation and preserve solo.
 - ARB-006: Case 5 and ARB-S015..S018 require decisions and exact-body approval.
 - ARB-007: Case 6 and ARB-S007/S019/S020 use content assertions and explicit states.
-- ARB-008: Case 7 and ARB-S013/S014 validate hash-bound concept approval.
+- ARB-008: Case 7 and ARB-S013/S014 validate revision-bound concept approval.
 - ARB-009: Case 9 and ARB-S024 define caps, failure schema, checkpoint, and quarantine.
 - ARB-010: Case 10 and ARB-S021 preserve owner-specific conflict decisions.
 - ARB-011: Case 11 and ARB-S022 keep unconfigured standards provisional/stale.

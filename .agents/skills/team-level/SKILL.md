@@ -1,6 +1,6 @@
 ---
 name: team-level
-description: Orchestrate one bounded level-design specification through read-only specialists, destination routing, deterministic agent/checkpoint states, a single authorized writer, and hash-bound accessibility, level-review, and QA evidence.
+description: Orchestrate one bounded level-design specification through read-only specialists, destination routing, deterministic agent/checkpoint states, a single authorized writer, and version-bound accessibility, level-review, and QA evidence.
 ---
 
 # Team Level
@@ -9,7 +9,7 @@ Design or revise exactly one level specification. This workflow never implements
 gameplay, code, assets, dialogue, system tuning, tests, or adjacent levels. All
 specialists, authors, accessibility reviewers, level reviewers, and QA planners
 are read-only. One declared transaction writer alone may mutate the exact level
-source and recovery checkpoint after a complete hash-bound authorization.
+source and recovery checkpoint after a complete version-bound authorization.
 
 ## Invocation
 
@@ -37,7 +37,7 @@ than a role substitution or hidden quality downgrade.
 ## Load the private contracts
 
 Read [team-level-contract-v1.md](references/team-level-contract-v1.md)
-completely. It defines canonical hashes, fixed bounds, target/operation rules,
+completely. It defines canonical revisions, fixed bounds, target/operation rules,
 context and adjacency manifests, proposal/destination schemas, agent jobs,
 checkpoints, level-review, QA, authorization, and completion evidence.
 
@@ -87,12 +87,12 @@ Ask only when one of these exact conditions occurs:
    or stop;
 6. one complete write/recovery plan needs authorization before first mutation;
 7. a materially changed revision requires a replacement write authorization; or
-8. the final hash-bound design-acceptance packet and exact COMPLETE-checkpoint
+8. the final version-bound design-acceptance packet and exact COMPLETE-checkpoint
    candidate need combined product acceptance and write authorization.
 
 Every question names stable IDs, exact alternatives, effects, and the default
 non-mutating outcome. No unanswered question is inferred as approval. A new
-path, owner, operation, source baseline, material draft scope, or candidate hash
+path, owner, operation, source baseline, material draft scope, or candidate revision
 invalidates prior authorization.
 
 ## Permanent ownership and mutation boundary
@@ -114,7 +114,7 @@ Normal candidate paths are exactly:
 
 Choose one transaction writer before preview. It owns both paths for the whole
 run and is the only participant that may write. All other roles return bounded
-structured payloads. Each write plan binds exact candidate bytes/hashes for its
+structured payloads. Each write plan binds exact candidate bytes/revisions for its
 transition; it cannot pre-authorize unknown future checkpoint content. The first
 source transaction may touch the level and checkpoint paths, while a later
 finalization plan may touch only the same checkpoint path with the same writer.
@@ -122,12 +122,12 @@ No plan may add a third path. External destinations remain proposals for their
 owning workflows.
 
 Immediately before and after each authorized checkpoint/level write, compare
-raw hashes for every source and target. Never overwrite in create mode, expand
+declared revisions for every source and target. Never overwrite in create mode, expand
 paths by implication, hide a partial write, or let a new owner reuse approval.
 
 ## Phase 0 — Freeze target, operation, and run identity
 
-After input validation, resolve the two canonical targets. Capture raw SHA-256 or
+After input validation, resolve the two canonical targets. Capture declared revision or
 `ABSENT`, file type, and canonical confinement. Determine:
 
 - `CREATE` only when level and checkpoint targets are absent;
@@ -136,7 +136,7 @@ After input validation, resolve the two canonical targets. Capture raw SHA-256 o
 - `RESUME` only from a valid matching checkpoint.
 
 An existing target blocks CREATE. Missing baseline blocks REVISE. A checkpoint
-whose ID/path/schema/hashes do not match current bytes is STALE and cannot
+whose ID/path/schema/revisions do not match current bytes is STALE and cannot
 authorize resume. Freeze a run ID from level ID, operation, source-baseline set,
 and start UTC timestamp.
 
@@ -152,13 +152,13 @@ Read root and nearest applicable `AGENTS.md` for both target paths, then only:
 
 Do not recursively crawl design directories. The private contract sets file,
 byte, excerpt, adjacency, and prompt budgets. Every manifest row records stable
-source ID, canonical path, raw hash, bytes, selected sections/excerpt hashes,
+source ID, canonical path, declared revision, bytes, selected sections/excerpt revisions,
 reason, dependency depth, required/optional state, and omission state.
 
 If required candidates exceed a bound, stop before delegation and ask the user
 to prioritize the explicit omitted/included list. Never silently truncate.
 Detect duplicate/cyclic references; record the cycle and do not follow it.
-Compute `context_manifest_sha256` over the canonical ordered rows.
+Read `context_manifest_revision` from the authoritative context manifest and validate it with the manifest schema/version; never calculate it from row content.
 
 Each job receives only the manifest identity, task-relevant bounded excerpts,
 stable references, and required prior structured payloads. Never pass the entire
@@ -168,7 +168,7 @@ project context or all earlier agent output verbatim.
 
 Represent every adjacency as a stable directional interface record with source
 and target level IDs, interface ID, endpoints, directionality, traversal/state
-contract, declared revision/hash, reverse-interface reference, and dependency
+contract, declared revision/revision, reverse-interface reference, and dependency
 owner.
 
 Classify each as:
@@ -196,8 +196,8 @@ accessibility reviewer, independent level reviewer, and post-source QA planner
 are always required. No generic review mode removes or replaces them.
 
 Every job is `cgs.team-level-job/v1` with stable job ID, role, phase, required
-flag, exact input hashes, output schema, maximum bytes, dispatch/deadline UTC,
-attempt/follow-up count, status, result payload/hash or failure, and dependency
+flag, exact input revisions, output schema, maximum bytes, dispatch/deadline UTC,
+attempt/follow-up count, status, result payload/revision or failure, and dependency
 job IDs. Default deadline is ten minutes unless the user imposed a shorter one.
 Allow at most one narrowed follow-up before the same deadline; never extend the
 deadline, silently substitute a role, forge a result, or spawn repeated
@@ -212,9 +212,9 @@ required job always prevents COMPLETE.
 
 Run applicable narrative-director, world-builder, and art-director jobs in one
 bounded read-only batch. A proposal is `cgs.team-level-proposal/v1` with stable
-proposal ID, role/job hash, exactly one destination, source/excerpt refs and
-hashes, concise level-facing constraint or NONE, assumptions, stable dependency
-IDs, product-decision IDs, status, and payload hash.
+proposal ID, role/job revision, exactly one destination, source/excerpt refs and
+revisions, concise level-facing constraint or NONE, assumptions, stable dependency
+IDs, product-decision IDs, status, and payload revision.
 
 Allowed destinations are exactly:
 
@@ -235,7 +235,7 @@ pacing, navigation/landmarks, entry/exit and softlock prevention, encounter
 interface IDs/contracts, adjacency records, level-facing accessibility,
 dependencies, and product decisions.
 
-Run systems-designer and location art-director against the layout draft hash in a
+Run systems-designer and location art-director against the layout draft revision in a
 second bounded batch. Cross-domain contradictions become product-decision
 records; the reducer never silently chooses. Every proposal is routed once.
 Never concatenate transcripts or copy external-destination content verbatim.
@@ -243,82 +243,82 @@ Never concatenate transcripts or copy external-destination content verbatim.
 ## Phase 4 — Accessibility review and bounded convergence
 
 Run a fresh read-only accessibility specialist against the exact layout draft
-hash and committed accessibility requirement hashes. Findings use stable
-fingerprints/IDs and include severity `BLOCKING|RECOMMENDED|NICE_TO_HAVE`, exact
+revision and committed accessibility requirement revisions. Findings use stable
+identities/IDs and include severity `BLOCKING|RECOMMENDED|NICE_TO_HAVE`, exact
 evidence, affected path/encounter, testable outcome, owner, status, and round.
 
 BLOCKING is non-waivable. The user may choose one exact bounded author diff scope
 or stop with `BLOCKED — PRODUCT DECISION REQUIRED`. There is no acknowledge-and-
-continue route. A non-blocking risk may be accepted only with finding ID/hash,
+continue route. A non-blocking risk may be accepted only with finding ID/revision,
 bounded risk, owner, deadline, approver, and timestamp; that branch ends
 `ACCEPTED RISK / NOT APPROVED`.
 
 An approved blocker revision uses one separate read-only author job and exactly
 one verification re-review. The reviewer checks original OPEN IDs and regressions
 caused by the exact diff only. Original IDs persist; regression IDs bind the
-triggering finding/diff hash. If an original blocker remains open on its second
+triggering finding/diff revision. If an original blocker remains open on its second
 observation, stop. Never start a third review/rewrite cycle.
 
 ## Phase 5 — Route, reduce, and freeze the level source
 
 Build a canonical routing ledger with every proposal/finding ID exactly once.
 The reducer includes only the authoritative LEVEL_SOURCE fields defined in the
-private contract and references other destinations by stable IDs/hashes. It
+private contract and references other destinations by stable IDs/revisions. It
 excludes lore/dialogue, production art briefs/assets, formulas/tuning, QA cases,
 backlog bodies, review discussion, prompts, and raw agent output.
 
 Resolve genuine product choices, then freeze canonical UTF-8/LF level bytes and
-`level_draft_sha256`. Record all included proposal/decision/resolved-finding IDs,
-current context hash, adjacency/dependency states, and open blocker count.
+`level_draft_revision`. Record all included proposal/decision/resolved-finding IDs,
+current context revision, adjacency/dependency states, and open blocker count.
 
 After every completed phase, construct the next canonical in-memory
 `cgs.team-level-checkpoint/v2` snapshot with monotonically increasing
-`state_seq`, source/target hashes, decisions, bounded job result payloads/hashes,
+`state_seq`, source/target revisions, decisions, bounded job result payloads/revisions,
 routing/finding state, last verified phase, and exact safe resume action. Before
 authorization it remains in memory and no project write occurs.
 
 ## Phase 6 — Authorize and execute the bounded source transaction
 
 Preview one complete plan with exact two-path write set, create/modify operation
-and exact candidate bytes/hash for each path, single writer, baselines,
-all source/context/draft hashes, routing ledger, blocker/dependency states,
-success/partial/rollback conditions, and canonical `plan_hash`. Obtain one
+and exact candidate bytes/revision for each path, single writer, baselines,
+all source/context/draft revisions, routing ledger, blocker/dependency states,
+success/partial/rollback conditions, and canonical `plan_revision`. Obtain one
 authorization bound to the full plan.
 
-Rehash all sources/targets. On change, invalidate plan/authorization before any
+revalidate all sources/targets. On change, invalidate plan/authorization before any
 write. The writer creates/modifies only the level source and checkpoint with
 compare-and-set/no-replace semantics, then rereads and verifies exact bytes and
-hashes. Checkpoint state is never approval evidence by itself.
+revisions. Checkpoint state is never approval evidence by itself.
 
 On failure, claim rollback only when every changed target byte equals its
-verified baseline. Otherwise preserve honest current hashes, persist the planned
+verified baseline. Otherwise preserve honest current revisions, persist the planned
 PARTIAL checkpoint when possible, and return PARTIAL. If checkpoint persistence
 fails, print its complete bounded payload as `RECOVERY CHECKPOINT NOT PERSISTED`
 and name every unverified path; never claim safe resume.
 
-## Phase 7 — Independent hash-bound level review
+## Phase 7 — Independent version-bound level review
 
-After the level source exists and its raw hash verifies, run one fresh independent
+After the level source exists and its declared revision verifies, run one fresh independent
 read-only reviewer who is not an author or transaction writer. Apply only the
 private `cgs.level-review/v1` profile: critical-path continuity, sequence breaks/
 softlocks/recovery, pacing, adjacency direction/interface compatibility,
 navigation/wayfinding, accessibility, and encounter contracts/dependencies.
 
 Never invoke `$design-review` or system-GDD section rules. Findings use stable
-level-review IDs and bind current level raw hash/source sections. A changed level
-hash makes all prior review evidence STALE.
+level-review IDs and bind current level declared revision/source sections. A changed level
+revision makes all prior review evidence STALE.
 
 For BLOCKING findings, allow at most one separately scoped author revision with a
 replacement plan/authorization and exactly one verification re-review limited to
 original IDs plus diff regressions. An original blocker still open on second
 observation stops BLOCKED. Reviewer timeout, invalid evidence, role collision, or
-hash mismatch makes review PARTIAL and prevents COMPLETE.
+revision mismatch makes review PARTIAL and prevents COMPLETE.
 
-## Phase 8 — Generate QA plan only after final source hash
+## Phase 8 — Generate QA plan only after final source revision
 
-Only after the current post-integration/post-review level hash has zero open
+Only after the current post-integration/post-review level revision has zero open
 BLOCKING accessibility and level-review findings, run one read-only qa-tester.
-Its input binds that current raw hash and resolved finding/review IDs. It returns
+Its input binds that current declared revision and resolved finding/review IDs. It returns
 `cgs.team-level-qa-proposal/v1` with stable planned critical-path, sequence-break,
 softlock, boundary, navigation, accessibility, encounter, and playtest case IDs.
 
@@ -330,19 +330,19 @@ COMPLETE.
 
 ## Phase 9 — Final acceptance and COMPLETE evidence matrix
 
-Build one final packet binding current level hash, plan/context/checkpoint hashes,
-agent job result hashes/statuses, destination ledger, adjacency/dependency states,
+Build one final packet binding current level revision, plan/context/checkpoint revisions,
+agent job result revisions/statuses, destination ledger, adjacency/dependency states,
 zero-blocker findings, independent level-review evidence, planned QA proposal,
 all user decision records, and the exact COMPLETE-checkpoint candidate path,
-baseline, bytes, hash, writer, compare-and-set condition, and finalization plan
-hash. Ask once for combined product acceptance and write authorization of that
+baseline, bytes, revision, writer, compare-and-set condition, and finalization plan
+revision. Ask once for combined product acceptance and write authorization of that
 exact packet/transition. Prior source-write authorization is not reused for
 previously unknown final checkpoint bytes.
 
 `COMPLETE — DESIGN APPROVED` requires every mandatory predicate in
-`TL-COMPLETE/v1` from the private contract, including exact target hash, zero open
+`TL-COMPLETE/v1` from the private contract, including exact target revision, zero open
 blockers, no required timeout/partial job, resolved required dependencies,
-independent current-hash review PASS, current-hash QA proposal, matching accepted
+independent current-revision review PASS, current-revision QA proposal, matching accepted
 packet, and a final compare-and-set checkpoint transition by the same authorized
 writer. If any predicate is false/unknown, COMPLETE is forbidden.
 
@@ -351,11 +351,11 @@ Final design acceptance does not authorize implementation or another destination
 ## Resume and idempotence
 
 On RESUME, validate checkpoint schema, level/run/operation identity,
-monotonic `state_seq`, `plan_hash`, context/source/target/current hashes, job
-payload/result hashes, write sets, findings, review round, and safe resume phase.
+monotonic `state_seq`, `plan_revision`, context/source/target/current revisions, job
+payload/result revisions, write sets, findings, review round, and safe resume phase.
 
-Reuse a COMPLETE job only when its full input hash and stored bounded output
-payload/hash validate. Reuse a completed write only when target bytes/hash equal
+Reuse a COMPLETE job only when its full input revision and stored bounded output
+payload/revision validate. Reuse a completed write only when target bytes/revision equal
 the checkpoint. Mark mismatches STALE and re-enter the earliest affected phase;
 never duplicate a valid job, write, user decision, review round, or QA proposal.
 No prose-only claim is resumable evidence.
@@ -363,7 +363,7 @@ No prose-only claim is resumable evidence.
 ## Return and stop
 
 Return `cgs.team-level-run/v2` with level/run/operation identity, exact paths and
-hashes, context/adjacency/routing summaries, every job/deadline/result state,
+revisions, context/adjacency/routing summaries, every job/deadline/result state,
 decisions, accessibility/level-review evidence and rounds, QA PLANNED IDs,
 checkpoint state/safe resume, write receipt, COMPLETE predicate matrix, and one
 workflow verdict.
@@ -371,7 +371,7 @@ workflow verdict.
 For non-COMPLETE, provide only the blocking product decision or exact safe resume
 action; never recommend implementation. For COMPLETE, external destinations and
 `$qa-plan` are separate owning-workflow handoffs. Implementation may begin only
-later from stories bound to this approved level hash and independently ready.
+later from stories bound to this approved level revision and independently ready.
 Stop.
 
 ## Non-negotiable rules
@@ -381,7 +381,7 @@ Stop.
 - Never let an author/writer self-review.
 - Never run an unbounded review/revision loop.
 - Never pass full context or all output verbatim.
-- Never generate QA before the final current level hash.
+- Never generate QA before the final current level revision.
 - Never write an external destination or allow multiple writers.
-- Never fabricate hashes, jobs, review, test, approval, or checkpoint state.
+- Never fabricate revisions, jobs, review, test, approval, or checkpoint state.
 - Never call PARTIAL, accepted risk, or file production DESIGN APPROVED.

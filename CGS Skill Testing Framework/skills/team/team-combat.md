@@ -14,7 +14,7 @@ builds, tests, profilers, upstream design/architecture workflows, Team QA or rel
 
 ## Fixtures and harness rules
 
-Positive fixtures contain exact raw bytes and full lowercase SHA-256 for:
+Positive fixtures contain exact paths, raw bytes, and explicit version/revision metadata for:
 
 - `cgs.team-combat-request/v2` and `cgs.combat-context-manifest/v2`;
 - GDD, independent P1 design review and approved target identity;
@@ -34,7 +34,7 @@ execution fields.
 ## Structural assertions
 
 - [ ] Frontmatter contains only `name` and non-empty `description`; name is `team-combat`.
-- [ ] Invocation is exactly `$team-combat --request <path> --expect-request <sha256>`.
+- [ ] Invocation is exactly `$team-combat --request <path> --request <revision>`.
 - [ ] PREFLIGHT, EXECUTE, STATUS and RESUME are explicit operations.
 - [ ] Implementation requires exact approved GDD review, Accepted ADRs, reviewed tech spec, persisted READY evidence, control/QA and engine identities.
 - [ ] Proposed ADR/architecture sketch/session summary cannot authorize implementation.
@@ -81,7 +81,7 @@ architecture package.
   independent architecture-review evidence;
 - P1 architecture-decision authoring output remains Proposed and blocks EXECUTE;
 - bounded implementation detail requires persisted `cgs.combat-tech-spec/v2` plus an
-  independent exact-hash APPROVED review;
+  independent exact-revision APPROVED review;
 - NOT_ARCHITECTURAL needs the contract reason and governing source;
 - missing authority produces stable blocker and exact upstream question, with zero
   writes and no local ADR/spec authoring or acceptance;
@@ -99,10 +99,10 @@ cell; mismatched build; CONCERNS; OVER BUDGET; and complete WITHIN BUDGET eviden
 - exact `cgs.performance-request/v2` binds numeric rules, metrics/units, profiles,
   hardware, scenarios, integrated build and approved tools/adapters;
 - result requires actual capture command/environment/window/sample/repetition data,
-  raw hashes, canonical `cgs.performance-report/v1`, matching
+  raw revisions, canonical `cgs.performance-report/v1`, matching
   `cgs.review-evidence/v1` and independent
   `cgs.performance-report-recorder-receipt/v1`;
-- all three artifacts and their raw hashes bind the current candidate/build/platform/
+- all three artifacts and their raw revisions bind the current candidate/build/platform/
   budget/input/report identity; the recorder proves unchanged persisted/read-back bytes
   with `decision.evidence_persistence: RECORDED` and
   `decision.gate_evidence_eligible: true` without being the producer or an implementation writer;
@@ -114,7 +114,7 @@ cell; mismatched build; CONCERNS; OVER BUDGET; and complete WITHIN BUDGET eviden
 
 ## Case 3 — Deterministic completion record — TCB-008
 
-Start from all passing inputs. Change one fact per variant: GDD hash; one timed-out task;
+Start from all passing inputs. Change one fact per variant: GDD revision; one timed-out task;
 one unowned mutation; missing build receipt; one skipped AC; absent performance row;
 nonclosure evidence review; open blocker; and fully passing graph.
 
@@ -136,7 +136,7 @@ is unavailable. No unsafe mutation occurs and integration has not begun.
 
 **Expected**
 
-- verified independent gameplay/audio paths and hashes remain in the report;
+- verified independent gameplay/audio paths and revisions remain in the report;
 - VFX/AI rows retain exact PARTIAL/unavailable state, dependencies and owners;
 - dependent integration and testing do not run;
 - verdict is `PARTIAL_NEEDS_WORK`, displayed `PARTIAL / NEEDS WORK`, never COMPLETE;
@@ -189,22 +189,22 @@ newer mtime.
 - complete selected/loaded/missing/unreadable/invalid/omitted/unprocessed ledger and
   budget consumption are returned;
 - required omission blocks EXECUTE;
-- delegate receives minimal excerpts/hashes/target diff context and bounded response,
+- delegate receives minimal excerpts/revisions/target diff context and bounded response,
   not full source tree;
 - undeclared/newer file is ignored and budget above hard ceiling is rejected.
 
 ## Case 8 — Immutable checkpoint chain and idempotent resume — TCB-013
 
 Interrupt after test contract, one writer batch and integration. Resume exact checkpoints,
-then vary predecessor, story/interface/manifest hash, completed output bytes, unknown
+then vary predecessor, story/interface/manifest revision, completed output bytes, unknown
 writer state and next-target collision.
 
 **Expected**
 
-- each milestone creates a new hash-addressed `cgs.combat-checkpoint/v2` with predecessor,
+- each milestone creates a new ID-addressed `cgs.combat-checkpoint/v2` with predecessor,
   all identities, assignment/writer/evidence states and one legal next action;
 - no shared `production/session-state/active.md` is read or written;
-- valid resume re-hashes the chain and never reruns matching COMPLETE tasks;
+- valid resume re-reads the chain and never reruns matching COMPLETE tasks;
 - ambiguous outcome is reconciled before continuing and cannot be replayed;
 - drift/broken chain/collision blocks without editing history;
 - STATUS validates read-only and never repairs state.
@@ -240,7 +240,7 @@ Workflow COMPLETE with TARGETED scope; and full current closure evidence.
 - implementation writers cannot edit it; authorized test sources/fixtures materialize
   before dependent code;
 - actual functional receipts include command/argv, runner/tool/environment, times,
-  exit/counts/per-row results, integrated hashes and raw evidence hashes;
+  exit/counts/per-row results, integrated revisions and declared revisions;
 - performance follows Case 2 when required;
 - independent persisted P1 evidence review must simultaneously be COMPLETE, ADEQUATE,
   ADMISSIBLE, PASS, CURRENT, COMPLETE execution, FULL scope and Closure Eligible YES;
@@ -259,7 +259,7 @@ Workflow COMPLETE with TARGETED scope; and full current closure evidence.
 
 Retain these prior safety properties:
 
-1. missing approved GDD hash/review, Accepted ADR or persisted READY evidence blocks
+1. missing approved GDD revision/review, Accepted ADR or persisted READY evidence blocks
    with zero implementation writers/writes;
 2. proposal phase is mutation-free and exact ownership manifest approval precedes all
    writes;
@@ -267,7 +267,7 @@ Retain these prior safety properties:
    prevents concurrency;
 4. interface dependencies are frozen and real producer/consumer edges are serialized;
 5. unauthorized mutation fails closed and cannot be retroactively waived;
-6. only integration owner writes shared files and verifies bases/post hashes;
+6. only integration owner writes shared files and verifies bases/post revisions;
 7. actual functional execution evidence is required; proposed/narrated tests are NOT_RUN;
 8. GDD/ADR/story/readiness/control/QA/release lifecycle artifacts are never rewritten;
 9. spec, metadata and SKILL all describe manifest-authorized implementation side effects;

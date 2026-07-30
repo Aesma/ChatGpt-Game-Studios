@@ -43,7 +43,7 @@ run_id: <id>
 operation: create | revise
 spec_path: design/audio/audio-<artifact-id>.md
 record_authorization_id: <id>
-record_authorization_sha256: <sha256>
+record_authorization_revision: <revision>
 current_sequence: <nonnegative integer>
 current_phase: <phase>
 current_status: ACTIVE | PARTIAL | DEFERRED | BLOCKED | COMPLETE
@@ -51,22 +51,22 @@ history:
   - sequence: <integer>
     phase: <phase>
     status: ACTIVE | PARTIAL | DEFERRED | BLOCKED | COMPLETE
-    previous_transition_sha256: <sha256 or ROOT>
-    expected_checkpoint_preimage_sha256: <sha256 or ABSENT>
-    request_sha256: <sha256>
-    context_manifest_sha256: <sha256 or null>
-    direction_decision_sha256: <sha256 or null>
-    destination_ledger_sha256: <sha256 or null>
-    draft_sha256: <sha256 or null>
-    write_plan_sha256: <sha256 or null>
-    content_approval_sha256: <sha256 or null>
-    mutation_authorization_sha256: <sha256 or null>
-    observed_spec_sha256: <sha256 or ABSENT | UNKNOWN>
+    previous_transition_revision: <revision or ROOT>
+    expected_state_revision: <revision or ABSENT>
+    request_revision: <revision>
+    context_manifest_revision: <revision or null>
+    direction_decision_revision: <revision or null>
+    destination_ledger_revision: <revision or null>
+    draft_revision: <revision or null>
+    write_plan_revision: <revision or null>
+    content_approval_revision: <revision or null>
+    mutation_authorization_revision: <revision or null>
+    observed_spec_revision: <revision or ABSENT | UNKNOWN>
     accessibility_finding_ids: []
-    audio_review_sha256: <sha256 or null>
-    qa_plan_proposal_sha256: <sha256 or null>
+    audio_review_revision: <revision or null>
+    qa_plan_proposal_revision: <revision or null>
     engine_state: CURRENT | DEFERRED | STALE | NOT_APPLICABLE
-    product_acceptance_sha256: <sha256 or null>
+    product_acceptance_revision: <revision or null>
     attempts: []
     revoked_tokens: []
     loaded_sources: []
@@ -77,15 +77,10 @@ history:
     next_safe_phase: <phase or NONE>
     recorder_identity: <identity>
     recorded_at: <RFC3339 timestamp>
-    transition_sha256: <sha256>
+    transition_revision: <revision>
 ```
 
-Each transition hash is computed from canonical fields excluding itself. History is
-append-only inside the atomically replaced checkpoint bytes. Validate sequence,
-predecessor transition hash, prior checkpoint raw hash, and immutable artifact/run/
-operation/spec identity on every update. Maximum checkpoint bytes are 131072; if
-history would exceed it, stop PARTIAL and require a new run rather than truncate or
-discard history.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Checkpoint record authorization binds this exact path/schema/max size, allowed
 phase/status fields, transition validation, one recorder identity, and non-writes.
@@ -99,9 +94,9 @@ spec write, review, QA planning, acceptance, and every PARTIAL/DEFERRED/BLOCKED 
 ## 3. Attempt control
 
 Each `cgs.team-audio-agent-attempt/v2` contains logical task ID, role, agent identity,
-input/context/predecessor hashes, allowed proposal/finding IDs, prohibited paths,
+input/context/predecessor revisions, allowed proposal/finding IDs, prohibited paths,
 attempt token, retry ordinal `0 | 1`, start time, deadline, result status, output
-hash, omissions, and observed side effects.
+revision, omissions, and observed side effects.
 
 Hard caps:
 
@@ -117,8 +112,8 @@ At timeout/cancel/failure/invalid output/side effect:
 1. mark status `TIMED_OUT | CANCELED | FAILED | INVALID | SIDE_EFFECT`;
 2. revoke the token and checkpoint it;
 3. cancel dependent attempts;
-4. rehash spec/checkpoint and every prohibited path whose preimage was inventoried;
-5. quarantine later payloads/patches by hash and never merge them; and
+4. re-read spec/checkpoint and every prohibited path whose prior state was inventoried;
+5. quarantine later payloads/patches by revision and never merge them; and
 6. return PARTIAL/BLOCKED when required evidence is unavailable.
 
 A retry is allowed only after all inventoried paths prove the prior attempt made no
@@ -127,67 +122,62 @@ deadline ceiling; it does not reset the 20-minute phase or nine-attempt run cap.
 There is no second retry, substitute role, or loop-until-pass.
 
 Any result after revocation/deadline is `LATE`. A late write is not automatically
-reverted. Preserve path/pre/post hashes, stop further ordinary writes, and require
+reverted. Preserve path/pre/post revisions, stop further ordinary writes, and require
 the named owner to resolve it. LATE or SIDE_EFFECT evidence prevents SPEC COMPLETE.
 
-## 4. Checkpoint update CAS
+## 4. Checkpoint update atomic conflict check
 
 Before each checkpoint update:
 
-- require current checkpoint preimage hash/ABSENT and valid internal history;
-- rehash every source, predecessor proposal/result, spec target, decision,
+- require current checkpoint prior state revision/ABSENT and valid internal history;
+- re-read every source, predecessor proposal/result, spec target, decision,
   authorization, reviewer/QA evidence named by the transition;
-- require active recorder identity and record-authorization hash;
+- require active recorder identity and record-authorization revision;
 - require no revoked/late token output entered accepted state; and
 - require the candidate transition to be the unique legal next sequence/phase.
 
 On mismatch, write nothing and return BLOCKED with exact field/path/expected/
-observed hashes. Checkpoint status does not overwrite source truth or authorize a
+observed revisions. Checkpoint status does not overwrite source truth or authorize a
 spec write.
 
-## 5. Spec write CAS and transaction
+## 5. Spec write atomic conflict check and transaction
 
 Immediately before the spec write, perform one complete preflight:
 
-### Source and context CAS
+### Source and context atomic conflict check
 
-- request, all loaded source bytes, inventory/omission set, context limits/hash,
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
   direction decision, proposals/findings, destination ledger, engine evidence, and
   attempt/token states.
 
-### Target and identity CAS
+### Target and identity atomic conflict check
 
-- canonical spec path, artifact/run/operation, spec preimage/ABSENT, checkpoint
-  preimage/history, one transaction writer, and zero alias/second-target conflict.
+- canonical spec path, artifact/run/operation, spec prior state/ABSENT, checkpoint
+  prior state/history, one transaction writer, and zero alias/second-target conflict.
 
-### Approval and authorization CAS
+### Approval and authorization atomic conflict check
 
-- complete draft bytes/hash, write-plan hash, content approval identity/hash,
-  mutation authorization identity/hash, exact two-path write set, and non-writes.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Any mismatch means zero spec writes and invalidates stale approval/authorization.
 
 Write the spec first with atomic single-file replacement where supported, then read
-back/verify exact bytes/raw hash. Update the checkpoint second. Single-file atomic
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 operations do not make the pair atomic.
 
 If spec succeeds and checkpoint fails, return `PARTIAL — NOT APPROVED`, report an
-uncheckpointed spec with exact expected/observed hashes, and do not claim safe
+uncheckpointed spec with exact expected/observed revisions, and do not claim safe
 resume. Do not delete or overwrite the spec as rollback. If spec write/read-back
 fails, preserve exact observed state and update PARTIAL checkpoint only when the
-record CAS still safely applies.
+record atomic conflict check still safely applies.
 
 Rollback may be claimed only if a separately authorized recovery restored every
-affected path byte-for-byte and raw hashes equal recorded preimages. This workflow
+affected path byte-for-byte and raw revisions equal recorded prior states. This workflow
 does not assume or automatically perform destructive rollback.
 
 ## 6. Idempotent resume
 
-`--resume` must name the canonical checkpoint path and expected raw hash. Read and
-validate the entire internal history, request/content/run/operation identity,
-record authorization, transition chain, current source/context hashes, spec
-preimage/current hash, decisions, proposal/review/QA hashes, engine state, product
-acceptance, attempt tokens, and prohibited-path observations.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Resume only from `next_safe_phase`. Completed phase evidence with matching inputs/
 outputs is a no-op. Never repeat a successful spec write, product decision,
@@ -195,7 +185,7 @@ delegation, review, or QA proposal from prose alone. Pending/retry work receives
 new permitted token; revoked tokens stay revoked.
 
 Any source, spec, checkpoint, engine, decision, ownership, authorization, or
-attempt-state drift returns BLOCKED/PARTIAL with exact expected/observed hashes.
+attempt-state drift returns BLOCKED/PARTIAL with exact expected/observed revisions.
 Never silently restart under the old run ID or advance a stale spec review/
 acceptance.
 
@@ -203,13 +193,13 @@ acceptance.
 
 Accessibility and final audio review each permit one author revision and one
 verification re-review. A revision must render exact new bytes and obtain a new
-write plan, content approval, mutation authorization, CAS, spec write/read-back, and
+write plan, content approval, mutation authorization, atomic conflict check, spec write/read-back, and
 checkpoint transition. The re-review uses a fresh token/identity and binds the new
-spec hash while preserving stable finding IDs.
+spec revision while preserving stable finding IDs.
 
 No second revision or third observation is permitted for the same blocker. The same
 blocker, partial review, reviewer/author/writer identity overlap, timeout, or stale
-hash ends BLOCKED/PARTIAL.
+revision ends BLOCKED/PARTIAL.
 
 ## 8. Minimum PARTIAL and terminal evidence
 
@@ -217,11 +207,11 @@ Even when no spec can be safely written, a PARTIAL response/checkpoint candidate
 must contain:
 
 - artifact/run/operation and canonical paths;
-- current request/context/source/spec/checkpoint hashes or UNKNOWN;
+- current request/context/source/spec/checkpoint revisions or UNKNOWN;
 - completed proposal/finding IDs and their destination/owner;
 - missing/blocked/timed-out/canceled/late attempt states;
 - accessibility/review blockers and engine state;
-- actual/attempted write set with observed hashes;
+- actual/attempted write set with observed revisions;
 - last verified phase and exact safe resume action; and
 - explicit `NOT APPROVED`, `QA NOT RUN`, `PLAYBACK NOT RUN`, and
   `NOT IMPLEMENTATION READY` labels.
@@ -234,21 +224,21 @@ artifact_id: <id>
 run_id: <id>
 verdict: SPEC_COMPLETE | SPEC_COMPLETE_ENGINE_VALIDATION_DEFERRED | PARTIAL_NOT_APPROVED | ACCEPTED_RISK_NOT_APPROVED | DEFERRED_NOT_APPROVED | BLOCKED
 spec_path: design/audio/audio-<artifact-id>.md
-spec_sha256: <sha256 or ABSENT | UNKNOWN>
-context_manifest_sha256: <sha256>
-direction_decision_sha256: <sha256 or null>
-destination_ledger_sha256: <sha256 or null>
-write_plan_sha256: <sha256 or null>
-mutation_authorization_sha256: <sha256 or null>
-checkpoint_sha256: <sha256 or null>
+spec_revision: <revision or ABSENT | UNKNOWN>
+context_manifest_revision: <revision>
+direction_decision_revision: <revision or null>
+destination_ledger_revision: <revision or null>
+write_plan_revision: <revision or null>
+mutation_authorization_revision: <revision or null>
+checkpoint_revision: <revision or null>
 proposal_counts_by_destination: {}
 attempt_states: []
 accessibility_finding_ids: []
-audio_review_sha256: <sha256 or null>
-qa_plan_proposal_sha256: <sha256 or null>
+audio_review_revision: <revision or null>
+qa_plan_proposal_revision: <revision or null>
 engine_state: CURRENT | DEFERRED | STALE | NOT_APPLICABLE
 adr_dependencies: []
-product_acceptance_sha256: <sha256 or null>
+product_acceptance_revision: <revision or null>
 qa_execution: NOT_RUN
 playback_execution: NOT_RUN
 implementation_state: NOT_PRESENT

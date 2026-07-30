@@ -10,9 +10,7 @@ This file is normative for `code-review`.
 - Reviewer packet: `cgs.code-review-worker/v1`
 - Analysis receipt: `cgs.code-analysis-receipt/v1`
 
-Compute `skill_bundle_sha256` over exact `SKILL.md` bytes, one NUL byte,
-exact `continued-workflow.md` bytes, one NUL byte, then exact
-`review-rules-v1.md` bytes. Expose it as the producer version.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## Fixed limits
 
@@ -73,7 +71,7 @@ origin_target: <canonical input target>
 entry_type: regular-file | symlink | junction | directory | other
 source_type: <configured language/type or unknown>
 size_bytes: <integer or null>
-sha256: <complete lowercase SHA-256 or null>
+revision: <positive integer revision or null>
 eligibility: ELIGIBLE | EXCLUDED | ERROR | UNCHECKED
 reason: <stable reason code>
 ```
@@ -82,15 +80,10 @@ Sort by Unicode-normalized, slash-separated canonical path. Reject case-folded
 duplicates on case-insensitive filesystems. Always exclude version-control
 internals. Exclude generated/vendor/cache/build files only with current
 owner-approved path rules, a committed generation marker, or a source declaration
-that proves the classification; store that evidence path/hash. A directory name
+that proves the classification; store that evidence path/revision. A directory name
 alone is insufficient.
 
-Hash the canonical sorted manifest rows to produce `target_manifest_hash`.
-The reviewed set is the first 64 eligible sorted rows that also fit the per-file
-and total-byte limits. Keep every remaining known row as `UNCHECKED` with
-`FILE_LIMIT`, `FILE_BYTES_LIMIT`, `TOTAL_BYTES_LIMIT`, or `DEPTH_LIMIT`. An
-enumeration error, unreadable eligible file, or undiscovered subtree makes
-manifest coverage incomplete.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## Rule-source chain and precedence
 
@@ -106,7 +99,7 @@ For every target file independently, record:
 Runtime system/developer/user instructions still govern execution but are not
 forged into project review findings.
 
-Each source row contains path, SHA-256, source type, declared scope, target paths,
+Each source row contains path, revision, source type, declared scope, target paths,
 precedence basis, and currentness. A closest nested `AGENTS.md` overrides an
 ancestor only where the repository contract grants closest-file precedence.
 Story/ADR specificity does not silently override repository standards. An exact
@@ -124,9 +117,9 @@ Create one stable rule row per applicable normative requirement:
 ```yaml
 rule_id: <explicit stable ID or deterministic generated key>
 source_path: <canonical path>
-source_sha256: <hash>
+source_revision: <revision>
 source_location: <heading/key/line evidence>
-normative_text_hash: <hash>
+normative_text_revision: <revision>
 targets: [<paths>]
 applicability: APPLICABLE | NOT_APPLICABLE | UNKNOWN
 applicability_evidence: <exact source and rationale>
@@ -139,7 +132,7 @@ check_state: VERIFIED_PASS | VERIFIED_FAIL | NOT_APPLICABLE | UNVERIFIED
 
 Prefer an explicit source rule ID. Otherwise generate a stable key from canonical
 source path, stable heading/key, and normalized normative sentence. Store the
-current source hash separately.
+current source revision separately.
 
 Severity is derived, never guessed:
 
@@ -171,7 +164,7 @@ The following framework-owned ADR classifications are deterministic:
 
 - the rule source permits conditional applicability;
 - exact target language/type/symbol/scope evidence excludes the condition;
-- the evidence path and hash are current; and
+- the evidence path and revision are current; and
 - the rationale is specific enough to reproduce.
 
 Engine/language rules cannot be N/A merely because engine configuration is
@@ -206,17 +199,17 @@ receipt_id: <stable ID>
 tool: <name>
 tool_version: <exact version>
 configuration_path: <path or null>
-configuration_sha256: <hash or null>
-input_artifacts: [{path, sha256}]
+configuration_revision: <revision or null>
+input_artifacts: [{path, revision}]
 capabilities: [<claim classes actually supported>]
 invocation: <exact read-only invocation or recorded external run identity>
 result_path: <path or embedded>
-result_sha256: <hash>
+result_revision: <revision>
 executed_at: <ISO-8601 UTC or null>
 status: PASS | FAIL | PARTIAL | ERROR
 ```
 
-Input/hash mismatch, incompatible tool/language/version/configuration, ambiguous
+Input/revision mismatch, incompatible tool/language/version/configuration, ambiguous
 capability, missing result, timeout, partial receipt, or unproven read-only
 invocation makes the dependent rule `UNVERIFIED`. Never infer a clean AST, graph,
 allocation, runtime, build, or test result from natural-language inspection.
@@ -227,9 +220,9 @@ Each explicit ADR row contains:
 
 ```yaml
 adr_id: <stable ID>
-declared_by: [{path, sha256, location}]
+declared_by: [{path, revision, location}]
 resolved_path: <canonical path or null>
-sha256: <hash or null>
+revision: <revision or null>
 status: Accepted | Proposed | Superseded | Deprecated | Rejected | Unknown
 decision_present: <boolean>
 consequences_present: <boolean>
@@ -251,7 +244,7 @@ ADR.
 
 ## Engine-specialist and reviewer routing
 
-Read and hash `.codex/docs/technical-preferences.md` or the current configured
+Read `.codex/docs/technical-preferences.md` and record its declared revision or the current configured
 equivalent. Extract engine identity, language, named specialists, extension/type
 routing rows, and declared fallback notes. Do not invent mappings.
 
@@ -301,11 +294,11 @@ Reviewer request:
 schema: cgs.code-review-worker/v1
 run_id: <run ID>
 role: <canonical role>
-target_manifest_hash: <hash>
-targets: [{path, sha256}]
+target_manifest_revision: <revision>
+targets: [{path, revision}]
 assigned_rule_ids: [<IDs>]
-rule_sources: [{path, sha256}]
-adr_evidence: [{adr_id, path, sha256, status}]
+rule_sources: [{path, revision}]
+adr_evidence: [{adr_id, path, revision, status}]
 constraints: {read_only: true, may_decide_verdict: false, may_write: false}
 ```
 
@@ -315,14 +308,14 @@ Usable response:
 schema: cgs.code-review-worker/v1
 status: DONE
 role: <same role>
-target_manifest_hash: <same hash>
-target_hashes: [{path, sha256}]
+target_manifest_revision: <same revision>
+target_hashes: [{path, revision}]
 evaluations: [{rule_id, target_path, check_state, evidence, rationale}]
 candidate_findings: [{rule_id, target_path, stable_subject, defect_class,
                       proposed_severity, evidence, rationale}]
 ```
 
-The lead validates schema, scope, hashes, evidence, and rule severity. Reviewer
+The lead validates schema, scope, revisions, evidence, and rule severity. Reviewer
 output cannot turn an `UNVERIFIED` mechanical check into verified evidence unless
 the rule explicitly accepts specialist judgment as its evidence method.
 
@@ -331,29 +324,29 @@ the rule explicitly accepts specialist judgment as its evidence method.
 Finding states are `OPEN`, `ACCEPTED_RISK`, `RESOLVED`, or `SUPERSEDED`; a fresh
 review normally emits current `OPEN` and separately referenced accepted risks.
 
-Fingerprint material is:
+stable key material is:
 
 ```text
 canonical target path + stable symbol/subject + stable rule ID + normalized
 defect class
 ```
 
-Exclude target/rule hashes, line numbers, prose wording, timestamps, run/reviewer
-IDs, and severity from the fingerprint. Finding ID is:
+Exclude target/rule revisions, line numbers, prose wording, timestamps, run/reviewer
+IDs, and severity from the stable key. Finding ID is:
 
 ```text
-CRF-<sanitized-rule-id>-<first-12-of-SHA256(fingerprint)>
+CRF-<stable-finding-id>
 ```
 
 Each finding contains:
 
 ```yaml
 finding_id: <stable ID>
-fingerprint: <full SHA-256>
+stable key: <full revision>
 state: OPEN | ACCEPTED_RISK | RESOLVED | SUPERSEDED
 severity: BLOCKING | WARNING | INFO
-rule: {id, source_path, source_sha256, source_location}
-target: {path, sha256, stable_subject, evidence_location}
+rule: {id, source_path, source_revision, source_location}
+target: {path, revision, stable_subject, evidence_location}
 check_state: VERIFIED_FAIL | UNVERIFIED
 defect_class: <stable class>
 observation: <evidence-bound statement>
@@ -412,11 +405,11 @@ Return this exact shape for a valid manifest:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical normalized payload with record_id omitted>
-artifact_id: code-review:<first-16-of-target-manifest-hash>
+record_id: <stable allocated ID>
+artifact_id: "<stable allocated ID>"
 artifacts:
   - path: <canonical project-relative path>
-    sha256: <complete lowercase SHA-256>
+    revision: <positive integer revision>
     role: target | story | AGENTS | project-standard | ADR | analyzer-config |
           analysis-receipt
     source_id: <stable ID or null>
@@ -426,14 +419,14 @@ timestamp: <ISO-8601 UTC with fractional seconds>
 finding_ids: [<stable CRF IDs>]
 producer:
   tool: code-review
-  version: sha256:<skill_bundle_sha256>
+  version: <declared skill bundle version>
 extension:
   schema: cgs.code-review/v2
   run_id: CR-<compact UTC>-<manifest12>-<UUIDv4>
   project_id: <canonical repository identity>
   source_revision: {commit: <commit or null>, input_state: clean | dirty | includes-untracked-inputs}
-  target_manifest_hash: <hash>
-  stale_key: <digest of project/manifest/rules/ADRs/tool receipts/reviewer contract>
+  target_manifest_revision: <revision>
+  stale_key: <reference ID of project/manifest/rules/ADRs/tool receipts/reviewer contract>
   input: {targets: [<paths>], story: <path or null>}
   limits: <all effective fixed limits>
   target_manifest: [<all rows, including excluded/error/unchecked>]
@@ -448,8 +441,8 @@ extension:
   accepted_risk_refs: [<exact records>]
   partial_reasons: [<stable reason codes and evidence>]
   mutation_guard:
-    before_root: <streaming tree hash>
-    after_root: <streaming tree hash>
+    before_root: <streaming tree revision>
+    after_root: <streaming tree revision>
     status: UNCHANGED | CHANGED | INCOMPLETE
     changed_paths: [<bounded evidence>]
   approval_status: APPROVED | NOT_APPROVED
@@ -458,8 +451,8 @@ extension:
 ```
 
 Every target file and every artifact used as evidence appears in `artifacts` with
-its exact current hash. `record_id` is calculated only after the record is frozen.
-Any artifact/rule/ADR/receipt/reviewer-contract/target-manifest hash change makes
+its exact current revision. `record_id` is calculated only after the record is frozen.
+Any artifact/rule/ADR/receipt/reviewer-contract/target-manifest revision change makes
 the record stale. Direct skill output is always non-persisted and gate-ineligible.
 
 For input `ERROR`, return a bounded error object with schema, error code, rejected

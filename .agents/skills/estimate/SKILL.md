@@ -24,8 +24,8 @@ $estimate story --basis relative --input <project-relative-story-path> [--eviden
 $estimate story --basis calibrated --input <project-relative-story-path> --history <project-relative-history-manifest> [--capacity <project-relative-capacity-receipt>] [--evidence <project-relative-evidence-manifest>]
 $estimate sprint --basis relative --input <project-relative-sprint-path> [--evidence <project-relative-evidence-manifest>]
 $estimate sprint --basis calibrated --input <project-relative-sprint-path> --history <project-relative-history-manifest> [--capacity <project-relative-capacity-receipt>] [--evidence <project-relative-evidence-manifest>]
-$estimate freeform --basis relative --description <text> --scope-id <stable-id> --baseline-sha256 <64-lowercase-hex> --current-sha256 <64-lowercase-hex> [--evidence <project-relative-evidence-manifest>]
-$estimate freeform --basis calibrated --description <text> --scope-id <stable-id> --baseline-sha256 <64-lowercase-hex> --current-sha256 <64-lowercase-hex> --history <project-relative-history-manifest> [--capacity <project-relative-capacity-receipt>] [--evidence <project-relative-evidence-manifest>]
+$estimate freeform --basis relative --description <text> --scope-id <stable-id> --baseline-revision <explicit revision> --current-revision <explicit revision> [--evidence <project-relative-evidence-manifest>]
+$estimate freeform --basis calibrated --description <text> --scope-id <stable-id> --baseline-revision <explicit revision> --current-revision <explicit revision> --history <project-relative-history-manifest> [--capacity <project-relative-capacity-receipt>] [--evidence <project-relative-evidence-manifest>]
 ```
 
 `story`, `sprint`, and `freeform` are delivery profiles. `relative` and
@@ -51,7 +51,7 @@ modification time, or conversation memory.
 
 This is a single-analyzer, strictly read-only workflow:
 
-- It may enumerate, hash, parse, and read explicit project-local regular files
+- It may enumerate, revision, parse, and read explicit project-local regular files
   and inspect read-only Git state.
 - It must not create, edit, append, re-baseline, split, merge, include, exclude,
   schedule, assign, stage, commit, publish, approve, or persist any file, scope,
@@ -89,7 +89,7 @@ Return exactly one:
   wait/parallelism gates pass and elapsed ranges are available.
 
 `ERROR` and `INPUT REQUIRED` emit no evidence record. `NOT ESTIMABLE` and
-`PARTIAL ESTIMATE` may return hash-bound non-consumable analysis evidence when a
+`PARTIAL ESTIMATE` may return revision-bound non-consumable analysis evidence when a
 scope manifest was locked. Only the three complete estimate results may emit an
 estimate record eligible for downstream scope evidence, and relative-only
 evidence never verifies numeric effort.
@@ -100,12 +100,11 @@ evidence never verifies numeric effort.
 
 Read every applicable `AGENTS.md` from repository root through each explicit
 input and first-level linked artifact, in root-to-target order. Record canonical
-path and raw-byte SHA-256; the nearest applicable instruction wins conflicts.
+path and declared revision; the nearest applicable instruction wins conflicts.
 
-Represent `project_id` as
-`root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>` and compute
-`project_id_sha256` over its UTF-8 bytes. If Git is unavailable, use `null`,
-continue from exact current hashes, record project-revision provenance as
+Use the repository's declared stable project ID. If none exists, use the canonical
+project-root path plus the verified VCS root commit as a provisional project identity.
+If Git is unavailable, record the VCS component as `null`, mark project provenance
 incomplete, and prevent a complete consumable result; never guess a commit.
 
 Each estimate unit uses `cgs.estimate-scope-binding/v1`:
@@ -114,30 +113,30 @@ Each estimate unit uses `cgs.estimate-scope-binding/v1`:
 scope_binding_id: <stable ID>
 scope_id: <stable Scope ID>
 parent_scope_id: <stable epic/sprint/milestone ID or null>
-baseline_sha256: <approved immutable baseline hash>
-current_scope_sha256: <current scope-manifest hash>
+baseline_revision: <approved immutable baseline revision>
+current_scope_revision: <current scope-manifest revision>
 input:
   artifact_id: <stable story/sprint/freeform ID>
   path: <canonical project-relative path or FREEFORM>
-  sha256: <exact raw or normalized-description hash>
+  revision: <exact raw or normalized-description revision>
 profile: story | sprint | freeform
 work_type:
   taxonomy_id: <stable ID>
   taxonomy_version: <exact version>
   type_id: <stable work-type ID>
 completeness: COMPLETE | INCOMPLETE | CONFLICTING
-source: <artifact ID/path/locator/hash/schema/owner>
+source: <artifact ID/path/locator/revision/schema/owner>
 ```
 
 For `story`, read the binding from the exact story or one exact direct binding
-reference. For `sprint`, every included story row supplies path/hash/binding and
+reference. For `sprint`, every included story row supplies path/revision/binding and
 inclusion state; no story is inferred. For `freeform`, normalize description as
 UTF-8 Unicode NFC, LF line endings, no trailing line whitespace, and exactly one
-final LF, then hash those bytes. The provided Scope ID and baseline/current
-hashes remain mandatory; a description without a testable delivery boundary is
+final LF, then revision those bytes. The provided Scope ID and baseline/current
+revisions remain mandatory; a description without a testable delivery boundary is
 `NOT ESTIMABLE`.
 
-A missing/conflicting Scope ID, baseline/current/input hash, taxonomy, profile,
+A missing/conflicting Scope ID, baseline/current/input revision, taxonomy, profile,
 or completeness state produces an `UNBOUND` analysis and no consumable estimate
 record. Never repair bindings or invent a baseline.
 
@@ -169,10 +168,10 @@ max_findings: 1024
 
 An explicit input may lower but never raise these caps. Build the complete
 candidate identity sequence, sorted by channel, stable artifact ID or null, then
-canonical path. Stream it into `inventory_sha256`, retaining at most
+canonical path. Stream it into `inventory_revision`, retaining at most
 `max_context_candidates` detailed rows. On overflow record exact total/omitted
-counts, first/last omitted sort keys, and `omitted_candidates_sha256`. Use the
-same bounded-prefix plus count/digest rule for other row limits.
+counts, first/last omitted sort keys, and `omitted_candidates_revision`. Use the
+same bounded-prefix plus count/reference ID rule for other row limits.
 
 If a required root, scope binding, sprint story set, or blocking first-level link
 exceeds a cap, return `NOT ESTIMABLE`. If optional evidence, history, capacity,
@@ -188,27 +187,27 @@ channel: instruction | root | scope-binding | story | adr | dependency | interfa
 artifact_id: <stable ID or null>
 scope_ids: [<sorted stable IDs>]
 path: <canonical project-relative path>
-sha256: <locked 64-lowercase-hex or null>
-revalidation_sha256: <final 64-lowercase-hex or null>
+revision: <locked explicit revision or null>
+revalidation_revision: <final explicit revision or null>
 bytes: <integer or null>
 status: LOCKED | EXCLUDED | MISSING | UNREADABLE | INVALID | OVER_LIMIT | SYMLINK_REJECTED | OUTSIDE_PROJECT | STALE
 reason: <bounded exact reason>
 ```
 
-`context_manifest_sha256` hashes canonical JSON of project identity, invocation,
-profile/basis, scope bindings, model/policy IDs, fixed/effective limits, ordered
-retained rows, inventory digest, and overflow counts/digests. Canonical JSON is
-UTF-8 with lexicographically ordered object keys, displayed array order, no
-insignificant whitespace, and one final LF.
+`context_manifest_revision` is an explicit monotonically increasing manifest revision.
+It binds the project identity, invocation, profile/basis, scope bindings, model/policy
+IDs, fixed/effective limits, ordered retained rows, inventory IDs, and overflow counts.
+Canonical JSON remains UTF-8 with lexicographically ordered object keys, displayed
+array order, no insignificant whitespace, and one final LF.
 
-An optional `cgs.estimate-evidence-manifest/v1` is an exact path/hash allowlist.
+An optional `cgs.estimate-evidence-manifest/v1` is an exact path/revision allowlist.
 It separates confirmed affected modules/files/interfaces from tentative
 candidates and records purpose, covered Scope IDs, owner, validity, explicit
-unknowns, and hash for each item. Only exact bound evidence is confirmed.
+unknowns, and revision for each item. Only exact bound evidence is confirmed.
 Predicted files, integrations, or dependencies are tentative risks and never
 counted facts; file/code counts alone do not set size or effort.
 
-Before finalizing, re-enumerate explicit inputs and re-hash every consumed
+Before finalizing, re-enumerate explicit inputs and Revalidate every consumed
 artifact. Added, removed, renamed, or byte-changed input is `STALE`; discard
 derived estimates and return
 `NOT ESTIMABLE — INPUT CHANGED DURING ESTIMATE` with non-consumable diagnostic
@@ -246,7 +245,7 @@ days, dates, story points, budget, nor an additive sprint measure. History and
 capacity never alter the factor vector.
 
 Separate confirmed and tentative scope per axis. Record evidence artifact/locator/
-hash, supported level/range, rationale, and limitation for every axis. Tentative
+revision, supported level/range, rationale, and limitation for every axis. Tentative
 affected files may widen an axis range only when the model rule explicitly maps
 the unresolved integration/breadth risk; their count never directly raises a
 score.
@@ -272,7 +271,7 @@ Relative confidence is deterministic and not a probability of delivery:
 - `LOW`: at least one readiness field is `UNKNOWN` and none is `BLOCKED`;
 - `MEDIUM`: every field is known and at least one is `PARTIAL`, or the score spans
   multiple bands; and
-- `HIGH`: all fields are `READY`, all hashes match, and one band resolves.
+- `HIGH`: all fields are `READY`, all revisions match, and one band resolves.
 
 Never convert confidence into contingency percentage or hidden time padding.
 
@@ -282,7 +281,7 @@ Never convert confidence into contingency percentage or hidden time padding.
 
 Calibrated basis requires one immutable `cgs.estimate-history/v2` manifest, one
 `cgs.estimate-calibration-policy/v1`, and one
-`cgs.estimate-unit-registry/v1`, each with exact artifact ID/path/hash/schema/
+`cgs.estimate-unit-registry/v1`, each with exact artifact ID/path/revision/schema/
 version/owner. History is never discovered from arbitrary prior sprints.
 
 Every historical sample contains:
@@ -303,8 +302,8 @@ actual_effort:
   resolution: <source measurement precision>
 blocked_effort: <typed separate value>
 external_wait: <typed separate elapsed value>
-completion: <artifact ID/path/locator/hash/status>
-source_bindings: <baseline/current/input IDs and hashes>
+completion: <artifact ID/path/locator/revision/status>
+source_bindings: <baseline/current/input IDs and revisions>
 anomaly: <NONE or stable flag plus disposition evidence>
 ```
 
@@ -382,7 +381,7 @@ schedule channel requires current `cgs.estimate-capacity/v1` evidence binding:
 - availability intervals, working calendar, holidays and time zone;
 - WIP and parallel-lane constraints;
 - reviewer, service, vendor, and external dependency availability/wait ranges;
-- validity interval, owner, source artifact/path/hash/schema; and
+- validity interval, owner, source artifact/path/revision/schema; and
 - no staffing/budget assumption added by the analyzer.
 
 It also requires a complete acyclic dependency DAG with stable package/predecessor
@@ -409,27 +408,27 @@ keep, defer, remove, add, reorder, staff, split, re-baseline, or promise work.
 Every blocker, evidence gap, or calibration/schedule limitation uses:
 
 ```yaml
-id: ESF-<category-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <64-lowercase-hex>
+id: ESF-<scope-or-artifact-id>-<category-slug>-<defect-key>
+stable_key_version: esf-v1
 category: INPUT_GAP | SCOPE_CONFLICT | BLOCKED_DECISION | CONTEXT_OVERFLOW | HISTORY_EXCLUSION | CALIBRATION_GAP | UNIT_GAP | AGGREGATION_GAP | CAPACITY_GAP | DEPENDENCY_GAP | STALE_INPUT
 profile: story | sprint | freeform
 basis: relative | calibrated
 scope_ids: [<sorted stable IDs>]
 field_or_policy_id: <stable ID>
 status: OPEN | RESOLVED_IN_CURRENT
-evidence: [<complete artifact/locator/hash references>]
+evidence: [<complete artifact/locator/revision references>]
 impact: <bounded consequence for estimate eligibility>
 owner: <stable user/producer/data/design/architecture/team owner>
 acceptance: <objective current-input closure condition>
 ```
 
-Fingerprint canonical JSON from `project_id_sha256`, category, profile/basis,
-sorted stable Scope IDs, field/policy ID, and stable source artifact IDs. Exclude
-paths, hashes, titles, descriptions, raw values, size/confidence/result labels,
-owner, status, timestamps, run identity, and recommendation. The same logical gap
-keeps its ID after path/wording/value changes; a different scope/policy/field does
-not. Deduplicate only the full fingerprint; incompatible evidence under one
-fingerprint is a scope/evidence conflict and prevents a complete result.
+Construct each stable finding key from `project_id`, category, profile/basis, sorted
+stable Scope IDs, field/policy ID, and stable source artifact IDs. Exclude paths,
+revisions, titles, descriptions, raw values, size/confidence/result labels, owner,
+status, timestamps, run identity, and recommendation. The same logical gap keeps
+its ID after path/wording/value changes; a different scope/policy/field does not.
+Deduplicate only the complete stable key; incompatible evidence under one key is a
+scope/evidence conflict and prevents a complete result.
 
 Record one coverage row for every instruction, root, scope binding, first-level
 link, history sample, unit/model/policy, capacity/calendar, dependency node/edge,
@@ -439,7 +438,7 @@ and required calculation:
 channel_id: <stable artifact/channel/check ID>
 artifact_or_scope_id: <stable ID or null>
 path: <canonical project-relative path or null>
-sha256: <hash or null>
+revision: <revision or null>
 bytes: <integer or null>
 status: COMPLETE | PARTIAL | FAILED | NOT_APPLICABLE
 checks:
@@ -495,17 +494,17 @@ schema: cgs.estimate-report/v1
 contract: cgs.estimate/v2
 result: <canonical result>
 operation: READ_ONLY
-project_id: <canonical project identity>
-project_id_sha256: <hash>
-estimate_id: EST-<first-24-identity-hex>
+project_id: <canonical stable project identity>
+project_revision: <explicit revision>
+estimate_id: EST-<scope-or-batch-id>-<utc-run-id>
 profile: story | sprint | freeform
 basis: relative | calibrated
 scope_bindings: [<ordered exact binding records>]
 context_manifest:
-  sha256: <context manifest hash>
-  inventory_sha256: <complete candidate identity digest>
+  revision: <context manifest revision>
+  inventory_revision: <complete candidate identity reference ID>
   limits: <fixed and effective limits>
-  overflow: <exact counts, boundary keys, and omitted digests>
+  overflow: <exact counts, boundary keys, and omitted reference IDs>
   rows: [<ordered detailed rows>]
 confirmed_scope: []
 tentative_scope: []
@@ -517,7 +516,7 @@ relative:
   band_ranges: []
   confidence: <LOW | MEDIUM | HIGH per unit>
 history:
-  manifest_and_policy: <IDs/hashes or null>
+  manifest_and_policy: <IDs/revisions or null>
   included_samples: []
   excluded_samples: []
   quality_and_support: <gates/statistics/limitations>
@@ -528,8 +527,8 @@ calibration:
   calculations: <bounded exact formulas/intermediates/rounding>
 aggregation: <policy/scenarios/result or null>
 capacity_and_schedule:
-  capacity_receipt: <ID/hash or null>
-  dependency_dag: <IDs/hash or null>
+  capacity_receipt: <ID/revision or null>
+  dependency_dag: <IDs/revision or null>
   effort_wait_parallelism_critical_path_elapsed: <separate fields or null>
 findings: [<ordered stable findings>]
 coverage:
@@ -542,27 +541,25 @@ recommendation: <one owner-specific decision/action or none>
 disclaimer: <required boundary text>
 ```
 
-`estimate_id` is SHA-256 over canonical JSON of project identity, profile/basis,
-ordered scope bindings including baseline/current/input hashes, relative model,
-calibration/aggregation/schedule policy IDs, included history sample IDs/hashes,
-evidence/context hashes, and capacity/DAG hashes. Exclude observation timestamp,
-run identity, rendering, and recommendation. A changed scope/hash/model/policy/
-sample/evidence/capacity creates a new estimate identity.
+Allocate `estimate_id` as `EST-<scope-or-batch-id>-<utc-run-id>`. Bind the record
+to explicit project, profile/basis, scope, model/policy, history-sample, evidence,
+capacity, and dependency IDs/revisions. A changed binding requires a new UTC run ID
+and explicit supersedes lineage; never derive the estimate ID from content.
 
 Sort bindings and evidence by stable IDs, included/excluded samples by sample ID,
-findings by category/scope/field/fingerprint, and all assumptions/unknowns by
+findings by category/scope/field/stable finding key, and all assumptions/unknowns by
 stable key. Render numeric values no more precisely than the unit/model policy.
 Run identity and observation time appear only in the outer envelope, so identical
 immutable inputs/policies/sample set reproduce the same extension bytes and
 estimate ID.
 
-Hash canonical extension JSON with Phase 1 canonicalization and wrap it in:
+revision canonical extension JSON with Phase 1 canonicalization and wrap it in:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<SHA-256 of canonical envelope payload excluding record_id>
-artifact_id: estimate:<project_id_sha256>:<estimate_id>:<context_manifest_sha256>
-artifacts: [<every retained locked input path and SHA-256, sorted as manifest>]
+record_id: <revision>
+artifact_id: estimate:<project_id>:<estimate_id>:<context_manifest_revision>
+artifacts: [<every retained locked input path and revision, sorted as manifest>]
 reviewer: <stable task identity or codex-task:<run_id>>
 review_run_id: <lowercase UUID>
 review_depth: bounded-full
@@ -571,7 +568,7 @@ verdict: <canonical estimate result>
 timestamp: <UTC ISO-8601>
 finding_ids: [<sorted stable finding IDs>]
 unresolved_blocker_ids: [<sorted open binding/decision/coverage IDs>]
-report_payload_sha256: <SHA-256 of canonical extension payload>
+report_payload_revision: <revision of canonical extension payload>
 producer:
   tool: estimate
   version: cgs.estimate/v2
@@ -579,7 +576,7 @@ extension: <complete cgs.estimate-report/v1 payload>
 ```
 
 Recompute artifact, context/inventory, payload, estimate identity, and record
-hashes once. Fail with `ERROR — EVIDENCE CONSTRUCTION FAILED` and no evidence
+revisions once. Fail with `ERROR — EVIDENCE CONSTRUCTION FAILED` and no evidence
 record instead of emitting inconsistent bytes.
 
 The disclaimer states: relative bands are dimensionless; numeric effort requires

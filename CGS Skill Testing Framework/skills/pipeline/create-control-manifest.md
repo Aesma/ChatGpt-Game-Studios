@@ -8,7 +8,7 @@ bounded `cgs.control-manifest/v2` programmer-facing view derived from the curren
 current Accepted ADR lifecycle evidence. The author must preserve source normative
 strength and immutable provenance, assign stable rule identities, expose
 deterministic duplicates/conflicts/unknowns, use monotonic versions and rule-level
-diffs, enforce bounded input and full compare-and-set publication, and keep
+diffs, enforce bounded input and full atomic conflict check publication, and keep
 independent review and ACTIVE recording outside this workflow.
 
 This specification retains the P0 source-fidelity and author/reviewer separation
@@ -21,7 +21,7 @@ authorized test runner actually executes these cases.
 ## Frozen fixtures and observation
 
 Each case freezes the exact raw bytes, normalized real paths, existence states,
-directory membership, and SHA-256 values for its applicable subset of:
+directory membership, and revision values for its applicable subset of:
 
 - workflow catalog and technical preferences;
 - target control manifest or exact ABSENT state;
@@ -31,18 +31,18 @@ directory membership, and SHA-256 values for its applicable subset of:
 - ADR registry, ADR documents, lifecycle records, and independent review evidence;
 - exact ADR-linked engine references and project standards;
 - one explicitly supplied prior control-manifest review pair; and
-- destination parent/directory membership used by the source manifest and CAS.
+- destination parent/directory membership used by the source manifest and atomic conflict check.
 
 Fixtures state artifact IDs, schema versions, statuses, source locators, exact
 quotes, normative levels, scopes, qualifications, TR IDs, lifecycle identities,
 review identities, limits, profile intent, and expected candidate bytes. The
 harness records every read, enumeration, prompt, decision, rule/conflict/unknown
-ID, manifest/ruleset/payload/candidate/provenance hash, diff, temporary publication
+ID, manifest/ruleset/payload/candidate/provenance revision, diff, temporary publication
 event, delegation/workflow event, route output, and persistent workspace mutation.
 
 Any undeclared or unbounded read and any persistent write outside
 `docs/architecture/control-manifest.md` fails the case. One same-directory
-temporary file is permitted only after final CAS and must not remain.
+temporary file is permitted only after final atomic conflict check and must not remain.
 
 ## Static assertions
 
@@ -53,7 +53,7 @@ temporary file is permitted only after final CAS and must not remain.
 - [ ] The only owned persistent output is
   `docs/architecture/control-manifest.md`.
 - [ ] Invocation defines `new`, `update`, and read-only `audit`, plus exact
-  path/hash pairs for architecture review and optional prior manifest review.
+  canonical paths for architecture review and optional prior manifest review.
 - [ ] The workflow is author-only: it never spawns or impersonates a reviewer,
   recorder, technical director, gate, or downstream workflow.
 - [ ] The manifest is a derived view; it never overrides architecture, GDD/TR,
@@ -66,30 +66,28 @@ temporary file is permitted only after final CAS and must not remain.
   ambiguous wording is never promoted to a normative level.
 - [ ] Rejected/deferred/not-selected alternatives remain contextual unless the
   source explicitly says forbidden or prohibited.
-- [ ] Every rule has stable `RULE-<16hex>` identity, scope, qualifications, exact
-  source quote/locator/hash, excerpt hash, lifecycle evidence, and applicable TRs.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - [ ] Exact semantic duplicates are retained as one rule with all provenance;
   merely similar rules are not collapsed.
-- [ ] Incompatible overlapping rules produce stable `CONFLICT-<16hex>` records,
+- [ ] Incompatible overlapping rules produce stable `CONFLICT-<stable-finding-id>` records,
   BLOCKED applicability, and no arbitrary winner.
-- [ ] Missing/ambiguous evidence produces stable `UNKNOWN-<16hex>` records and
+- [ ] Missing/ambiguous evidence produces stable `UNKNOWN-<stable-finding-id>` records and
   never enters executable rules.
 - [ ] Changed documents use `cgs.control-manifest/v2`, status `DRAFT|PARTIAL`,
-  monotonic positive integer versions, UTC generation time, semantic payload hash,
-  ruleset identity/hash, source-manifest identity, and external review
+  monotonic positive integer versions, UTC generation time, semantic payload revision,
+  ruleset identity/revision, source-manifest identity, and external review
   `NOT_CURRENT`.
-- [ ] The document never embeds its own current file hash; candidate/artifact hash
-  is computed and reported externally.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - [ ] Updates produce a complete rule-level diff, preserve immutable provenance
   history and `x-local-*` extensions, and perform no write on semantic no-op.
 - [ ] Input classes have fixed count/per-file/class/40-MiB limits, deterministic
   order, layered loading, and no recursive all-ADR/all-engine scan.
 - [ ] One authorization binds the full source manifest, base, rule diff, candidate
-  hash, immutable provenance append, and one-file changeset.
-- [ ] Final CAS revalidates every input hash/state/membership, base, ruleset,
-  rendered candidate, provenance preimage, and destination state before atomic
+  revision, immutable provenance append, and one-file changeset.
+- [ ] Final atomic conflict check revalidates every input revision/state/membership, base, ruleset,
+  rendered candidate, provenance prior state, and destination state before atomic
   publication.
-- [ ] Independent review may be observed only when exact-hash current; only the
+- [ ] Independent review may be observed only when exact-revision current; only the
   catalog-declared independent recorder may set ACTIVE.
 - [ ] Missing/unversioned/ambiguous catalog reviewer or recorder contracts yield
   UNKNOWN/Stop rather than a guessed route.
@@ -102,22 +100,20 @@ temporary file is permitted only after final CAS and must not remain.
 
 The target is absent and all inputs are valid.
 
-**Expected:** The in-memory candidate has schema `cgs.control-manifest/v2`,
-version `1`, a canonical semantic payload hash, a UTC `generated_at`, and no
-prior artifact hash. Its candidate SHA-256 is reported externally.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ### Case 2: two same-day updates remain distinct
 
 Apply two authorized source changes on the same UTC date.
 
-**Expected:** Versions advance `7 -> 8 -> 9`; timestamps and payload hashes bind
+**Expected:** Versions advance `7 -> 8 -> 9`; timestamps and payload revisions bind
 their exact candidates. No date string is used as version or uniqueness key.
 
 ### Case 3: different content cannot share version identity
 
 Construct two different payloads with the same proposed version and timestamp.
 
-**Expected:** Their semantic payload hashes differ. Publication refuses a
+**Expected:** Their semantic payload revisions differ. Publication refuses a
 candidate whose version/predecessor chain collides with an already observed
 artifact.
 
@@ -126,22 +122,18 @@ artifact.
 Reorder input enumeration and vary line endings while preserving the same
 canonical semantic payload and valid base.
 
-**Expected:** Canonical ordering produces the same semantic payload hash. If
-rendered candidate bytes are unchanged, this is a no-op with no version bump,
-timestamp update, provenance event, approval, temporary file, or write.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ### Case 5: semantic change advances version exactly once
 
 One rule's scope changes under new current source evidence.
 
-**Expected:** The candidate is base version plus one, has a different payload
-hash, records the exact predecessor artifact hash externally in the publication
-receipt and the prior-artifact field in-document, and appends one provenance event.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ### Case 6: invalid version chain
 
 The base has a date version, zero/negative version, non-integer, duplicate
-predecessor, missing payload hash, or broken provenance chain.
+predecessor, missing payload revision, or broken provenance chain.
 
 **Expected:** `update` and `audit` return
 `BLOCKED_UNSUPPORTED_BASE` or `BLOCKED_INVALID_PROVENANCE` with zero writes.
@@ -171,7 +163,7 @@ An Accepted-current ADR retains its stable source statement identity but changes
 the quoted rule and receives current lifecycle/review evidence.
 
 **Expected:** Preserve the rule ID only under the contract's stable source-key
-rule, show the changed quote/excerpt/source hashes, and mark the prior projection
+rule, show the changed quote/excerpt/source revisions, and mark the prior projection
 superseded in immutable history. Never retarget stale approval.
 
 ### Case 10: unknown or removed source
@@ -254,7 +246,7 @@ filename, ADR number, directory order, author identity, or apparent specificity.
 Two current rules overlap in scope and require mutually exclusive behavior, with
 no validated supersession relation.
 
-**Expected:** Emit stable `CONFLICT-<16hex>` containing sorted rule/source IDs,
+**Expected:** Emit stable `CONFLICT-<stable-finding-id>` containing sorted rule/source IDs,
 exact overlap, and evidence. Both rules are non-executable/BLOCKED for that scope;
 no winner is selected.
 
@@ -276,13 +268,12 @@ evidence and rule-level diff. Prior conflict history remains immutable.
 A source says “normally,” “prefer,” or “avoid” without an admitted explicit
 normative level mapping.
 
-**Expected:** Emit stable `UNKNOWN-<16hex>` with exact quote/source/scope and
+**Expected:** Emit stable `UNKNOWN-<stable-finding-id>` with exact quote/source/scope and
 reason. Do not infer SHOULD, SHOULD NOT, MUST, or MAY.
 
 ### Case 23: missing scope, qualification, or provenance
 
-An otherwise normative sentence cannot be tied to exact scope, locator, source
-hash, excerpt hash, lifecycle evidence, or relevant current TR.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 **Expected:** It is UNKNOWN/BLOCKED and omitted from executable rules. No
 fabricated defaults, global scope, or guessed TR mapping are permitted.
@@ -292,8 +283,7 @@ fabricated defaults, global scope, or guessed TR mapping are permitted.
 The harness forces two distinct canonical rule keys to the same truncated
 identifier.
 
-**Expected:** Publication blocks with both full canonical hashes and source
-identities. The workflow does not suffix, sequence, or silently overwrite IDs.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## CM-007 — bounded input, layered loading, and partial execution
 
@@ -348,7 +338,7 @@ writes.
 The source manifest is large but only three ADR statements and one engine
 reference can contribute rules.
 
-**Expected:** Hash-bind the complete admitted files while loading only the
+**Expected:** revision-bind the complete admitted files while loading only the
 necessary sections into analysis context. Unrelated source sections do not become
 rules or inferred authority.
 
@@ -357,7 +347,7 @@ rules or inferred authority.
 One admitted architecture, evidence, ADR, lifecycle, or reference file is
 unreadable or malformed.
 
-**Expected:** Preserve PARTIAL/UNKNOWN with exact path/hash/read state; publish
+**Expected:** Preserve PARTIAL/UNKNOWN with exact path/revision/read state; publish
 nothing and never treat missing content as absence of constraints.
 
 ### Case 33: mixed-moment snapshot
@@ -372,9 +362,7 @@ refresh, auto-merge, or retry is accepted in the same authorization.
 
 Present the same sources in different enumeration order.
 
-**Expected:** Canonical role/source-ID/path/scope/hash ordering yields the same
-source-manifest ID. Any byte, state, path, membership, or scope change yields a
-different ID.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ## Current architecture, TR, and Accepted ADR admission
 
@@ -382,14 +370,14 @@ different ID.
 
 The supplied generic `cgs.review-evidence/v1` record contains the
 `cgs.architecture-review/v2` extension, full-mode PASS, COMPLETE coverage, exact
-architecture-derived path/hash, source-manifest binding, and current dependencies.
+architecture-derived path/revision, source-manifest binding, and current dependencies.
 
 **Expected:** The v3 architecture is eligible for complete projection; review is
 readiness evidence, not technical-rule authority.
 
 ### Case 36: stale/partial/concern architecture review
 
-Exercise stale hash, wrong path, wrong source manifest, PARTIAL coverage,
+Exercise stale revision, wrong path, wrong source manifest, PARTIAL coverage,
 BLOCKED/CONCERNS verdict, missing extension, or review conflict.
 
 **Expected:** Complete projection is blocked or PARTIAL with exact reason. The
@@ -412,7 +400,7 @@ and block ACTIVE eligibility for affected scope.
 
 ### Case 39: Accepted-current ADR
 
-ADR ID/hash, Accepted lifecycle record, recorder identity/time, independent review
+ADR ID/revision, Accepted lifecycle record, recorder identity/time, independent review
 binding, and dependency chain are all current.
 
 **Expected:** Exact normative statements may project as rules with full immutable
@@ -461,7 +449,7 @@ quote; do not demote it to contextual preference.
 
 ### Case 45: source quote and excerpt tamper
 
-Change source bytes while retaining locator text or forge the excerpt hash.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 **Expected:** Source currentness fails and publication blocks. Locator or copied
 text alone is not provenance.
@@ -492,9 +480,7 @@ ACTIVE.
 
 ### Case 49: current prior review is observation only
 
-Supply a valid independent review that binds the exact current manifest artifact
-hash, source-manifest ID, ruleset/payload hashes, reviewer identity distinct from
-author, and complete coverage.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 **Expected:** `audit` may report CURRENT_PASS and an unchanged update may preserve
 the observation. Any candidate change resets external review to `NOT_CURRENT`.
@@ -502,7 +488,7 @@ The author never copies or retargets approval.
 
 ### Case 50: stale, partial, conflicting, or self review
 
-Exercise wrong hash/path/source manifest, partial coverage, ambiguous receipts,
+Exercise wrong revision/path/source manifest, partial coverage, ambiguous receipts,
 matching author/reviewer identity, mutation by reviewer, and unsupported schema.
 
 **Expected:** Preserve exact NOT_CURRENT/BLOCKED reason; ACTIVE is impossible and
@@ -513,8 +499,8 @@ the receipt is not rewritten.
 A catalog-declared independent review has passed for exact final bytes.
 
 **Expected:** This author still publishes only DRAFT/PARTIAL. ACTIVE requires a
-separate catalog-declared recorder transaction binding artifact hash, review
-receipt, source manifest, ruleset, identity separation, and its own CAS.
+separate catalog-declared recorder transaction binding artifact revision, review
+receipt, source manifest, ruleset, identity separation, and its own atomic conflict check.
 
 ### Case 52: current unversioned catalog lacks typed routes
 
@@ -534,7 +520,7 @@ receipts.
 **Expected:** Report exactly that command as the next action without executing it.
 Local copied routing text cannot override the catalog.
 
-## Authorization, CAS, publication, and terminal routing
+## Authorization, atomic conflict check, publication, and terminal routing
 
 ### Case 54: new refuses an existing target
 
@@ -555,11 +541,11 @@ provenance.
 A semantic update is ready.
 
 **Expected:** Existing bounded task authorization is used, or one preview/approval
-binds profile, exact source manifest, base hash, rule/conflict/unknown diff,
-candidate hash, provenance append, destination state, and one-file changeset. No
+binds profile, exact source manifest, base revision, rule/conflict/unknown diff,
+candidate revision, provenance append, destination state, and one-file changeset. No
 per-section re-prompts occur.
 
-### Case 57: CAS catches every preimage change
+### Case 57: atomic conflict check catches every prior state change
 
 After approval, independently change catalog, architecture, review evidence, TR
 evidence, ADR/registry/lifecycle/review, engine/standards reference, base,
@@ -571,11 +557,11 @@ refresh, retry, partial publication, or reuse of approval.
 
 ### Case 58: atomic publication and readback
 
-All CAS checks pass.
+All atomic conflict check checks pass.
 
 **Expected:** Write one same-directory temporary file, flush where supported,
 atomically replace/create the target, remove temporary state, read back exact
-bytes, and report external SHA-256. Any failure preserves the old target or exact
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 ABSENT state.
 
 ### Case 59: audit and no-op need no authorization
@@ -589,11 +575,7 @@ state.
 
 Exercise success, PARTIAL, BLOCKED, CONFLICT, UNKNOWN route, no-op, and audit.
 
-**Expected:** Report operation status, schema/version when applicable, exact target
-path/hash or unchanged base hash, source-manifest/ruleset/payload identities,
-rule-level counts, conflict/unknown limitations, review/ACTIVE ineligibility, and
-exactly one catalog-derived next action or Stop. Never claim ACTIVE, gate PASS,
-implementation readiness, deployment readiness, or test execution.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## Coverage map
 
@@ -608,3 +590,11 @@ implementation readiness, deployment readiness, or test execution.
 The suite is not considered executed merely because this specification exists,
 parses, or is staged. Result metadata remains evidence-owned by the designated test
 workflow.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

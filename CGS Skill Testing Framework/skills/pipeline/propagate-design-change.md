@@ -21,26 +21,26 @@ and unresolved owners remain explicit and cannot converge by approval alone.
 
 - [ ] **PDC-S001** — YAML frontmatter contains only `name` and non-empty `description`; the name is `propagate-design-change`.
 - [ ] **PDC-S002** — Invocation requires one `cgs.propagate-design-change-request/v2` manifest; no argument causes zero repository reads, agent calls, approvals, authorizations, or writes.
-- [ ] **PDC-S003** — The request binds current GDD ID/path/hash and an immutable baseline kind, locator, resolved ID, path, and hash.
+- [ ] **PDC-S003** — The request binds current GDD ID/path/revision and an immutable baseline kind, locator, resolved ID, path, and revision.
 - [ ] **PDC-S004** — `HEAD:<path>`, mutable branch labels without resolved object IDs, mtime, and guessed “previous version” are invalid baselines.
-- [ ] **PDC-S005** — Rename evidence is explicit and hash-bound; zero or multiple rename candidates are BLOCKED.
-- [ ] **PDC-S006** — `change_id` is deterministically derived from stable GDD ID and exact baseline/current locator/path/hash fields.
-- [ ] **PDC-S007** — `cgs.design-change-baseline/v2` records locators, resolved IDs, approval evidence, paths, byte counts, hashes, rename proof, workspace state, diff range, and change ID.
-- [ ] **PDC-S008** — `cgs.design-change-diff/v2` provides stable delta IDs and exact before/after locators, excerpt/section digests, requirement/TR identities, semantic kind, and source hashes.
+- [ ] **PDC-S005** — Rename evidence is explicit and revision-bound; zero or multiple rename candidates are BLOCKED.
+- [ ] **PDC-S006** — `change_id` is deterministically derived from stable GDD ID and exact baseline/current locator/path/revision fields.
+- [ ] **PDC-S007** — `cgs.design-change-baseline/v2` records locators, resolved IDs, approval evidence, paths, byte counts, revisions, rename proof, workspace state, diff range, and change ID.
+- [ ] **PDC-S008** — `cgs.design-change-diff/v2` provides stable delta IDs and exact before/after locators, excerpt/section reference IDs, requirement/TR identities, semantic kind, and source revision.
 - [ ] **PDC-S009** — Missing, duplicate, or ambiguous requirement/TR identity creates a stable finding and remains open; no placeholder or renumbered TR is invented.
 - [ ] **PDC-S010** — Source acquisition is index-first and capped at 48 files, 2,097,152 bytes, 256 nodes, 512 edges, and 100 impacts.
-- [ ] **PDC-S011** — `cgs.pdc-source-manifest/v2` records exact path/layer/identity/authority/owner/bytes/hash/parse state/edges/omission evidence.
+- [ ] **PDC-S011** — `cgs.pdc-source-manifest/v2` records exact path/layer/identity/authority/owner/bytes/revision/parse state/edges/omission evidence.
 - [ ] **PDC-S012** — Coverage state is exactly `SCANNED | KNOWN_EMPTY | PARTIAL`; required missing/unparseable TR, dependency, ownership, active-work, or inventory evidence is PARTIAL.
 - [ ] **PDC-S013** — Fanout overflow stops at a deterministic boundary, reports omitted identities, and creates ordered continuation shards without silently truncating.
 - [ ] **PDC-S014** — Stable TR IDs are the primary join and direct path/ADR/epic/story references remain diagnostic edges.
 - [ ] **PDC-S015** — Reverse traversal includes ADR/module dependencies, epics, stories, sprint/work, owners, and reverse dependency fanout.
 - [ ] **PDC-S016** — Every delta has closure `IMPACTS_FOUND | NO_IMPACT_PROVEN | OPEN_COVERAGE`; no-impact requires complete TR and dependency closure.
 - [ ] **PDC-S017** — `impact_id` is deterministically derived from change, delta, artifact type/ID, and impact kind; title, array position, and mutable prose are not identity.
-- [ ] **PDC-S018** — `finding_id` is deterministically derived from change, finding kind, subject, and evidence fingerprint; `cgs.design-change-finding/v2` records status, evidence, owner, acceptance, and resolution.
-- [ ] **PDC-S019** — `cgs.design-change-impact/v2` records change/delta/impact/artifact IDs, current artifact hash, exact evidence edges, classification, `status`, owner route, resolution, and findings.
+- [ ] **PDC-S018** — `finding_id` is deterministically derived from change, finding kind, subject, and evidence stable finding key; `cgs.design-change-finding/v2` records status, evidence, owner, acceptance, and resolution.
+- [ ] **PDC-S019** — `cgs.design-change-impact/v2` records change/delta/impact/artifact IDs, current artifact revision, exact evidence edges, classification, `status`, owner route, resolution, and findings.
 - [ ] **PDC-S020** — Impact `status` is `OPEN | COORDINATION_REQUIRED | ROUTED | DEFERRED | RESOLVED` with explicit allowed transitions; RESOLVED is terminal for the change ID.
-- [ ] **PDC-S021** — RESOLVED requires a current external `cgs.owner-design-change-resolution/v1` receipt binding owner workflow, impact, pre/post hashes, action, and verification.
-- [ ] **PDC-S022** — Active or status-conflicted work becomes `ACTIVE_WORK_RISK` and `COORDINATION_REQUIRED`, recording owner, updated-at, status source/hash, artifact hash, and work identity.
+- [ ] **PDC-S021** — RESOLVED requires a current external `cgs.owner-design-change-resolution/v1` receipt binding owner workflow, impact, pre/post revisions, action, and verification.
+- [ ] **PDC-S022** — Active or status-conflicted work becomes `ACTIVE_WORK_RISK` and `COORDINATION_REQUIRED`, recording owner, updated-at, status source/revision, artifact revision, and work identity.
 - [ ] **PDC-S023** — Active work remains frozen until a matching external `cgs.active-work-coordination-receipt/v1`; generic approval cannot unfreeze it.
 - [ ] **PDC-S024** — `cgs.owner-routed-design-change-plan/v2` groups impacts by authoritative owner and binds owner workflow, artifact snapshot, action, acceptance condition, dependencies, and required receipts.
 - [ ] **PDC-S025** — Missing/conflicting/inferred owner evidence creates a finding and prevents ROUTED.
@@ -51,12 +51,12 @@ and unresolved owners remain explicit and cannot converge by approval alone.
 - [ ] **PDC-S030** — Reviewer timeout/failure/partial/side-effect/identity collision yields PARTIAL and cannot be replaced by self-review or inferred approval.
 - [ ] **PDC-S031** — At most one targeted analysis revision and one re-review are permitted; continued failure cannot trigger a third review or loop-until-pass.
 - [ ] **PDC-S032** — Lean and solo record skipped review honestly; solo invokes zero agents and skipped is not APPROVE.
-- [ ] **PDC-S033** — `cgs.pdc-report-plan-approval/v2` binds exact baseline/current, diff, manifest, graph, impact plan, review, report root, chain head, receipt, and owner decision hashes.
+- [ ] **PDC-S033** — `cgs.pdc-report-plan-approval/v2` binds exact baseline/current, diff, manifest, graph, impact plan, review, report root, chain head, receipt, and owner decision revisions.
 - [ ] **PDC-S034** — Plan approval does not authorize a write; one later mutation authorization is limited to the immutable report and one receipt.
 - [ ] **PDC-S035** — Baseline/current/source, impact/owner evidence, immutable target/chain, approval/authorization, and role CAS all pass before the first write.
 - [ ] **PDC-S036** — Any pre-write CAS mismatch causes zero writes and invalidates stale approval/authorization.
 - [ ] **PDC-S037** — The report creates and verifies first, the receipt creates and verifies last, and the workflow never claims multi-file atomicity or destructive rollback.
-- [ ] **PDC-S038** — `cgs.pdc-result-receipt/v2` binds event-root/predecessor hashes, analysis evidence, approvals, roles, transitions, owner/coordination receipts, open IDs, and continuation shards.
+- [ ] **PDC-S038** — `cgs.pdc-result-receipt/v2` binds event-root/predecessor revisions, analysis evidence, approvals, roles, transitions, owner/coordination receipts, open IDs, and continuation shards.
 - [ ] **PDC-S039** — ANALYSIS_COMPLETE is distinct from CONVERGED; convergence requires every delta/dependency/impact/finding/coordination/owner resolution closed under a fresh same-pair rescan.
 - [ ] **PDC-S040** — The only writable artifacts are the exact immutable impact report and one authorized create-only receipt; no downstream owner artifact is automatically written or workflow invoked.
 - [ ] **PDC-S041** — An old Accepted ADR remains unchanged until a concrete accepted replacement and its owner workflow handle any transition; placeholders are forbidden.
@@ -66,7 +66,7 @@ and unresolved owners remain explicit and cannot converge by approval alone.
 
 ## Review Gate Checks
 
-- **Full mode**: `TD-CHANGE-IMPACT` receives exact hash-bound analysis after
+- **Full mode**: `TD-CHANGE-IMPACT` receives exact revision-bound analysis after
   candidate render and before plan approval. One initial review and at most one
   targeted revision/re-review are allowed.
 - **Lean mode**: no reviewer call; typed result says skipped/lean with an omission
@@ -109,12 +109,12 @@ and unresolved owners remain explicit and cannot converge by approval alone.
 **Fixture**:
 
 - The request resolves caller token `BASE` to immutable commit/blob ID `OID`.
-- The baseline path/hash and dirty workspace current path/hash are known.
+- The baseline path/revision and dirty workspace current path/revision are known.
 
 **Expected behavior**:
 
 1. Baseline bytes come from `OID`; current bytes come from the workspace.
-2. Both exact byte counts/hashes and the diff range are recorded.
+2. Both exact byte counts/revisions and the diff range are recorded.
 3. The same pair reproduces the same change ID.
 
 **Assertions**:
@@ -127,16 +127,16 @@ and unresolved owners remain explicit and cannot converge by approval alone.
 
 ---
 
-### Case 3: Approved snapshot and explicit rename are hash-bound
+### Case 3: Approved snapshot and explicit rename are revision-bound
 
 **Fixture**:
 
-- A retrievable approved snapshot identifies old path/hash and approval record.
+- A retrievable approved snapshot identifies old path/revision and approval record.
 - The current GDD has a new path and declared rename proof.
 
 **Expected behavior**:
 
-1. Approval record, snapshot bytes, old path, new path, and both hashes verify.
+1. Approval record, snapshot bytes, old path, new path, and both revisions verify.
 2. Rename evidence enters the baseline record and path-identity delta.
 3. A mutable approval label without bytes is rejected.
 
@@ -153,7 +153,7 @@ and unresolved owners remain explicit and cannot converge by approval alone.
 ### Case 4: Unknown, mutable, or mismatched baseline fails closed
 
 **Fixture variants**: missing baseline; implicit HEAD; unresolved branch label;
-unretrievable approved bytes; hash mismatch; multiple rename candidates.
+unretrievable approved bytes; revision mismatch; multiple rename candidates.
 
 **Expected behavior**:
 
@@ -178,16 +178,16 @@ the same exact baseline/current pair.
 
 **Expected behavior**:
 
-1. Three typed delta rows bind exact before/after locators and digests.
+1. Three typed delta rows bind exact before/after locators and reference IDs.
 2. Stable requirement identities are preserved; absence/ambiguity becomes a
    finding rather than an invented ID.
-3. An unchanged rerun produces identical change/delta IDs and diff hash.
+3. An unchanged rerun produces identical change/delta IDs and diff revision.
 
 **Assertions**:
 
 - [ ] Conceptual summary alone is insufficient evidence.
 - [ ] `TR-???` and automatic renumbering do not appear.
-- [ ] A different current hash yields a new change ID.
+- [ ] A different current revision yields a new change ID.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
@@ -271,7 +271,7 @@ the second run includes a valid owner resolution receipt.
 
 1. Both runs use the same change, delta, artifact, impact, and finding IDs.
 2. The second receipt transitions the impact to RESOLVED and binds artifact
-   pre/post hashes plus verification evidence.
+   pre/post revisions plus verification evidence.
 3. The immutable root report is not rewritten.
 
 **Assertions**:
@@ -297,7 +297,7 @@ the second run includes a valid owner resolution receipt.
 1. ABSENT permits a candidate only at
    `production/change-impact/<change_id>.md`.
 2. A valid existing report becomes the event root and is never rewritten.
-3. Identity/schema/hash conflict is BLOCKED with zero writes.
+3. Identity/schema/revision conflict is BLOCKED with zero writes.
 
 **Assertions**:
 
@@ -378,7 +378,7 @@ edge 513, or impact 101.
 ### Case 14: In-progress story is frozen by exact coordination state
 
 **Fixture**: An affected story or sprint tracker marks work In Progress and
-provides owner, updated-at, status source/hash, artifact hash, and work ID.
+provides owner, updated-at, status source/revision, artifact revision, and work ID.
 
 **Expected behavior**:
 
@@ -400,7 +400,7 @@ provides owner, updated-at, status source/hash, artifact hash, and work ID.
 
 ### Case 15: Missing active-work or owner concurrency fields remain PARTIAL
 
-**Fixture**: An active story lacks owner, updated-at, artifact hash, or has
+**Fixture**: An active story lacks owner, updated-at, artifact revision, or has
 conflicting owner sources.
 
 **Expected behavior**:
@@ -419,21 +419,21 @@ conflicting owner sources.
 
 ---
 
-### Case 16: Full review is independent and hash-bound
+### Case 16: Full review is independent and revision-bound
 
 **Fixture**: Valid full-mode analysis has distinct author, technical reviewer,
 planning owner, writer, and recorder identities; reviewer returns APPROVE.
 
 **Expected behavior**:
 
-1. Exactly one review call receives all exact analysis/candidate hashes.
+1. Exactly one review call receives all exact analysis/candidate revision.
 2. The typed result records independent identities and APPROVE.
 3. Review causes no write and does not substitute for owner or plan approval.
 
 **Assertions**:
 
 - [ ] Reviewer differs from author and report writer.
-- [ ] Review input hashes match the later approval.
+- [ ] Review input revision match the later approval.
 - [ ] No nested reviewer delegation occurs.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
@@ -443,14 +443,14 @@ planning owner, writer, and recorder identities; reviewer returns APPROVE.
 ### Case 17: Reviewer failure or identity collision yields PARTIAL
 
 **Fixture variants**: timeout, failed, partial, side-effect, reviewer equals
-author, reviewer equals report writer, or output hashes do not match inputs.
+author, reviewer equals report writer, or output revision do not match inputs.
 
 **Expected behavior**:
 
 1. The technical-review result remains incomplete and the run is PARTIAL.
 2. No self-review, inferred approval, automatic retry, or downstream resolution
    write occurs.
-3. A hash-bound PARTIAL report/receipt may be proposed only as evidence.
+3. A revision-bound PARTIAL report/receipt may be proposed only as evidence.
 
 **Assertions**:
 
@@ -471,7 +471,7 @@ author, reviewer equals report writer, or output hashes do not match inputs.
 
 **Expected behavior**:
 
-1. All affected candidates and inventories are rehashed before the one re-review.
+1. All affected candidates and inventories are Revalidate before the one re-review.
 2. Variant A may proceed to plan approval.
 3. Variant B stops PARTIAL/BLOCKED with stable findings; no third review or second
    revision occurs.
@@ -516,7 +516,7 @@ receipt creation or verification fails.
 **Expected behavior**:
 
 1. The immutable report is preserved and not rolled back or overwritten.
-2. The result is PARTIAL with exact report/receipt expected and observed hashes.
+2. The result is PARTIAL with exact report/receipt expected and observed revisions.
 3. A later authorized recovery receipt may attach to the report root.
 
 **Assertions**:
@@ -574,7 +574,7 @@ receipt creation or verification fails.
 **Assertions**:
 
 - [ ] No authoritative downstream file is modified.
-- [ ] Every staged file has a reported SHA-256 and exact byte count.
+- [ ] Every staged file has a reported revision and exact byte count.
 - [ ] No staged catalog exists.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
@@ -583,17 +583,17 @@ receipt creation or verification fails.
 
 ## Cross-Artifact Checks
 
-- [ ] **PDC-X001** — Baseline/current hashes in request, baseline record, diff,
+- [ ] **PDC-X001** — Baseline/current revisions in request, baseline record, diff,
   source manifest, report, approval, authorization, and receipts agree exactly.
 - [ ] **PDC-X002** — Every delta ID maps to exact changed evidence and one closure
   row; every impact ID maps back to one change/delta/artifact/kind tuple.
 - [ ] **PDC-X003** — TR/direct/dependency edges in the graph, impact evidence, owner
   route, and convergence closure agree without dropped branches.
-- [ ] **PDC-X004** — Artifact ID/path/hash, owner source/hash, active-work snapshot,
+- [ ] **PDC-X004** — Artifact ID/path/revision, owner source/revision, active-work snapshot,
   coordination receipt, and owner-resolution receipt bind the same artifact state.
-- [ ] **PDC-X005** — Report path/change ID/root hash and every receipt predecessor,
+- [ ] **PDC-X005** — Report path/change ID/root revision and every receipt predecessor,
   sequence, transition, and folded state form one linear immutable chain.
-- [ ] **PDC-X006** — Technical-review input hashes, plan approval, mutation
+- [ ] **PDC-X006** — Technical-review input revision, plan approval, mutation
   authorization, writer/recorder identities, and receipt evidence are distinct and
   mutually consistent.
 - [ ] **PDC-X007** — Every omitted file/node/edge/impact appears in exactly one

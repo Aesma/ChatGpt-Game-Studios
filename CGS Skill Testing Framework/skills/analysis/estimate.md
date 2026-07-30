@@ -23,7 +23,7 @@ schedule, dates, or product tradeoffs.
 | EST-003 | Comparable history matches team/profile/work type/model/unit/conditions with include/exclude provenance | 5, 6 |
 | EST-004 | No history/default conversion: relative evidence only, never `1 point = 1 day` | 3 |
 | EST-005 | Confirmed and tentative affected scope remain distinct | 7 |
-| EST-006 | Root-to-target instructions plus explicit first-level context are bounded and hash-bound | 1, 8 |
+| EST-006 | Root-to-target instructions plus explicit first-level context are bounded and revision-bound | 1, 8 |
 | EST-007 | Relative and calibration confidence use explicit readiness/sample-quality algorithms | 4, 5, 6 |
 | EST-008 | Blocking product/ADR/dependency decisions are `NOT ESTIMABLE`; discovery needs its own scope | 9 |
 | EST-009 | Exact profile/basis grammar distinguishes path/description/history/capacity and invalid input states | 1, 2, 17 |
@@ -47,16 +47,16 @@ schedule, dates, or product tradeoffs.
       re-baselining, scope/sprint changes, decisions, persistence, approval prompts,
       gates, delegation, and downstream workflow invocation.
 - [ ] Every estimate unit binds `cgs.estimate-scope-binding/v1`, stable Scope ID,
-      baseline/current/input hashes, taxonomy/profile identity, and completeness.
+      baseline/current/input revision, taxonomy/profile identity, and completeness.
 - [ ] Freeform normalization is exact and hashable; untestable delivery boundaries
       are `NOT ESTIMABLE`.
-- [ ] Reads/hashes the applicable root-to-target `AGENTS.md` chain, root input,
+- [ ] Reads/revisions the applicable root-to-target `AGENTS.md` chain, root input,
       exact first-level links, and explicit manifests only.
 - [ ] Defines fixed sprint-story, context-candidate, linked-artifact, single/total
       byte, history-sample, DAG-node/edge, schedule-scenario, assumption, unknown,
       and finding caps that inputs may only lower.
-- [ ] Hashes the complete candidate identity sequence while retaining bounded
-      rows and exact overflow counts/boundary keys/digests.
+- [ ] revisions the complete candidate identity sequence while retaining bounded
+      rows and exact overflow counts/boundary keys/reference IDs.
 - [ ] Required root/binding overflow is `NOT ESTIMABLE`; optional evidence/history/
       schedule overflow is `PARTIAL ESTIMATE` with no numeric output.
 - [ ] `cgs.estimate-evidence-manifest/v1` separates confirmed and tentative scope;
@@ -90,20 +90,20 @@ schedule, dates, or product tradeoffs.
 - [ ] Schedule output requires `cgs.estimate-capacity/v1`, complete acyclic DAG,
       and `cgs.estimate-schedule-policy/v1`; no headcount shortcut/start date/
       perfect parallelism/date commitment is invented.
-- [ ] Stable `ESF-...` finding identity excludes mutable paths/hashes/titles/text/
+- [ ] Stable `ESF-...` finding identity excludes mutable paths/revisions/titles/text/
       values/result/confidence/owner/status/run/timestamp/recommendation.
 - [ ] Coverage is explicit per candidate/channel/check and missing required
       evidence never becomes `NOT_APPLICABLE`.
 - [ ] Canonical results are exactly ERROR, INPUT REQUIRED, NOT ESTIMABLE, PARTIAL
       ESTIMATE, RELATIVE ESTIMATE, CALIBRATED EFFORT ESTIMATE, and CALIBRATED
       SCHEDULE RANGE with deterministic precedence.
-- [ ] `estimate_id`, context/inventory/payload/envelope hashes are recomputable;
+- [ ] `estimate_id`, context/inventory/payload/envelope revisions are recomputable;
       run identity/timestamp remain outside deterministic extension bytes.
 - [ ] Scope-check eligibility distinguishes relative-only, verified effort,
       verified schedule, and unverified analysis.
 - [ ] Returns at most one owner-routed decision boundary and never ranks or executes
       scope, staffing, budget, schedule, date, or product decisions.
-- [ ] Metadata names the three profiles, two bases, bounded/hash-bound ranges,
+- [ ] Metadata names the three profiles, two bases, bounded/revision-bound ranges,
       read-only behavior, and decision boundary.
 
 ---
@@ -118,7 +118,7 @@ date authority and is never invoked by this analyzer.
 
 ## Required Fixture Contract
 
-Fixtures provide exact raw bytes and SHA-256 values for instructions, root inputs,
+Fixtures provide exact raw bytes and revision values for instructions, root inputs,
 scope bindings, first-level links, evidence/history manifests, calibration/unit/
 aggregation/schedule policies, sample completion evidence, capacity/calendar,
 dependency DAG, and expected canonical evidence. Tests snapshot all project paths
@@ -164,7 +164,7 @@ Assertions:
 
 Fixture variants:
 
-- A supplies description, stable Scope ID, baseline hash, and current hash.
+- A supplies description, stable Scope ID, baseline revision, and current revision.
 - B omits one binding argument.
 - C has a description without a testable delivery boundary.
 - D supplies equivalent CRLF/decomposed-Unicode input that normalizes to the same
@@ -172,7 +172,7 @@ Fixture variants:
 
 Expected behavior:
 
-1. A/D use the same normalized input SHA-256 and scope binding.
+1. A/D use the same normalized input revision and scope binding.
 2. B is `INPUT REQUIRED` with no estimate.
 3. C is `NOT ESTIMABLE`, emits only non-consumable bound analysis evidence, and
    names the boundary owner.
@@ -241,7 +241,7 @@ Fixture:
   quantile, rounding, resolution, and confidence gates.
 - Six completed samples match team, story profile, taxonomy/type, model, effort
   unit, delivery conditions, bindings, and factor support.
-- Completion/sample hashes match and quality gates pass.
+- Completion/sample revisions match and quality gates pass.
 
 Expected behavior:
 
@@ -292,7 +292,7 @@ Fixture:
 
 Expected behavior:
 
-1. Confirmed and tentative scope are separate exact-hash lists.
+1. Confirmed and tentative scope are separate exact_revision lists.
 2. Tentative counts do not directly affect relative score or effort.
 3. A model axis may widen only through its explicit unresolved breadth/integration
    rule, with evidence and limitation.
@@ -312,8 +312,8 @@ single/total-byte, history-sample, DAG-node/edge, or finding caps.
 
 Expected behavior:
 
-1. Complete candidate identity digest plus bounded rows, exact overflow count,
-   boundary keys, and omitted digest are reported when enumeration is safe.
+1. Complete candidate identity reference ID plus bounded rows, exact overflow count,
+   boundary keys, and omitted reference ID are reported when enumeration is safe.
 2. Required root/binding/story overflow is `NOT ESTIMABLE`.
 3. Optional evidence/history/capacity overflow is `PARTIAL ESTIMATE`, suppresses
    numeric effort/elapsed output, and preserves bounded relative evidence.
@@ -457,28 +457,28 @@ Assertions:
 Fixture:
 
 - Run A has one stable calibration gap for the same profile/basis/Scope IDs/policy.
-- Run B moves/rewrites sources and changes hashes/current values/owner/result label
+- Run B moves/rewrites sources and changes revisions/current values/owner/result label
   without changing that logical gap.
 - Run C changes Scope ID or calibration policy ID.
 
 Expected behavior:
 
 1. A/B preserve one `ESF-...` finding ID while estimate/context/payload/record
-   hashes change.
-2. C produces a different finding fingerprint.
-3. Any changed scope/baseline/current/input/model/sample/evidence/capacity hash
+   revisions change.
+2. C produces a different finding stable finding key.
+3. Any changed scope/baseline/current/input/model/sample/evidence/capacity revision
    creates a different `estimate_id` and invalidates receipt reuse.
 
 Assertions:
 
 - [ ] Finding identity excludes mutable presentation/evidence values.
 - [ ] Estimate identity intentionally includes immutable scope and consumed sample/
-      policy/evidence hashes.
+      policy/evidence revisions.
 - [ ] Scope-check eligibility cannot reuse a mismatched estimate identity.
 
 ---
 
-### Case 15: Final re-hash detects mutation
+### Case 15: Final Revalidate detects mutation
 
 Fixture:
 
@@ -487,15 +487,15 @@ Fixture:
 
 Expected behavior:
 
-1. Re-enumeration/re-hashing detects added/removed/renamed/changed input.
+1. Re-enumeration/Revalidate detects added/removed/renamed/changed input.
 2. Derived estimates are discarded.
 3. Result is `NOT ESTIMABLE — INPUT CHANGED DURING ESTIMATE`, with only
-   non-consumable hash-bound diagnostics.
+   non-consumable revision-bound diagnostics.
 4. No mixed snapshot or automatic restart occurs.
 
 Assertions:
 
-- [ ] Mtime/Git labels do not substitute for raw hashes.
+- [ ] Mtime/Git labels do not substitute for declared revision.
 - [ ] Changed input cannot produce a scope-check-eligible record.
 - [ ] Project remains byte-identical except the externally injected fixture change.
 
@@ -550,7 +550,7 @@ Assertions:
 
 ---
 
-### Case 18: Hash-bound output and catalog hygiene
+### Case 18: revision-bound output and catalog hygiene
 
 Fixture:
 
@@ -562,7 +562,7 @@ Expected behavior:
 1. Extension conforms to `cgs.estimate-report/v1`; envelope conforms to
    `cgs.review-evidence/v1`.
 2. Context inventory/manifest, estimate identity, payload, artifact, and record
-   hashes recompute.
+   revisions recompute.
 3. Identical inputs produce identical extension bytes and estimate ID; outer run
    ID/timestamp may differ without entering deterministic payload.
 4. Catalog test-result fields remain blank until authorized behavioral execution.
@@ -578,8 +578,8 @@ Assertions:
 
 ## Protocol Compliance
 
-- [ ] Profile, basis, scope identity, baseline/current/input hashes, project
-      identity, context, and every consumed policy/sample are exact and hash-bound.
+- [ ] Profile, basis, scope identity, baseline/current/input revision, project
+      identity, context, and every consumed policy/sample are exact and revision-bound.
 - [ ] Relative output is deterministic, dimensionless, evidence-scoped, and
       available without false time conversion.
 - [ ] Historical sample inclusion/exclusion, units, quality, support, variance,

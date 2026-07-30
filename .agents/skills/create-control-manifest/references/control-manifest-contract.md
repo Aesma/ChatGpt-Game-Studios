@@ -4,7 +4,7 @@ This contract is normative for `$create-control-manifest`. It defines the bounde
 source closure, Accepted-ADR/TR admission, source-faithful rule schema, stable
 identity, deterministic deduplication/conflict handling, monotonic versions,
 rule-level update semantics, immutable provenance, and the only permitted
-compare-and-set transaction.
+atomic conflict check transaction.
 
 ## 1. Authority and owned artifact
 
@@ -14,7 +14,7 @@ The only persistent output owned by this author workflow is:
 docs/architecture/control-manifest.md
 ```
 
-Atomic publication may use one same-directory temporary file after successful CAS;
+Atomic publication may use one same-directory temporary file after successful atomic conflict check;
 it must be consumed or removed and is never an artifact.
 
 The control manifest is a derived programmer view, never a policy source:
@@ -38,7 +38,7 @@ catalog, test, session-state, status pointer, or review record.
 
 Freeze one repository-root identity and one UTC snapshot. Record normalized
 project-relative path, real-path/root result, role, stable source ID, consumed
-scope, source/lifecycle state, revision, exact raw-byte SHA-256, or explicit
+scope, source/lifecycle state, revision, exact declared revision, or explicit
 `ABSENT`/`UNREADABLE` marker.
 
 Hard ceilings:
@@ -67,12 +67,12 @@ Use layered loading:
 1. parse catalog, architecture header/manifest/TR/decision indexes, registry, and
    supplied evidence envelopes;
 2. construct the complete intended path/record manifest;
-3. validate exact source/lifecycle hashes without loading unrelated bodies;
+3. validate exact source/lifecycle revisions without loading unrelated bodies;
 4. parse only normative/alternative/performance/compatibility sections of admitted
    ADRs plus exact technical-preference/engine constraint sections; and
-5. re-hash every complete source before approval and CAS.
+5. re-read every complete source before approval and atomic conflict check.
 
-Hashing a file does not authorize full-context ingestion. Oversize, unreadable,
+revision tracking a file does not authorize full-context ingestion. Oversize, unreadable,
 ambiguous, changed-during-snapshot, count/class/total overflow, or an uncompleted
 required source yields `PARTIAL` with exact reason such as
 `CONTEXT_BUDGET_EXCEEDED`, `SOURCE_CHANGED`, or `SOURCE_UNREADABLE`. Never sample
@@ -83,25 +83,22 @@ role, stable source ID, normalized path, and consumed scope; UTF-8/LF; no
 insignificant whitespace. Its identity is:
 
 ```text
-source_manifest_id: sha256:<canonical ordered input manifest>
+source_manifest_id: <stable allocated ID>
 ```
 
-Any path/byte/state/revision/scope/evidence/directory-membership change invalidates
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 the identity.
 
 ## 3. Current architecture, TR, and Accepted ADR admission
 
-The architecture input must parse as `cgs.master-architecture/v3`. Validate its
-source manifest identity, immutable provenance chain, current derived TR map, ADR
-decision ledger, status, and exact raw hash. The architecture is an index/cross-
-check; text found only there never becomes a control rule.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 A usable architecture review input is envelope `cgs.review-evidence/v1`, producer
 `architecture-review`, extension `cgs.architecture-review/v2`, full-mode verdict
 `PASS`, coverage COMPLETE, current record identity, and a manifest containing:
 
 - `docs/architecture/architecture.md` with role `architecture-derived` and exact
-  current hash; and
+  current revision; and
 - all source/ADR/TR evidence needed to reproduce or explicitly bind the
   architecture's source manifest.
 
@@ -112,22 +109,22 @@ publish/route an Active manifest.
 
 Admit one TR only when its architecture row is `CURRENT` and
 `DERIVED_COVERED`, its exact source requirement/approval evidence is current, and
-all referenced source IDs/hashes reproduce. `CHANGED`, `STALE`, `UNBOUND`,
+all referenced source IDs/revisions reproduce. `CHANGED`, `STALE`, `UNBOUND`,
 `DECISION_GAP`, `SOURCE_BLOCKED`, provisional, or ambiguous TRs are blockers or
 unknown evidence, never rule scope authority.
 
 Admit one ADR as `ACCEPTED_CURRENT` only when:
 
-- exact stable ADR ID/path/hash appear in the input manifest and architecture
+- exact stable ADR ID/path/revision appear in the input manifest and architecture
   decision ledger;
 - ADR declares Accepted;
-- a current lifecycle record binds the exact ADR hash, Accepted transition,
+- a current lifecycle record binds the exact ADR revision, Accepted transition,
   recorder identity/time, and independent review evidence;
 - supersession/dependency chain is complete/current; and
 - registry/architecture/lifecycle evidence has no conflict.
 
 Other states are `PROPOSED`, `SUPERSEDED`, `REJECTED`, `STALE`, `UNBOUND`,
-`CONFLICT`, or `UNKNOWN`. Preserve every exclusion/state/hash. Proposed or status-
+`CONFLICT`, or `UNKNOWN`. Preserve every exclusion/state/revision. Proposed or status-
 text-only ADRs never contribute rules.
 
 Each ADR-derived rule may reference only TR IDs explicitly addressed by the same
@@ -139,7 +136,7 @@ cannot be fabricated from similar wording.
 Every derived item uses `cgs.control-rule/v2`:
 
 ```text
-rule_id: RULE-<16 lowercase hex>
+rule_id: RULE-<non-empty stable value>
 kind: NORMATIVE | PROHIBITION | CONTEXTUAL_REJECTION | GUARDRAIL | ENGINE_CONSTRAINT
 level: MUST | MUST_NOT | SHOULD | SHOULD_NOT | MAY | NONE
 scope:
@@ -155,10 +152,10 @@ source:
   section: <exact section>
   locator: <stable locator>
   exact_excerpt: <bounded exact source wording>
-  excerpt_sha256: <hash of exact excerpt bytes>
-  source_sha256: <hash of complete source bytes>
+  excerpt_revision: <source-declared revision>
+  source_revision: <source-declared revision>
   lifecycle_record_id: <ID or NOT_APPLICABLE>
-  lifecycle_record_sha256: <hash or NOT_APPLICABLE>
+  lifecycle_record_revision: <revision or NOT_APPLICABLE>
 tr_ids: [<sorted current TR IDs>]
 derivation: DERIVED_CURRENT | SOURCE_STALE | SOURCE_BLOCKED | UNKNOWN
 supersedes_rule_ids: [<stable IDs>]
@@ -166,17 +163,16 @@ supersedes_rule_ids: [<stable IDs>]
 
 Rule ID construction:
 
-1. Prefer a source-owned stable rule/constraint ID, deriving `RULE-<16hex>` from
-   `(source_kind, source_id, source_rule_id)`.
-2. Otherwise derive it from `(source_kind, source_id, section, stable locator,
-   exact normative clause, preserved scope, level)`.
-3. Preserve every persisted ID while the same source rule identity/meaning/scope
+1. Prefer a source-owned stable rule/constraint ID.
+2. Otherwise allocate a collision-checked `RULE-<uuid>` and store source kind,
+   source ID, section, stable locator, normative clause, preserved scope, and
+   level as separate identity fields.
    remains. Never assign by extraction order, layer table position, date, or count.
 
 When source meaning/level/scope changes, create a new rule ID and explicit
-supersedes link; never silently retarget the old ID. When only the source file hash
+supersedes link; never silently retarget the old ID. When only the source file revision
 changes around an unchanged stable source-owned rule, preserve ID, update
-provenance, and expose the source-hash change in the rule diff.
+provenance, and expose the source-revision change in the rule diff.
 
 Normative level is exact:
 
@@ -220,11 +216,11 @@ For two non-superseded rules whose scopes overlap and whose required/forbidden o
 level/meaning outcomes cannot both hold, create:
 
 ```text
-conflict_id: CONFLICT-<16 lowercase hex of sorted rule IDs + overlap scope>
+conflict_id: CONFLICT-<non-empty stable value of sorted rule IDs + overlap scope>
 state: BLOCKED
 rule_ids: [<sorted IDs>]
 overlap_scope: <exact intersection>
-source_evidence: [<paths/sections/hashes>]
+source_evidence: [<paths/sections/revisions>]
 ```
 
 Do not choose a winner, merge incompatible meanings, downgrade a MUST, or let the
@@ -233,7 +229,7 @@ authoritative ADR/lifecycle sources.
 
 Malformed/ambiguous normative wording, missing scope/TR/source/lifecycle data, or
 unverifiable engine coverage creates a stable
-`UNKNOWN-<16hex(source identity + locator + reason)>` finding. UNKNOWN is omitted
+`UNKNOWN-<stable-finding-id>` finding. UNKNOWN is omitted
 from executable rules and blocks Active eligibility when the source could be
 mandatory.
 
@@ -266,32 +262,29 @@ Schema: cgs.control-manifest/v2
 Status: DRAFT | PARTIAL | ACTIVE
 Manifest Version: <positive monotonic integer>
 Generated At: <UTC ISO-8601 with timezone>
-Source Manifest ID: sha256:<input manifest>
+Source Manifest ID: <stable manifest ID>
 Ruleset ID: cgs.control-extraction-rules/v2
-Ruleset SHA-256: <exact extraction contract hash>
-Payload SHA-256: sha256:<canonical semantic payload>
-Prior Artifact SHA-256: <hash-or-ABSENT>
+Ruleset revision: <exact extraction contract revision>
+Payload revision: <positive integer>
+Prior Artifact revision: <revision-or-ABSENT>
 External Review: NOT_CURRENT | <record identity>
 ```
 
 This author writes only DRAFT or PARTIAL and External Review NOT_CURRENT.
 
-`Payload SHA-256` is computed over canonical JSON of all semantic source/coverage/
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 rule/conflict/unknown/retirement content plus manifest version, excluding generated
-time, document status, external review/recorder fields, payload hash itself, and
-human formatting. The exact artifact SHA-256 is computed externally after rendering
-and never embedded as its own current hash.
+time, document status, external review/recorder fields, payload revision itself, and
+human formatting. The exact artifact revision is computed externally after rendering
+and never embedded as its own current revision.
 
 For CREATE, version is 1. For a valid UPDATE whose semantic payload/provenance
 changes, version is `base version + 1`; it must be greater than every prior
 provenance version. Same-day different content therefore has different version and
-payload/artifact hashes. On exact no-op, preserve the base version/generated time,
+payload/artifact revisions. On exact no-op, preserve the base version/generated time,
 write nothing, and append no event.
 
-Each actual content update appends one immutable provenance event with event ID,
-base/candidate versions, base hash, source manifest ID, payload hash, changed rule/
-finding IDs, generated_at, and author-side task identity. Never edit/delete/reorder
-prior events.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Local human content is allowed only under `Local Extensions (Non-Authoritative)`
 with `x-local-*` stable IDs. Preserve it byte-for-byte/canonically across updates.
@@ -317,7 +310,7 @@ Show stable-ID sets:
 - added/resolved/changed conflict and UNKNOWN IDs;
 - changed ADR/TR/engine coverage;
 - preserved local extensions and prior provenance; and
-- version/payload/artifact hash delta.
+- version/payload/artifact revision delta.
 
 Never silently delete a rule. A source no longer Accepted/current retires its rule
 with exact reason; it does not remain Active and is not erased. A manual extension
@@ -327,11 +320,11 @@ If current canonical semantic payload, source manifest, formatted bytes, and bas
 provenance are identical, operation is `UNCHANGED`: no write, version bump,
 generated-time change, review invalidation, or new history event.
 
-## 8. Approval, CAS, and publication
+## 8. Approval, atomic conflict check, and publication
 
 Show the complete candidate/lossless representation, source manifest/limits,
 architecture review currentness, ADR/TR ledger, every rule/finding/source, complete
-rule-level diff, version/payload/candidate hash, immutable provenance append, local
+rule-level diff, version/payload/candidate revision, immutable provenance append, local
 extensions, and one-file changeset. Obtain one user approval bound to all exact
 values. It is file authorization only, not source approval, independent review, or
 Active recording.
@@ -339,22 +332,19 @@ Active recording.
 The preview binds root identity, destination parent, catalog, base/absence,
 architecture, architecture review, registry, every ADR/lifecycle/review record,
 technical preferences, engine/version/reference, standards, enumerated directory
-membership, ruleset bytes/hash, input manifest ID, BASE/provenance, candidate
-semantic payload/version/bytes/hash, and decision IDs.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
-Immediately before mutation, re-read/re-hash the full closure, rebuild the ordered
-manifest and deterministic extraction, reapply update diff, and require every bound
-state/hash plus candidate payload/artifact hash to equal preview.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Any difference is `CONFLICT`: zero writes; exact old/new evidence; no merge,
 refresh, retry, overwrite, re-review, or implicit acceptance.
 
-After CAS:
+After atomic conflict check:
 
 1. write exact candidate bytes to one same-directory temporary file;
 2. flush/close as supported;
 3. atomically create/replace only the control manifest;
-4. re-read and verify exact artifact bytes/hash;
+4. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 5. reparse and validate v2 schema, version/payload, source ledger, stable rules,
    conflicts/unknowns, local extensions, immutable history, DRAFT/PARTIAL, and
    External Review NOT_CURRENT; and
@@ -370,17 +360,12 @@ This author never delegates/impersonates a reviewer, writes review evidence, or
 sets Active. It may consume one explicitly supplied prior control-manifest review
 only to report currentness.
 
-A usable review is generic `cgs.review-evidence/v1` from the unique catalog-declared
-control-manifest reviewer, with catalog-declared extension/ruleset, exact current
-manifest path/artifact hash, source manifest ID, payload hash, complete rule/conflict/
-unknown coverage, current record identity, and passing verdict. A changed byte,
-source, ruleset, profile, or scope makes it stale. Do not invent a review schema or
-reviewer when catalog policy is absent.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Only a separate catalog-declared recorder may set ACTIVE after independently
-validating current passing review, exact artifact/payload/source-manifest hashes,
+validating current passing review, exact artifact/payload/source-manifest revisions,
 complete Accepted ADR/current TR coverage, no BLOCKED/UNKNOWN source fidelity gap,
-monotonic version/provenance chain, and its own CAS policy. The recorder may change
+monotonic version/provenance chain, and its own atomic conflict check policy. The recorder may change
 only status/review reference/recording event; it cannot rewrite derived rules.
 
 This author returns exactly one catalog-derived source-resolution, review, recorder,

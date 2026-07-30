@@ -1,6 +1,6 @@
 ---
 name: asset-audit
-description: "Read-only, bounded asset compliance, provenance, license, and reference-integrity audit using registered versioned adapters and hash-bound evidence."
+description: "Read-only, bounded asset compliance, provenance, license, and reference-integrity audit using registered versioned adapters and revision-bound evidence."
 ---
 
 # Asset Audit
@@ -45,7 +45,7 @@ grammar, emit no verdict or evidence record, and stop.
 
 This workflow is a strictly read-only analyzer:
 
-- It may enumerate, hash, parse, and read declared project-local regular files,
+- It may enumerate, revision, parse, and read declared project-local regular files,
   inspect read-only Git state, and execute only registered adapters inside a
   project-read-only sandbox.
 - It must not create, edit, append, import, reimport, rename, move, delete,
@@ -97,54 +97,52 @@ no verdict/evidence envelope, perform no adapter execution, and stop.
 
 Read every applicable `AGENTS.md` from repository root through the audit manifest
 and each declared asset/rule directory, in root-to-target order. Record the exact
-path and raw-byte SHA-256 of each instruction; the nearest applicable instruction
+path and declared revision of each instruction; the nearest applicable instruction
 wins when instruction rules conflict.
 
-Represent `project_id` as the exact string
-`root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>` and compute
-`project_id_sha256` over its UTF-8 bytes. If Git is unavailable, use `null`,
-continue from exact current file hashes, mark project-revision provenance coverage
+Represent project_id as the exact stable string root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>. Set project_revision to the repository commit ID or an explicit workspace-snapshot revision supplied by the manifest owner; never derive it from project_id bytes. If Git is unavailable, use `null`,
+continue from exact current file revisions, mark project-revision provenance coverage
 incomplete, and prevent `COMPLIANT`; never guess a commit.
 
 The manifest must be a project-local regular file no larger than 1 MiB and use
 schema `cgs.asset-audit-manifest/v1`. It must bind:
 
-- one stable audit target ID, build ID, build-artifact hash, engine ID/version,
+- one stable audit target ID, build ID, build-artifact revision, engine ID/version,
   platform, and configuration;
-- one exact asset-inventory path/hash plus a versioned inventory-completeness
+- one exact asset-inventory path/revision plus a versioned inventory-completeness
   receipt that names declared roots, exclusions, generator adapter/version,
-  complete candidate identity digest, and output inventory digest;
-- one exact adapter-registry path/hash and one exact engine resolver-registry
-  path/hash;
-- one exact build/dependency manifest path/hash when reference checks apply;
+  complete candidate identity revision, and output inventory revision;
+- one exact adapter-registry path/revision and one exact engine resolver-registry
+  path/revision;
+- one exact build/dependency manifest path/revision when reference checks apply;
 - the ordered applicable rule-source declarations, including technical
   preferences, art direction, and provenance/license policy when applicable;
-- provenance and license record manifests with exact hashes when selected or
+- provenance and license record manifests with exact revisions when selected or
   implied by the category;
 - asset-manifest/asset-spec production-state inputs when selected or implied and
   production eligibility is applicable;
-- every applicable instruction path/hash, declared category, and generated-at
+- every applicable instruction path/revision, declared category, and generated-at
   timestamp; and
 - optional lower execution limits. A manifest may lower but never raise the fixed
   Phase 1 limits.
 
 Resolve literal and real paths without following symlinks. Reject a duplicate
 normalized asset ID/path, real-path escape, unsupported manifest schema or
-encoding, duplicate mapping key, mismatched declared hash, or ambiguous target as
+encoding, duplicate mapping key, mismatched declared revision, or ambiguous target as
 `ERROR — INVALID AUDIT MANIFEST` before any adapter runs. Never infer the newest
 inventory, current editor platform, current build, engine, rule set, adapter,
 resolver, license policy, or report.
 
 ---
 
-## Phase 1 — Lock a bounded exact-hash manifest and coverage plan
+## Phase 1 — Lock a bounded exact-revision manifest and coverage plan
 
 Build the complete candidate identity sequence from the explicit manifest,
 inventory, rule sources, registries, declared asset roots, provenance/license
 records, dependency graph, and production-state manifests. Do not recursively
-discover undeclared roots. Hash exact raw bytes with SHA-256 before parsing;
+discover undeclared roots. record exact raw-byte count and declared revision before parsing;
 normalized text, Git status, modification time, and import-cache time are never
-hash inputs or currentness evidence.
+revision inputs or currentness evidence.
 
 Use these fixed upper bounds:
 
@@ -163,13 +161,7 @@ max_adapter_wall_ms: 30000
 max_total_adapter_wall_ms: 600000
 ```
 
-Sort candidate identities by channel, stable asset/artifact ID or null, then
-canonical project-relative path. Stream the complete ordered identity sequence
-into `inventory_sha256`, but retain at most `max_manifest_candidates` detailed
-rows. On overflow, record exact total and omitted counts, the first and last
-omitted sort keys, and `omitted_candidates_sha256` over the omitted canonical
-identity sequence. Apply the same bounded-prefix plus count/digest rule to every
-row limit. Do not read or judge an over-limit item. Add an aggregate `OVER_LIMIT`
+Sort candidate identities by channel, stable artifact ID or null, then canonical project-relative path. Require the manifest to supply one stable inventory_id and explicit monotonic inventory_revision for the complete ordered candidate sequence, while retaining at most max_manifest_candidates detailed rows. On overflow record exact total and omitted counts plus the first and last omitted business keys. Apply the same bounded-prefix plus count/boundary-key rule to every row limit. Do not read or judge an over-limit item. Add an aggregate `OVER_LIMIT`
 coverage row naming every affected check and force `PARTIAL`. Never raise a cap,
 silently omit input, or infer complete coverage from a sample.
 
@@ -180,21 +172,21 @@ channel: instruction | inventory | asset | import | rule | adapter | resolver | 
 artifact_id: <stable ID or null>
 asset_id: <stable asset ID or null>
 path: <canonical project-relative path>
-sha256: <locked 64-lowercase-hex or null>
-revalidation_sha256: <final 64-lowercase-hex or null>
+revision: <locked explicit revision or null>
+revalidation_revision: <final explicit revision or null>
 bytes: <non-negative integer or null>
 status: LOCKED | EXCLUDED | MISSING | UNREADABLE | INVALID | UNSUPPORTED | LFS_POINTER | OVER_LIMIT | SYMLINK_REJECTED | OUTSIDE_PROJECT | STALE
 reason: <bounded exact reason>
 planned_checks: [<stable check IDs>]
 ```
 
-`manifest_sha256` is SHA-256 over canonical JSON of project identity, invocation,
+manifest_revision is an explicit monotonic revision; canonical JSON records project identity, invocation,
 contract, target/build/platform, fixed and lowered limits, ordered retained rows,
-complete inventory digest, and overflow counts/digests. Canonical JSON uses
+complete inventory revision, and overflow counts/revisions. Canonical JSON uses
 UTF-8, lexicographically ordered object keys, displayed array order, no
 insignificant whitespace, and exactly one final LF.
 
-Re-enumerate declared roots and re-hash every locked project input immediately
+Re-enumerate declared roots and re-read every locked project input immediately
 before finalization. An added, removed, renamed, or byte-changed input is
 `STALE`; discard conclusions derived from the stale bytes, keep unaffected
 evidence, mark affected checks incomplete, and return `PARTIAL`. Never mix
@@ -237,7 +229,7 @@ source:
   artifact_id: <stable source ID>
   path: <canonical path>
   locator: <stable rule ID/anchor>
-  sha256: <exact raw-byte hash>
+  revision: <exact declared revision>
   schema_version: <version or null>
 authority: GOVERNING | AUTHORITATIVE | ADVISORY
 applicable_asset_types: [<stable type IDs>]
@@ -266,7 +258,7 @@ The adapter registry is authoritative only about supported evidence extraction;
 it cannot create rules or product approval. Each entry must bind:
 
 - stable adapter class, adapter ID, semantic version, executable/tool identity,
-  executable hash, and supported engine/platform/configuration range;
+  executable revision, and supported engine/platform/configuration range;
 - supported MIME/container signatures, structured schemas, reference syntaxes,
   provenance/license record schemas, and rule operators;
 - an argv array with typed placeholders, no shell command string, no network,
@@ -289,10 +281,10 @@ Required adapter classes include, when their asset/rule channel is in scope:
 - shader/material evidence: engine-compatible parser or pre-existing compiler
   receipt for exact target variants without cache mutation;
 - data validation: exact JSON/YAML/binary parser plus rule-declared schema
-  path/hash/version;
+  path/revision/version;
 - provenance validation: exact asset/origin/derivation/acquisition record parser;
 - license-policy evaluation: recognized license expression/approved policy ID,
-  license text/receipt hashes, obligation scope, and policy decision receipt;
+  license text/receipt revisions, obligation scope, and policy decision receipt;
 - engine reference resolution: exact engine/version resolver for every declared
   resource and dynamic-reference mechanism; and
 - any additional in-scope type: one manifest-declared compatible adapter.
@@ -305,9 +297,9 @@ serialization, cache generation, network access, or project writes, do not run i
 and mark `NOT_RUN`.
 
 A valid `cgs.asset-adapter-receipt/v1` binds exact asset/rule/target/build IDs,
-asset/import/rule hashes, adapter ID/version/executable hash, argv digest,
-sandbox policy, start/end timestamps, exit state, structured output digest,
-bounded stdout/stderr digests, and parser version. States are:
+asset/import/rule revisions, adapter ID/version/executable revision, argv revision,
+sandbox policy, start/end timestamps, exit state, structured output revision,
+bounded stdout/stderr revisions, and parser version. States are:
 
 ```text
 PASS | FAIL | NOT_RUN | UNSUPPORTED | PARSE_ERROR | TIMEOUT | INVALID_RECEIPT
@@ -332,13 +324,13 @@ for each asset. Every inventory row must provide:
 ```yaml
 asset_id: <globally unique stable ID>
 path: <canonical project-relative path>
-sha256: <exact raw-byte hash>
+revision: <exact declared revision>
 bytes: <integer>
 detected_signature: <MIME/container ID from registered detector>
 declared_type: <stable type ID>
 category: <closed invocation category>
 target_id: <exact stable target ID>
-import_metadata: <path/hash or ABSENT>
+import_metadata: <path/revision or ABSENT>
 lfs_state: MATERIALIZED | POINTER | NOT_APPLICABLE
 provenance_record_id: <stable ID>
 license_record_id: <stable ID or explicit policy-defined NOT_APPLICABLE>
@@ -350,14 +342,14 @@ evidence makes inventory coverage incomplete even when every listed file passes.
 An empty inventory can be complete only when that receipt proves the bounded
 scope contains zero applicable assets.
 
-For each selected asset/rule pair, verify hashes, signature, type, target,
+For each selected asset/rule pair, verify revisions, signature, type, target,
 applicability, adapter compatibility, and receipt; then compare typed expected and
 actual values with the registered operator. The per-check result is exactly
 `PASS | FAIL | UNVERIFIED | NOT_APPLICABLE`. `NOT_APPLICABLE` requires the
 rule-declared predicate and current evidence, not absence of an adapter.
 
 Modification time may be displayed as non-authoritative context only. Asset
-hashes, stable IDs, rule hashes, target/build identity, adapter receipts, and
+revisions, stable IDs, rule revisions, target/build identity, adapter receipts, and
 manifest revision determine reproducibility.
 
 ---
@@ -374,14 +366,14 @@ Normalize every provenance record under `cgs.asset-provenance/v1`:
 ```yaml
 provenance_record_id: <stable ID>
 asset_id: <exact stable asset ID>
-asset_sha256: <exact asset hash>
+asset_revision: <exact asset revision>
 origin_kind: INTERNAL_ORIGINAL | COMMISSIONED | THIRD_PARTY | GENERATED | DERIVED
 creator_or_provider_id: <stable party/provider ID>
-acquisition_or_creation_receipt: <artifact ID/path/hash/locator>
+acquisition_or_creation_receipt: <artifact ID/path/revision/locator>
 source_locator: <bounded URI or source reference recorded as data>
 parent_asset_ids: [<sorted stable IDs>]
 generator_or_tool: <stable ID/version or null>
-record_source: <artifact ID/path/hash/schema>
+record_source: <artifact ID/path/revision/schema>
 ```
 
 Derived assets require a cycle-free, exact parent chain to provenance-covered
@@ -396,16 +388,16 @@ Normalize every license record under `cgs.asset-license/v1`:
 ```yaml
 license_record_id: <stable ID>
 asset_id: <exact stable asset ID>
-asset_sha256: <exact asset hash>
+asset_revision: <exact asset revision>
 license_expression_or_policy_id: <recognized exact ID>
-license_text_or_receipt: <artifact ID/path/hash/locator>
+license_text_or_receipt: <artifact ID/path/revision/locator>
 permitted_targets: [<stable target/platform IDs>]
 territory: <policy-defined scope>
 effective_and_expiration: <exact dates or policy-defined perpetual>
 derivative_and_redistribution_rights: <typed policy values>
 attribution_obligations: [<stable obligation IDs>]
-obligation_evidence: [<artifact ID/path/hash/locator>]
-policy_source: <artifact ID/path/hash/rule ID/schema>
+obligation_evidence: [<artifact ID/path/revision/locator>]
+policy_source: <artifact ID/path/revision/rule ID/schema>
 ```
 
 The registered policy adapter may return exactly:
@@ -415,7 +407,7 @@ ALLOWED | ALLOWED_WITH_OBLIGATIONS | PROHIBITED | EXPIRED | UNVERIFIED | NOT_APP
 ```
 
 `ALLOWED_WITH_OBLIGATIONS` passes only when every required obligation has current
-exact-hash evidence for the audited target. `NOT_APPLICABLE` requires an explicit
+exact-revision evidence for the audited target. `NOT_APPLICABLE` requires an explicit
 policy rule. `PROHIBITED`, `EXPIRED`, or a conclusively unmet HARD obligation is a
 HARD `FAIL`. Missing policy, record, recognized expression, scope, receipt,
 attribution evidence, or adapter yields `UNVERIFIED` and `PARTIAL`, never an
@@ -429,10 +421,10 @@ visible, and force `PARTIAL`; never choose the newest or most permissive record.
 Use only the exact registered engine resolver, its
 `cgs.asset-reference-graph/v1` receipt, and current build/dependency manifests.
 The receipt must bind engine/resolver versions, target/build/artifact IDs and
-hashes, inventory and dependency-manifest hashes, supported reference syntaxes,
+revisions, inventory and dependency-manifest revisions, supported reference syntaxes,
 dynamic-registry coverage, normalized asset IDs, every parsed reference location,
-complete edge digest/count, parser/tool versions, timestamp, result, and complete
-log digest.
+complete edge revision/count, parser/tool versions, timestamp, result, and complete
+log revision.
 
 Resolver coverage must explicitly enumerate every applicable mechanism declared
 for the target: scenes, prefabs, resources, engine UIDs, addressables, asset
@@ -471,7 +463,7 @@ build-graph checks, and separately authorized removal.
 
 ## Phase 7 — Consume production state and enforce ownership boundaries
 
-When production eligibility is in scope, consume exact hash-bound asset-manifest
+When production eligibility is in scope, consume exact revision-bound asset-manifest
 and asset-spec state without changing it. Recognized states are:
 
 ```text
@@ -479,7 +471,7 @@ DRAFT | BLOCKED_NOT_FOR_PRODUCTION | READY_FOR_PRODUCTION
 ```
 
 `READY_FOR_PRODUCTION` is accepted only when stable asset/spec IDs,
-transactions, statuses, dependency state, committed raw hashes, and current
+transactions, statuses, dependency state, committed raw revisions, and current
 validation receipts agree; `production_eligible` is true; every inferred
 requirement is confirmed; and no blocker remains. `DRAFT` is a HARD failure for
 a production target. `BLOCKED_NOT_FOR_PRODUCTION` is a HARD failure and cannot be
@@ -505,7 +497,7 @@ prove content inclusion or requirement coverage.
 
 A content-audit consumer may accept a current asset-audit record only by
 recomputing the `cgs.review-evidence/v1` envelope, recognized producer/extension,
-target/build/manifest identity, and every artifact/payload hash. It may display
+target/build/manifest identity, and every artifact/payload revision. It may display
 that evidence under the asset-audit owner, but it must not use it as inclusion
 proof. This analyzer does not invoke content-audit.
 
@@ -516,27 +508,27 @@ proof. This analyzer does not invoke content-audit.
 Every actionable or coverage finding uses:
 
 ```yaml
-id: AAF-<category-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <64-lowercase-hex>
+id: AAF-<category-slug>-<stable-business-id>
+business_key: <explicit revision>
 category: RULE_FAIL | RULE_CONFLICT | ADAPTER_GAP | INVENTORY_GAP | PROVENANCE_GAP | LICENSE_FAIL | LICENSE_CONFLICT | REFERENCE_FAIL | REFERENCE_GAP | PRODUCTION_BLOCKER | COVERAGE_GAP
 asset_id: <stable asset ID or null>
 rule_id: <stable rule ID or null>
 target_id: <stable target ID>
 severity: HARD | ADVISORY | COVERAGE
 check_result: PASS | FAIL | UNVERIFIED | NOT_APPLICABLE
-evidence: [<complete exact-hash references and receipt digests>]
+evidence: [<complete exact-revision references and receipt revisions>]
 owner: <stable remediation owner>
 status: OPEN | RESOLVED_IN_CURRENT
 acceptance: <objective current-snapshot closure condition>
 ```
 
-Fingerprint canonical JSON from `project_id_sha256`, category, stable
+stable business key is assembled from declared project_id, category, stable
 asset/rule/target IDs, stable provenance/license/reference/production record IDs,
 and applicable platform/configuration. Exclude paths, display names, raw wording,
-line numbers, content hashes, expected/actual values, severity, confidence,
+line numbers, content revisions, expected/actual values, severity, confidence,
 status, run ID, timestamps, and recommendation so the same logical defect keeps
-its ID after movement or byte changes. Deduplicate only the full fingerprint and
-preserve all provenance. Incompatible evidence sharing a fingerprint is a
+its ID after movement or byte changes. Deduplicate only the full stable business key and
+preserve all provenance. Incompatible evidence sharing a stable business key is a
 coverage conflict and forces `PARTIAL`.
 
 Build one row for every candidate, selected asset/rule pair, provenance/license
@@ -546,7 +538,7 @@ record, reference mechanism, production-state input, and required check:
 channel_id: <stable channel/check ID>
 artifact_or_asset_id: <stable ID or null>
 path: <canonical path or null>
-sha256: <hash or null>
+revision: <revision or null>
 bytes: <integer or null>
 status: COMPLETE | PARTIAL | FAILED | NOT_APPLICABLE
 checks:
@@ -605,21 +597,21 @@ contract: cgs.asset-audit/v3
 result: OK
 verdict: COMPLIANT | WARNINGS | NON-COMPLIANT | PARTIAL
 project_id: <canonical project identity>
-project_id_sha256: <hash>
+project_revision: <revision>
 run_id: <lowercase UUID>
 observed_at: <UTC ISO-8601>
 invocation:
   manifest_path: <canonical project-relative path>
   category: <closed enum value>
   summary: true | false
-target: <stable target/build/platform/configuration IDs and artifact hash>
+target: <stable target/build/platform/configuration IDs and artifact revision>
 manifest:
-  sha256: <manifest hash>
-  inventory_sha256: <complete candidate identity-sequence hash>
+  revision: <manifest revision>
+  inventory_revision: <complete candidate identity-sequence revision>
   limits: <fixed and effective limits>
-  overflow: <exact counts, boundary keys, and omitted-sequence digests>
+  overflow: <exact counts, boundary keys, and omitted-sequence revisions>
   rows: [<ordered detailed rows>]
-rule_precedence: <loaded, effective, overridden, and conflicting exact-hash rules>
+rule_precedence: <loaded, effective, overridden, and conflicting exact-revision rules>
 coverage:
   dimensions: <status/reason per required dimension>
   ledger: [<ordered rows>]
@@ -642,18 +634,18 @@ disclaimer: <required boundary text>
 
 Sort checks by asset ID then rule ID; sort provenance/license rows by asset ID
 then record ID; sort reference ID sets lexicographically; sort findings by
-category, asset/rule ID, then fingerprint. Bound excerpts and advisory text.
+category, asset/rule ID, then stable business key. Bound excerpts and advisory text.
 `--summary` may compact checks/findings in the human projection only; the machine
 payload retains the same target, manifest, rule precedence, all coverage fields,
-state sets, stable finding IDs, limitations, verdict, and hashes.
+state sets, stable finding IDs, limitations, verdict, and revisions.
 
-Hash canonical extension JSON using Phase 1 canonicalization, then wrap it in:
+Serialize canonical extension JSON, assign an explicit payload revision, using Phase 1 canonicalization, then wrap it in:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<SHA-256 of canonical envelope payload excluding record_id>
-artifact_id: asset-audit:<project_id_sha256>:<target_id>:<manifest_sha256>
-artifacts: [<every retained locked input path and SHA-256, sorted as manifest>]
+record_id: <stable business record ID plus review_run_id>
+artifact_id: asset-audit:<project_id>:<target_id>:<run_id>
+artifacts: [<every retained locked input path and revision, sorted as manifest>]
 reviewer: <stable task identity or codex-task:<run_id>>
 review_run_id: <run_id>
 review_depth: bounded-full
@@ -662,19 +654,19 @@ verdict: <asset-audit verdict>
 timestamp: <observed_at>
 finding_ids: [<sorted stable finding IDs>]
 unresolved_blocker_ids: [<sorted open HARD/coverage finding IDs>]
-report_payload_sha256: <SHA-256 of canonical extension payload>
+report_payload_revision: <explicit report revision>
 producer:
   tool: asset-audit
   version: cgs.asset-audit/v3
 extension: <complete cgs.asset-audit-report/v1 payload>
 ```
 
-Recompute every artifact, manifest, payload, and envelope hash once. Fail with
+re-read and validate every declared artifact, manifest, payload, and envelope revision once. Fail with
 `ERROR — EVIDENCE CONSTRUCTION FAILED` and emit no evidence record rather than
-returning inconsistent hashes. The record applies only to its exact target,
+returning inconsistent revisions. The record applies only to its exact target,
 build, platform/configuration, rule chain, registries, inventory, asset bytes,
-and manifest hashes. Conversation rendering does not persist it automatically;
-later consumers must receive exact bytes and revalidate all hashes.
+and manifest revisions. Conversation rendering does not persist it automatically;
+later consumers must receive exact bytes and revalidate all revisions.
 
 The disclaimer must state: `PARTIAL`/`UNVERIFIED` is not compliance;
 `COMPLIANT` is not proof of GDD content completeness or build inclusion beyond

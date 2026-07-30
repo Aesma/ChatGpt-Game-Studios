@@ -1,6 +1,6 @@
 ---
 name: project-stage-detect
-description: "Read-only project-stage evidence service that validates catalog-backed versioned stage authority and current hash-bound receipts, reports deterministic blockers and contradictions, and never infers progress from artifact counts."
+description: "Read-only project-stage evidence service that validates catalog-backed versioned stage authority and current revision-bound receipts, reports deterministic blockers and contradictions, and never infers progress from artifact counts."
 ---
 
 ## Invocation and execution
@@ -30,10 +30,10 @@ No result, confidence, or recommendation authorizes a gate or stage transition.
 
 Resolve exactly one workspace root. Reject traversal, outside-root paths,
 symlink escape, or ambiguous roots. Normalize repository-relative paths with `/`
-for identity and retain raw bytes for hashing.
+for identity and retain raw bytes for revision tracking.
 
 The only stage-policy source is `.codex/docs/workflow-catalog.yaml`. Read and
-hash its exact raw bytes before reading any authority record. A usable catalog
+record its explicit revision before reading any authority record. A usable catalog
 contract must be versioned and must declare, without relying on this skill to
 fill defaults:
 
@@ -82,16 +82,12 @@ before crossing any catalog read limit. Record `READ_BUDGET_EXCEEDED` with the
 declared and observed limit; do not silently truncate and continue.
 
 For every closure item, record an explicit `PRESENT`, `ABSENT`, `UNREADABLE`,
-`MALFORMED`, or `CHANGED_DURING_SCAN` source state. Hash exact raw bytes with
-lowercase SHA-256. An absence marker is data in the snapshot; it is not the hash
-of an empty file.
-
-Evidence IDs are the lowercase SHA-256 of canonical JSON containing provenance,
-normalized path, relevant field/section, source state, and raw hash or absence
-marker. Sort snapshot entries by normalized path and field, serialize canonical
-JSON as UTF-8 without BOM, and hash it to produce `snapshot_manifest_hash`.
-Each evidence record includes its ID, provenance, path, field/section,
-`snapshot_at`, observed hash or absence marker, expected hash when applicable,
+`MALFORMED`, or `CHANGED_DURING_SCAN` source state. Bind a stable evidence ID,
+canonical path, schema/version, declared revision, byte count, and source state.
+Absence is an explicit marker, never an empty-file identity. Sort snapshot entries by
+normalized path and field. Allocate `snapshot_manifest_id` from the stable project ID
+and UTC run ID. Each evidence record includes its ID, provenance, path, field/section,
+`snapshot_at`, observed revision or absence marker, requested revision when applicable,
 validation state, and reason codes.
 
 Allowed provenance values are:
@@ -105,7 +101,7 @@ Allowed provenance values are:
 | `LEGACY_DECLARATION` | unversioned text such as `production/stage.txt` |
 | `COVERAGE_GAP` | missing, unreadable, malformed, stale, unsupported, or over-limit evidence |
 
-Re-read and re-hash every readable closure item before classification. Record
+Re-read and Revalidate every readable closure item before classification. Record
 `reverified_at` in UTC. A required item changed between reads produces
 `CHANGED_DURING_SCAN` and prevents `DETECTED`; never combine bytes from different
 moments into one clean snapshot.
@@ -117,15 +113,15 @@ moments into one clean snapshot.
 A stage authority record is valid only when it conforms to the catalog-declared
 authority schema and supplies:
 
-- schema version and exact catalog version/hash;
+- schema version and exact catalog version/revision;
 - exact stage enum and transition ID;
 - authorized owner and `updated_at` timestamp;
 - `transition_from`, including the catalog-defined initial-stage rule;
 - target commit/ref and dirty-state binding;
 - canonical source snapshot/manifest identity;
-- exact required receipt IDs, paths, schemas, and raw hashes;
-- previous authority-record path/hash required by continuity policy; and
-- a record ID/hash that validates under the declared canonicalization rule.
+- exact required receipt IDs, paths, schemas, and declared revision;
+- previous authority-record path/revision required by continuity policy; and
+- a record ID/revision that validates under the declared canonicalization rule.
 
 Validate the transition ID, from/to pair, owner, initial-stage rule, continuity,
 target, dirty-state, and freshness directly against the same catalog bytes.
@@ -133,17 +129,17 @@ target, dirty-state, and freshness directly against the same catalog bytes.
 Every required receipt must validate its stable ID, schema version, transition
 ID, exact from/to stage, gate/profile identity, final eligible `PASS`, authorized
 approver, passed-at timestamp, target commit/dirty state, source/build/test and
-required artifact manifests, receipt raw hash, and freshness. Recompute every
-referenced current hash. A receipt verdict string or filename without the exact
+required artifact manifests, receipt declared revision, and freshness. Recompute every
+referenced current revision. A receipt verdict string or filename without the exact
 catalog-bound evidence is not a valid receipt.
 
 A parsable authority claim that disagrees with the catalog, owner, transition,
-continuity, receipt, target, or current stable hashes is a contradiction. A
+continuity, receipt, target, or current stable revisions is a contradiction. A
 missing or unreadable required source is a coverage gap rather than invented
 contradictory content.
 
 Plain `production/stage.txt` remains non-authoritative even when its value is a
-valid stage enum. Preserve its value and hash as `declared_stage` only when no
+valid stage enum. Preserve its value and revision as `declared_stage` only when no
 versioned authority claim supplies that field; never promote it to
 `detected_stage`.
 
@@ -159,7 +155,7 @@ confidence.
 
 Generated, vendor, example, cache, imported, and third-party files are never
 discovered for advisory counting. If a catalog-valid receipt explicitly binds
-one, validate its exact hash only as part of that receipt; its category and
+one, validate its exact revision only as part of that receipt; its category and
 quantity carry no stage meaning.
 
 Do not emit completion percentages, ranges, estimates, weighted scores,
@@ -180,7 +176,7 @@ Apply this precedence and do not normalize one outcome into another:
 
 Return `ERROR`, `detected_stage: UNKNOWN`, `resolution_state: BLOCKED`, and
 `confidence: LOW` for invalid invocation/root, an unreadable catalog, no readable
-evidence source, or global hashing/integrity failure that prevents a trustworthy
+evidence source, or global revision tracking/integrity failure that prevents a trustworthy
 snapshot.
 
 ### `CONFLICT`
@@ -189,7 +185,7 @@ Return `CONFLICT`, `detected_stage: UNKNOWN`, `resolution_state: BLOCKED`, and
 `confidence: LOW` only when readable stable evidence makes a positive
 contradiction: unknown stage enum in a parsable authority record, invalid
 transition/owner/continuity, wrong receipt identity or verdict, expected versus
-observed hash mismatch, conflicting authority records in the declared chain, or
+observed revision mismatch, conflicting authority records in the declared chain, or
 target/build/source disagreement. Preserve the claimed value separately as
 `declared_stage`.
 
@@ -215,8 +211,8 @@ freshness. `MEDIUM` never authorizes an unknown stage.
 
 Return `DETECTED`, the exact authority stage, and `resolution_state: CLEAR` only
 when one complete catalog-valid authority chain, allowed transition and owner,
-all required receipts, current target, stable source/build/test/artifact hashes,
-and the end-of-scan rehash agree with no contradiction or blocking gap.
+all required receipts, current target, stable source/build/test/artifact revision,
+and the end-of-scan Revalidate agree with no contradiction or blocking gap.
 
 Confidence is `HIGH` for a complete current chain. It may be `MEDIUM` only when
 the catalog explicitly permits a non-authoritative gap that cannot affect the
@@ -231,7 +227,7 @@ Use stable blocking reason codes, including when applicable:
 `AUTHORITY_MALFORMED`, `UNKNOWN_STAGE_ENUM`, `INVALID_TRANSITION`,
 `UNAUTHORIZED_OWNER`, `CONTINUITY_MISMATCH`, `RECEIPT_MISSING`,
 `RECEIPT_UNREADABLE`, `RECEIPT_INVALID`, `TARGET_UNVERIFIED`,
-`HASH_MISMATCH`, `READ_BUDGET_EXCEEDED`, and `CHANGED_DURING_SCAN`.
+`revision mismatch`, `READ_BUDGET_EXCEEDED`, and `CHANGED_DURING_SCAN`.
 
 ---
 
@@ -244,27 +240,27 @@ do not omit empty required lists or substitute prose for structured fields.
 schema: cgs.project-stage-detection/v2
 schema_version: 2
 completion_marker: COMPLETE
-packet_id: sha256:<canonical-core-payload>
+packet_id: <revision>
 project:
-  root_id: sha256:<canonical-real-root-identity>
+  root_id: <revision>
 catalog:
   path: .codex/docs/workflow-catalog.yaml
   schema_version: <value-or-UNVERIFIED>
   catalog_version: <value-or-UNVERIFIED>
-  raw_sha256: <sha256>
+  raw_revision: <revision>
   stage_authority_schema_version: <value-or-UNVERIFIED>
 snapshot:
   snapshot_at: <UTC>
   reverified_at: <UTC>
-  vcs_commit: <hash-or-UNVERIFIED>
+  vcs_commit: <revision_or-UNVERIFIED>
   vcs_ref: <ref-or-UNVERIFIED>
   dirty_state: <clean|dirty|UNVERIFIED>
-  manifest_sha256: <sha256>
+  manifest_revision: <revision>
   entries:
     - path: <normalized-repository-relative-path>
       field: <field-or-section>
       source_state: PRESENT | ABSENT | UNREADABLE | MALFORMED | CHANGED_DURING_SCAN
-      raw_sha256: <sha256-or-ABSENT-or-UNVERIFIED>
+      raw_revision: <revision-or-ABSENT-or-UNVERIFIED>
       snapshot_at: <UTC>
 result: DETECTED | CONFLICT | UNKNOWN | ERROR
 resolution_state: CLEAR | BLOCKED
@@ -275,11 +271,11 @@ authority:
   schema_version: <value-or-UNVERIFIED>
   record_id: <id-or-NONE>
   record_path: <path-or-NONE>
-  record_sha256: <sha256-or-NONE>
+  record_revision: <revision-or-NONE>
   owner: <owner-or-UNVERIFIED>
   transition_id: <id-or-UNVERIFIED>
   transition_from: <stage-or-UNVERIFIED>
-  previous_record_sha256: <sha256-or-NONE-or-UNVERIFIED>
+  previous_record_revision: <revision-or-NONE-or-UNVERIFIED>
 receipts:
   required: <count-or-UNVERIFIED>
   valid: <count>
@@ -287,8 +283,8 @@ receipts:
     - id: <stable-id>
       schema_version: <version>
       path: <path>
-      expected_sha256: <sha256>
-      observed_sha256: <sha256-or-UNVERIFIED>
+      expected_revision: <revision>
+      observed_revision: <revision-or-UNVERIFIED>
       state: VALID | INVALID | STALE | UNVERIFIED
 evidence:
   - id: <stable-id>
@@ -296,15 +292,15 @@ evidence:
     path: <path>
     field: <field-or-section>
     snapshot_at: <UTC>
-    expected_sha256: <sha256-or-NOT_APPLICABLE>
-    observed_sha256: <sha256-or-ABSENT-or-UNVERIFIED>
+    expected_revision: <revision-or-NOT_APPLICABLE>
+    observed_revision: <revision-or-ABSENT-or-UNVERIFIED>
     state: VALID | INVALID | STALE | UNVERIFIED | NOT_APPLICABLE
     reason_codes: [<stable-code>]
 contradictions:
   - id: <stable-id>
     field: <field>
-    expected: <redacted-value-or-hash>
-    observed: <redacted-value-or-hash>
+    expected: <redacted-value-or_revision>
+    observed: <redacted-value-or_revision>
     evidence_ids: [<stable-id>]
 read_errors:
   - evidence_id: <stable-id>
@@ -323,10 +319,10 @@ recommendation:
 disclaimer: ADVISORY DETECTION ONLY — NOT A GATE OR TRANSITION
 ```
 
-`packet_id` is the SHA-256 of canonical JSON for every field from `schema`
-through `advisory_observations`, excluding `packet_id` itself and excluding the
-role-dependent `recommendation`. This keeps the evidence identity stable across
-role filters while exact serialized packet bytes may differ in recommendation.
+`packet_id` is `PSD-<project-id>-<utc-run-id>` and is collision-checked before
+use. The packet binds every field from `schema` through `advisory_observations`,
+excluding the role-dependent `recommendation`. Role-filtered views retain the same
+packet ID and explicit snapshot-manifest ID/revision.
 
 For the same frozen snapshot, every field except `recommendation.role` and its
 wording must be byte-for-byte identical across role filters.
@@ -347,7 +343,7 @@ Do not invoke `$gate-check`, `$start`, `$help`, `$studio-status`, another projec
 skill, an agent, or a recorder. A handoff is text only.
 
 Consumers must validate the complete canonical
-`cgs.project-stage-detection/v2` packet, catalog hash, packet ID, project root ID,
+`cgs.project-stage-detection/v2` packet, catalog revision, packet ID, project root ID,
 and current snapshot before use. They must not parse a prose stage line,
 recalculate stage from artifacts, treat `UNKNOWN`/`CONFLICT` as a stage, or use
 this detector as gate approval.

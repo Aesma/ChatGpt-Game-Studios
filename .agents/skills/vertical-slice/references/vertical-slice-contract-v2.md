@@ -1,19 +1,21 @@
 # Vertical Slice Contract v2
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs.
+
 This is the normative private contract for `$vertical-slice`. `MUST`, `MUST NOT`,
 `SHOULD`, and `MAY` are normative. If this reference and the skill disagree, the
 workflow returns `INPUT_ERROR` without writing.
 
 ## 1. Canonical identity and serialization
 
-- Hash exact raw bytes with SHA-256; render `sha256:<64-lower-hex>`.
+- Validate declared identity, schema, version, and revision before use.; render `<explicit-revision>`.
 - Canonical structured values use UTF-8, LF, Unicode NFC, sorted map keys, declared
   array order, decimal numbers without exponent notation, and RFC 3339 UTC times.
-- Hash an ordered set as SHA-256 over `byte_length ":" raw_bytes` records.
+- Validate an ordered set as revision over `byte_length ":" raw_bytes` records.
 - `ABSENT` is a create precondition requiring no entry at the canonical path.
 - Paths are project-relative `/` paths after real-path containment, Unicode NFC,
   case-collision, alias, traversal, drive/URI, and symlink checks.
-- IDs and hashes are evidence only when their defining schema and raw bytes validate.
+- IDs and revisions are evidence only when their defining schema and raw bytes validate.
 
 Stable IDs use:
 
@@ -34,9 +36,9 @@ VS-EVAL-<20-lower-hex> evaluation
 VSF-<20-lower-hex>      finding
 ```
 
-A finding ID hashes schema, hypothesis ID, classification, source/stable-row ID,
+A finding ID revisions schema, hypothesis ID, classification, source/stable-row ID,
 normalized observation key, owner, and resolution condition. It excludes prose,
-line numbers, timestamps, and current raw hashes. Current evidence remains in the
+line numbers, timestamps, and current declared revisions. Current evidence remains in the
 finding body.
 
 ## 2. Fixed limits
@@ -88,24 +90,24 @@ run:
   attempt: 01 | 02
 prerequisites:
   path: <project-relative-path>
-  expected_sha256: sha256:<digest>
+  expected_revision: <explicit-revision>
   schema: cgs.vertical-slice-prerequisites/v2
 scope_proposal:
   path: <project-relative-path>
-  expected_sha256: sha256:<digest>
+  expected_revision: <explicit-revision>
   schema: cgs.vertical-slice-scope-proposal/v2
 hypothesis_history:
   registry_path: <project-relative-path>
-  registry_expected_sha256: sha256:<digest>
+  registry_expected_revision: <explicit-revision>
   registry_revision: <nonnegative-integer>
-  registry_head: sha256:<digest>
+  registry_head: <explicit-revision>
 attempt_reservation:
   receipt_path: <project-relative-path>
-  receipt_expected_sha256: sha256:<digest>
+  receipt_expected_revision: <explicit-revision>
   schema: cgs.vertical-slice-attempt-reservation/v2
 prior_report:
   path: <project-relative-path> | NONE
-  expected_sha256: sha256:<digest> | NONE
+  expected_revision: <explicit-revision> | NONE
 output:
   plan_path: production/validation/vertical-slices/<hypothesis>/attempt-<NN>/<run>/plan.md
   expected_state: ABSENT
@@ -115,7 +117,7 @@ generated_at: <RFC-3339-UTC>
 ```
 
 Attempt 01 requires prior report NONE. Attempt 02 requires an exact prior report.
-The request ID hashes the canonical request without ID/generated-at.
+The request ID revisions the canonical request without ID/generated-at.
 
 ### Evaluation request
 
@@ -130,14 +132,14 @@ hypothesis_id: VS-H-<stable-slug>
 attempt: 01 | 02
 plan:
   path: <exact-plan-path>
-  expected_sha256: sha256:<digest>
+  expected_revision: <explicit-revision>
 evidence_manifest:
   path: <project-relative-path>
-  expected_sha256: sha256:<digest>
+  expected_revision: <explicit-revision>
   schema: cgs.vertical-slice-evidence-manifest/v2
 creative_concerns:
   path: <project-relative-path> | NONE
-  expected_sha256: sha256:<digest> | NONE
+  expected_revision: <explicit-revision> | NONE
 output:
   report_path: <plan-root>/reports/<evaluation-id>.md
   expected_state: ABSENT
@@ -153,13 +155,13 @@ evidence graph. `--persist` authorizes no write until exact candidate approval.
 ## 4. Prerequisite manifest (VS-005)
 
 `cgs.vertical-slice-prerequisites/v2` contains project/stage/root identity, source
-commit/tree, engine/version, platform/configuration, generated-at, hash algorithm,
-an ordered Sources array, and a canonical source-set hash.
+commit/tree, engine/version, platform/configuration, generated-at, revision algorithm,
+an ordered Sources array, and a canonical source-set revision.
 
 Every source row contains:
 
 ```text
-source_role / stable_id / canonical_path / raw_sha256 / schema_or_format /
+source_role / stable_id / canonical_path / raw_revision / schema_or_format /
 declared_status / exact fields-or-sections used / required / applicability proof
 ```
 
@@ -180,13 +182,13 @@ Required role and status rules:
 | `PRIOR_VALIDATION` | every threshold-setting source | `VERIFIED` |
 
 Adapters MAY map a source's exact native token to a canonical status only when the
-adapter ID/version/hash is declared in the manifest and supported by the workflow
+adapter ID/version/revision is declared in the manifest and supported by the workflow
 contract. Unknown statuses do not pass.
 
 The manifest MUST prove completeness from the systems index, GDD dependency
 graph, ADR references, TR mappings, and scope proposal. A manifest cannot prove
 its own completeness by omitting an authority. A source row is one of
-`LOADED_VALID`, `ABSENT`, `UNREADABLE`, `INVALID`, `HASH_MISMATCH`, `STALE`,
+`LOADED_VALID`, `ABSENT`, `UNREADABLE`, `INVALID`, `REVISION_MISMATCH`, `STALE`,
 `UNSUPPORTED`, or `OVER_LIMIT`; only LOADED_VALID passes a required role.
 
 ## 5. Scope proposal and closure (VS-006)
@@ -195,7 +197,7 @@ its own completeness by omitting an authority. A source row is one of
 hypothesis/question/core-fantasy IDs, loop start/challenge/resolution IDs, selected
 system/requirement/AC rows, dependency edges, asset/UX/network bindings, target
 quality, environment/evidence profile, explicit non-goals, proposed stories, and
-proposal hash.
+proposal revision.
 
 Normalize the authoritative graph:
 
@@ -220,13 +222,13 @@ machine-identifiable slice-required predicate, return BLOCKED and route the exac
 gap to its design owner; never choose “key” sources heuristically.
 
 `cgs.vertical-slice-scope/v2` freezes ordered system/requirement/AC/edge/story/
-quality/environment/evidence rows and prerequisite hashes. `scope_sha256` covers
+quality/environment/evidence rows and prerequisite revisions. `scope_revision` covers
 the complete canonical scope. Approval records user identity, UTC time, proposal
-hash, scope hash, plan candidate hash, and literal decision.
+revision, scope revision, plan candidate revision, and literal decision.
 
 ## 6. Hypothesis and attempt state
 
-`hypothesis_definition_sha256` hashes schema/contract version, stable hypothesis
+`hypothesis_definition_revision` revisions schema/contract version, stable hypothesis
 ID, question, core fantasy, proceed criteria, kill predicates, measurement
 definitions, network applicability/profile, and decision matrix.
 
@@ -235,28 +237,28 @@ Attempt rules:
 | Attempt | Admission |
 |---|---|
 | `01` | no prior report; first run for hypothesis |
-| `02` | exact CURRENT persisted attempt-01 PIVOT report; same definition hash; targeted prior findings plus regressions only |
+| `02` | exact CURRENT persisted attempt-01 PIVOT report; same definition revision; targeted prior findings plus regressions only |
 | any other | invalid, zero writes |
 
 `cgs.vertical-slice-hypothesis-history/v2` is an append-only registry whose rows
-bind hypothesis, attempt, run, request, reservation, plan/report hashes, evidence/
-final verdict, lifecycle, revision, prior head, event ID, and event hash. A
+bind hypothesis, attempt, run, request, reservation, plan/report revisions, evidence/
+final verdict, lifecycle, revision, prior head, event ID, and event revision. A
 separate recorder owns it.
 
 Before plan mode, require `cgs.vertical-slice-attempt-reservation/v2` containing:
 
 ```text
-reservation ID / registry path+ID+base hash+revision+head / hypothesis+attempt /
-run+request hashes / prior report identity or NONE / reserved-at+expires-at UTC /
-recorder identity / exclusive-lock+CAS result / receipt hash
+reservation ID / registry path+ID+base revision+revision+head / hypothesis+attempt /
+run+request revisions / prior report identity or NONE / reserved-at+expires-at UTC /
+recorder identity / exclusive-lock+version and existence conflict check result / receipt revision
 ```
 
 The recorder may reserve an attempt only when current history contains no plan or
 live reservation for that hypothesis/attempt and the preceding-attempt rules pass.
 Plan mode revalidates registry/receipt/expiry immediately before persistence.
-After the plan is verified, a separate recorder CAS-appends its exact hash and
+After the plan is verified, a separate recorder version and existence conflict check-appends its exact revision and
 emits `cgs.vertical-slice-attempt-finalization/v2`. Implementation batch manifests
-MUST include that finalization receipt/hash. An unfinalized plan authorizes no
+MUST include that finalization receipt/revision. An unfinalized plan authorizes no
 implementation. A different run ID, expired abandoned reservation, filename, or
 missing registry row cannot reset history.
 
@@ -267,7 +269,7 @@ allowed by section 12.
 ## 7. Story, batch, finding, and checkpoint budgets (VS-007)
 
 Every planned `cgs.vertical-slice-story/v2` row contains story ID, owned outcome,
-scope/system/AC IDs, input hashes, dependency IDs, allowed path roots/file types,
+scope/system/AC IDs, input revisions, dependency IDs, allowed path roots/file types,
 owner role, initial/remediation batch IDs, commands, limits, checkpoint schedule,
 scope units, and stop predicates.
 
@@ -305,8 +307,8 @@ and routes to product/scope ownership.
 
 `cgs.vertical-slice-batch-receipt/v2` binds run/plan/scope/story/batch, task,
 worktree/branch/base/pre/post commit/tree, mutation manifest, planned/actual path
-hashes, commands/exits/raw logs, start/end/active/blocked intervals, checkpoint
-rows, build/candidate, scope units, findings, result, and receipt hash. It is
+revisions, commands/exits/raw logs, start/end/active/blocked intervals, checkpoint
+rows, build/candidate, scope units, findings, result, and receipt revision. It is
 immutable and create-only.
 
 ## 8. Minimum playtest evidence (VS-008)
@@ -327,12 +329,12 @@ Each `cgs.vertical-slice-playtest-session/v2` receipt contains session/tester ID
 pseudonymous tester cohort/role and independence flags, exact candidate/build/
 source/engine/platform/device/input/environment identities, UTC start/end,
 full-loop start/challenge/resolution events, per-criterion observations,
-completion/blockers, raw artifact path/hash/size/media type, producer/observer
-task IDs, consent/redaction classification, attestation, and receipt hash.
+completion/blockers, raw artifact path/revision/size/media type, producer/observer
+task IDs, consent/redaction classification, attestation, and receipt revision.
 
 Raw evidence is immutable and create-only. A transcript/summary/self-report may be
 an observation only when its raw record is bound. Conversation cannot backfill a
-missing event, tester, timestamp, build, or raw hash. Wrong-build, stale, duplicate,
+missing event, tester, timestamp, build, or declared revision. Wrong-build, stale, duplicate,
 unattested, owner-conflicted, missing, or truncated receipts are INVALID/UNKNOWN.
 
 The fixed minima support only the frozen slice threshold and are not statistical
@@ -382,19 +384,19 @@ profile cannot be waived or set N/A by prose.
 topology / authority model / minimum peers >= 2 / distinct human controllers /
 target platform / baseline cell / target latency-jitter-loss-bandwidth cells /
 at least one adverse cell / warm-up / duration / session count /
-simulator-or-real-network method+version+config hash / telemetry fields /
+simulator-or-real-network method+version+config revision / telemetry fields /
 criterion thresholds / PASS-FAIL-invalid mappings
 ```
 
 Minimum target evidence is two completed target-condition sessions with at least
 two real peers controlled by distinct humans. A validated simulator is allowed
-only when its executable/version/config hash and observed injection telemetry are
+only when its executable/version/config revision and observed injection telemetry are
 recorded. Requested settings without observed telemetry are UNKNOWN. Localhost/
 loopback/0 ms evidence can prove non-network functionality only.
 
 Every network receipt binds exact session/candidate/build, peer IDs/roles,
 topology, injection configuration, observed latency/jitter/loss/bandwidth samples,
-clock/time basis, events, raw telemetry path/hash, and result. Missing required
+clock/time basis, events, raw telemetry path/revision, and result. Missing required
 cell/peer/session/telemetry/tool identity makes the network criterion NOT_RUN,
 UNKNOWN, or INVALID and Workflow Status PARTIAL. Evidence Verdict cannot be
 PROCEED.
@@ -405,10 +407,10 @@ PROCEED.
 evaluator and contains exact run/hypothesis/attempt/history reservation+plan
 finalization/plan/scope/prerequisite,
 source/candidate/build, engine/platform, ordered batch/session/raw/velocity/network
-rows, criterion/kill observations, known gaps, producer identities, set hashes,
-generated-at, and manifest hash.
+rows, criterion/kill observations, known gaps, producer identities, set revisions,
+generated-at, and manifest revision.
 
-The evaluator independently rehashes and validates the entire bounded graph. A
+The evaluator independently revalidate and validates the entire bounded graph. A
 manifest row never validates itself. Required row statuses are PASS, FAIL,
 NOT_RUN, UNKNOWN, STALE, INVALID, or PARTIAL.
 
@@ -440,9 +442,9 @@ Neither creative concerns nor product decision changes these axes.
 ## 12. Creative concerns and product decision
 
 `cgs.vertical-slice-creative-concerns/v2` binds plan/evidence/candidate/build/
-hypothesis/attempt/matrix/verdict hashes, advisory task ID, ordered concerns,
-recommended conservative decision, allowed-write set empty, and receipt hash.
-Wrong-hash, verdict-writing, mutating, or upgrading output is invalid and ignored
+hypothesis/attempt/matrix/verdict revisions, advisory task ID, ordered concerns,
+recommended conservative decision, allowed-write set empty, and receipt revision.
+wrong revision, verdict-writing, mutating, or upgrading output is invalid and ignored
 as authority.
 
 Product decision matrix:
@@ -465,7 +467,7 @@ UTC time, and authorization context. Missing/invalid decisions become AWAITING.
 `cgs.vertical-slice-plan/v2` contains all validated prerequisite/scope/hypothesis/
 attempt data, criteria/kill matrix, story/batch/checkpoint budgets, build contract,
 session/network matrix, velocity schema, owner/non-write rules, authorization,
-created-at, and canonical plan hash. It states `implementation_authorized: false`.
+created-at, and canonical plan revision. It states `implementation_authorized: false`.
 
 `cgs.vertical-slice-evaluation-report/v2` contains:
 
@@ -477,19 +479,19 @@ engine+platform+configuration / batch receipt set / session+raw evidence set /
 network profile+receipt set / velocity ledger+operands+arithmetic /
 criterion+kill rows / all gaps+findings / creative concerns / product decision /
 Workflow Status / Evidence Verdict / Product Decision / Final Verdict /
-Currentness / Gate Eligible / Persistence / expires_when / created-at / report hash
+Currentness / Gate Eligible / Persistence / expires_when / created-at / report revision
 ```
 
 Owned outputs are create-only. Before persistence, render complete bytes, show one
-exact file CREATE, obtain candidate-bound authorization, rehash every source and
+exact file CREATE, obtain candidate-bound authorization, revalidate every source and
 ABSENT target, then write via same-directory prepared file, flush, atomic replace,
-reread, schema/hash validate, and snapshot after-state. A failed/declined write
+reread, schema/revision validate, and snapshot after-state. A failed/declined write
 cannot yield VERIFIED persistence or Gate Eligible YES.
 
 CURRENT requires exact matches for report, workflow contract, plan, prerequisite,
 scope, all sources, commit/tree, candidate/build, engine/platform/configuration,
-all batch/session/raw/network/velocity/concern/decision rows and set hashes, and
-the verdict matrix. Any changed byte/identity/status makes STALE. Status mode
+all batch/session/raw/network/velocity/concern/decision rows and set revisions, and
+the verdict matrix. Any changed identity, explicit revision, or status makes STALE. Status mode
 writes nothing.
 
 Gate Eligible YES requires simultaneously:
@@ -501,7 +503,7 @@ Product Decision PROCEED
 Final Verdict PROCEED
 Currentness CURRENT
 Persistence VERIFIED
-exact current report and candidate/build hashes
+exact current report and candidate/build revisions
 ```
 
 All other combinations are NO. The report is evidence for a separate gate
@@ -510,9 +512,9 @@ consumer; it does not update project stage or invoke the gate.
 ## 14. Terminal result
 
 `cgs.vertical-slice-run-result/v2` records normalized invocation, contract/request
-hashes, mode, source coverage, findings, attempt/batch budget, prerequisite/scope/
+revisions, mode, source coverage, findings, attempt/batch budget, prerequisite/scope/
 session/velocity/network completeness, status axes, owned writes/non-writes,
-before/after mutation snapshot, exact output hash or NONE, and next separate owner.
+before/after mutation snapshot, exact output revision or NONE, and next separate owner.
 
 No mode invokes implementation, build, capture, creative, recording, or gate
 workflows. A result never claims unexecuted tests, unobserved sessions, estimated

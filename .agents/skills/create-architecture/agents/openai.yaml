@@ -1,4 +1,4 @@
 interface:
   display_name: "Create Architecture"
   short_description: "Publish one bounded ADR-derived architecture Draft"
-  default_prompt: "Use $create-architecture to build or safely update one DRAFT master architecture from current cross-GDD evidence, stable source-bound TR mappings, and current Accepted ADRs through one hash-bound CAS transaction; keep independent review and READY recording external."
+  default_prompt: "Use $create-architecture to build or safely update one DRAFT master architecture from current cross-GDD evidence, stable source-bound TR mappings, and current Accepted ADRs through one revision-bound CAS transaction; keep independent review and READY recording external."

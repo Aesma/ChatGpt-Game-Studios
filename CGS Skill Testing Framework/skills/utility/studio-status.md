@@ -19,12 +19,12 @@ invokes the detector, or treats the packet as gate approval.
 - [ ] Metadata names the canonical packet contract, currentness validation,
       read-only status summary, and no local stage recalculation
 - [ ] Invocation accepts either one explicit inline canonical packet or the exact
-      `--analysis <path> --expect-analysis <sha256:...>` pair
-- [ ] Unknown/duplicate flags, unsafe paths, directories, malformed hashes, two
+      `--analysis <path>` pair
+- [ ] Unknown/duplicate flags, unsafe paths, directories, malformed revisions, two
       input forms, and ambiguous packet candidates are rejected
 - [ ] Missing packet returns BLOCKED/UNKNOWN/LOW without invoking the detector
 - [ ] Canonical producer schema is exactly `cgs.project-stage-detection/v2`
-- [ ] Recomputes packet ID, project identity, catalog hash, snapshot entries, and
+- [ ] revalidate packet ID, project identity, catalog revision, snapshot entries, and
       snapshot manifest before consuming stage fields
 - [ ] Stage is copied only from a CURRENT complete packet; no local phase table,
       artifact precedence, source extensions, or file thresholds exist
@@ -34,7 +34,7 @@ invokes the detector, or treats the packet as gate approval.
       PROJECT_MISMATCH, or UNREADABLE
 - [ ] Main output separates Declared Stage and Detected Stage
 - [ ] Main output includes confidence, evidence IDs, contradictions, read errors,
-      coverage gaps, blocking reasons, stage snapshot, catalog identity, and hashes
+      coverage gaps, blocking reasons, stage snapshot, catalog identity, and revisions
 - [ ] Breadcrumb is optional independent focus evidence and cannot change stage
 - [ ] No files are written and no detector, gate, recorder, skill, or agent runs
 
@@ -54,7 +54,7 @@ advance a stage, or turn a detector result into approval.
 **Fixture:**
 
 - One complete canonical packet is explicitly supplied
-- Packet ID, project root ID, catalog path/hash, snapshot manifest and every
+- Packet ID, project root ID, catalog path/revision, snapshot manifest and every
   required current source validate
 - Packet says DETECTED/CLEAR, `declared_stage: Production`,
   `detected_stage: Production`, `confidence: HIGH`
@@ -109,9 +109,9 @@ Run CURRENT canonical packet variants whose detector result is:
 
 | Variant | Packet evidence | Expected status |
 |---|---|---|
-| 3a | Valid current owner, transition, receipt, target and hashes | READY with copied DETECTED stage |
+| 3a | Valid current owner, transition, receipt, target and revisions | READY with copied DETECTED stage |
 | 3b | Unauthorized owner | BLOCKED; Detection Result CONFLICT; Detected Stage UNKNOWN |
-| 3c | Stale receipt or target/source hash disagreement | BLOCKED; copied contradiction IDs and expected/observed values |
+| 3c | Stale receipt or target/source revision disagreement | BLOCKED; copied contradiction IDs and expected/observed values |
 | 3d | Missing required receipt/read error | BLOCKED; Detection Result UNKNOWN; copied gap/error IDs |
 | 3e | Declared and detected fields disagree under producer rules | BLOCKED unless producer itself returned a valid DETECTED/CLEAR packet |
 
@@ -167,7 +167,7 @@ Run CURRENT canonical packet variants whose detector result is:
 - [ ] No recursive source scan occurs
 - [ ] Vendor/generated/resource/example files cannot promote Production
 - [ ] Files outside the packet manifest do not become stage evidence
-- [ ] A packet-declared file is rehashed only for currentness, never counted
+- [ ] A packet-declared file is revalidate only for currentness, never counted
 
 ---
 
@@ -177,16 +177,16 @@ Run CURRENT canonical packet variants whose detector result is:
 
 - Supply a CURRENT packet containing declared stage, UNKNOWN or CONFLICT result,
   LOW confidence, evidence IDs, contradictions, read errors, coverage gaps,
-  blockers, catalog identity, snapshot/reverification times, and manifest hash
+  blockers, catalog identity, snapshot/reverification times, and manifest revision
 
 **Expected behavior:**
 
 The main summary includes:
 
-- packet context/source/ID/raw hash and project root ID;
-- catalog path/version/hash;
+- packet context/source/ID/declared revision and project root ID;
+- catalog path/version/revision;
 - detection result/resolution, declared stage, detected stage, and confidence;
-- snapshot/reverification times and manifest hash;
+- snapshot/reverification times and manifest revision;
 - ordered evidence IDs, contradiction expected/observed values, read errors,
   coverage gaps and blocking flags/reasons; and
 - independent focus evidence/diagnostics plus the advisory disclaimer.
@@ -195,7 +195,7 @@ The main summary includes:
 
 - [ ] UNKNOWN is never relabeled Concept
 - [ ] Conflict and coverage details are not hidden in generic prose
-- [ ] Hashes and stable IDs are not replaced with file counts
+- [ ] revisions and stable IDs are not replaced with file counts
 - [ ] Human-readable compactness does not permit dropping required fields
 
 ---
@@ -205,7 +205,7 @@ The main summary includes:
 **Fixture:**
 
 - Freeze one canonical packet and supply its exact packet ID, project root ID,
-  catalog hash, and manifest hash to studio-status and the other conforming consumers
+  catalog revision, and manifest revision to studio-status and the other conforming consumers
 - A local artifact picture would suggest a different stage
 
 **Expected behavior:**
@@ -232,7 +232,7 @@ Run these variants:
 |---|---|---|
 | No supplied packet | MISSING / BLOCKED | STAGE_PACKET_MISSING |
 | Packet path unreadable | UNREADABLE / BLOCKED | STAGE_PACKET_UNREADABLE |
-| Raw packet hash mismatch | INVALID / BLOCKED | STAGE_PACKET_INVALID |
+| Raw packet revision mismatch | INVALID / BLOCKED | STAGE_PACKET_INVALID |
 | Wrong schema/version/completion marker | INVALID / BLOCKED | STAGE_PACKET_INVALID |
 | Missing/truncated required section | INVALID / BLOCKED | STAGE_PACKET_INVALID |
 | Packet ID canonicalization mismatch | INVALID / BLOCKED | STAGE_PACKET_INVALID |
@@ -280,7 +280,7 @@ next action, with `Files Written: NONE` and `Auto Executed: false`.
 
 **Assertions:**
 
-- [ ] Pre/post workspace hashes are identical
+- [ ] Pre/post workspace revisions are identical
 - [ ] No write authorization prompt appears
 - [ ] No packet, report, cache, focus, stage, authority, or receipt is written
 - [ ] Detector, gate, recorder, agent, and project-skill invocation count is zero
@@ -297,7 +297,7 @@ next action, with `Files Written: NONE` and `Auto Executed: false`.
 - [ ] UNKNOWN/CONFLICT/ERROR remain blocked and visible
 - [ ] Confidence and all provenance come from the canonical packet
 - [ ] Artifact counts, file presence, and legacy text never infer stage
-- [ ] Focus is independent, bounded, hash-bound, and optional
+- [ ] Focus is independent, bounded, version-bound, and optional
 - [ ] Output is compact but retains required evidence and contradictions
 - [ ] Workflow is read-only and invokes nothing downstream
 - [ ] Output says `STATUS SUMMARY ONLY — NOT A GATE OR TRANSITION`

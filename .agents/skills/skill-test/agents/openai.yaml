@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Test"
-  short_description: "Validate contracts; optionally persist hash-bound receipts"
+  short_description: "Validate contracts; optionally persist version-bound receipts"
   default_prompt: "Use $skill-test for read-only structural, semantic, spec, category, or audit validation; persist an immutable version-bound receipt only when explicitly requested."

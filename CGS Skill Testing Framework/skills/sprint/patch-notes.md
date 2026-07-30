@@ -7,18 +7,18 @@ approved candidate is proven by an exact range/change manifest and a matching ve
 canonical `cgs.release-action-receipt/v2` for a successful production DEPLOY. Every sentence maps to net-surviving claim
 evidence. Security/privacy, embargo and localization are separately verified. The
 default is read-only; persistence may only create one absent immutable locale artifact
-with full-input CAS. It never publishes.
+with full-input version and existence conflict check. It never publishes.
 
 ---
 
 ## Static Assertions
 
 - [ ] Frontmatter contains only matching `name` and non-empty `description`
-- [ ] Invocation requires `--request` and `--expect-request`; request schema is
+- [ ] Invocation requires one exact `--request` path; request schema is
   `cgs.patch-notes-request/v3`
 - [ ] Request pins full from/to commits/trees, merge-base, repository/range identity,
   approved manifest, candidate, canonical action receipt, policies, locale and exact inputs
-- [ ] `cgs.approved-release-change-manifest/v2` is a canonical-path, raw-hash-pinned,
+- [ ] `cgs.approved-release-change-manifest/v2` is a canonical-path, raw-version-pinned,
   authority-registry/signature/currentness-verified `EXTERNAL_BOUNDARY`; no project skill
   produces, repairs, approves or countersigns it
 - [ ] HEAD/latest/inferred refs, broad project scans and unbounded reads are forbidden;
@@ -26,11 +26,11 @@ with full-input CAS. It never publishes.
 - [ ] Candidate approval and canonical `cgs.release-action-receipt/v2` with exact
   `action: DEPLOY`, `result: SUCCESS` and production environment are independent,
   exact-chain prerequisites
-- [ ] Canonical action receipt raw hash, release/candidate/build/deployment identities,
+- [ ] Canonical action receipt declared revision, release/candidate/build/deployment identities,
   configured authority and signature all verify; an isolated
   `cgs.production-deployment-receipt/v2` or schema rename is inadmissible
 - [ ] Claims bind manifest items, candidate/deployment, surviving commit/path/patch/
-  hunk hashes and sentence IDs
+  hunk revisions and sentence IDs
 - [ ] Merge/revert/partial-revert/fixup/net-zero and exact claim dedup semantics are
   explicit and follow final net change
 - [ ] Secret/PII/internal/security/known-issue filtering is deterministic, default-deny
@@ -40,18 +40,18 @@ with full-input CAS. It never publishes.
 - [ ] Non-source locale output requires an exact source-draft-bound package, translator
   receipt and distinct reviewer receipt; no automatic translation/fallback
 - [ ] Localization adapter consumes actual `cgs.localization-package/v1` plus exact
-  localization manifest/catalog/current release/candidate/build/locale/path/raw hashes;
+  localization manifest/catalog/current release/candidate/build/locale/path/declared revisions;
   any internal normalization is lossless, in-memory and non-authoritative
 - [ ] Localize v1 fields are literal: request and adapter independently verify
-  `package_id`, recomputed `package_payload_sha256`, separate raw-file SHA-256, and
-  nested `manifest.path`/`manifest.sha256`; these identities never substitute for one another
-- [ ] Canonical package payload excludes both `package_payload_sha256` and derived
-  `package_id`; the resulting digest must re-derive `LOCPKG-<first20>` exactly
+  `package_id`, revalidate `package_payload_revision`, separate declared file revision, and
+  nested `manifest.path`/`manifest.revision`; these identities never substitute for one another
+- [ ] Canonical package payload excludes both `package_payload_revision` and derived
+  `package_id`; the resulting identifier must re-derive `LOCPKG-<first20>` exactly
 - [ ] Stable findings are deduplicated, frozen, revised at most once and fully rechecked
-- [ ] Exactly one semantic source artifact exists; localized output is a hash-bound
+- [ ] Exactly one semantic source artifact exists; localized output is a version-bound
   derivative and no docs/store/site copy is written
 - [ ] `analyze-only` is zero-write; `create-draft` is one ABSENT-target atomic
-  no-replace create guarded by full-input CAS and read-back
+  no-replace create guarded by full-input version and existence conflict check and read-back
 - [ ] Append/update/revise/upsert/overwrite/delete, directory/index/latest-pointer
   mutation, messaging and publication are forbidden
 - [ ] Statuses are DRAFTED, CREATED, PARTIAL, BLOCKED and RECOVERY_REQUIRED; no path
@@ -77,14 +77,14 @@ with full-input CAS. It never publishes.
 
 | Phase | Input | Output | Mutation |
 |---|---|---|---|
-| 1 — Pin release/range/manifest/candidate | Hash-pinned request, Git objects, signed external-boundary manifest/build receipt | Verified range, external manifest and candidate identities | None |
+| 1 — Pin release/range/manifest/candidate | version-pinned request, Git objects, signed external-boundary manifest/build receipt | Verified range, external manifest and candidate identities | None |
 | 2 — Verify production deployment | Candidate plus canonical configured-authority `cgs.release-action-receipt/v2` | Exact production action/deployment/target identity or blocker | None |
 | 3 — Reconcile topology | Complete approved range and manifest items | Net/revert/fixup/dedup map and mismatches | None |
 | 4 — Build claims | Eligible net-surviving deployed items | Sentence-bound claim provenance table | None |
 | 5 — Security/privacy/embargo | Claims plus frozen policies/approvals | Eligible redacted claims or safe blocker | None |
 | 6 — Bind locale | Sanitized source draft plus optional localize package/delivery/review chain | One source or localized candidate identity | None |
 | 7 — Render/review | Eligible localized claims | Deterministic bytes, stable findings, one bounded recheck | None |
-| 8 — Create-only CAS | Explicit authority, candidate hash, ABSENT target | One verified new file, blocker or recovery receipt | Create one absent target only |
+| 8 — Create-only version and existence conflict check | Explicit authority, candidate revision, ABSENT target | One verified new file, blocker or recovery receipt | Create one absent target only |
 | 9 — Terminal packet | All prior evidence/states | Final identities, statuses, non-writes, one next action | None |
 
 No implicit phase, duplicate phase number, publish stage, or downstream invocation is
@@ -96,9 +96,9 @@ allowed.
 
 **Fixture:** A v3 request pins repository/from/to commits and trees, merge-base, an
 APPROVED `cgs.approved-release-change-manifest/v2` external boundary M1 at its canonical
-identity path with exact raw hash, complete change rows, current authority-registry and
+identity path with explicit revision, complete change rows, current authority-registry and
 valid signature, candidate C1/artifact A1/build B1 built from to_commit/to_tree,
-and canonical `cgs.release-action-receipt/v2` D1 whose raw hash/signature verify, with
+and canonical `cgs.release-action-receipt/v2` D1 whose declared revision/signature verify, with
 `action: DEPLOY`, `result: SUCCESS`, production environment, configured authority, the
 same release/M1/C1/B1/A1 identities and exact deployment identity/targets.
 
@@ -108,11 +108,11 @@ rows, render the requested source locale, return DRAFTED and write nothing.
 **Assertions:**
 
 - [ ] Range, manifest, candidate and deployment identities appear independently
-- [ ] M1 path/schema/raw hash, release/candidate/build/change rows, authority registry,
+- [ ] M1 path/schema/declared revision, release/candidate/build/change rows, authority registry,
   signature and currentness all verify before claims
 - [ ] Missing/stale/unsigned/noncanonical M1 blocks; no project skill is invoked or
   accepted as its producer/signatory
-- [ ] Every sentence maps to claim/item/hunk/source/verification and receipt hashes
+- [ ] Every sentence maps to claim/item/hunk/source/verification and receipt revisions
 - [ ] publication_status is NOT_AUTHORIZED
 
 ---
@@ -138,7 +138,7 @@ the range and absent from title, highlights, claims and known issues.
 **Fixture:** The manifest has 501 items, or linked evidence exceeds file/byte/time
 limits; an early subset looks valid.
 
-**Expected behavior:** Stop with PARTIAL, exact completed/omitted counts and hashes plus
+**Expected behavior:** Stop with PARTIAL, exact completed/omitted counts and revisions plus
 identity-bound resume cursor. Emit no player prose/file.
 
 **Assertions:**
@@ -153,7 +153,7 @@ identity-bound resume cursor. Emit no player prose/file.
 
 **Fixture:** Variants use an unapproved manifest, candidate built from another tree,
 STAGE/non-DEPLOY/failed/non-production action, wrong release/candidate/build/deployment
-identity, raw-hash/signature/authority mismatch, or an isolated
+identity, raw-revision/signature/authority mismatch, or an isolated
 `cgs.production-deployment-receipt/v2` for another manifest/artifact/target.
 
 **Expected behavior:** Name the mismatched identity and return BLOCKED before player
@@ -162,8 +162,8 @@ prose. Tags, builds, QA, checklists, readiness, canary and assertions cannot rep
 **Assertions:**
 
 - [ ] Candidate approval does not prove deployment
-- [ ] Canonical action receipt exactly chains release/manifest/range/candidate/build/deployment/artifact/source/target and authority/signature/raw hashes
-- [ ] Provider/legacy deployment evidence is accepted only when hash-bound inside that canonical verified chain
+- [ ] Canonical action receipt exactly chains release/manifest/range/candidate/build/deployment/artifact/source/target and authority/signature/declared revisions
+- [ ] Provider/legacy deployment evidence is accepted only when version-bound inside that canonical verified chain
 - [ ] No fixed/live/shipped/deployed/available wording is emitted
 
 ---
@@ -198,7 +198,7 @@ blocker remains.
 
 **Assertions:**
 
-- [ ] Findings cite hashes/rules without silently editing evidence
+- [ ] Findings cite revisions/rules without silently editing evidence
 - [ ] A finding is never self-waived, downgraded or discarded
 - [ ] Template/style cannot introduce unsupported facts, dates, links or sections
 
@@ -210,7 +210,7 @@ blocker remains.
 disclosure approval or safe verified mitigation.
 
 **Expected behavior:** Omit or block according to policy. Record only non-exploitable
-hash/reason/owner metadata; never expose reproduction steps or workaround details.
+revision/reason/owner metadata; never expose reproduction steps or workaround details.
 
 **Assertions:**
 
@@ -226,7 +226,7 @@ hash/reason/owner metadata; never expose reproduction steps or workaround detail
 internal issue/path/host, high-entropy value and deployment log detail.
 
 **Expected behavior:** Deterministically scan source fields and final bytes. Redaction
-receipts contain only input hashes, rule/reason, result and output hash. Any unresolved
+receipts contain only input revisions, rule/reason, result and output revision. Any unresolved
 finding yields BLOCKED and no artifact.
 
 **Assertions:**
@@ -258,8 +258,8 @@ player bytes. A second fixture with an exact verified lift receipt becomes eligi
 **Fixture:** A French `cgs.localization-package/v1`, exact localization manifest/catalog,
 target revision, `cgs.translation-delivery/v1` and distinct `cgs.locale-review/v1` bind
 the sanitized source draft/claim markers and current release/candidate/build/locale/
-path/raw hashes. Its literal `package_id`, `package_payload_sha256`, separate raw-file
-SHA-256 and nested manifest path/hash all verify. Variants drift each field or binding,
+path/declared revisions. Its literal `package_id`, `package_payload_revision`, separate raw-file
+revision and nested manifest path/revision all verify. Variants drift each field or binding,
 are stale/self-reviewed/partial, add a
 promise, remove a limitation, change a number/platform, or reintroduce redacted content.
 
@@ -271,9 +271,7 @@ PARTIAL/BLOCKED with no locale artifact.
 **Assertions:**
 
 - [ ] No automatic translation or source-locale fallback
-- [ ] Payload hash is recomputed with both digest and derived ID fields excluded,
-  package ID is re-derived as `LOCPKG-<first20>`, raw-file hash is computed separately,
-  and literal manifest path/hash must all match the request
+- [ ] Owner-assigned package ID, explicit payload revision, declared file revision, and literal manifest path/revision must all match the request
 - [ ] No isolated `cgs.patch-notes-locale-package/v1`, renamed persisted copy or schema
   spelling substitutes for the localize producer chain
 - [ ] Structure, claims, values, links, placeholders, qualifiers and omissions match
@@ -283,27 +281,27 @@ PARTIAL/BLOCKED with no locale artifact.
 
 ## Case 11: Source truth and locale derivative are not duplicate canonicals
 
-**Fixture:** The source locale draft exists by hash; a non-source request supplies a
+**Fixture:** The source locale draft exists by revision; a non-source request supplies a
 reviewed derivative package and proposes writing both production and docs copies.
 
 **Expected behavior:** Treat source bytes as sole semantic truth, localized bytes as a
-hash-bound derivative, and refuse the second copy/index/latest-pointer mutation.
+version-bound derivative, and refuse the second copy/index/latest-pointer mutation.
 
 **Assertions:**
 
 - [ ] One invocation handles exactly one locale and at most one target
-- [ ] Localized provenance includes source-draft and locale revision/reviewer hashes
+- [ ] Localized provenance includes source-draft and locale revision/reviewer revisions
 - [ ] Docs/store/site forms remain downstream projections
 
 ---
 
-## Case 12: Create-only CAS preserves all existing content
+## Case 12: Create-only version and existence conflict check preserves all existing content
 
 **Fixture:** `create-draft` targets an absent path. Variants pre-create it or drift a
-Git ref, manifest, receipt, policy, source/locale package, parent or candidate hash.
+Git ref, manifest, receipt, policy, source/locale package, parent or candidate revision.
 
 **Expected behavior:** Any drift returns BLOCKED with zero writes. Stable inputs use an
-atomic no-replace/create-new primitive, then flush, parse, read back and hash exactly
+atomic no-replace/create-new primitive, then flush, parse, read back and validate exactly
 one new file.
 
 **Assertions:**
@@ -320,7 +318,7 @@ one new file.
 **Fixture:** All evidence passes and `analyze-only` is requested. Another input contains
 local write approval but no publication approval.
 
-**Expected behavior:** Return DRAFTED candidate bytes/hash and zero writes. Local
+**Expected behavior:** Return DRAFTED candidate bytes/revision and zero writes. Local
 mutation approval cannot change publication_status or trigger any external action.
 
 **Assertions:**
@@ -333,8 +331,8 @@ mutation approval cannot change publication_status or trigger any external actio
 
 ## Case 14: Failure statuses are truthful and phase-aligned
 
-**Fixture:** Exercise no-Git, parse/hash/ref/ancestry/candidate/deployment, budget,
-review, localization, embargo, CAS and read-back failures; inspect Phase 1–9 headings.
+**Fixture:** Exercise no-Git, parse/revision/ref/ancestry/candidate/deployment, budget,
+review, localization, embargo, version and existence conflict check and read-back failures; inspect Phase 1–9 headings.
 
 **Expected behavior:** Use DRAFTED/CREATED only for their exact success states, PARTIAL
 for bounded incomplete analysis, BLOCKED for safe refusal, and RECOVERY_REQUIRED only
@@ -356,7 +354,7 @@ after failed verification of an exclusive create.
 - [ ] Merge/revert/dedup reflects only surviving deployed behavior
 - [ ] Sensitive/privacy/known-issue filtering never leaks removed material
 - [ ] Embargo and reviewed localization remain independent from deployment
-- [ ] Default mode is read-only; optional persistence is one ABSENT create-only CAS
+- [ ] Default mode is read-only; optional persistence is one ABSENT create-only version and existence conflict check
 - [ ] Draft/create and public publication authority never collapse
 
 ---

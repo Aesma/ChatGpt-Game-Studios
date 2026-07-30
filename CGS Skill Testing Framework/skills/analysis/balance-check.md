@@ -36,8 +36,7 @@ and values remain user/owner decisions; the analyzer never edits or selects them
       `cgs.balance-check-report/v1`.
 - [ ] Invocation exposes exact `analyze` and bounded `recheck` modes with explicit
       project-relative regular files and stable finding IDs.
-- [ ] Recheck finding tokens use the exact lowercase category plus 12-hex stable
-      fingerprint grammar; other stable IDs are exact and case-sensitive.
+- [ ] Recheck finding tokens use the exact lowercase category plus stable business-key grammar; other stable IDs are exact and case-sensitive.
 - [ ] Rejects directories, URLs, globs, regexes, latest/mtime selection, positional
       systems, ambiguity, path escapes, symlinks, and junctions.
 - [ ] Declares strict read-only behavior and forbids edits, tuning, value
@@ -49,18 +48,17 @@ and values remain user/owner decisions; the analyzer never edits or selects them
       coverage gaps taking precedence over clean/failing subsets.
 - [ ] PASS is limited to the exact manifest/targets/model/scenarios/seeds/
       tolerances and never means globally balanced, healthy, optimal, fair, or fun.
-- [ ] Reads/hashes applicable root-to-target `AGENTS.md` files and records stable
-      project identity.
+- [ ] Reads applicable root-to-target AGENTS.md files and records declared revisions and stable project identity.
 - [ ] Requires `cgs.balance-input-manifest/v2` and fixed candidate/source/byte/
       variable/unit/formula/AST/target/scenario/check/simulation/trial/evaluation/
       receipt/time/finding limits that a manifest may only lower.
-- [ ] Hashes the complete candidate identity sequence while retaining bounded
-      detailed rows and exact overflow counts/boundary keys/digests.
+- [ ] Records the complete candidate business-key sequence and explicit inventory revision while retaining bounded
+      detailed rows and exact overflow counts/boundary keys/revisions.
 - [ ] Requires exact `cgs.balance-adapter-registry/v1` entries and
       `cgs.balance-adapter-receipt/v1` receipts for typed JSON/YAML/CSV, Markdown
       targets, schemas/pointers, units, formulas, scenarios/simulations, and
       recheck evidence.
-- [ ] Registered adapters use exact executable identity/hash/version, typed output
+- [ ] Registered adapters use exact executable identity/revision/version, typed output
       schema, argv arrays, no shell/network, project-read-only sandbox, bounded
       scratch, timeout, and receipt logs.
 - [ ] Unsupported, parse-error, timeout, invalid-receipt, mutation-risk, or
@@ -70,10 +68,10 @@ and values remain user/owner decisions; the analyzer never edits or selects them
 - [ ] Primary target ambiguity/missing state is ERROR; secondary target/tolerance
       gaps are PARTIAL.
 - [ ] Tolerances, inclusive boundaries, statistical decision rules, and severity
-      mappings require exact authoritative source IDs/locators/hashes.
+      mappings require exact authoritative source IDs/locators/revisions.
 - [ ] No ±10/±20, genre standard, ideal TTK/price/drop rate, confidence target, or
       severity threshold is invented.
-- [ ] Variables require stable IDs, source pointers/hashes, type, dimension, unit,
+- [ ] Variables require stable IDs, source pointers/revisions, type, dimension, unit,
       range, null policy, base/final semantic, version, and scenario mutability.
 - [ ] `cgs.balance-unit-registry/v1` provides closed, versioned exact conversions;
       percent/probability/ratio/multiplier and frames/ticks/seconds remain distinct.
@@ -89,24 +87,24 @@ and values remain user/owner decisions; the analyzer never edits or selects them
 - [ ] `cgs.balance-simulation/v1` and
       `cgs.balance-simulation-receipt/v1` bind model/PRNG versions, seeds, trials,
       sampling, estimator, confidence/error method, decision/stopping rules,
-      evaluations, diagnostics, and output digest.
+      evaluations, diagnostics, and output revision.
 - [ ] Inconclusive uncertainty or insufficient precision is PARTIAL, never rounded
       into PASS/FAIL; seeds/trials are never extended to seek a result.
 - [ ] Four domain checks are scope/model/target bounded and never infer dominant,
       unkillable, useless, infinite, dead zone, spike, or healthy claims from prose.
-- [ ] Stable `BLF-...` findings exclude mutable paths/pointers/wording/hashes/
+- [ ] Stable `BLF-...` findings exclude mutable paths/pointers/wording/revisions/
       values/severity/status/owner/run/timestamp/recommendation from identity.
 - [ ] Uniquely provable correction candidates remain read-only evidence; product
       decisions get exactly two or three unranked options and no selected winner.
 - [ ] Coverage is explicit per source/channel/check and reconciles every declared,
       evaluated, failed, unverifiable, not-run, stale, and error count.
-- [ ] Deterministic extension/envelope hashes recompute; observation time is
-      excluded from the same-input analysis payload hash.
+- [ ] Deterministic extension/envelope revisions validate declared; observation time is
+      excluded from the same-input analysis payload revision.
 - [ ] Recheck validates prior evidence/change receipt, preserves selected IDs,
       limits regressions, never broadens scope, and never auto-runs again.
 - [ ] Recheck change evidence conforms to `cgs.balance-change-receipt/v1`.
 - [ ] Metadata describes typed adapters, authoritative targets/units/formulas,
-      bounded simulations, hash-bound verdicts, read-only behavior, and no product
+      bounded simulations, revision-bound verdicts, read-only behavior, and no product
       value selection.
 
 ---
@@ -122,7 +120,7 @@ is evidence coverage failure, not a reason to invent or delegate a fallback.
 
 ## Required Fixture Contract
 
-Fixtures provide exact raw bytes and expected SHA-256 values for the manifest,
+Fixtures provide exact raw bytes and required revision values for the manifest,
 instructions, typed data, schemas, target/technical sources, adapter and unit
 registries, formula sources/AST receipts, scenarios, simulation receipts, prior
 evidence/change receipts, and expected canonical evidence. Adapter and simulator
@@ -138,7 +136,7 @@ project paths before and after.
 Fixture:
 
 - A valid `cgs.balance-input-manifest/v2` binds one analysis/snapshot, stable
-  combat/economy/progression/loot domain and system IDs, and every source hash.
+  combat/economy/progression/loot domain and system IDs, and every source revision.
 - Invalid variants use a directory, URL, glob, regex, `latest`, duplicate flag,
   positional system, external/absolute path, dot segment, symlink, junction,
   duplicate stable ID, or ambiguous artifact pointer.
@@ -171,8 +169,8 @@ Assertions:
 Fixture:
 
 - JSON, YAML, CSV, and Markdown sources have registered exact parser adapters.
-- Receipts bind executable/tool identity/hash/version, input bytes, typed output
-  schema, pointers/sections, argv digest, sandbox, logs, and target snapshot.
+- Receipts bind executable/tool identity/revision/version, input bytes, typed output
+  schema, pointers/sections, argv revision, sandbox, logs, and target snapshot.
 - Every source is parsed once into stable variable/target/formula/scenario IDs.
 
 Input: Analyze the exact multi-source manifest.
@@ -181,8 +179,8 @@ Expected behavior:
 
 1. Source extension alone has no evidentiary effect.
 2. Typed output enters one in-memory index and is reused by checks.
-3. Each normalized record retains source artifact, pointer/locator, raw hash,
-   schema, adapter, and receipt digest.
+3. Each normalized record retains source artifact, pointer/locator, raw revision,
+   schema, adapter, and receipt revision.
 4. No per-check reparsing or undeclared repository scan occurs.
 
 Assertions:
@@ -198,7 +196,7 @@ Assertions:
 Fixture variants:
 
 - No compatible YAML adapter.
-- Executable hash/version mismatches registry.
+- Executable revision/version mismatches registry.
 - Parser times out or emits malformed/truncated output.
 - Registry supplies a shell string, network dependency, or project-writing
   adapter.
@@ -269,7 +267,7 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Each target/tolerance cites stable ID, owner, lifecycle, locator, hash, and
+- [ ] Each target/tolerance cites stable ID, owner, lifecycle, locator, revision, and
       schema.
 - [ ] Boundary direction/inclusivity and decision rule are exact.
 - [ ] Conflicting primary targets yield `ERROR`; secondary conflicts yield
@@ -360,12 +358,12 @@ Fixture:
   precision are fully typed.
 - `cgs.balance-simulation/v1` declares PRNG/model versions, ordered seeds, trials,
   sampling, estimator, confidence/error method, stopping and decision rules.
-- A valid simulation receipt binds all source/formula/target/scenario hashes.
+- A valid simulation receipt binds all source/formula/target/scenario revisions.
 
 Expected behavior:
 
 1. Two runs over identical bytes/receipts produce identical deterministic payload,
-   checks, findings, and payload hash.
+   checks, findings, and payload revision.
 2. Distribution summary, interval/error, sample size, diagnostics, and limitations
    are reported.
 3. No seed/trial/outlier/method changes occur after seeing results.
@@ -375,7 +373,7 @@ Assertions:
 
 - [ ] PRNG and simulator identity are versioned.
 - [ ] Closed-form results are preferred when declared model permits them.
-- [ ] Observation timestamp is outside deterministic analysis hashing.
+- [ ] Observation timestamp is outside deterministic analysis revision validation.
 
 ---
 
@@ -413,8 +411,8 @@ Fixture:
 
 Expected behavior:
 
-1. Complete identity digest, retained bounded prefix, exact total/omitted count,
-   boundary sort keys, and omitted digest are recorded.
+1. Complete identity revision, retained bounded prefix, exact total/omitted count,
+   boundary sort keys, and omitted revision are recorded.
 2. Omitted items are neither parsed nor judged.
 3. One aggregate `OVER_LIMIT` coverage row names every affected check.
 4. Verdict is `PARTIAL`, never PASS/FINDINGS from a sample.
@@ -423,7 +421,7 @@ Assertions:
 
 - [ ] Output remains bounded without silently hiding overflow.
 - [ ] No individual omitted ID list is required beyond configured detailed caps.
-- [ ] Same identity stream produces the same overflow digest.
+- [ ] Same identity stream produces the same overflow revision.
 
 ---
 
@@ -440,13 +438,13 @@ Fixture:
 Expected behavior:
 
 1. Runs A/B retain one `BLF-...` finding ID while artifact/manifest/payload/record
-   hashes change.
-2. Run C produces a different fingerprint and ID.
-3. Incompatible evidence under one fingerprint forces `PARTIAL`.
+   revisions change.
+2. Run C produces a different stable business key and ID.
+3. Incompatible evidence under one stable business key forces `PARTIAL`.
 
 Assertions:
 
-- [ ] Paths, pointers, wording, hashes, values, deviation, severity, confidence,
+- [ ] Paths, pointers, wording, revisions, values, deviation, severity, confidence,
       status, owner, run, timestamp, and recommendation are excluded.
 - [ ] Stable logical IDs and evidence artifact IDs participate.
 - [ ] Findings sort deterministically.
@@ -491,14 +489,14 @@ Expected behavior:
 1. Invalid primary scope/grammar returns `ERROR` with no evidence envelope.
 2. A valid scope with secondary stale/unsupported evidence returns `PARTIAL` and
    preserves unaffected evidence.
-3. Final re-enumeration/re-hashing detects added/removed/renamed/changed inputs and
+3. Final re-enumeration/re-reading detects added/removed/renamed/changed inputs and
    discards old-byte calculations.
 4. No invalid source is executed or substituted.
 
 Assertions:
 
 - [ ] Error versus partial follows primary-scope trustworthiness.
-- [ ] Hashes, not mtime/Git labels, determine currentness.
+- [ ] revisions, not mtime/Git labels, determine currentness.
 - [ ] Mixed snapshots never yield PASS or FINDINGS.
 
 ---
@@ -525,7 +523,7 @@ Assertions:
 
 ---
 
-### Case 16: Hash-bound evidence is deterministic and current
+### Case 16: revision-bound evidence is deterministic and current
 
 Fixture:
 
@@ -537,15 +535,15 @@ Expected behavior:
 
 1. Extension conforms to `cgs.balance-check-report/v1` and envelope to
    `cgs.review-evidence/v1`.
-2. Artifact, inventory, manifest, deterministic payload, and record hashes
+2. Artifact, inventory, manifest, deterministic payload, and record revisions
    recompute.
 3. Same inputs/receipts produce identical deterministic payload bytes.
 4. Outer timestamp changes observation provenance without changing the
-   deterministic payload hash.
+   deterministic payload revision.
 
 Assertions:
 
-- [ ] Any byte change invalidates the relevant artifact and downstream hashes.
+- [ ] Any byte change invalidates the relevant artifact and downstream revisions.
 - [ ] Inconsistent construction returns ERROR without an evidence record.
 - [ ] Summary is not a weaker machine-evidence mode because no summary flag exists.
 
@@ -582,14 +580,14 @@ Assertions:
 Fixture:
 
 - Prior exact `cgs.review-evidence/v1` record contains two stable findings.
-- Change receipt binds before/after artifacts, hashes, pointers, owner authority,
+- Change receipt binds before/after artifacts, revisions, pointers, owner authority,
   and affected stable IDs for only finding A.
 - Invocation selects A plus named regression checks; B is unselected.
 
 Expected behavior:
 
 1. Prior envelope/payload/artifacts/project/analysis/target/formula/unit/scenario/
-   finding hashes and change receipt all validate.
+   finding revisions and change receipt all validate.
 2. A keeps its ID and becomes `RESOLVED_IN_CURRENT`, `STILL_OPEN`, or
    `UNVERIFIABLE` only from current evidence.
 3. B is preserved as out-of-scope history, not reverified.
@@ -608,8 +606,8 @@ Assertions:
 ## Protocol Compliance
 
 - [ ] Exact invocation, project identity, source bytes, adapters, targets, units,
-      formulas, scenarios, simulations, and checks are hash-bound.
-- [ ] Fixed budgets and overflow digests make analysis bounded without claiming
+      formulas, scenarios, simulations, and checks are revision-bound.
+- [ ] Fixed budgets and overflow revisions make analysis bounded without claiming
       sampled completeness.
 - [ ] Typed adapter failure is visible coverage, not inferred evidence or delegated
       fallback.

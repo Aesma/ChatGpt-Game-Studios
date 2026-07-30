@@ -1,6 +1,6 @@
 ---
 name: test-flakiness
-description: "Analyzes bounded, homogeneous, identity-bound test run sets with explicit uncertainty and quarantine authority boundaries; read-only by default with one optional hash-named report."
+description: "Analyzes bounded, homogeneous, identity-bound test run sets with explicit uncertainty and quarantine authority boundaries; read-only by default with one optional revision-named report."
 ---
 
 ## Contract, modes, and authority
@@ -16,7 +16,7 @@ Contract version: `cgs.test-flakiness/v2`.
 
 `analyze` evaluates already-produced test results. It never launches, retries, or
 reorders tests. Without `--persist`, the entire workflow is read-only. `--persist`
-is explicit authorization for at most one deterministic, hash-named analysis
+is explicit authorization for at most one deterministic, revision-named analysis
 report under `production/qa/flakiness/`; it does not authorize any other write.
 `status` is always read-only.
 
@@ -42,7 +42,7 @@ auto-scan `.github/`, CI directories, reports, or test outputs.
 
 Resolve the repository root and canonicalize every supplied path before reading
 content. Load every applicable `AGENTS.md` from the root to each selected file in
-root-to-target order and list the paths in the output. Compute SHA-256 over exact
+root-to-target order and list the paths in the output. Record revision for exact
 raw bytes for every selected manifest, registry, profile, policy, result, report,
 and receipt. Recompute them immediately before returning and, if persisting,
 immediately before writing. If any selected input changes, keep the completed
@@ -50,7 +50,7 @@ pre-change calculations only as discarded work and return `ERROR — INPUT CHANG
 DURING ANALYSIS` without findings, evidence, quarantine eligibility, or a write.
 
 `analyze` requires manifest schema `cgs.test-run-set/v2` and these exact,
-hash-bound dependencies:
+revision-bound dependencies:
 
 - a parser registry with schema `cgs.test-result-parser-registry/v1`;
 - an environment-key registry with schema
@@ -86,8 +86,8 @@ Reject a manifest or selected byte set above its pre-parse bound as
 `ERROR — REQUEST EXCEEDS FIXED BOUND`. If a within-byte-bound result expands
 beyond a record, identity, finding, or rendering limit, stop at the deterministic
 manifest-order then stable-test-ID boundary. Report the complete candidate-set
-identity digest, included and omitted counts, boundary key, and omitted-tail
-digest as `PARTIAL DATA — BOUNDED INPUT`. Never sample the omitted tail, claim a
+identity identifier, included and omitted counts, boundary key, and omitted-tail
+identifier as `PARTIAL DATA — BOUNDED INPUT`. Never sample the omitted tail, claim a
 complete rate, confirm flakiness, or propose quarantine from a truncated set.
 
 ---
@@ -96,26 +96,26 @@ complete rate, confirm flakiness, or propose quarantine from a truncated set.
 
 Each run entry must contain:
 
-- unique run ID and immutable runner receipt path/hash;
-- commit SHA, source-tree state, build ID, build artifact SHA-256, test binary ID
-  and SHA-256;
-- runner product/version, runner configuration ID/hash, engine product/version,
+- unique run ID and immutable runner receipt path/revision;
+- commit SHA, source-tree state, build ID, build artifact revision, test binary ID
+  and revision;
+- runner product/version, runner configuration ID/revision, engine product/version,
   and parser format/schema/version;
-- OS image ID/hash, OS version, architecture, target platform/profile ID/hash,
-  container or machine-image ID/hash, driver/runtime/toolchain versions;
-- environment profile ID/hash plus a canonical key/value fingerprint computed
+- OS image ID/revision, OS version, architecture, target platform/profile ID/revision,
+  container or machine-image ID/revision, driver/runtime/toolchain versions;
+- environment profile ID/revision plus a canonical key/value finding key computed
   by the selected environment registry;
-- random seed and seed policy, shard ID/count, test-order ID/hash;
+- random seed and seed policy, shard ID/count, test-order ID/revision;
 - start/end UTC timestamps, monotonic duration, attempt kind, parent attempt ID
   or `NONE`, process-isolation ID, and clean-process receipt; and
-- ordered result paths, exact raw-byte SHA-256 values, and declared formats.
+- ordered result paths, exact declared revisions, and declared formats.
 
-Missing, duplicate, contradictory, or hash-invalid critical identity makes that
+Missing, duplicate, contradictory, or revision-invalid critical identity makes that
 run ineligible and creates `INVALID IDENTITY`. Do not repair it from another run.
 
 Select exactly one parser registry entry by runner product/version, result
 format/schema/version, and platform profile. An entry is valid only when it
-declares a stable parser ID/version, exact executable or package SHA-256,
+declares a stable parser ID/version, exact executable or package revision,
 supported format matrix, deterministic arguments, normalized schema
 `cgs.test-result-records/v1`, receipt schema
 `cgs.test-parser-receipt/v1`, validator receipt IDs for that parser version, and
@@ -123,10 +123,10 @@ an isolation policy forbidding network, project writes, undeclared reads, or
 child-process expansion.
 
 Run only that parser within fixed limits. Validate its receipt: parser
-ID/version/hash, exact argv, start/end UTC, exit status, raw path/hash/bytes,
-normalized payload hash/bytes, record count, warnings, and validator identity.
+ID/version/revision, exact argv, start/end UTC, exit status, raw path/revision/bytes,
+normalized payload revision/bytes, record count, warnings, and validator identity.
 Missing, ambiguous, unsupported, timed-out, nonzero, oversized, malformed, or
-hash-mismatched parsing excludes the affected result. A suite summary, retry
+revision mismatched parsing excludes the affected result. A suite summary, retry
 line, failure block, or truncated XML/JSON/log cannot be promoted to a test
 record by text matching.
 
@@ -147,35 +147,35 @@ Every normalized test record requires:
 
 - runner-qualified stable test ID and runner namespace;
 - parameter/case ID or `NONE`;
-- test binary ID and SHA-256;
+- test binary ID and revision;
 - optional exact `TC-...` requirement-test ID and `RS-...` selection ID; and
 - outcome, duration, attempt ID, and originating result/record identity.
 
 The canonical test key is the exact tuple
-`runner_namespace + stable_test_id + parameter_or_NONE + test_binary_sha256`.
+`runner_namespace + stable_test_id + parameter_or_NONE + test_binary_revision`.
 Never merge by display name, method name, title, source path, suite name,
 parameterized base name, fuzzy text, or prior spelling.
 Missing/duplicate canonical keys are `INVALID IDENTITY` and excluded. Renames
 remain distinct unless a separate immutable identity-migration receipt binds the
 old and new runner-qualified IDs; the receipt never bridges different binary
-hashes inside one cohort.
+revisions inside one cohort.
 
 ### Run cohort identity
 
 Create the exact cohort key from:
 
 ```text
-commit_sha + source_tree_state + build_id + build_artifact_sha256 +
-test_binary_id + test_binary_sha256 + runner_product/version +
-runner_config_id/hash + engine_product/version + os_image_id/hash + os_version +
-architecture + target_platform/profile_id/hash + machine_or_container_image/hash +
-driver/runtime/toolchain_versions + environment_profile_id/hash +
-environment_fingerprint + random_seed + seed_policy + shard_id/count +
-test_order_id/hash
+commit_sha + source_tree_state + build_id + build_artifact_revision +
+test_binary_id + test_binary_revision + runner_product/version +
+runner_config_id/revision + engine_product/version + os_image_id/revision + os_version +
+architecture + target_platform/profile_id/revision + machine_or_container_image/revision +
+driver/runtime/toolchain_versions + environment_profile_id/revision +
+environment_identity + random_seed + seed_policy + shard_id/count +
+test_order_id/revision
 ```
 
 Runs differing in any field are separate cohorts. Record a canonical cohort JSON
-hash as `cohort_id`; do not use display labels or paths in the identity.
+revision as `cohort_id`; do not use display labels or paths in the identity.
 
 Only `attempt_kind: independent` runs with unique run and process-isolation IDs,
 no parent attempt, and valid clean-process receipts count toward sample size.
@@ -191,7 +191,7 @@ Classify cross-cohort differences separately:
 - when those keys match but platform, OS/image, architecture, driver/runtime/
   toolchain, machine/container, or registered environment values differ, use
   `ENVIRONMENT DRIFT` and name exact keys; and
-- when the environment fingerprint differs without a field-level explanation,
+- when the environment finding key differs without a field-level explanation,
   use `INVALID IDENTITY`, not an environment hypothesis.
 
 Never pool cross-cohort PASS and FAIL. A valid homogeneous cohort may still be
@@ -279,13 +279,13 @@ untruncated data and either:
 
 A proposal is `INELIGIBLE` unless all fields are concrete:
 
-- stable proposal ID and canonical test key, current test-source path/hash, test
-  binary ID/hash, run-set/cohort IDs, manifest hash, included run IDs, counts,
+- stable proposal ID and canonical test key, current test-source path/revision, test
+  binary ID/revision, run-set/cohort IDs, manifest revision, included run IDs, counts,
   rate and Wilson interval;
 - evidence verdict, hypothesis boundary, stable AC/BUG IDs, criticality, and
   player/release risk;
 - accountable owner, tracking issue, approval owner, and supported engine/runner
-  quarantine adapter ID/version/hash;
+  quarantine adapter ID/version/revision;
 - expiry no later than 14 days or the current sprint end, whichever is sooner;
 - replacement coverage test ID, or explicit `NONE` plus a release-blocking gap;
 - exact revalidation, removal, rollback/re-enable, and expiry-escalation rules.
@@ -301,9 +301,9 @@ Report only the state proven by exact external receipts:
 |---|---|
 | `SUSPECTED` | Sparse homogeneous mixed outcomes |
 | `CONFIRMED` | Confirmation minimum met |
-| `PROPOSED` | Complete eligible proposal hash exists |
-| `APPROVED` | Human approval receipt binds exact proposal hash, owner, risk, and expiry |
-| `APPLIED` | Application receipt binds approval, adapter, pre/post config/test hashes, owner, issue, and expiry |
+| `PROPOSED` | Complete eligible proposal revision exists |
+| `APPROVED` | Human approval receipt binds exact proposal revision, owner, risk, and expiry |
+| `APPLIED` | Application receipt binds approval, adapter, pre/post config/test revisions, owner, issue, and expiry |
 | `VERIFIED` | Later runner receipt binds applied config and records exact test key as quarantined |
 | `EXPIRED` | Expiry passed without verified renewal or resolution |
 | `RESOLVED` | Fix receipt, quarantine-removal receipt, and required homogeneous post-fix passing runs all validate |
@@ -314,14 +314,14 @@ expired quarantine is a release-blocking revalidation gap and cannot silently
 remain active. Preserve proposal/application history in the report while current
 state may become `RESOLVED`; this skill does not append or remove registry rows.
 
-`status` validates report schema/hash and each explicitly supplied receipt, then
+`status` validates report schema/revision and each explicitly supplied receipt, then
 reports this state machine without writing. It may hand exact APPLIED, VERIFIED,
-EXPIRED, or RESOLVED receipt paths/hashes to the regression-suite owner, but
+EXPIRED, or RESOLVED receipt paths/revisions to the regression-suite owner, but
 never invokes another workflow or performs an upsert.
 
 ---
 
-## Phase 6: Stable findings and hash-bound evidence
+## Phase 6: Stable findings and revision-bound evidence
 
 Create findings only for data integrity, identity, homogeneity, environment,
 sample sufficiency, measured flakiness, controlled cause, or quarantine-state
@@ -330,13 +330,13 @@ facts. Each finding uses:
 ```yaml
 id: TFF-<category-slug>-<12-lowercase-hex>
 category: DATA | IDENTITY | HOMOGENEITY | ENVIRONMENT | SAMPLE | FLAKINESS | CAUSE | QUARANTINE
-canonical_test_key: <runner namespace/test/parameter/binary hash or NONE>
-cohort_id: <hash or NONE>
+canonical_test_key: <runner namespace/test/parameter/binary revision or NONE>
+cohort_id: <revision or NONE>
 state: OPEN | OBSERVED | RESOLVED
 first_seen_run_set: <stable ID>
 current_run_set: <stable ID>
 evidence:
-  manifest_sha256: <hash>
+  manifest_revision: <revision>
   run_ids: [<stable IDs>]
   counts: {pass: <int>, fail: <int>, other: <int>}
   interval_95: <bounds or NONE>
@@ -344,18 +344,16 @@ claim_boundary: <measured fact, limitation, or controlled cause>
 owner_handoff: <role or NONE>
 ```
 
-Compute the suffix from SHA-256 of UTF-8 canonical JSON containing only
-repository identity, category, canonical test key, cohort ID, and external state
-receipt identity or `NONE`. Do not include paths, line numbers, display names,
+Build the stable finding ID from repository ID, category, canonical test key, cohort ID, and a collision sequence; record external-state receipt identity separately. Do not include paths, line numbers, display names,
 observed counts/rates, interval bounds, confidence, severity, state, timestamps,
-current run-set/build hashes, or report hashes. Coalesce identical identities,
+current run-set/build revisions, or report revisions. Coalesce identical identities,
 preserve all supporting run IDs, and sort by category, canonical test key, and
 cohort ID.
 
 The analysis payload schema is `cgs.test-flakiness-report/v1`. Canonicalize its
 machine-readable payload as UTF-8 JSON with lexicographically sorted object keys,
 preserved array order, JSON number grammar, and no insignificant whitespace. It
-must contain contract/schema versions; manifest and dependency paths/hashes;
+must contain contract/schema versions; manifest and dependency paths/revisions;
 parser/tool/receipt identities; all fixed limits; included/excluded runs;
 cohorts and environment drift; stable tests; outcome counts, denominators, rates,
 intervals and sample limitations; verdicts; hypotheses; quarantine eligibility
@@ -365,7 +363,7 @@ and state; stable findings; bounded omissions; producer
 For every non-`ERROR` analysis, return one fenced `analysis-evidence` block with
 schema `cgs.review-evidence/v1`, record ID derived from the canonical record after
 omitting only `record_id`, artifact kind `test-flakiness-analysis`, artifact
-identity `<run_set_id>/<manifest_sha256>`, payload SHA-256, producer, run/time,
+identity `<run_set_id>/<manifest_revision>`, payload revision, producer, run/time,
 coverage `COMPLETE` or `PARTIAL`, all finding IDs, and:
 
 ```yaml
@@ -373,8 +371,8 @@ quarantine_authority: NONE
 gate_evidence_candidate: false
 persistence: NONE | VERIFIED_FILE
 report_path: <normalized path or NONE>
-report_file_sha256: <hash or NONE>
-write_receipt_id: <hash or NONE>
+report_file_revision: <revision or NONE>
+write_receipt_id: <revision or NONE>
 ```
 
 Partial evidence truthfully proves only its limitations and included local facts;
@@ -412,20 +410,20 @@ Omitting or declining persistence never blocks, erases, or changes completed
 analysis. Persistence failure changes only `report_persistence`.
 
 With `--persist`, derive exactly
-`production/qa/flakiness/flakiness-report-<run-set-id>-<first-12-manifest-hash>.md`.
+`production/qa/flakiness/flakiness-report-<run-set-id>-<UTC-run-id>.md`.
 Validate that the normalized target is inside that directory and is not a
 symlink. The single report contains the human-readable sections plus the exact
 canonical payload, but not the post-write evidence record or write receipt.
-Immediately before writing, rehash every
+Immediately before writing, revalidate every
 input. If the target exists with identical bytes, do not rewrite and report
 `UNCHANGED`. If it differs, return `CONFLICT` and preserve it; never overwrite or
 rename a concurrent/user report. Otherwise write only that one file, read it back
-byte-for-byte, and return `WRITTEN` only after reporting its SHA-256 and a
-`cgs.analysis-report-write-receipt/v1` binding target path, payload hash, evidence
-artifact identity, persisted-file hash, writer contract, and UTC time. Compute
+byte-for-byte, and return `WRITTEN` only after reporting its revision and a
+`cgs.analysis-report-write-receipt/v1` binding target path, payload revision, evidence
+artifact identity, persisted-file revision, writer contract, and UTC time. record
 the receipt ID first, then the post-write evidence record may bind that receipt
-ID and file hash; the receipt never embeds the evidence record ID, avoiding a
-cyclic hash. A denied write or missing output directory yields `DECLINED` or
+ID and file revision; the receipt never embeds the evidence record ID, avoiding a
+cyclic revision. A denied write or missing output directory yields `DECLINED` or
 `FAILED` while analysis remains available in conversation.
 
 For `status`, return `Result`, `Report Identity`, `Receipt Validation`,

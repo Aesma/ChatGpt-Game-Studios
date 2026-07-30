@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Polish"
   short_description: "Bounded, resumable polish with final-build evidence"
-  default_prompt: "Use $team-polish with an explicit mode and hash-bound manifests to assess by real role triggers, authorize exact path-owned patches, resume from immutable checkpoints, and verify a fixed test matrix on the final integrated build without granting release authority."
+  default_prompt: "Use $team-polish with an explicit mode and revision-bound manifests to assess by real role triggers, authorize exact path-owned patches, resume from immutable checkpoints, and verify a fixed test matrix on the final integrated build without granting release authority."

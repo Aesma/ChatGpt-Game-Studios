@@ -3,6 +3,16 @@ name: architecture-decision
 description: "Author or safely retrofit one collision-safe Proposed Architecture Decision Record for one technical decision, with bounded source evidence, user-selected alternatives, dependency validation, transactional section writes, and independent review/lifecycle handoffs."
 ---
 
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
+
 # Architecture Decision
 
 Author exactly one ADR about one cohesive technical decision. This authoring task
@@ -33,12 +43,12 @@ The manifest declares `contract: cgs.architecture-decision-request/v2` and:
   `supersede-proposal`;
 - collision-safe `cgs.adr-id-allocation/v1` receipt with canonical UUID, optional
   display sequence, slug, exact target path, allocation nonce/allocator identity,
-  reserved-at UTC, receipt path/hash, and expected target `ABSENT`; existing-target
-  operations instead provide exact path/current raw SHA-256;
-- exact checkpoint root and expected predecessor ID/hash or `ABSENT`;
+  reserved-at UTC, receipt path/revision, and expected target `ABSENT`; existing-target
+  operations instead provide exact path/current declared revision;
+- exact checkpoint root and expected predecessor ID/revision or `ABSENT`;
 - exact requirement, constraint, dependency/replacement ADR, accepted-registry
   projection, engine reference, code/interface evidence, review/lifecycle, and
-  instruction sources with stable ID/owner/path-or-URL/locator/raw hash/date/
+  instruction sources with stable ID/owner/path-or-URL/locator/declared revision/date/
   required-or-optional role;
 - a bounded ADR summary manifest sufficient for semantic duplicate detection;
 - context budget no larger than 16 files and 524288 exact bytes;
@@ -47,16 +57,16 @@ The manifest declares `contract: cgs.architecture-decision-request/v2` and:
 - actual technical decision owner/user authority, mutation authority, author,
   target writer, checkpoint recorder, consultant roles, and intended independent
   architecture-review/lifecycle-recorder roles; and
-- authorization manifest ID/hash/authority or instruction to collect one bounded
+- authorization manifest ID/revision/authority or instruction to collect one bounded
   authorization after inventory, plus exact non-writes.
 
-Reject unknown/duplicate fields, unsafe/aliased paths, invalid UUID/slug/hash,
+Reject unknown/duplicate fields, unsafe/aliased paths, invalid UUID/slug/revision,
 duplicate source/ADR IDs, target/checkpoint aliasing, allocation path mismatch,
 target already existing for `new`, existing target mismatch, roles with forbidden
 identity overlap, or budgets/limits above contract.
 
 Never scan the ADR directory for “next number.” Display sequence is not identity.
-The allocation receipt plus exact `ABSENT` Target CAS owns uniqueness. A path
+The allocation receipt plus exact `ABSENT` Target atomic conflict check owns uniqueness. A path
 collision invalidates the allocation and stops; never overwrite or silently pick
 another number/path in this run.
 
@@ -81,7 +91,7 @@ Before context loading, write a read-only scope record:
 Split compound choices when alternatives, owners, acceptance timing, rollback, or
 replacement scope can differ. An “A and B” bundle is allowed only when current
 evidence proves neither can be decided/rolled back independently; record the
-inseparability source IDs/hashes. Route all other questions as separate ADR/TECH
+inseparability source IDs/revisions. Route all other questions as separate ADR/TECH
 handoffs. One target may not smuggle a second decision through interfaces,
 migration, or validation sections.
 
@@ -92,14 +102,14 @@ migration, or validation sections.
 - The author gathers evidence, presents comparable alternatives, drafts, and
   performs semantic preflight; it never selects the decision.
 - Consultants provide bounded read-only findings and never edit/approve the ADR.
-- The target writer performs only target section CAS writes.
+- The target writer performs only target section atomic conflict check writes.
 - The checkpoint recorder creates checkpoint/authoring-receipt records only.
 - A future independent architecture reviewer and separate lifecycle recorder are
   both identity-separated from author/writer/consultants and from each other.
 
 After target/scope/duplicate inventory, present one mutation manifest containing
-exact target operation/path/preimage-or-ABSENT, canonical ADR ID/allocation receipt,
-selected stable section IDs/preimages, checkpoint root/deterministic create-only
+exact target operation/path/prior state-or-ABSENT, canonical ADR ID/allocation receipt,
+selected stable section IDs/prior states, checkpoint root/deterministic create-only
 record names, writer/recorder identities, limits, and non-writes.
 
 Obtain one explicit mutation authorization. It covers the target regions and
@@ -112,11 +122,11 @@ otherwise never re-prompt for write permission per section/consultation/receipt.
 
 The author contract version is:
 
-    architecture-decision-author-sha256:<sha256(SKILL.md exact bytes || 0x00 || references/continued-workflow.md exact bytes)>
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 The document profile is `architecture-decision-profile-schema-v2`; content
 assertions use `cgs.adr-content-profile/v2`. Stable section IDs, not display
-titles, govern inventory, retrofit, decisions, CAS, revisions, and receipts.
+titles, govern inventory, retrofit, decisions, atomic conflict check, revisions, and receipts.
 
 | Stable ID | Canonical section |
 |---|---|
@@ -143,7 +153,7 @@ Every target includes:
     > **ADR ID**: <canonical UUID>
     > **Schema**: architecture-decision-profile-schema-v2
     > **Content Profile**: cgs.adr-content-profile/v2
-    > **Author Schema**: architecture-decision-author-sha256:<hash>
+    > **Author Schema**: architecture-decision-author-v2
     > **Authoring Completeness**: DRAFT | PARTIAL | CONTENT_COMPLETE
     > **Authoring Receipt ID**: <stable ID | PENDING>
 
@@ -151,8 +161,8 @@ Every target includes:
     Proposed | Unknown
 
 Do not place `Accepted`, `Deprecated`, or `Superseded` into a new/revised target;
-do not place reviewer/recorder signatures, review/lifecycle record path/hash, or
-authoring-receipt path/hash in the ADR. External records bind already-final bytes
+do not place reviewer/recorder signatures, review/lifecycle record path/revision, or
+authoring-receipt path/revision in the ADR. External records bind already-final bytes
 and avoid target/receipt cycles.
 
 ## Independent state axes
@@ -188,17 +198,17 @@ Authoring permissions:
 External lifecycle transitions are:
 
     Unknown --external evidence/recorder--> Proposed
-    Proposed --current independent review + recorder CAS--> Accepted
-    Accepted --recorder CAS--> Deprecated
-    Accepted --accepted successor + recorder multi-target CAS--> Superseded by <ADR ID>
+    Proposed --current independent review + recorder atomic conflict check--> Accepted
+    Accepted --recorder atomic conflict check--> Deprecated
+    Accepted --accepted successor + recorder multi-target atomic conflict check--> Superseded by <ADR ID>
 
 No reverse transition or author self-transition. A lifecycle recorder consumes a
-current independent review plus authoring receipt, validates exact preimage/status,
+current independent review plus authoring receipt, validates exact prior state/status,
 and emits immutable `cgs.adr-lifecycle-record/v1` binding allowed status-only
-pre/post hashes. Registry projection and story/readiness effects are separate
+pre/post revisions. Registry projection and story/readiness effects are separate
 derived-owner actions.
 
-A supersede proposal names one or more exact predecessor IDs/path/hashes/current
+A supersede proposal names one or more exact predecessor IDs/path/revisions/current
 Accepted lifecycle receipts, replacement scope, retained obligations, migration,
 and replacement completeness. The predecessors remain authoritative until the
 successor is independently accepted and recorder atomically links both sides.
@@ -213,7 +223,7 @@ Parse request before broader context. Validate exact operation/identity/allocati
 target/checkpoint/source manifests, modes, roles, budgets, and non-writes.
 
 For existing targets, read all raw bytes, schema/status/section anchors, source/
-decision/revision provenance, and current hash. Accepted/Deprecated/Superseded
+decision/revision provenance, and current revision. Accepted/Deprecated/Superseded
 status returns lifecycle-owner handoff with zero mutation.
 
 For retrofit, inventory missing, malformed, stale, and conflicting sections;
@@ -221,9 +231,7 @@ never merely append over an incorrect section or treat legacy prose as current
 evidence. Preserve all out-of-scope/custom bytes. Retrofit never validates
 historical acceptance.
 
-Compute semantic fingerprint over canonicalized decision domain, decision key,
-question, and sorted in-scope component IDs. Compare only the exact bounded ADR
-summary manifest (ID/status/title/domain/scope/question/fingerprint/path/hash).
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 When an exact/near semantic match exists, present factual evidence and user-owned
 choices:
@@ -239,7 +247,7 @@ Never create a duplicate by title variation. The author does not select a route.
 After scope/duplicate/target inventory, establish the one mutation authorization.
 Invalid/unsafe input returns ERROR/BLOCKED with zero writes.
 
-## Phase 1: Load bounded hash-manifested decision context
+## Phase 1: Load bounded revision-manifested decision context
 
 After authorization, select candidates in stable order:
 
@@ -257,15 +265,15 @@ loaded file against hard maxima 16 files and 524288 exact bytes. Determine size
 before load; never truncate or follow undeclared links.
 
 The context manifest records ordered path/URL snapshot, role, source ID/owner,
-locator, bytes, raw SHA-256, version/date/observed-at, coverage state, dependency
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 edge, loaded/omitted state, and reason. Canonicalize UTF-8 LF/fixed fields/no
-trailing whitespace/one final newline and persist the digest.
+trailing whitespace/one final newline and persist the reference ID.
 
 Mark an existing target `mutable-target-baseline`; target currentness is checked
-by Target/Section CAS, while every external source is re-hashed before dependent
+by Target/Section atomic conflict check, while every external source is re-read-recorded before dependent
 writes/final handoff.
 
-If mandatory context exceeds budget, is absent, or mismatches declared hash,
+If mandatory context exceeds budget, is absent, or mismatches declared revision,
 append at most one authorized PARTIAL checkpoint with
 `CONTEXT_BUDGET_EXCEEDED` or `CONTEXT_EVIDENCE_INVALID`, leave target unchanged,
 list loaded/omitted evidence, and stop. Never infer `None` from missing evidence.
@@ -276,7 +284,7 @@ derived constraints, hypotheses, UNKNOWN dependencies, and routed handoffs.
 ## Phase 2: Validate engine/reference and dependency coverage
 
 For every engine/API/technical reference record stable ID, owner/publisher,
-path-or-URL/locator, raw/snapshot hash, engine/version/domain, published/updated
+path-or-URL/locator, raw/snapshot revision, engine/version/domain, published/updated
 date when known, observed-at UTC, knowledge cutoff/risk, relevant claim, and
 coverage state `VERIFIED`, `PARTIAL`, `UNVERIFIED`, or `STALE`.
 
@@ -287,7 +295,7 @@ finding and prevents READY_FOR_REVIEW; safe Proposed partial drafting may contin
 If no engine is configured, record exact setup-engine technical handoff rather
 than inventing engine/version.
 
-Build a graph from exact dependency/replacement IDs/statuses/hashes:
+Build a graph from exact dependency/replacement IDs/statuses/revisions:
 
 - every Depends On/replacement ID must resolve uniquely;
 - implementation/acceptance eligibility requires each required prerequisite
@@ -303,7 +311,7 @@ dependency-ready, acceptance-ready, registry-ready, or story-ready.
 
 ## Phase 3: Create skeleton and checkpoint chain
 
-For collision-safe new target, Target CAS must prove allocation path still ABSENT.
+For collision-safe new target, Target atomic conflict check must prove allocation path still ABSENT.
 Atomically create header, Status Proposed, and every stable section heading with
 neutral placeholders. For retrofit/revise, preserve current bytes until an exact
 approved section transaction.
@@ -312,20 +320,21 @@ Append create-only `cgs.architecture-decision-checkpoint/v2` after skeleton,
 scope/duplicate route, constraint/alternative/decision approval, each section
 transaction, consultation result, graph/preflight, target finalization, and receipt
 attempt. It records request/allocation/authorization/context/target/author-schema
-hashes, scope/fingerprint, full section axes/assertions, sources/coverage, graph/
+revisions, scope/stable key, full section axes/assertions, sources/coverage, graph/
 findings, alternatives/decisions/approvals/revisions, consultations, lifecycle/
-replacement links, operation ledger, limits, predecessor ID/hash, next transition,
+replacement links, operation ledger, limits, predecessor ID/revision, next transition,
 and UTC timestamp.
 
-Canonical payload excludes its `record_sha256`; append by deterministic name with
-predecessor/create-if-absent CAS. Never overwrite/fork. Checkpoint is continuity
+Assign each checkpoint the next positive `record_revision` and a stable ID derived
+from the ADR ID plus append sequence; append by deterministic name with
+predecessor/create-if-absent atomic conflict check. Never overwrite/fork. Checkpoint is continuity
 evidence, not acceptance/review/lifecycle/registry/readiness evidence.
 
 ## Required continuation
 
 Read and follow `references/continued-workflow.md` in full after Phase 3. It
 defines alternatives/constraint/source provenance, user decision authority,
-section completeness/approval/CAS, bounded consultations/failure, authoring
+section completeness/approval/atomic conflict check, bounded consultations/failure, authoring
 receipt, independent architecture-review and lifecycle-recorder handoffs, resume,
 and one-action stop behavior.
 

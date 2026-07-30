@@ -5,7 +5,7 @@
 `$content-audit` is a strictly read-only, bounded analyzer. It reads every
 in-scope requirement source in full, normalizes explicit stable content IDs,
 compares them with current target/build inclusion records from a versioned
-manifest or registered engine adapter, and returns one hash-bound
+manifest or registered engine adapter, and returns one revision-bound
 `cgs.review-evidence/v1` packet with a `cgs.content-audit-report/v1` extension.
 It never treats files, folders, aggregate counts, editor objects, or test fixtures
 as shipped content. Its deterministic verdicts are `COMPLETE`, `GAPS FOUND`,
@@ -52,7 +52,7 @@ Verified automatically by `$skill-test static`; no fixture is required.
       and prior-report preselection.
 - [ ] Defines fixed manifest, semantic byte, requirement, inclusion-record,
       dependency-edge, external-evidence, and advisory-observation limits.
-- [ ] Rejects symlinks and outside-project paths, hashes exact raw bytes, includes
+- [ ] Rejects symlinks and outside-project paths, revisions exact raw bytes, includes
       excluded/failed candidates, and revalidates the locked manifest.
 - [ ] Requires explicit stable requirement, logical-content, system, target,
       build, manifest, adapter, dependency, and finding IDs where applicable.
@@ -65,21 +65,20 @@ Verified automatically by `$skill-test static`; no fixture is required.
 - [ ] Forbids file counts, glob totals, editor objects, test fixtures, and file
       presence from proving shipped content or `COMPLETE`.
 - [ ] Keeps format and pipeline compliance under the asset-audit owner and admits
-      supplied asset-audit evidence only through a recomputed hash-bound contract.
+      supplied asset-audit evidence only through a recomputed revision-bound contract.
 - [ ] Uses a typed stable-ID dependency graph and forbids priority inference from
       free-form systems-index prose, counts, percentages, or effort estimates.
-- [ ] Defines stable `CAU-...` finding fingerprints that exclude mutable wording,
-      paths, line numbers, hashes, status, priority, run ID, and timestamps.
+- [ ] Defines stable `CAU-...` finding stable keys that exclude mutable wording,
+      paths, line numbers, revisions, status, priority, run ID, and timestamps.
 - [ ] Defines a per-channel/per-check coverage ledger and a deterministic
       fail-closed verdict precedence where any material coverage gap is `PARTIAL`.
-- [ ] Keeps detailed manifest rows bounded while hashing the complete candidate
-      identity sequence and recording exact overflow counts/digests.
+- [ ] Keeps detailed manifest rows bounded while revision tracking the complete candidate
+      identity sequence and recording exact overflow counts/reference IDs.
 - [ ] Preserves known critical and ordinary gaps when `PARTIAL` takes precedence.
-- [ ] Emits all six exact ID sets and a hash-bound evidence packet; summary mode
-      preserves all verdict, coverage, set, finding, and hash semantics.
+- [ ] Emits all six exact ID sets and a revision-bound evidence packet; summary mode
+      preserves all verdict, coverage, set, finding, and revision semantics.
 - [ ] Routes at most one role-owned next action and does not invoke it.
-- [ ] States that a quick-design result is proposal-only and cannot close a gap
-      until separately applied to a canonical artifact and observed at a new hash.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ---
 
@@ -103,13 +102,13 @@ Fixture:
 - A current `cgs.content-inclusion/v1` manifest contains conflict-free
   `included: true` records for all four IDs and every required variant.
 - All requirement, target, manifest, instruction, and dependency inputs are
-  within limits, readable, valid, hash-bound, and unchanged.
+  within limits, readable, valid, revision-bound, and unchanged.
 
 Input: `$content-audit target:win64-release`
 
 Expected behavior:
 
-1. One exact-hash manifest is locked before semantic comparison.
+1. One exact-revision manifest is locked before semantic comparison.
 2. All four IDs enter `specified_ids` and `shipped_verified_ids`.
 3. The other four implementation-state sets are empty.
 4. Every required coverage dimension is complete.
@@ -117,9 +116,9 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Every row cites requirement and inclusion artifact ID, locator, and SHA-256.
+- [ ] Every row cites requirement and inclusion artifact ID, locator, and revision.
 - [ ] `COMPLETE` requires every specified ID to be `SHIPPED_VERIFIED`.
-- [ ] The evidence envelope and extension hashes recompute.
+- [ ] The evidence envelope and extension revisions recompute.
 - [ ] No file is written and no other skill is invoked.
 
 ---
@@ -168,7 +167,7 @@ Input: `$content-audit system:items`
 Expected behavior:
 
 1. `item.map` is the only exact ID in `missing_ids`.
-2. The numeric statement is recorded with quantity, source locator, and hash as
+2. The numeric statement is recorded with quantity, source locator, and revision as
    `UNIDENTIFIED_REQUIREMENTS`; no bonus-item IDs are invented.
 3. Folder totals remain advisory and do not reduce a set.
 4. Requirement coverage is incomplete and verdict is `PARTIAL`, while
@@ -209,7 +208,7 @@ Assertions:
 
 - [ ] Scene, prefab, resource database, addressable, and packed-asset support is
       adapter-declared rather than hard-coded or inferred.
-- [ ] Adapter version and output schema are hash-bound.
+- [ ] Adapter version and output schema are revision-bound.
 - [ ] Filesystem presence alone is not an adapter result.
 
 ---
@@ -247,7 +246,7 @@ Fixture:
 
 - Valid build evidence includes `audio.jump` for the exact target.
 - A supplied current asset-audit evidence envelope flags its codec as
-  non-compliant and all envelope/artifact hashes recompute.
+  non-compliant and all envelope/artifact revisions recompute.
 - A second supplied asset-audit record is stale.
 
 Input: `$content-audit system:audio`
@@ -257,7 +256,7 @@ Expected behavior:
 1. Content-audit does not read technical preferences or rescan asset format.
 2. The current record is displayed under accepted external evidence with
    asset-audit ownership and provenance.
-3. The stale record is rejected with its hash/target reason.
+3. The stale record is rejected with its revision/target reason.
 4. Build inclusion remains distinct from format compliance.
 
 Assertions:
@@ -291,7 +290,7 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Stable dependency IDs and source hashes are present.
+- [ ] Stable dependency IDs and source revisions are present.
 - [ ] Unknown endpoints, malformed edges, or prohibited cycles are explicit
       dependency coverage gaps and force `PARTIAL`.
 - [ ] Counts, percentages, elapsed time, and estimated effort never set priority.
@@ -315,7 +314,7 @@ Expected behavior:
 1. The candidate ledger records `UNREADABLE`, `SYMLINK_REJECTED`, `OVER_LIMIT`,
    and `OUTSIDE_PROJECT` without following or silently dropping them.
 2. The bounded prefix is selected in deterministic manifest order; the complete
-   identity sequence and omitted sequence are hashed, and exact total/omitted
+   identity sequence and omitted sequence are versioned, and exact total/omitted
    counts plus first/last omitted sort keys are recorded.
 3. Verified and known-missing evidence from unaffected inputs remains visible.
 4. Verdict is `PARTIAL`; `known_gap_classification` remains `GAPS FOUND`.
@@ -374,7 +373,7 @@ Expected behavior:
 1. Every mode returns one conversation-only packet.
 2. No mode offers, selects, creates, or writes a report path.
 3. Summary compacts only the human projection; manifest, coverage, verdict, six
-   sets, known gaps, finding IDs, and hashes match the equivalent full run.
+   sets, known gaps, finding IDs, and revisions match the equivalent full run.
 4. No approval prompt, director gate, delegation, edit, story creation, or
    downstream skill invocation occurs.
 
@@ -387,11 +386,11 @@ Assertions:
 
 ---
 
-### Case 11: Stable finding identity and hash-bound evidence
+### Case 11: Stable finding identity and revision-bound evidence
 
 Fixture:
 
-- Run A contains one ordinary missing ID with complete exact-hash evidence.
+- Run A contains one ordinary missing ID with complete exact-revision evidence.
 - Run B moves the source to a different canonical path and changes wording and
   line numbers without changing stable project, source artifact, target,
   requirement, dependency, or issue identity.
@@ -402,15 +401,15 @@ Input: `$content-audit target:win64-release`
 Expected behavior:
 
 1. Runs A and B produce the same `CAU-...` finding ID but distinct artifact
-   hashes and manifest hashes.
-2. Run C produces a different finding fingerprint and ID.
-3. Extension, payload, envelope, manifest, and every artifact hash recompute.
-4. Any incompatible evidence sharing a fingerprint is an evidence conflict and
+   revisions and manifest revisions.
+2. Run C produces a different finding stable key and ID.
+3. Extension, payload, envelope, manifest, and every artifact revision recompute.
+4. Any incompatible evidence sharing a stable key is an evidence conflict and
    forces `PARTIAL`.
 
 Assertions:
 
-- [ ] Mutable paths, wording, line numbers, hashes, status, priority, run ID, and
+- [ ] Mutable paths, wording, line numbers, revisions, status, priority, run ID, and
       timestamps are excluded from finding identity.
 - [ ] Stable project/artifact/requirement/target/dependency identities participate.
 - [ ] A consumer can reject a packet after any artifact byte changes.
@@ -429,7 +428,7 @@ Input: `$content-audit`
 
 Expected behavior:
 
-1. Re-enumeration finds the added candidate and re-hashing marks the changed
+1. Re-enumeration finds the added candidate and re-read tracking marks the changed
    source `STALE`.
 2. Semantic conclusions from old bytes are discarded.
 3. Unaffected evidence remains visible with coverage limitations.
@@ -437,7 +436,7 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Modification time and Git status are not substitutes for raw-byte hashes.
+- [ ] Modification time and Git status are not substitutes for raw-byte revisions.
 - [ ] Added, removed, renamed, and changed inputs are all detectable manifest
       changes.
 - [ ] A stale source can never contribute to `COMPLETE`.
@@ -467,7 +466,7 @@ Assertions:
 
 - [ ] No requirement source or asset count is fabricated.
 - [ ] Lack of authoritative content is a coverage gap, not an empty complete set.
-- [ ] The packet remains read-only and hash-bound.
+- [ ] The packet remains read-only and revision-bound.
 
 ---
 
@@ -504,7 +503,7 @@ Assertions:
 ## Protocol Compliance
 
 - [ ] Invocation, project identity, target identity, and applicable instructions
-      are exact and hash-bound.
+      are exact and revision-bound.
 - [ ] The candidate inventory is deterministic, bounded, project-local, and
       complete about exclusions and failures.
 - [ ] Every selected requirement source is read in full once without keyword or
@@ -520,7 +519,7 @@ Assertions:
       deterministically prevents `COMPLETE`.
 - [ ] `PARTIAL` preserves known critical and ordinary gaps.
 - [ ] Stable finding IDs survive non-semantic source movement or wording changes.
-- [ ] Evidence packet artifact, manifest, payload, and record hashes recompute.
+- [ ] Evidence packet artifact, manifest, payload, and record revisions recompute.
 - [ ] Full and summary modes are strictly read-only and invoke no gate, recorder,
       owner, or downstream workflow.
 - [ ] Any execution `ERROR` returns no verdict or review-evidence envelope; a
@@ -543,3 +542,11 @@ outside this analyzer specification. The catalog entry points to this file, and
 its `last_*` result fields must remain blank until these cases are actually
 executed by the authorized test workflow. Editing this spec alone is not a test
 pass and must not create a catalog result claim.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

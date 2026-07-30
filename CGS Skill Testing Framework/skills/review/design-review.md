@@ -25,7 +25,7 @@ invocation or execution failure and is neither a gate state nor a verdict.
 Behavioral cases must run in an isolated disposable repository fixture. The
 harness must record, without relying on model claims:
 
-1. a recursive project path/type/SHA-256 snapshot before invocation;
+1. a recursive project path/type/revision snapshot before invocation;
 2. the same snapshot after invocation;
 3. every filesystem mutation attempt made by the skill runtime;
 4. every file read, including byte counts and read order;
@@ -57,14 +57,14 @@ inspection or an uninstrumented manual run.
 - [ ] Eight sections have content-level assertions, canonical order, and bounded
   `Not applicable` semantics
 - [ ] Finding Schema includes stable ID, evidence, severity, destination,
-  decision kind, acceptance, first/current hash, status, resolution, regression
+  decision kind, acceptance, first/current revision, status, resolution, regression
   state, and consecutive-open count
 - [ ] Gate precedence is ordered and defines unresolved waived blockers
 - [ ] Full review selects no more than three specialists and no senior synthesizer
 - [ ] Specialist timeout, failure, overflow, late-result, and partial behavior is
   explicit
 - [ ] Lean, full, and solo outputs have distinct coverage/verdict rules
-- [ ] Evidence schema, canonicalization, target/report/record hashes, reviewer,
+- [ ] Evidence schema, canonicalization, target/report/record revisions, reviewer,
   timestamp, depth, independence, and producer version are explicit
 - [ ] Cross-GDD and whole-set design-theory ownership is explicitly out of scope
 
@@ -186,11 +186,11 @@ lean review.
 
 Assertions:
 
-- [ ] Profile, normalized target, exact target SHA-256, system/artifact ID,
+- [ ] Profile, normalized target, exact target revision, system/artifact ID,
   contract version, review run UUID, UTC timestamp, depth, and independence exist
 - [ ] Context Manifest reports paths, exact byte totals, fixed budgets, and no
   unexplained omissions
-- [ ] Target is hashed from raw bytes before analysis and immediately before output
+- [ ] Target is versioned from raw bytes before analysis and immediately before output
 - [ ] Before/after recursive project snapshots are byte-identical
 - [ ] Mutation-attempt ledger is empty
 - [ ] No source, index, review, evidence, session-state, or other file is created,
@@ -198,16 +198,16 @@ Assertions:
 - [ ] Gate and formal verdict are APPROVED
 - [ ] Output contains one fence labeled `gate-evidence` with schema
   `cgs.review-evidence/v1`
-- [ ] Evidence includes exact artifact path/hash, reviewer, run ID, depth,
+- [ ] Evidence includes exact artifact path/revision, reviewer, run ID, depth,
   independence, timestamp, all finding IDs, unresolved blocker IDs, canonical
-  report payload hash, and producer `design-review@cgs.design-review/v2`
-- [ ] Recomputing canonical report-payload SHA-256 matches
-- [ ] Recomputing the record ID after omitting only its `record_id` line matches
-- [ ] Changing one report byte invalidates `report_payload_sha256` or record ID
+  report payload revision, and producer `design-review@cgs.design-review/v2`
+- [ ] revalidating declared canonical report-payload revision matches
+- [ ] Stable record ID matches the business scope and review run ID
+- [ ] Changing one report byte invalidates `report_payload_revision` or record ID
 - [ ] Changing one target byte makes the evidence stale
 - [ ] A consumer cannot treat stale or malformed evidence as approval
 
-Mutation guard and canonical hash assertions are mandatory runtime assertions,
+Mutation guard and canonical revision assertions are mandatory runtime assertions,
 not static string checks.
 
 ---
@@ -250,22 +250,22 @@ Assertions:
 
 First review produces two blockers and one advisory. Persist the exact report
 externally as a fixture; the skill itself must not write it. In a fresh authoring
-task, create immutable revision evidence binding prior/current target hashes,
+task, create immutable revision evidence binding prior/current target revisions,
 changed ranges or patch, and authoring identity.
 
 Validation variants:
 
 - [ ] Supplying only prior review or only revision evidence returns ERROR
 - [ ] Summary-only legacy review returns ERROR
-- [ ] Prior report with duplicate/missing IDs or invalid record hash returns ERROR
-- [ ] Revision evidence with wrong pre-hash, post-hash, target, or missing change
+- [ ] Prior report with duplicate/missing IDs or invalid record revision returns ERROR
+- [ ] Revision evidence with wrong pre-read, post-revision, target, or missing change
   scope/author identity returns ERROR
 - [ ] Both evidence files over 256 KiB are rejected
 
 Valid first re-review assertions:
 
 - [ ] Every prior finding is carried forward with exactly the same ID
-- [ ] Fixed blocker becomes RESOLVED only with non-null current-hash resolution
+- [ ] Fixed blocker becomes RESOLVED only with non-null current-revision resolution
   evidence satisfying its recorded acceptance condition
 - [ ] Unfixed blocker remains OPEN and increments consecutive count from 0 to 1
 - [ ] Unrelated prior advisory remains represented without open-ended re-review
@@ -447,7 +447,7 @@ Assertions:
 
 - [ ] Variants 1 and 2 return `ERROR — INDEPENDENT REVIEW REQUIRED` without gate,
   verdict, or evidence record
-- [ ] Variant 3 is stale after target hash recomputation
+- [ ] Variant 3 is stale after target path and declared-revision re-read
 - [ ] Variant 4 remains `Accepted Risk / Not Approved`; waived blocker prevents
   APPROVED
 - [ ] Formal approval is possible only for current bytes in an independent task
@@ -467,7 +467,7 @@ Assertions:
 |---|---|---|
 | DR-006 | Mechanical severity and gate precedence | Case 3 assertions |
 | DR-007 | Stable prior-finding identity and state | Case 6 assertions |
-| DR-008 | Current target/report hash binding | Cases 6 and 12 assertions |
+| DR-008 | Current target/report revision binding | Cases 6 and 12 assertions |
 | DR-009 | Lean default and risk-gated full mode | Cases 1 and 9 assertions |
 | DR-010 | Typed destinations and technical-content isolation | Cases 5 and 9 assertions |
 | DR-011 | Substantive eight-section validation | Case 2 assertions |
@@ -481,17 +481,17 @@ Assertions:
 | DR-019 | Read-only systems-index boundary | Case 11 assertions |
 | DR-020 | Product-decision ownership | Case 5 assertions |
 | DR-021 | Single-GDD scope and external-owner routing | Case 11 assertions |
-| DR-022 | Current spec/hash evidence and honest catalog state | Protocol compliance and catalog rule |
+| DR-022 | Current spec/revision evidence and honest catalog state | Protocol compliance and catalog rule |
 
 ## Protocol compliance
 
 - [ ] Entire workflow performs zero file writes and zero mutation attempts
 - [ ] Unsupported or malformed input returns ERROR without gate/verdict/evidence
-- [ ] Exactly one normalized system GDD and its exact raw-byte SHA-256 are reviewed
+- [ ] Exactly one normalized system GDD and its exact declared revision are reviewed
 - [ ] Root-to-target instructions are complete and ordered
 - [ ] Completeness is substantive rather than heading-count-only
 - [ ] Every finding has stable identity, evidence, destination, decision ownership,
-  acceptance, status, resolution, and hash/currentness fields
+  acceptance, status, resolution, and revision/currentness fields
 - [ ] Gate precedence is deterministic and accepted risk never equals approval
 - [ ] Re-review validates stable blockers and revision-scoped regressions only
 - [ ] `unresolved_blockers == 0` is the approval convergence condition
@@ -499,7 +499,7 @@ Assertions:
 - [ ] Context, fan-out, finding count, waits, and partial coverage are bounded
 - [ ] Lean/solo never fabricate specialists or a senior verdict
 - [ ] Cross-GDD/global theory and systems-index writes remain out of scope
-- [ ] Report and evidence records are canonically hash-bound and independently
+- [ ] Report and evidence records are canonically revision-bound and independently
   attributable
 - [ ] SKILL, metadata, and this spec share one contract
 
@@ -513,4 +513,4 @@ reviewer's emitted evidence envelope, not a separate recorder.
 Do not fill `catalog.yaml` `last_static`, `last_spec`, or `last_category` fields
 until the corresponding instrumented test actually runs. Record FAIL or UNTESTED
 honestly when the runtime cannot observe mutation attempts, file reads,
-delegations, timeouts, canonical hashes, or report bytes.
+delegations, timeouts, canonical revisions, or report bytes.

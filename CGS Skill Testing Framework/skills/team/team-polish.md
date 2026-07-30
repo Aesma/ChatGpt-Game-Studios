@@ -1,5 +1,7 @@
 # Skill Test Spec: $team-polish
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Contract identity
 
 - Spec schema: `cgs-skill-spec/v2`
@@ -20,7 +22,7 @@
 implementation, single-owner shared integration, final-candidate build, and
 fixed-matrix verification. Performance analysts never patch code; every required
 role, test row, context byte, attempt, checkpoint, and final receipt is
-hash-bound. Only a current final build with zero release blockers and complete
+revision-bound. Only a current final build with zero release blockers and complete
 passing required evidence may receive `READY FOR RELEASE`, which never grants
 release authority.
 
@@ -50,13 +52,13 @@ release authority.
 - [ ] TP-S022: Profile receipt binds termination, exit/result, metrics, traces/logs, omissions, and producer
 - [ ] TP-S023: Fixed test matrix rows bind category, policy-required state, build/hardware, command, duration, seed, timeout, predicate, and owner
 - [ ] TP-S024: Verify cannot add, drop, weaken, or reclassify a test row
-- [ ] TP-S025: Execution receipt binds exact matrix row and final candidate/artifact hash
+- [ ] TP-S025: Execution receipt binds exact matrix row and final candidate/artifact revision
 - [ ] TP-S026: NOT_RUN/PARTIAL/UNKNOWN/TIMEOUT/INVALID/UNAVAILABLE required rows map to INCOMPLETE
 - [ ] TP-S027: Deterministic verdict order is ERROR, NEEDS MORE WORK, INCOMPLETE, then READY FOR RELEASE
 - [ ] TP-S028: READY requires zero open release blockers and every required receipt current/complete/PASS
 - [ ] TP-S029: Conclusive required failure takes precedence while incomplete rows stay visible
 - [ ] TP-S030: Agent tasks/results bind attempt, context, deadline, timeout, cancel owner, paths, and predecessor
-- [ ] TP-S031: Timeout cancels once, reconciles hashes, quarantines late output, and blocks unsafe reassignment
+- [ ] TP-S031: Timeout cancels once, reconciles revisions, quarantines late output, and blocks unsafe reassignment
 - [ ] TP-S032: Retry is capped at one new attempt after the original and cannot broaden scope
 - [ ] TP-S033: Checkpoints are immutable create-only predecessor-linked v1 records
 - [ ] TP-S034: Resume verifies the full checkpoint chain and continues only at the next incomplete idempotent step
@@ -101,7 +103,7 @@ manifest, then stop with implementation not authorized.
 #### Assertions
 
 - [ ] TP-C01-A: No implementation writer starts
-- [ ] TP-C01-B: Product path hashes remain unchanged
+- [ ] TP-C01-B: Product path revisions remain unchanged
 - [ ] TP-C01-C: Persist authority does not authorize patches
 
 #### Case Verdict
@@ -123,7 +125,7 @@ receipts.
 #### Expected reads
 
 Assessment, target, requirements, policy, complete canonical path inventory,
-baseline hashes, and authorization state.
+baseline revisions, and authorization state.
 
 #### Expected writes
 
@@ -162,7 +164,7 @@ An authorized current mutation manifest and writer ledger.
 
 #### Expected reads
 
-Every patch receipt, shared-resource base hash, ordered integration plan, and
+Every patch receipt, shared-resource base revision, ordered integration plan, and
 current path inventory.
 
 #### Expected writes
@@ -176,7 +178,7 @@ Contributors never write shared resources or another owner's path.
 
 #### Expected behavior
 
-Validate each intermediate base/result hash; conflict, drift, partial receipt, or
+Validate each intermediate base/result revision; conflict, drift, partial receipt, or
 unexpected path blocks integration.
 
 #### Assertions
@@ -202,7 +204,7 @@ Verify the exact final build-candidate manifest.
 
 #### Expected reads
 
-Final candidate/artifact/source/patch/integration/toolchain hashes, fixed test
+Final candidate/artifact/source/patch/integration/toolchain revisions, fixed test
 matrix, budgets, requirements, and final receipts.
 
 #### Expected writes
@@ -217,12 +219,12 @@ Product bytes and baseline/per-patch receipts.
 #### Expected behavior
 
 Rerun all required profile, memory, loading, audio, QA, stress/soak, visual, and
-accessibility rows on the final artifact hash.
+accessibility rows on the final artifact revision.
 
 #### Assertions
 
 - [ ] TP-C04-A: Phase 1 and per-patch metrics cannot prove readiness
-- [ ] TP-C04-B: Every final receipt names the same artifact hash
+- [ ] TP-C04-B: Every final receipt names the same artifact revision
 - [ ] TP-C04-C: A final budget violation yields NEEDS MORE WORK
 
 #### Case Verdict
@@ -242,7 +244,7 @@ evidence, measured accessibility failure, and complete current approvals/evidenc
 
 #### Expected reads
 
-Exact design/UX/accessibility requirements, affected asset/config hashes, policy
+Exact design/UX/accessibility requirements, affected asset/config revisions, policy
 thresholds, settings persistence, and independent final review.
 
 #### Expected writes
@@ -323,7 +325,7 @@ an ad hoc substitute, and preserve the exact matrix.
 
 #### Expected reads
 
-Matrix path/hash, policy classifications, candidate manifest, environments, and
+Matrix path/revision, policy classifications, candidate manifest, environments, and
 declared commands.
 
 #### Expected writes
@@ -354,7 +356,7 @@ PASS when all variants match; otherwise FAIL.
 #### Fixture
 
 Exercise valid PASS, NOT_RUN hardware, TIMEOUT, truncated log, missing exit,
-wrong build hash, wrong seed, inadequate duration, and raw-log mismatch variants.
+wrong build revision, wrong seed, inadequate duration, and raw-log mismatch variants.
 
 #### Input
 
@@ -380,7 +382,7 @@ required states map to INCOMPLETE and a conclusive failure maps to NEEDS MORE WO
 
 #### Assertions
 
-- [ ] TP-C08-A: Build/hash/command/runtime/result axes are checked separately
+- [ ] TP-C08-A: Build/revision/command/runtime/result axes are checked separately
 - [ ] TP-C08-B: Filename, checkbox, or conversation cannot fill a field
 - [ ] TP-C08-C: Required hardware absence never becomes PASS
 
@@ -441,7 +443,7 @@ Role matrix, policy, agent tasks/results, and otherwise passing evidence.
 
 #### Expected reads
 
-Required-role classifications, rule IDs, agent receipts, context hashes, and
+Required-role classifications, rule IDs, agent receipts, context revisions, and
 affected scope.
 
 #### Expected writes
@@ -476,12 +478,12 @@ owned path. Exercise confirmed termination and cancellation-failure variants.
 
 #### Input
 
-Agent task/result records, deadline, one-retry policy, checkpoint, and path hashes.
+Agent task/result records, deadline, one-retry policy, checkpoint, and path revisions.
 
 #### Expected reads
 
 Task/attempt/context/predecessor identities, live-agent state, owned/shared
-preimages, late-output hashes, and retry budget.
+preimages, late-output revisions, and retry budget.
 
 #### Expected writes
 
@@ -586,7 +588,7 @@ PASS when all variants match; otherwise FAIL.
 
 #### Fixture
 
-Variants include valid bounded context, missing required entry, hash drift,
+Variants include valid bounded context, missing required entry, revision drift,
 unreadable file, file-count overflow, byte overflow, and an agent request for the
 whole repository.
 
@@ -614,7 +616,7 @@ with exact consumed/required limits and offending entry.
 
 #### Assertions
 
-- [ ] TP-C14-A: Context order and digest are reproducible
+- [ ] TP-C14-A: Context order and identifier are reproducible
 - [ ] TP-C14-B: Overflow never silently truncates required evidence
 - [ ] TP-C14-C: Full context and inferred paths are forbidden
 
@@ -627,7 +629,7 @@ PASS when all variants match; otherwise FAIL.
 #### Fixture
 
 Interrupt after shared integration and before build. Variants include valid chain,
-forked predecessor, changed path hash, altered authorization, duplicate completed
+forked predecessor, changed path revision, altered authorization, duplicate completed
 step, missing terminal result, and active stale writer.
 
 #### Input
@@ -636,7 +638,7 @@ step, missing terminal result, and active stale writer.
 
 #### Expected reads
 
-Full predecessor chain, schemas/hashes, manifests, authorization, ledger, agent
+Full predecessor chain, schemas/revisions, manifests, authorization, ledger, agent
 results, receipts, context/test matrix, path inventory, retry budget, and next step.
 
 #### Expected writes
@@ -716,7 +718,7 @@ Verify using the old candidate and receipts.
 
 #### Expected reads
 
-Current artifact/source/asset/config bytes and every captured hash.
+Current artifact/source/asset/config bytes and every captured revision.
 
 #### Expected writes
 
@@ -753,7 +755,7 @@ Current writer ledger, mutation manifest, patch receipt, and reconciled inventor
 
 #### Expected reads
 
-All declared and observed path hashes, canonical aliases, owner IDs, and generated
+All declared and observed path revisions, canonical aliases, owner IDs, and generated
 outputs.
 
 #### Expected writes
@@ -830,7 +832,7 @@ Verify with `--persist` only in Variant B.
 
 #### Expected reads
 
-Every final input is rehashed immediately before report creation.
+Every final input is revalidate immediately before report creation.
 
 #### Expected writes
 
@@ -845,13 +847,13 @@ stage update, scheduling action, or downstream workflow.
 #### Expected behavior
 
 Both conversational outcomes say READY FOR RELEASE and Release Authorization NOT
-GRANTED; only B yields a consumable persisted report/hash.
+GRANTED; only B yields a consumable persisted report/revision.
 
 #### Assertions
 
 - [ ] TP-C20-A: Readiness is evidence, not release authority
 - [ ] TP-C20-B: Declined/failed persistence creates no consumable report
-- [ ] TP-C20-C: Downstream consumers must rehash and obtain separate authority
+- [ ] TP-C20-C: Downstream consumers must revalidate and obtain separate authority
 
 #### Case Verdict
 
@@ -860,7 +862,7 @@ PASS when all assertions hold; otherwise FAIL.
 ## Protocol compliance
 
 - [ ] TP-P001: Resolve one explicit mode and exact manifest/checkpoint path
-- [ ] TP-P002: Read only hash-bound context within deterministic ceilings
+- [ ] TP-P002: Read only revision-bound context within deterministic ceilings
 - [ ] TP-P003: Keep assessment roles read-only
 - [ ] TP-P004: Preview one complete mutation set before product writers
 - [ ] TP-P005: Assign one writer per path and one integrator per shared resource
@@ -912,12 +914,12 @@ Every row returns `Release Authorization: NOT GRANTED`.
 This is a static contract specification. It validates exact text, schemas, state
 mappings, role triggers, and non-write boundaries; it does not execute profiling,
 builds, soak/stress tests, agent cancellation, filesystem rollback, or checkpoint
-resume. Runtime conformance requires schema-valid fixtures, final-candidate hash
+resume. Runtime conformance requires schema-valid fixtures, final-candidate revision
 checks, timeout/late-write injection, context-budget overflow tests, and checkpoint
 fork/replay tests.
 
 The staged candidate names shared records that other skills or runners may produce,
 but it does not modify their live schemas or catalog entries. Integration must align
-producer schema/version, canonical path, identity, and raw hashes before this
+producer schema/version, canonical path, identity, and declared revisions before this
 consumer can accept them; otherwise team-polish fails closed as INCOMPLETE or
 BLOCKED.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Studio Status"
   short_description: "Current canonical stage packet and active focus summary"
-  default_prompt: "Use $studio-status to validate one complete current cgs.project-stage-detection/v2 packet, report declared and detected stage, confidence, hashes, contradictions, blockers, and independent active focus without recalculating stage or writing files."
+  default_prompt: "Use $studio-status to validate one complete current cgs.project-stage-detection/v2 packet, report declared and detected stage, confidence, revisions, contradictions, blockers, and independent active focus without recalculating stage or writing files."

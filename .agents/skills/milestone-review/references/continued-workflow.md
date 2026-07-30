@@ -1,5 +1,7 @@
 # Continued Milestone Review Workflow
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs.
+
 Execute these phases in order. This is an operational checklist, not permission
 to widen the read or write scope. Preserve all verified partial evidence and
 stop at the earliest phase whose stop condition applies.
@@ -24,7 +26,7 @@ evidence, dispatch no reviewer, and write nothing.
    only the named stable-ID fields.
 3. Require agreement, uniqueness, canonical path confinement, exactly one target
    regular file, and matching internal ID.
-4. Record authority paths, revisions/hashes, declarations, and resolution rule.
+4. Record authority paths, revisions/revisions, declarations, and resolution rule.
 
 Missing, ambiguous, conflicting, malformed, or unsafe resolution stops with
 `run_status: BLOCKED` and `artifact_write_status: BLOCKED`. Do not enumerate a
@@ -46,15 +48,15 @@ verdict, governance prompt, report candidate, or write authorization request.
 ## Phase 3 — Lock the bounded evidence manifest
 
 1. Read only the milestone-referenced manifest and apply its byte bound.
-2. Validate its schema, milestone raw hash/revision, target, capture/freshness
+2. Validate its schema, milestone declared version/revision, target, capture/freshness
    declarations, repository revision, unique source rows, and required joins.
 3. Derive the exact expected source set from milestone scope, sprint IDs, and
    thresholds; never discover inputs by directory recency or all-report scans.
-4. Apply row/file/aggregate bounds, canonical path confinement, raw hash,
+4. Apply row/file/aggregate bounds, canonical path confinement, declared revision,
    internal revision, build/hardware/scenario/unit/basis, uniqueness, and
    freshness checks.
 5. Create one ordered ledger row for every expected or unexpected manifest row,
-   record exact coverage, and compute `source_snapshot_sha256`.
+   record exact coverage, and record `source_snapshot_revision`.
 
 Missing or invalid evidence does not abort useful analysis unless safe bounded
 parsing is impossible. Mark it explicitly, propagate dependent unknowns, set
@@ -83,20 +85,20 @@ results, player impact, owners, or deadlines.
 2. Assert forbidden producer, risk, verdict, governance, path, authorization, and
    write fields are absent.
 3. Canonically serialize once, freeze the exact bytes, and compute
-   `evidence_draft_sha256`.
-4. Show milestone/target, source snapshot, draft hash/size, evidence coverage,
+   `evidence_draft_revision`.
+4. Show milestone/target, source snapshot, draft revision/size, evidence coverage,
    and limitations before any producer review.
 
-Do not mutate and rehash the draft to accommodate reviewer feedback. A changed
+Do not mutate and revalidate the draft to accommodate reviewer feedback. A changed
 source requires a new analysis run, not a patched same-run draft.
 
 ## Phase 6 — Perform or skip producer review
 
-1. In `full`, send the exact frozen draft bytes/hash and source snapshot through
+1. In `full`, send the exact frozen draft records/revision and source snapshot through
    `PR-MILESTONE`; give the reviewer no write or scope-decision authority.
 2. In `lean` or `solo`, create the exact mode skip receipt and do not dispatch.
 3. Validate one producer response against schema, size, milestone/target, both
-   hashes, reviewer/timestamps, stable risks, evidence refs, and result hash.
+   revisions, reviewer/timestamps, stable risks, evidence refs, and result revision.
 4. Treat timeout, unavailability, malformed/multiple/mismatched response, or
    invented metrics as an explicit reviewer gap with `risk_status: UNKNOWN`.
 
@@ -121,7 +123,7 @@ not yet made a decision, and no report transaction has occurred.
    tradeoffs, and allowed decision values.
 2. Validate a supplied governance record and all required user-owned identity,
    time, rationale, accepted IDs, owners, and deadlines.
-3. Bind the record to exact source/draft/producer/objective hashes.
+3. Bind the record to exact source/draft/producer/objective revisions.
 4. Reject incompatible `PROCEED`; otherwise record the user value without
    changing any objective field.
 
@@ -132,9 +134,9 @@ acceptance from a request to review or write the report.
 
 1. Freeze one UTC second and derive the deterministic run ID/path.
 2. Construct the full report in the required section order and canonical format.
-3. Verify all embedded revisions/hashes, derivation inputs, stable IDs, and
+3. Verify all embedded revisions/revisions, derivation inputs, stable IDs, and
    layered states against the frozen objects.
-4. Compute exact `report_candidate_sha256` and byte count.
+4. Record exact `report_candidate_revision` and byte count.
 5. Require the canonical target path is absent; a collision blocks the write.
 
 The report candidate may exist in memory/scratch, but `report_persisted` remains
@@ -147,9 +149,9 @@ Preview:
 ```text
 operation: CREATE_NEW
 report_path: <canonical path>
-report_candidate_sha256: <sha256>
+report_candidate_revision: <revision>
 report_candidate_bytes: <integer>
-source_base_set: <ordered revisions and hashes>
+source_base_set: <ordered revisions and revisions>
 allowed_project_write_set: [<same report path>]
 ```
 
@@ -160,13 +162,13 @@ authorization leaves the project unchanged and sets
 
 ## Phase 11 — Compare-and-set and atomic create
 
-1. Re-resolve every authority/source path and recheck exact bytes, hashes,
+1. Re-resolve every authority/source path and recheck exact bytes, revisions,
    revisions, joins, and target absence.
 2. If any value changed, invalidate candidate/path/authorization and return a
    stale result; do not write.
 3. Prepare exact bytes in the target directory and use atomic create-new/no-
    replace semantics for the one authorized path.
-4. Reread and verify exact target bytes/hash and revalidate all sources.
+4. Reread and verify target schema, stable identity, and explicit revision and revalidate all sources.
 5. Report `artifact_write_status: COMPLETE` only after successful postchecks.
 
 Never overwrite, append, invent a collision suffix, widen the write set, or
@@ -177,7 +179,7 @@ not claim the report exists correctly.
 
 Return `cgs.milestone-review-run/v2` containing normalized request, contract and
 limit versions, milestone/authority identities, source/draft/producer/decision/
-report hashes, coverage, metrics, checks, findings, scope candidates/decisions,
+report revisions, coverage, metrics, checks, findings, scope candidates/decisions,
 layered status fields with derivation, mutation snapshots, exact report receipt
 or null, and stale key.
 

@@ -1,13 +1,13 @@
 ---
 name: story-readiness
-description: Validate bounded stories with deterministic, hash-bound Story, GDD, TR, ADR, control, dependency, asset, acceptance-criterion, test, sprint, and optional QA evidence; return stable findings and unpersisted readiness-record candidates without authorizing implementation or writing files.
+description: Validate bounded stories with deterministic, revision-bound Story, GDD, TR, ADR, control, dependency, asset, acceptance-criterion, test, sprint, and optional QA evidence; return stable findings and unpersisted readiness-record candidates without authorizing implementation or writing files.
 ---
 
 # Story Readiness
 
 Evaluate whether each exact story snapshot is ready for implementation. This is a
 strictly read-only evidence gate. It returns one independent verdict and one
-hash-bound record candidate per story; it never edits a story, source, tracker,
+revision-bound record candidate per story; it never edits a story, source, tracker,
 gate record, readiness registry, or implementation artifact and never invokes a
 recorder or implementation workflow.
 
@@ -22,17 +22,17 @@ Use exactly one scope form:
 ```text
 $story-readiness --story <project-relative-story-path>
                  [--review full|lean|solo]
-                 [--prior-records <project-relative-manifest>@sha256:<64-lower-hex>]
+                 [--prior-records <project-relative-manifest>@<revision>]
 
 $story-readiness --sprint <stable-sprint-id>
                  [--review full|lean|solo]
-                 [--prior-records <project-relative-manifest>@sha256:<64-lower-hex>]
+                 [--prior-records <project-relative-manifest>@<revision>]
 
 $story-readiness --all
-                 --scope-manifest <project-relative-manifest>@sha256:<64-lower-hex>
+                 --scope-manifest <project-relative-manifest>@<revision>
                  [--cursor <cgs-story-readiness-cursor-v1>]
                  [--review full|lean|solo]
-                 [--prior-records <project-relative-manifest>@sha256:<64-lower-hex>]
+                 [--prior-records <project-relative-manifest>@<revision>]
 ```
 
 - Exactly one of `--story`, `--sprint`, or `--all` is required.
@@ -40,13 +40,13 @@ $story-readiness --all
 - Every option may appear once. Paths are canonical project-relative paths with
   `/` separators, Unicode NFC, no glob, traversal, URI, drive prefix, symlink
   escape, or case-ambiguous match.
-- A scope/prior-record manifest is bound to its exact raw bytes by SHA-256.
+- A scope/prior-record manifest is bound to its exact raw bytes by revision.
 - A sprint ID is a stable declared ID, not a filename or timestamp.
 
 Unknown/missing/repeated options, positional arguments, invalid mode
-combinations, malformed paths/hashes/cursors, or an invalid review value return
+combinations, malformed paths/revisions/cursors, or an invalid review value return
 `USAGE_ERROR` before story resolution. A referenced manifest that is unreadable,
-hash-mismatched, malformed, unrelated, or stale returns `INPUT_ERROR`.
+revision-mismatched, malformed, unrelated, or stale returns `INPUT_ERROR`.
 
 Run outcomes are exactly:
 
@@ -111,18 +111,18 @@ story from session state.
 the exact raw bytes of `production/sprint-status.yaml`, the plan referenced by its
 canonical `cgs.sprint-tracker/v2` fields, and current story bytes. Select
 `cgs.sprint-tracker-v2-readiness-adapter/v1` only from the exact top-level schema;
-legacy `plan_path`/`plan_hash`, unknown schemas, or field-name guessing never form
+legacy `plan_path`/`plan revision`, unknown schemas, or field-name guessing never form
 authority. Never select “most recent,” use mtime, or choose among multiple matches.
 
 Require a positive `tracker_revision`, stable `event_id`, equal requested
 `sprint_id`/`active_sprint_id`, exactly one `sprint_state: ACTIVE` declaration,
 stable `lifecycle_owner` and `lifecycle_recorder: cgs.sprint-tracker/v2`, canonical
-`plan_file`, exact raw `plan_sha256`, matching `plan_revision`, and recomputed
-`story_set_hash`. Record the tracker's own raw SHA-256 and revision in the context/
+`plan_file`, exact raw `plan_revision`, matching `plan_revision`, and recomputed
+`story_set_revision`. Record the tracker's own raw revision and revision in the context/
 stale key. Resolve only that `plan_file`; require exact `cgs.sprint-plan/v2`
-schema/ID/revision/hash and exact date/timezone/estimate-unit/capacity receipt and
+schema/ID/revision and exact date/timezone/estimate-unit/capacity receipt and
 operand agreement. Validate complete tracker/plan story coverage and each row's
-stable ID, canonical path, priority, current story/core hashes, lifecycle
+stable ID, canonical path, priority, current story/core revisions, lifecycle
 provenance, readiness record/receipt binding, and gate-eligibility state.
 Every present session, project-stage, and current-milestone ACTIVE declaration must
 be unique and agree, but none can override tracker/plan identity. Missing,
@@ -133,19 +133,19 @@ returns `RUN_BLOCKED` before a sprint verdict summary.
 
 `--all` consumes only `cgs.story-readiness-scope/v1`; it never performs an
 unbounded recursive glob. The manifest contains the exact ordered story ID/path/
-raw-hash set, root/project/target identity, generation time, and manifest hash.
+declared revision set, root/project/target identity, generation time, and manifest revision.
 Apply the fixed page/file/byte/reference/reviewer limits in the rules reference.
 
 When work remains, return `RUN_PARTIAL` with a deterministic continuation cursor
-bound to the scope manifest, next ordinal, completed result-set hash, ruleset, and
+bound to the scope manifest, next ordinal, completed result-set revision, ruleset, and
 source snapshot. A changed manifest/context invalidates the cursor. Never silently
 sample or describe a partial page as the whole project.
 
 ## Freeze current context and authoritative sources
 
-For every selected story, compute the raw-byte SHA-256 before evaluation and
+For every selected story, validate the declared revision before evaluation and
 create a `cgs.story-readiness-context/v1` snapshot. It includes project target/
-dirty identity and exact source status/path/hash/fields used for:
+dirty identity and exact source status/path/revision/fields used for:
 
 - the story and optional prior readiness record;
 - the selected story adapter and exact create-stories producer SKILL/contract
@@ -153,7 +153,7 @@ dirty identity and exact source status/path/hash/fields used for:
 - `design/gdd/systems-index.md`, the bound Approved system GDD, and the exact GDD
   requirement IDs/locators;
 - `docs/architecture/tr-registry.yaml` and every referenced TR entry;
-- the story's `Source Manifest ID`, `Story Core SHA-256`, complete Source Manifest
+- the story's `Source Manifest ID`, `Story Core revision`, complete Source Manifest
   and Currentness Matrix, and every current source row used by that matrix;
 - `docs/architecture/control-manifest.md`, its current artifact/source-manifest/
   ruleset state, applicable Rule IDs, and the story's exact currentness rows;
@@ -162,12 +162,12 @@ dirty identity and exact source status/path/hash/fields used for:
 - imported QA plan/source manifests when claimed;
 - `.codex/docs/technical-preferences.md`, configured engine-version reference,
   and `production/review-mode.txt` when relevant; and
-- sprint tracker adapter/schema/raw hash/revision/event/unique ACTIVE declaration,
-  exact `plan_file`/raw `plan_sha256`, plan revision/story set, and session
+- sprint tracker adapter/schema/declared revision/event/unique ACTIVE declaration,
+  exact `plan_file`/raw `plan_revision`, plan revision/story set, and session
   corroboration for sprint scope.
 
 Each source status is exactly `LOADED_VALID`, `ABSENT`, `UNREADABLE`, `INVALID`,
-`HASH_MISMATCH`, `STALE`, `UNSUPPORTED`, or `OVER_LIMIT`. Do not turn missing or
+`revision mismatch`, `STALE`, `UNSUPPORTED`, or `OVER_LIMIT`. Do not turn missing or
 unreadable evidence into N/A or a pass.
 
 A story is in the production control plane when its path is under
@@ -185,17 +185,17 @@ producer Source Manifest and Currentness Matrix. `LEGACY-UNTRACED` is explicit
 
 Evaluate every applicable check ID from `SR-C001` through `SR-C016`. A check
 result is exactly `PASS`, `FAIL`, `BLOCKED`, `NOT_APPLICABLE`, or `UNVERIFIED` and
-contains applicability, inputs/hashes, deterministic assertion, evidence locators,
-finding IDs, and check-version hash.
+contains applicability, inputs/revisions, deterministic assertion, evidence locators,
+finding IDs, and check-version revision.
 
 N/A is allowed only where the rules explicitly permit it and must include current
 positive evidence and a reason. A source absence is not positive N/A evidence.
 
 Every non-pass creates `cgs.story-readiness-finding/v1` with a deterministic
-`SRF-<20-lower-hex>` ID, check/story identity, classification, current observation
+`SRF-<stable-finding-key>` ID, check/story identity, classification, current observation
 state, owner, external action, optional dependency ID, exact evidence, resolution
-condition, first-seen reference when available, and current snapshot hash.
-Diagnostic wording, line number, verdict, timestamp, and source byte hash do not
+condition, first-seen reference when available, and current snapshot revision.
+Diagnostic wording, line number, verdict, timestamp, and source byte count and revision do not
 control finding identity.
 
 Finding classification is `GAP`, `BLOCKER`, or `WARNING`. Observation is
@@ -207,28 +207,28 @@ failed/blocked required check into `PASS` or `READY`.
 
 A production story passes design traceability only when:
 
-1. it declares a stable system ID, exact canonical GDD path/hash, and stable GDD
+1. it declares a stable system ID, exact canonical GDD path/revision, and stable GDD
    requirement ID/locator;
-2. `systems-index.md` has exactly one matching system entry whose path/hash match
+2. `systems-index.md` has exactly one matching system entry whose path/revision match
    current GDD raw bytes and whose status is exactly `Approved`;
 3. the GDD identifies the same system/requirement and its canonical status is
    `Approved` where the schema requires a document status;
 4. every exact story TR ID exists once in the current registry with
    `status: active`, maps to that system/GDD requirement, and has no unresolved
    supersession; and
-5. every governing ADR exists, hashes exactly, and has `Status: Accepted`.
+5. every governing ADR exists, revisions exactly, and has `Status: Accepted`.
 
 A missing/invalid critical source, Proposed/missing ADR, non-Approved GDD, stale
-index/GDD hash, or ambiguous join is a `BLOCKER`. A story-local missing/malformed
+index/gdd revision, or ambiguous join is a `BLOCKER`. A story-local missing/malformed
 binding with otherwise available authority is a `GAP`. No filename, quoted prose,
 old record, waiver, or inferred system substitutes for the stable joins.
 
 For `cgs.story/v2`, recompute and compare the producer-owned `Source Manifest ID`
-and `Story Core SHA-256`, then validate every required row in `Source Manifest and
+and `Story Core revision`, then validate every required row in `Source Manifest and
 Currentness Matrix` against current exact bytes/state. The current control artifact,
 its external review/ACTIVE receipt when required, and every applicable stable Rule
 ID must match the control rows and exact bindings in the story. `Manifest Version`,
-`Manifest Hash`, and a `## Source Snapshot` section are not fields produced by
+`manifest revision`, and a `## Source Snapshot` section are not fields produced by
 `cgs.story/v2`; their absence is never a failure under this adapter and their
 presence never substitutes for the producer fields. Missing, malformed, incomplete,
 or stale producer fields or unavailable/invalid authority fail closed. Notes,
@@ -249,10 +249,10 @@ The rules reference defines the adapter-specific canonical story fields. For
   directly authored and imported QA specifications obey the same ID/cardinality
   and type-specific evidence rules;
 - imported QA-plan evidence is usable only when plan bytes, effective `CURRENT`
-  state, complete source manifest, exact story path/hash, AC set, Test ID set, and
+  state, complete source manifest, exact story path/revision, AC set, Test ID set, and
   one-to-one Test-ID definition are current;
 - dependencies use unique stable story IDs, canonical paths, explicit hard/soft
-  kind, current raw hashes/statuses, and resolution conditions; and
+  kind, current declared revision/statuses, and resolution conditions; and
 - a hard dependency passes only when its current story state is `Complete` or
   `Done`. Missing, unreadable, Draft, Blocked, Ready, or In Progress hard
   dependencies are blockers.
@@ -285,7 +285,7 @@ quality. Planned assets are never disguised as ordinary broken references.
 
 After deterministic checks, full mode sends one immutable
 `cgs.story-readiness-qa-packet/v1` per story to QL-STORY-READY. Each packet binds
-story/context/check-result hashes and contains story type, verbatim ACs with IDs,
+story/context/check-result revisions and contains story type, verbatim ACs with IDs,
 GDD/TR requirement text, dependencies, base verdict, and stable deterministic
 findings. Reviewer output cannot change deterministic evidence.
 
@@ -301,7 +301,7 @@ Normalize one result per packet/story:
 | `ADEQUATE` | keep deterministic verdict |
 | `GAPS` | create stable QA gaps; final is at least `NEEDS_WORK` |
 | `INADEQUATE` | create stable QA blockers; final is `BLOCKED` |
-| timeout, unavailable, malformed, duplicate, missing, or hash mismatch | QA check `UNVERIFIED`; final is `BLOCKED` |
+| timeout, unavailable, malformed, duplicate, missing, or revision mismatch | QA check `UNVERIFIED`; final is `BLOCKED` |
 
 Accepted risk never upgrades the result. In a batch, a failed/missing QA result
 affects only its story. Preserve completed per-story results, mark the run
@@ -335,11 +335,11 @@ completion describes evaluation coverage, not readiness.
 ## Readiness record candidate and independent recorder
 
 Return one `cgs.story-readiness-record-candidate/v1` per evaluated story containing
-story ID/path/raw hash, selected adapter ID and producer SKILL/contract/bundle
-hashes, checked-at UTC time,
-checker/ruleset ID/version/hash, review mode, full context/source snapshot,
-producer Source Manifest ID/Story Core hash, stable check rows/findings, base/QA/final
-verdicts, evaluation state, record/readiness keys and hashes, and exact
+story ID/path/declared revision, selected adapter ID and producer SKILL/contract/bundle
+revisions, checked-at UTC time,
+checker/ruleset ID/version/revision, review mode, full context/source snapshot,
+producer Source Manifest ID/Story Core revision, stable check rows/findings, base/QA/final
+verdicts, evaluation state, record/readiness keys and revisions, and exact
 `expires_when` conditions.
 
 Every direct candidate states:
@@ -365,8 +365,8 @@ or ruleset identity changes.
 Return `cgs.story-readiness-run/v2` with normalized invocation, run outcome,
 scope/sprint identity, limits/continuation, source coverage, mutation evidence,
 and the ordered independent per-story results. Each result includes current source
-hashes, checks, stable findings with owner/action/evidence/resolution, QA result,
-verdict derivation, record candidate/hash, and stale key.
+revisions, checks, stable findings with owner/action/evidence/resolution, QA result,
+verdict derivation, record candidate/revision, and stale key.
 
 Every run envelope states:
 

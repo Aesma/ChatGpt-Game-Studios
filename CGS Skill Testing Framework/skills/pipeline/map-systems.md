@@ -3,7 +3,7 @@
 ## Purpose
 
 Verify that `$map-systems` creates or safely updates exactly
-`design/gdd/systems-index.md` as a hash-bound Draft, separates explicit-loop
+`design/gdd/systems-index.md` as a revision-bound Draft, separates explicit-loop
 requirements from optional candidates, preserves stable System IDs through a
 three-way merge, validates a typed dependency graph, uses only catalog-declared
 routes/sign-off ownership, publishes through one compare-and-set transaction, and
@@ -16,7 +16,7 @@ workflow actually executes these cases.
 
 ## Frozen fixtures and observation
 
-Each case freezes exact bytes, source states, normalized real paths, and SHA-256
+Each case freezes exact bytes, source states, normalized real paths, and revision
 values for the applicable subset of:
 
 - `.codex/docs/workflow-catalog.yaml`;
@@ -29,7 +29,7 @@ values for the applicable subset of:
 - the destination parent directory.
 
 The harness records all reads, directory enumerations, prompts, decision IDs,
-candidate bytes, diffs, hashes, route selections, reviewer/subagent/workflow
+candidate bytes, diffs, revisions, route selections, reviewer/subagent/workflow
 events, temporary-file publication events, and workspace mutations. Unlisted or
 recursive reads fail a bounded-context case. Any persistent mutation outside the
 one exact index path fails every authoring case; one same-directory temporary file
@@ -80,7 +80,7 @@ infer missing catalog fields from this spec.
   deterministic topological order.
 - [ ] Context has fixed path/count/per-file/class/total-byte limits and never
   samples past a limit.
-- [ ] The one approval binds exact candidate bytes/hash, input hashes, decisions,
+- [ ] The one approval binds exact candidate bytes/revision, input revisions, decisions,
   diff, parent state, and the sole file operation.
 - [ ] CAS revalidates catalog, template, concept/pillars, base/absence, reference
   closure/directories, parent state, and rerendered candidate before publication.
@@ -102,7 +102,7 @@ The unique catalog `map-systems` entry has artifact path
 
 **Expected**
 
-The path is bound once and every read, preview, write, hash, and final result names
+The path is bound once and every read, preview, write, revision, and final result names
 it exactly. No `design/systems-index.md` alias is read or written.
 
 ### Case 2: catalog path drift blocks
@@ -140,7 +140,7 @@ the exact output remains Draft/NOT_PERFORMED.
 ### Case 5: catalog requires external formal sign-off
 
 The catalog declares one exact external sign-off owner, workflow ID, profile,
-transition ID, and receipt rule for the systems-index hash.
+transition ID, and receipt rule for the systems-index revision.
 
 **Expected**
 
@@ -172,7 +172,7 @@ transition ID.
 
 ### Case 8: old sign-off cannot authorize changed bytes
 
-Provide a receipt bound to base hash B1 and render candidate H1.
+Provide a receipt bound to base revision B1 and render candidate H1.
 
 **Expected**
 
@@ -289,7 +289,7 @@ An exact GDD or epic reference contains the affected stable ID.
 
 **Expected**
 
-Return `BLOCKED_REFERENCED_ID`; preserve BASE, name reference path/hash, and offer
+Return `BLOCKED_REFERENCED_ID`; preserve BASE, name reference path/revision, and offer
 only a unique catalog-declared migration route or `Stop`. No consumer or index is
 mutated.
 
@@ -312,7 +312,7 @@ two dependencies.
 **Expected**
 
 Candidate changes only the selected graph fields and document-level Draft/sign-off
-state required by a changed hash. All listed base content remains identical in the
+state required by a changed revision. All listed base content remains identical in the
 parsed/canonical model; no GDD existence scan upgrades progress.
 
 ### Case 22: unsupported or ambiguous base blocks
@@ -396,7 +396,7 @@ under declared file/byte limits.
 **Expected**
 
 Enumerate only direct children, read only exact ID/reference evidence, and bind
-every path/hash/directory count into preview and CAS. General GDD design content is
+every path/revision/directory count into preview and CAS. General GDD design content is
 not loaded.
 
 ### Case 30: count, file, class, or total budget exceeded
@@ -426,8 +426,8 @@ The user approves final candidate H1.
 
 **Expected**
 
-Preview contains only CREATE of `design/gdd/systems-index.md`, exact H1 bytes/hash,
-all input hashes, decisions, diff, budgets, and destination parent state. It says
+Preview contains only CREATE of `design/gdd/systems-index.md`, exact H1 bytes/revision,
+all input revisions, decisions, diff, budgets, and destination parent state. It says
 session-state/stage/downstream execution NONE.
 
 ### Case 33: UPDATE preview includes full three-way diff
@@ -445,7 +445,7 @@ The user declines the exact changeset.
 
 **Expected**
 
-Return STOPPED/DECLINED with candidate hash and proposed diff. Index and every
+Return STOPPED/DECLINED with candidate revision and proposed diff. Index and every
 session-state path remain unchanged.
 
 ### Case 35: publication failure cannot report COMPLETE
@@ -456,12 +456,12 @@ verification.
 **Expected**
 
 Pre-publication failures report FAILED/BLOCKED; uncertain or mismatched published
-state reports PARTIAL with the exact observed path/hash. No case claims COMPLETE
+state reports PARTIAL with the exact observed path/revision. No case claims COMPLETE
 or writes session state.
 
 ## Approval and CAS
 
-### Case 36: final approval is hash-bound and singular
+### Case 36: final approval is revision-bound and singular
 
 The user already approved enumeration, graph, and priorities, then sees H1.
 
@@ -477,7 +477,7 @@ Another actor changes B1 to B2 before commit.
 
 **Expected**
 
-CAS returns CONFLICT with old/new hashes and zero writes. No three-way auto-merge,
+CAS returns CONFLICT with old/new revisions and zero writes. No three-way auto-merge,
 refresh, retry, or overwrite occurs.
 
 ### Case 38: dependency input changes after preview
@@ -506,7 +506,7 @@ succeeds on read-back.
 
 **Expected**
 
-On-disk hash equals H1, status is Draft, sign-off NOT_PERFORMED, and only the index
+On-disk revision equals H1, status is Draft, sign-off NOT_PERFORMED, and only the index
 path changed. Authoring may report COMPLETE and proceeds only to route resolution.
 
 ## Catalog-only recovery and downstream routing

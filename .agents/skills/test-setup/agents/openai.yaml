@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Setup"
   short_description: "Audit, repair, and verify deterministic engine test infrastructure"
-  default_prompt: "Use $test-setup to bind structured engine and repository policy, semantically audit or ID-repair the test framework, and require pinned static checks, discovery, deterministic pass/fail canaries, reviewed immutable CI dependencies, and current hash-bound receipts before calling setup complete."
+  default_prompt: "Use $test-setup to bind structured engine and repository policy, semantically audit or ID-repair the test framework, and require pinned static checks, discovery, deterministic pass/fail canaries, reviewed immutable CI dependencies, and current revision-bound receipts before calling setup complete."

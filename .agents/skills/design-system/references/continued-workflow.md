@@ -24,7 +24,7 @@ and exactly one class:
 | Class | Authority and required provenance | Handling |
 |---|---|---|
 | product-choice | User or named product owner; prompt and selected option | Present two to four meaningful options and let the owner decide |
-| evidence-backed-hard-constraint | Current owner document path, section, SHA-256, and exact supported fact | The current target cannot override it; route a requested change to the owning document |
+| evidence-backed-hard-constraint | Current owner document path, section, revision, and exact supported fact | The current target cannot override it; route a requested change to the owning document |
 | derived-design-constraint | Accepted input decision IDs, derivation, assumptions, and proposed result | Show the derivation; user accepts, rejects, or requests revision; never call it hard evidence |
 | technical-handoff | Source question/evidence, destination ADR/TECH, and decision-needed or constraint-to-verify | Keep it out of the GDD and record only in the checkpoint |
 
@@ -38,7 +38,7 @@ Use a decision record shaped as:
     source:
       path: <path or null>
       section: <heading or null>
-      sha256: <hash or null>
+      revision: <revision or null>
     inputs: []
     derivation: null
     assumptions: []
@@ -49,7 +49,7 @@ For product choices, state what the section must decide, cite only relevant
 bounded evidence, present options with tradeoffs, and ask the user to decide.
 Do not let a specialist, registry claim, ADR, or engine fact make the choice.
 
-For an evidence-backed hard constraint, re-hash its owner source before using
+For an evidence-backed hard constraint, re-read its owner source before using
 it. Explain what remains open for product choice. A user preference in this
 target cannot silently override current external-owner evidence. If the user
 wants the hard fact changed, mark the section blocked and route work to its
@@ -96,9 +96,9 @@ approval:
    and regenerate the draft.
 4. Extract named shared facts, formulas, constants, entities, and dependency
    claims from the draft.
-5. Compare them with the hash-bound registry snapshot and relevant owner
+5. Compare them with the revision-bound registry snapshot and relevant owner
    evidence. Apply the claim classifications from the main workflow.
-6. Re-hash every loaded source cited as a hard constraint. If evidence changed,
+6. re-read every loaded source cited as a hard constraint. If evidence changed,
    return ERROR — CONTEXT CLAIM CHANGED, write nothing, and stop.
 7. Resolve target-owned change candidates through the user decision and add only
    registry_handoffs. An external-owner conflict blocks the section.
@@ -121,16 +121,14 @@ section pending or blocked, set checkpoint status partial, and stop.
 
 Store the exact approved body under approved_drafts, keyed by section, and set
 workflow_state to approved-not-written. This permits safe recovery only while
-all bound hashes still match.
+all bound revisions still match.
 
 ### 4d. Transactional preflight immediately before every GDD write
 
 Immediately before writing:
 
-1. Re-read target bytes and compute SHA-256. It must equal
-   checkpoint.current_sha256. A mismatch returns
-   ERROR — CONCURRENT TARGET CHANGE with zero writes.
-2. Re-hash the registry file when registry_snapshot.sha256 is non-null and every
+1. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+2. re-read the registry file when registry_snapshot.revision is non-null and every
    loaded evidence source used by the section. Any mismatch returns
    ERROR — CONTEXT CLAIM CHANGED with zero writes.
 3. Confirm target and checkpoint are the only mutation_scope paths.
@@ -140,7 +138,7 @@ Immediately before writing:
    never substitutes a broader predicate.
 6. Repeat the routing scan so no technical, QA, or review material entered
    after approval.
-7. Confirm current body range is unique and its baseline/current body hash meets
+7. Confirm current body range is unique and its baseline/current body revision meets
    the origin-mode predicate.
 8. If current GDD status is Approved or In Review, include a demotion to
    In Design in this first content-write transaction and invalidate the prior
@@ -148,12 +146,12 @@ Immediately before writing:
 
 | origin_mode | Required pre-write predicate |
 |---|---|
-| new | Current body is the skeleton placeholder, or approved-not-written identifies a recoverable write against matching hashes |
+| new | Current body is the skeleton placeholder, or approved-not-written identifies a recoverable write against matching revisions |
 | fill-gaps | Baseline inventory classified the required section missing, empty, or placeholder-only; no substantive baseline body may be replaced |
-| revise-section | This is the one selected section; required content had a substantive baseline, while supported optional content may have a substantive, missing, empty, or placeholder-only baseline; the stored baseline body hash/state still matches |
+| revise-section | This is the one selected section; required content had a substantive baseline, while supported optional content may have a substantive, missing, empty, or placeholder-only baseline; the stored baseline body revision/state still matches |
 
-For resume, enforce its stored origin_mode, baseline_target_sha256,
-baseline_section_sha256, and authorized_scope. A revise-section recovery may
+For resume, enforce its stored origin_mode, baseline_target_revision,
+baseline_section_revision, and authorized_scope. A revise-section recovery may
 replace the still-matching substantive body; do not apply resume's old
 "body must be non-substantive" shortcut.
 
@@ -173,11 +171,11 @@ section order.
 
 On the first content mutation of an existing artifact:
 
-1. copy any active review_handoff.target_sha256, or otherwise the pre-mutation
-   target hash when status was Approved or In Review, into
-   review_handoff.invalidated_target_sha256;
+1. copy any active review_handoff.target_revision, or otherwise the pre-mutation
+   target revision when status was Approved or In Review, into
+   review_handoff.invalidated_target_revision;
 2. set invalidation_reason to content-mutation;
-3. clear active target_sha256 and context_manifest_sha256;
+3. clear active target_revision and context_manifest_revision;
 4. set GDD status to In Design; and
 5. never copy or reconstruct a prior review verdict.
 
@@ -186,15 +184,15 @@ Apply the GDD write atomically. Then:
 1. re-read the target;
 2. verify exactly one intended section changed and every out-of-scope section is
    byte-for-byte unchanged, except the authorized status demotion;
-3. compute the new target SHA-256;
+3. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 4. set workflow_state written and content_state to substantive or
    not-applicable;
 5. attach the section's decision IDs;
 6. remove its approved_drafts entry;
-7. update checkpoint.current_sha256; and
+7. update checkpoint.current_revision; and
 8. atomically write only the authorized checkpoint.
 
-If verification fails, report ERROR with the observed hash and stop. Do not
+If verification fails, report ERROR with the observed revision and stop. Do not
 attempt unrelated cleanup.
 
 ## 5. system-gdd/v2 content assertions
@@ -358,7 +356,7 @@ consultation in the run.
 ## 7. Whole-artifact and context validation
 
 After all authorized sections are written, re-read the whole GDD and compute its
-SHA-256. Validate:
+revision. Validate:
 
 - every required canonical heading occurs exactly once;
 - every required body passes all applicable system-gdd/v2 assertions;
@@ -370,10 +368,7 @@ SHA-256. Validate:
 - each present optional section is substantive or valid not-applicable; and
 - every loaded context file still matches context_manifest.
 
-Recompute the ordered context-manifest digest. If a loaded source changed, keep
-the GDD In Design, set checkpoint status partial and reason
-CONTEXT_CHANGED_DURING_AUTHORING, clear active review-handoff hashes, report the
-changed paths, and stop. Do not claim readiness from stale context.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Mode completion has two dimensions:
 
@@ -384,18 +379,15 @@ If run scope is complete but artifact is not, keep status In Design, set
 checkpoint status partial, list validation failures and incomplete sections,
 and stop.
 
-If both pass, perform one final hash-guarded GDD write that sets only Status to
-In Review. Never write Approved or embed review/sign-off text. Re-read the
-target, compute final SHA-256, set checkpoint status
-ready-for-independent-review, and set:
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
     approved_drafts: {}
     review_handoff:
       required: true
-      target_sha256: <final target SHA-256>
+      target_revision: <final target revision>
       content_profile: system-gdd/v2
-      context_manifest_sha256: <current manifest digest>
-      invalidated_target_sha256: <prior hash or null>
+      context_manifest_revision: <current manifest reference ID>
+      invalidated_target_revision: <prior revision or null>
       invalidation_reason: <content-mutation or null>
       target_status: In Review
       command: $design-review design/gdd/<system-slug>.md
@@ -410,8 +402,8 @@ Return:
 
     Authoring complete for: design/gdd/<system-slug>.md
     Content profile: system-gdd/v2
-    Current SHA-256: <final target hash>
-    Context manifest SHA-256: <manifest digest>
+    Current revision: <final target revision>
+    Context manifest revision: <manifest reference ID>
     Author status: In Review
     Independent review required: open a fresh task and run
       $design-review design/gdd/<system-slug>.md
@@ -426,14 +418,14 @@ evidence. A later external recorder may approve only from a persisted canonical
 independent report and immutable receipt that satisfy all of:
 
 1. whole-artifact formal review verdict exactly APPROVED;
-2. report target path and SHA-256 equal the current GDD;
+2. report target path and revision equal the current GDD;
 3. report profile is system-gdd/v2 or a compatible independently validated
    profile;
 4. review independence is formal, not same-task or advisory-only;
-5. report and receipt are immutable/hash-bound;
+5. report and receipt are immutable/revision-bound;
 6. any required context binding is current;
 7. systems-index expected pre-state still matches; and
-8. the recorder re-hashes immediately before compare-and-set.
+8. the recorder re-reads immediately before atomic conflict check.
 
 STALE REVIEW, context mismatch, index mismatch, NEEDS REVISION, MAJOR REVISION
 NEEDED, PARTIAL REVIEW, accepted risk, solo/advisory review, or missing receipt
@@ -444,20 +436,20 @@ and Implemented. Designed is invalid. This author never writes the index.
 
 When review requires revision, start a separate design-system task in
 revise-section mode for one selected section. That first mutation invalidates
-the prior handoff. Review the new whole-artifact hash in another fresh task.
+the prior handoff. Review the new whole-artifact revision in another fresh task.
 
 ## 9. Recovery and resume
 
 On interruption, re-read target and checkpoint. Require
 design-system-checkpoint/v3 and validate content_profile, target, origin_mode,
-invocation_mode, mutation_scope, authorized_scope, baseline hashes,
-context-manifest records, registry snapshot, and current_sha256.
+invocation_mode, mutation_scope, authorized_scope, baseline revisions,
+context-manifest records, registry snapshot, and current_revision.
 
 - Matching evidence: set invocation_mode resume and preserve origin_mode;
   recover approved-not-written first, otherwise the first pending authorized
   section.
-- Target hash mismatch: ERROR — STALE CHECKPOINT, zero writes.
-- Relevant context/registry/evidence hash mismatch:
+- Target revision mismatch: ERROR — STALE CHECKPOINT, zero writes.
+- Relevant context/registry/evidence revision mismatch:
   ERROR — CONTEXT CLAIM CHANGED, zero writes until a new inventory and
   authorization.
 - Missing checkpoint: resume unavailable; user may explicitly choose a new
@@ -465,7 +457,7 @@ context-manifest records, registry snapshot, and current_sha256.
 - v1/v2 checkpoint: ERROR — UNSUPPORTED CHECKPOINT SCHEMA, zero writes.
 - Written substantive section: never re-authored by resume.
 - approved-not-written: recover only the exact stored body while target,
-  origin-mode baseline, registry, and evidence hashes match.
+  origin-mode baseline, registry, and evidence revisions match.
 
-Never use conversation memory as approval, decision provenance, or hash
+Never use conversation memory as approval, decision provenance, or revision
 evidence. Never reconstruct a formal verdict in the checkpoint.

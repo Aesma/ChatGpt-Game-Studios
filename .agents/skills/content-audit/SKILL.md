@@ -1,7 +1,17 @@
 ---
 name: content-audit
-description: "Read-only, bounded comparison of stable content requirement IDs with hash-bound target-build inclusion evidence, explicit coverage, and fail-closed verdicts."
+description: "Read-only, bounded comparison of stable content requirement IDs with revision-bound target-build inclusion evidence, explicit coverage, and fail-closed verdicts."
 ---
+
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
 
 # Content Audit
 
@@ -38,7 +48,7 @@ and stop.
 
 This workflow is a strictly read-only analyzer:
 
-- It may enumerate, hash, parse, and read project-local regular files and inspect
+- It may enumerate, revision, parse, and read project-local regular files and inspect
   read-only Git state.
 - It must not create, edit, append, rename, delete, stage, commit, publish, or
   approve any file or project state.
@@ -50,7 +60,7 @@ This workflow is a strictly read-only analyzer:
   or performs that write.
 
 Use one frozen target snapshot throughout the run. Never combine facts from
-different file hashes, target IDs, manifests, adapter versions, or build IDs.
+different file revisions, target IDs, manifests, adapter versions, or build IDs.
 
 Verdict contract is exactly
 `COMPLETE | GAPS FOUND | MISSING CRITICAL CONTENT | PARTIAL`. `ERROR` is an
@@ -64,13 +74,13 @@ turn an untrustworthy partial execution into a review-evidence claim.
 ## Phase 0 — Resolve instructions, project identity, and scope
 
 Read every applicable `AGENTS.md` from repository root through each in-scope
-artifact directory, in root-to-target order, and record path plus exact SHA-256.
+artifact directory, in root-to-target order, and record path plus exact revision.
 The nearest applicable instruction wins.
 
 Represent `project_id` as the exact string
 `root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>` and compute
-`project_id_sha256` over its UTF-8 bytes. If Git is unavailable, use `null`, keep
-working from exact current file hashes, record Git provenance as unavailable,
+`project_id_revision` over its UTF-8 bytes. If Git is unavailable, use `null`, keep
+working from exact current file revisions, record Git provenance as unavailable,
 and force `PARTIAL`; never guess a commit.
 
 Resolve scope from explicit structured sources, in this order:
@@ -99,7 +109,7 @@ or modification time.
 
 ---
 
-## Phase 1 — Lock a bounded exact-hash input manifest
+## Phase 1 — Lock a bounded exact-revision input manifest
 
 Build a deterministic candidate inventory before interpreting content. Include
 all discovered requirement sources, system index and inventory artifacts,
@@ -109,8 +119,8 @@ supplied external asset-audit evidence. Record excluded candidates too.
 
 Accept only canonical project-relative paths to regular files. Do not follow
 symlinks, junctions, aliases, nested repositories, URLs, generated report
-directories, or paths that normalize outside the project root. Hash exact raw
-bytes with SHA-256 before parsing; normalized text is never the hash input.
+directories, or paths that normalize outside the project root. revision exact raw
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Use these fixed upper bounds:
 
@@ -127,16 +137,16 @@ max_advisory_observations: 1024
 ```
 
 Sort canonical candidates by channel, stable artifact ID or null, then path.
-Enumeration and streaming hashes do not consume semantic-read bytes. A source is
+Enumeration and streaming revisions do not consume semantic-read bytes. A source is
 read in full or not semantically judged at all; never split or sample one file.
-Stream the complete candidate identity sequence into `inventory_sha256`, but
+Stream the complete candidate identity sequence into `inventory_revision`, but
 retain at most `max_manifest_candidates` detailed rows. On candidate overflow,
 record the exact total and omitted counts, the first and last omitted sort keys,
-and `omitted_candidates_sha256` over the omitted canonical identity sequence.
+and `omitted_candidates_revision` over the omitted canonical identity sequence.
 Select semantic inputs only from the retained prefix, add one `OVER_LIMIT`
 coverage row for the aggregate omitted channel, identify every affected check,
 and force `PARTIAL`. For every other limit, retain the bounded detailed prefix
-plus exact overflow count and digest. Never silently omit input, raise a limit,
+plus exact overflow count and reference ID. Never silently omit input, raise a limit,
 or interpret a bounded subset as complete coverage.
 
 Each manifest row contains:
@@ -145,21 +155,21 @@ Each manifest row contains:
 channel: instruction | requirement | scope | target | inclusion | adapter | dependency | external
 artifact_id: <stable ID or null>
 path: <canonical project-relative path>
-  sha256: <locked 64-lowercase-hex or null>
-  revalidation_sha256: <final 64-lowercase-hex or null>
+  revision: <locked non-empty stable value or null>
+  revalidation_revision: <final non-empty stable value or null>
 bytes: <non-negative integer or null>
 status: LOCKED | EXCLUDED | MISSING | UNREADABLE | INVALID | UNSUPPORTED | OVER_LIMIT | SYMLINK_REJECTED | OUTSIDE_PROJECT | STALE
 reason: <bounded exact reason>
 planned_checks: [<stable check IDs>]
 ```
 
-`manifest_sha256` is SHA-256 over canonical JSON of the ordered retained rows,
-inventory and overflow digests/counts, plus project, invocation, contract,
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+inventory and overflow reference IDs/counts, plus project, invocation, contract,
 target, build, adapter, and limit values. Canonical JSON uses UTF-8,
 lexicographically ordered object keys, displayed array order, no insignificant
 whitespace, and one final LF.
 
-Re-enumerate the declared candidate roots and re-hash every locked input before
+Re-enumerate the declared candidate roots and re-read every locked input before
 finalizing. An added, removed, renamed, or changed input is `STALE`; discard any
 semantic conclusion derived from the changed bytes, record affected checks as
 incomplete, preserve unrelated current evidence, and return `PARTIAL`. Never mix
@@ -170,7 +180,7 @@ the old and new snapshots or silently restart against a different target.
 ## Phase 2 — Normalize authoritative requirement IDs
 
 Read every selected requirement source in full exactly once. For every source,
-record `READ | MISSING | UNREADABLE | INVALID | OVER_LIMIT | STALE`, its hash,
+record `READ | MISSING | UNREADABLE | INVALID | OVER_LIMIT | STALE`, its revision,
 bytes, parser/schema version, contributed IDs, and affected checks.
 
 Normalize each explicit auditable requirement to:
@@ -189,7 +199,7 @@ source:
   artifact_id: <stable artifact ID>
   path: <canonical path>
   locator: <stable requirement ID/anchor; bounded line span only as fallback>
-  sha256: <exact raw-byte hash>
+  revision: <exact declared revision>
   schema_version: <version or null>
 ```
 
@@ -203,7 +213,7 @@ requirement coverage incomplete, and forces `PARTIAL`; never choose one side.
 
 A normative statement that requires N items but supplies no stable IDs is an
 `UNIDENTIFIED_REQUIREMENTS` coverage record. Preserve the exact quantity, unit,
-source locator, and hash. Do not invent IDs or names, pair it with N files, use it
+source locator, and revision. Do not invent IDs or names, pair it with N files, use it
 in set completeness, or calculate a completion percentage.
 
 Localized, difficulty, platform, accessibility, and cosmetic variants remain
@@ -249,7 +259,7 @@ source:
   artifact_id: <stable manifest or adapter-input ID>
   path: <canonical path>
   locator: <stable record key>
-  sha256: <exact raw-byte hash>
+  revision: <exact declared revision>
 adapter:
   id: <registered adapter ID or direct-manifest>
   version: <exact version>
@@ -272,7 +282,7 @@ Classify every normalized requirement exactly once:
 - `UNKNOWN_INCLUSION`: neither a current valid inclusion nor explicit exclusion
   record exists for the exact ID.
 - `EVIDENCE_CONFLICT`: current authoritative records disagree or their identity,
-  target, build, schema, adapter, provenance, or hashes cannot be reconciled.
+  target, build, schema, adapter, provenance, or revisions cannot be reconciled.
 
 Paths, filenames, source matches, directory or glob totals, editor objects,
 test fixtures, import metadata, and file existence are advisory observations
@@ -298,7 +308,7 @@ It may display a supplied asset-audit record only when all of these hold:
 
 - the envelope is `cgs.review-evidence/v1` and its producer is `asset-audit`;
 - the extension schema and producer version are recognized;
-- every artifact and payload hash recomputes against the locked snapshot;
+- every artifact and payload revision recomputes against the locked snapshot;
 - its target/asset stable IDs resolve exactly; and
 - the evidence is current for this target where target identity applies.
 
@@ -341,7 +351,7 @@ source:
   artifact_id: <stable graph artifact ID>
   path: <canonical path>
   locator: <stable edge key>
-  sha256: <exact raw-byte hash>
+  revision: <exact declared revision>
   schema_version: <version>
 ```
 
@@ -357,24 +367,18 @@ into missing or shipped content.
 Assign every finding a stable ID:
 
 ```yaml
-id: CAU-<category-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <64-lowercase-hex>
+id: CAU-<category-slug>-<stable-finding-id>
+stable_key: <structured stable key>
 category: MISSING_CONTENT | UNIDENTIFIED_REQUIREMENT | IDENTITY_CONFLICT | EVIDENCE_CONFLICT | COVERAGE_GAP | DEPENDENCY_GAP
 requirement_id: <stable ID or null>
 system_id: <stable ID or null>
 target_id: <stable ID>
-evidence: [<complete exact-hash references>]
+evidence: [<complete exact-revision references>]
 status: OPEN | RESOLVED_IN_CURRENT
 acceptance: <objective current-snapshot closure condition>
 ```
 
-Fingerprint canonical JSON from `project_id_sha256`, category, stable
-requirement/system/target IDs, stable source artifact IDs, and stable dependency
-edge IDs. Exclude display labels, paths, raw wording, line numbers, source hashes,
-severity/priority, status, timestamps, and run ID so the same logical issue keeps
-its ID after movement or wording changes. Sort and deduplicate only by the full
-fingerprint. Incompatible evidence under one fingerprint is an evidence conflict
-and forces `PARTIAL`.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ---
 
@@ -387,7 +391,7 @@ record, adapter channel, and required check:
 channel_id: <stable channel/check ID>
 artifact_id: <stable ID or null>
 path: <canonical path or null>
-sha256: <hash or null>
+revision: <revision or null>
 bytes: <integer or null>
 status: COMPLETE | PARTIAL | FAILED | NOT_APPLICABLE
 checks:
@@ -427,12 +431,12 @@ An empty requirement set never yields `COMPLETE`.
 
 ---
 
-## Phase 7 — Return one hash-bound evidence packet
+## Phase 7 — Return one revision-bound evidence packet
 
 Return one machine-readable packet followed by a concise human projection.
 `--summary` may compact rows in the human projection only; it must return the
 same manifest, coverage dimensions, verdict, six ID sets, known gaps, finding
-IDs, and hashes as the equivalent full run.
+IDs, and revisions as the equivalent full run.
 
 The extension payload uses this shape:
 
@@ -442,7 +446,7 @@ contract: cgs.content-audit/v3
 result: OK
 verdict: COMPLETE | GAPS FOUND | MISSING CRITICAL CONTENT | PARTIAL
 project_id: <canonical project identity>
-project_id_sha256: <hash>
+project_id_revision: <revision>
 run_id: <lowercase UUID>
 observed_at: <UTC ISO-8601>
 invocation:
@@ -451,15 +455,15 @@ invocation:
   build_id: <stable ID>
   summary: true | false
 manifest:
-  sha256: <manifest hash>
-  inventory_sha256: <complete candidate identity-sequence hash>
+  revision: <manifest revision>
+  inventory_revision: <complete candidate identity-sequence revision>
   limits: <all fixed limits>
-  overflow: <exact counts, boundary sort keys, and omitted-sequence digests>
+  overflow: <exact counts, boundary sort keys, and omitted-sequence reference IDs>
   rows: [<ordered manifest rows>]
 coverage:
   dimensions: <status and reason per required dimension>
   ledger: [<ordered coverage rows>]
-requirements: [<normalized exact-hash requirement records>]
+requirements: [<normalized exact-revision requirement records>]
 implementation_rows: [<one classified row per requirement ID>]
 sets:
   specified_ids: []
@@ -484,17 +488,15 @@ disclaimer: <required boundary text>
 
 Sort requirements and implementation rows by `system_id`, `content_type`, then
 `requirement_id`; sort every ID set lexicographically; sort findings by category,
-stable system/requirement ID, then fingerprint. Bound excerpts and advisory text.
+stable system/requirement ID, then stable key. Bound excerpts and advisory text.
 
-Hash the canonical extension payload exactly as displayed. The envelope fields
-`record_id` and `report_payload_sha256` are outside that payload. Canonicalization
-is UTF-8 canonical JSON as defined in Phase 1, with one final LF. Wrap it in:
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<SHA-256 of the canonical envelope payload excluding record_id>
-artifact_id: content-audit:<project_id_sha256>:<target_id>:<manifest_sha256>
-artifacts: [<every locked path and exact SHA-256, sorted as manifest>]
+record_id: <stable allocated record ID>
+artifact_id: content-audit:<project_id_revision>:<target_id>:<manifest_revision>
+artifacts: [<every locked path and exact revision, sorted as manifest>]
 reviewer: <stable task identity or codex-task:<run_id>>
 review_run_id: <run_id>
 review_depth: bounded-full
@@ -503,7 +505,7 @@ verdict: <content-audit verdict>
 timestamp: <observed_at>
 finding_ids: [<sorted stable finding IDs>]
 unresolved_blocker_ids: [<sorted open critical/coverage finding IDs>]
-report_payload_sha256: <SHA-256 of canonical extension payload>
+report_payload_revision: <positive integer>
 producer:
   tool: content-audit
   version: cgs.content-audit/v3
@@ -511,10 +513,10 @@ extension: <the complete cgs.content-audit-report/v1 payload>
 ```
 
 Canonicalize the envelope without `record_id`, recompute all artifact,
-manifest, report-payload, and record hashes once, and fail with
+manifest, report-payload, and record revisions once, and fail with
 `ERROR — EVIDENCE CONSTRUCTION FAILED` rather than emitting inconsistent
 evidence. The evidence is valid only for its exact target, build, adapter,
-manifest, and artifact hashes.
+manifest, and artifact revisions.
 
 The disclaimer must state: file presence is not proof of shipped content;
 `PARTIAL` is not a completeness claim; format compliance remains owned by
@@ -544,7 +546,7 @@ narrative, accessibility obligations, or release/platform commitments. Never use
 gap count, percentage, size, or work-hour estimates. A quick-design output is a
 proposal, not audit evidence, and closes nothing until a separate approved
 application changes a canonical artifact and a new audit observes that exact new
-hash.
+revision.
 
 Stop after returning the packet and recommendation. Never persist the packet,
 modify a content or design artifact, update a catalog result, or invoke the next

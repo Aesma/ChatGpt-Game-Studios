@@ -15,11 +15,11 @@ and verified.
 
 Invoke only as:
 
-`$team-live-ops --request <path> --expect-request <sha256>`
+`$team-live-ops --request <path> --request-revision <revision>`
 
 Require both flags exactly once. Reject unknown/duplicate fields, missing values,
 directories where files are required, globs, `latest`, mtime selection, unsafe IDs,
-absolute or escaping paths, symlinks, unsupported schemas and request-hash drift. Stop
+absolute or escaping paths, symlinks, unsupported schemas and request_revision drift. Stop
 before project reads, delegation, output or writes on invocation failure.
 
 The request is strict `cgs.team-live-ops-request/v2` and declares one operation:
@@ -33,7 +33,7 @@ The request is strict `cgs.team-live-ops-request/v2` and declares one operation:
 
 The request binds stable run/season IDs, mode `full|lean|solo`, create/revise intent,
 exact `cgs.live-ops-context-manifest/v2`, season-ID reservation/registry observation,
-ethics policy, review policy, producer registry and instruction-chain paths/hashes;
+ethics policy, review policy, producer registry and instruction-chain paths/revisions;
 expected predecessor checkpoint; fixed file/byte/dependency/proposal/agent/response/time
 budgets; exact operation outputs; and mutation authority/expiry when recording.
 
@@ -61,7 +61,7 @@ implementation, QA, launch, deployment or publication.
 
 ## Ethics gate inherited by every phase
 
-A readable, hash-bound ethics policy is required for payment/premium currency,
+A readable, revision-bound ethics policy is required for payment/premium currency,
 randomized rewards, artificial scarcity or time pressure, behavioral targeting,
 sensitive experimentation/telemetry, or an audience that includes or may include
 minors. Missing/unreadable required policy returns `BLOCKED — POLICY REQUIRED`.
@@ -109,14 +109,14 @@ and its effect.
 `cgs.live-ops-context-manifest/v2` is the only context authority. It declares stable
 run/season/product IDs, create/revise mode, exact reserved season-ID receipt or existing
 season identity, ordered first-order source dependencies, policy/review/registry paths
-and hashes, target audiences/regions/platforms, and fixed budgets.
+and revisions, target audiences/regions/platforms, and fixed budgets.
 
 For CREATE, require a collision-free stable season-ID reservation/registry receipt from
-its owner. For REVISE, require exact prior plan identity/hash and new revision identity.
+its owner. For REVISE, require exact prior plan identity/revision and new revision identity.
 Never scan a directory, derive the next number, rename on collision or overwrite an
 existing season. Normalize IDs/paths and reject canonical duplicates.
 
-Read only listed first-order dependencies and their explicitly declared hash-bound
+Read only listed first-order dependencies and their explicitly declared revision-bound
 dependencies: game concept, approved design sources, current economy rules, policy,
 platform/region constraints and named prior plans. Default ceilings are 16 files,
 768 KiB, dependency depth 2, 32 proposal objects, 4 concurrent workers, 64 KiB per
@@ -124,9 +124,9 @@ response and 20 minutes; a request may lower but not raise them.
 
 Admit whole source dependency closures. Record selected, loaded, missing, unreadable,
 invalid, omitted and unprocessed rows with bytes/depth/reason. Required omission,
-budget exhaustion, stale hash or unsupported source yields `PARTIAL CONTEXT / BLOCKED`.
+budget exhaustion, stale revision or unsupported source yields `PARTIAL CONTEXT / BLOCKED`.
 Never silently truncate or send full repository context to delegates. Each prompt gets
-only the needed bounded subset plus exact hashes and returns a bounded schema payload.
+only the needed bounded subset plus exact revisions and returns a bounded schema payload.
 
 ## Proposal ownership and artifact writers — TLO-010
 
@@ -143,15 +143,15 @@ RECORD uses exactly four disjoint immutable artifacts:
 
 | Artifact/schema | Unique writer | Canonical target |
 |---|---|---|
-| `cgs.live-ops-season-plan/v2` | live-ops-designer as season recorder | `design/live-ops/seasons/{season-id}/{plan-identity-sha256}/season-plan.md` |
+| `cgs.live-ops-season-plan/v2` | live-ops-designer as season recorder | `design/live-ops/seasons/{season-id}/{plan-identity-revision}/season-plan.md` |
 | `cgs.live-ops-analytics-plan/v2` | analytics-engineer | `.../analytics-plan.md` |
 | `cgs.live-ops-content-manifest/v2` | writer | `.../content-manifest.md` |
 | `cgs.live-ops-communication-plan/v2` | community-manager | `.../communication-plan.md` |
 
 The content manifest is not silently embedded in the season plan. It owns stable
-content IDs, inventory, dependency path/hash/readiness, implementation owner, draft
+content IDs, inventory, dependency path/revision/readiness, implementation owner, draft
 copy references, localization/accessibility/platform targets and explicit
-`NOT_IMPLEMENTED` state. The season plan references its path/hash.
+`NOT_IMPLEMENTED` state. The season plan references its path/revision.
 
 Narrative-director and economy-designer never write final artifacts. Writers run
 sequentially in manifest order and can write only their one exact target. One controller
@@ -165,7 +165,7 @@ Order planning work:
 1. exact scope/audience/risk and product decisions;
 2. narrative frame and economy/reward proposal;
 3. frozen `cgs.live-ops-foundation-schema/v2` with event, reward, currency,
-   entitlement, content and telemetry identifiers plus exact proposal hashes;
+   entitlement, content and telemetry identifiers plus exact proposal revisions;
 4. independent analytics fields that do not depend on economy plus content/comms
    scaffolds that do not reference unfrozen identifiers;
 5. after foundation freeze, all dependent telemetry, experiment, reward-copy,
@@ -188,7 +188,7 @@ Use `dispatch_slots = min(request_worker_limit, 4, available_child_slots)`. If c
 live count or request limit is missing/invalid, run serially. Nested delegation consumes
 the same budget and is forbidden without an assigned slot.
 
-Each assignment declares stable attempt ID, input/foundation hashes, allowed output,
+Each assignment declares stable attempt ID, input/foundation revisions, allowed output,
 `mutation_authority: NONE`, exclusive proposal slot, deadline, response limit,
 cancel rule and retry budget of at most one. Gather a whole batch before dispatching
 dependents.
@@ -210,16 +210,16 @@ Every milestone creates or proposes one immutable `cgs.live-ops-checkpoint/v2` a
 
 ```text
 design/live-ops/checkpoints/{season-id}/{run-id}/
-  {sequence}-{checkpoint-identity-sha256}.yaml
+  {sequence}-{checkpoint-identity-revision}.yaml
 ```
 
 Each checkpoint binds request/context/policy/review/instruction/foundation/proposal/
-finding/decision/artifact-manifest identities; predecessor path/hash; exact phase;
+finding/decision/artifact-manifest identities; predecessor path/revision; exact phase;
 agent attempt states; budgets; review round; writer/preimage/postwrite states; approval;
 verdict/readiness; persistence; and exactly one next operation. It is create-only and
 never an increment-in-place file.
 
-RESUME requires exact checkpoint path/hash and expected predecessor chain. Re-hash all
+RESUME requires exact checkpoint path/revision and expected predecessor chain. Revalidate all
 inputs, proposals, decisions and already written artifact bytes; verify target absence
 and reconcile assignment/writer states. Do not replay successful assignments/writers.
 Broken chain, stale bytes, ambiguous writer outcome, changed policy/foundation or target
@@ -230,9 +230,9 @@ changed work. STATUS performs the same checks read-only and never repairs state.
 
 After stable season ID, final proposals, findings and design decision exist, render
 `cgs.live-ops-artifact-manifest/v2` with exact four targets, schema/identity, canonical
-bytes/hash, unique writer, expected `ABSENT` or exact allowed revision preimage,
+bytes/revision, unique writer, expected `ABSENT` or exact allowed revision preimage,
 write order, parent identity, maximum bytes and explicit non-writes. The manifest binds
-the consolidated proposal, policy/review, approval and instruction hashes.
+the consolidated proposal, policy/review, approval and instruction revisions.
 
 Only now may RECORD request one exact changeset authorization. Earlier planning,
 delegation or product approval cannot authorize unknown season numbers, filenames,
@@ -240,9 +240,9 @@ content, index updates or future paths. New/changed targets or bytes require a n
 artifact manifest and authorization.
 
 Immediately before each sequential writer, CAS every input/preimage/authority and
-revalidate all prior postwrite hashes. Use atomic no-replace/create-new, flush, parse,
-read back and hash. On drift, collision, partial/unknown writer result or mismatch, stop
-remaining writers, list actual writes/hashes and return `PARTIAL WRITE / BLOCKED`.
+revalidate all prior postwrite revisions. Use atomic no-replace/create-new, flush, parse,
+read back and revision. On drift, collision, partial/unknown writer result or mismatch, stop
+remaining writers, list actual writes/revisions and return `PARTIAL WRITE / BLOCKED`.
 Never claim rollback or unwritten artifacts.
 
 ## Protected experiment protocol — TLO-015
@@ -251,7 +251,7 @@ Every A/B, holdout, behavioral or offer experiment is a nested
 `cgs.live-ops-experiment-protocol/v2` in the analytics plan and remains
 `Experiment State: PLANNED_NOT_RUN`. It includes:
 
-- stable experiment/version IDs, preregistration hash and falsifiable hypothesis;
+- stable experiment/version IDs, preregistration revision and falsifiable hypothesis;
 - target audience, eligibility/exclusions, minors treatment, regions/platforms and
   assignment/randomization unit;
 - control/treatments, minimum and maximum exposure, duration, sample-size/power method
@@ -283,13 +283,13 @@ and external-action authority outside this workflow.
    disable/rollback, cancellation/refund and approval dependencies.
 
 Every finding has stable ID derived from domain/rule/proposal evidence identity,
-severity `BLOCKER|CONCERN|NOTE`, domain, exact rule source/hash, evidence path/hash,
+severity `BLOCKER|CONCERN|NOTE`, domain, exact rule source/revision, evidence path/revision,
 problem, testable revision, owner, state `OPEN|RESOLVED|NON_COMPLIANT`, introduced round
 and last-reviewed round. Preserve the ID across revisions; do not renumber unchanged
 findings.
 
 For an OPEN blocker offer only revise or stop. Allow at most two revision rounds.
-After each revision, freeze the diff/proposal hashes and use a reviewer who did not
+After each revision, freeze the diff/proposal revisions and use a reviewer who did not
 author the implicated revision. Re-review only open findings plus deterministic
 regression checks from the diff. If no independent reviewer is available, return
 `PARTIAL / BLOCKED — INDEPENDENT REVIEW REQUIRED`. If any blocker remains after round 2,
@@ -305,7 +305,7 @@ Present the consolidated proposal with exact season/risk, narrative, economy/fou
 experiment, content, communication, review/findings, sources, artifact manifest and
 writer identities. Obtain explicit design approval only when all required work
 succeeded, required policy is current, independent review is complete and open blockers
-are zero. Approval binds owner, UTC time, proposal/policy/review/artifact-manifest hashes.
+are zero. Approval binds owner, UTC time, proposal/policy/review/artifact-manifest revision.
 It means “record this plan,” never implement or deploy it.
 
 Always include a production-readiness matrix with at least:
@@ -315,11 +315,11 @@ Always include a production-readiness matrix with at least:
 - economy/store configuration implementation and rollback/disable mechanism;
 - telemetry/experiment implementation, privacy/security approval and kill switch;
 - QA/test/build evidence, support/on-call, monitoring, incident/cancellation/refund;
-- exact status/evidence path/hash/owner/required next artifact for every row.
+- exact status/evidence path/revision/owner/required next artifact for every row.
 
 This workflow has no build-bound evidence and therefore always returns
 `Production Readiness: NOT_EVALUATED` and `Production Handoff Eligible: NO`. Unknown or
-planned rows cannot become ready. PLAN COMPLETE is determined only by exact plan hashes, complete
+planned rows cannot become ready. PLAN COMPLETE is determined only by exact plan revision, complete
 required proposals/review, zero open blockers, accountable owners, design approval and
 verified four-artifact recording; it never changes the readiness fields.
 
@@ -343,13 +343,13 @@ Never emit bare COMPLETE, PRODUCTION READY or READY TO DEPLOY.
 Return `cgs.team-live-ops-result/v2` with every request/run/season/context/policy/
 instruction/foundation/proposal/review/finding/decision/artifact/checkpoint identity;
 mode/fallback/assignment/budget ledgers; exact verdict; Production Readiness
-NOT_EVALUATED; Production Handoff Eligible NO; actual writes/hashes; explicit non-writes;
+NOT_EVALUATED; Production Handoff Eligible NO; actual writes/revisions; explicit non-writes;
 and one legal next action/owner or none.
 
 Shared consumers must preserve the boundary:
 
 - content/asset/localization workflows may use the approved content manifest only as a
-  hash-bound design input; NOT_IMPLEMENTED is not asset or localization evidence;
+  revision-bound design input; NOT_IMPLEMENTED is not asset or localization evidence;
 - implementation planning may reference PLAN COMPLETE only after its own requirements,
   architecture and story-readiness gates; this workflow does not create a sprint;
 - `$team-qa` consumes exact build/test evidence, never PLAN COMPLETE as QA PASS;

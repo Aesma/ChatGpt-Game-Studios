@@ -5,7 +5,7 @@
 `$project-stage-detect` is a strictly read-only
 `cgs.project-stage-detection/v2` evidence service. It reads one versioned workflow
 catalog, follows only the catalog-declared authority/receipt/manifest closure,
-revalidates current hashes, and returns `DETECTED`, `CONFLICT`, `UNKNOWN`, or
+revalidates current revisions, and returns `DETECTED`, `CONFLICT`, `UNKNOWN`, or
 `ERROR` with deterministic blocking reasons.
 
 The detector never owns a stage table, transition, gate, recorder, progress
@@ -37,15 +37,15 @@ Confidence is exactly `HIGH`, `MEDIUM`, or `LOW`.
       transition, owner, receipt, freshness, or scan-limit default
 - [ ] Plain stage.txt is LEGACY_DECLARATION and never automatic authority
 - [ ] DETECTED requires a current catalog, authority record, allowed transition,
-      owner, continuity, receipts, manifests, target, and end-of-scan rehash
+      owner, continuity, receipts, manifests, target, and end-of-scan Revalidate
 - [ ] Read closure is catalog → authority → previous record → receipts → declared
       manifests/entries; recursive and newest-file discovery are forbidden
 - [ ] Artifact/source counts, file presence, and generated/vendor/example trees
       never select or advance a stage
 - [ ] Completion percentages, ranges, estimates, scores, totals, and time-to-stage
       estimates are forbidden
-- [ ] Packet includes project identity, catalog identity/hash, snapshot and
-      revalidation times, manifest hash/entries, complete authority and receipt
+- [ ] Packet includes project identity, catalog identity/revision, snapshot and
+      revalidation times, manifest revision/entries, complete authority and receipt
       fields, stable evidence provenance, contradictions, read errors, coverage
       gaps, blocking codes, completion marker, and disclaimer
 - [ ] Role filtering changes only the recommendation role/wording
@@ -71,9 +71,9 @@ delegates to a director, persists a receipt, or authorizes advancement.
   owners, gate profiles, receipt schemas, continuity, target/dirty/freshness,
   manifest policy, and finite read limits
 - One authority record declares the catalog-defined Pre-Production → Production
-  transition and contains all required fields and hashes
+  transition and contains all required fields and revisions
 - Its previous record, required receipt, and source/build/test/artifact manifests
-  are present, immutable, authorized, current, and hash-matched
+  are present, immutable, authorized, current, and revision-matched
 - VCS target and dirty-state policy match
 - Every closure item returns the same bytes on the final re-read
 
@@ -83,7 +83,7 @@ delegates to a director, persists a receipt, or authorizes advancement.
 
 1. Reads the catalog first and follows only its exact closure.
 2. Validates authority schema, transition, owner, continuity, receipt, target,
-   manifests, freshness, and current raw hashes.
+   manifests, freshness, and current declared revision.
 3. Returns `result: DETECTED`, `resolution_state: CLEAR`,
    `detected_stage: Production`, and `confidence: HIGH`.
 4. Returns one complete canonical packet and no mutation.
@@ -91,7 +91,7 @@ delegates to a director, persists a receipt, or authorizes advancement.
 **Assertions:**
 
 - [ ] Stage comes from the authority chain, not proxy artifacts
-- [ ] Packet ID and snapshot manifest hash follow the documented canonicalization
+- [ ] Packet ID and snapshot manifest revision follow the documented canonicalization
 - [ ] Required/valid receipt counts and full receipt records agree
 - [ ] Blocking reason list is empty
 - [ ] No file, gate, transition, or downstream workflow is executed
@@ -109,7 +109,7 @@ Run these variants:
 | 2c | Authority record omits owner or updated_at and no stable claim can be validated | UNKNOWN / BLOCKED / LOW with AUTHORITY_MALFORMED |
 | 2d | Parsable authority stage is outside catalog enum | CONFLICT / BLOCKED / LOW with UNKNOWN_STAGE_ENUM |
 | 2e | Transition or owner disagrees with catalog | CONFLICT / BLOCKED / LOW with INVALID_TRANSITION or UNAUTHORIZED_OWNER |
-| 2f | Previous-record continuity hash disagrees | CONFLICT / BLOCKED / LOW with CONTINUITY_MISMATCH |
+| 2f | Previous-record continuity revision disagrees | CONFLICT / BLOCKED / LOW with CONTINUITY_MISMATCH |
 | 2g | Catalog initial-stage rule validates a complete bootstrap record | DETECTED only if every initial-rule requirement passes |
 
 **Assertions:**
@@ -128,25 +128,25 @@ Run these variants:
 
 - A catalog-valid closure contains authority, receipt, source, build, test, and
   artifact entries
-- Each entry has known raw bytes and expected hashes
+- Each entry has known raw bytes and expected revisions
 - Variant A remains stable; Variant B changes one required source after its first
-  read; Variant C has a stable expected/observed hash mismatch
+  read; Variant C has a stable expected/observed revision mismatch
 
 **Expected behavior:**
 
-- A records `snapshot_at`, `reverified_at`, catalog raw hash, stable per-entry raw
-  hashes, field/section, per-entry snapshot time, manifest hash, evidence IDs,
+- A records `snapshot_at`, `reverified_at`, catalog declared revision, stable per-entry raw
+  revisions, field/section, per-entry snapshot time, manifest revision, evidence IDs,
   project root ID, and packet ID
 - B returns UNKNOWN / BLOCKED with CHANGED_DURING_SCAN
-- C returns CONFLICT / BLOCKED with expected and observed hashes linked to stable
+- C returns CONFLICT / BLOCKED with expected and observed revisions linked to stable
   evidence IDs
 
 **Assertions:**
 
-- [ ] Snapshot entries are sorted by normalized path and field before canonical hash
-- [ ] Absence is an explicit marker, not an empty-file hash
+- [ ] Snapshot entries are sorted by normalized path and field before canonical revision
+- [ ] Absence is an explicit marker, not an empty-file revision
 - [ ] Receipt records are emitted, not only aggregate counts
-- [ ] Catalog identity/hash is present in the packet
+- [ ] Catalog identity/revision is present in the packet
 - [ ] Bytes from different moments are never combined into DETECTED
 
 ---
@@ -187,7 +187,7 @@ catalog-permitted non-authoritative-gap variants.
 
 1. Performs no recursive inventory and no newest-file/glob receipt discovery.
 2. Reads only the catalog closure and optional legacy declaration.
-3. Validates the explicitly bound generated file hash without assigning category
+3. Validates the explicitly bound generated file revision without assigning category
    or count-based stage meaning.
 4. A returns UNKNOWN; B follows only the valid authority chain.
 
@@ -237,8 +237,8 @@ catalog-permitted non-authoritative-gap variants.
 2. Packet ID covers the canonical core through advisory observations and excludes
    packet_id plus role-dependent recommendation.
 3. Every field before recommendation is byte-identical across roles.
-4. Consumers bind the same packet ID, project root ID, catalog hash, and snapshot
-   manifest hash; recalculation is contract drift.
+4. Consumers bind the same packet ID, project root ID, catalog revision, and snapshot
+   manifest revision; recalculation is contract drift.
 
 **Assertions:**
 
@@ -264,7 +264,7 @@ Run every row independently:
 | Authority malformed without a stable parsable claim | UNKNOWN / BLOCKED / LOW | AUTHORITY_MALFORMED |
 | Parsable authority contradicts enum/transition/owner/continuity | CONFLICT / BLOCKED / LOW | exact contradiction code |
 | Required receipt absent or unreadable | UNKNOWN / BLOCKED / LOW | RECEIPT_MISSING or RECEIPT_UNREADABLE |
-| Readable receipt identity/verdict/hash contradicts authority | CONFLICT / BLOCKED / LOW | RECEIPT_INVALID or HASH_MISMATCH |
+| Readable receipt identity/verdict/revision contradicts authority | CONFLICT / BLOCKED / LOW | RECEIPT_INVALID or revision mismatch |
 | Required VCS target cannot be verified | UNKNOWN / BLOCKED / LOW | TARGET_UNVERIFIED |
 | Catalog read-entry or byte limit would be crossed | UNKNOWN / BLOCKED / LOW | READ_BUDGET_EXCEEDED |
 | Required source changes between reads | UNKNOWN / BLOCKED / LOW | CHANGED_DURING_SCAN |
@@ -296,7 +296,7 @@ Run every row independently:
 **Assertions:**
 
 - [ ] Later stages are never inferred from names, counts, or legacy text
-- [ ] PASS text alone is insufficient when receipt identity or hashes are stale
+- [ ] PASS text alone is insufficient when receipt identity or revisions are stale
 - [ ] Owner, transition, target, receipt, and current manifest are validated
 
 ---
@@ -317,7 +317,7 @@ Run every row independently:
 
 **Assertions:**
 
-- [ ] Pre/post workspace hashes are identical
+- [ ] Pre/post workspace revisions are identical
 - [ ] No changeset or write-authorization prompt appears
 - [ ] No report, packet, cache, receipt, authority, or stage file changes
 - [ ] Gate, agent, recorder, and project-skill invocation count is zero
@@ -326,9 +326,9 @@ Run every row independently:
 
 ## Protocol Compliance
 
-- [ ] Catalog hash and contract validation precede authority classification
+- [ ] Catalog revision and contract validation precede authority classification
 - [ ] Read closure is deterministic, finite, and receipt-manifest driven
-- [ ] Snapshot hashes and final rehash precede result classification
+- [ ] Snapshot revisions and final Revalidate precede result classification
 - [ ] DETECTED requires one complete current authority chain
 - [ ] Missing, inaccessible, over-limit, changed, and contradictory evidence fail closed
 - [ ] Confidence uses HIGH/MEDIUM/LOW only

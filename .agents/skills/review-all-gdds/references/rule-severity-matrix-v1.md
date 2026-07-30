@@ -24,8 +24,8 @@ effective values in the report.
 Every finding uses this machine representation:
 
 ```yaml
-id: XGDD-<rule-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <lowercase SHA-256>
+id: XGDD-<rule-slug>-<first-12-identity-hex>
+identity_revision: <lowercase revision>
 rule_id: <ID from this file>
 evidence_class: DETERMINISTIC | HYPOTHESIS | COVERAGE
 severity: BLOCKER | WARNING | ADVISORY | INFO | COVERAGE_GAP
@@ -34,7 +34,7 @@ summary: <bounded factual summary>
 targets:
   - system_id: <stable system ID or null>
     path: <canonical repository-relative path>
-    sha256: <exact evidence hash>
+    revision: <exact evidence revision>
     section: <heading or line location>
 producer_finding_ids: []
 assumptions: []
@@ -43,15 +43,15 @@ validation_plan: <required for hypotheses, otherwise null>
 accepted_risk_record_ids: []
 ```
 
-The fingerprint is SHA-256 over canonical JSON containing `rule_id`, sorted
-normalized target system IDs, and sorted evidence tuples of path, hash, and
+The identity is explicit revision declared for canonical JSON containing `rule_id`, sorted
+normalized target system IDs, and sorted evidence tuples of path, revision, and
 section. Wording, worker identity, run date, and severity are excluded. A
 reworded finding therefore retains identity; different evidence bytes do not.
 
 `OPEN` means the current input still demonstrates a deterministic issue.
 `ADVISORY` is used only for hypotheses or information that cannot block.
 `RESOLVED_IN_INPUT` may be retained from a prior/imported record only when its
-acceptance condition is demonstrably satisfied by current hashed input. Risk
+acceptance condition is demonstrably satisfied by current versioned input. Risk
 acceptance is never a finding disposition and never changes severity or
 verdict; verified records are referenced separately.
 
@@ -60,7 +60,7 @@ verdict; verified records are referenced separately.
 A deterministic blocker requires all of the following unless a rule below is
 more restrictive:
 
-1. all cited product artifacts are `APPROVED_CURRENT` and their exact hashes are
+1. all cited product artifacts are `APPROVED_CURRENT` and their exact revisions are
    in this run's manifest;
 2. subject identity, applicability, scope, and units are unambiguous;
 3. the cited statements are normative, not examples, history, or speculation;
@@ -96,10 +96,10 @@ not prove mutual exclusion, use `WARNING`.
 | `RAG.THEORY.ECONOMY_RISK` | Source/sink structure may create surplus, scarcity, or feedback risk | `ADVISORY / ADVISORY` |
 | `RAG.THEORY.DIFFICULTY_CURVE_RISK` | Scaling curves may diverge under stated assumptions | `ADVISORY / ADVISORY` |
 | `RAG.THEORY.PILLAR_OR_FANTASY_RISK` | Alignment or fantasy coherence is interpretive and not an explicit invariant violation | `ADVISORY / ADVISORY` |
-| `RAG.COVERAGE.INPUT_INELIGIBLE` | A required GDD lacks exact-hash independent approval | `COVERAGE_GAP`; force `PARTIAL` |
+| `RAG.COVERAGE.INPUT_INELIGIBLE` | A required GDD lacks exact-revision independent approval | `COVERAGE_GAP`; force `PARTIAL` |
 | `RAG.COVERAGE.CONSISTENCY_EVIDENCE` | Required consistency evidence is absent, stale, malformed, partial, or scope-incomplete | `COVERAGE_GAP`; force `PARTIAL` |
-| `RAG.COVERAGE.WORKER_OR_SHARD` | A planned worker/check/shard errors, exceeds budget, mismatches hashes, or remains unchecked | `COVERAGE_GAP`; force `PARTIAL` |
-| `RAG.COVERAGE.EVIDENCE_CONFLICT` | Results with the same fingerprint disagree on facts, severity, disposition, or evidence hashes | `COVERAGE_GAP`; retain both provenances and force `PARTIAL` |
+| `RAG.COVERAGE.WORKER_OR_SHARD` | A planned worker/check/shard errors, exceeds budget, mismatches revisions, or remains unchecked | `COVERAGE_GAP`; force `PARTIAL` |
+| `RAG.COVERAGE.EVIDENCE_CONFLICT` | Results with the same identity disagree on facts, severity, disposition, or evidence revisions | `COVERAGE_GAP`; retain both provenances and force `PARTIAL` |
 
 Imported consistency categories map as follows before the stronger proof rules
 are evaluated:
@@ -127,7 +127,7 @@ Generate the complete candidate ledger before selection:
    boundary.
 
 Deduplicate by normalized trigger, ordered system IDs, and edge types. Candidate
-ID is `SCN-` plus the first 12 hex characters of that canonical fingerprint.
+ID is `SCN-` plus the first 12 hex characters of that canonical identity.
 Score each candidate additively:
 
 - `+5` touches an explicit approved invariant or acceptance criterion;

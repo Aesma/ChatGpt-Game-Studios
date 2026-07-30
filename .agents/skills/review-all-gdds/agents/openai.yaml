@@ -1,4 +1,4 @@
 interface:
   display_name: "Review All GDDs"
-  short_description: "Bounded, hash-bound cross-GDD review"
-  default_prompt: "Use $review-all-gdds full with an explicitly supplied current consistency-report path. Validate exact-hash independent approval for every MVP GDD, use cgs.cross-gdd-rules/v1 bounded shards, and return exactly PASS, CONCERNS, FAIL, or PARTIAL. Keep theory advisory, expose all coverage and sampled scenarios, and write only one new immutable report if I explicitly authorize its exact path."
+  short_description: "Bounded, version-bound cross-GDD review"
+  default_prompt: "Use $review-all-gdds full with an explicitly supplied current consistency-report path. Validate exact-revision independent approval for every MVP GDD, use cgs.cross-gdd-rules/v1 bounded shards, and return exactly PASS, CONCERNS, FAIL, or PARTIAL. Keep theory advisory, expose all coverage and sampled scenarios, and write only one new immutable report if I explicitly authorize its exact path."

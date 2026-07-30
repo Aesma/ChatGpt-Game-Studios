@@ -22,7 +22,7 @@ Every assertion has a stable ID and is evaluated against exact candidate bytes.
 - [ ] **STATIC-001 — Frontmatter**: YAML frontmatter contains only required `name` and non-empty `description`; name matches the directory.
 - [ ] **STATIC-002 — Interface**: Every advertised invocation, mode, flag, input, and required argument has executable handling or a fail-closed usage path.
 - [ ] **STATIC-003 — Ownership**: Owned writes and required non-writes are explicit and non-overlapping with upstream/downstream owners.
-- [ ] **STATIC-004 — Schemas**: Every consumed and produced schema exists at its exact version; path/hash/currentness fields are stated.
+- [ ] **STATIC-004 — Schemas**: Every consumed and produced schema exists at its exact version; path/version/currentness fields are stated.
 - [ ] **STATIC-005 — Verdicts**: Verdicts, aggregation, blocking consequences, and exit behavior are unambiguous.
 - [ ] **STATIC-006 — Side effects**: Static/read-only phases, runtime mutations, external actions, and authorization boundaries are separately enumerated.
 - [ ] **STATIC-007 — Timeout and recovery**: Bounded waits, timeout result, resume/checkpoint behavior, rollback, and idempotency are explicit where applicable.
@@ -36,7 +36,7 @@ Every assertion has a stable ID and is evaluated against exact candidate bytes.
 - [ ] **SEM-003 — Evidence consistency**: Presence, prose, filename, count, or “latest” selection is never treated as current typed evidence.
 - [ ] **SEM-004 — Mode consistency**: Optional modes are implemented end to end; no shared document creates an implicit mode.
 - [ ] **SEM-005 — Transaction consistency**: Preview, authorization, compare-and-swap, commit, rollback, and receipt claims agree.
-- [ ] **SEM-006 — Dependency consistency**: Caller outputs exactly match callee inputs, including schema version, identity, hashes, and verdicts.
+- [ ] **SEM-006 — Dependency consistency**: Caller outputs exactly match callee inputs, including schema version, identity, versions, and verdicts.
 - [ ] **SEM-007 — Static/runtime distinction**: Instruction text alone is not reported as proof that a runtime side effect, timeout, or recovery behavior occurred.
 
 ## Test Cases
@@ -48,7 +48,7 @@ Case numbers MUST be contiguous from 1. Case IDs MUST be stable and unique. Dupl
 **Case ID**: `CASE-[SKILL]-001`
 
 **Fixture**:
-- [exact repository/external state, paths, schemas, hashes, identities]
+- [exact repository/external state, paths, schemas, versions, identities]
 
 **Input**:
 - [exact invocation and manifest/request bytes]
@@ -138,13 +138,13 @@ Case numbers MUST be contiguous from 1. Case IDs MUST be stable and unique. Dupl
 - [ ] **PROTO-005 — Read limits**: Recursive discovery and referenced-artifact reads are bounded and fail closed.
 - [ ] **PROTO-006 — Recovery**: Interrupted or failed mutation cannot leave an unreported partial authoritative state.
 - [ ] **PROTO-007 — Compatibility**: Caller, callee, shared schema, metadata, and dedicated spec impact are analyzed together.
-- [ ] **PROTO-008 — Handoff**: The terminal response exposes exact verdict, evidence gaps, outputs, hashes, and one bounded next action.
+- [ ] **PROTO-008 — Handoff**: The terminal response exposes exact verdict, evidence gaps, outputs, versions, and one bounded next action.
 
 ## Coverage Notes
 
 - **Static coverage**: [what exact text/schema assertions were evaluated]
 - **Runtime coverage**: [what was truly executed; write `not executed` when absent]
-- **Side-effect coverage**: [write/external-state probes and pre/post hashes]
+- **Side-effect coverage**: [write/external-state probes and pre/post state]
 - **Timeout/recovery coverage**: [tested scenarios or explicit gap]
 - **Caller/callee/shared-schema coverage**: [exact affected contracts]
 - **Known gaps**: [unsupported environments, untested branches, missing receipts]

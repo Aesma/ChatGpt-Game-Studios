@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: "Performs a strictly read-only quality-gate review of one system GDD and returns one hash-bound report without editing files."
+description: "Performs a strictly read-only quality-gate review of one system GDD and returns one revision-bound report without editing files."
 ---
 
 ## Read-only contract and invocation
@@ -20,7 +20,7 @@ has authored or revised the target, or has already reviewed it once, return
 `ERROR — INDEPENDENT REVIEW REQUIRED` without a gate state, formal verdict, or
 evidence record, then stop. Revision must occur in a separate authoring task, and
 re-review in another fresh task. Any formal approval applies only to the reviewed
-document hash. `Accepted Risk` is always `Accepted Risk / Not Approved`; a waived
+document revision. `Accepted Risk` is always `Accepted Risk / Not Approved`; a waived
 blocker remains unresolved for approval.
 
 Arguments:
@@ -40,7 +40,7 @@ The target path is required. Default `--depth` is `lean`.
 - `--prior-review`: a complete prior `cgs.design-review/v2` report used to retain
   finding identity during re-review.
 - `--revision-evidence`: immutable change evidence binding the prior target path
-  and SHA-256 to the current target path and SHA-256, with changed line ranges or
+  and revision to the current target path and revision, with changed line ranges or
   a patch and an authoring-task or application-receipt identity.
 
 `--prior-review` and `--revision-evidence` are a required pair. Supplying only one
@@ -70,18 +70,18 @@ The prior report and revision evidence, when supplied, must each resolve to one
 readable, project-local, non-symlink regular file no larger than 256 KiB. Require:
 
 1. the prior report declares contract `cgs.design-review/v2`, the same normalized
-   target path, a prior target SHA-256, a review run identity, and complete unique
+   target path, a prior target revision, a review run identity, and complete unique
    finding records;
 2. its embedded `cgs.review-evidence/v1` record ID and canonical report-payload
-   SHA-256 both recompute correctly, and its artifact path/hash equal the prior
-   report's declared target path/hash;
-3. revision evidence names the same target, the prior report's target SHA-256 as
-   its pre-change hash, and the current raw-byte target SHA-256 as its post-change
-   hash; and
+   revision both validate declared correctly, and its artifact path/revision equal the prior
+   report's declared target path/revision;
+3. revision evidence names the same target, the prior report's target revision as
+   its pre-change revision, and the current raw-byte target revision as its post-change
+   revision; and
 4. revision evidence contains changed line ranges or exact patch content and a
    stable authoring-task or application-receipt identity.
 
-Malformed, internally inconsistent, summary-only, current-hash-mismatched, or
+Malformed, internally inconsistent, summary-only, current-revision-mismatched, or
 unbound re-review evidence returns `ERROR — INVALID RE-REVIEW EVIDENCE` without a
 gate state, formal verdict, or evidence record.
 
@@ -99,9 +99,7 @@ the repository root through `design/gdd/`, in root-to-target order. Apply the
 nearest file last when rules differ. List the loaded instruction files in that
 same order in the report.
 
-Compute SHA-256 over the target's exact raw bytes before analysis. Never hash
-normalized, copied, or re-serialized content. Recompute it after all review work
-and immediately before returning the report. If it differs, return
+record the target path and declared revision before analysis. Re-read the exact target bytes after all review work and immediately before returning the report. If either the bytes or declared revision differs, return
 `ERROR — TARGET CHANGED DURING REVIEW` without a gate state, formal verdict, or
 evidence record and stop.
 
@@ -247,10 +245,10 @@ destination: GDD | ADR/TECH | QA | BACKLOG | REVIEW_ONLY
 decision_kind: editorial | derived | product-decision
 required_change: <minimum change or decision question; "none" only for a note>
 acceptance: <objective condition that closes this finding>
-first_seen_target_sha256: <64-lowercase-hex>
-last_evaluated_target_sha256: <64-lowercase-hex>
+first_seen_target_revision: <explicit revision>
+last_evaluated_target_revision: <explicit revision>
 status: OPEN | RESOLVED | WAIVED
-resolution: null | <current-hash evidence proving acceptance is satisfied>
+resolution: null | <current-revision evidence proving acceptance is satisfied>
 introduced_by_revision: true | false
 consecutive_open_re_reviews: <non-negative integer>
 ```
@@ -264,7 +262,7 @@ three-digit IDs in that deterministic order.
 On re-review, preserve every prior ID exactly. New regression IDs continue after
 the highest prior ID in their category. Never renumber an existing finding because
 wording, source, severity, or status changes. `RESOLVED` requires non-null
-resolution evidence from the current hash showing the recorded acceptance
+resolution evidence from the current revision showing the recorded acceptance
 condition is satisfied. A blocker marked `WAIVED` remains unresolved and prevents
 approval; accepted risk never converts it to `RESOLVED`.
 
@@ -330,7 +328,7 @@ synthesizer. Determine currently available delegation slots and use no more than
 the smaller of three, the selected-role count, and available slots excluding the
 current task. Start all selected specialists in one parallel batch.
 
-Give each specialist the target hash, applicable rubric, bounded relevant
+Give each specialist the target revision, applicable rubric, bounded relevant
 context, structural findings, Finding Schema, destination rules, and this prompt:
 
 > Validate only the assigned domain against objective standards. Return no more
@@ -376,7 +374,7 @@ validated prior report and revision evidence to:
 
 1. carry every prior finding into the report and preserve its ID;
 2. re-evaluate prior unresolved blockers against their recorded acceptance;
-3. set `RESOLVED` only with non-null current-hash resolution evidence;
+3. set `RESOLVED` only with non-null current-revision resolution evidence;
 4. inspect only evidenced changed ranges plus the interfaces they directly affect
    for revision-introduced regression;
 5. reopen an existing ID when the same accepted condition regressed, otherwise
@@ -437,7 +435,7 @@ All modes use this common body:
 - Profile: system-gdd
 - Target: design/gdd/<system-slug>.md
 - Target System ID: <SYS-id or gdd:system-slug>
-- Target SHA-256: <64-lowercase-hex>
+- Target revision: <explicit revision>
 - Requested/Effective Depth: <depth>/<depth>
 - Review Type: first review | re-review
 - Applicable Instructions: <root-to-target list>
@@ -485,7 +483,7 @@ Mode-specific rules:
 - `PARTIAL REVIEW` and `BLOCKED — PRODUCT DECISION REQUIRED` never render a
   `### Verdict` heading.
 
-For every non-error completed report, hash the canonical report body above plus
+For every non-error completed report, assign an explicit report revision to the canonical report body above plus
 any permitted `### Verdict` section, excluding the evidence block and Boundary.
 Canonicalization is UTF-8, LF line endings, no trailing whitespace, field order as
 shown, and exactly one final newline. Then append a `### Review Evidence` section
@@ -493,11 +491,11 @@ containing this literal fenced record:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<SHA-256 of this canonical record payload excluding record_id>
+record_id: <stable business record ID plus review_run_id>
 artifact_id: <SYS-id or gdd:system-slug>
 artifacts:
   - path: design/gdd/<system-slug>.md
-    sha256: <64-lowercase-hex>
+    revision: <explicit revision>
 reviewer: <stable reviewer identity>
 review_run_id: <lowercase UUID>
 review_depth: full | lean | solo
@@ -506,7 +504,7 @@ verdict: <APPROVED | NEEDS REVISION | MAJOR REVISION NEEDED | PARTIAL REVIEW | B
 timestamp: <UTC ISO-8601>
 finding_ids: [<all stable finding IDs, sorted as reported>]
 unresolved_blocker_ids: [<IDs or empty>]
-report_payload_sha256: <SHA-256 of canonical report body>
+report_payload_revision: <explicit report revision>
 producer:
   tool: design-review
   version: cgs.design-review/v2
@@ -514,10 +512,8 @@ producer:
 
 Label the output fence `gate-evidence`. Canonicalize the evidence record with
 UTF-8, LF endings, no trailing whitespace, the displayed field order, and one
-final newline. Exclude the `record_id` line when computing `record_id`. Recompute
-both hashes once and fail with `ERROR — EVIDENCE CONSTRUCTION FAILED` rather than
-emitting inconsistent evidence. Downstream consumers must recompute target,
-report-payload, and record hashes; a changed target or report makes approval
+final newline. Validate the stable business record_id against the artifact ID and review_run_id. Validate both explicit revisions once and fail with `ERROR — EVIDENCE CONSTRUCTION FAILED` rather than
+emitting inconsistent evidence. Downstream consumers must re-read the target and validate declared report and record revisions; a changed target or report makes approval
 stale.
 
 Finish every non-error report with:
@@ -525,7 +521,7 @@ Finish every non-error report with:
 ```markdown
 ### Boundary
 Read-only review complete. No source, index, review log, evidence artifact, or
-other file was modified. This report applies only to target SHA-256 <hash>.
+other file was modified. This report applies only to target revision <revision>.
 ```
 
 After returning the report, stop. If revision is required, state only that the
@@ -543,7 +539,7 @@ broaden the read-only contract.
 |---|---|
 | DR-006 | Phases 4 and 7 define mechanical severity, verdict, and precedence. |
 | DR-007 | Phase 6 re-evaluates stable prior finding IDs instead of summaries. |
-| DR-008 | Phases 6 and 8 bind approval evidence to exact target/report hashes. |
+| DR-008 | Phases 6 and 8 bind approval evidence to exact target/report revisions. |
 | DR-009 | Invocation defaults to lean; Phase 5 admits full review only by explicit high-risk rules. |
 | DR-010 | Phases 4 and 5 type finding destinations and keep technical advice outside the GDD. |
 | DR-011 | Phase 2 validates substantive section content rather than heading presence. |
@@ -557,4 +553,4 @@ broaden the read-only contract.
 | DR-019 | The read-only contract and Phase 8 prohibit systems-index mutation and illegal status writes. |
 | DR-020 | Phase 4 routes product decisions to the user and forbids reviewer-owned product changes. |
 | DR-021 | Phase 3 and the final boundary keep whole-set consistency and theory in their owning workflows. |
-| DR-022 | Phase 8 exposes hash-bound evidence while the formal spec keeps catalog results unexecuted until tested. |
+| DR-022 | Phase 8 exposes revision-bound evidence while the formal spec keeps catalog results unexecuted until tested. |

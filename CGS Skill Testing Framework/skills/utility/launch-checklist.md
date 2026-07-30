@@ -14,11 +14,11 @@ identity-bound report under full CAS. It never launches, deploys or publishes.
 ## Static Assertions
 
 - [ ] Frontmatter contains only matching `name` and non-empty `description`
-- [ ] Invocation requires hash-pinned `cgs.launch-checklist-request/v2`
+- [ ] Invocation requires revision-pinned `cgs.launch-checklist-request/v2`
 - [ ] Manifest pins release/candidate/build/artifact/source/tree/tag/toolchain and full
   platform/configuration/region/channel/store identities
 - [ ] Root-to-target AGENTS chain, launch policy, authority registry, risk profile,
-  test-evidence manifest and evidence inventory are exact paths/hashes
+  test-evidence manifest and evidence inventory are exact paths/revisions
 - [ ] `cgs.launch-test-evidence-manifest/v2` requires command/argv, exit code, complete
   logs/results, tool/parser, times, source mappings and platform-matrix coverage
 - [ ] Soak duration/workload/checkpoints and recovery/capacity objectives derive from a
@@ -35,7 +35,7 @@ identity-bound report under full CAS. It never launches, deploys or publishes.
   HARD/ADVISORY aggregation is defined
 - [ ] SIMULATE is watermarked, zero-write/zero-sign-off, verdict UNDETERMINED and only a
   non-durable projection
-- [ ] Assessment identity binds all inputs, rows, verdict and delta; full-hash path is
+- [ ] Assessment identity binds all inputs, rows, verdict and delta; full-revision path is
   create-only, never overwritten or aliased by date/latest
 - [ ] Analyzer/recorder are separated; optional report uses absent-target atomic
   no-replace CAS and read-back
@@ -52,7 +52,7 @@ identity-bound report under full CAS. It never launches, deploys or publishes.
 | LC-004 | Cases 1–3: exact test-evidence manifest with command/exit/log/platform matrix; no file-existence PASS |
 | LC-005 | Case 4: policy/risk-profile-derived soak minimum and rationale, never fixed 8 hours |
 | LC-006 | Case 5: recovery rehearsal receipt, measured RTO/RPO/hotfix/data-integrity failure is blocking |
-| LC-007 | Cases 6–7: immutable identity/time/scope/hash sign-offs; new build/reviewed bytes make them stale |
+| LC-007 | Cases 6–7: immutable identity/time/scope/revision sign-offs; new build/reviewed bytes make them stale |
 | LC-008 | Cases 11–12: full assessment/input identity, every run a new create-only immutable report |
 | LC-009 | Case 13: checklist owns evidence verdict; user launch gate alone owns final decision and is not invoked |
 | LC-010 | Cases 8–10: hard bounds, coverage counters, timeout/partial/blocked loading prevent READY |
@@ -63,13 +63,13 @@ identity-bound report under full CAS. It never launches, deploys or publishes.
 
 | Phase | Input | Output | Mutation |
 |---|---|---|---|
-| 1 — Request/candidate/policy | Hash-pinned request, AGENTS chain, manifests/policies | Exact effective candidate/check scope | None |
+| 1 — Request/candidate/policy | revision-pinned request, AGENTS chain, manifests/policies | Exact effective candidate/check scope | None |
 | 2 — Test evidence | Candidate-bound platform test manifest and dependencies | Complete execution identities/states | None |
 | 3 — Risk requirements | Versioned policy and immutable risk profile | Derived soak/recovery/capacity minimums and rationale | None |
 | 4 — Technical/experience | Indexed canonical QA/scan/manual artifacts | Typed current/stale/partial technical evidence | None |
 | 5 — External/sign-off | Provider receipts and owner attestations | Verified external/manual evidence or UNKNOWN | None |
 | 6 — Recovery | Executed production-equivalent rehearsal | Objective RTO/RPO/hotfix/data-integrity result | None |
-| 7 — Rows/coverage/delta | All evidence and optional exact predecessor | Stable row hashes, counters and deterministic delta | None |
+| 7 — Rows/coverage/delta | All evidence and optional exact predecessor | Stable row revisions, counters and deterministic delta | None |
 | 8 — Verdict/identity | Complete rows/counters and policy | Evidence readiness plus assessment identity; no decision | None |
 | 9 — Analyze/simulate/record | Report candidate and optional mutation authority | Zero-write result or one CAS-created report | Create one absent target only |
 | 10 — Terminal | Frozen assessment/recorder states | Consumer packet and one next owner/action | None |
@@ -83,9 +83,9 @@ No implicit user gate, launch, deployment, publication or owner-invocation phase
 **Fixture:** The v2 test-evidence manifest binds the launch candidate and every required
 platform/configuration. Each required execution includes command/argv, environment,
 runner/tool/parser versions, exit code, per-test results/source/requirement mappings,
-times, complete logs/raw outputs and receipt hashes.
+times, complete logs/raw outputs and receipt revisions.
 
-**Expected behavior:** Re-hash all bytes/dependencies and PASS only exact checks whose
+**Expected behavior:** re-read all bytes/dependencies and PASS only exact checks whose
 positive policy rules and full matrix coverage are CURRENT.
 
 **Assertions:**
@@ -99,7 +99,7 @@ positive policy rules and full matrix coverage are CURRENT.
 ## Case 2: File existence and selection-only evidence cannot PASS
 
 **Fixture:** Inputs contain a CI badge, test output directory, log filename, selected
-test list, protocol/plan and exit code without complete bound results/log hashes.
+test list, protocol/plan and exit code without complete bound results/log revisions.
 
 **Expected behavior:** Mark applicable evidence INVALID/INCONCLUSIVE/PARTIAL and checks
 UNKNOWN. Applicable HARD UNKNOWN yields LAUNCH_BLOCKED.
@@ -116,14 +116,14 @@ UNKNOWN. Applicable HARD UNKNOWN yields LAUNCH_BLOCKED.
 
 **Fixture:** Exact smoke/regression/soak/playtest/test-evidence-review artifacts are
 CURRENT; variants are prior-build, quick where full required, selection-only,
-incomplete/inconclusive, conversation-only, changed raw hash or nonpersisted.
+incomplete/inconclusive, conversation-only, changed raw revision or nonpersisted.
 
 **Expected behavior:** Only exact current complete eligible producer chains may PASS.
 Variants are UNKNOWN/STALE/PARTIAL, with HARD variants blocking readiness.
 
 **Assertions:**
 
-- [ ] Every transitive manifest/source/log/receipt hash is checked
+- [ ] Every transitive manifest/source/log/receipt revision is checked
 - [ ] Finalization words such as COMPLETED do not substitute for policy result fields
 - [ ] Candidate/build/artifact/source/platform mismatch is visible
 
@@ -131,11 +131,11 @@ Variants are UNKNOWN/STALE/PARTIAL, with HARD variants blocking readiness.
 
 ## Case 4: Soak minimum is derived from risk profile
 
-**Fixture:** Policy lookup maps a hash-bound high-risk profile to a 13-hour minimum,
+**Fixture:** Policy lookup maps a revision-bound high-risk profile to a 13-hour minimum,
 specific workload/checkpoints/dimensions. Another profile maps to a different minimum.
 Executions last 12:59 and 13:00 respectively.
 
-**Expected behavior:** Record policy rule/version/hash, risk dimensions, unit/rounding,
+**Expected behavior:** Record policy rule/version/revision, risk dimensions, unit/rounding,
 derived rationale and identity. The short run cannot PASS; exact-minimum run may PASS
 only if every other objective dimension does.
 
@@ -153,7 +153,7 @@ only if every other objective dimension does.
 fails integrity validation, or misses hotfix objective. All other checks pass.
 
 **Expected behavior:** Recovery HARD check is FAIL, verdict LAUNCH_BLOCKED, and report
-names exact objective/measured units, procedure/log/receipt hashes and owner.
+names exact objective/measured units, procedure/log/receipt revisions and owner.
 
 **Assertions:**
 
@@ -168,7 +168,7 @@ names exact objective/measured units, procedure/log/receipt hashes and owner.
 **Fixture:** Certification/legal/privacy/store/server/community checks have URLs,
 screenshots, names and boxes but no valid v2 provider receipt or owner attestation.
 Valid variants include exact issuer/authority, object/submission ID, reviewed bytes,
-candidate/platform scope, result, identity proof, times/expiry and signature/hash.
+candidate/platform scope, result, identity proof, times/expiry and signature/revision.
 
 **Expected behavior:** Unsupported rows stay UNKNOWN/MANUAL_REQUIRED. Valid receipts are
 evaluated only by exact policy rules. The model never fills/signs them.
@@ -176,7 +176,7 @@ evaluated only by exact policy rules. The model never fills/signs them.
 **Assertions:**
 
 - [ ] Local policy/media files do not prove publication, approval or provisioning
-- [ ] Receipt/attestation identity and authority registry hash are verified
+- [ ] Receipt/attestation identity and authority registry revision are verified
 - [ ] N/A and waiver require their separate exact authority; neither is inferred
 
 ---
@@ -192,8 +192,8 @@ readiness. Stable-ID predecessor delta reports regression without using old PASS
 **Assertions:**
 
 - [ ] Typed name/signature block cannot carry across candidate scope
-- [ ] Any bound identity/hash drift invalidates sign-off
-- [ ] Previous assessment is exact-path/hash context only
+- [ ] Any bound identity/revision drift invalidates sign-off
+- [ ] Previous assessment is exact-path/revision context only
 
 ---
 
@@ -203,7 +203,7 @@ readiness. Stable-ID predecessor delta reports regression without using old PASS
 subset.
 
 **Expected behavior:** Stop before limit, preserve every policy row, mark omitted checks
-UNKNOWN and coverage PARTIAL, report counters/hashes/resume cursor. HARD impact yields
+UNKNOWN and coverage PARTIAL, report counters/revisions/resume cursor. HARD impact yields
 LAUNCH_BLOCKED; advisory-only impact yields CONCERNS.
 
 **Assertions:**
@@ -235,7 +235,7 @@ respectively, only after all rows/counters. Launch Decision remains NOT_RECORDED
 **Fixture:** Valid candidate with a projected LAUNCH_READY result uses SIMULATE mode.
 
 **Expected behavior:** Begin/end watermark, verdict UNDETERMINED, labeled projection,
-Recorder Status SIMULATION and no durable path/hash.
+Recorder Status SIMULATION and no durable path/revision.
 
 **Assertions:**
 
@@ -250,11 +250,11 @@ Recorder Status SIMULATION and no durable path/hash.
 **Fixture:** Two assessment IDs on the same day and a third run with changed evidence.
 
 **Expected behavior:** Each has an assessment identity/path containing full candidate
-and assessment hashes; prior files remain exact and no date/latest/short alias exists.
+and assessment revisions; prior files remain exact and no date/latest/short alias exists.
 
 **Assertions:**
 
-- [ ] Report embeds all input/evidence/row/verdict/delta hashes
+- [ ] Report embeds all input/evidence/row/verdict/delta revisions
 - [ ] Existing assessment is never updated or overwritten
 - [ ] Changed input cannot reuse old sign-offs or assessment identity
 

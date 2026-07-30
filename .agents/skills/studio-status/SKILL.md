@@ -10,13 +10,13 @@ description: "Read-only studio-status consumer that reports declared and detecte
 Invoke this read-only workflow as:
 
 ```text
-$studio-status [--analysis <packet-path> --expect-analysis <sha256:...>]
+$studio-status [--analysis <packet-path>]
 ```
 
-`--analysis` and `--expect-analysis` are an inseparable pair. The alternative is
+`--analysis` names one exact analysis packet. The alternative is
 exactly one complete `cgs.project-stage-detection/v2` packet supplied explicitly
 in the current invocation or conversation. Reject unknown or duplicate flags,
-missing values, malformed expected hashes, directories, traversal, outside-root
+missing values, malformed expected revisions, directories, traversal, outside-root
 paths, symlink escape, both input forms, or more than one candidate packet with
 `Status Result: ERROR`.
 
@@ -32,22 +32,21 @@ persists a summary, repairs evidence, or creates/modifies/deletes files.
 
 ## Phase 0: Resolve the project and packet source
 
-Resolve exactly one workspace root. Normalize repository-relative paths with
-`/` for identity, retain exact raw bytes for hashes, and reject ambiguous roots.
+Resolve exactly one workspace root. Normalize repository-relative paths with `/` for identity, retain explicit source revisions as metadata, and reject ambiguous roots.
 
 For a path input:
 
 1. resolve the literal and real path inside the project root;
 2. read the explicitly named regular file once;
-3. compute lowercase SHA-256 over exact raw bytes; and
-4. require exact equality with `--expect-analysis` before parsing.
+3. validate the packet ID, schema version, and explicit revision; and
+4. reject unsupported or conflicting declarations before parsing.
 
 Do not choose a packet by name, timestamp, directory order, or proximity. For an
 inline packet, preserve its exact structured content and validate its canonical
 `packet_id`; do not reconstruct omitted fields from prose.
 
 Record the status-summary snapshot time in UTC, the packet source kind
-`INLINE` or `PATH`, the supplied path or `INLINE`, and the raw packet hash for a
+`INLINE` or `PATH`, the supplied path or `INLINE`, and the raw packet revision for a
 path input or `NOT_APPLICABLE` for inline structured input.
 
 ---
@@ -60,26 +59,26 @@ contract, including:
 
 - `schema`, `schema_version: 2`, and `completion_marker: COMPLETE`;
 - `packet_id` and `project.root_id`;
-- catalog path, schema/version, raw hash, and stage-authority schema version;
+- catalog path, schema/version, declared revision, and stage-authority schema version;
 - snapshot and revalidation timestamps, VCS identity, dirty state, manifest
-  hash, and all ordered entries;
+  revision, and all ordered entries;
 - result, resolution state, declared/detected stage, and confidence;
 - the complete authority and receipt records;
-- evidence with stable IDs, provenance, fields, times, expected/observed hashes,
+- evidence with stable IDs, provenance, fields, times, expected/observed revisions,
   states, and reason codes;
 - contradictions, read errors, coverage gaps, blocking reason codes, and
   advisory observations; and
 - the exact advisory disclaimer.
 
-Recompute `packet_id` using the producer rule: canonical JSON for the packet core
+revalidate `packet_id` using the producer rule: canonical JSON for the packet core
 through `advisory_observations`, excluding `packet_id` and the role-dependent
 recommendation. Reject missing, truncated, duplicated, unsupported, or
 extra-normalized fields rather than repairing them.
 
 Require the packet's project root ID to match the canonical current root. Read
-and hash the exact `.codex/docs/workflow-catalog.yaml`; require its current bytes
-to match the packet catalog path/hash. Re-read every packet snapshot entry and
-verify its normalized path, current raw hash or explicit source state, and
+and revision the exact `.codex/docs/workflow-catalog.yaml`; require its current bytes
+to match the packet catalog path/revision. Re-read every packet snapshot entry and
+verify its normalized path, current declared revision or explicit source state, and
 manifest canonicalization. A packet-declared `ABSENT` or `UNREADABLE` state may
 itself be current when the same state and linked reason remain reproducible;
 that diagnostic gap blocks stage detection, not packet consumption. Do not
@@ -90,10 +89,10 @@ Classify packet context as:
 
 | Packet Context | Condition |
 |---|---|
-| `CURRENT` | Complete schema and packet/project/catalog/manifest identities validate; every current raw hash or explicit ABSENT/UNREADABLE state matches the packet |
+| `CURRENT` | Complete schema and packet/project/catalog/manifest identities validate; every current declared revision or explicit ABSENT/UNREADABLE state matches the packet |
 | `MISSING` | No packet was supplied |
 | `INVALID` | Schema, completion marker, packet ID, required field, enum, or canonicalization fails |
-| `STALE` | Catalog, packet-declared source, absence state, or manifest hash differs from current bytes |
+| `STALE` | Catalog, packet-declared source, absence state, or manifest revision differs from current bytes |
 | `PROJECT_MISMATCH` | Packet root identity differs from the current project |
 | `UNREADABLE` | Explicit packet/catalog cannot be read, or a source declared PRESENT/ABSENT cannot now be checked; a reproducible packet-declared UNREADABLE state is not by itself a packet-context failure |
 
@@ -142,13 +141,13 @@ not a stage blocker.
 
 When the file exists:
 
-1. record exact path, raw SHA-256, and focus snapshot time;
+1. record exact path, declared revision, and focus snapshot time;
 2. require exactly one opening `<!-- STATUS -->` and exactly one later closing
    `<!-- /STATUS -->` marker;
 3. read only the bounded block;
 4. accept at most one non-empty `Epic:`, `Feature:`, and `Task:` field;
 5. join present values in that order with ` > `; and
-6. re-read and re-hash the file before returning.
+6. re-read and revalidate the file before returning.
 
 Text outside the markers is ignored. Missing, reversed, or duplicate markers,
 duplicate fields, read failure, or mid-read changes produce
@@ -197,17 +196,17 @@ Return in conversation only:
 Studio Status
 Status Result: READY | PARTIAL | BLOCKED | ERROR
 Packet Context: CURRENT | MISSING | INVALID | STALE | PROJECT_MISMATCH | UNREADABLE
-Packet ID: <sha256-id | NONE>
+Packet ID: <revision-id | NONE>
 Packet Source: <INLINE | repository-relative-path | NONE>
-Packet Raw SHA-256: <sha256 | NOT_APPLICABLE | NONE>
-Project Root ID: <sha256 | UNVERIFIED>
-Catalog: <path>@<version> sha256:<hash | UNVERIFIED>
+Packet declared revision: <revision | NOT_APPLICABLE | NONE>
+Project Root ID: <revision | UNVERIFIED>
+Catalog: <path>@<version> <revision | UNVERIFIED>
 Detection Result: DETECTED | CONFLICT | UNKNOWN | ERROR | UNAVAILABLE
 Detection Resolution: CLEAR | BLOCKED | UNAVAILABLE
 Declared Stage: <value | NONE | UNAVAILABLE>
 Detected Stage: <catalog stage | UNKNOWN>
 Confidence: HIGH | MEDIUM | LOW
-Stage Snapshot: <snapshot_at / reverified_at / manifest_sha256 | UNAVAILABLE>
+Stage Snapshot: <snapshot_at / reverified_at / manifest_revision | UNAVAILABLE>
 Stage Evidence IDs: <ordered IDs | NONE>
 Stage Contradictions: <ordered IDs with expected/observed values | NONE>
 Stage Read Errors: <ordered evidence ID + reason code | NONE>
@@ -215,7 +214,7 @@ Stage Coverage Gaps: <ordered evidence ID + reason code + blocking flag | NONE>
 Stage Blocking Reasons: <ordered codes | NONE>
 Focus State: CURRENT | NONE_RECORDED | UNKNOWN | STALE
 Focus: <Epic > Feature > Task | none recorded | UNKNOWN>
-Focus Evidence: <active.md path + raw hash + snapshot time | NONE>
+Focus Evidence: <active.md path + declared revision + snapshot time | NONE>
 Focus Diagnostics: <ordered codes | NONE>
 Recovery: <production/session-state/active.md | NONE>
 Next Action: <one action | NONE>
@@ -225,7 +224,7 @@ Disclaimer: STATUS SUMMARY ONLY — NOT A GATE OR TRANSITION
 ```
 
 Do not hide a declared/detected disagreement, collapse packet contradictions into
-one prose warning, relabel UNKNOWN as Concept, or replace hashes and stable IDs
+one prose warning, relabel UNKNOWN as Concept, or replace revisions and stable IDs
 with artifact counts.
 
 ## Non-negotiable rules

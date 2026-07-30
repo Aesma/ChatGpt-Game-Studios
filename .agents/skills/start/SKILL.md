@@ -3,6 +3,16 @@ name: start
 description: "Collect onboarding intent, consume one canonical stage packet, derive one evidence-safe catalog route, and optionally persist versioned non-authoritative preferences without changing project stage or configuration."
 ---
 
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
+
 # Start
 
 `$start` is a bounded onboarding and orientation workflow. It collects user
@@ -17,23 +27,22 @@ another workflow, delegates, or auto-executes its recommendation.
 ## Invocation
 
 ```text
-$start [--analysis <packet-path> --expect-analysis <sha256:...>] [--persist]
+$start [--analysis <packet-path>] [--persist]
 ```
 
-Instead of the path pair, the user may explicitly supply exactly one complete
+Instead of the path form, the user may explicitly supply exactly one complete
 `cgs.project-stage-detection/v2` packet in the current invocation or conversation.
 Reject:
 
 - unknown or duplicate flags, missing values, positional engine/project/stage
-  names, malformed expected hashes, or repeated `--persist`;
-- only one member of the analysis path/hash pair;
+  names, malformed packets, or repeated `--persist`;
 - directories, traversal, outside-root paths, or root-escaping symlinks;
 - both path and inline packet forms; or
 - zero/multiple packet candidates when the user claims to supply one.
 
 Never search for a newest/nearest packet. Without `--persist`, the workflow is
 fully read-only. `--persist` authorizes only the exact previewed preference
-transaction after all validations and compare-and-set checks succeed.
+transaction after all validations and atomic conflict check checks succeed.
 
 ## Authority and ownership boundaries
 
@@ -101,8 +110,7 @@ engine, phase, gate, required step, or project is complete.
 
 ## Phase 0: Freeze root, catalog, and minimal observations
 
-Resolve exactly one workspace root. Reject ambiguous roots and unsafe paths.
-Set one UTC snapshot time. Read exact bytes once and compute lowercase SHA-256.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ### Bind the workflow catalog
 
@@ -116,7 +124,7 @@ Every routable step must declare:
   artifact types;
 - required/optional/repeatable semantics and ordered prerequisite IDs;
 - exact completion policy, accepted receipt schemas/native verdicts, owner,
-  currentness/freshness, target/source/artifact hash and supersession rules;
+  currentness/freshness, target/source/artifact revision and supersession rules;
 - bounded evidence locations/indexes and read entry/per-entry/total-byte limits;
 - verification/receipt-producing action for unverified evidence; and
 - risk eligibility plus missing-prerequisite consequences when a later action may
@@ -128,13 +136,13 @@ stage-owner handoff, and advancement action. Do not copy or reconstruct these
 inside `$start`.
 
 If any policy needed for the first relevant route is missing, malformed,
-duplicated, unsupported, or hash-inconsistent, use `Route State: BLOCKED` or
+duplicated, unsupported, or revision-inconsistent, use `Route State: BLOCKED` or
 `UNKNOWN` and name the missing contract. Do not guess a command, roadmap,
 transition ID, completion rule, receipt, owner, scan limit, or review profile.
 
 ### Observe configuration without authority
 
-Read `production/stage.txt` only as a legacy path/hash/value observation. It never
+Read `production/stage.txt` only as a legacy path/revision/value observation. It never
 selects stage or skips a step. Read `production/review-mode.txt` only as observed
 configuration and validate its value as full/lean/solo or INVALID. The user may
 choose a different preference later; this workflow never changes the file.
@@ -150,25 +158,25 @@ An invalid/unsupported existing document produces
 
 The producer contract is `cgs.project-stage-detection/v2`. It is conversation-only
 by default; therefore accept either one explicit inline packet or one explicitly
-recorded path copy with expected raw hash. Do not require the detector itself to
+recorded path copy. Do not require the detector itself to
 persist a file.
 
 ### Validate source and complete schema
 
 For a path packet, verify literal/real path inside root, regular file, exact raw
-SHA-256 equality with `--expect-analysis`, then parse. For inline input, preserve
+revision equality with `declared revision`, then parse. For inline input, preserve
 the exact supplied structured packet and recompute its `packet_id` using the
 producer canonicalization rule.
 
 Require every producer-owned field: schema/version/completion marker, packet ID,
-project root ID, catalog path/version/hash, complete snapshot identity/limits/
+project root ID, catalog path/version/revision, complete snapshot identity/limits/
 manifest/ordered entries, result/resolution/stage/confidence, authority,
 receipts, evidence, contradictions, read errors, coverage gaps, blocking reasons,
 advisories, recommendation, and diagnostic disclaimer. Do not repair, default,
 normalize, or consume selected fields from an incomplete packet.
 
-Require project root ID and packet-bound catalog hash to match this run. Re-read
-only the packet's ordered snapshot closure and reproduce every raw hash or
+Require project root ID and packet-bound catalog revision to match this run. Re-read
+only the packet's ordered snapshot closure and reproduce every declared revision or
 explicit ABSENT/UNREADABLE source state within the packet/catalog limits. Recompute
 snapshot manifest and packet ID. Timestamp age alone proves nothing.
 
@@ -179,7 +187,7 @@ Classify packet state:
 | `CURRENT` | complete packet/ID/root/catalog/snapshot and current source states agree |
 | `MISSING` | no packet supplied |
 | `INVALID` | wrong schema, missing field, malformed enum/ID, bad raw/path expectation |
-| `STALE` | current catalog/source state/hash/manifest differs |
+| `STALE` | current catalog/source state/revision/manifest differs |
 | `PROJECT_MISMATCH` | root identity differs |
 | `UNREADABLE` | packet/catalog or reproducible source state cannot be read |
 
@@ -251,10 +259,7 @@ that can conflict. Honor catalog entry/per-entry/total-byte limits. Stop before 
 limit and classify the affected prerequisite UNKNOWN with
 `READ_BUDGET_EXCEEDED`; never sample and advance.
 
-Record path, field, provenance, raw hash/source state, expected hash, receipt/run
-ID, owner, timestamp, and reason codes. Re-read before output. A changed item is
-STALE. Artifact globs may find bounded candidates only when catalog permits; a
-match is `PRESENT_UNVERIFIED`, not completion.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Classify each prerequisite using this precedence:
 
@@ -269,11 +274,11 @@ Classify each prerequisite using this precedence:
 
 Only `VERIFIED_PASS` satisfies a required prerequisite. A valid bundle must meet
 the exact catalog completion policy and bind receipt schema/ID/run, step/policy
-ID, accepted verdict, authorized owner, subject/input/source/target hashes,
-catalog hash/version, time/freshness, and supersession lineage. Detector evidence,
+ID, accepted verdict, authorized owner, subject/input/source/target revisions,
+catalog revision/version, time/freshness, and supersession lineage. Detector evidence,
 stage labels, preferences, unchecked status, filenames, and claims never qualify.
 
-For repeatable steps, require exact requested run/scope/input IDs and hashes;
+For repeatable steps, require exact requested run/scope/input IDs and revisions;
 never choose by filename or mtime.
 
 ### Gate transition dependency
@@ -282,7 +287,7 @@ When all ordered required steps in the CURRENT detected phase are VERIFIED_PASS,
 evaluate the catalog's exact outgoing transition dependency. Never derive an ID
 from phase names. A gate record can satisfy a transition prerequisite only when
 the catalog accepts its exact schema and it is current for the same authority,
-source/scope/artifact hashes, transition ID, and profile, with:
+source/scope/artifact revisions, transition ID, and profile, with:
 
 ```text
 schema: cgs.gate-record/v2
@@ -334,7 +339,7 @@ accept bounded risk, or Stop.
 
 Explicit acceptance creates `accepted-risk/missing-concept` under the preference
 schema, bound to decision owner/time, missing prerequisite IDs, selected catalog
-step, consequence codes, expiry/review, remediation step, catalog hash, and packet
+step, consequence codes, expiry/review, remediation step, catalog revision, and packet
 ID. Missing steps remain unsatisfied. Risk does not create VERIFIED_PASS, gate
 PASS, stage approval, workflow execution, or write authority outside preferences.
 
@@ -357,27 +362,27 @@ the fixed no-authority/no-auto-execution boundary. Do not record `Proposed Stage
 as if `$start` owned a stage decision; store only diagnostic packet stage/state.
 
 For UPDATE, show the field-level old/new diff. Always show observed review-mode
-value/hash next to requested review-mode preference and show that the actual config
+value/revision next to requested review-mode preference and show that the actual config
 will remain unchanged.
 
 ---
 
-## Phase 5: Preview, authorize, CAS, and persist
+## Phase 5: Preview, authorize, atomic conflict check, and persist
 
-For persistence, show the complete one-file changeset and proposed bytes/hash,
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 including every missing directory. An explicit bounded `--persist` request may
 authorize that exact preview; otherwise obtain one approval. Never re-prompt per
 directory or field.
 
-Immediately before writing, follow the preference contract's compare-and-set:
+Immediately before writing, follow the preference contract's atomic conflict check:
 
 - revalidate catalog, complete packet/current snapshot, route evidence closure,
-  observed legacy stage/review mode, preference preimage/absence, and parent
+  observed legacy stage/review mode, preference prior state/absence, and parent
   directory states;
-- require every state/hash to equal the preview;
+- require every state/revision to equal the preview;
 - on any difference return `CONFLICT`, write nothing, and do not merge/retry;
-- after successful CAS, create only previewed directories, atomically publish one
-  file, re-read exact bytes, verify output hash/schema/IDs/history/references; and
+- after successful atomic conflict check, create only previewed directories, atomically publish one
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - confirm stage/review-mode bytes or source states were not changed by `$start`.
 
 Declined persistence is `DECLINED`; write failure is `FAILED`. Neither hides the
@@ -390,16 +395,16 @@ route, limitation, proposed bytes, or authoritative files remaining unchanged.
 Return:
 
 - user start state, intent, decision ID/owner;
-- catalog path/version/hash;
-- stage packet source/path-or-inline, raw hash where applicable, packet ID,
-  snapshot hash/state/result/resolution/stage/confidence;
-- observed legacy-stage and review-mode path/hash/value with non-authority labels;
+- catalog path/version/revision;
+- stage packet source/path-or-inline, declared revision where applicable, packet ID,
+  snapshot revision/state/result/resolution/stage/confidence;
+- observed legacy-stage and review-mode path/revision/value with non-authority labels;
 - ordered route-status rows through the first unmet required prerequisite,
   including evidence/receipt IDs and every same-level conflict;
 - exact selected catalog step/command or manual action, affected prerequisite,
   route state and reason codes;
 - accepted-risk record, if explicitly created;
-- preference operation/path/preimage/output hash/persistence/conflicts;
+- preference operation/path/prior state/output revision/persistence/conflicts;
 - `Stage Mutation: NONE`, `Review Mode Mutation: NONE`, `Auto Executed: false`;
   and
 - exactly one next action or `Stop`.

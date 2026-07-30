@@ -7,7 +7,7 @@ recorder.
 ## Phase 0 — Parse invocation
 
 1. Parse the exact grammar in `SKILL.md`.
-2. Reject unknown/missing/repeated options, positional values, invalid hashes,
+2. Reject unknown/missing/repeated options, positional values, invalid revisions,
    invalid UUIDs, unsafe paths, and illegal combinations as `USAGE_ERROR`.
 3. Resolve the canonical project root without scanning outside it.
 4. Load the two normative contract files completely.
@@ -17,9 +17,9 @@ If grammar or contract loading fails, return the error envelope and stop.
 ## Phase 1 — Freeze input identity
 
 1. Resolve every input to one canonical project-relative path.
-2. Read exact bytes once, compute SHA-256, and compare the declared hash.
+2. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 3. Validate schema, project relationship, timestamps/expiry when applicable, and
-   internal hashes.
+   internal revisions.
 4. For `ABSENT:<path>`, prove exact absence before proceeding.
 5. Record target commit/ref and dirty state when available; never clean or alter
    the working tree.
@@ -30,16 +30,16 @@ identity/schema/chain failure is `REGISTER_ERROR`. Stop on either.
 ## Phase 2 — Capture before snapshot
 
 Build a streaming read-only snapshot over the bounded input paths: path, type,
-size, mtime where available, and SHA-256 for each readable regular file. Include
+size, mtime where available, and revision for each readable regular file. Include
 the register path even when absent. Record denied/unreadable entries. The allowed
 write set is empty.
 
 ## Phase 3 — Validate and replay the register
 
-1. Validate v3 header/codec and full content hash.
-2. Verify global sequence/hash chain, per-debt chains, UUID uniqueness, payload
-   hashes, fingerprint/alias ownership, and lifecycle transitions.
-3. Materialize items and indices by replay; retain a view hash.
+1. Validate v3 header/codec and full content revision.
+2. Verify global sequence/revision chain, per-debt chains, UUID uniqueness, payload
+   revisions, stable key/alias ownership, and lifecycle transitions.
+3. Materialize items and indices by replay; retain a view revision.
 4. For absence, use the mode-specific empty/partial behavior.
 5. For recognized legacy schema, return `REGISTER_ERROR` subtype
    `MIGRATION_REQUIRED` and a read-only migration proposal; stop.
@@ -56,7 +56,7 @@ Never repair or partially trust an invalid register.
 5. Normalize every result to `cgs.tech-debt-analyzer-receipt/v1`.
 6. Convert results to candidate states. Marker/size/keyword hits remain
    `HEURISTIC_CANDIDATE`; complexity/clone require successful capable analyzers.
-7. Compute `td-fp-v2` only when all identity fields are canonical.
+7. Compute `td-key-v1` only when all identity fields are canonical.
 8. Deduplicate against the replayed primary/alias index and within the run.
 9. If the user explicitly selects owner-triaged rows, construct but do not persist
    one exact change proposal.
@@ -66,10 +66,10 @@ Never repair or partially trust an invalid register.
 
 1. If no manual record exists, return `INPUT_REQUIRED` with the exact
    `cgs.tech-debt-manual-candidate/v1` schema and stop.
-2. Validate required fields, path/source identities, evidence hashes, scale values,
+2. Validate required fields, path/source identities, evidence revisions, scale values,
    and prohibited lifecycle/priority/schedule assertions.
-3. Compute `manual@2` / `td-fp-v2` when possible.
-4. Deduplicate against all primary fingerprints and aliases.
+3. Compute `manual@2` / `td-key-v1` when possible.
+4. Deduplicate against all primary stable keys and aliases.
 5. Return `ADD_DUPLICATE_FOUND` for a match or `ADD_PREVIEW_READY` for a new,
    owner-selected candidate. A proposal may contain `CREATE_REGISTER`, `CREATED`,
    `OBSERVED`, or a separately selected triage event as allowed by the contract.
@@ -82,7 +82,7 @@ Never repair or partially trust an invalid register.
 2. Resolve the latest valid estimate event and evidence for each input.
 3. Mark incomplete/invalid values `UNSCORED`; do not infer or convert them.
 4. Calculate exact rational scores and deterministic tie-break traces.
-5. Produce a transient, hash-bound `ADVISORY_ONLY` view; do not modify or sort the
+5. Produce a transient, revision-bound `ADVISORY_ONLY` view; do not modify or sort the
    register bytes.
 6. Return `PRIORITY_VIEW_READY` only when all requested rows are scored; otherwise
    `PRIORITY_VIEW_PARTIAL` with exact gaps.
@@ -111,10 +111,9 @@ The skill itself must never appear as a writer.
 
 ## Phase 6 — Validate proposal and result
 
-1. Recompute candidate, view, report, proposal, and envelope hashes.
+1. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 2. Ensure all IDs are unique within the proposal and absent from the base index.
-3. Verify every event transition, authority requirement, predecessor, payload
-   hash, order, proposed head/revision/hash, and append-only proof.
+3. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 4. Mark the proposal `NOT_PERSISTED` and `NOT_AUTHORIZATION`.
 5. State gaps, unsupported checks, stale key, and mutation evidence.
 6. Confirm outcome vocabulary is exact and does not imply mutation or quality.
@@ -124,8 +123,7 @@ outcome. Never repair it by silently changing authorized content.
 
 ## Phase 7 — Return and stop
 
-Return one `cgs.tech-debt-analysis/v2` envelope. Include enough deterministic data
-for an independent verifier to recompute all hashes and classifications. End with:
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ```text
 register_mutated: false
@@ -135,5 +133,5 @@ recorder_invoked: false
 ```
 
 If the user wants persistence, explain that a separate recorder transaction needs
-fresh exact authorization over the proposal hash. Do not perform that transaction
+fresh exact authorization over the proposal revision. Do not perform that transaction
 inside this skill.

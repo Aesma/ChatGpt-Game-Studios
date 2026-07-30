@@ -33,13 +33,13 @@ target, prior report, change, or revision from directory contents, Git history,
 filenames, modification time, or conversation memory.
 
 Every `--findings` token must exactly match
-`BLF-<lowercase-category-slug>-<12-lowercase-hex>` and be comma-separated without
+`BLF-<lowercase-category-slug>-<stable-business-key>` and be comma-separated without
 aliases or display names. Schema-defined artifact, system, metric, formula,
 scenario, target, and check IDs are matched as exact case-sensitive values.
 
 This workflow is a single-analyzer, strictly read-only contract:
 
-- It may enumerate, hash, parse, and read declared project-local regular files,
+- It may enumerate, revision, parse, and read declared project-local regular files,
   inspect read-only Git state, and run only registered deterministic adapters in
   a project-read-only sandbox.
 - It must not create, edit, append, rewrite, tune, import, rename, move, delete,
@@ -76,13 +76,11 @@ limitations in the returned packet.
 
 Read every applicable `AGENTS.md` from repository root through the manifest and
 each declared input directory, in root-to-target order. Record canonical path and
-raw-byte SHA-256; the closest applicable instruction wins conflicting
+declared revision; the closest applicable instruction wins conflicting
 instructions.
 
-Represent `project_id` as the exact string
-`root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>` and compute
-`project_id_sha256` over its UTF-8 bytes. If Git is unavailable, use `null`, keep
-working from current exact file hashes, mark project-revision provenance
+Represent project_id as the exact stable string root=<forward-slash-canonical-root>;git-root=<root-commit-or-null>. Set project_revision to the repository commit ID or an explicit workspace-snapshot revision supplied by the manifest owner; never derive it from project_id bytes. If Git is unavailable, use `null`, keep
+working from current exact file revisions, mark project-revision provenance
 incomplete, and force `PARTIAL`; never guess a commit.
 
 The manifest must be a project-local regular file no larger than 1 MiB with
@@ -95,20 +93,20 @@ targets, scenarios, simulations, and required checks.
 
 Any source needed to identify the domain, primary question, exact system IDs,
 primary authoritative target, unit registry, or formula grammar that is missing,
-ambiguous, malformed, outside the project, or hash-invalid yields `ERROR` before
+ambiguous, malformed, outside the project, or revision-invalid yields `ERROR` before
 analysis. A valid identified domain with a secondary missing source/check becomes
 `PARTIAL`. Do not search `assets/data`, `design/gdd`, reports, or registries for a
 replacement.
 
 ---
 
-## Phase 1 — Lock a bounded exact-hash manifest
+## Phase 1 — Lock a bounded exact-revision manifest
 
 Build one complete candidate identity sequence from the explicit manifest,
 source/adapter/unit registries, target records, formula sources, scenario and
 simulation definitions, applicable instructions, and recheck evidence when
-present. Hash exact raw bytes with SHA-256 before parsing. Normalized text, Git
-status, modification time, report date, and filename are never hash inputs or
+present. record exact raw-byte count and declared revision before parsing. Normalized text, Git
+status, modification time, report date, and filename are never revision inputs or
 currentness evidence.
 
 Use these fixed upper bounds:
@@ -136,13 +134,7 @@ max_total_wall_ms: 600000
 max_findings: 4096
 ```
 
-Manifest limits may lower but never raise these caps. Sort candidate identities by
-channel, stable artifact ID or null, then canonical project-relative path. Stream
-the complete ordered identity sequence into `inventory_sha256`, retaining at most
-`max_manifest_candidates` detailed rows. On overflow record exact total and
-omitted counts, first and last omitted sort keys, and
-`omitted_candidates_sha256`. Apply the same bounded-prefix plus exact count/digest
-rule to every row limit. Do not parse, simulate, or judge an omitted item. Add an
+Manifest limits may lower but never raise these caps. Sort candidate identities by channel, stable artifact ID or null, then canonical project-relative path. Require the manifest to supply one stable inventory_id and explicit monotonic inventory_revision for the complete ordered candidate sequence, while retaining at most max_manifest_candidates detailed rows. On overflow record exact total and omitted counts plus the first and last omitted business keys. Apply the same bounded-prefix plus count/boundary-key rule to every row limit. Do not parse, simulate, or judge an omitted item. Add an
 aggregate `OVER_LIMIT` coverage row naming every affected check and force
 `PARTIAL`; never silently truncate, raise a cap, or infer completeness from a
 sample.
@@ -153,21 +145,21 @@ Each manifest row contains:
 channel: instruction | source | schema | adapter | unit | formula | target | scenario | simulation | prior-evidence | change
 artifact_id: <stable ID or null>
 path: <canonical project-relative path>
-sha256: <locked 64-lowercase-hex or null>
-revalidation_sha256: <final 64-lowercase-hex or null>
+revision: <locked explicit revision or null>
+revalidation_revision: <final explicit revision or null>
 bytes: <integer or null>
 status: LOCKED | EXCLUDED | MISSING | UNREADABLE | INVALID | UNSUPPORTED | OVER_LIMIT | SYMLINK_REJECTED | OUTSIDE_PROJECT | STALE
 reason: <bounded exact reason>
 planned_checks: [<stable check IDs>]
 ```
 
-`manifest_sha256` is SHA-256 over canonical JSON of project identity, invocation,
+manifest_revision is an explicit monotonic revision; canonical JSON records project identity, invocation,
 contract, snapshot and system/domain IDs, numeric policy, fixed/effective limits,
-ordered retained rows, inventory digest, and overflow counts/digests. Canonical
+ordered retained rows, inventory revision, and overflow counts/revisions. Canonical
 JSON uses UTF-8, lexicographically ordered object keys, displayed array order, no
 insignificant whitespace, and one final LF.
 
-Before finalization, re-enumerate declared sources and re-hash every locked input.
+Before finalization, re-enumerate declared sources and re-read every locked input.
 An added, removed, renamed, or byte-changed input is `STALE`; discard calculations
 derived from old bytes, retain unaffected evidence, mark affected checks
 incomplete, and return `PARTIAL`. Never mix snapshots or silently restart.
@@ -180,7 +172,7 @@ Never parse a supported extension by intuition. The manifest's exact
 `cgs.balance-adapter-registry/v1` must register each parser/evaluator with:
 
 - stable adapter class, adapter ID, semantic version, executable/tool identity
-  and hash, supported input schema/version and MIME signature;
+  and revision, supported input schema/version and MIME signature;
 - output schema/version, typed-field mapping, error semantics, deterministic
   normalization, and parser precision policy;
 - argv array with typed placeholders, no shell string or network, project-read-only
@@ -200,9 +192,9 @@ Required classes are present when their channels are in scope:
 Executables, project scripts, macros, arbitrary code, embedded expressions,
 environment files, binary game data, unknown schemas, and unsupported formats do
 not enter the model. A valid `cgs.balance-adapter-receipt/v1` binds adapter and
-executable IDs/versions/hashes, exact input artifacts and raw hashes, target
-snapshot, typed output schema, output digest, argv digest, sandbox policy,
-timestamps, exit state, bounded log digests, and parser version.
+executable IDs/versions/revisions, exact input artifacts and raw revisions, target
+snapshot, typed output schema, output revision, argv revision, sandbox policy,
+timestamps, exit state, bounded log revisions, and parser version.
 
 Adapter state is exactly
 `PASS | FAIL | NOT_RUN | UNSUPPORTED | PARSE_ERROR | TIMEOUT | INVALID_RECEIPT`.
@@ -225,7 +217,7 @@ variable/check/scenario.
 
 Targets are product truth only when the manifest points to an exact current
 approved target record with a stable metric/target ID, owner, lifecycle state,
-applicability, source artifact/path/locator/hash, and schema version. Resolve
+applicability, source artifact/path/locator/revision, and schema version. Resolve
 authority in this order:
 
 1. applicable governing `AGENTS.md` constraints;
@@ -257,7 +249,7 @@ tolerance:
   inclusive_upper: true | false | null
   decision_rule: <stable rule ID>
 severity_policy_id: <stable ID>
-source: <artifact ID/path/locator/hash/schema/owner/lifecycle>
+source: <artifact ID/path/locator/revision/schema/owner/lifecycle>
 ```
 
 Do not invent ±10%, ±20%, ideal values, genre standards, acceptable confidence,
@@ -266,14 +258,14 @@ evidence.
 
 ### Typed variables and unit registry
 
-Every variable requires stable variable ID, source artifact/pointer/hash, scalar
+Every variable requires stable variable ID, source artifact/pointer/revision, scalar
 or container type, dimension, unit ID, allowed range, null policy, base/final
 semantic, version, and scenario mutability. Percent, probability, ratio,
 multiplier, frames, seconds, ticks, currency-resource IDs, XP, damage, health,
 count, and rates are distinct semantics.
 
 The exact `cgs.balance-unit-registry/v1` defines every unit/dimension and closed
-conversion rule with stable conversion ID, source artifact/hash/version, typed
+conversion rule with stable conversion ID, source artifact/revision/version, typed
 input/output dimensions, exact rational or declared decimal transform, precision,
 rounding, domain, and validity range. Do not assume frame/tick rate, convert
 percent to multiplier implicitly, merge currencies/resources by label, or combine
@@ -287,7 +279,7 @@ Every formula uses `cgs.balance-formula/v1`:
 ```yaml
 formula_id: <stable ID>
 formula_version: <exact version>
-source: <artifact ID/path/locator/hash/schema/owner/lifecycle>
+source: <artifact ID/path/locator/revision/schema/owner/lifecycle>
 expression: <bounded exact expression>
 inputs: [<stable variable ID/type/dimension/unit/base-final semantic>]
 output: <stable metric ID/type/dimension/unit/base-final semantic>
@@ -335,9 +327,9 @@ within fixed caps. Never add seeds, extend trials, change confidence methods,
 discard outliers, or rerun until a preferred result appears.
 
 A valid `cgs.balance-simulation-receipt/v1` binds exact manifest/source/formula/
-target/scenario hashes, simulator/PRNG/model versions, seeds, trial/evaluation
+target/scenario revisions, simulator/PRNG/model versions, seeds, trial/evaluation
 counts, distribution summary, estimator, confidence interval or error bound,
-decision rule result, convergence diagnostics, and complete output digest.
+decision rule result, convergence diagnostics, and complete output revision.
 
 Missing seeds, PRNG/model version, target precision, decision rule, sufficient
 trials, or valid receipt makes the check `UNVERIFIABLE`. When the interval/error
@@ -345,7 +337,7 @@ bound overlaps a decision boundary or declared precision is not achieved, record
 `INCONCLUSIVE_UNCERTAINTY` and force `PARTIAL`; do not round uncertainty into a
 PASS/FAIL. Report assumptions, sample size, confidence interval, Monte Carlo
 error, and limits. Deterministic identical inputs must produce identical receipts,
-checks, findings, and payload hash except explicitly excluded observation time.
+checks, findings, and payload revision except explicitly excluded observation time.
 
 Claims such as dominant, unkillable, useless, infinite, dead zone, power spike,
 or healthy economy are invalid without defined alternatives, time windows,
@@ -357,7 +349,7 @@ strategies, states, targets, and uncertainty decision rules.
 
 Build one in-memory normalized snapshot keyed by stable IDs. Record original and
 normalized values/units, conversion IDs, formula/target/scenario versions, source
-locators/hashes, adapter receipts, and evaluation traces. Validate all required
+locators/revisions, adapter receipts, and evaluation traces. Validate all required
 sources, schemas, types, ranges, units, formula DAGs, targets, scenarios, budgets,
 and finite arithmetic before interpreting balance.
 
@@ -393,8 +385,8 @@ evidence references.
 Every finding uses:
 
 ```yaml
-id: BLF-<category-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <64-lowercase-hex>
+id: BLF-<category-slug>-<stable-business-id>
+business_key: <explicit revision>
 category: SCHEMA_ERROR | UNIT_ERROR | FORMULA_ERROR | TARGET_VIOLATION | MODEL_VIOLATION | PRODUCT_DECISION | EVIDENCE_GAP | SIMULATION_UNCERTAINTY | REGRESSION
 class: PROVABLE_ERROR | MODEL_VIOLATION | PRODUCT_DECISION | EVIDENCE_GAP
 severity: BLOCKER | HIGH | MEDIUM | LOW | INFO | UNRATED
@@ -407,7 +399,7 @@ check_id: <stable ID>
 formula_ids: [<stable IDs>]
 scenario_ids: [<stable IDs>]
 target_ids: [<stable IDs>]
-evidence: [<exact artifact/locator/hash/receipt references>]
+evidence: [<exact artifact/locator/revision/receipt references>]
 expected_actual_deviation_uncertainty: <typed bounded values>
 reproduction: <bounded deterministic steps>
 impact: <evidence-bounded consequence>
@@ -416,13 +408,13 @@ acceptance: <objective current-snapshot closure condition>
 limitations: <scope/confidence limits>
 ```
 
-Fingerprint canonical JSON from `project_id_sha256`, category, stable domain/
+stable business key is assembled from declared project_id, category, stable domain/
 system/metric/check/formula/scenario/target IDs, and stable evidence artifact IDs.
-Exclude paths, pointers, raw wording, hashes, current values, deviation, severity,
+Exclude paths, pointers, raw wording, revisions, current values, deviation, severity,
 confidence, status, owner, run ID, timestamps, and recommendation. Thus a moved
 source or changed value keeps the same logical finding ID; a different target,
-scenario, formula, or check does not. Deduplicate only the complete fingerprint.
-Incompatible identity/evidence under one fingerprint is a coverage conflict and
+scenario, formula, or check does not. Deduplicate only the complete stable business key.
+Incompatible identity/evidence under one stable business key is a coverage conflict and
 forces `PARTIAL`.
 
 Severity follows authoritative constraints, tolerance/severity policy, and proven
@@ -438,7 +430,7 @@ impact, never rhetorical language or deviation magnitude alone:
 
 For a `PROVABLE_ERROR` whose correction is uniquely implied by current schema,
 unit conversion, or formula evidence, provide one read-only correction candidate
-with current pointer/hash, governing proof, mathematically implied value/expression,
+with current pointer/revision, governing proof, mathematically implied value/expression,
 downstream recomputation set, owner, and acceptance. Never apply it.
 
 TTK targets, pacing, prices, drop rates, pity policy, XP/power curves, difficulty,
@@ -460,7 +452,7 @@ scenario, simulation, required check, and recheck input:
 channel_id: <stable artifact/channel/check ID>
 artifact_id: <stable ID or null>
 path: <canonical project-relative path or null>
-sha256: <hash or null>
+revision: <revision or null>
 bytes: <integer or null>
 status: COMPLETE | PARTIAL | FAILED | NOT_APPLICABLE
 checks:
@@ -498,7 +490,7 @@ of newly discovered findings may upgrade `PARTIAL` to `PASS`.
 
 ---
 
-## Phase 8 — Return one hash-bound balance evidence packet
+## Phase 8 — Return one revision-bound balance evidence packet
 
 Return one machine payload followed by a concise human projection:
 
@@ -512,17 +504,17 @@ coverage_status: FULL | PARTIAL
 mutation_status: READ_ONLY
 persistence: NONE
 project_id: <canonical project identity>
-project_id_sha256: <hash>
+project_revision: <revision>
 mode: analyze | recheck
 analysis_id: <stable ID>
 target_snapshot_id: <stable ID>
 domains: [<sorted closed-enum values>]
 systems: [<sorted stable IDs>]
 manifest:
-  sha256: <manifest hash>
-  inventory_sha256: <complete candidate identity digest>
+  revision: <manifest revision>
+  inventory_revision: <complete candidate identity revision>
   limits: <fixed and effective limits>
-  overflow: <exact counts, boundary keys, and omitted-sequence digests>
+  overflow: <exact counts, boundary keys, and omitted-sequence revisions>
   rows: [<ordered detailed rows>]
 numeric_policy: <model/precision/rounding/overflow IDs and evidence>
 adapter_receipts: [<ordered validated receipt summaries>]
@@ -539,8 +531,8 @@ coverage:
   dimensions: <status/reason per required channel>
   ledger: [<ordered rows>]
 counts: <declared/evaluated/pass/fail/unverifiable/not-run/stale/error reconciliation>
-prior_evidence: <validated identity/hash or null>
-change_receipt: <validated identity/hash or null>
+prior_evidence: <validated identity/revision or null>
+change_receipt: <validated identity/revision or null>
 limitations: []
 recommendation: <one owner-specific action or none>
 disclaimer: <required boundary text>
@@ -554,14 +546,14 @@ the deterministic analysis payload. Run identity and observation time appear onl
 in the outer envelope. Identical inputs and adapter/simulation receipts must
 produce identical deterministic payload bytes and finding IDs.
 
-Hash canonical deterministic extension JSON using Phase 1 canonicalization and
+Serialize canonical deterministic extension JSON, assign an explicit payload revision, using Phase 1 canonicalization and
 wrap it in:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<SHA-256 of canonical envelope payload excluding record_id>
-artifact_id: balance-check:<project_id_sha256>:<analysis_id>:<manifest_sha256>
-artifacts: [<every retained locked input path and SHA-256, sorted as manifest>]
+record_id: <stable business record ID plus review_run_id>
+artifact_id: balance-check:<project_id>:<analysis_id>:<run_id>
+artifacts: [<every retained locked input path and revision, sorted as manifest>]
 reviewer: <stable task identity or codex-task:<run_id>>
 review_run_id: <run_id>
 review_depth: bounded-full
@@ -570,7 +562,7 @@ verdict: <PASS | FINDINGS | PARTIAL>
 timestamp: <UTC ISO-8601>
 finding_ids: [<sorted stable finding IDs>]
 unresolved_blocker_ids: [<sorted OPEN/STILL_OPEN BLOCKER and coverage IDs>]
-report_payload_sha256: <SHA-256 of canonical deterministic extension payload>
+report_payload_revision: <explicit report revision>
 producer:
   tool: balance-check
   version: cgs.balance-check/v2
@@ -578,8 +570,8 @@ extension: <complete cgs.balance-check-report/v1 payload>
 ```
 
 The outer run ID and timestamp supply execution provenance without changing
-same-input analysis identity. Canonicalize the envelope without `record_id`, then
-recompute every artifact, manifest, payload, and record hash once. Return
+same-input analysis identity. Validate record_id against the stable business scope and run ID, then
+re-read and validate every declared artifact, manifest, payload, and record revision once. Return
 `ERROR — EVIDENCE CONSTRUCTION FAILED` without an evidence record rather than
 emit inconsistent evidence.
 
@@ -595,11 +587,10 @@ selected; and no project state was changed.
 `recheck` requires a current manifest plus one immutable prior
 `cgs.review-evidence/v1` record produced by `balance-check` with recognized
 `cgs.balance-check-report/v1` extension, and one
-`cgs.balance-change-receipt/v1`. Recompute the prior record, payload, artifact,
-manifest, project, analysis, target, formula, unit, scenario, and finding hashes.
+`cgs.balance-change-receipt/v1`. Re-read the prior record, payload, artifact, manifest, project, analysis, target, formula, unit, scenario, and findings; validate every declared revision against producer metadata.
 
 The change receipt binds exact before/after artifact IDs, canonical paths, raw
-hashes, pointers, selected product decision or correction authority, owner,
+revisions, pointers, selected product decision or correction authority, owner,
 timestamp, and affected stable target/unit/formula/scenario/check IDs. Reject a
 receipt that changes undeclared sources, expands domain/scope, or alters target,
 formula, unit, scenario, or model meaning beyond the selected findings. Such work
@@ -607,10 +598,10 @@ requires a new `analyze` manifest and analysis ID.
 
 Re-evaluate only selected finding IDs and explicit regression checks from the
 prior packet. Preserve every selected ID. Mark it `RESOLVED_IN_CURRENT` only when
-its recorded acceptance is proven by current exact-hash evidence; otherwise
+its recorded acceptance is proven by current exact-revision evidence; otherwise
 `STILL_OPEN` or `UNVERIFIABLE`. Preserve unselected prior findings as
 out-of-scope history, never as reverified. New regressions receive ordinary stable
-`BLF-REGRESSION-*` fingerprints from their exact logical identities.
+`BLF-REGRESSION-*` stable business keys from their exact logical identities.
 
 Run once. Report `open_blockers` and stop whether zero or nonzero. Never broaden
 the recheck, modify inputs, apply an option/correction, or start another pass.

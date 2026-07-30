@@ -1,4 +1,4 @@
 interface:
   display_name: "Estimate"
   short_description: "Read-only relative or calibrated evidence"
-  default_prompt: "Use $estimate with an explicit story, sprint, or freeform profile and relative or calibrated basis to produce bounded, hash-bound ranges from exact scope and comparable-history evidence without choosing scope, staffing, budget, schedule, or dates."
+  default_prompt: "Use $estimate with an explicit story, sprint, or freeform profile and relative or calibrated basis to produce bounded, revision-bound ranges from exact scope and comparable-history evidence without choosing scope, staffing, budget, schedule, or dates."

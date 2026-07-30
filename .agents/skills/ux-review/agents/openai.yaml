@@ -1,4 +1,4 @@
 interface:
   display_name: "UX Review"
-  short_description: "Hash-bound UX quality gate with bounded coverage"
-  default_prompt: "Use $ux-review to perform a read-only, profile-aware review of an exact UX artifact or bounded UX selector, returning hash-bound findings and a non-persisted evidence record."
+  short_description: "version-bound UX quality gate with bounded coverage"
+  default_prompt: "Use $ux-review to perform a read-only, profile-aware review of an exact UX artifact or bounded UX selector, returning version-bound findings and a non-persisted evidence record."

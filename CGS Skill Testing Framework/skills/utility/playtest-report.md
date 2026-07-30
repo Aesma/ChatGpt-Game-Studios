@@ -19,16 +19,16 @@ receipt can return `RECORDED COMPLETED — GATE ELIGIBLE`.
 
 Run behavioral cases in an isolated disposable repository fixture. Record:
 
-1. recursive path/type/SHA-256 snapshots before and after invocation;
+1. recursive path/type/revision snapshots before and after invocation;
 2. every filesystem mutation attempt by the workflow, adapters, and reviewer;
 3. every file read, canonical path, exact byte count, and read order;
-4. every adapter ID/version/package hash, argv, runtime, exit status, raw/output
-   hash, receipt, and sandbox denial;
-5. every delegated role, input/report hash, wait count/duration, completion state,
+4. every adapter ID/version/package revision, argv, runtime, exit status, raw/output
+   revision, receipt, and sandbox denial;
+5. every delegated role, input/report revision, wait count/duration, completion state,
    and returned review bytes;
 6. exact response, report candidate, canonical payload, evidence, omission proof,
    and verification bytes; and
-7. deterministic clock and UUID sources for stable-hash tests.
+7. deterministic clock and UUID sources for stable-revision tests.
 
 The mutation guard passes only when before/after snapshots are byte-identical and
 the mutation-attempt ledger is empty. External fixture setup may create recorder
@@ -61,7 +61,7 @@ catalog result fields from static inspection or an uninstrumented run.
 - [ ] Metric type, unit, aggregation unit, denominator, missingness, sample floor,
   summary statistics, and uncertainty are deterministic
 - [ ] Stable finding IDs exclude paths, excerpts, PII, values, severity,
-  confidence, priority, time, report/build hash, and review
+  confidence, priority, time, report/build revision, and review
 - [ ] Impact, evidence confidence, and product priority remain separate axes
 - [ ] Complete candidate evidence is not gate-eligible before recorder receipt
 - [ ] Recording verification rejects directory counts, duplicate sessions,
@@ -75,15 +75,15 @@ catalog result fields from static inspection or an uninstrumented run.
 ## Canonical fixture
 
 Unless overridden, use protocol `PROTO-COMBAT-01` version `2.1.0`, session
-`PT-combat-001`, build `BUILD-220` with artifact SHA-256 `B`, commit `C`, and
-platform profile `PLAT-PC-60` at hash `P`. The protocol predates session start,
+`PT-combat-001`, build `BUILD-220` with artifact revision `B`, commit `C`, and
+platform profile `PLAT-PC-60` at revision `P`. The protocol predates session start,
 names hypothesis `HYP-COMBAT-01` and AC `AC-COMBAT-017`, preregisters metrics,
 segments, sample floors, accessibility dimensions, consent scopes, and direct
-design-context hashes.
+design-context revisions.
 
 The evidence bundle contains validated pseudonymous participants, active consent
 receipts, immutable raw receipts, a `cgs.playtest-observation-ledger/v1`, and
-transformation receipts. Placeholder hashes are replaced with valid 64-hex values.
+transformation receipts. Placeholder revisions are replaced with valid non-empty stable value values.
 
 ---
 
@@ -154,7 +154,7 @@ analysis/deviation rules. It never reports completed session or gate evidence.
 ### Fixture
 
 Create variants where protocol finalization precedes session, follows session,
-hash changes after collection, declares a material deviation, or omits that
+revision changes after collection, declares a material deviation, or omits that
 deviation.
 
 ### Input
@@ -167,14 +167,14 @@ None.
 
 ### Expected behavior
 
-Only the pre-session exact-hash protocol supports preregistered claims. A later or
+Only the pre-session exact-revision protocol supports preregistered claims. A later or
 changed protocol is `RETROSPECTIVE PROTOCOL`; observations remain describable but
 gate candidacy is forbidden. Declared deviations identify affected metrics;
 undeclared material deviation makes finalization partial.
 
 ### Assertions
 
-- [ ] Protocol ID/version/path/hash and finalization UTC are verified
+- [ ] Protocol ID/version/path/revision and finalization UTC are verified
 - [ ] Post-hoc thresholds are never treated as preregistered
 - [ ] Deviation IDs/reasons/times/metrics/approver are retained
 - [ ] Retrospective status cannot be hidden by a complete bundle
@@ -184,11 +184,7 @@ undeclared material deviation makes finalization partial.
 
 ### Fixture
 
-Independently remove or alter session ID, protocol hash, hypothesis/AC source,
-build ID/artifact hash, commit/tree state, engine/version, configuration/content,
-platform/profile hash, hardware, OS/runtime/driver, locale, network, graphics,
-input/device, accessibility config, facilitator/recorder, times, sequence, bundle
-hash, registry hash, or canonical intended path.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ### Input
 
@@ -233,13 +229,13 @@ None.
 Only consent-compatible pseudonymous participant evidence is eligible. Missing,
 expired, withdrawn, scope-incompatible, duplicate, restricted, or retention-
 invalid evidence is excluded without reproducing sensitive content. A valid
-redaction transformation binds source/redacted hashes.
+redaction transformation binds source/redacted revisions.
 
 ### Assertions
 
 - [ ] Names/emails/accounts/contact details never appear in normalized output
 - [ ] Withdrawal removes all linked observations/metrics under the policy
-- [ ] Consent policy/scope/receipt/hash and retention deadline are traceable
+- [ ] Consent policy/scope/receipt/revision and retention deadline are traceable
 - [ ] Exclusion changes every affected denominator
 - [ ] Insufficient required sample becomes partial and gate-ineligible
 
@@ -262,7 +258,7 @@ None.
 ### Expected behavior
 
 Valid observations retain type, raw object/receipt, exact range, verbatim/event
-value, participant/context, and transform receipt. Ambiguity is `UNKNOWN`. Hash/
+value, participant/context, and transform receipt. Ambiguity is `UNKNOWN`. revision/
 range mismatches and inference in the ledger are partial/invalid; findings remain
 a separate derived layer.
 
@@ -280,7 +276,7 @@ a separate derived layer.
 ### Fixture
 
 Use native ledger plus supported non-native formats, unsupported version, two
-equally exact adapters, package-hash mismatch, invalid validator receipt,
+equally exact adapters, package-revision mismatch, invalid validator receipt,
 timeout/nonzero, malformed/truncated data, receipt mismatch/oversize, and adapter
 network/write/undeclared-read/child-process attempts.
 
@@ -300,8 +296,8 @@ findings/finalization/gate evidence.
 
 ### Assertions
 
-- [ ] Adapter ID/version/hash, format/schema/platform, argv, times, raw/output
-  hashes, receipt, and warnings are reported
+- [ ] Adapter ID/version/revision, format/schema/platform, argv, times, raw/output
+  revisions, receipt, and warnings are reported
 - [ ] No loose text parsing repairs malformed or truncated sources
 - [ ] Sandbox attempts fail closed and mutation guard passes
 - [ ] Excluded object/observations and reasons are explicit
@@ -311,8 +307,8 @@ findings/finalization/gate evidence.
 
 ### Fixture
 
-Protocol names direct GDD/hypothesis/AC paths and hashes. Add unrelated documents,
-second-level links, fuzzy names, missing/hash-changed sources, nine files, and a
+Protocol names direct GDD/hypothesis/AC paths and revisions. Add unrelated documents,
+second-level links, fuzzy names, missing/revision-changed sources, nine files, and a
 selected set above 256 KiB.
 
 ### Input
@@ -326,7 +322,7 @@ None.
 ### Expected behavior
 
 Only exact direct references are read in protocol order. Loaded/omitted paths,
-bytes, hashes, and reasons are reported. Required missing/conflicting/over-budget
+bytes, revisions, and reasons are reported. Required missing/conflicting/over-budget
 context yields `PARTIAL — CONTEXT`; observations remain facts, but no design-
 intent finding or gate candidate is emitted.
 
@@ -452,7 +448,7 @@ None.
 
 Pre-ingest structural/byte excess is `ERROR — REQUEST EXCEEDS FIXED BOUND`.
 Post-normalization excess is `PARTIAL — BOUNDED INGEST` with candidate-set
-digest, included/omitted counts, stable boundary key, and tail digest.
+reference ID, included/omitted counts, stable boundary key, and tail reference ID.
 
 ### Assertions
 
@@ -466,9 +462,9 @@ digest, included/omitted counts, stable boundary key, and tail digest.
 
 ### Fixture
 
-Provide two observation clusters with identical symptom fingerprint, an exact
+Provide two observation clusters with identical symptom stable key, an exact
 matching canonical bug, an ambiguous near-match, missing registry, changed
-registry hash, and no match.
+registry revision, and no match.
 
 ### Input
 
@@ -480,9 +476,7 @@ None; bug registry and reports remain byte-identical.
 
 ### Expected behavior
 
-Stable occurrence IDs/fingerprints recompute from canonical fields. Exact match
-links the stable bug ID. Ambiguous/missing/changed/no match yields an unlinked
-`BUG REPORT CANDIDATE`, never a duplicate claim or workflow invocation.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 ### Assertions
 
@@ -497,10 +491,7 @@ links the stable bug ID. Ambiguous/missing/changed/no match yields an unlinked
 
 ### Fixture
 
-Generate one finding, then vary paths, excerpts, participant labels, counts,
-percentages, intervals, impact, confidence, priority, status, timestamp, report/
-build hash, and director verdict without changing canonical identity. Then vary
-session, protocol, category, hypothesis/AC, metric, observation, or bug occurrence.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ### Input
 
@@ -512,7 +503,7 @@ None.
 
 ### Expected behavior
 
-Noncanonical changes preserve `PTF-<category>-<12-lowercase-hex>`; canonical
+Noncanonical changes preserve `PTF-<category>-<non-empty stable value>`; canonical
 changes alter it. Duplicates coalesce, evidence is retained, and ordering follows
 authorized priority then impact/confidence/count/ID, or is labeled evidence-only.
 
@@ -621,8 +612,8 @@ artifact is repaired or replaced.
 
 ### Fixture
 
-Use complete finalization and full review variants: success echoing hash,
-unavailable, timeout, malformed response, wrong hash, late response, and nested
+Use complete finalization and full review variants: success echoing revision,
+unavailable, timeout, malformed response, wrong revision, late response, and nested
 delegation attempt. Also use lean and solo.
 
 ### Input
@@ -644,7 +635,7 @@ metrics, findings, evidence, or gate state. Lean/solo skip.
 
 - [ ] At most three 60-second waits; no retry/replacement/nested delegation
 - [ ] Late/mismatched result is ignored
-- [ ] Report/observation hashes remain identical in every variant
+- [ ] Report/observation revisions remain identical in every variant
 - [ ] Director verdict never authorizes a design change
 - [ ] Mutation guard passes
 
@@ -669,7 +660,7 @@ None.
 
 Exactly three distinct validated session IDs count. Duplicate/copy/non-result
 artifacts do not. Each counted session exposes report, manifest, bundle, build
-artifact, platform profile, protocol, and recorder hashes; no directory count is
+artifact, platform profile, protocol, and recorder revisions; no directory count is
 used.
 
 ### Assertions
@@ -719,10 +710,10 @@ separate explicit work.
 | Audit finding | Closing contract clauses | Behavioral proof |
 |---|---|---|
 | PTR-004 | Exact four-mode grammar, strict path/options, legacy replacement, no inferred artifacts | Case 1 |
-| PTR-005 | Only direct hash-bound hypothesis/GDD/AC context; eight-file/256-KiB bounds and omissions | Case 8 |
+| PTR-005 | Only direct revision-bound hypothesis/GDD/AC context; eight-file/256-KiB bounds and omissions | Case 8 |
 | PTR-006 | Independent participant rows, pseudonymous identities, n/N/segments, majority/minority/missing | Cases 5, 9 |
 | PTR-007 | Versioned profile includes Feel, Accessibility, Design Feedback, metrics, and owner next steps | Cases 2, 10, 16 |
-| PTR-008 | Stable occurrence/fingerprint, exact canonical bug lookup, unlinked candidate without writes | Case 13 |
+| PTR-008 | Stable occurrence/stable key, exact canonical bug lookup, unlinked candidate without writes | Case 13 |
 | PTR-009 | Immutable build/source/platform/protocol/hypothesis/AC/raw/participant/consent identity and stale detection | Cases 3-6 |
 | PTR-010 | Optional bounded director review is separate; failure is review PARTIAL without changing session completion | Case 18 |
 | PTR-011 | Stable finding schema, evidence trace, n/N, limitations, impact/confidence/priority separation and deterministic order | Cases 14, 15 |
@@ -739,16 +730,24 @@ positive and negative coverage in Cases 7, 11, 12, 16, 17, 19, and 20.
 - [ ] Cases 1-20 pass with all required instrumentation
 - [ ] Mutation guard passes for the workflow, adapters, and optional reviewer in
   every case
-- [ ] All protocol/session/bundle/raw/observation/context/report/receipt hashes,
-  stable finding/occurrence IDs, and omission digests independently recompute
+- [ ] All protocol/session/bundle/raw/observation/context/report/receipt revisions,
+  stable finding/occurrence IDs, and omission reference IDs independently recompute
 - [ ] PTR-004 through PTR-011 each have positive and negative/boundary proof
-- [ ] No missing consent, provenance, raw hash, observation trace, required
+- [ ] No missing consent, provenance, declared revision, observation trace, required
   context, required sample, or bounded tail produces complete/gate evidence
 - [ ] No raw/observation fact is rewritten as inference or unsupported cause
 - [ ] No template, ingest assessment, candidate response, partial report,
   director review, noncanonical file, or directory count becomes gate-eligible
 - [ ] Only independent recorder verification can produce actual gate eligibility
 - [ ] Repeated deterministic fixtures produce identical metrics, findings,
-  ordering, hashes, and omission proofs apart from controlled run metadata
+  ordering, revisions, and omission proofs apart from controlled run metadata
 - [ ] Live skill/spec/metadata, P0 staging, shared files, and catalog result fields
   remain unchanged by this candidate
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

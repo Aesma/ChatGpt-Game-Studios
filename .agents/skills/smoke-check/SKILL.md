@@ -22,19 +22,19 @@ Reject positional scope names, affected-system names, unknown modes, unknown or 
 
 The run manifest uses `schema: cgs-smoke-run-manifest/v1`. It is the sole invocation authority and contains:
 
-- immutable `run_id`, `mode`, `candidate_id`, `build_id`, and `artifact_sha256`;
-- project-relative path plus SHA-256 for the build candidate manifest, build receipt, QA plan, regression selection manifest, test layout, validator manifest, and test execution manifest;
+- immutable `run_id`, `mode`, `candidate_id`, `build_id`, and `artifact_revision`;
+- project-relative path plus revision for the build candidate manifest, build receipt, QA plan, regression selection manifest, test layout, validator manifest, and test execution manifest;
 - exact expected identity, schema, revision, status, and currentness fields for each authority;
 - exact source commit, engine identity and version, build configuration, target platform, and platform/device matrix;
-- exact QA-plan `plan_id`, `scope_id`, `scope_sha256`, source/requirement span, ownership hash, and dependency hash;
-- exact regression `selection_id`, `selection_revision`, `selection_sha256`, and selected Test IDs;
+- exact QA-plan `plan_id`, `scope_id`, `scope_revision`, source/requirement span, ownership revision, and dependency revision;
+- exact regression `selection_id`, `selection_revision`, `selection_revision`, and selected Test IDs;
 - mode-specific requested Smoke Check IDs, with sprint scope declared as a complete pinned set and quick scope declared as an exact subset;
 - exact runner-row IDs, ordered argv arrays, working directory, environment allowlist, parser, exit mapping, timeout, output limit, process-tree cleanup policy, and deterministic controls;
-- optional prior execution-receipt path and hash, never an unbound log or newest-file selector;
+- optional prior execution-receipt path and revision, never an unbound log or newest-file selector;
 - required manual checks and permitted automated-substitution contracts;
 - canonical evidence destinations and the required `ABSENT` precondition for the run root.
 
-Reject duplicate keys, duplicate IDs, missing hashes, non-lowercase 64-hex SHA-256 values, unsupported schemas, mutable aliases, globs, directory scans, and paths selected by modification time.
+Reject duplicate keys, duplicate IDs, missing revisions, empty or malformed explicit revision values, unsupported schemas, mutable aliases, globs, directory scans, and paths selected by modification time.
 
 ## Versioned workflow contract
 
@@ -72,22 +72,22 @@ verdicts:
 handoff_requires: persisted sprint PASS
 ~~~
 
-Record the contract schema and SHA-256 in the final receipt. Unknown schemas or incompatible major versions make `Input: INVALID` and the observed verdict `INCOMPLETE`.
+Record the contract schema and revision in the final receipt. Unknown schemas or incompatible major versions make `Input: INVALID` and the observed verdict `INCOMPLETE`.
 
-## Phase 1: Resolve and hash exact authorities
+## Phase 1: Resolve and revision exact authorities
 
 Resolve the literal run-manifest path and every path it names. Normalize project-relative paths, compare resolved real paths with the project root, and reject an escape, missing regular file, unexpected symlink, directory, device, or alternate data stream.
 
-Hash raw bytes before parsing. Parse using duplicate-key rejection. Compare every observed SHA-256 and identity field with the run manifest. Then perform a second consistency pass:
+Read exact bounded files before parsing; validate declared identity, schema, version, and revision. Parse using duplicate-key rejection. Compare every observed revision and identity field with the run manifest. Then perform a second consistency pass:
 
 1. The build candidate, build receipt, artifact, source commit, engine version, platform, and configuration must agree exactly.
-2. The build receipt must be successful, complete, current, and bound to the candidate manifest and artifact hash.
-3. The QA plan must be `cgs-qa-plan/v2`, `Plan Status: CURRENT`, `Effective Status: CURRENT`, and `Scope Completeness: COMPLETE`. Its plan, scope, source span, requirement, ownership, and dependency hashes must match the run manifest.
+2. The build receipt must be successful, complete, current, and bound to the candidate manifest and artifact revision.
+3. The QA plan must be `cgs-qa-plan/v2`, `Plan Status: CURRENT`, `Effective Status: CURRENT`, and `Scope Completeness: COMPLETE`. Its plan, scope, source span, requirement, ownership, and dependency revisions must match the run manifest.
 4. The regression selection must be `cgs-regression-selection-manifest/v2`, have a final current status, and match the QA plan, scope, build applicability, selection revision, and exact selected Test IDs.
 5. The test layout, validator manifest, and execution manifest must be current, mutually bound, and match the exact engine version and project root used by the build.
 6. Any prior execution receipt must match the candidate, build, artifact, source, QA scope, regression selection, test manifest, runner rows, argv, deterministic controls, platform, and configuration byte-for-byte after canonicalization.
 
-If any authority is missing, stale, partial, invalid, conflicting, or hash-mismatched, set the relevant axes to `INVALID`, `STALE`, `PARTIAL`, or `UNKNOWN`; do not execute and classify the observed verdict as `INCOMPLETE`.
+If any authority is missing, stale, partial, invalid, conflicting, or revision mismatched, set the relevant axes to `INVALID`, `STALE`, `PARTIAL`, or `UNKNOWN`; do not execute and classify the observed verdict as `INCOMPLETE`.
 
 Never infer currentness from a filename, branch name, directory location, timestamp alone, or an artifact named `latest`.
 
@@ -107,9 +107,9 @@ platform_config_id: {platform-config-id}
 execution_kind: automated|manual|automated-with-permitted-manual-substitute
 runner_row_id: {runner-row-id-or-null}
 manual_contract_id: {manual-contract-id-or-null}
-source_hashes:
-  qa_plan_sha256: {sha256}
-  regression_selection_sha256: {sha256}
+source_revision:
+  qa_plan_revision: {revision}
+  regression_selection_revision: {revision}
 ~~~
 
 Create rows only from the exact current QA-plan coverage matrix and exact regression selection. Validate one-to-one or explicitly declared many-to-one relationships among requirement, acceptance criterion, Coverage Unit, Test ID, runner row, platform, and owner. A found test file is not coverage. An unmapped critical or high-risk requirement, selected Test ID without a runner row, duplicate stable ID, ambiguous owner, or missing platform row makes `Scope: INCOMPLETE`.
@@ -122,7 +122,7 @@ Selection rules are deterministic:
 - Sort canonical rows by Smoke Check ID, platform-config ID, Test ID, and runner-row ID using bytewise UTF-8 ordering.
 - Reject duplicate canonical keys and reject requested IDs absent from the current plan.
 
-Serialize canonical ledger rows with normalized line endings and compute `selected_scope_sha256`. Compare it with the expected scope hash in the run manifest. Freeze the bytes before execution.
+Validate the selected stable Check IDs against the run manifest and record its supplied `selected_scope_revision`. Freeze the selected rows before execution.
 
 ## Phase 3: Validate the exact runner
 
@@ -130,10 +130,10 @@ Use only argv arrays from the pinned `cgs-test-execution-manifest/v1`. Never con
 
 For every selected automated row validate:
 
-- runner row ID, executable identity and optional binary hash;
+- runner row ID, executable identity and optional binary revision;
 - engine identity and exact version;
 - ordered argv array, working directory, and project root;
-- named environment allowlist with redacted value hashes where values are sensitive;
+- named environment allowlist with redacted value revisions where values are sensitive;
 - test IDs and platform/configuration identity;
 - parser version, structured result path, allowed exit-code mapping, and expected result count;
 - deterministic seed, order, locale, timezone, clock policy, parallelism, shard identity, and external-network policy;
@@ -142,7 +142,7 @@ For every selected automated row validate:
 
 Any mismatch makes `Execution: INVALID`. Do not silently repair the manifest. Do not fall back to another runner.
 
-A trusted prior execution receipt may replace local execution only when its complete raw bytes and declared hashes are available and every binding above matches exactly. Otherwise execute the pinned argv rows. Preserve each argv element as one argument and set only allowlisted environment names.
+A trusted prior execution receipt may replace local execution only when its complete records with declared identities, schemas, and revisions are available and every binding above matches exactly. Otherwise execute the pinned argv rows. Preserve each argv element as one argument and set only allowlisted environment names.
 
 ## Phase 4: Execute with bounded partial-result handling
 
@@ -150,21 +150,21 @@ Before each row, record the exact start identity and budgets. Capture stdout and
 
 1. terminate the full process group or process tree;
 2. wait the bounded cleanup interval;
-3. record any surviving child PIDs as cleanup failure;
-4. hash the captured bounded bytes;
+3. Record any surviving child PIDs as cleanup failure;
+4. revision the captured bounded bytes;
 5. parse only complete records available within the cap;
 6. mark incomplete trailing records and missing expected result rows as partial;
 7. never retry with changed argv, seed, order, shard, parser, or budgets.
 
 Per-check automated states are `PASS`, `FAIL`, `NOT_RUN`, `TIMEOUT`, `INFRA_ERROR`, `INVALID_RECEIPT`, `PARSE_ERROR`, or `PARTIAL`. Only `PASS` and `FAIL` are conclusive test outcomes. Timeout, truncation, parser failure, missing results, cleanup failure, crash without a complete structured receipt, and a non-mapped exit code set `Execution: PARTIAL` or `INVALID` and force `INCOMPLETE`; they are not product failures and cannot become PASS.
 
-Record each command's exact argv JSON, cwd, environment-name set, runner hash, manifest hash, timestamps, duration, exit code, termination reason, output hashes, parser identity, expected/observed result counts, cleanup result, and per-check outcomes.
+Record each command's exact argv JSON, cwd, environment-name set, runner revision, manifest revision, timestamps, duration, exit code, termination reason, output revisions, parser identity, expected/observed result counts, cleanup result, and per-check outcomes.
 
 ## Phase 5: Collect explicit manual and substitution evidence
 
 Every required manual, platform, data-integrity, and performance check has its own stable Smoke Check ID. Every attempted substitution for an automated Test ID has a separate substitution row. No response or an omitted row is `UNKNOWN`, never PASS.
 
-Manual statuses are `PASS`, `FAIL`, `NOT_RUN`, `N-A`, and `UNKNOWN`. `N-A` is valid only when the QA plan contains an applicability rule whose ID and hash are recorded. A manual observation can substitute for an automated Test ID only when the current QA plan contains an explicit allowed-substitution contract binding the same requirement, Test ID, build, platform, method, observer qualification, and evidence class. Without that exact contract, the automated state remains `NOT_RUN` and the run is `INCOMPLETE`.
+Manual statuses are `PASS`, `FAIL`, `NOT_RUN`, `N-A`, and `UNKNOWN`. `N-A` is valid only when the QA plan contains an applicability rule whose ID and revision are recorded. A manual observation can substitute for an automated Test ID only when the current QA plan contains an explicit allowed-substitution contract binding the same requirement, Test ID, build, platform, method, observer qualification, and evidence class. Without that exact contract, the automated state remains `NOT_RUN` and the run is `INCOMPLETE`.
 
 Each observation or substitute row contains:
 
@@ -176,7 +176,7 @@ status: PASS|FAIL|NOT_RUN|N-A|UNKNOWN
 evidence_level: OBSERVED|VERIFIED|UNKNOWN
 candidate_id: {candidate-id}
 build_id: {build-id}
-artifact_sha256: {sha256}
+artifact_revision: {revision}
 source_commit: {commit}
 platform_config_id: {platform-config-id}
 device_id: {device-id}
@@ -191,12 +191,12 @@ observed_at: {rfc3339}
 method_id: {method-id}
 observation_summary: {bounded-redacted-summary}
 evidence_path: {project-relative-path-or-null}
-evidence_sha256: {sha256-or-null}
+evidence_revision: {revision-or-null}
 ~~~
 
 Require exact device and OS identity for each platform row. A generic platform label such as `pc` is insufficient. Missing device, OS, runtime, build configuration, input method, observer, method, observation, or evidence binding makes that row `UNKNOWN`.
 
-Do not persist a user's verbatim free text. Before persistence, show a bounded normalized preview, allow edit, remove secrets and unnecessary personal data, and store only the redacted summary. If source material must be retained, store only a bounded raw-reference record containing the external or project-relative reference path, content SHA-256, media type, byte count, retention class, and owner; never copy raw content into the smoke report or receipt. Record redaction rule IDs and a hash of the normalized summary.
+Do not persist a user's verbatim free text. Before persistence, show a bounded normalized preview, allow edit, remove secrets and unnecessary personal data, and store only the redacted summary. If source material must be retained, store only a bounded raw-reference record containing the external or project-relative reference path, declared revision, media type, byte count, retention class, and owner; never copy raw content into the smoke report or receipt. Record redaction rule IDs and the recorder-supplied summary revision.
 
 ## Phase 6: Derive status axes and exhaustive verdict
 
@@ -217,16 +217,16 @@ No other verdict exists. A product failure outranks infrastructure incompletenes
 
 Create `cgs-smoke-check-receipt/v2` with stable field names and canonical ordering. It must include:
 
-- workflow contract schema/hash and tool revision;
-- run manifest path/hash, run ID, mode, timestamps, and canonicalization version;
+- workflow contract schema/revision and tool revision;
+- run manifest path/revision, run ID, mode, timestamps, and canonicalization version;
 - candidate, build, artifact, source, engine, platform, configuration, device, and OS identity;
-- path/hash/schema/identity/currentness for every authority consumed;
-- selected scope bytes hash and every stable-check ledger row;
-- runner row IDs, exact argv arrays, cwd, environment-name set, runner and manifest hashes;
-- deterministic controls, budgets, execution outcomes, output paths/hashes, and partial-result metadata;
-- manual/substitute rows, redaction metadata, and external evidence path/hash;
+- path/revision/schema/identity/currentness for every authority consumed;
+- selected scope revision and every stable-check ledger row;
+- runner row IDs, exact argv arrays, cwd, environment-name set, runner and manifest revisions;
+- deterministic controls, budgets, execution outcomes, output paths/revisions, and partial-result metadata;
+- manual/substitute rows, redaction metadata, and external evidence path/revision;
 - all status axes, exhaustive-rule ID, observed verdict, persistence state, and handoff decision;
-- canonical evidence paths and SHA-256 for every persisted member.
+- canonical evidence paths and revision for every persisted member.
 
 The canonical immutable evidence root is:
 
@@ -243,25 +243,25 @@ production/qa/evidence/smoke/{candidate-id}/{run-id}/
   report.md
 ~~~
 
-Write log files only when captured bytes exist. The authority index records each required member, media type, byte count, and SHA-256. Legacy paths may be read only when an exact path and hash are pinned for migration evidence; never publish new evidence there and never treat a legacy file alone as handoff evidence.
+Write log files only when captured bytes exist. The authority index records each required member, media type, byte count, and declared revision. Legacy paths may be read only when an exact path and revision are pinned for migration evidence; never publish new evidence there and never treat a legacy file alone as handoff evidence.
 
-The human-readable report names each stable Check ID and shows candidate hash, build hash, runner hash, evidence path/hash, status axes, observed verdict, persistence state, and the exact exhaustive rule applied. It must not claim that planned, selected, NOT_RUN, UNKNOWN, partial, or substituted-without-contract work passed.
+The human-readable report names each stable Check ID and shows candidate revision, build revision, runner revision, evidence path/revision, status axes, observed verdict, persistence state, and the exact exhaustive rule applied. It must not claim that planned, selected, NOT_RUN, UNKNOWN, partial, or substituted-without-contract work passed.
 
-## Phase 8: Preview and CAS-publish atomically
+## Phase 8: Preview and version and existence conflict check-publish atomically
 
-The observed verdict exists independently of persistence. Before writing, present a bounded changeset preview containing destinations, byte counts, SHA-256 values, redaction summary, observed verdict, and handoff consequence. A user decline leaves the observed verdict unchanged, sets `Persistence: DECLINED`, and forces `Handoff Eligible: NO`.
+The observed verdict exists independently of persistence. Before writing, present a bounded changeset preview containing destinations, byte counts, revision values, redaction summary, observed verdict, and handoff consequence. A user decline leaves the observed verdict unchanged, sets `Persistence: DECLINED`, and forces `Handoff Eligible: NO`.
 
 For an authorized write:
 
 1. Require the final run root to be absent.
-2. Re-read and re-hash the run manifest and every authority. Compare identity, size, and SHA-256 with the frozen snapshot.
+2. Re-read and revalidate the run manifest and every authority. Compare identity, size, and revision with the frozen snapshot.
 3. Reconfirm the build artifact identity and exact selected-scope bytes.
-4. Reconfirm every external evidence path/hash and reapply the redaction boundary.
+4. Reconfirm every external evidence path/revision and reapply the redaction boundary.
 5. Render all members in a private same-filesystem staging directory.
-6. Hash rendered bytes and validate internal references against the authority index.
-7. Compare-and-swap by checking the final root is still absent and every authority still matches.
+6. Validate rendered schema, identity, and declared revision and validate internal references against the authority index.
+7. version and existence conflict check by checking the final root is still absent and every authority still matches.
 8. Atomically publish the complete directory without overwriting.
-9. Read back every member, recompute hashes, and validate the receipt and index.
+9. Read back every member, revalidate revisions, and validate the receipt and index.
 
 If an authority changed, the target appeared, a member is missing, publication is partial, or read-back differs, set `Persistence: CONFLICT` or `FAILED`, force `Handoff Eligible: NO`, preserve the observed verdict, and require a new run ID for retry. Never merge into an existing run, overwrite evidence, or leave a partial final directory.
 
@@ -271,15 +271,15 @@ After verified publication, set `Persistence: VERIFIED`. Only a sprint `PASS` wi
 
 Return the observed verdict even when persistence is declined or fails. Report:
 
-- candidate ID, build ID, artifact SHA-256, source commit, mode, and run ID;
-- exact selected-scope SHA-256 and count;
+- candidate ID, build ID, artifact revision, source commit, mode, and run ID;
+- exact selected-scope revision and count;
 - status axes and exhaustive rule ID;
 - automated/manual/substitute/platform counts by state;
 - timeout, truncation, parser, cleanup, and evidence warnings;
 - observed verdict, persistence state, and handoff eligibility;
-- exact receipt path and receipt SHA-256 when persisted.
+- exact receipt path and receipt revision when persisted.
 
-A downstream consumer must receive the exact receipt path, receipt SHA-256, candidate ID, build ID, and artifact SHA-256. It must re-hash the receipt, authority index, and all referenced evidence, verify `cgs-smoke-check-receipt/v2`, verify `Persistence: VERIFIED`, and verify the exact build binding. Directory scans, newest-file selection, bare run IDs, summaries, quick-mode results, and unpersisted conversation results are never valid handoff inputs.
+A downstream consumer must receive the exact receipt path, receipt revision, candidate ID, build ID, and artifact revision. It must revalidate the receipt, authority index, and all referenced evidence, verify `cgs-smoke-check-receipt/v2`, verify `Persistence: VERIFIED`, and verify the exact build binding. Directory scans, newest-file selection, bare run IDs, summaries, quick-mode results, and unpersisted conversation results are never valid handoff inputs.
 
 ## Required invariants
 
@@ -293,4 +293,4 @@ A downstream consumer must receive the exact receipt path, receipt SHA-256, cand
 - One canonical immutable evidence root and one unified receipt schema are used.
 - Observed verdict, persistence, and handoff are separate fields.
 - Quick success never authorizes handoff.
-- Only a CAS-persisted sprint PASS authorizes handoff.
+- Only a version and existence conflict check-persisted sprint PASS authorizes handoff.

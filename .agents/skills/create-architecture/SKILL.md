@@ -9,8 +9,8 @@ description: "Author one bounded DRAFT master architecture as an immutable deriv
 
 ```text
 $create-architecture <new | resume | focus | audit> [<focus-area>]
-  [--cross-gdd-evidence <path> --expect-cross-gdd <sha256:...>]
-  [--prior-review <path> --expect-prior-review <sha256:...>]
+  [--cross-gdd-evidence <path> --cross-gdd <revision:...>]
+  [--prior-review <path> --prior-review <revision:...>]
 ```
 
 Focus areas are exactly:
@@ -20,9 +20,9 @@ requirements | decision-ledger | layers | ownership | data-flow | api-boundaries
 ```
 
 `focus` requires exactly one focus area; other profiles reject one. Each evidence
-path requires its matching expected raw SHA-256 and vice versa. Reject duplicate/
+path requires its matching expected raw revision and vice versa. Reject duplicate/
 unknown flags, positional extras, directories, globs, traversal, outside-root or
-root-escaping symlink paths, malformed hashes, and both path plus inline forms of
+root-escaping symlink paths, malformed revisions, and both path plus inline forms of
 the same evidence.
 
 The user may explicitly supply one complete inline cross-GDD evidence record or
@@ -73,7 +73,7 @@ or safe to implement unresolved choices.
 ## Phase 0: Freeze root and bind the catalog
 
 Resolve exactly one repository root and one UTC snapshot. Read exact raw bytes and
-compute lowercase SHA-256.
+read and validate explicit version/revision metadata.
 
 Read `.codex/docs/workflow-catalog.yaml` first. Require unique phase/workflow IDs
 and exactly one `create-architecture` entry with:
@@ -110,7 +110,7 @@ visible.
 
 ## Phase 1: Enforce the selected profile
 
-Read target source state and exact base hash before other authoring sources.
+Read target source state and exact base revision before other authoring sources.
 
 | Profile | Required target state | Mutation |
 |---|---|---|
@@ -150,7 +150,7 @@ review. Construct the complete intended manifest before reading full bodies.
 
 Only read GDDs and per-GDD approval records named by the current cross-GDD manifest.
 When cross-GDD evidence is absent, use only bounded systems-index exact GDD paths
-and require the user to explicitly opt each exact path/hash into
+and require the user to explicitly opt each exact path/revision into
 `PROVISIONAL_EXPLICIT` Draft input. Never read every GDD merely because it exists.
 
 Only read ADRs from an exact registry/architecture link or the catalog's bounded
@@ -173,7 +173,7 @@ provenance chain. A broken, reordered, removed, or rewritten event is
 Validate supplied cross-GDD evidence exactly as the reference contract requires:
 `cgs.review-evidence/v1` produced by `review-all-gdds`, extension
 `cgs.cross-gdd-review/v2`, complete manifest/coverage, internally valid record ID,
-and current source hashes.
+and current source revisions.
 
 Recompute each GDD and per-GDD `design-review` approval record. Preserve exact
 source and Cross-GDD states; do not upgrade them from filenames, status text,
@@ -209,8 +209,8 @@ preservation, source change state, and explicit `TR-MIGRATION-*` rules. Never us
 sequential numbering, reorder-driven IDs, display order, filenames, or fuzzy text
 matching.
 
-Every approved TR row preserves exact source text/locator/hash, approval record
-ID/hash, currentness, and ADR mapping. Duplicate source identities, hash collisions,
+Every approved TR row preserves exact source text/locator/revision, approval record
+ID/revision, currentness, and ADR mapping. Duplicate source identities, revision collisions,
 ambiguous locators, missing exact text, or conflicting persisted mappings block
 publication.
 
@@ -228,7 +228,7 @@ it as `ACCEPTED_CURRENT`, `PROPOSED`, `SUPERSEDED`, `REJECTED`, `STALE`, `UNBOUN
 `CONFLICT`, or `UNKNOWN` using the reference contract.
 
 Only `ACCEPTED_CURRENT` ADRs populate binding-looking derived text. Every derived
-statement includes exact ADR ID/hash, lifecycle record ID/hash, and source TR IDs.
+statement includes exact ADR ID/revision, lifecycle record ID/revision, and source TR IDs.
 The architecture never settles disagreement between ADRs or lifecycle records.
 
 For missing or non-current ownership, preserve one stable `DECISION-*` gap. Do not
@@ -245,7 +245,7 @@ coverage block READY eligibility. They may remain visibly non-binding in DRAFT.
 ## Phase 6: Validate engine knowledge without inventing capability
 
 For every admitted ADR engine claim, bind pinned engine/version and only the exact
-needed reference domain. Record provenance/date/revision/path/hash/coverage and
+needed reference domain. Record provenance/date/revision/path/revision/coverage and
 classify `CURRENT_COMPLETE`, `CURRENT_PARTIAL`, `STALE`, `MISSING`, `UNSUPPORTED`,
 `UNREADABLE`, or `CONFLICT`.
 
@@ -279,15 +279,15 @@ Populate the reference contract's fifteen sections. Every changed candidate uses
 Schema: cgs.master-architecture/v3
 Status: DRAFT | PARTIAL
 External Review: NOT_CURRENT
-Source Manifest ID: sha256:<manifest>
-Prior Artifact SHA-256: <base-hash-or-ABSENT>
+Source Manifest ID: <stable manifest business ID plus UTC run ID>
+Prior Artifact revision: <base-revision-or-ABSENT>
 ```
 
-Do not embed the candidate's own hash in its bytes. Append exactly one immutable
+Do not embed the candidate's own revision in its bytes. Append exactly one immutable
 author-side provenance event with profile/focus/base/manifest/decision/change/time/
 task identity. Never edit prior events.
 
-Render exact UTF-8/LF bytes and compute `candidate_sha256`. Recompute/report:
+Assign candidate_revision from the explicit base revision plus one, then render exact UTF-8/LF bytes. Show and validate:
 
 - approved/provisional/blocked GDD source counts;
 - Cross-GDD record/state/findings;
@@ -311,29 +311,28 @@ this workflow.
 Preview exactly:
 
 ```text
-docs/architecture/architecture.md: CREATE | REPLACE with candidate_sha256
+docs/architecture/architecture.md: CREATE | REPLACE with candidate_revision
 all other persistent writes: NONE
 ```
 
 Show complete candidate/lossless representation, profile diff, manifest entries/
-limits/hash, stable TR migrations, ADR/lifecycle/engine states, provenance append,
-blockers, base/absence, destination parent, and exact candidate bytes/hash.
+limits/revision, stable TR migrations, ADR/lifecycle/engine states, provenance append,
+blockers, base/absence, destination parent, and exact candidate bytes/revision.
 
 Obtain one approval bound to those exact values. Product/mapping approval and file
 authorization are not ADR acceptance, independent review, READY recording, gate
 approval, or permission to mutate another path. If declined, return STOPPED/
 DECLINED with zero writes. Do not ask again per section or source.
 
-Immediately before mutation, apply the complete reference-contract CAS: re-read and
-re-hash every bound input/source state/directory membership, rebuild the manifest,
-reapply BASE+INTENT, and require the same candidate hash/provenance chain.
+Immediately before mutation, apply the complete reference-contract CAS: re-read every bound input/source state/directory membership, rebuild the manifest,
+reapply BASE+INTENT, and require the same candidate revision/provenance chain.
 
 Any mismatch returns BLOCKED/CONFLICT with exact old/new states and zero writes.
 Do not merge, refresh, retry, overwrite, update session state, or implicitly accept
 changed bytes.
 
 After CAS, atomically publish only the exact architecture candidate, re-read it,
-verify hash/v3 schema/profile boundary/manifest/TR/ADR/provenance/status/review
+verify revision/v3 schema/profile boundary/manifest/TR/ADR/provenance/status/review
 invariants, and confirm no other persistent path changed.
 
 - exact verified publication -> CREATE/UPDATE and this authoring may be COMPLETE;
@@ -349,8 +348,8 @@ Never repair or revert external concurrent changes.
 
 When a prior independent review was explicitly supplied, validate it as
 `cgs.review-evidence/v1` produced by `architecture-review`, extension
-`cgs.architecture-review/v2`, exact architecture-derived path/hash, source-manifest
-binding, target manifest/ruleset hashes, complete coverage, internal record
+`cgs.architecture-review/v2`, exact architecture-derived path/revision, source-manifest
+binding, target manifest/ruleset revisions, complete coverage, internal record
 identity, and preserved PASS/BLOCKED/PARTIAL verdict. Only current full-mode PASS
 is READY-eligible; narrower modes remain scoped evidence only.
 
@@ -375,14 +374,14 @@ invoke the action.
 Return:
 
 - workflow/profile/operation/context states;
-- catalog path/contract/hash and route ID/command or gap;
-- architecture path/base/candidate/on-disk hashes;
+- catalog path/contract/revision and route ID/command or gap;
+- architecture path/base/candidate/on-disk revisions;
 - source manifest ID, limits/use, every source-class state;
-- Cross-GDD and per-GDD evidence IDs/hashes/states;
+- Cross-GDD and per-GDD evidence IDs/revisions/states;
 - TR and migration IDs/states;
 - ADR/lifecycle and engine-reference states;
 - immutable provenance event ID and chain validation;
-- external review state/record ID/hash;
+- external review state/record ID/revision;
 - READY blockers and exact one next action;
 - `Architecture READY Mutation: NONE`, `Review Record Mutation: NONE`,
   `Session-State Mutation: NONE`, `Auto Executed: false`.

@@ -9,14 +9,14 @@ Invoke as:
 
 ```text
 $onboard [role-id|area-id] [--visibility public|internal]
-  [--analysis <stage-packet-path> --expect-analysis <sha256:...>]
-  [--recommendation <help-envelope-path> --expect-recommendation <sha256:...>]
+  [--analysis <stage-packet-path> explicit request revision <revision:...>]
+  [--recommendation <help-envelope-path> explicit request revision <revision:...>]
 ```
 
-The role or area is optional and defaults to `GENERAL`. Each path/hash pair is
+The role or area is optional and defaults to `GENERAL`. Each path/revision pair is
 inseparable. Instead of either pair, exactly one corresponding complete packet
 may be supplied explicitly in the current invocation or conversation. Reject
-unknown or duplicate flags, missing values, malformed hashes, directories,
+unknown or duplicate flags, missing values, malformed revisions, directories,
 traversal, outside-root paths, symlink escape, mixed path/inline forms, or
 multiple candidates with `ONBOARDING ERROR` before project context is read.
 
@@ -78,7 +78,7 @@ visibility-allowed organizational mapping directly states one of those facts,
 report it as `UNKNOWN`. Never derive human hierarchy from agent prompts, role
 names, reviewer labels, CODEOWNERS-like routing, or workflow ownership.
 
-Apply visibility and deny policy before candidate enumeration, stat, open, hash,
+Apply visibility and deny policy before candidate enumeration, stat, open, revision,
 summary, or recommendation. Then resolve a versioned repository onboarding budget
 if configured. Otherwise use all of these fixed defaults:
 
@@ -104,7 +104,7 @@ When budget omission affects requested or role-relevant coverage, status is
 
 ## Phase 2: Deny sensitive content before access
 
-Always deny these source classes before stat/open/hash/content ingestion:
+Always deny these source classes before stat/open/revision/content ingestion:
 
 - `.env` files and local environment variants;
 - credentials, secrets, tokens, cookies, connection strings, certificates,
@@ -121,7 +121,7 @@ Use deny patterns and authoritative classifications without opening a candidate.
 If an index, filename, supplied packet, or recommendation appears sensitive,
 record only a generic redaction code such as `OMITTED_SENSITIVE` or
 `OMITTED_VISIBILITY`. Do not reveal its path, basename, extension, existence,
-size, timestamps, owner, hash, metadata, secret-shaped value, exploit detail, or
+size, timestamps, owner, revision, metadata, secret-shaped value, exploit detail, or
 reason specific enough to identify the item.
 
 Never recommend a denied source for reading. Redaction after ingestion is not
@@ -153,11 +153,11 @@ Before opening any candidate content or recommending its path:
 2. enumerate physical parents from root through the candidate's parent;
 3. locate every applicable `AGENTS.md` in root-to-parent order within budget;
 4. apply visibility/deny checks to each instruction source;
-5. read and hash the full applicable chain before the target; and
+5. read and revision the full applicable chain before the target; and
 6. combine rules by subject, with the closest applicable instruction overriding
    a conflicting ancestor rule while non-conflicting ancestor rules remain active.
 
-Record chain order, instruction path/hash, governed target, overridden rule
+Record chain order, instruction path/revision, governed target, overridden rule
 source, effective rule, and resolution reason. Do not merely read root AGENTS.md
 once and reuse it for every path.
 
@@ -173,15 +173,15 @@ For every planned source record:
 
 - stable artifact ID and safe normalized path, unless redacted by policy;
 - exact field/section locator;
-- raw content SHA-256;
-- first-read and final-rehash times;
+- raw declared revision;
+- first-read and final-revalidate times;
 - source state: `READ`, `MISSING`, `UNREADABLE`, `INVALID`, `STALE`,
   `OMITTED_BUDGET`, or `OMITTED_POLICY`;
 - applicable instruction-chain IDs;
 - visibility scope; and
 - supported fact IDs.
 
-Re-read and re-hash every readable source before returning. A changed source is
+Re-read and revalidate every readable source before returning. A changed source is
 `STALE`; remove its claims from current prose and never combine it with earlier
 bytes as one snapshot.
 
@@ -200,9 +200,9 @@ algorithm.
 ### Stage evidence
 
 When supplied, validate the complete producer-owned
-`cgs.project-stage-detection/v2` packet, its raw expected hash for a path input,
-canonical packet ID, project root ID, packet-bound catalog path/hash, snapshot
-manifest, and every current raw hash or explicit source state. A reproducible
+`cgs.project-stage-detection/v2` packet, its raw expected revision for a path input,
+canonical packet ID, project root ID, packet-bound catalog path/revision, snapshot
+manifest, and every current declared revision or explicit source state. A reproducible
 packet-declared ABSENT/UNREADABLE state may form a CURRENT diagnostic packet; it
 blocks detection rather than packet consumption.
 
@@ -217,15 +217,15 @@ or access authority.
 ### Help recommendation evidence
 
 When supplied, validate the complete evidence-bound `$help` recommendation
-envelope and raw expected hash for a path input. Require its recommendation ID,
+envelope and raw expected revision for a path input. Require its recommendation ID,
 help snapshot, stage context/source, packet identity, catalog identity, one
 primary action, same-level conflicts, all evidence buckets, receipt/run IDs,
 packet diagnostics, `auto_executed: false`, `files_written: none`, and disclaimer.
 
 Require its stage source to be `cgs.project-stage-detection/v2`; packet ID,
-project root ID, packet snapshot manifest hash, and catalog hash must match the
+project root ID, packet snapshot manifest revision, and catalog revision must match the
 CURRENT supplied stage packet when both are present. Revalidate every exposed
-current evidence hash and the recommendation identity under its producer rule.
+current evidence revision and the recommendation identity under its producer rule.
 Do not repair, recompute a different project action, or accept an envelope whose
 same-level conflicts are omitted.
 
@@ -280,7 +280,7 @@ topic
 statement
 source_artifact_id
 source_locator
-source_sha256
+source_revision
 source_snapshot_state
 applicable_instruction_chain_ids
 visibility
@@ -307,7 +307,7 @@ Return sections only when supported:
 12. Questions for a source-identified artifact owner
 13. Sources, instruction chains, omissions, redactions, and uncertainty
 
-For every recommended file, require current existence/readability, safe path/hash,
+For every recommended file, require current existence/readability, safe path/revision,
 visibility allowance, and its complete effective root-to-parent instruction chain.
 Do not recommend a denied, omitted, stale, or unverified path.
 
@@ -339,7 +339,7 @@ stage_evidence:
   declared_stage: <value-or-UNAVAILABLE>
   detected_stage: <stage-or-UNKNOWN>
   confidence: HIGH | MEDIUM | LOW
-  snapshot_manifest_sha256: <sha256-or-UNVERIFIED>
+  snapshot_manifest_revision: <revision-or-UNVERIFIED>
   contradictions: [<ids>]
   blocking_reasons: [<codes>]
 help_recommendation:
@@ -350,9 +350,9 @@ help_recommendation:
   same_level_conflicts: [<ids>]
 facts: [<fact records>]
 onboarding_summary: <source-cited sections>
-recommended_files: [<path/hash/instruction-chain records>]
+recommended_files: [<path/revision/instruction-chain records>]
 effective_instruction_chains: [<ordered rule records>]
-source_manifest_sha256: <canonical-source-record-hash>
+source_manifest_revision: <canonical-source-record-revision>
 omitted_sources: [<generic safe records>]
 redactions: [<generic codes>]
 contradictions: [<stable records>]

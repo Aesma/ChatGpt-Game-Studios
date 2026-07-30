@@ -1,4 +1,4 @@
 interface:
   display_name: "Bug Triage"
   short_description: "Read-only canonical backlog snapshot and capacity proposals"
-  default_prompt: "Use $bug-triage in one explicit mode to validate the complete canonical open-bug registry, separate severity evidence from product decisions, simulate capacity without assigning work, and return a hash-bound read-only snapshot whose transactions require an external owner and recorder."
+  default_prompt: "Use $bug-triage in one explicit mode to validate the complete canonical open-bug registry, separate severity evidence from product decisions, simulate capacity without assigning work, and return a revision-bound read-only snapshot whose transactions require an external owner and recorder."

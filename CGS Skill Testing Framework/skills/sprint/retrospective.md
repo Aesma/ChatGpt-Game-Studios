@@ -21,12 +21,12 @@ seven findings.
 
 Run behavioral cases in an isolated disposable repository fixture. Record:
 
-1. recursive path/type/SHA-256 snapshots before and after invocation;
+1. recursive path/type/revision snapshots before and after invocation;
 2. every filesystem mutation attempt and atomic transaction stage;
-3. every file read, canonical path, exact bytes, read order, and pre/post hash;
+3. every file read, canonical path, exact bytes, read order, and pre/post revision;
 4. every Git command/range and returned commit identity/time/scope decision;
-5. every scan tool/version/hash/argv/scope/file-list/occurrence identity;
-6. exact report, index, payload, evidence, observation, action, and omission hashes;
+5. every scan tool/version/revision/argv/scope/file-list/occurrence identity;
+6. exact report, index, payload, evidence, observation, action, and omission revisions;
 7. deterministic clock/UUID sources and user-confirmation turn identities; and
 8. every attempted workflow/task/delegation after output.
 
@@ -45,7 +45,7 @@ static lint and do not update catalog result fields from an uninstrumented run.
 - [ ] Metadata states evidence-backed, immutable, and UNKNOWN-preserving behavior
 - [ ] Invocation requires exactly one `sprint:<id>` or `milestone:<id>` target
 - [ ] Persist requires explicit valid run ID; invalid/ambiguous input fails before reads
-- [ ] Plan/status target, revision, plan hash, story/task-set hash, period, source
+- [ ] Plan/status target, revision, plan revision, story/task-set revision, period, source
   revision, and freshness equality are mandatory
 - [ ] DATA CONFLICT preserves competing claims and blocks affected metrics
 - [ ] Every metric/claim is OBSERVED, DERIVED with formula/sources, or literal
@@ -72,10 +72,10 @@ static lint and do not update catalog result fields from an uninstrumented run.
 
 Unless overridden, use target `sprint:sprint-006`, run ID
 `retro-11111111-1111-4111-8111-111111111111`, policy
-`cgs.retrospective-policy/v1`, revision `rev-3`, story-set hash `S`, period
+`cgs.retrospective-policy/v1`, revision `rev-3`, story_set_revision `S`, period
 `[2026-07-01T00:00:00Z, 2026-07-15T00:00:00Z)`, fresh status captured after end,
 baseline commit `C0`, terminal commit `C9`, and a complete bounded scan snapshot.
-All placeholder hashes are valid 64-hex values in executable fixtures.
+All placeholder revisions are schema-valid explicit values in executable fixtures.
 
 ---
 
@@ -135,7 +135,7 @@ names are ignored.
 
 ### Assertions
 
-- [ ] Selected normalized paths and raw hashes are reported
+- [ ] Selected normalized paths and declared revision are reported
 - [ ] Target type and stable ID agree in both artifacts
 - [ ] No fallback plan is read or selected
 - [ ] Blocked output has no retrospective evidence record
@@ -145,7 +145,7 @@ names are ignored.
 
 ### Fixture
 
-Vary target ID, plan revision, plan SHA-256, story-set hash, source revision, item
+Vary target ID, plan revision, plan revision, story_set_revision, source revision, item
 ID, estimate unit/value, added/removed/changed story, and scope-change receipt.
 Include one exact valid scope-change transaction.
 
@@ -281,7 +281,7 @@ None.
 ### Expected behavior
 
 Only event record or exact confirmed response supports a bounded factual cause;
-the ledger records confirmation text hash and turn locator. Ambiguous/conflicting
+the ledger records confirmation text revision and turn locator. Ambiguous/conflicting
 claims remain UNKNOWN/DATA CONFLICT. Owner identity alone never implies cause.
 
 ### Assertions
@@ -328,8 +328,8 @@ Commits never prove completion/effort/bugs/cause.
 ### Fixture
 
 Create current complete scan and prior snapshots varying protocol version,
-scanner version/hash, argv/match semantics, include/exclude roots, generated/
-vendor rules, file-list digest, repository lineage, partial status, and counts.
+scanner version/revision, argv/match semantics, include/exclude roots, generated/
+vendor rules, file-list reference ID, repository lineage, partial status, and counts.
 
 ### Input
 
@@ -347,7 +347,7 @@ all comparability keys and lineage match; otherwise literal
 
 ### Assertions
 
-- [ ] Snapshot binds tool/version/hash/argv/scope/revision/counts/occurrences
+- [ ] Snapshot binds tool/version/revision/argv/scope/revision/counts/occurrences
 - [ ] Prose count is not comparable evidence
 - [ ] Scope mismatch cannot be normalized heuristically
 - [ ] Partial scan cannot produce direction
@@ -378,7 +378,7 @@ exists.
 
 ### Assertions
 
-- [ ] Historical links and hashes remain valid
+- [ ] Historical links and revisions remain valid
 - [ ] Old report is never moved, renamed, overwritten, or edited
 - [ ] New run ID/path is unique
 - [ ] Index is navigation only
@@ -409,7 +409,7 @@ No date-only/flat/legacy path is written. Report/index identities agree.
 
 - [ ] Path components come from validated IDs, not display names
 - [ ] Sprint and milestone namespaces cannot collide
-- [ ] Run ID, report hash, and target identity appear in index
+- [ ] Run ID, report revision, and target identity appear in index
 - [ ] Old alternate paths are never migrated automatically
 - [ ] Mutation guard passes for drafts/invalid paths
 
@@ -433,15 +433,15 @@ all reports unchanged.
 ### Expected behavior
 
 Workflow previews bytes, validates preimages, stages both, publishes all-or-none,
-and read-backs hashes before WRITTEN. Conflicts/failures do not claim persistence.
+and read-backs revisions before WRITTEN. Conflicts/failures do not claim persistence.
 Analysis/data quality remain independent.
 
 ### Assertions
 
 - [ ] No partially published report/index pair exists
 - [ ] Concurrent user index edit is preserved
-- [ ] Index previous-hash chain validates
-- [ ] WRITTEN requires both read-back hashes
+- [ ] Index previous_revision chain validates
+- [ ] WRITTEN requires both read-back revisions
 - [ ] No third file changes
 
 ## Case 13: Action owner and due date require a team decision
@@ -464,14 +464,14 @@ None without persistence; action registry is never written.
 
 Actions begin PROPOSED. Person/deadline suggestions remain candidates;
 owner/due are UNASSIGNED absent exact receipt/confirmation. Exact decision binds
-action ID, owner, due, authority/time, and the action-proposal-set hash shown for
+action ID, owner, due, authority/time, and the action-proposal-set revision shown for
 confirmation and yields CONFIRMED.
 
 ### Assertions
 
 - [ ] Model never assigns a person or commits a deadline
 - [ ] Ambiguous/no response remains UNASSIGNED
-- [ ] Confirmation locator/text hash is evidence
+- [ ] Confirmation locator/text revision is evidence
 - [ ] Action can be useful while unassigned
 - [ ] At most five actions survive deterministic ordering
 
@@ -499,7 +499,7 @@ index yields disclosed missing prior context, not a scan of all reports.
 
 ### Assertions
 
-- [ ] Prior report path/hash/target validates before use
+- [ ] Prior report path/revision/target validates before use
 - [ ] Proposal history is distinct from execution evidence
 - [ ] Missing follow-up never becomes Not Started
 - [ ] No prior report is modified
@@ -510,7 +510,7 @@ index yields disclosed missing prior context, not a scan of all reports.
 ### Fixture
 
 Generate one observation/action, then vary path, wording, severity/priority,
-owner/due/status, timestamp, current report hash without canonical identity
+owner/due/status, timestamp, current report revision without canonical identity
 change. Then vary target/revision/category/evidence/event or triggering observation.
 
 ### Input
@@ -528,8 +528,8 @@ them. Duplicates coalesce, evidence remains, ordering is deterministic.
 
 ### Assertions
 
-- [ ] Canonical JSON and 12-hex suffix recompute
-- [ ] Paths/wording/owner/due/status/time/report hash are excluded
+- [ ] Stable report ID and supersedes lineage revalidate
+- [ ] Paths/wording/owner/due/status/time/report revision are excluded
 - [ ] Target/revision/category/stable evidence identity is included
 - [ ] Action identity includes triggering observation IDs
 - [ ] Mutation guard passes
@@ -552,8 +552,8 @@ None unless an in-bound explicit persistence case is separately exercised.
 
 ### Expected behavior
 
-Overflow stops at source/stable-ID boundary with candidate digest, included/
-omitted counts, boundary, and tail digest; analysis/data quality are bounded
+Overflow stops at source/stable-ID boundary with candidate reference ID, included/
+omitted counts, boundary, and tail reference ID; analysis/data quality are bounded
 partial. Omitted work is never sampled or extrapolated.
 
 ### Assertions
@@ -650,10 +650,10 @@ failure never erases analysis. Nonblocked analysis emits one non-authoritative
 
 - [ ] Every branch populates all three axes
 - [ ] Partial cannot be relabeled complete by successful write
-- [ ] Draft evidence says persistence NONE and report/payload/evidence hashes are
+- [ ] Draft evidence says persistence NONE and report/payload/evidence revisions are
   acyclic
 - [ ] Evidence grants no gate/planning/action authority
-- [ ] Hashes independently recompute
+- [ ] revisions independently recompute
 
 ## Case 20: Terminal stop and zero workflow expansion
 
@@ -673,7 +673,7 @@ Draft none; persist only new immutable report/index.
 
 ### Expected behavior
 
-Workflow returns artifact/index paths/hashes and stops. It may list plain-text
+Workflow returns artifact/index paths/revisions and stops. It may list plain-text
 handoffs but does not invoke/preload/start anything or mutate other artifacts.
 
 ### Assertions
@@ -691,7 +691,7 @@ handoffs but does not invoke/preload/start anything or mutate other artifacts.
 | Audit finding | Closing contract clauses | Behavioral proof |
 |---|---|---|
 | RT-003 | Every run has immutable ID/path; no update/rename/archive; latest navigation index changes atomically | Cases 10-12 |
-| RT-004 | Exact target/revision/plan hash/story-set/source/freshness equality; conflicts preserved as DATA CONFLICT/PARTIAL | Cases 3, 4 |
+| RT-004 | Exact target/revision/plan revision/story-set/source/freshness equality; conflicts preserved as DATA CONFLICT/PARTIAL | Cases 3, 4 |
 | RT-005 | Actions begin PROPOSED; owner/due UNASSIGNED until receipt or exact team confirmation | Case 13 |
 | RT-006 | Required `sprint:<id>` or `milestone:<id>` grammar, unique type-safe lookup, strict invalid behavior | Cases 1, 2 |
 | RT-007 | Immutable canonical `production/retrospectives/<type>/<id>/<run-id>.md` plus sibling index | Cases 10-12 |
@@ -715,7 +715,7 @@ trace table, even where adjacent hardening supports deterministic testing.
 - [ ] Historical retrospective bytes/paths never change
 - [ ] Persistence is exactly atomic new report + latest index and is never required
   for analysis completion
-- [ ] All source/payload/evidence/observation/action/index/omission hashes recompute
+- [ ] All source/payload/evidence/observation/action/index/omission revisions recompute
 - [ ] Repeated deterministic fixtures preserve metrics, IDs, ordering, and proofs
   apart from controlled run metadata
 - [ ] Zero follow-on workflow/task invocation occurs

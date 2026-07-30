@@ -1,6 +1,6 @@
 # ChatGPT Game Studios -- Complete Workflow Guide
 
-> Compatibility authority: machine routing and stage detection use the versioned `cgs.workflow-catalog/v2` record at `.codex/docs/workflow-catalog.yaml` and its schema at `.codex/docs/schemas/workflow-catalog-v2.md`. This guide is explanatory. If prose and the exact current catalog hash disagree, automation fails closed; it does not infer completion or stage from file presence.
+> Compatibility authority: machine routing and stage detection use the versioned `cgs.workflow-catalog/v2` record at `.codex/docs/workflow-catalog.yaml` and its schema at `.codex/docs/schemas/workflow-catalog-v2.md`. This guide is explanatory. If prose and the current catalog version disagree, automation fails closed; it does not infer completion or stage from file presence.
 
 
 > **How to go from zero to a shipped game using the Agent Architecture.**
@@ -168,7 +168,7 @@ $brainstorm <request-manifest-path>
        |--> optional $prototype <concept-or-question> --path <html|engine|paper>
        |--> $map-systems
        |     --> design/gdd/systems-index.md
-       +--> $setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
+       +--> $setup-engine --manifest <engine-request-path>
 ```
 
 ### Step 1.1: Brainstorm With $brainstorm
@@ -213,7 +213,7 @@ The concept document includes:
 ### Step 1.2: Review the Concept (Optional but Recommended)
 
 Use a separately authorized independent concept-review process. If it persists
-an approval, require a hash-bound `cgs.concept-approval/v1` record for the exact
+an approval, require a version-bound `cgs.concept-approval/v1` record for the exact
 concept. No P1 project skill produces this record: `$design-review` accepts
 system GDDs only and must not be routed to `design/gdd/game-concept.md`. If no
 independent reviewer/recorder is available, report the approval as UNKNOWN.
@@ -221,16 +221,16 @@ independent reviewer/recorder is available, report the approval as UNKNOWN.
 ### Step 1.3: Choose Your Engine
 
 ```
-$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
+$setup-engine --manifest <engine-request-path>
 ```
 
 Or with a specific engine:
 
 ```
-$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
+$setup-engine --manifest <engine-request-path>
 ```
 
-The requested product/version and operation belong inside the hash-bound engine
+The requested product/version and operation belong inside the version-bound engine
 request manifest; positional engine/version arguments are not accepted.
 
 **What $setup-engine does:**
@@ -274,14 +274,14 @@ $gate-check concept-to-systems-design
 **Normative gate contract (`gate.concept-to-systems-design/v2`):**
 
 - `CSD-A01`, `CSD-Q01`, and `CSD-Q02` evaluate the exact current
-  `design/gdd/game-concept.md` path/raw SHA-256 and its substantive concept,
+  `design/gdd/game-concept.md` path and declared revision and its substantive concept,
   pillar, and Visual Identity Anchor content; file presence alone never passes.
 - `CSD-M01/v1` requires the accountable owner attestation bound to the same
-  concept and scope hashes and still current for those bytes.
+  concept and scope revisions are still current.
 - The concept-prototype row `CSD-R01` is advisory and optional. Its absence may
   produce CONCERNS but is not a blocking pass requirement.
 - Only a current conversation-produced `cgs.gate-record/v2` bound to this exact
-  transition/profile and dependency hashes, with PASS, COMPLETE coverage, and
+  transition/profile versions and dependency identities, with PASS, COMPLETE coverage, and
   ELIGIBLE disposition, may be considered by the external stage recorder.
 
 **Verdict:** PASS / CONCERNS / FAIL / PARTIAL. Only PASS with COMPLETE coverage,
@@ -387,7 +387,7 @@ recorder receipt is synthesized.
 For tuning changes, small additions, or tweaks that do not warrant a full GDD:
 
 ```
-$quick-design propose "<change>" --change-id <QD-stable-id> --version <vNNN> --target <design/gdd/system-slug.md> --target-id <SYS-stable-id> --section "<exact-level-two-heading>" --expect-base <sha256:64-lowercase-hex>
+$quick-design propose "<change>" --change-id <QD-stable-id> --version <vNNN> --target <design/gdd/system-slug.md> --target-id <SYS-stable-id> --section "<exact-level-two-heading>"
 ```
 
 This creates a lightweight spec in `design/quick-specs/` instead of a full
@@ -441,19 +441,19 @@ $gate-check systems-design-to-technical-setup
 **Normative gate contract (`gate.systems-design-to-technical-setup/v2`):**
 
 - `SDT-A01`, `SDT-A02`, `SDT-Q01`, and `SDT-Q02` bind the current
-  systems-index path/raw SHA-256 and every exact MVP GDD path/raw hash from that
+  systems-index path and declared revision and every exact MVP GDD path and declared revision from that
   manifest; filenames, status text, or counts alone never pass.
 - Every MVP GDD needs current `PA-DESIGN-REVIEW-1` PASSING evidence: the
   byte-identical persisted `cgs.review-evidence/v1` envelope with its
-  `cgs.design-review/v2` producer extension, exact target hash, complete finding
+  `cgs.design-review/v2` producer extension, exact target path and revision, complete finding
   set, and `APPROVED`. This is `PERSISTED_ENVELOPE_COMPLETE`; unpersisted,
   solo/advisory, NEEDS REVISION, or stale evidence is ineligible.
 - `SDT-E02` needs persisted/read-back `cgs.review-evidence/v1` plus
   `cgs.cross-gdd-review/v2`, bound to the complete current MVP manifest and all
-  producer/ruleset/bundle hashes, full coverage, and PASS. CONCERNS does not
+  producer/ruleset/bundle versions, full coverage, and PASS. CONCERNS does not
   pass this profile.
 - The resulting `cgs.gate-record/v2` must bind the exact profile and source
-  hashes and report PASS, COMPLETE coverage, and ELIGIBLE disposition.
+  versions and report PASS, COMPLETE coverage, and ELIGIBLE disposition.
 
 ---
 
@@ -518,7 +518,7 @@ ADRs go through a lifecycle: Proposed > Accepted > Superseded/Deprecated.
 The authoring workflow persists `cgs.adr-authoring-receipt/v1`, but it does not
 accept its own ADR. Gate-eligible completion additionally requires a current
 `cgs.adr-lifecycle-record/v1` from the independent external ADR lifecycle
-recorder, bound to the exact authoring receipt and ADR content hash.
+recorder, bound to the exact authoring receipt and ADR content revision.
 
 **Minimum 3 Foundation-layer ADRs are required** before the gate check.
 
@@ -530,7 +530,7 @@ $architecture-decision <architecture-decision-request-manifest-path>
 ```
 
 Set `operation: retrofit` in the request manifest and bind the exact existing ADR
-path and current raw SHA-256. The workflow then detects missing sections without
+path and current declared revision. The workflow then detects missing sections without
 silently overwriting existing content.
 
 ### Step 3.3: Architecture Review
@@ -581,14 +581,14 @@ $gate-check technical-setup-to-pre-production
 - `TSP-A01` through `TSP-A04` and `TSP-Q01` through `TSP-Q03` validate the
   fixed technical-preferences, Art Bible, accessibility, interaction-pattern,
   architecture, traceability, control, engine-reference, test-root, canary, and
-  CI paths by exact current raw SHA-256. Presence or an ADR count alone does not
+  CI paths by exact current declared revision. Presence or an ADR count alone does not
   pass; the authoritative manifest must bind the required Foundation ADR IDs,
-  paths, hashes, lifecycle state, engine version, and traceability.
+  paths, versions, lifecycle state, engine version, and traceability.
 - `TSP-E01` requires a persisted current `PA-ARCH-REVIEW-1` report with exact
-  target-manifest and source hashes, every required reviewer complete, mutation
+  target-manifest and source revisions, every required reviewer complete, mutation
   guard passing, and verdict PASS.
 - `TSP-Q03` requires the configured canary's exact schema/versioned runner
-  receipt, command, source/config hashes, current execution identity, and
+  receipt, command, source/config revisions, current execution identity, and
   conclusive PASS; source presence or exit code alone is insufficient.
 - Only a current `cgs.gate-record/v2` for this exact profile with PASS,
   COMPLETE coverage, and ELIGIBLE disposition can reach the external recorder.
@@ -628,7 +628,7 @@ ux-design workflow  -->  vertical-slice workflow  -->  create-epics workflow  --
                                                persisted READY record + exact
                                         cgs.story-readiness-recorder-receipt/v1
                                        (RECORDED or ALREADY_RECORDED; exact
-                                        record/receipt/raw hashes current;
+                                        record/receipt/declared revisions current;
                                         implementation_gate_eligible: true)
                                                                |
                                                                v
@@ -696,9 +696,9 @@ Plan and evaluate in separate tasks; implementation/build/playtest evidence belo
 to separately authorized owners:
 
 ```
-$vertical-slice plan --request <project-relative-plan-request>@sha256:<64-lower-hex>
-$vertical-slice evaluate --request <project-relative-evaluation-request>@sha256:<64-lower-hex> --persist
-$vertical-slice status --report <project-relative-report>@sha256:<64-lower-hex>
+$vertical-slice plan --request <project-relative-plan-request>
+$vertical-slice evaluate --request <project-relative-evaluation-request> --persist
+$vertical-slice status --report <project-relative-report>
 ```
 
 **What it proves:** Does a player, starting from nothing, experience the core
@@ -726,9 +726,9 @@ scope/evidence/playtest/velocity graph revalidates.
 
 ```
 $create-epics <foundation-request-manifest-path>
-$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256>
+$create-stories author <epic-path> --epic-receipt <epic-receipt-path>
 $create-epics <core-request-manifest-path>
-$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256>
+$create-stories author <epic-path> --epic-receipt <epic-receipt-path>
 ```
 
 `$create-epics` reads your GDDs, ADRs, and architecture to define epic scope —
@@ -743,9 +743,9 @@ implementable story files in `production/epics/[slug]/`. Each story embeds:
 Once stories exist, validate the selected story and use the independent external
 recorder to obtain its current persisted `cgs.story-readiness-record/v1` READY
 record plus exact `cgs.story-readiness-recorder-receipt/v1`. Require `RECORDED`
-or `ALREADY_RECORDED`, exact record/receipt/raw hashes and currentness, and
+or `ALREADY_RECORDED`, exact record/receipt identities and revisions and currentness, and
 `implementation_gate_eligible: true`. Only then run
-`$dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>` to
+`$dev-story --request <project-relative-request-path>` to
 implement one — it routes
 automatically to the correct programmer agent.
 
@@ -763,7 +763,7 @@ independent external `cgs.story-readiness-recorder/v1`—not a project skill or
 `$` command—must persist the exact READY candidate. Pickup requires the current
 persisted `cgs.story-readiness-record/v1` plus its exact
 `cgs.story-readiness-recorder-receipt/v1`, bound to the story, registry, source
-paths/raw hashes, ruleset, check rows, candidate/record/receipt hashes, and
+paths and declared revisions, ruleset, check rows, candidate/record/receipt identities, and
 current staleness key. Only `RECORDED` or `ALREADY_RECORDED` with
 `implementation_gate_eligible: true` qualifies; NEEDS WORK, BLOCKED, partial,
 stale, or unpersisted evidence never makes a story ready for implementation.
@@ -802,8 +802,8 @@ scope is selected:
 
 `$gate-check` is authoritative only for its read-only gate assessment; it never
 mutates stage. The assessment accepts only an explicitly supplied, externally
-hash-bound `vertical-slice-evaluation-report`
-whose workflow/evidence/product/final states are COMPLETE/PROCEED, whose persistence
+version-bound `vertical-slice-evaluation-report`
+whose declared workflow/evidence/product/final states are COMPLETE/PROCEED, whose persistence
 and currentness verify, and whose full referenced graph still matches. Session or
 file existence alone never passes.
 
@@ -829,14 +829,14 @@ $gate-check pre-production-to-production
   versioned recorder, `PPP-E01` still requires the explicit persisted
   `cgs.vertical-slice-evaluation-report/v2` with its complete current
   plan/source/candidate/build/scope/session/network/velocity/decision graph,
-  raw hashes, `Persistence: VERIFIED`, `Gate Eligible: YES`, and all verdict
+  declared revisions, `Persistence: VERIFIED`, `Gate Eligible: YES`, and all verdict
   axes PROCEED.
 - `PPP-A01`, `PPP-A02`, `PPP-A03`, and `PPP-Q01` still require exact current
-  sprint/control/epic/story/GDD/ADR/UX/build manifest paths and raw hashes;
+  sprint/control/epic/story/GDD/ADR/UX/build manifest paths and declared revisions;
   existence, filenames, or counts do not pass. `PPP-E02` separately requires
   current PASSING `PA-ART-BIBLE-1` external evidence, and `PPP-M01/v1` requires
   the accountable owner attestation bound to the exact build/report/scope
-  hashes.
+  identities.
 - `PPP-R01` playtest evidence is advisory: when supplied it must be a current
   `PA-PLAYTEST-1` pair—`cgs.playtest-report/v2` plus
   `cgs.playtest-report-recorder-receipt/v1`—for the exact slice build, with
@@ -865,15 +865,15 @@ $sprint-plan new
       (not a project skill or $ command)
   --> persisted cgs.story-readiness-record/v1 READY
       + cgs.story-readiness-recorder-receipt/v1
-      (RECORDED or ALREADY_RECORDED; exact record/receipt/raw hashes current;
+      (RECORDED or ALREADY_RECORDED; exact record/receipt/declared revisions current;
        implementation_gate_eligible: true)
-  --> $dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
+  --> $dev-story --request <project-relative-request-path>
   --> $code-review --target <project-relative-file-or-directory>
   --> independent external cgs.code-review-recorder-receipt/v1
   --> $story-done <story-file-path>
 
 $sprint-status
-$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current <current-scope-path>@sha256:<64-lowercase-hex>
+$scope-check compare --baseline <approved-scope-path> --current <current-scope-path>
 $retrospective sprint:<sprint-id>
 ```
 
@@ -887,9 +887,9 @@ $story-readiness --story <project-relative-story-path>
       (not a project skill or $ command)
   --> persisted cgs.story-readiness-record/v1 READY
       + cgs.story-readiness-recorder-receipt/v1
-      (RECORDED or ALREADY_RECORDED; exact record/receipt/raw hashes current;
+      (RECORDED or ALREADY_RECORDED; exact record/receipt/declared revisions current;
        implementation_gate_eligible: true)
-  --> $dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
+  --> $dev-story --request <project-relative-request-path>
   --> $code-review --target <project-relative-file-or-directory>
   --> independent external cgs.code-review-recorder-receipt/v1
   --> $story-done <story-file-path>
@@ -897,21 +897,21 @@ $story-readiness --story <project-relative-story-path>
 ```
 
 - The story file is an immutable requirement core during implementation and closure.
-- The sprint plan owns `plan_sha256`, `plan_revision`, and `story_set_hash`. Implementation and closure MUST NOT recompute or rewrite them.
+- The sprint plan owns `plan revision and story-set revision`. Implementation and closure MUST NOT recompute or rewrite them.
 - `$story-readiness` emits only a NOT_PERSISTED conversation candidate. The
   independent external recorder must persist the exact READY record and emit
   its valid receipt; `$dev-story` consumes only that current record/receipt pair
   after independently verifying `RECORDED` or `ALREADY_RECORDED`, all bound raw
-  hashes/currentness, and `implementation_gate_eligible: true`.
-- `$dev-story` produces hash-bound implementation and test evidence and requests a canonical lifecycle update through the tracker recorder.
+  versions/currentness, and `implementation_gate_eligible: true`.
+- `$dev-story` produces version-bound implementation and test evidence and requests a canonical lifecycle update through the tracker recorder.
 - `$code-review` returns a current `cgs.review-evidence/v1` envelope with a
   `cgs.code-review/v2` extension, but that producer output is `NOT_PERSISTED` and
   not gate eligible. A separately authorized independent external recorder must
   persist and bind it through `cgs.code-review-recorder-receipt/v1`; the
   code-review skill never creates or invokes that receipt.
-- The canonical lifecycle owner updates only the matching row in `cgs.sprint-tracker/v2`, using compare-and-swap against the exact tracker hash and emitting its proposal/result/receipt chain.
-- `$story-done` verifies the immutable story core, current tracker row in `IN_REVIEW`, exact dev result/transition receipt, independent readiness/review/QA/test evidence, and all source hashes. If eligible, it requests the tracker recorder to move only that row to the catalog-declared completed state.
-- A failed transaction restores the original tracker bytes; it does not partially update story, plan, session, or planning hashes. The persisted recorder receipt is the lifecycle evidence.
+- The canonical lifecycle owner updates only the matching row in `cgs.sprint-tracker/v2`, using a revision check against the current tracker revision and emitting its proposal/result/receipt chain.
+- `$story-done` verifies the immutable story core, current tracker row in `IN_REVIEW`, exact dev result/transition receipt, independent readiness/review/QA/test evidence, and all source revisions. If eligible, it requests the tracker recorder to move only that row to the catalog-declared completed state.
+- A failed transaction restores the original tracker bytes; it does not partially update story, plan, session, or planning records. The persisted recorder receipt is the lifecycle evidence.
 - COMPLETE/BLOCKED summaries do not themselves change canonical state, and no skill selects a newest tracker or receipt.
 
 Use each skill's exact manifest-based invocation. Tech-debt findings are proposals until their owning recorder accepts them.
@@ -929,7 +929,7 @@ Quick 30-line snapshot reading from `production/sprint-status.yaml`.
 If scope is growing:
 
 ```
-$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current production/sprints/sprint-03.md@sha256:<64-lowercase-hex>
+$scope-check compare --baseline <approved-scope-path> --current production/sprints/sprint-03.md
 ```
 
 This compares current scope against the original plan and flags scope increase,
@@ -962,14 +962,14 @@ Team workflows do not share a universal phase count, review-mode flag, or implem
 Examples:
 
 ```
-$team-combat --request <request-path> --expect-request <sha256>
+$team-combat --request <request-path>
 $team-narrative --manifest <request-path> [--resume <checkpoint-path>]
 $team-ui --manifest <ui-request-path> [--resume <checkpoint-path>]
 $team-level <level-id>
 $team-audio --manifest <request-path> [--resume <checkpoint-path>]
 ```
 
-`$team-audio` is spec-only. Its canonical output is `design/audio/audio-<artifact-id>.md`; it does not implement, import, or validate runtime audio events. Implementation requires a later approved story/architecture handoff, and runtime/audio quality is assessed by an independent later QA workflow. A team-audio checkpoint supports bounded resume only when its exact source and candidate hashes remain current.
+`$team-audio` is spec-only. Its canonical output is `design/audio/audio-<artifact-id>.md`; it does not implement, import, or validate runtime audio events. Implementation requires a later approved story/architecture handoff, and runtime/audio quality is assessed by an independent later QA workflow. A team-audio checkpoint supports bounded resume only when its exact source and candidate revisions remain current.
 
 Decision points and separately authorized writes stay with the user/owning recorder described by each skill.
 
@@ -1009,11 +1009,11 @@ $gate-check production-to-polish
 **Normative gate contract (`gate.production-to-polish/v2`):**
 
 - `PTP-A01` and `PTP-A02` require one explicit current production/milestone
-  scope manifest and candidate build, with exact paths/raw hashes binding every
+  scope manifest and candidate build, with exact paths and declared revisions binding every
   in-scope requirement, story, implementation, QA-plan, test ID, source, and
   end-to-end gameplay path. Tracker status or story counts alone never pass.
 - `PTP-E01` requires current PASSING `PA-REGRESSION-1` selection and runner/CI
-  receipts bound to the exact selection hash and candidate build.
+  receipts bound to the exact selection ID and candidate build.
 - `PTP-E02` requires persisted/read-back
   `cgs-smoke-check-receipt/v2` for the exact build, full selected scope,
   `Observed Verdict: PASS`, `Persistence: VERIFIED`, and
@@ -1025,7 +1025,7 @@ $gate-check production-to-polish
 - `PTP-E04` requires three distinct current `PA-PLAYTEST-1` pairs—each exact
   `cgs.playtest-report/v2` plus
   `cgs.playtest-report-recorder-receipt/v1`, with matching build/session/
-  protocol/bundle/dependency paths and hashes and state
+  protocol/bundle/dependency paths and versions and state
   `RECORDED COMPLETED — GATE ELIGIBLE`—covering new-player, mid-game, and
   difficulty-curve scopes.
 - `PTP-E05` requires current PASSING `PA-PERFORMANCE-1` analyzer/report/
@@ -1105,7 +1105,7 @@ $playtest-report finalize --session <session-manifest> --bundle <evidence-bundle
 
 Only `production/playtests/<session-id>/report.md` with `Status: COMPLETED`,
 `Gate Eligible: YES`, complete build/session/tester fields, and matching raw and
-observation hashes counts. The workflow returns a `cgs.playtest-report/v2`
+observation identity counts. The workflow returns a `cgs.playtest-report/v2`
 candidate but does not persist it; a current
 `cgs.playtest-report-recorder-receipt/v1` from the independent external
 playtest recorder must bind and persist that exact candidate before it is gate
@@ -1119,7 +1119,7 @@ covering:
 ### Step 6.5: Technical Debt Assessment
 
 ```
-$tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>
+$tech-debt report --register <project-relative-path>
 ```
 
 Scans for TODO/FIXME/HACK comments, code duplication, overly complex functions,
@@ -1140,7 +1140,7 @@ only `verify ... --persist` can produce the current
 ### Step 6.7: Localization and Accessibility
 
 ```
-$localize scan --request <request-path> --expect-request <sha256:...>
+$localize scan --request <request-path>
 ```
 
 Scans for hardcoded strings, concatenation that breaks translation, text that
@@ -1158,20 +1158,20 @@ $gate-check polish-to-release
 **Normative gate contract (`gate.polish-to-release/v2`):**
 
 - `PTR-A01` requires mutually bound current release/policy/candidate manifests
-  with exact schema versions, IDs, repository-relative paths, raw SHA-256,
-  candidate/build/artifact hashes, and complete feature/content/platform/locale
+  with exact schema versions, IDs, repository-relative paths, declared revision,
+  candidate/build/artifact identities, and complete feature/content/platform/locale
   scope. Package or manifest presence alone never passes.
 - `PTR-E01` requires persisted current `cgs.release-checklist-result/v2`
   evidence for `PA-RELEASE-COLLECTOR-1`, bound to the exact release policy and
   candidate, with every HARD row PASS or policy-authorized N/A. UNKNOWN,
-  STALE, partial, hash mismatch, or invalid N/A is ineligible.
+  STALE, partial, revision mismatch, or invalid N/A is ineligible.
 - `PTR-E02` through `PTR-E05` require current PASSING
   `cgs.team-qa-signoff/v2`, full-scope
   `cgs-smoke-check-receipt/v2` plus regression selection/runner receipt,
   persisted/read-back `cgs-test-evidence-review-report/v2`, and
   `PA-PERFORMANCE-1` analyzer/report/
   `cgs.performance-report-recorder-receipt/v1`, all bound to the same exact
-  candidate/build/platform paths and hashes and their adapter-specific
+  candidate/build/platform paths and versions and their adapter-specific
   persistence/current/gate-eligibility states.
 - `PTR-E06` requires the exact non-persisted localization review envelope and
   `cgs.localization-evidence-manifest/v2` extension together with current
@@ -1199,7 +1199,7 @@ Your game is polished, tested, and ready. Now you ship it.
 release-checklist workflow  -->  launch-checklist workflow  -->  team-release workflow
         |                       |                      |
         v                       v                      v
-  Candidate-bound         Hash-bound launch       Coordinate bounded
+  Candidate-bound         Version-bound launch       Coordinate bounded
   evidence collector      assessment; no           staging/production/
   (no gate verdict)       publishing authority     communication phases
                     Also: changelog, patch-notes, hotfix workflows
@@ -1208,7 +1208,7 @@ release-checklist workflow  -->  launch-checklist workflow  -->  team-release wo
 ### Step 7.1: Release Checklist
 
 ```
-$release-checklist --request <path> --expect-request <sha256>
+$release-checklist --request <path>
 ```
 
 Collects and normalizes current candidate-bound evidence into stable
@@ -1225,16 +1225,16 @@ does not advance stage. Coverage includes:
 ### Step 7.2: Launch Readiness (Full Validation)
 
 ```
-$launch-checklist --request <path> --expect-request <sha256>
+$launch-checklist --request <path>
 ```
 
-Complete cross-department, build/hash-bound assessment. External or manual facts
+Complete cross-department, build/version-bound assessment. External or manual facts
 remain UNKNOWN until a verifiable receipt or authorized owner attestation exists;
 the workflow does not publish or make the final launch decision:
 
 The department rows below are coverage orientation, not pass criteria. Launch
 readiness must come from the exact `cgs.launch-checklist-result/v2` bound to the
-request, release/candidate/build/artifact paths and raw hashes, policy/risk
+request, release/candidate/build/artifact paths and declared revisions, policy/risk
 profile, complete evidence-manifest rows, current versioned receipts, and its
 native persistence/currentness result. Missing, stale, partial, unpersisted, or
 unsupported evidence remains UNKNOWN/blocked regardless of filenames or counts.
@@ -1265,7 +1265,7 @@ records nor invokes that decision and does not ship, deploy, or publish.
 ### Step 7.3: Generate Player-Facing Content
 
 ```
-$patch-notes --request <path> --expect-request <sha256>
+$patch-notes --request <path>
 ```
 
 Generates a local, player-facing draft only from the request-bound approved
@@ -1277,7 +1277,7 @@ must also bind current `cgs.localization-manifest/v2`,
 `cgs.locale-review/v1` evidence produced through the localization workflow.
 
 ```
-$changelog --request <path> --expect-request <sha256>
+$changelog --request <path>
 ```
 
 Generates an internal changelog (more technical, for the team).
@@ -1285,10 +1285,10 @@ Generates an internal changelog (more technical, for the team).
 ### Step 7.4: Coordinate the Release
 
 ```
-$team-release --request <path> --expect-request <sha256>
+$team-release --request <path>
 ```
 
-Prepares a hash-bound coordination run. Staging, production promotion, and
+Prepares a version-bound coordination run. Staging, production promotion, and
 communication are separate invocations with separate explicit authorizations;
 one invocation never cascades across them. It coordinates release-manager, QA,
 and DevOps through:
@@ -1314,7 +1314,7 @@ git push origin main --tags
 **Hotfix workflow** for critical production bugs:
 
 ```
-$hotfix plan --request-manifest <path> --request-sha256 <sha256>
+$hotfix plan --request-manifest <path>
 ```
 
 Bypasses normal sprint processes with a full audit trail:
@@ -1489,7 +1489,7 @@ $architecture-decision <architecture-decision-request-manifest-path>
 ```
 
 For an ADR, the request manifest declares `operation: retrofit`, the exact target
-path, and its current raw SHA-256. `design-system` has no `retrofit` alias:
+path, and its current declared revision. `design-system` has no `retrofit` alias:
 `fill-gaps` preserves substantive sections, while an intentional one-section
 change uses `--mode revise-section --section "<canonical-section>"`.
 
@@ -1514,7 +1514,7 @@ updates `production/stage.txt` or the authority record.
 Stage mutation belongs only to a separately configured external recorder at
 `production/stage/external-recorder-contract.json`, using contract schema
 `cgs.external-stage-transition-recorder-contract/v1`. It must verify the exact
-gate bytes/hash and all dependencies, compare-and-swap
+gate record identity and all dependencies, compare-and-swap
 `production/stage/authority.json`, append immutable history, atomically persist
 or restore the preimage, read back the result, and emit
 `cgs.external-stage-transition-receipt/v1`. No P1 project skill implements or
@@ -1526,7 +1526,7 @@ invokes this recorder. A missing or invalid recorder contract means
 For code that exists without design docs (common after brownfield adoption):
 
 ```
-$reverse-document --manifest <request-path> --expect-manifest <sha256>
+$reverse-document --manifest <request-path>
 ```
 
 Reads existing code and generates GDD-format design documentation from it.
@@ -1715,7 +1715,7 @@ conflicts go to `producer`.
 | Command | Purpose | Phase |
 |---------|---------|-------|
 | `$release-checklist` | Candidate-bound evidence collector; gate decision is not evaluated | 7 |
-| `$launch-checklist` | Hash-bound launch assessment with verified external receipts | 7 |
+| `$launch-checklist` | Version-bound launch assessment with verified external receipts | 7 |
 | `$changelog` | Generate a range-bound local changelog entry from an exact request manifest; never implies deployment/publication | 7 |
 | `$patch-notes` | Local player-facing draft from exact approved candidate plus verified production deployment receipt; never publishes | 7 |
 | `$hotfix` | Emergency fix workflow | 7+ |
@@ -1738,9 +1738,9 @@ conflicts go to `producer`.
 | `$team-narrative` | Narrative content: structure through dialogue | 5 |
 | `$team-ui` | UI feature: UX spec through polished implementation | 5 |
 | `$team-level` | Level: layout through dressed encounters | 5 |
-| `$team-audio` | Hash-bound audio specification only; implementation and QA are later independent workflows | 5 |
+| `$team-audio` | Version-bound audio specification only; implementation and QA are later independent workflows | 5 |
 | `$team-polish` | Coordinated polish: perf + art + audio + QA | 6 |
-| `$team-release` | Hash-bound release coordination with separate staging, production, publication, and stabilization authorizations | 7 |
+| `$team-release` | Version-bound release coordination with separate staging, production, publication, and stabilization authorizations | 7 |
 | `$team-live-ops` | Live-ops planning: seasonal events, battle pass, retention | 7+ |
 | `$team-qa` | Exact-candidate QA cycle; only persisted COMPLETE + APPROVED + Gate Eligible YES hands off | 6-7 |
 
@@ -1753,7 +1753,7 @@ conflicts go to `producer`.
 ```text
 $start
 $brainstorm <request-manifest-path>
-$setup-engine --manifest <engine-request-path> --expect-manifest <sha256>
+$setup-engine --manifest <engine-request-path>
 # Optional: separately obtain exact external cgs.concept-approval/v1.
 $map-systems
 $gate-check concept-to-systems-design
@@ -1772,14 +1772,14 @@ $architecture-review
 $create-control-manifest new
 $gate-check technical-setup-to-pre-production
 $create-epics <request-manifest-path>
-$create-stories author <epic-path> --epic-receipt <epic-receipt-path> --expect-epic-receipt <sha256>
+$create-stories author <epic-path> --epic-receipt <epic-receipt-path>
 $sprint-plan new
 $story-readiness --story <project-relative-story-path>
 # Via external cgs.story-readiness-recorder/v1 (not a project skill or command),
 # independently obtain the current persisted cgs.story-readiness-record/v1 READY
 # plus cgs.story-readiness-recorder-receipt/v1: RECORDED or ALREADY_RECORDED,
-# exact record/receipt/raw hashes current, implementation_gate_eligible: true.
-$dev-story --request <project-relative-request-path>@sha256:<64-lower-hex>
+# exact record/receipt/declared revisions current, implementation_gate_eligible: true.
+$dev-story --request <project-relative-request-path>
 $code-review --target <project-relative-file-or-directory>
 # Separately obtain cgs.code-review-recorder-receipt/v1.
 $story-done <story-file-path>
@@ -1804,10 +1804,10 @@ form shown earlier instead of abbreviating its required identity fields.
 ### Workflow 4: "Something broke in production"
 
 ```text
-$hotfix plan --request-manifest <path> --request-sha256 <sha256>
+$hotfix plan --request-manifest <path>
 $code-review --target <project-relative-file-or-directory>
 # Separately record the exact approved code-review envelope.
-$release-checklist --request <path> --expect-request <sha256>
+$release-checklist --request <path>
 ```
 
 ### Workflow 5: "I have an existing project and want to use this system"
@@ -1828,7 +1828,7 @@ The architecture-decision request manifest declares `operation: retrofit`.
 ```text
 $retrospective sprint:<sprint-id>
 $sprint-plan new
-$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current <current-scope-path>@sha256:<64-lowercase-hex>
+$scope-check compare --baseline <approved-scope-path> --current <current-scope-path>
 $story-readiness --story <project-relative-story-path>
 $story-done <story-file-path>
 $sprint-status
@@ -1838,14 +1838,14 @@ $sprint-status
 
 ```text
 $gate-check polish-to-release
-$tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>
-$localize validate --request <request-path> --expect-request <sha256:...>
-$release-checklist --request <path> --expect-request <sha256>
-$launch-checklist --request <path> --expect-request <sha256>
-$team-release --request <path> --expect-request <sha256>
-$changelog --request <path> --expect-request <sha256>
-$patch-notes --request <path> --expect-request <sha256>
-$hotfix plan --request-manifest <path> --request-sha256 <sha256>
+$tech-debt report --register <project-relative-path>
+$localize validate --request <request-path>
+$release-checklist --request <path>
+$launch-checklist --request <path>
+$team-release --request <path>
+$changelog --request <path>
+$patch-notes --request <path>
+$hotfix plan --request-manifest <path>
 ```
 
 Deployment/publication remain separately authorized external operations.
@@ -1894,7 +1894,7 @@ $gate-check <exact-catalog-transition-id>
 9. **Prototype risky mechanics first.** A day of prototyping can save a week
    of production on a mechanic that does not work.
 
-10. **Keep your sprint plans honest.** Use `$scope-check compare --baseline <approved-scope-path>@sha256:<64-lowercase-hex> --current <current-scope-path>@sha256:<64-lowercase-hex>` regularly. Scope
+10. **Keep your sprint plans honest.** Use `$scope-check compare --baseline <approved-scope-path> --current <current-scope-path>` regularly. Scope
     creep is the number one killer of indie games.
 
 11. **Document decisions with ADRs.** Future-you will thank present-you for

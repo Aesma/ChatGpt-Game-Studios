@@ -6,7 +6,7 @@
 cohesive technical decision from `cgs.architecture-decision-request/v2`. It uses
 collision-safe allocation, `architecture-decision-profile-schema-v2`,
 `cgs.adr-content-profile/v2`, bounded source evidence, user-selected comparable
-alternatives, dependency/replacement graph validation, section checkpoints/CAS,
+alternatives, dependency/replacement graph validation, section checkpoints/atomic conflict check,
 and external authoring receipt/review/lifecycle records.
 
 The authoring target remains Proposed (or honest Unknown legacy retrofit).
@@ -17,43 +17,43 @@ recommendation, and lifecycle Accepted are separate states.
 
 - [ ] ADR-S001: Frontmatter contains only matching name and non-empty description
 - [ ] ADR-S002: Invocation requires one cgs.architecture-decision-request/v2 manifest; no-arg stops before reads/allocation/writes
-- [ ] ADR-S003: Author schema hashes exact SKILL bytes, NUL, and required continuation bytes
+- [ ] ADR-S003: Author schema revisions exact SKILL bytes, NUL, and required continuation bytes
 - [ ] ADR-S004: Request and ADR define exactly one decision key/domain/question/in-scope set
-- [ ] ADR-S005: Compound decisions split unless current source hashes prove inseparability
+- [ ] ADR-S005: Compound decisions split unless current source revisions prove inseparability
 - [ ] ADR-S006: New ADR consumes cgs.adr-id-allocation/v1 canonical UUID/exact path receipt and never scans next number
-- [ ] ADR-S007: Target ABSENT CAS owns uniqueness; allocation/path collision stops without overwrite/reallocation
-- [ ] ADR-S008: Semantic fingerprint checks bounded ADR summaries and offers cancel/revise/supersede/disjoint-scope/stop to user
+- [ ] ADR-S007: Target ABSENT atomic conflict check owns uniqueness; allocation/path collision stops without overwrite/reallocation
+- [ ] ADR-S008: Semantic stable key checks bounded ADR summaries and offers cancel/revise/supersede/disjoint-scope/stop to user
 - [ ] ADR-S009: One mutation authorization covers exact target sections and deterministic checkpoint/receipt creates
 - [ ] ADR-S010: Only target ADR and create-only checkpoint/authoring-receipt records are writable
 - [ ] ADR-S011: Profile v2 has stable section IDs plus independent content/evidence/workflow/assertion/status axes
 - [ ] ADR-S012: New/revise/supersede proposal is Proposed; retrofit missing status is only Proposed or Unknown
 - [ ] ADR-S013: Existing Accepted/Deprecated/Superseded ADR is immutable to authoring skill
-- [ ] ADR-S014: External status state machine and cgs.adr-lifecycle-record/v1 define allowed CAS transitions
-- [ ] ADR-S015: Supersession/scoped-exception links bind exact predecessor ID/path/hash/status/scope and remain acyclic
+- [ ] ADR-S014: External status state machine and cgs.adr-lifecycle-record/v1 define allowed atomic conflict check transitions
+- [ ] ADR-S015: Supersession/scoped-exception links bind exact predecessor ID/path/revision/status/scope and remain acyclic
 - [ ] ADR-S016: Context order is deterministic with hard 16-file/524288-byte limits and mutable-target-baseline
 - [ ] ADR-S017: Context overflow may append one authorized PARTIAL checkpoint and leaves target unchanged
-- [ ] ADR-S018: Every requirement/constraint/source records stable ID/owner/path-or-URL/locator/hash/version/date/coverage
-- [ ] ADR-S019: Engine references record pinned version/domain/risk/cutoff/claim/hash/date and VERIFIED/PARTIAL/UNVERIFIED/STALE
+- [ ] ADR-S018: Every requirement/constraint/source records stable ID/owner/path-or-URL/locator/revision/version/date/coverage
+- [ ] ADR-S019: Engine references record pinned version/domain/risk/cutoff/claim/revision/date and VERIFIED/PARTIAL/UNVERIFIED/STALE
 - [ ] ADR-S020: Unclear dependency/API/verification/migration/performance/ordering is UNKNOWN blocker, never assumed None
-- [ ] ADR-S021: Pre-write graph resolves IDs/status/hash and detects self/duplicate/dependency/replacement cycles
+- [ ] ADR-S021: Pre-write graph resolves IDs/status/revision and detects self/duplicate/dependency/replacement cycles
 - [ ] ADR-S022: At least two viable alternatives use identical criteria, evidence coverage, reversibility, consequences, and risks
 - [ ] ADR-S023: Actual user/named authority selects alternative/tradeoffs/supersession/scope; author/consultant never selects
 - [ ] ADR-S024: Shared four decision classes plus ADRDEC/ADRCON/ADRALT provenance are stable/truthful
-- [ ] ADR-S025: Skeleton-first section authoring uses cgs.architecture-decision-checkpoint/v2 predecessor CAS and exact resume
+- [ ] ADR-S025: Skeleton-first section authoring uses cgs.architecture-decision-checkpoint/v2 predecessor atomic conflict check and exact resume
 - [ ] ADR-S026: cgs.adr-content-profile/v2 assertions validate all mandatory sections; headings/placeholders are insufficient
-- [ ] ADR-S027: Numeric performance/effort claims require sourced units/method/hash/date or HYPOTHESIS/UNKNOWN plus validation
+- [ ] ADR-S027: Numeric performance/effort claims require sourced units/method/revision/date or HYPOTHESIS/UNKNOWN plus validation
 - [ ] ADR-S028: Consultations cap one/role, two/run, two concurrent, one 60-second attempt, no retry/nesting; solo is zero
 - [ ] ADR-S029: cgs.adr-consultation-result/v1 types partial/timeout/failed/side-effect/late handling and never changes Status
 - [ ] ADR-S030: ADRAPR binds exact body, decisions/constraints/alternatives, assertions, graph/findings, context, baseline, authorization
-- [ ] ADR-S031: Every target write uses Target/Section/Context/Authorization/Writer CAS
+- [ ] ADR-S031: Every target write uses Target/Section/Context/Authorization/Writer atomic conflict check
 - [ ] ADR-S032: ADRREV binds before/after target/section, decisions/approval/sources/graph/authorization/actual writer
-- [ ] ADR-S033: cgs.adr-authoring-receipt/v1 remains external and binds complete final authoring evidence without hash cycle
+- [ ] ADR-S033: cgs.adr-authoring-receipt/v1 remains external and binds complete final authoring evidence without revision cycle
 - [ ] ADR-S034: Receipt/checkpoint failure preserves content completeness but returns workflow PARTIAL with no review handoff
 - [ ] ADR-S035: READY emits only cgs.architecture-review-request/v2 for a fresh read-only independent review task
 - [ ] ADR-S036: cgs.architecture-review/v2 recommendation is not lifecycle status or acceptance
-- [ ] ADR-S037: Only separate lifecycle recorder may CAS status/links and emit cgs.adr-lifecycle-record/v1/registry projection
+- [ ] ADR-S037: Only separate lifecycle recorder may atomic conflict check status/links and emit cgs.adr-lifecycle-record/v1/registry projection
 - [ ] ADR-S038: GDD/registry/control/story/readiness/review/lifecycle/other ADR/code files remain unchanged; events are non-mutating
-- [ ] ADR-S039: Metadata names single-decision collision-safe Proposed ADR, request v2, bounded evidence, CAS/receipt/review lifecycle
+- [ ] ADR-S039: Metadata names single-decision collision-safe Proposed ADR, request v2, bounded evidence, atomic conflict check/receipt/review lifecycle
 - [ ] ADR-S040: Spec has complete numbered cases/cross-checks/ADR-001..014 coverage and stages no catalog result changes
 
 ---
@@ -80,11 +80,11 @@ discovery, ID allocation, context, consultation, authorization, or write.
 ### Case 2: collision-safe new ADR creates complete skeleton
 
 **Fixture:** valid allocation receipt with canonical UUID/display sequence/slug/
-exact path/nonce/hash; target ABSENT; one decision scope; mutation boundary current.
+exact path/nonce/revision; target ABSENT; one decision scope; mutation boundary current.
 
-**Expected behavior:** no directory numbering scan; ABSENT Target CAS creates full
+**Expected behavior:** no directory numbering scan; ABSENT Target atomic conflict check creates full
 profile skeleton with Status Proposed and every stable section ID; checkpoint
-captures allocation/scope/fingerprint/state axes.
+captures allocation/scope/stable key/state axes.
 
 **Assertions:**
 
@@ -97,9 +97,9 @@ captures allocation/scope/fingerprint/state axes.
 ### Case 3: allocation or path collision fails closed
 
 **Fixture variants:** allocation path already exists; receipt path differs from
-target; allocation hash/nonce reused; another writer creates target before CAS.
+target; allocation revision/nonce reused; another writer creates target before atomic conflict check.
 
-**Expected behavior:** validation/Target CAS returns BLOCKED conflict, never
+**Expected behavior:** validation/Target atomic conflict check returns BLOCKED conflict, never
 overwrites/reuses/scans next number or silently selects another path in run.
 
 **Assertions:**
@@ -112,7 +112,7 @@ overwrites/reuses/scans next number or silently selects another path in run.
 
 ### Case 4: semantic duplicate detection is user-routed
 
-**Fixture variants:** same decision fingerprint under different title; near match
+**Fixture variants:** same decision stable key under different title; near match
 to Proposed; overlap with Accepted; objectively disjoint component scope.
 
 **Expected behavior:** bounded summary evidence is shown. User chooses cancel,
@@ -121,8 +121,8 @@ Author never creates/title-renames duplicate or chooses route.
 
 **Assertions:**
 
-- [ ] ADR-C04-A: Fingerprint uses domain/key/question/sorted in-scope IDs
-- [ ] ADR-C04-B: Existing path/status/hash is explicit
+- [ ] ADR-C04-A: stable key uses domain/key/question/sorted in-scope IDs
+- [ ] ADR-C04-B: Existing path/status/revision is explicit
 - [ ] ADR-C04-C: Accepted target is not edited by duplicate handling
 
 ---
@@ -133,7 +133,7 @@ Author never creates/title-renames duplicate or chooses route.
 rollback; renderer/API pair with current proof they cannot vary independently.
 
 **Expected behavior:** first becomes separate ADR/TECH handoffs and one selected
-decision; second may remain bundled only with source IDs/hashes and shared
+decision; second may remain bundled only with source IDs/revisions and shared
 alternatives/acceptance/rollback lifecycle.
 
 **Assertions:**
@@ -155,7 +155,7 @@ target remains unchanged.
 
 **Assertions:**
 
-- [ ] ADR-C06-A: Same manifest yields same context digest
+- [ ] ADR-C06-A: Same manifest yields same context reference ID
 - [ ] ADR-C06-B: CONTEXT_BUDGET_EXCEEDED names loaded/omitted sources
 - [ ] ADR-C06-C: Missing evidence is not converted to None
 
@@ -163,12 +163,12 @@ target remains unchanged.
 
 ### Case 7: missing or stale engine evidence remains unverified
 
-**Fixture variants:** engine unconfigured; module ref absent; stale hash/version;
+**Fixture variants:** engine unconfigured; module ref absent; stale revision/version;
 post-cutoff API not covered; current pinned reference verifies claim.
 
 **Expected behavior:** first four record UNVERIFIED/STALE/UNKNOWN with exact owner/
 needed evidence and prevent READY; setup-engine handoff only. Last records VERIFIED
-with path/locator/hash/version/date/observed-at/risk/claim.
+with path/locator/revision/version/date/observed-at/risk/claim.
 
 **Assertions:**
 
@@ -190,7 +190,7 @@ authority selects ADRALT and tradeoffs. Consultant favorite has no authority.
 **Assertions:**
 
 - [ ] ADR-C08-A: No straw option or unsourced scoring
-- [ ] ADR-C08-B: ADRDEC/ADRCON/ADRALT IDs and source hashes are complete
+- [ ] ADR-C08-B: ADRDEC/ADRCON/ADRALT IDs and source revisions are complete
 - [ ] ADR-C08-C: Selection is not lifecycle acceptance or file authority
 
 ---
@@ -207,7 +207,7 @@ regenerated from conversation memory.
 **Assertions:**
 
 - [ ] ADR-C09-A: Skeleton/decisions/sections persist incrementally
-- [ ] ADR-C09-B: Checkpoint records next legal transition and CAS baselines
+- [ ] ADR-C09-B: Checkpoint records next legal transition and atomic conflict check baselines
 - [ ] ADR-C09-C: Existing out-of-scope bytes are preserved
 
 ---
@@ -258,7 +258,7 @@ when bounded graph evidence proves no edge.
 
 **Assertions:**
 
-- [ ] ADR-C12-A: IDs/status/path/hash/lifecycle receipt resolve uniquely
+- [ ] ADR-C12-A: IDs/status/path/revision/lifecycle receipt resolve uniquely
 - [ ] ADR-C12-B: Self/duplicate/enable-block contradictions are checked
 - [ ] ADR-C12-C: No story/registry readiness is inferred
 
@@ -271,14 +271,14 @@ Deprecated, or Superseded ADR; stale/malformed legacy section.
 
 **Expected behavior:** missing status offers Proposed/Unknown only; ambiguous is
 Unknown. Lifecycle-managed ADR is not mutated. Retrofit revises only explicitly
-authorized missing/stale section with preservation/CAS and never validates old
+authorized missing/stale section with preservation/atomic conflict check and never validates old
 acceptance.
 
 **Assertions:**
 
 - [ ] ADR-C13-A: Accepted/Deprecated/Superseded are not author choices
 - [ ] ADR-C13-B: User/file approval cannot create lifecycle transition
-- [ ] ADR-C13-C: Current target hash is used for fresh review handoff only when ready
+- [ ] ADR-C13-C: Current target revision is used for fresh review handoff only when ready
 
 ---
 
@@ -300,17 +300,17 @@ exit. Overlap requires supersede/align/stop.
 
 ---
 
-### Case 15: five-part CAS rejects target/section/context/authority/writer drift
+### Case 15: five-part atomic conflict check rejects target/section/context/authority/writer drift
 
 **Fixture variants:** target changes; selected anchor/body changes; used source
 changes; authorization changes; wrong writer attempts section patch.
 
-**Expected behavior:** corresponding CAS facet fails immediately before write;
+**Expected behavior:** corresponding atomic conflict check facet fails immediately before write;
 no target/checkpoint transaction; approved body and collaborator bytes preserved.
 
 **Assertions:**
 
-- [ ] ADR-C15-A: All five CAS facets execute for every section/final metadata write
+- [ ] ADR-C15-A: All five atomic conflict check facets execute for every section/final metadata write
 - [ ] ADR-C15-B: ADRREV appears only after verified read-back
 - [ ] ADR-C15-C: Error identifies one precise recovery
 
@@ -319,7 +319,7 @@ no target/checkpoint transaction; approved body and collaborator bytes preserved
 ### Case 16: performance numbers require measurement provenance
 
 **Fixture variants:** model predicts 2ms/50MB; user budget; profiler evidence with
-units/method/environment/date/hash; estimate source mismatches scope.
+units/method/environment/date/revision; estimate source mismatches scope.
 
 **Expected behavior:** unsupported prediction is HYPOTHESIS/UNKNOWN with validation
 plan; user budget labeled owner; current profiler evidence may be sourced; mismatch
@@ -346,7 +346,7 @@ is conditional; predecessor/story/registry/GDD remain byte-identical.
 
 - [ ] ADR-C17-A: No “ADR + update GDD” or registry projection write
 - [ ] ADR-C17-B: No Blocked->Ready story transition
-- [ ] ADR-C17-C: Exact non-write hashes remain unchanged
+- [ ] ADR-C17-C: Exact non-write revisions remain unchanged
 
 ---
 
@@ -356,13 +356,13 @@ is conditional; predecessor/story/registry/GDD remain byte-identical.
 but checkpoint/authoring receipt append fails or receipt verification mismatches.
 
 **Expected behavior:** target completeness remains CONTENT_COMPLETE and Status
-Proposed; Workflow PARTIAL; exact unreceipted hash; no review handoff; no replay/
+Proposed; Workflow PARTIAL; exact unreceipted revision; no review handoff; no replay/
 revert.
 
 **Assertions:**
 
 - [ ] ADR-C18-A: Content completeness, workflow, review, lifecycle status separate
-- [ ] ADR-C18-B: Receipt path/hash stays external without target cycle
+- [ ] ADR-C18-B: Receipt path/revision stays external without target cycle
 - [ ] ADR-C18-C: Missing receipt cannot support acceptance/registry/readiness
 
 ---
@@ -370,18 +370,18 @@ revert.
 ### Case 19: independent review recommendation is not Accepted
 
 **Fixture variants:** READY+receipt; self/wrong-schema/stale review; current
-independent ACCEPT; REVISE/REJECT; recorder preimage mismatch; valid recorder CAS.
+independent ACCEPT; REVISE/REJECT; recorder prior state mismatch; valid recorder atomic conflict check.
 
 **Expected behavior:** author only emits cgs.architecture-review-request/v2 and
 does not invoke review. Review is read-only/recommendation only. Only separate
-recorder with current ACCEPT/receipt/eligibility/separation may CAS allowed status
+recorder with current ACCEPT/receipt/eligibility/separation may atomic conflict check allowed status
 and emit lifecycle record. All invalid variants remain Proposed.
 
 **Assertions:**
 
 - [ ] ADR-C19-A: Review and acceptance/lifecycle recorder are distinct identities/actions
-- [ ] ADR-C19-B: Review record binds current ADR/receipt/context hashes
-- [ ] ADR-C19-C: Status-only transition receipt binds pre/post hashes
+- [ ] ADR-C19-B: Review record binds current ADR/receipt/context revisions
+- [ ] ADR-C19-C: Status-only transition receipt binds pre/post revisions
 - [ ] ADR-C19-D: Non-status change requires new receipt/review
 
 ---
@@ -407,8 +407,8 @@ catalog change and does not call source checks an executed `$skill-test`.
 
 - [ ] ADR-X001: Four decision classes and exact-body approvals match authoring provenance contracts
 - [ ] ADR-X002: Bounded context/canonical manifest/mutable-target-baseline match authoring contracts
-- [ ] ADR-X003: Allocation receipt plus ABSENT CAS provides collision-safe unique ID/path
-- [ ] ADR-X004: Section checkpoints/five-part CAS/revisions preserve collaborator and non-target bytes
+- [ ] ADR-X003: Allocation receipt plus ABSENT atomic conflict check provides collision-safe unique ID/path
+- [ ] ADR-X004: Section checkpoints/five-part atomic conflict check/revisions preserve collaborator and non-target bytes
 - [ ] ADR-X005: Receipt failure separates content completeness from Workflow Verdict/review handoff
 - [ ] ADR-X006: GDD/engine/registry/story/lifecycle owners remain external and read-only
 - [ ] ADR-X007: Independent review consumes target+authoring receipt but cannot accept; recorder owns transition
@@ -417,7 +417,7 @@ catalog change and does not call source checks an executed `$skill-test`.
 ## Coverage Notes
 
 - ADR-001..ADR-005 remain covered by Proposed/Unknown-only authoring, strict
-  cross-write boundary, sequential lifecycle separation, and current-hash review.
+  cross-write boundary, sequential lifecycle separation, and current-revision review.
 - ADR-006: Cases 2/3 and ADR-S006/S007 implement collision-safe ID/path allocation.
 - ADR-007: Case 4 and ADR-S008 implement semantic duplicate routing.
 - ADR-008: Case 6 and ADR-S016/S017 bound context deterministically.
@@ -429,3 +429,11 @@ catalog change and does not call source checks an executed `$skill-test`.
 - ADR-014: Cases 12/14 and ADR-S015/S021 validate dependency/replacement cycles.
 - Shared catalog/results and downstream consumers require separate ownership; this
   candidate does not modify them or claim an executed test run.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

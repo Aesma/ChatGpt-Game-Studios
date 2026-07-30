@@ -2,7 +2,7 @@
 
 ## Skill Summary
 
-`$bug-triage` contract `cgs.bug-triage/v2` produces a bounded, hash-bound,
+`$bug-triage` contract `cgs.bug-triage/v2` produces a bounded, revision-bound,
 strictly read-only snapshot of canonical `Open` and `Reopened` bug records. It
 separates observed severity, severity/priority recommendations, product decisions,
 capacity simulation, history trends, dispositions, and committed transactions.
@@ -20,11 +20,11 @@ legacy spelling `cgs.bug-record/v2` is explicitly unsupported.
 
 Run behavioral cases in an isolated disposable repository fixture. Record:
 
-1. recursive path/type/SHA-256 snapshots before and after invocation;
+1. recursive path/type/revision snapshots before and after invocation;
 2. every filesystem mutation attempt;
 3. every file read, canonical path, exact byte count, and read order;
 4. exact registry discovery order, parse states, counters, and bounded omissions;
-5. all canonical snapshot/payload/evidence/finding/pair/transaction hashes;
+5. all canonical snapshot/payload/evidence/finding/pair/transaction revisions;
 6. a deterministic clock and UUID source; and
 7. which files were not read, including noncanonical fallbacks and historical
    sprint files.
@@ -47,15 +47,15 @@ must not update catalog result fields.
 - [ ] Fixed file/byte/history/evidence/pair/finding/row bounds cannot be raised
 - [ ] Failed/malformed/duplicate/omitted/bounded reads force partial coverage and
   health UNKNOWN
-- [ ] Active sprint resolves only through stable agreeing authority IDs/hashes,
+- [ ] Active sprint resolves only through stable agreeing authority IDs/revisions,
   never mtime or filename order
 - [ ] Sprint mode dispatches exactly `cgs.sprint-tracker/v2` or the explicit
   `cgs.sprint-status/v2` legacy adapter into one normalized authority record;
   absent/unknown/malformed schemas fail closed without heuristic fallback
-- [ ] The canonical tracker adapter binds source raw hash/revision/event, active
-  sprint/state, lifecycle owner/recorder, plan path/raw hash/revision/story-set
-  hash, dates/timezone/unit, complete stories, and typed capacity receipt
-  ID/path/revision/raw hash/unit/operands
+- [ ] The canonical tracker adapter binds source raw version/revision/event, active
+  sprint/state, lifecycle owner/recorder, plan path/raw version/revision/story-set
+  revision, dates/timezone/unit, complete stories, and typed capacity receipt
+  ID/path/revision/raw revision/unit/operands
 - [ ] Capacity has one unit, exact arithmetic, per-bug estimates, deterministic
   order, provisional decrement, and overflow protection
 - [ ] Observed severity, severity recommendation, confidence, priority
@@ -82,9 +82,9 @@ Unless overridden, use `production/qa/triage-policy.yaml` schema
 `cgs.bug-triage-policy/v1` and direct-child `production/qa/bugs/*.md` records with
 schema `cgs-bug-record/v2`. Active sprint `sprint-06` uses canonical
 `cgs.sprint-tracker/v2`, `cgs.sprint-plan/v2`, one points unit, matching tracker/
-plan/story-set/raw hashes and revisions, and a valid capacity receipt. Trend
+plan/story-set/raw revisions and revisions, and a valid capacity receipt. Trend
 history uses `cgs.sprint-history/v1`.
-Placeholder hashes are replaced by valid 64-hex values.
+Placeholder revisions are replaced by valid explicit version/revision values.
 
 ---
 
@@ -172,14 +172,14 @@ None.
 ### Expected behavior
 
 A is TRIAGED/NO_OPEN_BUGS/COMPLETE. B is BLOCKED/UNKNOWN/NONE and names the
-expected root. C loads/hashes all records and reports only unresolved rows in
+expected root. C loads and records declared revisions for all records and reports only unresolved rows in
 stable order.
 
 ### Assertions
 
 - [ ] Missing registry is never zero bugs
 - [ ] Empty registry is reported only after complete discovery
-- [ ] Complete nonempty snapshot contains source/policy hashes and counters
+- [ ] Complete nonempty snapshot contains source/policy revisions and counters
 - [ ] No variant claims build/release readiness
 - [ ] Mutation guard passes
 
@@ -188,7 +188,7 @@ stable order.
 ### Fixture
 
 Discover valid, unreadable, oversized, malformed-schema, missing-ID, duplicate-ID,
-hash-changing, and unknown-status records. The readable subset has no critical
+revision-changing, and unknown-status records. The readable subset has no critical
 bugs.
 
 ### Input
@@ -201,7 +201,7 @@ None.
 
 ### Expected behavior
 
-Every path has byte/hash/parse/ID/status state and exact reason. Counters include
+Every path has byte/revision/parse/ID/status state and exact reason. Counters include
 discovered, loaded, failed, duplicate, oversized, omitted, unresolved,
 verification, and closed. Result is PARTIAL_TRIAGE/PARTIAL/UNKNOWN; no healthy or
 empty conclusion exists.
@@ -221,12 +221,12 @@ empty conclusion exists.
 Create agreeing canonical `cgs.sprint-tracker/v2`/session-state sources for
 sprint-06 and a newer-mtime sprint-99 plan. The tracker has positive revision,
 event ID, ACTIVE identity, stable lifecycle owner/recorder, exact raw tracker
-hash, plan path/raw hash/revision/story-set hash, dates/timezone/unit, complete
-stories, and typed capacity receipt ID/path/revision/raw hash/unit/operands. Run
+revision, plan path/raw version/revision/story-set revision, dates/timezone/unit, complete
+stories, and typed capacity receipt ID/path/revision/raw revision/unit/operands. Run
 the same valid normalized fixture through explicit legacy
 `cgs.sprint-status/v2`. Add missing, unknown/unversioned/malformed schema,
 duplicate-key, missing normalized field, conflicting, dangling, inactive,
-out-of-window, plan-hash mismatch, and absent corroboration variants.
+out-of-window, plan-revision mismatch, and absent corroboration variants.
 
 ### Input
 
@@ -245,10 +245,10 @@ UNKNOWN, and makes operation at least partial; no cross-adapter guessing occurs.
 
 ### Assertions
 
-- [ ] Every authority/plan path and hash is reported
-- [ ] Canonical tracker raw hash/revision/event, ACTIVE ID/state, lifecycle
-  owner/recorder, plan raw hash/revision/story-set binding, date/timezone/unit,
-  stories hash, and capacity receipt ID/path/revision/raw hash/unit/operands
+- [ ] Every authority/plan path and revision is reported
+- [ ] Canonical tracker raw version/revision/event, ACTIVE ID/state, lifecycle
+  owner/recorder, plan raw version/revision/story-set binding, date/timezone/unit,
+  stories revision, and capacity receipt ID/path/revision/raw revision/unit/operands
   survive normalization unchanged
 - [ ] Unknown or incomplete schema reports `UNSUPPORTED_SPRINT_SCHEMA`
 - [ ] Each source declares at most one active ID
@@ -260,7 +260,7 @@ UNKNOWN, and makes operation at least partial; no cross-adapter guessing occurs.
 
 ### Fixture
 
-The normalized tracker adapter and plan bind one current raw-hashed capacity
+The normalized tracker adapter and plan bind one current raw-versioned capacity
 receipt with one exact unit, total 10, committed 4, reserved 2, released 0, and
 remaining 4 points.
 Ordered bugs require 2, 3, 1, and unknown points. Add mixed-unit, negative,
@@ -377,7 +377,7 @@ impact evidence or disappear from counts.
 ### Assertions
 
 - [ ] Each required field is checked independently
-- [ ] Placeholder and hash-invalid receipt count as missing
+- [ ] Placeholder and revision-invalid receipt count as missing
 - [ ] Missing data is never invented from adjacent bugs
 - [ ] Owner handoff requests exact next evidence
 - [ ] Mutation guard passes
@@ -386,8 +386,8 @@ impact evidence or disappear from counts.
 
 ### Fixture
 
-Create exact symptom fingerprints, fuzzy pairs above/equal/below raw threshold,
-different system, incompatible build/platform/severity, missing fingerprint data,
+Create exact symptom stable business keys, fuzzy pairs above/equal/below raw threshold,
+different system, incompatible build/platform/severity, missing stable business key data,
 and transitive A-B/B-C pairs without A-C match.
 
 ### Input
@@ -419,7 +419,7 @@ Transitivity is not assumed. Every bug remains open and separate.
 
 Provide valid sprint-06 window `[start,end)`, open/reopen/close events at boundaries,
 ordered history for age, regression/hot-spot identities, and variants with missing,
-duplicate, overlapping, unordered, hash-mismatched, open-ended window or absent
+duplicate, overlapping, unordered, revision-mismatched, open-ended window or absent
 event timestamps.
 
 ### Input
@@ -463,8 +463,8 @@ None.
 
 ### Expected behavior
 
-Overflow stops at lexical/stable boundary, records candidate-name digest,
-included/omitted counts, boundary key, and tail digest, and returns
+Overflow stops at lexical/stable boundary, records candidate-name revision,
+included/omitted counts, boundary key, and tail revision, and returns
 PARTIAL_TRIAGE/PARTIAL — BOUNDED REGISTRY/UNKNOWN. No omitted-tail sample or
 health extrapolation is allowed.
 
@@ -476,13 +476,13 @@ health extrapolation is allowed.
 - [ ] Partial output cannot produce a recorder transaction candidate
 - [ ] Mutation guard passes
 
-## Case 13: Snapshot hash is stable and stale input is distinct
+## Case 13: Snapshot revision is stable and stale input is distinct
 
 ### Fixture
 
 Runs A/B use identical policy, discovery rows, bytes, counters, and mode-specific
 sprint/history context under controlled run metadata. Run C changes one bug byte;
-D changes one counter; E changes active sprint/status hash.
+D changes one counter; E changes active sprint/status revision.
 
 ### Input
 
@@ -494,14 +494,14 @@ None.
 
 ### Expected behavior
 
-A/B have the same `registry_snapshot_sha256`; C/D/E differ. Run ID/time do not
+A/B have the same `registry_snapshot_revision`; C/D/E differ. Run ID/time do not
 enter snapshot identity. Old proposals are stale and fail preimage checks.
 
 ### Assertions
 
-- [ ] Canonical JSON inputs independently recompute snapshot hash
+- [ ] Snapshot revision validates against explicit producer metadata
 - [ ] Discovery order is normalized path order
-- [ ] Hash covers parse states, statuses, counters, policy, and relevant context
+- [ ] revision covers parse states, statuses, counters, policy, and relevant context
 - [ ] Derived snapshot is not a registry source of truth
 - [ ] Mutation guard passes
 
@@ -511,7 +511,7 @@ enter snapshot identity. Old proposals are stale and fail preimage checks.
 
 Generate one finding; vary paths, titles, descriptions, observed values,
 severity/priority recommendation, confidence, state, timestamp, owner name,
-snapshot/report hash without changing canonical identity. Then vary category,
+snapshot/report revision without changing stable business identity. Then vary category,
 bug IDs, sprint/window, policy rule, or transaction/waiver/pair ID. Include
 complete and partial snapshots.
 
@@ -525,14 +525,14 @@ None.
 
 ### Expected behavior
 
-Noncanonical changes preserve `BTF-<category>-<12-lowercase-hex>`; canonical
+Noncanonical changes preserve `BTF-<category>-<stable-business-key>`; canonical
 changes alter it. Findings coalesce and retain evidence. Each nonblocked snapshot
-emits one hash-bound `cgs.review-evidence/v1`; partial coverage is explicit.
+emits one revision-bound `cgs.review-evidence/v1`; partial coverage is explicit.
 
 ### Assertions
 
-- [ ] Finding canonical JSON/suffix and payload/record hashes recompute
-- [ ] Paths/content/values/recommendations/confidence/time/current hash/owner are
+- [ ] Finding business key/suffix and explicit payload/record revisions validate against producer metadata
+- [ ] Paths/content/values/recommendations/confidence/time/current revision/owner are
   excluded from finding ID
 - [ ] Evidence says persistence NONE, authority false/NONE, gate false, read-only
 - [ ] Partial evidence cannot support health or transaction
@@ -621,7 +621,7 @@ UNKNOWN; the skill does not repair or ratify it.
 ### Assertions
 
 - [ ] Same transaction ID and unit/delta exist on every canonical side
-- [ ] Preimage and postimage hashes validate
+- [ ] Preimage and postimage revisions validate
 - [ ] Inconsistent work is not double-counted or silently accepted
 - [ ] Snapshot remains derived/read-only
 - [ ] Mutation guard passes
@@ -724,7 +724,7 @@ mutation, or chained workflow occurs.
 | Audit finding | Closing contract clauses | Behavioral proof |
 |---|---|---|
 | BT-004 | Canonical direct-child registry only; exact Open/Reopened filter; noncanonical evidence excluded as UNREGISTERED CANDIDATE | Cases 2-4 |
-| BT-005 | Exact tracker/status adapters normalize stable active ID, source revision/raw hash, plan binding, stories and capacity; unknown schema fails closed; no mtime fallback | Case 5 |
+| BT-005 | Exact tracker/status adapters normalize stable active ID, source revision/raw revision, plan binding, stories and capacity; unknown schema fails closed; no mtime fallback | Case 5 |
 | BT-006 | Exact estimate unit/capacity formula, deterministic provisional allocation, decrement and overflow/unassigned states | Case 6 |
 | BT-007 | Observed severity, evidence/rule/confidence recommendation, priority recommendation, and human decision are distinct | Cases 7, 8 |
 | BT-008 | Immutable sprint window/history events determine opened/closed/net/age; missing data is UNKNOWN | Case 11 |
@@ -742,7 +742,7 @@ health boundaries are covered by Cases 13-20.
 - [ ] Every static assertion passes
 - [ ] Cases 1-20 pass with required instrumentation
 - [ ] Mutation guard passes in every case
-- [ ] All snapshot/payload/evidence/finding/pair/transaction/omission hashes
+- [ ] All snapshot/payload/evidence/finding/pair/transaction/omission revisions
   independently recompute
 - [ ] BT-004 through BT-011 each have positive and negative/boundary proof
 - [ ] No noncanonical, malformed, duplicate, missing, unreadable, omitted,
@@ -754,6 +754,6 @@ health boundaries are covered by Cases 13-20.
   closure, acceptance, assignment, or recorder authority
 - [ ] Every response uses the complete truth-table axes
 - [ ] Repeated deterministic fixtures produce identical ordering, statistics,
-  findings, hashes, and omission proofs apart from controlled run metadata
+  findings, revisions, and omission proofs apart from controlled run metadata
 - [ ] Live skill/spec/metadata, P0 staging, shared files, and catalog remain
   unchanged by this candidate

@@ -8,18 +8,18 @@
 
 ## Skill Summary
 
-`$test-evidence-review` consumes one hash-bound `cgs-test-evidence-review-manifest/v2`. It reviews typed evidence on independent structural-quality, admissibility, execution-result, execution-currency, completeness, and scope axes. Default operation is strictly read-only; `--persist` may create one immutable CAS-verified report.
+`$test-evidence-review` consumes one revision-bound `cgs-test-evidence-review-manifest/v2`. It reviews typed evidence on independent structural-quality, admissibility, execution-result, execution-currency, completeness, and scope axes. Default operation is strictly read-only; `--persist` may create one immutable atomically verified report.
 
 ## Static Assertions
 
 - **TER-STA-001**: Frontmatter contains only `name` and non-empty `description`; name is `test-evidence-review`.
-- **TER-STA-002**: The only invocation takes an exact review-manifest path and SHA-256 plus optional `--persist`.
+- **TER-STA-002**: The only invocation takes one canonical review-manifest path plus optional `--persist`; no caller-supplied content token is accepted.
 - **TER-STA-003**: Current scope is resolved from exact stage/session manifests, never latest modification time.
 - **TER-STA-004**: Sprint scope requires exactly one matching active sprint identity.
 - **TER-STA-005**: Every scope row binds Story, Requirement, AC, Coverage Unit, Test/Check, owner, method, and evidence IDs.
-- **TER-STA-006**: Candidate, build receipt, artifact, source commit, platform, configuration, QA-plan, and source hashes are cross-bound.
+- **TER-STA-006**: Candidate, build receipt, artifact, source commit, platform, configuration, QA-plan, and source revisions are cross-bound.
 - **TER-STA-007**: Requirement coverage is semantic and stable-ID-based, not inferred from names, comments, or tokens.
-- **TER-STA-008**: Reviewer attestations bind verified identity, time, scope, build, evidence hashes, statement, result, and authorization source.
+- **TER-STA-008**: Reviewer attestations bind verified identity, time, scope, build, evidence revisions, statement, result, and authorization source.
 - **TER-STA-009**: Relevant source-set byte changes make dependent evidence stale.
 - **TER-STA-010**: Missing, unavailable, partial, stale, and unknown states remain distinct.
 - **TER-STA-011**: Workflow Status, Structural Quality, Admissibility, Execution Result/Currency/Completeness/Scope, Closure, and Persistence are independent.
@@ -32,14 +32,14 @@
 - **TER-STA-018**: Manual/visual/log evidence requires content inspection plus exact artifact receipt.
 - **TER-STA-019**: A current execution PASS never implies structural adequacy, and ADEQUATE never implies execution.
 - **TER-STA-020**: Every declared AC emits exactly one result row even when evidence is unreadable.
-- **TER-STA-021**: Findings use versioned rule IDs and deterministic SHA-256 fingerprints.
+- **TER-STA-021**: Findings use versioned rule IDs and deterministic revision stable keys.
 - **TER-STA-022**: Default review lists zero write paths and is byte-for-byte read-only.
-- **TER-STA-023**: Optional persistence owns exactly one scope-hash-addressed immutable report.
-- **TER-STA-024**: Persisted report publication uses absent-target CAS and read-back verification.
+- **TER-STA-023**: Optional persistence owns exactly one scope-revision-addressed immutable report.
+- **TER-STA-024**: Persisted report publication uses absent-target atomic conflict check and read-back verification.
 
 ## Protocol Assertions
 
-- **TER-PRO-001**: Hash raw input bytes before parsing and reject duplicate keys.
+- **TER-PRO-001**: revision raw input bytes before parsing and reject duplicate keys.
 - **TER-PRO-002**: Reject direct test paths, globs, ambiguous names, unsafe paths, and newest-file discovery.
 - **TER-PRO-003**: Never omit an AC row because an input is missing or unreadable.
 - **TER-PRO-004**: Never let one evidence type prove an axis prohibited by its admissibility contract.
@@ -52,7 +52,7 @@
 - **TER-PRO-011**: A declined or failed report write preserves observed review axes and findings.
 - **TER-PRO-012**: Never edit tests, evidence, requirements, manifests, stage/session state, or shared catalog files.
 - **TER-PRO-013**: Never invoke tests, downstream gates, directors, or remediation workflows.
-- **TER-PRO-014**: Downstream consumers receive exact report path/hash and revalidate referenced authorities.
+- **TER-PRO-014**: Downstream consumers receive exact report path/revision and revalidate referenced authorities.
 - **TER-PRO-015**: A conversation-only review is not a durable review receipt.
 
 ## Test Cases
@@ -61,7 +61,7 @@
 
 #### Fixture
 
-Two sprint directories have recent timestamps. The hash-bound stage and active-session manifests identify exactly one active sprint `SPR-42`.
+Two sprint directories have recent timestamps. The revision-bound stage and active-session manifests identify exactly one active sprint `SPR-42`.
 
 #### Input
 
@@ -81,7 +81,7 @@ No sprint state update, latest-directory marker, manifest repair, inferred sprin
 
 #### Expected behavior
 
-The workflow selects `SPR-42` only after stage/session/QA identities and hashes agree. Multiple or conflicting active sprint declarations block the review.
+The workflow selects `SPR-42` only after stage/session/QA identities and revisions agree. Multiple or conflicting active sprint declarations block the review.
 
 #### Assertions
 
@@ -91,15 +91,15 @@ TER-STA-003, TER-STA-004, TER-PRO-001, TER-PRO-002.
 
 PASS when the unique declared sprint is used and timestamps are ignored; otherwise BLOCKED.
 
-### Case 2 — Evidence manifest explicitly links story, AC, build, and hash
+### Case 2 — Evidence manifest explicitly links story, AC, build, and revision
 
 #### Fixture
 
-One scope row contains Story, Requirement, AC, Coverage Unit, Test ID, expected observable, candidate/build, evidence IDs, paths, and hashes. A similarly named unbound test file also exists.
+One scope row contains Story, Requirement, AC, Coverage Unit, Test ID, expected observable, candidate/build, evidence IDs, paths, and revisions. A similarly named unbound test file also exists.
 
 #### Input
 
-Validate the scope row and compute the canonical scope hash.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 #### Expected reads
 
@@ -115,7 +115,7 @@ No inferred mapping, discovered evidence row, generated stable ID, or authority 
 
 #### Expected behavior
 
-Only the exact stable-ID and hash-bound row enters the review. The similarly named file is irrelevant.
+Only the exact stable-ID and revision-bound row enters the review. The similarly named file is irrelevant.
 
 #### Assertions
 
@@ -123,7 +123,7 @@ TER-STA-005, TER-STA-006, TER-PRO-002, TER-PRO-005.
 
 #### Case Verdict
 
-PASS only when every binding agrees; ambiguity or hash mismatch blocks or stales the affected row.
+PASS only when every binding agrees; ambiguity or revision mismatch blocks or stales the affected row.
 
 ### Case 3 — Names and assertion text cannot manufacture coverage
 
@@ -163,7 +163,7 @@ INCOMPLETE structural quality; execution remains independently classified.
 
 #### Fixture
 
-A manual artifact contains `qa-lead` in a sign-off field but has no verifier-supported identity, scope, build, artifact hashes, statement, timestamp, or authorization source.
+A manual artifact contains `qa-lead` in a sign-off field but has no verifier-supported identity, scope, build, artifact revisions, statement, timestamp, or authorization source.
 
 #### Input
 
@@ -197,7 +197,7 @@ INCOMPLETE or INADMISSIBLE with closure NO.
 
 #### Fixture
 
-A previously valid execution receipt and attestation bind an older helper source hash. The current helper bytes differ while timestamps appear recent.
+A previously valid execution receipt and attestation bind an older helper source revision. The current helper bytes differ while timestamps appear recent.
 
 #### Input
 
@@ -205,7 +205,7 @@ Revalidate currentness.
 
 #### Expected reads
 
-Every relevant-source-set member and its captured path/hash, plus the receipt and attestation bindings.
+Every relevant-source-set member and its captured path/revision, plus the receipt and attestation bindings.
 
 #### Expected writes
 
@@ -213,7 +213,7 @@ None.
 
 #### Expected non-writes
 
-No refreshed hash, carried-forward approval, date-based freshness override, or source rollback.
+No refreshed revision, carried-forward approval, date-based freshness override, or source rollback.
 
 #### Expected behavior
 
@@ -303,7 +303,7 @@ Test A is valid under the exact naming schema. Test B omits system. Test C conta
 
 #### Input
 
-Apply the hash-bound canonical naming schema.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 #### Expected reads
 
@@ -469,7 +469,7 @@ UNAVAILABLE/INCOMPLETE, never ADEQUATE or PASS.
 
 #### Fixture
 
-Two reviews consume byte-identical manifests and evidence with the same three issues. A third review changes one observed source hash.
+Two reviews consume byte-identical manifests and evidence with the same three issues. A third review changes one observed source revision.
 
 #### Input
 
@@ -477,7 +477,7 @@ Generate and sort findings for all reviews.
 
 #### Expected reads
 
-The exact workflow contract, scope hash, row/requirement/AC/evidence identities, rule IDs, and observed hashes.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 #### Expected writes
 
@@ -485,11 +485,11 @@ None.
 
 #### Expected non-writes
 
-No random finding ID, order based on discovery time, or reused fingerprint after an observed identity changes.
+No random finding ID, order based on discovery time, or reused stable key after an observed identity changes.
 
 #### Expected behavior
 
-The first two reviews produce identical IDs, fingerprints, fields, and order. The changed source produces a different stale-finding fingerprint while unaffected findings remain stable.
+The first two reviews produce identical IDs, stable keys, fields, and order. The changed source produces a different stale-finding stable key while unaffected findings remain stable.
 
 #### Assertions
 
@@ -511,11 +511,11 @@ Execute the four persistence variants.
 
 #### Expected reads
 
-The exact review/evidence authorities; for writes, all inputs again at CAS time plus target absence and read-back bytes.
+The exact review/evidence authorities; for writes, all inputs again at atomic conflict check time plus target absence and read-back bytes.
 
 #### Expected writes
 
-Zero paths for default and decline; exactly one scope-hash-addressed report for authorized absent-target persistence; zero final writes on collision.
+Zero paths for default and decline; exactly one scope-revision-addressed report for authorized absent-target persistence; zero final writes on collision.
 
 #### Expected non-writes
 
@@ -523,7 +523,7 @@ No test/evidence/requirement/stage/session/catalog mutation, overwrite, append, 
 
 #### Expected behavior
 
-Results respectively report NOT_REQUESTED, DECLINED, WRITTEN after CAS/read-back, and FAILED on collision. Review axes/findings remain identical.
+Results respectively report NOT_REQUESTED, DECLINED, WRITTEN after atomic conflict check/read-back, and FAILED on collision. Review axes/findings remain identical.
 
 #### Assertions
 
@@ -537,11 +537,11 @@ PASS when mutation boundaries and persistence independence are exact.
 
 #### Fixture
 
-One unique active scope, CURRENT QA plan, exact candidate/build, complete stable AC rows, adequate semantic tests, admissible manual content, verified attestations, and full-scope current execution receipts all hash-match. `--persist` is authorized and the target is absent.
+One unique active scope, CURRENT QA plan, exact candidate/build, complete stable AC rows, adequate semantic tests, admissible manual content, verified attestations, and full-scope current execution receipts all revision-match. `--persist` is authorized and the target is absent.
 
 #### Input
 
-Review, aggregate, CAS-persist, and verify the report as a downstream consumer.
+Review, aggregate, atomic conflict check-persist, and verify the report as a downstream consumer.
 
 #### Expected reads
 
@@ -549,7 +549,7 @@ Every exact stage/session/QA/requirement/candidate/build/test/helper/evidence/at
 
 #### Expected writes
 
-Exactly one immutable `cgs-test-evidence-review-report/v2` at its review-ID and scope-hash-addressed path.
+Exactly one immutable `cgs-test-evidence-review-report/v2` at its review-ID and scope-revision-addressed path.
 
 #### Expected non-writes
 
@@ -557,7 +557,7 @@ No authority edits, test execution, approval generation, downstream workflow inv
 
 #### Expected behavior
 
-Every AC emits one ADEQUATE/ADMISSIBLE/PASS/CURRENT/COMPLETE/FULL row with no blockers. Aggregate closure is YES; report CAS and read-back verify; the consumer re-hashes the exact report and referenced authorities.
+Every AC emits one ADEQUATE/ADMISSIBLE/PASS/CURRENT/COMPLETE/FULL row with no blockers. Aggregate closure is YES; report atomic conflict check and read-back verify; the consumer re-reads the exact report and referenced authorities.
 
 #### Assertions
 
@@ -582,3 +582,11 @@ PASS only when every axis, finding set, immutable persistence check, and downstr
 | TER-010 | Independent axes + Phase 10 | Case 7 / TER-STA-011, TER-STA-012, TER-STA-019 | COMPLETE/CONCERNS or PASS/WARNINGS/FAIL cannot replace the declared axes |
 | TER-015 | Phase 5 | Case 8 / TER-STA-013, TER-STA-014, TER-PRO-005 | Unparseable system/scenario/expected creates only naming evidence |
 | TER-016 | Purpose/invocation/Phases 11–12 | Case 9 / all TER-STA and TER-PRO assertions | Direct test-path/code-quality/alternate-verdict contract cannot pass alignment |
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

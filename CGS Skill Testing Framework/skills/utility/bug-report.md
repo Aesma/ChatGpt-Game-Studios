@@ -12,7 +12,7 @@
 record one exact hotfix candidate, verify, close, or inspect canonical bug
 records. Records live only under `production/qa/bugs/`; only this canonical
 registry recorder may move Open/Reopened to Fixed Pending Verification under
-owner authority and an atomic hash-chained event transaction.
+owner authority and an atomic append-only event transaction.
 
 ## Static Assertions
 
@@ -21,14 +21,14 @@ owner authority and an atomic hash-chained event transaction.
 - **BR-STA-003**: Unknown modes, illegal flag combinations, positional descriptions/paths, and malformed IDs fail before business work.
 - **BR-STA-004**: Required, optional, and explicitly unknown draft fields are separately defined.
 - **BR-STA-005**: Missing required build, reproduction, expected, actual, system, environment, or severity fields keep the draft incomplete and unwritten.
-- **BR-STA-006**: Duplicate fingerprinting yields candidates only; a human decision is required.
+- **BR-STA-006**: Duplicate stable business keying yields candidates only; a human decision is required.
 - **BR-STA-007**: Linked occurrences preserve their independent build, environment, repro, and evidence identity.
 - **BR-STA-008**: Registry sequence allocation uses an exclusive lock, preimage CAS, absent targets, and read-back.
-- **BR-STA-009**: Creation idempotency maps the same request/hash to the same Bug ID.
-- **BR-STA-010**: Analyze accepts only explicit project paths/hashes and bounded files/bytes/findings.
+- **BR-STA-009**: Creation idempotency maps the same request/revision to the same Bug ID.
+- **BR-STA-010**: Analyze accepts only explicit project paths/revisions and bounded files/bytes/findings.
 - **BR-STA-011**: Static analysis outputs candidate findings with observation, inference, confidence, and reproduction gate; it cannot register a runtime defect.
 - **BR-STA-012**: Verify selects only exact Test IDs and ordered argv from `cgs-test-execution-manifest/v1`.
-- **BR-STA-013**: Runner identity, cwd, environment allowlist, deadlines, caps, cleanup, parser, exit code, and log hash are preserved.
+- **BR-STA-013**: Runner identity, cwd, environment allowlist, deadlines, caps, cleanup, parser, exit code, and log revision are preserved.
 - **BR-STA-014**: NOT_RUN, TIMEOUT, RUNNER_ERROR, PARSE_ERROR, PARTIAL, STALE, UNAVAILABLE, and INVALID_RECEIPT cannot verify.
 - **BR-STA-015**: Canonical severity is exactly S1-Critical, S2-Major, S3-Minor, or S4-Trivial.
 - **BR-STA-016**: Priority remains independent and is not assigned by this workflow.
@@ -39,7 +39,7 @@ owner authority and an atomic hash-chained event transaction.
 - **BR-STA-021**: Verified Fixed requires matching reproduction PASS and automated failure-sensitive regression PASS.
 - **BR-STA-022**: Closed requires current verification plus the same revalidated automated regression evidence.
 - **BR-STA-023**: Manual evidence never replaces the automated regression gate and no waiver is invented.
-- **BR-STA-024**: Record, registry, and immutable hash-chained event update all-or-none.
+- **BR-STA-024**: Record, registry, and immutable append-only event update all-or-none.
 - **BR-STA-025**: `record-fix-candidate` consumes only a current `cgs-hotfix-bug-candidate-link/v1` as business handoff and exact joined commit/candidate/build/test identities.
 - **BR-STA-026**: Only the authorized canonical bug-registry recorder may write Open/Reopened to Fixed Pending Verification.
 - **BR-STA-027**: Recording a fix candidate never writes Verified Fixed or Closed and never treats hotfix as registry authority.
@@ -47,7 +47,7 @@ owner authority and an atomic hash-chained event transaction.
 
 ## Protocol Assertions
 
-- **BR-PRO-001**: Hash raw manifests and authorities before parsing and reject duplicate keys.
+- **BR-PRO-001**: revision raw manifests and authorities before parsing and reject duplicate keys.
 - **BR-PRO-002**: Never read a legacy path or triage report as a canonical bug record.
 - **BR-PRO-003**: Never write a canonical record from an incomplete draft.
 - **BR-PRO-004**: Never auto-merge, close, or discard a duplicate occurrence.
@@ -55,7 +55,7 @@ owner authority and an atomic hash-chained event transaction.
 - **BR-PRO-006**: Never auto-retry an allocation conflict with a hidden new ID.
 - **BR-PRO-007**: Never promote a static candidate finding into an observed runtime bug.
 - **BR-PRO-008**: Never synthesize a runner command, select tests by name, or fall back to an arbitrary suite.
-- **BR-PRO-009**: Never accept an old log based on recency; exact build/commit/platform/manifest/Test ID hashes must match.
+- **BR-PRO-009**: Never accept an old log based on recency; exact build/commit/platform/manifest/Test ID revisions must match.
 - **BR-PRO-010**: Never treat partial, timeout, runner, parser, cleanup, or unreadable evidence as verified.
 - **BR-PRO-011**: Never convert legacy textual severity silently.
 - **BR-PRO-012**: Never infer priority or schedule from severity.
@@ -63,10 +63,10 @@ owner authority and an atomic hash-chained event transaction.
 - **BR-PRO-014**: Never accept manual verification as the regression test.
 - **BR-PRO-015**: Never edit triage, sprint, hotfix, release, test-plan, source, or test artifacts.
 - **BR-PRO-016**: Never invoke another workflow automatically.
-- **BR-PRO-017**: Never accept a PR URL, newest build, deployment claim, or conversation in place of the exact candidate link and transitive hashes.
+- **BR-PRO-017**: Never accept a PR URL, newest build, deployment claim, or conversation in place of the exact candidate link and transitive revisions.
 - **BR-PRO-018**: Never let hotfix write or impersonate a canonical bug-registry transaction.
 - **BR-PRO-019**: Never upgrade FIX_CANDIDATE evidence into QA verification.
-- **BR-PRO-020**: Never publish a candidate transition unless every member and receipt read back at the rendered hash.
+- **BR-PRO-020**: Never publish a candidate transition unless every member and receipt read back at the rendered revision.
 
 ## Test Cases
 
@@ -146,7 +146,7 @@ A draft request supplies a title but omits build identity, system, platform/conf
 
 #### Input
 
-Run draft with the exact request manifest and hash.
+Run draft with the exact request manifest and revision.
 
 #### Expected reads
 
@@ -176,7 +176,7 @@ DRAFT_INCOMPLETE with zero writes.
 
 #### Fixture
 
-The new complete draft shares a primary fingerprint with existing BUG-000042 but differs in build, device, and evidence. No duplicate decision is present.
+The new complete draft shares a primary stable business key with existing BUG-000042 but differs in build, device, and evidence. No duplicate decision is present.
 
 #### Input
 
@@ -184,11 +184,11 @@ Run create first without a decision, then with an authorized LINK_OCCURRENCE dec
 
 #### Expected reads
 
-The exact registry preimage, existing bug record/hash, draft payload, candidate/build/evidence authorities, and decision owner authority.
+The exact registry preimage, existing bug record/revision, draft payload, candidate/build/evidence authorities, and decision owner authority.
 
 #### Expected writes
 
-First run writes nothing. The authorized second run writes one absent occurrence receipt and the CAS-updated registry occurrence-set hash.
+First run writes nothing. The authorized second run writes one absent occurrence receipt and the CAS-updated registry occurrence-set revision.
 
 #### Expected non-writes
 
@@ -218,7 +218,7 @@ Attempt both allocations concurrently, then rerun the winning request.
 
 #### Expected reads
 
-Registry preimage/revision, lock state, draft hashes, decision authorities, and target absence.
+Registry preimage/revision, lock state, draft revisions, decision authorities, and target absence.
 
 #### Expected writes
 
@@ -244,7 +244,7 @@ PASS when uniqueness and idempotency both hold.
 
 #### Fixture
 
-An analysis manifest names two project files and hashes with small budgets. One source suggests a null dereference, but no target-build reproduction exists. A third undeclared file appears related.
+An analysis manifest names two project files and revisions with small budgets. One source suggests a null dereference, but no target-build reproduction exists. A third undeclared file appears related.
 
 #### Input
 
@@ -286,7 +286,7 @@ Evaluate all three variants.
 
 #### Expected reads
 
-Exact bug/fix/candidate/build/repro/test/failure-sensitivity authorities, execution manifest, runner identity, receipts, logs, and hashes.
+Exact bug/fix/candidate/build/repro/test/failure-sensitivity authorities, execution manifest, runner identity, receipts, logs, and revisions.
 
 #### Expected writes
 
@@ -354,7 +354,7 @@ Run verify.
 
 #### Expected reads
 
-The exact record/fix/source paths and hashes plus the verification manifest.
+The exact record/fix/source paths and revisions plus the verification manifest.
 
 #### Expected writes
 
@@ -400,7 +400,7 @@ No triage/sprint/test/source edit, second event, partial state, priority change,
 
 #### Expected behavior
 
-All hashes and bindings revalidate; the event chain advances; status becomes Verified Fixed only after atomic publish and read-back.
+All revisions and bindings revalidate; the event chain advances; status becomes Verified Fixed only after atomic publish and read-back.
 
 #### Assertions
 
@@ -484,7 +484,7 @@ BLOCKED with unchanged bytes.
 
 #### Fixture
 
-A Verified Fixed record has a valid hash chain, current reproduction PASS, automated regression PASS, failure-sensitivity proof, exact build/fix/Test ID binding, and authorized QA closure owner.
+A Verified Fixed record has a valid revision chain, current reproduction PASS, automated regression PASS, failure-sensitivity proof, exact build/fix/Test ID binding, and authorized QA closure owner.
 
 #### Input
 
@@ -504,7 +504,7 @@ No manual-only regression field, waiver, triage edit, source/test edit, partial 
 
 #### Expected behavior
 
-All evidence is rehashed, closure fields are complete, event chain advances, and read-back verifies Closed.
+All evidence is re-read, closure fields are complete, event chain advances, and read-back verifies Closed.
 
 #### Assertions
 
@@ -606,7 +606,7 @@ No legacy path, priority assignment, source/test/triage/sprint edit, extra occur
 
 #### Expected behavior
 
-The workflow locks and revalidates the registry, allocates the next six-digit Bug ID, writes observed and inferred sections separately, publishes atomically, reads back, and returns exact paths/hashes with BUG_CREATED.
+The workflow locks and revalidates the registry, allocates the next six-digit Bug ID, writes observed and inferred sections separately, publishes atomically, reads back, and returns exact paths/revisions with BUG_CREATED.
 
 #### Assertions
 
@@ -621,7 +621,7 @@ BUG_CREATED only after complete CAS/read-back verification.
 #### Fixture
 
 Variant A has an Open canonical record and one current immutable
-`cgs-hotfix-bug-candidate-link/v1` whose Bug ID/path/hash/status, fix full
+`cgs-hotfix-bug-candidate-link/v1` whose Bug ID/path/revision/status, fix full
 commit/tree, candidate/build/artifact/platform, build receipts, regression Test
 IDs/execution/logs, smoke, HOTFIX READY assessment, and rollback identities all
 join, plus current bug-owner authority and absent event/receipt targets. Variant
@@ -650,7 +650,7 @@ Closed, release, and deployment state remain unchanged.
 
 #### Expected behavior
 
-A rehashes all joins, validates owner authority, locks/CASes canonical preimages,
+A re-reads all joins, validates owner authority, locks/CASes canonical preimages,
 publishes all four members, verifies read-back, and returns
 FIX_CANDIDATE_RECORDED. B through D block with zero lifecycle advance.
 

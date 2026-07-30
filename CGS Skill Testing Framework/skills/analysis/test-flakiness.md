@@ -1,5 +1,7 @@
 # Skill Test Spec: `$test-flakiness`
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
 `$test-flakiness` contract `cgs.test-flakiness/v2` analyzes one explicit,
@@ -9,7 +11,7 @@ environment drift from code/config heterogeneity, reports Wilson uncertainty,
 and keeps hypotheses distinct from controlled causes.
 
 The workflow is read-only by default. `analyze --persist` may create one
-deterministic hash-named analysis report, but analysis always completes
+deterministic revision-named analysis report, but analysis always completes
 independently of persistence. It never runs tests or changes tests, CI,
 quarantine, registries, or `tests/regression-suite.md`. `status` validates
 external state receipts without writing.
@@ -20,11 +22,11 @@ external state receipts without writing.
 
 Run every behavioral case in an isolated disposable repository fixture. Record:
 
-1. recursive path/type/SHA-256 snapshots before and after invocation;
+1. recursive path/type/revision snapshots before and after invocation;
 2. every filesystem mutation attempt by the workflow and parser;
 3. every file read, canonical path, exact byte count, and read order;
-4. parser ID/version/package hash, argv, wall time, exit status, raw and
-   normalized hashes, receipt bytes, and sandbox denials;
+4. parser ID/version/package revision, argv, wall time, exit status, raw and
+   normalized revisions, receipt bytes, and sandbox denials;
 5. all normalized records with originating raw record identity;
 6. exact response bytes, canonical payload bytes, evidence bytes, and any report
    write/read-back receipt; and
@@ -49,7 +51,7 @@ catalog result fields from an uninstrumented run.
   inference
 - [ ] Run, test, binary, runner/config, platform, environment, seed, order, and
   process-isolation identity are mandatory
-- [ ] Parser registry/receipt schemas, exact tool version/hash, format matrix,
+- [ ] Parser registry/receipt schemas, exact tool version/revision, format matrix,
   sandbox, timeouts, and malformed/truncated behavior are explicit
 - [ ] Fixed byte, run, result, record, identity, finding, row, parser-time, and
   receipt bounds cannot be raised by a manifest
@@ -65,11 +67,11 @@ catalog result fields from an uninstrumented run.
 - [ ] Quarantine eligibility, adapter, owner, expiry, issue, coverage/risk,
   approval, application, verification, rollback, and resolution are distinct
 - [ ] Stable finding IDs exclude paths, names, rates, intervals, confidence,
-  state, timestamps, current dataset/build, and report hash
-- [ ] `cgs.test-flakiness-report/v1`, `cgs.review-evidence/v1`, canonical hashes,
+  state, timestamps, current dataset/build, and report revision
+- [ ] `cgs.test-flakiness-report/v1`, `cgs.review-evidence/v1`, canonical revisions,
   partial-evidence limits, and quarantine-authority `NONE` are explicit
 - [ ] Analysis result and report persistence are independent; default is
-  zero-write and optional persistence owns exactly one hash-named report
+  zero-write and optional persistence owns exactly one revision-named report
 - [ ] Cases are numbered contiguously from 1 through 20
 - [ ] Every case contains `Fixture`, `Input`, `Expected writes`, `Expected
   behavior`, and `Assertions` subsections with non-placeholder content
@@ -83,16 +85,16 @@ catalog result fields from an uninstrumented run.
 ## Canonical fixture
 
 Unless overridden, use run set `run-set-alpha`, schema `cgs.test-run-set/v2`,
-with exact hashes for parser registry `cgs.test-result-parser-registry/v1`,
+with exact revisions for parser registry `cgs.test-result-parser-registry/v1`,
 environment registry `cgs.test-environment-registry/v1`, and policy
 `cgs.test-flakiness-policy/v1`. The parser is `PARSER-GODOT-JUNIT-1` version
-`1.4.0`, package SHA-256 `P`, validated for runner/schema/platform, and emits
+`1.4.0`, package revision `P`, validated for runner/schema/platform, and emits
 `cgs.test-result-records/v1` plus `cgs.test-parser-receipt/v1`.
 
-Canonical test `godot::TC-combat-S001-AC01::NONE::<binary-hash>` uses one clean
+Canonical test `godot::TC-combat-S001-AC01::NONE::<binary-revision>` uses one clean
 build/commit/config/engine/platform/environment/seed/order identity. Every
-independent run has a unique run ID, process-isolation ID, result hash, and runner
-receipt. Fixture placeholders are replaced by valid 64-hex hashes.
+independent run has a unique run ID, process-isolation ID, result revision, and runner
+receipt. Fixture placeholders are replaced by valid explicit revisions.
 
 ---
 
@@ -134,9 +136,9 @@ inferred.
 ### Fixture
 
 Create valid XML, truncated XML, summary-only XML, ambiguous suite/test records,
-unsupported schema, two equally exact parser matches, wrong parser package hash,
+unsupported schema, two equally exact parser matches, wrong parser package revision,
 invalid validator receipt, timeout, nonzero exit, oversized receipt, mismatched
-raw hash, and a parser sandbox write/network attempt.
+declared revision, and a parser sandbox write/network attempt.
 
 ### Input
 
@@ -155,8 +157,8 @@ remain disclosed, but confirmation and quarantine proposal are forbidden.
 
 ### Assertions
 
-- [ ] Parser product/version/hash, supported format/schema/platform, argv, raw
-  and normalized hashes, timing, and receipt identity are reported
+- [ ] Parser product/version/revision, supported format/schema/platform, argv, raw
+  and normalized revisions, timing, and receipt identity are reported
 - [ ] Text matching never promotes suite summary, retry text, or failure blocks
 - [ ] Every malformed/truncated/ambiguous omission has an exact reason
 - [ ] Sandbox violations fail closed and mutation guard passes
@@ -167,7 +169,7 @@ remain disclosed, but confirmation and quarantine proposal are forbidden.
 ### Fixture
 
 Provide same display name in two runner namespaces, parameter cases A/B, same
-runner-qualified ID from different binary hashes, renamed display text with
+runner-qualified ID from different binary revisions, renamed display text with
 unchanged stable ID, duplicate canonical IDs, missing stable IDs, and one valid
 identity-migration receipt.
 
@@ -182,14 +184,14 @@ None.
 ### Expected behavior
 
 Canonical keys remain distinct by namespace, stable ID, parameter ID, and binary
-hash. Display rename alone preserves identity; missing/duplicate identities are
+revision. Display rename alone preserves identity; missing/duplicate identities are
 `INVALID IDENTITY`. Migration binds only declared IDs and never crosses binary
-hashes in a cohort.
+revisions in a cohort.
 
 ### Assertions
 
 - [ ] Display/method/path/suite/base-name equality never merges tests
-- [ ] Binary hash is part of every canonical test key
+- [ ] Binary revision is part of every canonical test key
 - [ ] Invalid identities are excluded from statistics with exact reasons
 - [ ] Valid records retain raw result/record provenance
 - [ ] Mutation guard passes
@@ -199,8 +201,8 @@ hashes in a cohort.
 ### Fixture
 
 For one stable test, create PASS in one cohort and FAIL in cohorts differing one
-at a time by commit, tree state, build ID/artifact hash, binary, runner version,
-config hash, engine version, seed/policy, shard, or test-order hash.
+at a time by commit, tree state, build ID/artifact revision, binary, runner version,
+config revision, engine version, seed/policy, shard, or test-order revision.
 
 ### Input
 
@@ -218,7 +220,7 @@ quarantine proposal exists.
 
 ### Assertions
 
-- [ ] Exact differing keys and cohort hashes are reported
+- [ ] Exact differing keys and cohort revisions are reported
 - [ ] Same test name cannot override run identity
 - [ ] Homogeneous local all-pass/all-fail evidence remains local
 - [ ] No project-wide flaky label is synthesized
@@ -231,7 +233,7 @@ quarantine proposal exists.
 Keep code/build/binary/runner/config/engine/seed/order identical while varying one
 at a time: platform profile, OS image/version, architecture, driver/runtime/
 toolchain, machine/container image, or registered environment value. Add an
-unexplained fingerprint mismatch.
+unexplained finding key mismatch.
 
 ### Input
 
@@ -244,7 +246,7 @@ None.
 ### Expected behavior
 
 Explained environment differences produce separate cohorts and `ENVIRONMENT
-DRIFT`; unexplained fingerprint mismatch is `INVALID IDENTITY`. Neither is called
+DRIFT`; unexplained finding key mismatch is `INVALID IDENTITY`. Neither is called
 flakiness or environmental cause.
 
 ### Assertions
@@ -395,8 +397,8 @@ None, including with unauthorized embedded persistence fields.
 
 Pre-parse manifest/byte excess is `ERROR — REQUEST EXCEEDS FIXED BOUND`.
 Post-parse record/identity/finding/row excess is `PARTIAL DATA — BOUNDED INPUT`
-with stable complete-set digest, included/omitted counts, boundary key, and tail
-digest.
+with stable complete-set identifier, included/omitted counts, boundary key, and tail
+identifier.
 
 ### Assertions
 
@@ -443,7 +445,7 @@ measured scope.
 ### Fixture
 
 Create confirmed cohorts at 10 runs/2 PASS/2 FAIL and 20 runs/3 PASS/3 FAIL,
-plus controlled reproduction. Vary owner, issue, expiry, source/binary hashes,
+plus controlled reproduction. Vary owner, issue, expiry, source/binary revisions,
 AC/BUG mapping, risk, adapter, replacement coverage/gap, approval owner,
 revalidation/removal, rollback, and expiry escalation fields.
 
@@ -492,8 +494,8 @@ exact receipt validates. Conversation and intent text do not advance state.
 
 ### Assertions
 
-- [ ] Approval binds proposal hash, owner, risk, and expiry
-- [ ] Application binds approval, adapter, and pre/post hashes
+- [ ] Approval binds proposal revision, owner, risk, and expiry
+- [ ] Application binds approval, adapter, and pre/post revisions
 - [ ] Verification binds applied config and observed quarantine result
 - [ ] Report/registry row alone is never application evidence
 - [ ] No CI/test/regression-manifest write occurs
@@ -573,7 +575,7 @@ one-report authorization. Also simulate user withdrawal before write.
 ### Expected writes
 
 Only the new-target success may create exactly
-`production/qa/flakiness/flakiness-report-<run-set-id>-<12hex>.md`. No variant
+`production/qa/flakiness/flakiness-report-<run-set-id>-<UTC-run-id>.md`. No variant
 overwrites, renames, or modifies another file.
 
 ### Expected behavior
@@ -585,9 +587,9 @@ read-back and a binding write receipt.
 
 ### Assertions
 
-- [ ] Derived path uses validated run-set ID and manifest hash prefix
+- [ ] Derived path uses validated run-set ID and manifest revision prefix
 - [ ] Existing conflicting/user bytes are preserved
-- [ ] Report file hash, payload hash, artifact identity, path, writer, and time
+- [ ] Report file revision, payload revision, artifact identity, path, writer, and time
   bind in the write receipt without a cyclic evidence-record reference
 - [ ] No report status implies quarantine approval/application
 - [ ] Filesystem diff is at most the one owned report
@@ -598,7 +600,7 @@ read-back and a binding write receipt.
 
 Generate one finding, then vary file paths, line numbers, display names, counts,
 rate, interval, confidence, severity, state, timestamp, current run set/build, and
-report hash without changing repository/category/test/cohort/external-receipt
+report revision without changing repository/category/test/cohort/external-receipt
 identity. Then vary each canonical identity field.
 
 ### Input
@@ -617,7 +619,7 @@ evidence; ordering is deterministic.
 
 ### Assertions
 
-- [ ] Canonical JSON and suffix independently recompute
+- [ ] Stable business-ID components and collision suffix independently validate
 - [ ] Paths/names/measurements/state/time/build/report never enter the ID
 - [ ] Category, canonical test key, cohort, repository, and external receipt do
   enter the identity exactly
@@ -646,12 +648,12 @@ canonical `cgs.test-flakiness-report/v1`. Partial evidence has coverage PARTIAL
 and cannot support confirmation/quarantine. Conversation-only records say
 persistence NONE; the post-write response record says VERIFIED_FILE and binds its
 separately computed write receipt. The persisted report itself does not embed
-post-write evidence or a self-referential file hash.
+post-write evidence or a self-referential file revision.
 
 ### Assertions
 
-- [ ] Payload and record hashes independently recompute
-- [ ] Changing one payload byte invalidates artifact hash or record ID
+- [ ] Payload and record revisions independently revalidate
+- [ ] Changing an artifact requires a new explicit artifact revision or record ID
 - [ ] Producer, run/time, manifest identity, findings, and coverage are present
 - [ ] `quarantine_authority: NONE` and `gate_evidence_candidate: false` always
 - [ ] Persistence changes durability only, not measurements/verdicts
@@ -660,7 +662,7 @@ post-write evidence or a self-referential file hash.
 
 ### Fixture
 
-Provide a valid report, report with bad payload/evidence hash, report above size
+Provide a valid report, report with bad payload/evidence revision, report above size
 limit, absent receipt manifest, malformed receipts, unrelated receipts, and
 complete state-transition receipts.
 
@@ -676,7 +678,7 @@ None under all variants.
 
 Invalid primary report returns `ERROR`; missing/invalid optional receipts leave
 state at the last proven transition and disclose gaps. No receipt discovery
-occurs. Valid APPLIED/VERIFIED/EXPIRED/RESOLVED receipt paths/hashes are presented
+occurs. Valid APPLIED/VERIFIED/EXPIRED/RESOLVED receipt paths/revisions are presented
 only as owner handoffs.
 
 ### Assertions
@@ -726,8 +728,8 @@ point to `CGS Skill Testing Framework/skills/analysis/test-flakiness.md`.
 
 | Audit finding | Closing contract clauses | Behavioral proof |
 |---|---|---|
-| TF-004 | Exact format parser registry, schema/version/tool hash, validated receipt, partial parse fail-closed | Cases 2, 10 |
-| TF-005 | Runner-qualified canonical test key includes parameter identity and binary hash; no name merge | Cases 3, 17 |
+| TF-004 | Exact format parser registry, schema/version/tool revision, validated receipt, partial parse fail-closed | Cases 2, 10 |
+| TF-005 | Runner-qualified canonical test key includes parameter identity and binary revision; no name merge | Cases 3, 17 |
 | TF-006 | Hypothesis/confidence boundary and one-factor controlled experiment for confirmed cause | Case 11 |
 | TF-007 | Explicit manifest only; fixed file/byte/time/record/row limits and deterministic omission proof | Cases 1, 10 |
 | TF-008 | PROPOSED/APPROVED/APPLIED/VERIFIED states require distinct exact authority receipts | Cases 12, 13, 19 |
@@ -748,8 +750,8 @@ negative coverage in Cases 4-9, 12-14, and 17-19.
 - [ ] Mutation guard passes in every default/status/error/partial case and every
   optional persistence variant except the exact one-report success
 - [ ] Parser sandbox violations never mutate the fixture
-- [ ] All stable IDs, cohort hashes, candidate/tail digests, payload hashes,
-  evidence record IDs, file hashes, and write receipts independently recompute
+- [ ] All stable IDs, cohort revisions, candidate/tail identifiers, payload revisions,
+  evidence record IDs, file revisions, and write receipts independently revalidate
 - [ ] TF-004 through TF-010 and TF-017 each have positive and negative/boundary
   behavioral proof
 - [ ] No heterogeneous, environment-drift, sparse, invalid, malformed, truncated,

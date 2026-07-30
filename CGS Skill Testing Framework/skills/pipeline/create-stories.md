@@ -23,7 +23,7 @@ actually runs the cases.
 ## Frozen fixtures and observation
 
 Each case freezes exact raw bytes, canonical/real paths, existence states,
-direct-child membership, and SHA-256 values for its applicable subset of:
+direct-child membership, and revision values for its applicable subset of:
 
 - workflow catalog;
 - one explicit `cgs.epic-plan/v2`, its source manifest, and exact
@@ -43,7 +43,7 @@ batch/cursor values, reviewer identities, limits, and expected candidate bytes.
 
 The harness records every read, enumeration, prompt, decision, stable-ID
 allocation/retirement, QA/delegation event, source/inventory/core/AC-set/candidate
-hash, diff, CAS re-read, temp/publication/readback event, route output, and
+revision, diff, CAS re-read, temp/publication/readback event, route output, and
 persistent mutation. Undeclared/unbounded reads and writes outside the exact
 authorized story/STORIES targets fail the case.
 
@@ -53,7 +53,7 @@ authorized story/STORIES targets fail the case.
   `create-stories`.
 - [ ] Metadata states bounded stable story candidates, not final readiness.
 - [ ] Invocation has explicit `author|audit`, exact EPIC path, capped batch,
-  cursor, and evidence path/hash pairs.
+  cursor, and evidence path/revision pairs.
 - [ ] Bare slug, automatic epic discovery, newest/nearest evidence, globs,
   traversal, and escaping symlinks are rejected.
 - [ ] The catalog glob is treated as an envelope, not ownership of every matching
@@ -66,10 +66,10 @@ authorized story/STORIES targets fail the case.
   and exact create-epics result receipt; legacy epic migration
   is external.
 - [ ] GDD admission requires current exact independent APPROVED evidence.
-- [ ] TR admission requires stable ID, exact source/approval hashes, CURRENT, and
+- [ ] TR admission requires stable ID, exact source/approval revisions, CURRENT, and
   DERIVED_COVERED or visible DECISION_GAP.
 - [ ] Placeholder, guessed, repaired, renumbered, or fuzzy TR IDs are forbidden.
-- [ ] Accepted-current ADR admission validates lifecycle/review/dependency hashes;
+- [ ] Accepted-current ADR admission validates lifecycle/review/dependency revisions;
   missing ADR affects only dependent stories.
 - [ ] Control rules are selected by stable Rule ID and preserve normative
   strength, scope, conditions, qualifications, and contextual rejection.
@@ -81,10 +81,10 @@ authorized story/STORIES targets fail the case.
   story/AC IDs with explicit supersession.
 - [ ] Story paths use the immutable SNNN slot under the exact epic directory;
   display-title changes do not silently rename.
-- [ ] Every AC has exact approved source span/hash and current TR binding.
+- [ ] Every AC has exact approved source span/revision and current TR binding.
 - [ ] Every Test ID has one exact story/AC/type/owner binding and complete
   type-specific fields.
-- [ ] Dependencies use stable story ID, exact path/core hash, HARD/SOFT, and
+- [ ] Dependencies use stable story ID, exact path/core revision, HARD/SOFT, and
   reason/source; the graph is unique and acyclic.
 - [ ] Vertical slices have one observable outcome and enforce the 4-TR, 8-AC,
   4-hard-dependency limits.
@@ -98,14 +98,14 @@ authorized story/STORIES targets fail the case.
   through preview/story/STORIES registry/result.
 - [ ] AUTHOR_COMPLETE is distinct from final READY; every authored story says
   `Readiness Verdict: NOT_EVALUATED`.
-- [ ] Only exact-hash external story-readiness evidence can later produce READY.
+- [ ] Only exact-revision external story-readiness evidence can later produce READY.
 - [ ] Full inventory classifies CREATE/UPDATE/NO_OP/RETIRE/CONFLICT/DEFERRED and
   preserves local extensions/history.
 - [ ] A target-local conflict/source gap permits independent safe stories and
   makes the batch PARTIAL; epic-wide ledger/source corruption blocks all.
 - [ ] The workflow indexes at most 256 direct children, mutates at most 12 logical
   stories, and respects per-file/class/48-MiB limits.
-- [ ] A cursor is inline, hash-bound, deterministic, and never persisted.
+- [ ] A cursor is inline, revision-bound, deterministic, and never persisted.
 - [ ] One authorization binds the complete selected changeset and limitations.
 - [ ] Final CAS revalidates every source/target/membership/identity/QA/candidate
   value; any change causes zero new mutations.
@@ -113,7 +113,7 @@ authorized story/STORIES targets fail the case.
   atomic; partial-write state is evidence-honest.
 - [ ] Story and story-registry histories are append-only; exact no-op changes
   nothing.
-- [ ] The story never embeds its own current artifact hash.
+- [ ] The story never embeds its own current artifact revision.
 - [ ] Routing returns exactly one catalog-derived action or Stop and executes
   nothing.
 
@@ -137,11 +137,11 @@ reports exact limitations without retrofitting.
 
 ### Case 3: current approved GDD evidence
 
-The epic links two GDD paths/hashes and each exact artifact has current independent
+The epic links two GDD paths/revisions and each exact artifact has current independent
 APPROVED evidence.
 
 **Expected:** Only exact linked requirements/criteria are admitted with source
-IDs/locators/excerpts and hashes.
+IDs/locators/excerpts and revisions.
 
 ### Case 4: GDD status text is not approval
 
@@ -168,7 +168,7 @@ placeholder or repaired ID appears; unrelated TRs remain usable.
 
 ### Case 7: Accepted-current ADR
 
-ADR path/hash, Accepted transition, recorder, review, dependencies, supersession,
+ADR path/revision, Accepted transition, recorder, review, dependencies, supersession,
 and TR coverage are all current.
 
 **Expected:** Exact implementation constraints are admitted with complete
@@ -291,7 +291,7 @@ counts. A mismatch blocks that target or batch before publication.
 After atomic per-file write, reparsing returns a different status, story ID,
 readiness field, or source manifest.
 
-**Expected:** Stop PARTIAL_WRITE, report exact observed hash, and never report
+**Expected:** Stop PARTIAL_WRITE, report exact observed revision, and never report
 COMPLETE.
 
 ### Case 24: retired status is evidence-bound
@@ -333,7 +333,7 @@ verdict is copied.
 
 ### Case 29: duplicate, unknown, or mismatched QA record
 
-Exercise duplicate story result, result for D, wrong core hash, wrong batch hash,
+Exercise duplicate story result, result for D, wrong core revision, wrong batch revision,
 or wrong source-manifest ID.
 
 **Expected:** Only affected bindings are UNKNOWN; ambiguous duplicate identity
@@ -385,7 +385,7 @@ The display title changes while story identity/slice remains.
 
 ### Case 36: Priority source is exact
 
-Epic/GDD planning evidence assigns `must-have` with stable source locator/hash.
+Epic/GDD planning evidence assigns `must-have` with stable source locator/revision.
 
 **Expected:** Priority and Priority Source are emitted exactly.
 
@@ -405,17 +405,16 @@ five templates.
 
 ### Case 39: identity and readiness fields mandatory
 
-Remove story ID, slot, epic ID, revision, source-manifest/core hash, computed
+Remove story ID, slot, epic ID, revision, source-manifest/core revision, computed
 status, or NOT_EVALUATED readiness.
 
 **Expected:** Schema validation fails before publication.
 
-### Case 40: candidate self-hash prohibited
+### Case 40: explicit candidate revision consistency
 
-The renderer tries to embed the exact current artifact hash.
+The renderer receives an explicit candidate revision that disagrees with the approved changeset.
 
-**Expected:** Candidate is invalid. Only prior artifact and core/source hashes are
-embedded; current artifact hash remains external.
+**Expected:** Candidate is invalid. Story, core, source, and registry revisions must agree with explicit producer metadata; no ID or revision is derived from content bytes.
 
 ### Case 41: schema/path/catalog/spec alignment
 
@@ -428,11 +427,11 @@ glob never expands ownership.
 
 ### Case 42: exact supplied QA plan
 
-The explicit path/hash plan is CURRENT and binds exact QA scope/sprint, epic,
-story, canonical path, current raw story artifact hash, recomputed core hash,
-AC-set hash, AC, and Test ID.
+The explicit path/revision plan is CURRENT and binds exact QA scope/sprint, epic,
+story, canonical path, current raw story artifact revision, revalidated declared core revision,
+AC-set revision, AC, and Test ID.
 
-**Expected:** Only exact matching items are imported with path/hash/owner state.
+**Expected:** Only exact matching items are imported with path/revision/owner state.
 
 ### Case 43: same name in another sprint
 
@@ -453,7 +452,7 @@ A newer plan conflicts with the explicit older current plan.
 **Expected:** The workflow never reads/selects by mtime or latest filename; only
 the explicit exact plan is considered.
 
-### Case 46: stale core or AC-set hash
+### Case 46: stale core or AC-set revision
 
 Plan binds old story core or old AC membership.
 
@@ -463,7 +462,7 @@ risk acceptance cannot make it current.
 ### Case 47: partial/ambiguous plan
 
 Exercise PARTIAL, STALE, duplicate Test ID, Test bound to two ACs, missing plan
-owner, source hash mismatch, and unsupported schema.
+owner, source revision mismatch, and unsupported schema.
 
 **Expected:** Affected items are not imported; exact reasons remain visible.
 
@@ -516,7 +515,7 @@ Test/dependency/history fields.
 
 Two distinct full canonical keys share the same truncated STORY ID.
 
-**Expected:** Epic-wide IDENTITY_CONFLICT with both full hashes and zero writes;
+**Expected:** Epic-wide IDENTITY_CONFLICT with both full revisions and zero writes;
 no suffix/sequential fallback.
 
 ### Case 55: slot/path collision
@@ -573,10 +572,10 @@ reordered without changing source/slice ownership.
 
 Same approved stable requirement/criterion ID changes exact wording.
 
-**Expected:** Preserve story/AC identities, update excerpt/source/core hashes and
+**Expected:** Preserve story/AC identities, update excerpt/source/core revisions and
 revision diff only after current approval covers new bytes.
 
-### Case 63: fingerprint-owned source changes
+### Case 63: stable business key-owned source changes
 
 A no-ID source's locator/text identity changes.
 
@@ -629,14 +628,14 @@ arbitrary file-count split.
 
 ### Case 70: dependency DAG
 
-Dependencies resolve by stable ID/path/core hash and form a valid DAG.
+Dependencies resolve by stable ID/path/core revision and form a valid DAG.
 
 **Expected:** Deterministic topological order is used for batching but never
 changes identity.
 
 ### Case 71: dependency failure matrix
 
-Exercise missing/ambiguous hard dependency, stale core hash, self-edge, duplicate
+Exercise missing/ambiguous hard dependency, stale core revision, self-edge, duplicate
 edge, cycle, and cross-epic title-only reference.
 
 **Expected:** Affected dependent stories block; exact IDs/evidence are reported.
@@ -660,14 +659,14 @@ DEFERRED with a deterministic inline cursor and outcome PARTIAL.
 
 ### Case 74: deterministic cursor resume
 
-Resume with the exact cursor and unchanged epic/source/inventory/order hashes.
+Resume with the exact cursor and unchanged epic/source/inventory/order revisions.
 
 **Expected:** Select the next stable IDs without duplication or omission.
 
 ### Case 75: stale/tampered cursor
 
 Change epic, source manifest, inventory, ordering ruleset, remaining IDs, or
-cursor hash.
+cursor revision.
 
 **Expected:** BLOCKED_STALE_CURSOR, zero writes, and no silent restart from title/
 order.
@@ -692,7 +691,7 @@ and direct-child inventory are read.
 A mixed CREATE/UPDATE/RETIRE batch is ready.
 
 **Expected:** Existing bounded authorization or one approval binds every path,
-preimage, candidate, diff, source/inventory/batch/QA hash, history append, and
+preimage, candidate, diff, source/inventory/batch/QA revision, history append, and
 omitted limitation. No per-story prompt.
 
 ### Case 79: full CAS change matrix
@@ -709,7 +708,7 @@ merge/retry, and no approval reuse.
 CAS passes and every atomic file create/replace/readback verifies.
 
 **Expected:** STORIES current registry/ledgers publish last and only from verified
-story results. EPIC/index remain unchanged. Exact external artifact hashes are
+story results. EPIC/index remain unchanged. Exact external artifact revisions are
 reported.
 
 ### Case 81: mid-publication failure
@@ -717,14 +716,14 @@ reported.
 One story verifies, the next write/readback fails.
 
 **Expected:** PARTIAL_WRITE lists verified, uncertain, unchanged, and unattempted
-paths/hashes. It does not claim cross-file rollback, delete success, or COMPLETE.
+paths/revisions. It does not claim cross-file rollback, delete success, or COMPLETE.
 
 ### Case 82: append-only revision and allocation history
 
 Update/retire stories and append STORIES batch/allocation events.
 
 **Expected:** Prior events/slots/IDs remain byte-for-byte and ordered; each new
-event binds base/candidate/source/core/batch hashes and author/time.
+event binds base/candidate/source/core/batch revisions and author/time.
 
 ### Case 83: exact no-op trace
 
@@ -744,7 +743,7 @@ observation and is never retargeted or rewritten.
 One final story is AUTHOR_COMPLETE and catalog declares story-readiness.
 
 **Expected:** Return exactly one catalog-derived command with exact path and
-external artifact hash, without executing it or claiming READY.
+external artifact revision, without executing it or claiming READY.
 
 ### Case 86: missing typed route
 

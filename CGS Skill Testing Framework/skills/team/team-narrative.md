@@ -13,7 +13,7 @@ brief/dialogue/art/level proposals, and renders every final artifact byte before
 content approval and mutation authorization. Unique owners write disjoint paths;
 localization review uses actual UX/string sources; immutable checkpoints support
 idempotent recovery; and a fresh narrative-specific reviewer binds the final
-artifact-set hash. Partial, late, unreviewed, or localization-blocked work never
+artifact-set revision. Partial, late, unreviewed, or localization-blocked work never
 becomes COMPLETE or a downstream localization handoff.
 
 ---
@@ -22,14 +22,14 @@ becomes COMPLETE or a downstream localization handoff.
 
 | P1 ID | Audit issue | Required closure |
 |---|---|---|
-| TN-004 | TNR-006 unknown first changeset | Complete candidate path/preimage/hash/owner manifest before approval |
+| TN-004 | TNR-006 unknown first changeset | Complete candidate path/preimage/revision/owner manifest before approval |
 | TN-005 | TNR-007 dangling review mode | Exact full/lean/solo role substitutions and quality ceilings |
 | TN-006 | TNR-008 unbounded “full context” | Hard file/byte/node/edge/depth/entity budgets and fail-closed graph |
-| TN-007 | TNR-009 evidence-free COMPLETE | Final paths/hashes/owners, zero blockers, authorization, localization, checkpoint, and review receipt |
+| TN-007 | TNR-009 evidence-free COMPLETE | Final paths/revisions/owners, zero blockers, authorization, localization, checkpoint, and review receipt |
 | TN-008 | TNR-010 missing PARTIAL state | Typed PARTIAL/BLOCKED readiness and handoff prohibitions |
 | TN-009 | TNR-011 no attempt control | Deadlines, one no-write retry, cancellation, revoked tokens, late quarantine |
-| TN-010 | TNR-012 no resumable state | Append-only checkpoint chain and hash/CAS-validated idempotent resume |
-| TN-011 | TNR-013 unilateral canon finalization | Product decision, separate promotion approval/authorization, registry receipt, freeze hash |
+| TN-010 | TNR-012 no resumable state | Append-only checkpoint chain and revision/CAS-validated idempotent resume |
+| TN-011 | TNR-013 unilateral canon finalization | Product decision, separate promotion approval/authorization, registry receipt, freeze revision |
 | TN-012 | TNR-014 invented 120-character gate | Per-surface authoritative UX/string constraints; UNKNOWN assumptions cannot pass |
 | TN-013 | TNR-015 role drift | One role/phase matrix aligned across SKILL, metadata, and spec |
 | TN-014 | TNR-016 unverified localize syntax | Versioned handoff contract and exact ready manifest; no automatic invocation |
@@ -40,15 +40,15 @@ becomes COMPLETE or a downstream localization handoff.
 
 - [ ] **TN-S001** — YAML frontmatter contains only `name` and non-empty `description`; `name` is exactly `team-narrative`.
 - [ ] **TN-S002** — Invocation requires `--manifest` and accepts only optional exact `--resume`; no manifest has zero reads, delegates, prompts, approvals, or writes.
-- [ ] **TN-S003** — Request schema is `cgs.team-narrative-request/v2` with stable content/run IDs, create/revise mode, exact artifact IDs/paths, authorities, hashes, limits, deadlines, and evidence roots.
+- [ ] **TN-S003** — Request schema is `cgs.team-narrative-request/v2` with stable content/run IDs, create/revise mode, exact artifact IDs/paths, authorities, revisions, limits, deadlines, and evidence roots.
 - [ ] **TN-S004** — Unsafe/aliased/escaped paths, duplicate IDs/destinations, conflicting writers, missing revise targets, occupied create targets, and raised limits fail before side effects.
 - [ ] **TN-S005** — Canon validation and explicit product decisions precede every canon-dependent narrative-director, writer, art-director, and level-designer task.
-- [ ] **TN-S006** — Only a verified `CANON_FROZEN` checkpoint with canonical sorted canon-baseline hash opens dependent proposal work.
-- [ ] **TN-S007** — Parallel delegates are read-only, use exact context/hash/token/prohibited-path inputs, have no nested delegation, and cannot write operational records.
+- [ ] **TN-S006** — Only a verified `CANON_FROZEN` checkpoint with canonical sorted canon-baseline revision opens dependent proposal work.
+- [ ] **TN-S007** — Parallel delegates are read-only, use exact context/revision/token/prohibited-path inputs, have no nested delegation, and cannot write operational records.
 - [ ] **TN-S008** — Each normalized artifact path has one writer; shared registries/manifests have one sequential recorder; writer path sets are disjoint.
-- [ ] **TN-S009** — `cgs.narrative-artifact-plan/v2` lists every artifact ID/type/path/operation/preimage/full candidate hash/owner/dependency/limit/non-write before content approval.
+- [ ] **TN-S009** — `cgs.narrative-artifact-plan/v2` lists every artifact ID/type/path/operation/preimage/full candidate revision/owner/dependency/limit/non-write before content approval.
 - [ ] **TN-S010** — Unknown suggested paths are excluded until a revised request, complete re-render, new plan approval, and new mutation authorization.
-- [ ] **TN-S011** — Content-plan approval and mutation authorization are separate exact hash-bound records; neither canon decision nor proposal approval authorizes a write.
+- [ ] **TN-S011** — Content-plan approval and mutation authorization are separate exact revision-bound records; neither canon decision nor proposal approval authorizes a write.
 - [ ] **TN-S012** — `cgs.narrative-role-matrix/v2` enumerates phase, role, mode state, identity, scope, deadlines, retry, omission effect, and reviewer independence.
 - [ ] **TN-S013** — Full mode explicitly includes world-builder, narrative-director author, conditional writer/art-director/level-designer, localization-lead, and fresh independent narrative reviewer.
 - [ ] **TN-S014** — Lean mode specifies coordinator substitutions and makes requested omitted art/level artifacts PARTIAL; solo invokes zero agents, is planning-only, writes no canon/content, and cannot COMPLETE.
@@ -61,28 +61,28 @@ becomes COMPLETE or a downstream localization handoff.
 - [ ] **TN-S021** — Retry is allowed only after proving the revoked attempt wrote nothing and uses a new token/input snapshot.
 - [ ] **TN-S022** — Timeout/cancel/invalid/side-effect revokes the token, cancels dependents, scans prohibited/target preimages, and makes late output quarantined and unusable.
 - [ ] **TN-S023** — Detected late writes are preserved as exact evidence, never auto-reverted, and prevent COMPLETE.
-- [ ] **TN-S024** — `cgs.team-narrative-checkpoint/v2` is append-only, predecessor-hash chained, phase typed, and records inputs/outputs/decisions/authorizations/attempts/blockers/next phase.
-- [ ] **TN-S025** — Resume binds exact checkpoint path/hash and revalidates chain, IDs, mode, sources, canon, targets, authorizations, tokens, and late writes before continuing.
+- [ ] **TN-S024** — `cgs.team-narrative-checkpoint/v2` is append-only, predecessor-revision chained, phase typed, and records inputs/outputs/decisions/authorizations/attempts/blockers/next phase.
+- [ ] **TN-S025** — Resume binds exact checkpoint path/revision and revalidates chain, IDs, mode, sources, canon, targets, authorizations, tokens, and late writes before continuing.
 - [ ] **TN-S026** — Resume never silently restarts/replays writes/reuses stale proposals or review; completed verified work is no-op and pending tasks receive new tokens.
-- [ ] **TN-S027** — `cgs.canon-product-decision/v2` binds source-backed options, decision-maker, rationale, affected IDs/paths/hashes, and timestamp.
+- [ ] **TN-S027** — `cgs.canon-product-decision/v2` binds source-backed options, decision-maker, rationale, affected IDs/paths/revisions, and timestamp.
 - [ ] **TN-S028** — `cgs.canon-promotion-plan/v2` renders all canon/registry candidate bytes and unique owners before separate plan approval and mutation authorization.
 - [ ] **TN-S029** — Canon promotion uses source/target/registry/decision/authorization/role CAS, sequential unique writers, read-back, registry verification, and `cgs.canon-promotion-receipt/v2`.
 - [ ] **TN-S030** — World-builder or coordinator cannot unilaterally finalize canon; no downstream proposal starts after partial/unreceipted promotion.
-- [ ] **TN-S031** — `cgs.narrative-string-constraint-manifest/v2` binds every string to its actual UI surface/control/source hash, formatter grammar, locale profile, and content/spoiler policy.
+- [ ] **TN-S031** — `cgs.narrative-string-constraint-manifest/v2` binds every string to its actual UI surface/control/source revision, formatter grammar, locale profile, and content/spoiler policy.
 - [ ] **TN-S032** — Universal 120-character limits and generic expansion percentages are prohibited substitutes; assumptions remain UNKNOWN with owner/test plan.
 - [ ] **TN-S033** — Blocking or UNKNOWN required localization findings produce `NOT_LOCALIZATION_READY` and PARTIAL regardless of risk acceptance.
-- [ ] **TN-S034** — `cgs.localization-handoff-contract/v1` is required to validate receiving schema/version, manifest/hash, source locale/string IDs, readiness receipt, spoiler exclusions, output ownership, and availability.
+- [ ] **TN-S034** — `cgs.localization-handoff-contract/v1` is required to validate receiving schema/version, manifest/revision, source locale/string IDs, readiness receipt, spoiler exclusions, output ownership, and availability.
 - [ ] **TN-S035** — `cgs.narrative-localization-handoff/v2` is read-only; missing/stale/incompatible/unavailable interface yields `LOCALIZATION_HANDOFF_UNVERIFIED`, no guessed `$localize extract`, and no automatic invocation.
-- [ ] **TN-S035A** — The handoff exposes the exact `cgs.narrative-localization-handoff-v2-adapter/v1` tuple: current contract/authority, canon sources/baseline, final story-artifact manifest and rows, context/source hashes, string constraints/IDs, LOCALIZATION_READY review with empty blocking/unknown lists, protected-content exclusions, destination ownership/preimages, recipient availability, and canonical payload hash computed with exactly `payload_sha256` and derived `handoff_id` omitted.
+- [ ] **TN-S035A** — The handoff exposes the exact `cgs.narrative-localization-handoff-v2-adapter/v1` tuple: current contract/authority, canon sources/baseline, final story-artifact manifest and rows, context/source revisions, string constraints/IDs, LOCALIZATION_READY review with empty blocking/unknown lists, protected-content exclusions, destination ownership/preimages, recipient availability, and explicit payload revision and stable handoff business ID plus UTC run ID.
 - [ ] **TN-S036** — Source/canon, target/ownership, review/approval/role, checkpoint/token CAS all pass in one pre-write pass; mismatch means zero new content writes.
 - [ ] **TN-S037** — Writes are unique-owner, exact-scope, dependency-ordered, per-path atomic where supported, and immediately read back; whole-set atomicity/rollback is not claimed.
 - [ ] **TN-S038** — Partial writes produce exact applied/no-op/not-applied/conflict/unknown preimage/candidate/observed evidence and require fresh recovery authorization.
-- [ ] **TN-S039** — Final artifact manifest is canonical/sorted and its digest is the only `final_artifact_set_sha256` used by final review and completion.
+- [ ] **TN-S039** — Final artifact manifest is canonical/sorted and its revision is the only `final_artifact_set_revision` used by final review and completion.
 - [ ] **TN-S040** — Final reviewer is fresh, read-only, identity-independent, and uses only the narrative-specific canon/voice/arc/trigger/truth/localization/rating/reference profile.
-- [ ] **TN-S041** — Post-review fixes stale prior evidence, require rehash and fresh scoped dependent review, and allow at most two fix/re-review rounds.
+- [ ] **TN-S041** — Post-review fixes stale prior evidence, require re-read and fresh scoped dependent review, and allow at most two fix/re-review rounds.
 - [ ] **TN-S042** — No system-GDD review workflow is invoked or recommended for narrative artifacts.
-- [ ] **TN-S043** — `cgs.team-narrative-result/v2` records artifact paths/hashes/owners, canon/final hashes, approvals, authorization, checkpoint, localization/hand-off/reviewer evidence, attempts, blockers, and exactly one next action.
-- [ ] **TN-S044** — COMPLETE requires current artifacts, hashes, unique owners, LOCALIZATION_READY, independent final-hash review, valid chains/receipts, zero blockers/stale/late evidence, and required handoff verification.
+- [ ] **TN-S043** — `cgs.team-narrative-result/v2` records artifact paths/revisions/owners, canon/final revisions, approvals, authorization, checkpoint, localization/hand-off/reviewer evidence, attempts, blockers, and exactly one next action.
+- [ ] **TN-S044** — COMPLETE requires current artifacts, revisions, unique owners, LOCALIZATION_READY, independent final-revision review, valid chains/receipts, zero blockers/stale/late evidence, and required handoff verification.
 - [ ] **TN-S045** — PARTIAL and BLOCKED have explicit semantics/readiness labels and cannot enter localization, assets, or implementation.
 - [ ] **TN-S046** — Metadata names bounded canon-safe narrative, narrative/dialogue/art/level/localization proposals, single-owner authorization, and independent final review without omitting implemented roles.
 
@@ -134,7 +134,7 @@ or context limit above contract.
 
 **Expected behavior**:
 
-1. Read-only canon validation returns a stable NCF finding with both source hashes.
+1. Read-only canon validation returns a stable NCF finding with both source revisions.
 2. The canon authority receives source-backed choices.
 3. Narrative-director dependent brief, writer, art-director, and level-designer are
    not launched until a verified decision/promotion and CANON_FROZEN checkpoint.
@@ -152,18 +152,18 @@ or context limit above contract.
 ### Case 4: No-change canon freeze is reproducible
 
 **Fixture**: Canon validation finds no required mutation and every declared canon
-source/registry hash is current.
+source/registry revision is current.
 
 **Expected behavior**:
 
 1. Product no-change decision and sorted canon manifest are recorded.
-2. Rehashing yields one deterministic canon-baseline hash.
-3. CANON_FROZEN checkpoint binds the decision, manifest, and role/context hashes.
+2. re-reading yields one deterministic canon-baseline revision.
+3. CANON_FROZEN checkpoint binds the decision, manifest, and role/context revisions.
 
 **Assertions**:
 
 - [ ] No canon file is rewritten for activity.
-- [ ] Any later canon hash drift stales downstream proposals.
+- [ ] Any later canon revision drift stales downstream proposals.
 - [ ] The freeze is not inferred from reviewer approval alone.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
@@ -176,7 +176,7 @@ source/registry hash is current.
 
 **Expected behavior**:
 
-1. Every fact/registry candidate byte, path, owner, preimage, hash, order, and
+1. Every fact/registry candidate byte, path, owner, preimage, revision, order, and
    non-write is rendered before promotion approval.
 2. Canon authority approves content; mutation authority separately authorizes the
    exact set.
@@ -186,7 +186,7 @@ source/registry hash is current.
 **Assertions**:
 
 - [ ] World-builder cannot finalize canon.
-- [ ] Registry has one recorder and matches artifact IDs/hashes.
+- [ ] Registry has one recorder and matches artifact IDs/revisions.
 - [ ] Partial/unreceipted promotion blocks dependent proposals.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
@@ -200,7 +200,7 @@ one proposal suggests an undeclared glossary.
 
 **Expected behavior**:
 
-1. Complete candidate bytes and hashes are rendered for every declared artifact.
+1. Complete candidate bytes and revisions are rendered for every declared artifact.
 2. The exact path/operation/preimage/candidate/owner/dependency matrix is shown.
 3. Suggested glossary is excluded until a revised request/re-render/approval.
 4. Only then may content-plan approval occur; writes still await authorization.
@@ -222,7 +222,7 @@ suggest the same summary file.
 
 **Expected behavior**:
 
-1. At most three read-only attempts receive the same canon hash and disjoint slices.
+1. At most three read-only attempts receive the same canon revision and disjoint slices.
 2. Overlapping destination ownership is rejected or routed through one recorder.
 3. Writes occur only later through unique authorized owners.
 
@@ -313,7 +313,7 @@ count overflow, cycle, missing stable reference, and optional non-canon overflow
 1. Inventory/count occurs before over-limit full-read; no source is truncated.
 2. Canon failure/overflow blocks freeze; optional non-canon overflow produces
    PARTIAL and excludes dependents.
-3. Context manifest records exact boundary, omissions, graph, and hashes.
+3. Context manifest records exact boundary, omissions, graph, and revisions.
 
 **Assertions**:
 
@@ -354,7 +354,7 @@ revoked attempt, exact manifests, and one pending proposal.
 
 **Expected behavior**:
 
-1. Resume validates the complete linear checkpoint chain and every bound hash,
+1. Resume validates the complete linear checkpoint chain and every bound revision,
    identity, authorization, token, canon, target, and late-write state.
 2. Valid completed proposals are no-op; only pending work receives a new token.
 3. Drift/fork/gap/overwritten checkpoint blocks without silent restart.
@@ -376,7 +376,7 @@ markup/formatter/locale profiles.
 
 **Expected behavior**:
 
-1. Constraint manifest binds each string/surface/control to actual source hash.
+1. Constraint manifest binds each string/surface/control to actual source revision.
 2. Review applies the correct surface-specific rules and locale profile.
 3. Formatter, plurals, grammar, dates, concatenation, rating, and spoiler checks are
    evidence-bound.
@@ -385,7 +385,7 @@ markup/formatter/locale profiles.
 
 - [ ] No universal 120-character rule appears.
 - [ ] No generic expansion percentage substitutes for source evidence.
-- [ ] Every passed string has stable ID and current constraint hash.
+- [ ] Every passed string has stable ID and current constraint revision.
 
 **Case Verdict**: PASS / FAIL / PARTIAL
 
@@ -418,9 +418,9 @@ markup/formatter/locale profiles.
 
 **Expected behavior**:
 
-1. Stable blocking LOC finding binds string/artifact/source hashes and owner action.
+1. Stable blocking LOC finding binds string/artifact/source revisions and owner action.
 2. Only unique owner may fix within authorized candidate set; changed bytes require
-   rehash, localization re-review, and final scoped review.
+   re-read, localization re-review, and final scoped review.
 3. If unresolved, result is PARTIAL + NOT_LOCALIZATION_READY even when risk is
    accepted.
 
@@ -441,13 +441,11 @@ LOCALIZATION_READY receipt has zero blockers and exact string IDs/source locale.
 
 **Expected behavior**:
 
-1. Handoff candidate binds contract version/hash, artifact manifest/hash,
+1. Handoff candidate binds contract version/revision, artifact manifest/revision,
    readiness evidence, string order, spoiler exclusions, and output ownership.
 2. Exact canon sources/baseline, story-artifact rows, context/source bindings,
-   caller authority, recipient availability, and payload hash all revalidate.
-3. The payload digest omits exactly `payload_sha256` and `handoff_id`, and the
-   latter is re-derived as `NLOC-` plus the first 20 lowercase digest characters;
-   no placeholder/self-referential ID participates in the hash.
+   caller authority, recipient availability, and payload revision all validate against explicit producer metadata.
+3. The payload carries an explicit monotonic revision, while handoff_id is NLOC-<canon-id>-<artifact-set-id>-<UTC-run-id>; neither field is content-derived or self-referential.
 4. Path-bound use requires read-back-verified durable string-constraint,
    final-artifact, and handoff records from the pre-authorized recorder.
 5. It may be offered as one post-COMPLETE next action.
@@ -458,7 +456,7 @@ LOCALIZATION_READY receipt has zero blockers and exact string IDs/source locale.
 - [ ] Private truth payload is excluded.
 - [ ] No guessed command syntax is emitted.
 - [ ] Handoff recipient availability is evidenced.
-- [ ] Every adapter field and raw/canonical hash reproduces from current sources.
+- [ ] Every adapter field and raw/canonical revision reproduces from current sources.
 - [ ] Request and contract caller-authority identities are equal.
 - [ ] Conversation-only or missing prerequisite manifests cannot be consumed as a
       path-bound localize input.
@@ -469,7 +467,7 @@ LOCALIZATION_READY receipt has zero blockers and exact string IDs/source locale.
 
 ### Case 18: Missing or incompatible localization interface blocks required handoff
 
-**Fixture variants**: interface absent, stale hash, unsupported manifest version,
+**Fixture variants**: interface absent, stale revision, unsupported manifest version,
 unavailable receiver, missing readiness field, or destination ownership conflict.
 
 **Expected behavior**:
@@ -538,7 +536,7 @@ not yet written.
 **Expected behavior**:
 
 1. Ordinary writes stop; no destructive rollback or atomic-set claim occurs.
-2. Applied/no-op/not-applied/conflict/unknown states bind exact hashes.
+2. Applied/no-op/not-applied/conflict/unknown states bind exact revisions.
 3. Authorized PARTIAL checkpoint/result is attempted; receipt failure reports an
    unreceipted changed set.
 4. Recovery requires fresh full inventory and authorization.
@@ -553,14 +551,14 @@ not yet written.
 
 ---
 
-### Case 22: Independent review follows final polish hashes
+### Case 22: Independent review follows final polish revisions
 
 **Fixture**: Initial review finds a voice blocker; owner applies authorized fix.
 
 **Expected behavior**:
 
-1. Reviewer is fresh/read-only/independent and binds current canon/final hashes.
-2. Fix stales old review; complete artifact set is rehashed.
+1. Reviewer is fresh/read-only/independent and binds current canon/final revisions.
+2. Fix stales old review; complete artifact set is re-read.
 3. Exact fix bytes enter a versioned plan with fresh approval/authorization unless
    current authorization already binds those exact bytes.
 4. Fresh scoped review covers changed dialogue plus declared dependents.
@@ -582,7 +580,7 @@ not yet written.
 and localizable strings.
 
 **Expected behavior**: Review covers NR-CANON, NR-VOICE, NR-ARC, NR-TRIGGER,
-NR-TRUTH, NR-LOC, NR-RATING, and NR-REF against final hashes.
+NR-TRUTH, NR-LOC, NR-RATING, and NR-REF against final revisions.
 
 **Assertions**:
 
@@ -599,14 +597,14 @@ NR-TRUTH, NR-LOC, NR-RATING, and NR-REF against final hashes.
 **Fixture variants**:
 
 - Every required artifact, receipt, role, localization gate, review, checkpoint,
-  hash, and handoff condition succeeds.
-- One blocker, omitted role, late result, stale hash, unverified handoff, or failed
+  revision, and handoff condition succeeds.
+- One blocker, omitted role, late result, stale revision, unverified handoff, or failed
   evidence write remains.
 
 **Expected behavior**:
 
-1. First variant emits COMPLETE result with artifact path/hash/owner table, canon/
-   final hashes, approvals, authorization, localization/handoff/reviewer evidence,
+1. First variant emits COMPLETE result with artifact path/revision/owner table, canon/
+   final revisions, approvals, authorization, localization/handoff/reviewer evidence,
    zero blockers, and exactly one next action.
 2. Second variant emits PARTIAL/BLOCKED with readiness labels and exact evidence.
 3. Neither variant starts a downstream workflow.
@@ -635,7 +633,7 @@ NR-TRUTH, NR-LOC, NR-RATING, and NR-REF against final hashes.
 
 **Assertions**:
 
-- [ ] Every staged file has exact byte count and SHA-256.
+- [ ] Every staged file has exact byte count and revision.
 - [ ] No staged catalog/shared-doc edit exists.
 - [ ] No project workflow was invoked.
 
@@ -648,31 +646,31 @@ NR-TRUTH, NR-LOC, NR-RATING, and NR-REF against final hashes.
 - [ ] **TN-X001** — Request content/run/artifact IDs and destination paths agree
   across context, roles, proposals, artifact/ownership plans, authorization,
   checkpoints, final manifest, reviews, handoff, and result.
-- [ ] **TN-X002** — Canon source/registry hashes, product decision, promotion
+- [ ] **TN-X002** — Canon source/registry revisions, product decision, promotion
   receipt, CANON_FROZEN checkpoint, all proposal inputs, final manifest, and review
-  bind the same canon-baseline hash.
+  bind the same canon-baseline revision.
 - [ ] **TN-X003** — Every artifact path maps to exactly one writer/owner and every
-  candidate/final/preimage hash agrees across plan, authorization, write evidence,
+  candidate/final/preimage revision agrees across plan, authorization, write evidence,
   final manifest, review, and result.
 - [ ] **TN-X004** — Role matrix, attempt records, checkpoint tokens, mode omissions,
   metadata role claims, and spec expectations agree exactly.
-- [ ] **TN-X005** — String IDs, surfaces, actual constraint-source hashes,
+- [ ] **TN-X005** — String IDs, surfaces, actual constraint-source revisions,
   localization findings/readiness, final artifact manifest, and handoff candidate
   refer to the same ordered current string set.
 - [ ] **TN-X006** — Private truth IDs/access classes agree across canon, public
   references, proposal evidence, review, and localization exclusions without answer
   leakage.
-- [ ] **TN-X007** — Checkpoint/result predecessor hashes, sequences, phases,
+- [ ] **TN-X007** — Checkpoint/result predecessor revisions, sequences, phases,
   completed/pending work, target observations, and next safe phase form one linear
   immutable chain.
 - [ ] **TN-X008** — Reviewer identity/token is disjoint from author/editor/writer/
-  recorder/decision/approval identities and its canon/final hashes equal current
-  read-back hashes.
+  recorder/decision/approval identities and its canon/final revisions equal current
+  read-back revisions.
 - [ ] **TN-X009** — Every PARTIAL/BLOCKED condition appears in result readiness,
   open findings/blockers, checkpoint next phase, and exactly one next action; none
   appears as COMPLETE or a downstream handoff.
 - [ ] **TN-X010** — The staged candidate contains no catalog/shared-document copy,
-  and live/P0/catalog hashes equal their frozen pre-edit snapshots.
+  and live/P0/catalog revisions equal their frozen pre-edit snapshots.
 
 ---
 
@@ -686,7 +684,7 @@ NR-TRUTH, NR-LOC, NR-RATING, and NR-REF against final hashes.
   all applicable CAS gates.
 - [ ] Parallel work is proposal-only, bounded, cancelable, retry-limited, and immune
   to late-output adoption.
-- [ ] Final changes always stale prior review until rehash and fresh independent
+- [ ] Final changes always stale prior review until re-read and fresh independent
   scoped review.
 - [ ] COMPLETE, PARTIAL, and BLOCKED remain evidence states, not user-preference
   labels.

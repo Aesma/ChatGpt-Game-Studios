@@ -29,7 +29,7 @@ registered handler. The 8 registered events are `SessionStart`, `PreToolUse`,
 
 Codex does not load project hooks until the repository is trusted. Review the
 resolved registry with `/hooks` before trusting it. Trust is tied to the current
-hook-configuration hash, so a registry change is reviewable rather than silently
+hook-configuration revision, so a registry change is reviewable rather than silently
 inheriting an earlier decision.
 
 `PreToolUse` command checks are defense in depth, not the filesystem sandbox.

@@ -9,7 +9,7 @@ fixture run, gate invocation, source mutation, or catalog `last_*` result.
 ## Skill summary
 
 `$sprint-status` is a bounded read-only check for one stable sprint. It validates
-plan/tracker/story identities and hashes, distinguishes UNKNOWN from explicit
+plan/tracker/story identities and revisions, distinguishes UNKNOWN from explicit
 NOT_STARTED, obtains staleness and weighting values from one project-owned
 configuration, computes a priority-/estimate-/dependency-aware rough signal, and
 returns one health enum independently from data quality. It never scans source
@@ -64,13 +64,13 @@ bounded/provenance checks are regression support, not additional P1 findings.
 5. [ ] Explicit → tracker active ID → session active ID/reference → user prompt
    resolution is defined; mtime/filename/latest inference is forbidden.
 6. [ ] Applicable tracker requires selected IDs, plan revision, raw story-set
-   hash, update time, complete story coverage, and matching projections; conflict
+   revision, update time, complete story coverage, and matching projections; conflict
    stops before counts and health.
 7. [ ] Tracker-absent no-marker story is UNKNOWN, missing file is MISSING, and
    neither enters NOT_STARTED/backlog/work denominators or non-UNKNOWN health.
 8. [ ] `production/config/sprint-status.yaml` and schema
    `cgs.sprint-status-config/v1` are the only stale/weight/health threshold source.
-9. [ ] The output displays config revision/hash, stale value/day basis/timezone/
+9. [ ] The output displays config revision/revision, stale value/day basis/timezone/
    calendar, priority weights, schedule threshold, Must-Have time trigger, and
    estimate unit.
 10. [ ] Missing/invalid dates make `health_status: UNKNOWN` with exact field IDs;
@@ -87,7 +87,7 @@ bounded/provenance checks are regression support, not additional P1 findings.
     explicitly label the result a rough signal rather than forecast.
 15. [ ] IN_REVIEW is unfinished and recovery checkpoints are validated evidence,
     never status/completion authority.
-16. [ ] The workflow is read-only throughout, rehashes sources before return,
+16. [ ] The workflow is read-only throughout, revalidatees sources before return,
     invokes no gate/workflow, requests no authorization, and creates no attachment.
 17. [ ] Source/story/edge/checkpoint/output bounds are fixed; pagination never
     changes full-set metrics.
@@ -101,7 +101,7 @@ bounded/provenance checks are regression support, not additional P1 findings.
 **Fixture:**
 
 - Tracker and session both select `sprint-004`.
-- Plan/tracker IDs, plan revision, story-set hash, update times, story projections,
+- Plan/tracker IDs, plan revision, story-set revision, update times, story projections,
   and checkpoint/review evidence verify.
 - Plan dates/timezone, estimates, priorities, and acyclic dependencies are valid.
 - Project configuration validates and all required story statuses/freshness are
@@ -109,7 +109,7 @@ bounded/provenance checks are regression support, not additional P1 findings.
   rule matches.
 
 **Expected:** `run_status: COMPLETE`, `data_status: VERIFIED`,
-`health_status: ON_TRACK`, exact `SS-HEALTH-05` input tuple, source/config hashes,
+`health_status: ON_TRACK`, exact `SS-HEALTH-05` input tuple, source/config revisions,
 and no project mutation.
 
 ---
@@ -119,14 +119,14 @@ and no project mutation.
 **Fixture:** tracker is absent, session explicitly selects `sprint-004`, and
 `sprint-099.md` is newer by mtime and sorts later by filename.
 
-**Expected:** only `sprint-004` resolves; selection source/path/hash are shown;
+**Expected:** only `sprint-004` resolves; selection source/path/revision are shown;
 mtime and filename order are not inspected as authority.
 
 ---
 
 ## Case 3: Applicable tracker mismatch is DATA_CONFLICT
 
-Run variants for wrong sprint/active ID, plan revision, story-set hash, stale
+Run variants for wrong sprint/active ID, plan revision, story-set revision, stale
 tracker timestamp, missing/extra story, status disagreement, malformed field, and
 source changing during the run.
 
@@ -170,7 +170,7 @@ SPRINT COMPLETE health value appears.
 - C: WORKING_DAYS calendar makes the elapsed value 2 while calendar elapsed is 4.
 
 **Expected:** A is STALE; B and C are FRESH. Each row displays config
-revision/hash, threshold, basis, timezone/calendar, timestamps, elapsed operand,
+revision/revision, threshold, basis, timezone/calendar, timestamps, elapsed operand,
 and strict-greater comparison. File mtime never participates.
 
 ---
@@ -204,7 +204,7 @@ AT RISK / BLOCKED: unknown.”
 output, and git history; rerun with those files removed.
 
 **Expected:** both outputs have identical story status, coverage, estimates,
-critical path, schedule signal, health, and hashes for the allowed read set. No
+critical path, schedule signal, health, and revisions for the allowed read set. No
 slug search or Evidence Hint appears and none of those directories is read.
 
 ---
@@ -293,7 +293,7 @@ DATA_CONFLICT.
 ## Case 17: IN_REVIEW is unfinished
 
 **Fixture:** story/tracker normalize to IN_REVIEW and plan/post-write/test/log
-hashes verify with exit code zero and no unresolved checkpoint.
+revisions verify with exit code zero and no unresolved checkpoint.
 
 **Expected:** IN_REVIEW is distinct, contributes zero DONE estimate, and prevents
 an all-work-done claim. Missing/malformed/failing review evidence is
@@ -304,8 +304,8 @@ DATA_CONFLICT, not automatic IN_PROGRESS or DONE.
 ## Case 18: Recovery checkpoint is evidence, not authority
 
 **Variants:** valid unresolved PARTIAL checkpoint with both projections
-IN_PROGRESS; hash/identity mismatch; unresolved checkpoint while IN_REVIEW;
-claimed restored failure whose baseline hashes do not match current bytes.
+IN_PROGRESS; revision/identity mismatch; unresolved checkpoint while IN_REVIEW;
+claimed restored failure whose baseline revisions do not match current bytes.
 
 **Expected:** only the first returns RECOVERY_CHECKPOINT while remaining
 IN_PROGRESS. Every contradiction is DATA_CONFLICT with no health derivation.
@@ -316,10 +316,10 @@ Nothing is marked complete from a checkpoint.
 ## Case 19: Source changes before return invalidate derived state
 
 **Fixture:** a selector, plan, tracker, story, checkpoint, configuration, or
-calendar hash changes after analysis but before final response.
+calendar revision changes after analysis but before final response.
 
 **Expected:** discard derived counts and health; return DATA_CONFLICT with exact
-expected/observed raw hashes. Do not repair, revert, or report the stale snapshot
+expected/observed declared revisions. Do not repair, revert, or report the stale snapshot
 as current.
 
 ---
@@ -330,7 +330,7 @@ as current.
 
 **Expected:** those files are not read; no gate/subagent/workflow is invoked; no
 authorization prompt, write, attachment, tracker update, or scope proposal occurs.
-Before/after source hashes and the empty write set are reported.
+Before/after source revisions and the empty write set are reported.
 
 ---
 
@@ -362,7 +362,7 @@ no authorization, and no write.
 - [ ] Explicit UNKNOWN classification precedes weighted calculations.
 - [ ] Project configuration precedes staleness and health.
 - [ ] Estimate/priority/DAG signals precede one first-match health result.
-- [ ] Full-source rehash precedes final return.
+- [ ] Full-source revalidate precedes final return.
 - [ ] Final output reports one recommendation at most and stops.
 
 ## Verification boundary

@@ -1,4 +1,4 @@
 interface:
   display_name: "Scope Check"
   short_description: "Immutable stable-ID scope comparison with bounded evidence"
-  default_prompt: "Use $scope-check with exact baseline and current path@sha256 identities for a strictly read-only, stable-ID delta report that separates scope change authority from risk and impact evidence."
+  default_prompt: "Use $scope-check with exact baseline and current path@revision identities for a strictly read-only, stable-ID delta report that separates scope change authority from risk and impact evidence."

@@ -6,7 +6,7 @@
 types authored by `$ux-design`: `ux-spec`, `hud-design`, and
 `interaction-pattern-library`. It derives the current author schema from exact
 source bytes, routes by artifact metadata, validates semantic content rather than
-heading presence, resolves hash-bound platform/accessibility/requirement evidence,
+heading presence, resolves version-bound platform/accessibility/requirement evidence,
 and returns `cgs.review-evidence/v1` with a `cgs.ux-review/v2` extension.
 
 Quality verdicts are `APPROVED`, `NEEDS REVISION`, `MAJOR REVISION NEEDED`, and
@@ -20,13 +20,13 @@ output remains `NOT_PERSISTED` and ineligible as gate evidence.
 
 - [ ] Frontmatter contains exactly `name: ux-review` and a non-empty description
 - [ ] `SKILL.md` reads both current `$ux-design` author sources and derives the
-      NUL-delimited SHA-256 author-schema identity
+      NUL-delimited revision author-schema identity
 - [ ] Builds `cgs.ux-author-contract-manifest/v1` from the author's exact
-      declarations and source hashes; target schema/profile/content values must
+      declarations and source revisions; target schema/profile/content values must
       match that manifest
 - [ ] Reviewer support is fail-closed and currently accepts exactly
       `ux-profile-schema-v2` plus `cgs.ux-content-profile/v2`; legacy v1 or an
-      author/target hash mismatch returns `MIGRATION REQUIRED` with null verdict
+      author/target revision mismatch returns `MIGRATION REQUIRED` with null verdict
 - [ ] `review-rules-v1.md` defines `cgs.review-evidence/v1`,
       `cgs.ux-review/v2`, `cgs.ux-review-batch/v1`, and
       `cgs.ux-review-worker/v1`
@@ -35,15 +35,15 @@ output remains `NOT_PERSISTED` and ineligible as gate evidence.
 - [ ] Content states are exactly `VALID`, `EMPTY`, `PLACEHOLDER`, `INVALID`,
       `MISSING`, `NOT_APPLICABLE`, and `UNEVALUATED`
 - [ ] Platform, accessibility, context, requirement, pattern/data, and optional
-      performance sources require exact path/hash or stable-ID provenance
+      performance sources require exact path/revision or stable-ID provenance
 - [ ] Selector, context, requirement, reviewer, and mutation-snapshot limits are
       numeric and fail to `PARTIAL` rather than silently truncating
-- [ ] Finding fingerprints exclude target hashes, line numbers, prose wording,
+- [ ] Finding identities exclude target revisions, line numbers, prose wording,
       and timestamps, enabling stable convergence
 - [ ] Accepted risk cannot yield `APPROVED`
 - [ ] No workflow step writes a project file or calls a recorder
 - [ ] Metadata display name, description, and default prompt describe the current
-      zero-write, hash-bound behavior without truncation
+      zero-write, version-bound behavior without truncation
 
 ---
 
@@ -61,9 +61,9 @@ the verdict. The consultation may not write or approve.
 
 Fixture: A current `ux-spec` declares `ux-profile-schema-v2`,
 `cgs.ux-content-profile/v2`, and the exact computed
-`ux-design-author-sha256:<author_schema_hash>`; every `UXS-01`..`UXS-14`
+`ux-design-author-<author_schema_version>`; every `UXS-01`..`UXS-14`
 assertion is populated with valid stable IDs, current context/platform/
-accessibility/authoring-receipt hashes, a committed tier, and complete requirement
+accessibility/authoring-receipt revisions, a committed tier, and complete requirement
 coverage.
 
 Input: `$ux-review design/ux/inventory.md`
@@ -98,7 +98,7 @@ Assertions:
 ### Case 3: Unsupported N/A does not satisfy a conditional assertion
 
 Fixture: `UXS-06` says loading, error, and locked states are `N/A` without a
-source ID/hash or rationale; the current platform/profile evidence makes an error
+source ID/revision or rationale; the current platform/profile evidence makes an error
 state applicable.
 
 Assertions:
@@ -127,12 +127,12 @@ Assertions:
 
 ### Case 5: Stale platform profile is partial
 
-Fixture: `Platform Profile` declares `profiles/pc.md@<hash-a>`, but exact bytes
-hash to `<hash-b>`.
+Fixture: `Platform Profile` declares `profiles/pc.md@<revision-a>`, but exact bytes
+revision to `<revision-b>`.
 
 Assertions:
 
-- [ ] Ledger stores expected and actual hashes and status `STALE`
+- [ ] Ledger stores expected and actual revisions and status `STALE`
 - [ ] No spec header, filename, or remembered defaults replace the source
 - [ ] Verdict is `PARTIAL`
 - [ ] Remediation asks for a current exact platform-profile reference
@@ -141,7 +141,7 @@ Assertions:
 
 ### Case 6: Missing accessibility tier cannot be compliant or approved
 
-Fixture: Accessibility foundation bytes/hash are current but the declared tier
+Fixture: Accessibility foundation bytes/revision are current but the declared tier
 is absent, empty, or not defined by that source.
 
 Assertions:
@@ -171,7 +171,7 @@ Assertions:
 
 ### Case 8: Incomplete requirement scope yields partial, not false 100 percent
 
-Fixture: The context-manifest hash is stale and the target declares no
+Fixture: The context-manifest revision is stale and the target declares no
 requirements.
 
 Assertions:
@@ -192,7 +192,7 @@ Input: `$ux-review all`
 
 Assertions:
 
-- [ ] Manifest is sorted and hash-bound
+- [ ] Manifest is sorted and version-bound
 - [ ] Reports and unknown types are excluded with explicit reasons
 - [ ] Each eligible artifact has its own generic envelope and independent verdict
 - [ ] Batch result uses `cgs.ux-review-batch/v1` and has no aggregate approval
@@ -209,7 +209,7 @@ Input: `$ux-review all`
 Assertions:
 
 - [ ] Exactly the first eight sorted eligible targets are evaluated
-- [ ] The two remaining entries retain path/hash/type in `unchecked`
+- [ ] The two remaining entries retain path/revision/type in `unchecked`
 - [ ] Each unchecked reason is `LIMIT_REACHED`
 - [ ] Batch status is `PARTIAL`
 - [ ] Reviewed target records remain independently usable as non-persisted review
@@ -226,7 +226,7 @@ Input: `$ux-review design/ux/hud.md --review-depth standard`
 Assertions:
 
 - [ ] Consultation is `NOT_REQUESTED` with reviewer count zero
-- [ ] Mechanical profile, hash, dependency, and coverage checks execute locally
+- [ ] Mechanical profile, revision, dependency, and coverage checks execute locally
 - [ ] The run can be complete without delegation
 - [ ] No reviewer is permitted to override a mechanical failure
 
@@ -235,7 +235,7 @@ Assertions:
 ### Case 12: Required expert consultation failure is partial
 
 Fixture: A current pattern library; the one expert reviewer declines, times out,
-errors, returns malformed output, or returns a mismatched target hash.
+errors, returns malformed output, or returns a mismatched target revision.
 
 Input: `$ux-review design/ux/interaction-patterns.md --review-depth expert`
 
@@ -259,7 +259,7 @@ Assertions:
 - [ ] UX feedback assertions are evaluated normally
 - [ ] Reviewer introduces no universal millisecond threshold
 - [ ] Absence of an uncited numeric budget is not by itself a finding
-- [ ] A numeric claim is evaluated only with exact technical source ID/path/hash,
+- [ ] A numeric claim is evaluated only with exact technical source ID/path/revision,
       platform, hardware class, scenario, metric, and threshold
 
 ---
@@ -267,7 +267,7 @@ Assertions:
 ### Case 14: Required runtime evidence gap is routed honestly
 
 Fixture: An acceptance criterion cites a stable performance requirement, but its
-source hash is stale.
+source revision is stale.
 
 Assertions:
 
@@ -287,12 +287,12 @@ Input: `$ux-review design/ux/inventory.md --prior-review <record>`
 
 Assertions:
 
-- [ ] Prior record ID, target identity/hash, and author-schema identity validate
-- [ ] Prior author-contract manifest hash and profile/content versions match the
+- [ ] Prior record ID, target identity/revision, and author-schema identity validate
+- [ ] Prior author-contract manifest revision and profile/content versions match the
       current review contract
 - [ ] Prior open finding is evaluated before new checks
-- [ ] Fingerprint and finding ID remain unchanged
-- [ ] Disposition is `OPEN`; changed target hash does not create a new ID
+- [ ] identity and finding ID remain unchanged
+- [ ] Disposition is `OPEN`; changed target revision does not create a new ID
 
 ---
 
@@ -304,7 +304,7 @@ previously resolved defect reintroduced in a changed stable section.
 Assertions:
 
 - [ ] Fixed finding is `RESOLVED`
-- [ ] Reintroduced matching fingerprint is `REGRESSED`
+- [ ] Reintroduced matching identity is `REGRESSED`
 - [ ] Changed section and dependency cross-references are regression-checked
 - [ ] No finding closes because wording or line numbers changed
 
@@ -390,13 +390,13 @@ Assertions:
 Fixture: Exact current P1 `$ux-design` main and continuation bytes declare one
 coherent contract: Profile Version `ux-profile-schema-v2`, Content Profile
 `cgs.ux-content-profile/v2`, all three artifact profile/section sets, and Schema
-Version constructed from the NUL-delimited author hash. The target header matches
+Version constructed from the NUL-delimited author revision. The target header matches
 those computed values.
 
 Assertions:
 
-- [ ] Reviewer records raw main/continuation hashes, computed author schema hash,
-      canonical author-contract manifest, and its hash
+- [ ] Reviewer records main/continuation paths and versions, explicit author schema version,
+      canonical author-contract manifest, and its revision
 - [ ] Support status is `SUPPORTED` only after assertion-matrix coverage matches
       every declared stable section ID
 - [ ] Target identity passes the compatibility gate before profile scoring
@@ -404,11 +404,11 @@ Assertions:
 
 ---
 
-### Case 23: Legacy, unsupported, or hash-mixed contracts fail closed
+### Case 23: Legacy, unsupported, or revision-mixed contracts fail closed
 
 Fixtures: Separately test (a) unsupported legacy target Profile Version `ux-profile-schema-v1`,
 (b) unsupported future author profile/content declarations, (c) matching v2
-profile but stale `Schema Version` hash, (d) missing/duplicate author declaration,
+profile but stale `Schema Version` revision, (d) missing/duplicate author declaration,
 (e) v2 author section added without a reviewer assertion, and (f) a prior review
 bound to a different author-contract manifest.
 
@@ -417,8 +417,8 @@ Assertions:
 - [ ] Every variant returns `MIGRATION REQUIRED` with null verdict before content
       scoring or expert consultation
 - [ ] Output names expected/observed schema, profile, content, author source
-      hashes, and manifest hash when computable
-- [ ] No v1 fallback, arbitrary-manifest trust, remembered hash, mixed-contract
+      revisions, and manifest revision when computable
+- [ ] No v1 fallback, arbitrary-manifest trust, remembered revision, mixed-contract
       scoring, or cross-schema convergence occurs
 - [ ] The reviewer remains zero-write and gate-ineligible
 
@@ -429,7 +429,7 @@ Assertions:
 - [ ] Routes from current artifact identity, then exact schema-defined marker;
       aliases select candidates and filename fallback requires user confirmation
 - [ ] Author declarations, reviewer support, target schema/profile/content, and
-      author hash must all agree before profile routing/content scoring
+      author revision must all agree before profile routing/content scoring
 - [ ] Applies content-level assertions to all current profile sections
 - [ ] Rejects empty, placeholder, invalid, missing, and unsupported-N/A content
 - [ ] Treats missing/stale platform, accessibility tier, context, and denominator
@@ -439,7 +439,7 @@ Assertions:
 - [ ] Standard review is local; expert review is one bounded non-authoritative
       consultation whose failure is visible
 - [ ] Separates perceived UX response from source-bound runtime performance
-- [ ] Reconciles prior findings through stable fingerprints and exact diff evidence
+- [ ] Reconciles prior findings through stable identities and exact diff evidence
 - [ ] Emits the complete generic envelope plus UX v2 extension
 - [ ] Every direct result is `NOT_PERSISTED`, gate-ineligible, and zero-write
 

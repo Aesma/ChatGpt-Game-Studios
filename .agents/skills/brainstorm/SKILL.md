@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: "Collaboratively author or safely revise one game concept through bounded ideation, user-owned decisions, finite convergence, immutable checkpoints, section-scoped CAS, and a hash-bound independent concept-review handoff."
+description: "Collaboratively author or safely revise one game concept through bounded ideation, user-owned decisions, finite convergence, immutable checkpoints, section-scoped CAS, and a revision-bound independent concept-review handoff."
 ---
 
 # Brainstorm
@@ -27,7 +27,7 @@ The manifest declares `contract: cgs.brainstorm-request/v2` and:
 - stable session, run, and concept artifact IDs;
 - exact operation `new`, `resume`, or `revise`;
 - exact target `design/gdd/game-concept.md`, checkpoint root, expected target
-  SHA-256 or `ABSENT`, and expected checkpoint predecessor ID/hash or `ABSENT`;
+  revision or `ABSENT`, and expected checkpoint predecessor ID/revision or `ABSENT`;
 - for `revise`, ordered selected stable section IDs; for `resume`, ordered IDs or
   an instruction to collect them once from OPEN/DRAFT inventory before mutation
   authorization;
@@ -35,7 +35,7 @@ The manifest declares `contract: cgs.brainstorm-request/v2` and:
   `research_mode: none | receipts-only | authorized-current`;
 - exact source/reference, research, platform/technical-preference, estimate,
   gate, approval, workflow-catalog, and instruction evidence with stable ID/
-  owner/path-or-URL/locator/raw hash and required/optional role;
+  owner/path-or-URL/locator/raw revision and required/optional role;
 - context budget no larger than 16 files and 524288 exact bytes;
 - ideation count from two to four per round, no more than two concept rounds, no
   more than two revisions per decision family, and delegation limits at or below
@@ -43,16 +43,16 @@ The manifest declares `contract: cgs.brainstorm-request/v2` and:
 - actual product-decision owner, mutation authority, author, target writer,
   checkpoint recorder, gate-node roles, and intended independent concept-reviewer
   role; and
-- authorization manifest ID/hash/authority or instruction to collect one bounded
+- authorization manifest ID/revision/authority or instruction to collect one bounded
   mutation authorization after inventory, plus exact non-writes.
 
 Reject unknown/duplicate fields, unsafe/aliased paths, duplicate IDs, invalid
-operation/mode, non-lowercase SHA-256, target/checkpoint aliasing, budgets above
+operation/mode, malformed or missing declared revision, target/checkpoint aliasing, budgets above
 the hard caps, review/gate identity equal to author/writer/recorder, or limits
 above the finite-convergence contract.
 
 `new` requires target `ABSENT`. Existing target `resume`/`revise` requires its
-current raw SHA-256. Checkpoint resume requires one exact v2 checkpoint chain;
+current raw revision. Checkpoint resume requires one exact v2 checkpoint chain;
 never select newest/latest files or silently change operation.
 
 Use runtime task identities when exposed. Otherwise generate one lowercase UUID
@@ -76,7 +76,7 @@ manifest covering:
 
 - exact target operation (`new`: create skeleton then modify authorized sections;
   `resume/revise`: modify only selected stable-ID sections/header fields);
-- expected target preimage/ABSENT and selected section preimage hashes;
+- expected target preimage/ABSENT and selected section preimage revisions;
 - checkpoint root and deterministic create-only checkpoint/receipt names;
 - author/profile/content schema, writer/recorder identities, limits, and non-writes.
 
@@ -90,7 +90,7 @@ larger limit requires a revised manifest and new authorization.
 
 The author contract version is:
 
-    brainstorm-author-sha256:<sha256(SKILL.md exact bytes || 0x00 || references/continued-workflow.md exact bytes)>
+    brainstorm-author-revision:<explicit skill release revision>
 
 The target uses document schema `GC-1`, profile
 `game-concept-profile-schema-v2`, and assertion contract
@@ -124,16 +124,16 @@ Every target begins with:
     > **Schema**: GC-1
     > **Profile Version**: game-concept-profile-schema-v2
     > **Content Profile**: cgs.game-concept-content-profile/v2
-    > **Author Schema**: brainstorm-author-sha256:<hash>
+    > **Author Schema**: brainstorm-author-<explicit revision>
     > **Concept Artifact ID**: <stable ID>
     > **Content Status**: DRAFT | PARTIAL | CONTENT_COMPLETE
     > **Approval Status**: EXTERNAL EVIDENCE REQUIRED
-    > **Context Manifest SHA-256**: <hash>
+    > **Context Manifest revision**: <revision>
     > **Authoring Receipt ID**: <stable ID | PENDING>
 
 Never write `APPROVED`, reviewer identity/signature/date, approval-record path/
-hash, or authoring-receipt path/hash into the concept. External evidence binds
-already-final target bytes and avoids a target/receipt hash cycle.
+revision, or authoring-receipt path/revision into the concept. External evidence binds
+already-final target bytes and avoids a target/receipt revision cycle.
 
 ## Independent state axes
 
@@ -174,7 +174,7 @@ a fresh independent concept-review task may support `APPROVED`, and only when it
 
 1. declares concept profile `GC-1/game-concept-profile-schema-v2` and verdict
    `APPROVE`;
-2. binds current target, authoring receipt, section/assertion/context hashes;
+2. binds current target, authoring receipt, section/assertion/context revisions;
 3. names author/gate/reviewer identities and proves separation;
 4. includes current findings/open-question disposition; and
 5. still matches all current bytes.
@@ -185,7 +185,7 @@ only emits a review handoff; it never invokes/writes this evidence.
 
 ## Phase 0: Parse request and validate exact source identity
 
-Parse request first. Validate contract, operation, modes, IDs, paths, hashes,
+Parse request first. Validate contract, operation, modes, IDs, paths, revisions,
 roles, budgets, limits, and non-writes before context or ideation.
 
 Resolve review behavior:
@@ -202,8 +202,8 @@ selects the concept.
 
 For target `new`, prove absence. For `resume/revise`, read raw bytes, preserve
 encoding/newlines, parse stable/custom sections and provenance, and verify current
-hash. For checkpoint resume, validate exact session/run and v2 predecessor chain,
-source ABSENT/hash, selected set, draft snapshot, and next transition.
+revision. For checkpoint resume, validate exact session/run and v2 predecessor chain,
+source ABSENT/revision, selected set, draft snapshot, and next transition.
 
 Invalid input returns ERROR with zero writes. Missing/changed source,
 instructions, authorization identity, or unsafe paths returns BLOCKED with zero
@@ -211,7 +211,7 @@ target writes.
 
 ## Phase 1: Inventory sections, choose resume scope, authorize once
 
-Create the complete section/ownership table with headings, byte ranges, hashes,
+Create the complete section/ownership table with headings, byte ranges, revisions,
 content/evidence/workflow/assertion state, dependencies, decision/approval/
 revision IDs, gate receipts, and custom preservation IDs.
 
@@ -250,15 +250,15 @@ Count every loaded file against hard maxima 16 files and 524288 exact bytes.
 Determine exact size before load; never truncate.
 
 The ordered context manifest records path/URL snapshot, role, stable ID/owner,
-locator, bytes, raw SHA-256, observed date when temporal, dependency edge,
+locator, bytes, raw revision, observed date when temporal, dependency edge,
 loaded/omitted state, and reason. Canonicalize UTF-8 LF, fixed fields, no trailing
-whitespace, one final newline; persist its digest.
+whitespace, one final newline; persist its revision.
 
 Mark an existing concept `mutable-target-baseline`: its baseline is provenance,
 but target currentness is checked separately by Target/Section CAS after writes.
-All external entries are re-hashed before dependent use/final handoff.
+All external entries are re-read before dependent use/final handoff.
 
-If mandatory evidence exceeds budget, is absent, or mismatches declared hash,
+If mandatory evidence exceeds budget, is absent, or mismatches declared revision,
 append at most one authorized PARTIAL checkpoint with
 `CONTEXT_BUDGET_EXCEEDED` or `CONTEXT_EVIDENCE_INVALID`, leave target unchanged,
 list loaded/omitted evidence, and stop. Required context is never silently omitted.
@@ -277,12 +277,12 @@ concept silently. Existing targets remain unchanged during drafting.
 Append create-only `cgs.brainstorm-checkpoint/v2` records after discovery brief,
 every concept-selection/decision family, every gate node, content preflight,
 final target attempt, and receipt attempt. Each contains request/authorization/
-context/target/author-schema hashes, complete section axes, selected/preserved
+context/target/author-schema revisions, complete section axes, selected/preserved
 IDs, decisions/approvals/revisions, draft snapshot, gate/research/estimate
 evidence, convergence counters, findings/open questions, roles, operation ledger,
-budgets, predecessor ID/hash, next legal transition, and UTC timestamp.
+budgets, predecessor ID/revision, next legal transition, and UTC timestamp.
 
-Canonical payload hash excludes its own `record_sha256`. Append by deterministic
+record_revision is an explicit monotonic revision assigned by the recorder. Append by deterministic
 name through predecessor/create-if-absent CAS. Never overwrite or fork a chain.
 
 Checkpoint state is continuity/provenance, not target content, review, approval,

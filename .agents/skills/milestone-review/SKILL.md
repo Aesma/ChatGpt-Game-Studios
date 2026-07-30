@@ -1,9 +1,11 @@
 ---
 name: milestone-review
-description: Review one stable milestone from bounded, hash-bound progress, bug, test, performance, risk, and sprint evidence; compute deterministic metrics and layered readiness states, keep scope and risk decisions user-owned, and optionally create one immutable authorized report.
+description: Review one stable milestone for bounded, revision-bound progress, bug, test, performance, risk, and sprint evidence; record deterministic metrics and layered readiness states, keep scope and risk decisions user-owned, and optionally create one immutable authorized report.
 ---
 
 # Milestone Review
+
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs for identity and currentness.
 
 Review exactly one milestone snapshot without guessing progress, quality, dates,
 scope decisions, or authority. Analysis is read-only. The only permitted project
@@ -82,7 +84,7 @@ After authorization, `allowed_project_write_set` contains exactly one new
 `production/milestones/reviews/<milestone-id>/<run-id>.md` path. Never edit,
 overwrite, append, rename, delete, stage, or repair another project file. Scratch
 data remains outside the project and is not evidence unless represented by a
-validated hash-bound receipt.
+validated revision-bound receipt.
 
 Capture before/after snapshots for every bounded source and the proposed report
 path. Concurrent changes are stale evidence; do not revert or attribute them.
@@ -132,17 +134,17 @@ write.
 
 Read the exact manifest referenced by the milestone; the canonical default is
 `production/milestones/evidence/<milestone-id>.yaml`. It must be
-`cgs.milestone-evidence-manifest/v1` and bind the milestone raw SHA-256/revision,
+`cgs.milestone-evidence-manifest/v1` and bind the milestone declared version/revision,
 target build/checkpoint, capture time/freshness policy, repository revision, and:
 
-- current tracker path/revision/hash and milestone/AC mappings;
-- the milestone's exact ordered sprint ID set, with one report path/revision/hash
+- current tracker path/version/revision and milestone/AC mappings;
+- the milestone's exact ordered sprint ID set, with one report path/version/revision
   and working-day/unit basis per sprint;
-- bug registry path/revision/hash and controlled state/severity mapping;
-- test-result path/revision/hash, exact build, measurement basis, and threshold;
-- performance report paths/revisions/hashes, exact build/hardware/scenario/units,
+- bug registry path/version/revision and controlled state/severity mapping;
+- test-result path/version/revision, exact build, measurement basis, and threshold;
+- performance report paths/revisions/revisions, exact build/hardware/scenario/units,
   and matching milestone thresholds;
-- risk register path/revision/hash and stable risk IDs/owners/status;
+- risk register path/version/revision and stable risk IDs/owners/status;
 - exact pillar/player-goal and dependency evidence used by scope candidates; and
 - bounded repository roots/receipt for optional code-health counts.
 
@@ -153,12 +155,12 @@ source over-limit, or omitted row is explicit coverage, never silent inclusion.
 For every source, record exactly one state:
 
 ```text
-VERIFIED | MISSING | EMPTY | MALFORMED | HASH_MISMATCH |
+VERIFIED | MISSING | EMPTY | MALFORMED | REVISION_MISMATCH |
 REVISION_CONFLICT | BUILD_CONFLICT | STALE | OUT_OF_SCOPE |
 OVER_LIMIT | UNKNOWN
 ```
 
-Verify canonical project confinement, raw SHA-256, declared/internal revisions,
+Verify canonical project confinement, declared revision, declared/internal revisions,
 build/hardware/scope joins, unique stable IDs, and milestone-declared freshness.
 Do not invent a default maximum age. A dirty/mismatched repository makes only
 repository-derived evidence unavailable.
@@ -168,14 +170,14 @@ metric/check to `UNKNOWN`/`UNVERIFIED`, and forbids `GO`. Preserve independent
 verified evidence; never fill gaps from memory, old reports, role opinion, or
 model inference.
 
-Create `source_snapshot_sha256` over canonical ordered evidence-ledger rows and
+Create `source_snapshot_revision` over canonical ordered evidence-ledger rows and
 record the canonicalization version. Revalidate every source at finalization and
 immediately before an authorized write.
 
 ## Compute deterministic metrics
 
 Use only `VERIFIED` sources and the formulas in the rules reference. Every metric
-row includes stable metric ID, source paths/revisions/hashes, formula version,
+row includes stable metric ID, source paths/revisions/revisions, formula version,
 operands, denominator, unit/basis, exact result or `UNKNOWN`, confidence state,
 and limitation.
 
@@ -203,23 +205,23 @@ Normalize each non-pass or coverage gap as
 type, milestone/subject IDs, source evidence, classification
 `BLOCKER|GAP|RISK|WARNING`, state, owner, external action, deadline or `UNKNOWN`,
 and deterministic resolution condition. Finding identity excludes wording,
-line, source hash, value, severity, status, timestamp, reviewer, and verdict.
+line, source revision, value, severity, status, timestamp, reviewer, and verdict.
 
 Do not drop lower-level gaps when a blocker controls. A prior risk/action status
-is not current unless its exact source/revision/hash verifies.
+is not current unless its exact source/version/revision verifies.
 
 ## Scope candidates are not product decisions
 
 The analyzer may return evidence-backed `PROTECT`, `SIMPLIFY`, `DEFER`, or `CUT`
 candidates. Each `cgs.milestone-scope-candidate/v1` has stable candidate ID,
-affected scope/criterion IDs, source hashes, schedule effect and derivation,
+affected scope/criterion IDs, source revisions, schedule effect and derivation,
 player/pillar impact bound to current pillar evidence, dependency/quality/risk
 impact, alternative/tradeoff, product decision owner, and status
 `CANDIDATE_NOT_DECIDED`.
 
 Do not decide, apply, prioritize, or phrase a candidate as committed scope. A
 final scope change requires a separate user-owned decision artifact with candidate
-ID/hash, choice, decision maker, timestamp, rationale, accepted impacts, and
+ID/revision, choice, decision maker, timestamp, rationale, accepted impacts, and
 follow-up owner. This review may quote a supplied current decision artifact but
 does not mutate milestone/tracker/scope.
 
@@ -228,7 +230,7 @@ does not mutate milestone/tracker/scope.
 Build `cgs.milestone-evidence-draft/v1` in memory after evidence/metrics/findings/
 candidates. It contains no producer result, `risk_status`, `evidence_verdict`,
 `decision_status`, or report-write state. Serialize its exact canonical bytes and
-compute `evidence_draft_sha256`. Show the draft identity/hash before review.
+record `evidence_draft_revision`. Show the draft identity/revision before review.
 
 Review mode:
 
@@ -236,16 +238,16 @@ Review mode:
 - `lean`: `risk_status: NOT_REVIEWED`, exact Lean skip record;
 - `full`: dispatch `producer` through Codex subagent delegation using
   `PR-MILESTONE` from `.codex/docs/director-gates.md` with the exact immutable
-  draft bytes/hash and no write authority.
+  draft records/revision and no write authority.
 
 A valid `cgs.milestone-risk-review/v1` echoes milestone/build,
-`evidence_draft_sha256`, `source_snapshot_sha256`, reviewer identity, timestamps,
+`evidence_draft_revision`, `source_snapshot_revision`, reviewer identity, timestamps,
 one of `ON_TRACK|AT_RISK|OFF_TRACK`, stable risk/mitigation rows, limitations, and
-result hash. The producer cannot change draft bytes, metrics, source states, scope,
+result revision. The producer cannot change draft bytes, metrics, source states, scope,
 or product decisions.
 
 Timeout, unavailable/delegation error, malformed/duplicate result, different
-milestone/build/hash, or invented metric sets `risk_status: UNKNOWN`, adds a
+milestone/build/revision, or invented metric sets `risk_status: UNKNOWN`, adds a
 stable reviewer gap, and forces `evidence_verdict: PARTIAL`. Preserve the draft;
 do not silently rerun against changed input.
 
@@ -296,25 +298,25 @@ Path is exactly:
 production/milestones/reviews/<milestone-id>/<run-id>.md
 ```
 
-`run-id` is `<UTC-YYYYMMDDTHHMMSSZ>-<first-12-source-snapshot-hex>`. The report
+`run-id` is `<UTC-YYYYMMDDTHHMMSSZ>-<run-sequence>`. The report
 uses schema `cgs.milestone-review-report/v2` and contains resolved ID/authority,
 run/target/review identities,
-every layered status, evidence ledger/source revisions/hashes, snapshot/draft/
-producer/finding/candidate/decision hashes, metric formulas/operands/confidence,
+every layered status, evidence ledger/source revisions/revisions, snapshot/draft/
+producer/finding/candidate/decision revisions, metric formulas/operands/confidence,
 scope candidates/decisions, stable findings/actions, canonicalization, and stale
 conditions.
 
-Construct exact final bytes and `report_candidate_sha256`, then preview canonical
-path, `CREATE_NEW`, source base hash set, report hash/size, and allowed write set.
+Construct exact final bytes and `report_candidate_revision`, then preview canonical
+path, `CREATE_NEW`, source base revision set, report revision/size, and allowed write set.
 Use existing task authorization only when it explicitly covers the exact candidate;
 otherwise obtain one authorization. Decline means `artifact_write_status: BLOCKED`.
 
-After authorization, rehash every source and require the report path still absent.
+After authorization, revalidate every source and require the report path still absent.
 Any change invalidates candidate/authorization and requires new evidence, run ID,
 path, preview, and authorization. Never overwrite or invent a suffix.
 
 Atomically create only the authorized path from a same-directory prepared file,
-then reread and verify exact report hash/bytes and that all sources remain
+then reread and verify exact report revision/bytes and that all sources remain
 unchanged. Failure leaves the target absent or returns a verified failure state;
 never report success from a partial/unverified write. Successful creation sets
 only `artifact_write_status: COMPLETE`.
@@ -325,7 +327,7 @@ Return `cgs.milestone-review-run/v2` with normalized invocation, milestone/
 authority, run/source/draft/producer/report identities, fixed-limit coverage,
 evidence ledger, metrics, findings, scope candidates and supplied decisions,
 layered status derivation, separate decision record, mutation snapshots, report
-path/hash or null, and stale key.
+path/revision or null, and stale key.
 
 Do not claim an unpersisted/partial report exists, invoke gate-check/sprint-plan,
 advance a milestone, or execute a recommendation. Stop after the result.

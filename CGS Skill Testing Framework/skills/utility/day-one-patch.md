@@ -14,7 +14,7 @@ timeout evidence fail closed. Final deployment is a separate human decision.
 ## Static Assertions
 
 - [ ] Frontmatter contains only matching `name` and non-empty `description`
-- [ ] Invocation requires hash-pinned `cgs.day-one-patch-request/v2` with explicit
+- [ ] Invocation requires revision-pinned `cgs.day-one-patch-request/v2` with explicit
   PLAN/GATE/RESUME and no latest/current discovery
 - [ ] Planning/evaluation, controller recording, implementation, build/QA, deployment/
   submission and publication/notification are non-collapsible authority layers
@@ -24,18 +24,18 @@ timeout evidence fail closed. Final deployment is a separate human decision.
   implementation rounds exactly one; overflow never starts a per-bug loop
 - [ ] Each `cgs.day-one-patch-item/v2` has stable content ID, immutable owner/registry,
   exact allowed/prohibited paths, item/total budgets, tests, risk and rollback
-- [ ] Plan bundle is `cgs.day-one-patch-plan/v2` with hash-bound item/finding/source
+- [ ] Plan bundle is `cgs.day-one-patch-plan/v2` with revision-bound item/finding/source
   identities, rollback, smoke requests, evidence template and observation proposal
 - [ ] Rollback schema and rehearsal bind executable steps, base/new artifacts, data/
   schema compatibility, backup/restore, RTO/RPO, thresholds, owner/verifier and verdict
 - [ ] QA is never executed/delegated inline; immutable requests carry deadline/timeout
   and required output, and timeout/partial/error cannot become PASS
 - [ ] `cgs.day-one-smoke-request/v2` pins stable QA IDs, candidate/build/artifact/source/
-  platform, QA/test manifests, scope hash, mode and response contract
+  platform, QA/test manifests, scope revision, mode and response contract
 - [ ] Quick targeted smoke remains non-handoff evidence; separately persisted full
   smoke is required for DAY_ONE_PATCH_READY
 - [ ] `cgs.day-one-patch-evidence-manifest/v2` and stable gate rows bind every
-  implementation/diff/bug/test/smoke/release/rollback hash and finding ID
+  implementation/diff/bug/test/smoke/release/rollback revision and finding ID
 - [ ] Changed candidate invalidates all gold-master build-bound PASS/sign-offs
 - [ ] Fresh release checklist is Schema Version 2, full candidate/checklist identity,
   CREATED, NOT_EVALUATED and authority NONE; it is input, never permission
@@ -56,11 +56,11 @@ timeout evidence fail closed. Final deployment is a separate human decision.
 | Finding | Required regression |
 |---|---|
 | DOP-005 | Cases 2–3: hard candidate/file/diff/time budgets and exactly one implementation round |
-| DOP-006 | Cases 4–5: executable rollback schema and current rehearsal verdict with compatibility/hashes |
+| DOP-006 | Cases 4–5: executable rollback schema and current rehearsal verdict with compatibility/revisions |
 | DOP-007 | Cases 2 and 6: per-item owner, allowed/prohibited paths, budgets; actual diff outside scope replans |
 | DOP-008 | Cases 7 and 11: no inline QA; timeout/partial/error receipts remain incomplete/blocking |
-| DOP-009 | Cases 7–9: versioned quick/full smoke request with exact candidate, stable IDs, scope hash and receipts |
-| DOP-010 | Cases 2, 10 and 12: stable patch/finding IDs, immutable v2 plan/evidence/gate manifests and hashes |
+| DOP-009 | Cases 7–9: versioned quick/full smoke request with exact candidate, stable IDs, scope revision and receipts |
+| DOP-010 | Cases 2, 10 and 12: stable patch/finding IDs, immutable v2 plan/evidence/gate manifests and revisions |
 | DOP-011 | Case 14: deployment receipt, minimum observation window, thresholds/cadence, owner, auto-stop and terminal states |
 
 ---
@@ -69,7 +69,7 @@ timeout evidence fail closed. Final deployment is a separate human decision.
 
 | Phase | Input | Output | Mutation |
 |---|---|---|---|
-| 1 — Base/bugs | Hash-pinned request, instructions, base release/candidate and exact bug/cert index | Valid immutable base and lifecycle state | None |
+| 1 — Base/bugs | revision-pinned request, instructions, base release/candidate and exact bug/cert index | Valid immutable base and lifecycle state | None |
 | 2 — Bounded scope | Policy, issues, owners and hard budgets | Stable included/deferred v2 items | None |
 | 3 — Plan bundle | Ordered items and source evidence | v2 plan with rollback/smoke/evidence/observation schemas | None |
 | 4 — Rollback | Base/platform/data risk and objectives | Executable rollback contract; later exact rehearsal requirement | None |
@@ -107,7 +107,7 @@ NOT_GRANTED and Deployment Decision NOT_RECORDED.
 **Fixture:** One eligible S2 bug fits all bounds.
 
 **Expected behavior:** Emit a DOPI content-derived ID and v2 item containing canonical
-bug hash/state, owner/registry, allowed/prohibited paths, symlink/generated-output rules,
+bug revision/state, owner/registry, allowed/prohibited paths, symlink/generated-output rules,
 file/line/binary/effort/dependency/round budgets, acceptance, repro/regression/stable QA
 IDs, risk, evidence outputs and rollback.
 
@@ -131,7 +131,7 @@ owner/reason, return REPLAN REQUIRED or BLOCKED, and start no per-bug loop.
 
 - [ ] Request may lower but not raise hard ceilings
 - [ ] Hidden second round or partial implementation is forbidden
-- [ ] Limit/time stop has counts, hashes and resume cursor
+- [ ] Limit/time stop has counts, revisions and resume cursor
 
 ---
 
@@ -165,8 +165,8 @@ can satisfy the rollback gate.
 **Assertions:**
 
 - [ ] Receipt binds base/new artifacts, platform/data/schema, commands, owner/verifier,
-  times, measured objectives, logs and hashes
-- [ ] A report filename/hash alone does not prove execution
+  times, measured objectives, logs and revisions
+- [ ] A report filename/revision alone does not prove execution
 
 ---
 
@@ -181,7 +181,7 @@ the diff and never grants broader authority.
 
 **Assertions:**
 
-- [ ] Actual changed-path hashes are checked against every v2 item
+- [ ] Actual changed-path revisions are checked against every v2 item
 - [ ] One item/path approval cannot authorize another
 - [ ] Controller does not become implementation owner
 
@@ -208,8 +208,8 @@ receipts cannot mutate a persisted result.
 ## Case 8: Quick smoke request uses stable IDs and exact build identity
 
 **Fixture:** `cgs.day-one-smoke-request/v2` QUICK_TARGETED names ordered stable QA IDs,
-plan/item hashes, new candidate/build/artifact/source/platform, QA/test hashes, scope
-serialization/hash, timeout and exact output contract.
+plan/item revisions, new candidate/build/artifact/source/platform, QA/test revisions, scope
+serialization/revision, timeout and exact output contract.
 
 **Expected behavior:** Accept only matching persisted supported receipt. Free-form
 `combat,save`, unknown/duplicate/reordered IDs, wrong scope/build or stale QA plan is
@@ -218,7 +218,7 @@ invalid. Quick remains targeted with Handoff Eligible NO.
 **Assertions:**
 
 - [ ] No affected-system string translation occurs at gate
-- [ ] Every transitive automation/manual/log hash is revalidated
+- [ ] Every transitive automation/manual/log revision is revalidated
 - [ ] Quick PASS alone returns INCOMPLETE
 
 ---
@@ -244,15 +244,15 @@ DAY_ONE_PATCH_READY.
 
 **Fixture:** Gate evidence contains implementation/diff, bug lifecycle, reproduction,
 automated regression, quick/full smoke, risk, rollback, platform and release records.
-One variant omits a receipt or uses a free-text claim without hash/finding ID.
+One variant omits a receipt or uses a free-text claim without revision/finding ID.
 
 **Expected behavior:** Complete variant yields deterministic evidence snapshot/gate row
-hashes. Omission is INCOMPLETE; free text never substitutes. DOPF IDs preserve exact
+revisions. Omission is INCOMPLETE; free text never substitutes. DOPF IDs preserve exact
 rule/source/owner and supersedes lineage.
 
 **Assertions:**
 
-- [ ] Every gate claim maps to item/finding and immutable evidence hashes
+- [ ] Every gate claim maps to item/finding and immutable evidence revisions
 - [ ] Same bytes yield same ordered rows/verdict/gate identity
 - [ ] Old candidate evidence is marked STALE comparison only
 
@@ -277,19 +277,19 @@ finished superficially.
 
 ## Case 12: Fresh Schema2 release checklist is normalized input only
 
-**Fixture:** P1 release checklist report path contains full candidate/checklist hashes,
+**Fixture:** P1 release checklist report path contains full candidate/checklist revisions,
 Schema Version 2, exact new identities/dependencies, recorder CREATED, Gate Decision
 NOT_EVALUATED and authority NONE. Variants use Schema1 gold-master path, old candidate,
 partial report, altered row or inferred decision.
 
-**Expected behavior:** Re-hash valid report and independently apply policy. Variants are
+**Expected behavior:** Revalidate valid report and independently apply policy. Variants are
 STALE/INCOMPLETE/BLOCKED. Checklist existence, counts, PASS rows and waivers grant no
 patch/deployment authority.
 
 **Assertions:**
 
 - [ ] New build always gets fresh release normalization
-- [ ] Every checklist row/dependency hash is verified
+- [ ] Every checklist row/dependency revision is verified
 - [ ] Day-one gate owns only patch evidence verdict
 
 ---
@@ -318,7 +318,7 @@ multi-platform submission plus player notification.
 
 **Expected behavior:** Return Deployment Decision NOT_RECORDED and all authorization
 fields NOT_GRANTED. Observation plan requires an immutable future deployment receipt
-with installed digest/result, rollout stage, minimum observation window, numeric
+with installed reference ID/result, rollout stage, minimum observation window, numeric
 thresholds, sample/cadence, owner/kill switch, automatic stop/rollback and terminal
 state, but performs no action.
 
@@ -338,7 +338,7 @@ state, but performs no action.
 or drift inputs, owner registry, candidate/evidence, parent or output before commit;
 another resumes from an exact checkpoint.
 
-**Expected behavior:** Analyze-only zero-write. Stable recording creates one full-hash
+**Expected behavior:** Analyze-only zero-write. Stable recording creates one full_revision
 target by no-replace CAS/read-back. Drift/existing target writes nothing; read-back
 mismatch RECOVERY_REQUIRED. Resume verifies predecessor chain and continues one legal
 idempotent step.
@@ -355,7 +355,7 @@ idempotent step.
 
 - [ ] Planning remains bounded, owner/path-scoped and non-implementing
 - [ ] Rollback and QA/smoke are versioned handoff/evidence contracts, not inline work
-- [ ] New candidate invalidates old release evidence and drives every gate hash
+- [ ] New candidate invalidates old release evidence and drives every gate revision
 - [ ] Stable item/finding/evidence identities replace free-text proof slots
 - [ ] S1 and required partial/timeout/rollback gaps fail closed
 - [ ] Human deployment/submission/publication authority stays independent

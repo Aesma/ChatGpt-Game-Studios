@@ -1,5 +1,7 @@
 # Skill Test Spec: `$onboard`
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
 `$onboard` returns a bounded, visibility-filtered, source-cited repository
@@ -30,14 +32,14 @@ reimplements either producer.
       first and closest applicable rules win conflicts
 - [ ] Defines enumeration-entry, opened-file, per-file-byte, total-byte, depth,
       and explicit Git-range commit budgets
-- [ ] Visibility and sensitive-data denial occur before stat/open/hash
+- [ ] Visibility and sensitive-data denial occur before stat/open/revision
 - [ ] Sensitive omission never reveals identifying path/filename/metadata details
 - [ ] Repository roles are separate from human title, manager, reporting line,
       access, assignment, and decision authority
 - [ ] Git requires explicit from_ref/to_ref, redacts personal/private metadata,
       and never infers momentum/productivity/velocity/performance
 - [ ] Missing/invalid root instructions return ERROR without partial narrative
-- [ ] Every fact has path/artifact, locator, hash, source state, instruction chain,
+- [ ] Every fact has path/artifact, locator, revision, source state, instruction chain,
       visibility, and DIRECT/UNKNOWN confidence
 - [ ] Canonical stage source is exactly `cgs.project-stage-detection/v2`; no local
       stage algorithm exists
@@ -127,9 +129,9 @@ Run these variants:
 | Variant | Fixture | Expected |
 |---|---|---|
 | 4a | Root and nested design/AGENTS.md conflict on visibility/convention | Closest design rule wins that subject; non-conflicting root rules remain |
-| 4b | Two nested levels apply to one recommended file | Root→parent chain order and hashes are reported |
+| 4b | Two nested levels apply to one recommended file | Root→parent chain order and revisions are reported |
 | 4c | Applicable nested AGENTS.md is unreadable/invalid | Governed target is not opened/recommended; PARTIAL + UNKNOWN_INSTRUCTION_CHAIN |
-| 4d | Nested rule denies a source root recommended by an index | Denial occurs before target stat/open/hash |
+| 4d | Nested rule denies a source root recommended by an index | Denial occurs before target stat/open/revision |
 | 4e | Candidate real path escapes through symlink | Candidate rejected; no outside-root read |
 
 **Assertions:**
@@ -176,10 +178,10 @@ incident/anti-cheat reports, and safe architecture sources.
 
 **Expected behavior:**
 
-1. Applies visibility/deny rules before stat/open/hash/content ingestion.
-2. Sensitive candidates never enter content reads or hash output.
+1. Applies visibility/deny rules before stat/open/revision/content ingestion.
+2. Sensitive candidates never enter content reads or revision output.
 3. Output uses only generic OMITTED_SENSITIVE/OMITTED_VISIBILITY codes.
-4. No path, basename, extension, existence detail, size, timestamp, owner, hash,
+4. No path, basename, extension, existence detail, size, timestamp, owner, revision,
    secret-shaped value, or exploit detail identifies the omitted item.
 5. Denied sources are never recommended.
 
@@ -278,7 +280,7 @@ stale, project mismatch, unreadable, and policy-omitted.
 **Assertions:**
 
 - [ ] Stage source is exactly `cgs.project-stage-detection/v2`
-- [ ] Packet ID, root ID, catalog hash, manifest and current source states validate
+- [ ] Packet ID, root ID, catalog revision, manifest and current source states validate
 - [ ] Detector packet remains diagnostic, not gate/access authority
 - [ ] project-stage-detect invocation count is zero
 
@@ -294,7 +296,7 @@ unreadable; policy-omitted; and envelope with omitted same-level conflicts.
 
 - CURRENT requires recommendation ID, snapshot, stage source/context, matching
   packet/root/manifest/catalog IDs, exactly one action, complete conflict/evidence
-  buckets, receipt/run IDs, diagnostics, no-execution markers, and current hashes.
+  buckets, receipt/run IDs, diagnostics, no-execution markers, and current revisions.
 - Non-current variants do not supply project recommendation facts.
 - A valid project workflow action may be displayed separately but is never
   executed, treated as assignment, or automatically made onboarding next_action.
@@ -349,7 +351,7 @@ two current safe indexes contradict one another.
 recommended by repository guidance and has a complete instruction chain. No task
 assignment or project workflow is authorized.
 
-**Expected behavior:** Recommends reading that one verified file with path/hash/
+**Expected behavior:** Recommends reading that one verified file with path/revision/
 chain, or asking one source-identified artifact owner a bounded question. Does
 not recommend implementation, initialization, sprint/design work, or a denied/
 stale/unverified file merely because another artifact is absent.
@@ -393,7 +395,7 @@ undocumented knowledge.
 - [ ] Root AGENTS.md gates all secondary context
 - [ ] Nested instruction chains precede governed reads/recommendations
 - [ ] Enumeration/content/Git collection obeys explicit budgets
-- [ ] Visibility and sensitive denial precede stat/open/hash
+- [ ] Visibility and sensitive denial precede stat/open/revision
 - [ ] Every DIRECT fact has stable provenance and current snapshot state
 - [ ] Repository roles never become human organization
 - [ ] Git is explicit-range, privacy-safe, and non-evaluative
@@ -406,7 +408,7 @@ undocumented knowledge.
 
 ## Coverage Notes
 
-Fixtures must prove denied sources were never statted/opened/hashed and that
+Fixtures must prove denied sources were never statted/opened/versioned and that
 applicable instruction files were read before targets. Absence from final prose
 alone is insufficient. Catalog test-result fields remain blank until these cases
 are actually executed; authoring this spec is not test evidence.

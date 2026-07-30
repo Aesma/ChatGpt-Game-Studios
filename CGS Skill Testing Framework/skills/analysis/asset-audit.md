@@ -6,7 +6,7 @@
 compliance, provenance, license-policy evidence, reference integrity, and
 consumed production state. It uses one immutable manifest, deterministic rule
 precedence, registered versioned adapters, stable asset/rule/finding IDs, and
-exact raw-byte hashes. It returns a `cgs.review-evidence/v1` envelope with a
+exact declared revisions. It returns a `cgs.review-evidence/v1` envelope with a
 `cgs.asset-audit-report/v1` extension under contract `cgs.asset-audit/v3`.
 
 The analyzer owns asset compliance and reference integrity. It never claims that
@@ -21,7 +21,7 @@ Every non-error result must state `allowed_project_write_set: []`,
 This specification is a repaired catalog candidate and is **NOT EXECUTED**.
 Static inspection or contract editing must not populate catalog `last_*`, pass,
 or tested fields without immutable runner receipts bound to the exact candidate
-hashes.
+revisions.
 
 ## Contract Sources
 
@@ -44,7 +44,7 @@ audit source names the same ordered P1 rows `ASA-002..ASA-008`.
 | AA-006 | ASA-004 | Registered engine resolvers enumerate supported syntaxes and normalized IDs/locations | 11, 13 |
 | AA-007 | ASA-005 | Stable rule severity and deterministic verdict aggregation | 3, 4, 18 |
 | AA-008 | ASA-006 | Closed category grammar, project-root confinement, and no-follow symlink behavior | 1, 7 |
-| AA-009 | ASA-007 | One-pass indexes, fixed budgets, bounded rows/digests, and explicit failure coverage | 8, 9, 17 |
+| AA-009 | ASA-007 | One-pass indexes, fixed budgets, bounded rows/revisions, and explicit failure coverage | 8, 9, 17 |
 | AA-010 | ASA-008 | Static/behavioral spec matches v3; real binary/adapter/mutation fixtures are required | all |
 
 ---
@@ -66,20 +66,20 @@ audit source names the same ordered P1 rows `ASA-002..ASA-008`.
       fixes, report persistence, approval prompts, gates, delegation, and
       downstream skill invocation.
 - [ ] Adapters require an OS-level project-read-only sandbox, argv arrays, exact
-      executable hashes/versions, no shell string/network, bounded scratch,
+      executable revisions/versions, no shell string/network, bounded scratch,
       structured receipts, timeouts, and output caps.
-- [ ] Reads and hashes all applicable root-to-target `AGENTS.md` files.
+- [ ] Reads all applicable root-to-target `AGENTS.md` files.
 - [ ] Defines explicit rule precedence across instructions, technical preferences,
       art direction, provenance/license policy, and advisory manifest fallbacks.
 - [ ] Cross-domain contradictions become `RULE_CONFLICT`/`UNVERIFIED` rather than
       a silent override.
-- [ ] Rules have stable IDs, source artifact/path/hash/locator, domain, authority,
+- [ ] Rules have stable IDs, source artifact/path/revision/locator, domain, authority,
       typed applicability/operator, adapter requirement, severity, and owner.
 - [ ] Defines fixed candidate, asset, byte, rule, receipt, reference-edge,
       provenance, license, output, and time limits that a manifest may only lower.
-- [ ] Hashes the complete candidate identity sequence while retaining bounded
-      detailed rows and exact overflow counts/boundary keys/digests.
-- [ ] Scope comes from a hash-bound inventory and registered completeness receipt,
+- [ ] Records the complete candidate business-key sequence and explicit inventory revision while retaining bounded
+      detailed rows and exact overflow counts/boundary keys/revisions.
+- [ ] Scope comes from a revision-bound inventory and registered completeness receipt,
       not undeclared recursive discovery or per-asset repository rescans.
 - [ ] Every applicable type/rule uses a registered versioned adapter; metadata is
       verified from signature/container/structured output, never extension alone.
@@ -88,7 +88,7 @@ audit source names the same ordered P1 rows `ASA-002..ASA-008`.
       `cgs.asset-adapter-receipt/v1`; unsupported/parse/timeout/mutation-risk states
       are `UNVERIFIED` and incomplete.
 - [ ] Provenance and license-policy records bind stable IDs, exact asset bytes,
-      source receipts, policy/rule hashes, target scope, obligations, and
+      source receipts, policy/rule revisions, target scope, obligations, and
       derivation parent chains.
 - [ ] Missing/unsupported/conflicting provenance or license evidence fails closed;
       prohibited/expired or conclusively unmet HARD obligations are HARD failures.
@@ -103,14 +103,14 @@ audit source names the same ordered P1 rows `ASA-002..ASA-008`.
 - [ ] Asset-audit owns compliance/provenance/license/reference integrity while
       content-audit exclusively owns requirement-to-build inclusion.
 - [ ] Asset PASS never emits `SHIPPED_VERIFIED` or proves content completeness.
-- [ ] Stable `AAF-...` findings exclude paths, wording, hashes, values, severity,
+- [ ] Stable `AAF-...` findings exclude paths, wording, revisions, values, severity,
       status, run identity, timestamps, and recommendation from identity.
 - [ ] Coverage is recorded per candidate/channel/check with explicit
       `COMPLETE | PARTIAL | FAILED | NOT_APPLICABLE` states.
 - [ ] Verdict precedence is deterministic: execution error, conclusive HARD
       failure, incomplete coverage, advisory failure, then fully proven compliance.
-- [ ] Emits a recomputable hash-bound envelope; summary mode preserves all machine
-      semantics and hashes.
+- [ ] Emits a version-bound envelope with explicit revisions; summary mode preserves all machine
+      semantics and revisions.
 - [ ] Returns at most one owner-routed recommendation and never executes it.
 - [ ] Metadata describes adapter-backed, read-only, provenance/license/reference,
       fail-closed behavior and the content-audit ownership boundary.
@@ -127,7 +127,7 @@ workflow in any category or verdict path.
 
 ## Required Fixture Contract
 
-Behavioral fixtures provide exact bytes and expected SHA-256 values for the audit
+Behavioral fixtures provide exact bytes and required revision values for the audit
 manifest, inventory and completeness receipt, assets/import metadata, adapter and
 resolver registries, executable identities and receipts, build/dependency data,
 rules/instructions/technical preferences/art direction, provenance/license
@@ -152,7 +152,7 @@ The exact typed schemas under test are `cgs.asset-adapter-receipt/v1`,
 Fixture:
 
 - A valid project-relative manifest uses `cgs.asset-audit-manifest/v1` and binds
-  one stable target/build/platform/configuration plus every declared input hash.
+  one stable target/build/platform/configuration plus every declared input revision.
 - Invalid variants use an absolute path, URL, glob, regex, dot segment, duplicate
   flag, positional category, directory, symlink, junction, or unknown category.
 
@@ -190,7 +190,7 @@ Fixture:
 
 - Real minimal PNG bytes have a valid signature and registered image-adapter
   receipt for exact dimensions, color, alpha, compression, mip, and import data.
-- Every applicable HARD rule and rule source hash matches.
+- Every applicable HARD rule and rule source revision matches.
 - All other required art-scope coverage channels are independently complete.
 
 Input: `$asset-audit --manifest audit/asset-audit.yaml --category art`
@@ -199,14 +199,14 @@ Expected behavior:
 
 1. The adapter validates the file signature rather than `.png`.
 2. Per-rule rows bind asset, import, rule, executable, adapter, receipt, and target
-   hashes.
+   revisions.
 3. Each applicable rule is `PASS` and `COMPLIANT` is eligible only because every
    required scoped coverage channel is complete.
 
 Assertions:
 
 - [ ] Extension and visual inspection are not evidence.
-- [ ] Receipt schema, parser, argv digest, sandbox policy, and logs are validated.
+- [ ] Receipt schema, parser, argv revision, sandbox policy, and logs are validated.
 - [ ] No import metadata or cache bytes change.
 
 ---
@@ -216,7 +216,7 @@ Assertions:
 Fixture variants:
 
 - An image has no compatible adapter.
-- The adapter executable hash differs from the registry.
+- The adapter executable revision differs from the registry.
 - A valid executable emits malformed/truncated output.
 - A mutating adapter cannot run with a project-read-only mount.
 
@@ -243,7 +243,7 @@ Fixture:
 - Real audio-container bytes produce a valid receipt with codec, sample rate,
   channels, bit depth, duration, streaming, and mix metadata.
 - A HARD sample-rate rule fails.
-- JSON and YAML fixtures bind exact parser and schema path/hash/version; one has a
+- JSON and YAML fixtures bind exact parser and schema path/revision/version; one has a
   conclusive schema violation, while another lacks a supported YAML feature.
 
 Expected behavior:
@@ -256,7 +256,7 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Findings include expected/actual/units, exact rule evidence, receipt digest,
+- [ ] Findings include expected/actual/units, exact rule evidence, receipt revision,
       and owner.
 - [ ] Extension alone is never evaluated.
 - [ ] The deterministic first-match verdict order is used.
@@ -274,7 +274,7 @@ Fixture:
 
 Expected behavior:
 
-1. Both instruction sources are loaded root-to-target and exact hashes reported.
+1. Both instruction sources are loaded root-to-target and exact revisions reported.
 2. The closest applicable instruction wins the same governance rule key.
 3. Technical, art, and license rules coexist in their own domains.
 4. Effective and overridden rules appear in `rule_precedence`.
@@ -310,19 +310,19 @@ Assertions:
 
 ---
 
-### Case 7: Invalid inventory identity, hash, or materialization
+### Case 7: Invalid inventory identity, revision, or materialization
 
 Fixture variants:
 
 - Duplicate asset ID or normalized path.
 - Asset real path escapes the project through a symlink.
-- Recorded bytes mismatch the current SHA-256.
+- Recorded bytes mismatch the current revision.
 - Inventory row points to an LFS pointer instead of materialized content.
 - A declared asset is unreadable.
 
 Expected behavior:
 
-1. Identity/path/hash violations that invalidate scope return
+1. Identity/path/revision violations that invalidate scope return
    `ERROR — INVALID AUDIT MANIFEST` before adapters run.
 2. A valid manifest whose specific selected asset is an LFS pointer or becomes
    unreadable records `LFS_POINTER`/`UNREADABLE`, `UNVERIFIED`, incomplete
@@ -331,7 +331,7 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Exact raw-byte hashes, not mtime/Git labels, determine currentness.
+- [ ] Exact declared revisions, not mtime/Git labels, determine currentness.
 - [ ] No adapter PASS is synthesized for absent bytes.
 - [ ] Every failure is represented in manifest and coverage rows.
 
@@ -348,8 +348,8 @@ Fixture:
 Expected behavior:
 
 1. The manifest cannot raise the fixed limit.
-2. The complete identity sequence is hashed; 200 deterministic detailed rows are
-   retained; exact omitted count, first/last sort keys, and omitted digest are
+2. The complete identity sequence is versioned; 200 deterministic detailed rows are
+   retained; exact omitted count, first/last sort keys, and omitted revision are
    reported.
 3. Omitted assets are not inspected or partially judged.
 4. One aggregate `OVER_LIMIT` coverage row names all affected checks and verdict
@@ -370,7 +370,7 @@ Fixture:
 
 - Every listed asset passes its rules.
 - The inventory-completeness receipt is missing, stale, has an unknown generator
-  adapter, or does not bind declared roots/exclusions and output digest.
+  adapter, or does not bind declared roots/exclusions and output revision.
 
 Expected behavior:
 
@@ -423,7 +423,7 @@ Fixture:
 Expected behavior:
 
 1. Reference state is `REFERENCED`.
-2. The exact edge, source location, resolver version, target/build, and hashes are
+2. The exact edge, source location, resolver version, target/build, and revisions are
    reported.
 3. Text absence has no classification effect.
 
@@ -478,7 +478,7 @@ Expected behavior:
 Assertions:
 
 - [ ] Resolver syntax support is exact and versioned.
-- [ ] Reference locations and normalized IDs are hash-bound.
+- [ ] Reference locations and normalized IDs are revision-bound.
 - [ ] New content requirements are not invented.
 
 ---
@@ -492,7 +492,7 @@ Fixture:
 - A generated asset records policy-required generator/model/tool identity and
   creation receipt.
 - A derived asset has an exact acyclic parent chain to covered assets.
-- Variants include a missing record, hash mismatch, unknown schema, cycle, and
+- Variants include a missing record, revision mismatch, unknown schema, cycle, and
   conflicting provider records.
 
 Expected behavior:
@@ -505,7 +505,7 @@ Expected behavior:
 
 Assertions:
 
-- [ ] Every parent and record uses stable IDs and exact hashes.
+- [ ] Every parent and record uses stable IDs and exact revisions.
 - [ ] Derived cycles are detected deterministically.
 - [ ] Generated provenance requirements come from policy, not model memory.
 
@@ -515,7 +515,7 @@ Assertions:
 
 Fixture variants:
 
-- An allowed license has exact policy and receipt hashes.
+- An allowed license has exact policy and receipt revisions.
 - An allowed-with-obligations license has current attribution evidence.
 - Another lacks required attribution evidence.
 - Other records are prohibited, expired, unknown, conflicting, or outside the
@@ -553,9 +553,9 @@ Expected behavior:
 1. Asset-audit may be `COMPLIANT` for its exact asset scope but does not emit
    `SHIPPED_VERIFIED` or decide the missing GDD requirement.
 2. Content-audit alone owns requirement-to-build comparison.
-3. The consumer may display current asset evidence only after recomputing the
+3. The consumer may display current asset evidence only after re-reading and validating the declared
    recognized envelope, producer/extension, target/build/manifest, artifact, and
-   payload hashes.
+   payload revisions.
 4. Asset compliance does not substitute for build inclusion, and build inclusion
    does not substitute for compliance.
 
@@ -580,7 +580,7 @@ Fixture:
 
 Expected behavior:
 
-1. Final re-enumeration/re-hashing records added and stale inputs and discards
+1. Final re-enumeration/re-reading records added and stale inputs and discards
    conclusions from old bytes.
 2. The malicious adapter is not run when sandbox policy is validated; any actual
    detected project mutation is an execution `ERROR` with no evidence envelope.
@@ -616,11 +616,11 @@ Assertions:
 - [ ] `COMPLIANT` is impossible from a subset, empty search, unknown evidence,
       missing adapter/schema/resolver, stale record, or unsupported type/syntax.
 - [ ] `--summary` retains identical machine target, manifest, rule precedence,
-      coverage, state sets, finding IDs, verdict, limitations, and hashes.
+      coverage, state sets, finding IDs, verdict, limitations, and revisions.
 
 ---
 
-### Case 19: Stable finding identity and evidence recomputation
+### Case 19: Stable finding identity and evidence validation
 
 Fixture:
 
@@ -632,34 +632,34 @@ Fixture:
 Expected behavior:
 
 1. Runs A and B retain the same `AAF-...` finding ID while artifact/manifest/
-   payload/record hashes change.
-2. Run C gets a different fingerprint and finding ID.
-3. Incompatible evidence under one fingerprint is a coverage conflict and forces
+   payload/record revisions change.
+2. Run C gets a different stable business key and finding ID.
+3. Incompatible evidence under one stable business key is a coverage conflict and forces
    `PARTIAL` absent a separate HARD finding.
 
 Assertions:
 
 - [ ] Finding identity uses stable project/asset/rule/target/record IDs and
       platform/configuration.
-- [ ] Paths, names, wording, line numbers, hashes, values, severity, status, run
+- [ ] Paths, names, wording, line numbers, revisions, values, severity, status, run
       ID, timestamp, and recommendation are excluded.
-- [ ] Every artifact, manifest, extension payload, and envelope hash recomputes.
+- [ ] Every artifact, manifest, extension payload, and envelope revision revalidates declared.
 
 ---
 
 ## Protocol Compliance
 
 - [ ] Invocation, project identity, target/build/platform, applicable
-      instructions, and every source are exact and hash-bound.
+      instructions, and every source are exact and revision-bound.
 - [ ] Rule precedence is explicit, domain-aware, and reports winners, overrides,
       and conflicts.
 - [ ] Scope uses a registered inventory completeness receipt and fixed bounded
-      limits with complete candidate/overflow digests.
+      limits with complete candidate/overflow revisions.
 - [ ] Registered adapters/resolvers are versioned, sandboxed read-only, typed,
       receipt-bound, and fail closed.
 - [ ] Binary/container/schema checks use actual fixture bytes and registered
       parsers rather than extensions.
-- [ ] Provenance and license-policy evidence is stable-ID/hash-bound and unknown
+- [ ] Provenance and license-policy evidence is stable-ID/revision-bound and unknown
       states prevent compliance.
 - [ ] Reference classifications use a complete engine/build graph and supported
       exact syntaxes; text search is advisory only.
@@ -679,7 +679,7 @@ Assertions:
 Fixtures must distinguish adapter `FAIL` from `PARSE_ERROR`, unsupported syntax
 from a parsed missing reference, advisory string matches from engine graph edges,
 policy prohibition from missing license evidence, and incomplete inventory from a
-proven-empty scope. Exact hashes and stable IDs are mandatory for every expected
+proven-empty scope. Exact revisions and stable IDs are mandatory for every expected
 conclusion.
 
 Report persistence belongs to a separate recorder contract and is outside this

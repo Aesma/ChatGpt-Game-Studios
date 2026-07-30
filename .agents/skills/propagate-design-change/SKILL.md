@@ -22,16 +22,16 @@ delegation, approval, authorization, or writes.
 The request must declare `contract: cgs.propagate-design-change-request/v2` and:
 
 - stable `run_id`; changed GDD ID, normalized current path, and expected raw
-  SHA-256;
+  revision;
 - explicit immutable baseline kind `git-object | approved-snapshot`, locator,
-  resolved object/snapshot ID, baseline path, expected raw SHA-256, and approved
-  record path/hash when approval evidence is used;
+  resolved object/snapshot ID, baseline path, expected raw revision, and approved
+  record path/revision when approval evidence is used;
 - explicit rename evidence or exact `baseline_path`; `HEAD:<path>`, a branch name
   that is not resolved to an object ID, mtime, and “previous version” are invalid;
 - exact TR registry, architecture/ADR inventory, epic index/inventory, story
   inventory, sprint/work tracker, owner registry, active-work, prior report, owner
   resolution/coordination receipt, and receipt-chain evidence paths with expected
-  hashes or `ABSENT`;
+  revisions or `ABSENT`;
 - `review_mode: full | lean | solo` and named analysis author, technical
   reviewer, planning owner, report writer, and receipt recorder role identities;
 - canonical output root `production/change-impact`, expected report/receipt
@@ -40,7 +40,7 @@ The request must declare `contract: cgs.propagate-design-change-request/v2` and:
   graph edges, 100 impacts, 25 decisions per interaction batch, and four decision
   batches per run.
 
-Reject unknown or duplicate fields, unsafe/aliased paths, invalid IDs/hashes,
+Reject unknown or duplicate fields, unsafe/aliased paths, invalid IDs/revisions,
 mutable baseline locators, target/source aliasing, role substitution, limit
 increases, missing expected preimages, or a request that authorizes downstream
 artifact writes.
@@ -69,37 +69,35 @@ another, and this workflow cannot claim to speak for an artifact owner.
 ## Phase 0: Pin baseline, current bytes, and change identity
 
 Read the request, baseline approval evidence when present, exact baseline bytes,
-and exact current GDD bytes. Verify every expected hash before analysis.
+and exact current GDD bytes. Verify every expected revision before analysis.
 
 For a git baseline, resolve the supplied reference once to an immutable commit or
 blob object ID and record both the caller token and resolved ID. For an approved
 snapshot, require retrievable immutable bytes plus the matching approval record
-and hash. Never silently substitute `HEAD`, a newer approval, or current workspace
+and revision. Never silently substitute `HEAD`, a newer approval, or current workspace
 bytes.
 
 Rename handling is explicit:
 
-1. use the declared baseline path when it resolves and hashes correctly;
+1. use the declared baseline path when it resolves and revisions correctly;
 2. otherwise accept only one declared rename proof bound to baseline/current
-   paths and hashes; or
-3. stop BLOCKED on zero, multiple, or hash-mismatched candidates.
+   paths and revisions; or
+3. stop BLOCKED on zero, multiple, or revision-mismatched candidates.
 
 If the baseline is valid and has no target file, classify `NEW_GDD`; do not call
-it NO IMPACT. Equal verified baseline/current hashes are `NO_CHANGE` with zero
+it NO IMPACT. Equal verified baseline/current revisions are `NO_CHANGE` with zero
 writes.
 
-Derive the stable change identity from canonical UTF-8 fields:
+Allocate one collision-checked change identity from the stable GDD ID and a UTC run ID:
 
-    change_id = PDC-<gdd-stable-id>-<first16(sha256(
-      baseline_locator_id + NUL + baseline_path + NUL + baseline_sha256 + NUL +
-      current_path + NUL + current_sha256))>
+    change_id = PDC-<gdd-stable-id>-<utc-run-id>
 
-The same exact baseline/current byte pair must reproduce the same `change_id`.
-A different current or baseline hash is a different change, never an update to
-the old report.
+A rerun may continue an existing change only when the caller supplies that exact
+`change_id` and the baseline/current paths, locators, and declared revisions still
+match. Otherwise allocate a new UTC run ID; never derive identity from file bytes.
 
 Create `cgs.design-change-baseline/v2` containing locator kind/token/resolved ID,
-approval evidence, both paths/hashes/byte counts, rename proof, current workspace
+approval evidence, both paths/revisions/byte counts, rename proof, current workspace
 state, diff range, and `change_id`.
 
 ## Phase 1: Compute a stable structured diff
@@ -110,11 +108,11 @@ criteria, constraints, tuning values, and path identity. Each row records:
 
 - stable `delta_id` derived from `change_id`, baseline/current stable requirement
   ID or normalized locator, and change kind;
-- baseline and current path, locator, excerpt digest, and containing-section
-  digest; never store an unverifiable conceptual-only summary;
+- baseline and current path, locator, excerpt reference ID, and containing-section
+  reference ID; never store an unverifiable conceptual-only summary;
 - before/after TR IDs and requirement IDs without inventing or renumbering them;
 - semantic kind, evidence confidence, and ambiguity finding IDs; and
-- exact baseline/current source hashes.
+- exact baseline/current source revision.
 
 Unchanged context may be listed but cannot generate an impact. Missing, duplicate,
 or ambiguous stable requirement identity creates a finding and keeps the delta
@@ -136,7 +134,7 @@ as an unbounded fallback. Required coverage layers are:
    resolution receipts when this is a continuation run.
 
 Create canonical `cgs.pdc-source-manifest/v2` with ordered normalized path, layer,
-artifact/stable IDs, inventory authority, owner, exact bytes, raw SHA-256, parsed
+artifact/stable IDs, inventory authority, owner, exact bytes, raw revision, parsed
 state, edge locators, loaded/omitted reason, and expected-current evidence.
 
 Hard maxima are 48 files, 2097152 exact bytes, 256 graph nodes, 512 edges, and 100
@@ -162,7 +160,7 @@ edges as diagnostic evidence:
 
 For every delta:
 
-1. reconcile baseline and current TR rows by stable TR ID and row hash;
+1. reconcile baseline and current TR rows by stable TR ID and row revision;
 2. record removed, inactive, duplicated, missing, or ambiguous mappings as
    findings; never invent `TR-???` or infer a replacement ID;
 3. traverse all matching ADR, module dependency, epic, story, and work edges;
@@ -182,33 +180,34 @@ Artifact identity is the declared stable ID. When the authoritative artifact
 format has no stable ID, use `PATH:<normalized-path>` and report the missing-ID
 finding; never use a mutable title or array position.
 
-Derive:
+Derive IDs from declared business identifiers, not content:
 
-    impact_id = PDCI-<first20(sha256(
-      change_id + NUL + delta_id + NUL + artifact_type + NUL + artifact_id + NUL + impact_kind))>
+    impact_id = PDCI-<change_id>-<delta_id>-<artifact-id>-<impact-kind>
 
-    finding_id = PDCF-<first20(sha256(
-      change_id + NUL + finding_kind + NUL + subject_id + NUL + evidence_fingerprint))>
+    finding_id = PDCF-<change_id>-<finding-kind>-<subject-id>-<defect-key>
+
+Normalize each component, reject unsafe or ambiguous values, and collision-check
+the complete ID before use.
 
 Each `cgs.design-change-finding/v2` row contains `change_id`, `finding_id`,
 subject delta/artifact ID, `status: OPEN | ROUTED | RESOLVED`, exact `evidence[]`
-path/locator/hash entries, owner route, acceptance condition, and `resolution`
-receipt/path/hash/verifier fields. RESOLVED requires current owner evidence;
+path/locator/revision entries, owner route, acceptance condition, and `resolution`
+receipt/path/revision/verifier fields. RESOLVED requires current owner evidence;
 approval or prose acknowledgement alone cannot close a finding.
 
 Each `cgs.design-change-impact/v2` row contains:
 
-- `change_id`, `delta_id`, `impact_id`, artifact type/ID/path/current raw hash;
+- `change_id`, `delta_id`, `impact_id`, artifact type/ID/path/current declared revision;
 - exact `evidence[]` containing every incoming TR/direct/dependency edge with
-  source locator/hash;
+  source locator/revision;
 - classification `STILL_VALID | NEEDS_REVIEW | LIKELY_SUPERSEDED |
   TRACEABILITY_GAP | DEPENDENCY_IMPACT | ACTIVE_WORK_RISK`;
 - lifecycle field `status: OPEN | COORDINATION_REQUIRED | ROUTED | DEFERRED |
   RESOLVED`;
-- artifact owner identity/source/hash, owner workflow, requested action, acceptance
+- artifact owner identity/source/revision, owner workflow, requested action, acceptance
   condition, and due/review point when known;
-- resolution decision, rationale, evidence receipt path/hash, artifact postimage
-  hash, verifier, and verification time when resolved; and
+- resolution decision, rationale, evidence receipt path/revision, artifact postimage
+  revision, verifier, and verification time when resolved; and
 - stable finding IDs and dependency blockers.
 
 The same change/delta/artifact/kind reproduces the same impact ID. Reruns fold
@@ -224,7 +223,7 @@ Allowed lifecycle transitions are:
 - `RESOLVED` is terminal for this change ID.
 
 `RESOLVED` requires an external `cgs.owner-design-change-resolution/v1` receipt
-from the declared owner workflow binding impact ID, artifact pre/post hashes,
+from the declared owner workflow binding impact ID, artifact pre/post revisions,
 action, verification evidence, and owner/verifier identities. This workflow reads
 that receipt; it does not create it or edit the resolved artifact.
 
@@ -235,10 +234,10 @@ registry. Any `In Progress`, `In Review`, active equivalent, or status conflict
 creates `ACTIVE_WORK_RISK` with lifecycle `COORDINATION_REQUIRED` and an elevated
 warning before decisions.
 
-Record exact owner/assignee, status source/path/hash, `updated_at`, artifact raw
-hash, sprint/work ID, and coordination requirement. Treat missing owner,
-`updated_at`, or hash as PARTIAL. The route remains frozen until an external
-`cgs.active-work-coordination-receipt/v1` binds the impact, owner, artifact hash,
+Record exact owner/assignee, status source/path/revision, `updated_at`, artifact raw
+revision, sprint/work ID, and coordination requirement. Treat missing owner,
+`updated_at`, or revision as PARTIAL. The route remains frozen until an external
+`cgs.active-work-coordination-receipt/v1` binds the impact, owner, artifact revision,
 active status, coordination decision, and expiry/review point. A generic user
 approval cannot unfreeze it. This is the default concurrency freeze for every
 affected in-progress artifact.
@@ -274,7 +273,7 @@ remainder yields PARTIAL plus deterministic continuation shards; do not treat
 omitted rows as accepted, deferred, or no-impact.
 
 Planning-owner decisions change only the route-plan snapshot. They cannot waive
-baseline/hash failures, partial coverage, traceability gaps, active-work
+baseline/revision failures, partial coverage, traceability gaps, active-work
 coordination, owner evidence, review failure, or downstream owner authority.
 
 ## Phase 7: Immutable report and event chain
@@ -284,7 +283,7 @@ The canonical report path is exactly:
     production/change-impact/<change_id>.md
 
 It uses `cgs.design-change-impact-report/v2`, binds baseline/current/diff/source-
-manifest hashes, coverage, deltas, graph, impacts/findings, active-work freezes,
+manifest revision, coverage, deltas, graph, impacts/findings, active-work freezes,
 owner routes, reviewer result, and current convergence state. It is create-only
 and immutable.
 
@@ -296,14 +295,14 @@ so change, finding, and artifact/impact state can be folded without free text.
 - If present and valid for the same change ID, use it as the immutable event root;
   never rewrite it.
 - If present with another identity, schema, malformed provenance, or incompatible
-  hashes, return BLOCKED conflict.
+  revisions, return BLOCKED conflict.
 
 Later coverage, coordination, owner-resolution, or convergence evidence is
 appended only through create-only receipts at:
 
-    production/change-impact/receipts/<change_id>/<sequence>-<digest-prefix>.yaml
+    production/change-impact/receipts/<change_id>/<sequence>-<receipt-id>.yaml
 
-Each receipt points to the report hash and previous receipt hash or `ROOT`, so the
+Each receipt points to the report ID/revision and previous receipt ID or `ROOT`, so the
 current state is the deterministic fold of one report plus one linear receipt
 chain. A fork, missing sequence, duplicate predecessor, or invalid transition is
 BLOCKED. An unchanged rerun creates no activity-only receipt.
@@ -327,7 +326,7 @@ The change is `CONVERGED` only when:
 - all dependency branches are closed;
 - no OPEN, COORDINATION_REQUIRED, ROUTED, DEFERRED, partial-coverage, owner,
   traceability, reviewer, CAS, or receipt-chain finding remains; and
-- a fresh bounded rescan against the same baseline/current hash pair discovers no
+- a fresh bounded rescan against the same baseline/current revision pair discovers no
   new impact.
 
 Rerunning until a favorable label is not convergence. New GDD baseline/current

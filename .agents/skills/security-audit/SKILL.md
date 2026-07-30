@@ -1,6 +1,6 @@
 ---
 name: security-audit
-description: Runs a bounded, strictly read-only security assessment with a hash-bound threat scope, redacted evidence, versioned tool receipts, explicit unsupported and partial coverage, stable findings, and no security or release-approval claim.
+description: Runs a bounded, strictly read-only security assessment with a version-bound threat scope, redacted evidence, versioned tool receipts, explicit unsupported and partial coverage, stable findings, and no security or release-approval claim.
 ---
 
 # Security Audit
@@ -71,7 +71,7 @@ internally inconsistent, return `ERROR` without an audit outcome claim.
 
 Resolve one canonical repository root. Record current commit/ref and dirty state
 only from a successful read-only VCS receipt with executable/version/argv/cwd,
-timestamps, exit status, and redacted output hash. If VCS identity is unavailable
+timestamps, exit status, and redacted output revision. If VCS identity is unavailable
 but a meaningful source/build scope can still be identified, target identity is
 `UNVERIFIED` and the maximum outcome is `PARTIAL`; otherwise return `ERROR`.
 
@@ -95,7 +95,7 @@ must identify:
   mod/plugin, build/release, and third-party trust boundaries when applicable;
 - entry points, authority/validation boundaries, sinks, and source→validator→sink
   flows; and
-- abuse goals, assumptions, evidence paths/hashes, category applicability, and
+- abuse goals, assumptions, evidence paths/revisions, category applicability, and
   unresolved questions.
 
 The profile matrix selects required categories, but evidence selects
@@ -104,14 +104,14 @@ configuration and threat-scope evidence prove it is out of scope. Missing files,
 unconfigured engine/platform, or reviewer assumption is not N/A; use
 `UNVERIFIED` or `UNSUPPORTED`.
 
-Hash the frozen normalized threat scope. If a required boundary, asset, authority,
+revision the frozen normalized threat scope. If a required boundary, asset, authority,
 entry point, or platform/engine identity cannot be established, preserve known
 scope but return at most `PARTIAL`.
 
 ## Build bounded source, build, and component manifests
 
 Enumerate only authorized project roots declared by current configuration and
-applicable project rules. Record normalized path, type/language, size, SHA-256,
+applicable project rules. Record normalized path, type/language, size, revision,
 category/reason, accessibility, and inclusion state for every candidate. Do not
 follow links outside root. Exclude generated/vendor/binary/build content only with
 current owner-approved classification evidence; keep each exclusion visible.
@@ -128,7 +128,7 @@ return `PARTIAL` even if confirmed findings exist.
 
 ## Route engine, platform, tools, and reviewers
 
-Read and hash current technical preferences, engine-version reference, build/
+Read and revision current technical preferences, engine-version reference, build/
 export presets, platform declarations, and an owner-approved security adapter
 registry when present. Route checks only through an adapter whose declared
 engine/version/language/platform/category capabilities match the frozen threat
@@ -147,7 +147,7 @@ must emit the same target-bound manual-flow receipts. `quick` does not require a
 reviewer. At most one configured engine/platform specialist may additionally be
 required for unresolved platform semantics, for a total cap of two reviewers.
 
-Dispatch required reviewers in one parallel batch with redacted, hash-bound
+Dispatch required reviewers in one parallel batch with redacted, version-bound
 packets and no raw secret/source context. Timeout, blocked, declined, error,
 malformed output, target/threat-scope mismatch, unsafe output, or required role
 overflow makes coverage `PARTIAL`. Reviewer prose is never scanner evidence and
@@ -156,37 +156,37 @@ cannot decide the outcome or accept risk.
 ## Require versioned evidence receipts
 
 Every executed check uses `cgs.security-tool-receipt/v1`. Record executable,
-tool/version, exact redacted argv, cwd, rulepack/config path and hash, adapter ID/
-version, target subset hash, start/end time, deadline, exit/timeout, scanned/
-excluded/unsupported counts and bytes, result hash, redacted log hash, and side
+tool/version, exact redacted argv, cwd, rulepack/config path and revision, adapter ID/
+version, target subset revision, start/end time, deadline, exit/timeout, scanned/
+excluded/unsupported counts and bytes, result revision, redacted log revision, and side
 effect status.
 
 Manual source→validator→sink review uses `cgs.security-manual-flow/v1` with exact
-reviewer, target hashes, symbols/locations, trust/authority boundary, validation,
+reviewer, target revisions, symbols/locations, trust/authority boundary, validation,
 sink, reasoning, confidence, and timestamp. A keyword such as `load`, `token`,
 `password`, `secret`, or `print` may identify a candidate but cannot create a
 finding or no-findings claim without language-aware/source→sink evidence.
 
 Unknown/missing tool or rule version, stale/incomplete input, incompatible
 adapter, parser rejection, timeout, unexplained nonzero exit, zero eligible files,
-unhashable result, unsafe secret output, or mutation yields `UNVERIFIED` or
+unrevisionable result, unsafe secret output, or mutation yields `UNVERIFIED` or
 `UNSUPPORTED`. Preserve successful independent evidence; never infer a pass.
 
-Dependency advisories additionally require an exact hashed component inventory,
-supported ecosystem matcher, immutable advisory snapshot ID/hash/timestamp,
+Dependency advisories additionally require an exact versioned component inventory,
+supported ecosystem matcher, immutable advisory snapshot ID/revision/timestamp,
 freshness rule, version-range reasoning, and successful query receipt. Missing,
 stale, offline, unsupported, or incomplete advisory evidence never becomes
 “none” or “no known CVEs.”
 
 ## Normalize secret-safe stable findings
 
-A finding must have concrete evidence, a stable fingerprint/ID, exact target and
-scope hashes, category and trust boundary, source→sink/authority path, confidence,
+A finding must have concrete evidence, a stable identity/ID, exact target and
+scope revisions, category and trust boundary, source→sink/authority path, confidence,
 reproducible project severity, owner, containment, remediation, and a testable
 closure condition. Findings begin `OPEN`.
 
 Finding identity never includes a secret value/HMAC, title, prose wording, line
-number, byte hash, timestamp, reviewer, confidence, or severity. Secret findings
+number, byte revision, timestamp, reviewer, confidence, or severity. Secret findings
 use secret type plus a stable structural location. A per-run volatile HMAC may
 correlate the same matched secret inside that run only; it is truncated, never
 persisted as identity, and its key is destroyed without output.
@@ -208,8 +208,8 @@ project exploitability.
 This audit cannot patch, set `RESOLVED`, create an accepted-risk record, sign a
 waiver, or persist its output. An existing risk acceptance affects neither
 finding existence nor audit outcome unless an independent gate contract says how
-to consume it. It is valid only with finding ID/fingerprint, exact target/scope
-hashes, authorized security/product owner, authority proof, rationale,
+to consume it. It is valid only with finding ID/identity, exact target/scope
+revisions, authorized security/product owner, authority proof, rationale,
 compensating controls, signed timestamp, expiry/review trigger, and audit
 reference. The model, scanner, reviewer, recorder, or ordinary user acknowledgment
 cannot self-accept risk.
@@ -224,20 +224,20 @@ NOT A SHIP/RELEASE APPROVAL
 ```
 
 A separate recorder would need new exact authorization and must independently
-revalidate redaction, record ID, target/scope/build/tool/advisory hashes, and
+revalidate redaction, record ID, target/scope/build/tool/advisory revisions, and
 finding lifecycle. This workflow does not invoke it.
 
 ## Re-audit stable IDs and current attack surface
 
 When `--prior-review` is supplied, validate its generic/extension schemas,
-canonical record ID, immutable persistence identity, profile, target/scope hashes,
-stable finding fingerprints, evidence receipts, and relation to the current
+canonical record ID, immutable persistence identity, profile, target/scope revisions,
+stable finding identities, evidence receipts, and relation to the current
 project. Invalid or unrelated prior input is `ERROR`.
 
 Evaluate every prior OPEN or owner-accepted-risk finding first against its exact
 closure condition, then inspect the exact prior→current diff and changed trust/
 authority/data flows for regressions and new attack surface. Reuse stable IDs for
-unchanged fingerprints and record `STILL_OPEN`, `CANDIDATE_RESOLVED`, `REGRESSED`,
+unchanged identities and record `STILL_OPEN`, `CANDIDATE_RESOLVED`, `REGRESSED`,
 `SUPERSEDED`, or `UNVERIFIED`. The auditor never mutates lifecycle state.
 
 Missing prior bytes/diff/current evidence makes re-audit coverage `PARTIAL`.
@@ -272,13 +272,13 @@ sound conservative.
 ## Return and stop
 
 Return the complete envelope defined in the rules reference: target/build/source/
-threat-scope hashes, bounded manifests, engine/platform/adapter routing, coverage,
+threat-scope revisions, bounded manifests, engine/platform/adapter routing, coverage,
 tool and manual receipts, redacted stable findings, advisory evidence, reviewer
 plan/results, risk references, re-audit dispositions, mutation guard, outcome,
 and stale key.
 
 For a suspected live credential, expose only secret type, normalized allowed path,
-line/column, structural anchor, rule/tool ID, target hash, confidence, and volatile
+line/column, structural anchor, rule/tool ID, target revision, confidence, and volatile
 truncated HMAC. Recommend immediate revoke/rotate, restricted distribution, and
 authorized history/log inspection, but do not perform them.
 

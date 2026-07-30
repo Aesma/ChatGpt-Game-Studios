@@ -13,8 +13,7 @@ This file is normative for `security-audit`.
 - Security extension: `cgs.security-audit/v2`
 - Project severity model: `CGS-SEC-IEX/v1`
 
-Compute `skill_bundle_sha256` over exact `SKILL.md` bytes, one NUL byte, exact
-`continued-workflow.md` bytes, one NUL byte, then exact `audit-rules-v1.md` bytes.
+Use the explicit `skill_bundle_version` declared by the security-audit package. Validate that the main skill, continuation, and rules file declare compatible schema versions.
 
 ## Fixed bounds
 
@@ -87,7 +86,7 @@ Freeze before checks:
 
 ```yaml
 schema: cgs.security-threat-scope/v1
-scope_id: sha256:<canonical payload>
+scope_id: <stable business ID>
 profile: full | network | save | input | quick
 target:
   repository_id: <canonical identity>
@@ -95,16 +94,16 @@ target:
   dirty_state: clean | dirty | includes-untracked | unknown
 engine_platform:
   engine: <exact configured value or null>
-  engine_version: <version plus source path/hash or null>
+  engine_version: <version plus source path/revision or null>
   language: <configured values>
-  target_platforms: [<platform plus source path/hash>]
-  build_export_profiles: [{id, path, sha256, status}]
+  target_platforms: [<platform plus source path/revision>]
+  build_export_profiles: [{id, path, revision, status}]
   online_backend_features: [{id, evidence, status}]
   mods_plugins: [{id, trust, evidence}]
 assets:
   - {asset_id, classification: public | local-sensitive | credential |
      player-pii | monetization | competitive-authority | release-signing,
-     owner, evidence_path, evidence_sha256}
+     owner, evidence_path, evidence_revision}
 actors:
   - {actor_id, trust, capabilities, access_preconditions, evidence}
 boundaries:
@@ -112,10 +111,10 @@ boundaries:
      transport_or_storage, evidence}
 entry_points:
   - {entry_id, actor_id, boundary_id, source_symbol, target_path,
-     target_sha256, data_classes}
+     target_revision, data_classes}
 flows:
   - {flow_id, source, validator_or_authority, sink, boundaries, data_classes,
-     target_paths_and_hashes, state: CONFIRMED | ASSUMED | UNKNOWN}
+     target_paths_and_revisions, state: CONFIRMED | ASSUMED | UNKNOWN}
 abuse_goals: [{goal_id, actor_id, asset_id, effect, evidence}]
 category_applicability:
   - {category, required_by_profile, state: APPLICABLE | NOT_APPLICABLE |
@@ -125,7 +124,7 @@ unresolved: [{id, subject, evidence_gap, affected_categories}]
 ```
 
 IDs are stable within project scope. Every evidence reference includes exact path
-and hash; denied secret/environment scope is recorded only as a category-level
+and revision; denied secret/environment scope is recorded only as a category-level
 permission gap without a protected path or value.
 
 Threat-scope completeness requires all profile categories, configured platforms,
@@ -135,23 +134,23 @@ proof of a generic project; affected semantics are `UNKNOWN` or `UNSUPPORTED`.
 
 ## Bounded manifests
 
-Each source/build/config row contains canonical allowed path, exact SHA-256, byte
+Each source/build/config row contains canonical allowed path, exact revision, byte
 size, language/type, owner-approved classification evidence, applicable threat
 categories, and state. A `DENIED_CATEGORY_ONLY` row instead has `path: null`, no
-path hash, and only a stable category-level gap ID. Do not read or name denied
+path revision, and only a stable category-level gap ID. Do not read or name denied
 paths. Do not follow links outside root.
 
 Generated/vendor/binary/build exclusions require an exact current rule, committed
 marker, or manifest record. A directory name alone does not prove exclusion.
-Binary/build artifacts are evidence only when supplied and hashable; the audit
+Binary/build artifacts are evidence only when supplied and revisionable; the audit
 does not create them.
 
-Hash canonical sorted rows to produce:
+revision canonical sorted rows to produce:
 
-- `source_scope_manifest_hash`;
-- `build_config_manifest_hash`;
-- `component_inventory_hash`; and
-- `check_plan_hash`.
+- `source_scope_manifest_revision`;
+- `build_config_manifest_revision`;
+- `component_inventory_revision`; and
+- `check_plan_revision`.
 
 The check plan maps every required category and in-scope manifest subset to a
 compatible adapter/evidence method before execution. Any unchecked planned row is
@@ -165,7 +164,7 @@ An adapter record is usable only with:
 adapter_id: <stable ID>
 adapter_version: <version>
 source_path: <current owner-approved registry path>
-source_sha256: <hash>
+source_revision: <revision>
 engine_ranges: [<exact constraints>]
 languages_or_types: [<types>]
 platforms: [<platforms>]
@@ -196,14 +195,14 @@ schema: cgs.security-tool-receipt/v1
 receipt_id: <stable run-local ID>
 check_id: <planned stable check ID>
 category: <category>
-adapter: {id, version, source_path, source_sha256}
-tool: {executable, version, binary_sha256_or_install_identity}
+adapter: {id, version, source_path, source_revision}
+tool: {executable, version, binary_revision_or_install_identity}
 argv_redacted: [<arguments with no secret material>]
 cwd: <canonical project-relative directory>
-rulepack: {id, version, path, sha256}
-configuration: {path, sha256}
-target_subset: [{path, sha256}]
-target_subset_hash: <hash>
+rulepack: {id, version, path, revision}
+configuration: {path, revision}
+target_subset: [{path, revision}]
+target_subset_revision: <revision>
 started_at: <ISO-8601 UTC>
 ended_at: <ISO-8601 UTC>
 deadline_seconds: 120
@@ -211,8 +210,8 @@ exit_code: <integer or null>
 timed_out: <boolean>
 counts: {eligible_files, scanned_files, excluded_files, unsupported_files,
          failed_files, eligible_bytes, scanned_bytes, findings}
-result_sha256: <hash of secret-safe normalized result or null>
-redacted_log_sha256: <hash or null>
+result_revision: <revision of secret-safe normalized result or null>
+redacted_log_revision: <revision or null>
 unsafe_raw_log_hmac: <truncated volatile-key HMAC only if quarantined, else null>
 side_effects: {expected: none, observed: none | changed | unknown}
 status: PASS | FINDINGS | PARTIAL | ERROR | UNSUPPORTED
@@ -220,15 +219,15 @@ status: PASS | FINDINGS | PARTIAL | ERROR | UNSUPPORTED
 
 Never expose a raw log that contains or may contain a secret. A tool configured
 to emit raw matched values is ineligible. If unexpected raw secret material is
-received, quarantine it in volatile memory, emit no raw content/plain digest,
+received, quarantine it in volatile memory, emit no raw content/plain identifier,
 optionally emit only the volatile-key HMAC, destroy the key, and mark the check
 `PARTIAL` with unsafe-output coverage.
 
 Receipt validity requires known compatible versions/rules/configuration, exact
-input hashes, non-mutating execution, successful/defined exit semantics, complete
-counts, and hashes. Discussion, planned commands, copied terminal prose, unknown
+input revisions, non-mutating execution, successful/defined exit semantics, complete
+counts, and revisions. Discussion, planned commands, copied terminal prose, unknown
 version, stale input, timeout, unexplained nonzero exit, zero scanned eligible
-files, parser loss, or missing redacted log/result hash is not passing evidence.
+files, parser loss, or missing redacted log/result revision is not passing evidence.
 
 ## Manual-flow receipt schema
 
@@ -237,9 +236,9 @@ schema: cgs.security-manual-flow/v1
 receipt_id: <ID>
 reviewer: <role/run identity>
 profile: <profile>
-threat_scope_hash: <hash>
+threat_scope_revision: <revision>
 check_id: <planned check>
-target_artifacts: [{path, sha256}]
+target_artifacts: [{path, revision}]
 source: {symbol_or_structural_id, redacted_location, actor, data_class}
 validation_or_authority:
   {symbol_or_structural_id, redacted_location, owner, rule, failure_behavior}
@@ -258,8 +257,8 @@ requires that capability.
 
 ## Dependency and advisory evidence
 
-Component rows require name, exact version or immutable digest, ecosystem,
-source path/hash, derivation receipt, dependency relationship, and match
+Component rows require name, exact version or immutable identifier, ecosystem,
+source path/revision, derivation receipt, dependency relationship, and match
 confidence. A package filename without parsed version evidence is incomplete.
 
 Advisory matching requires:
@@ -268,23 +267,23 @@ Advisory matching requires:
 provider: <name>
 scanner_version: <version>
 snapshot_id: <immutable ID>
-snapshot_sha256: <hash>
+snapshot_revision: <revision>
 snapshot_timestamp: <ISO-8601 UTC>
-freshness_policy: {source_path, source_sha256, maximum_age, satisfied}
+freshness_policy: {source_path, source_revision, maximum_age, satisfied}
 query_receipt_id: <valid tool receipt>
 matches:
   - {component_id, advisory_id, ecosystem, affected_range,
-     installed_version_or_digest, range_reasoning,
+     installed_version_or_identifier, range_reasoning,
      provider_cvss: {version, vector, score} | null}
 ```
 
 No lockfile/SBOM, incomplete component inventory, unsupported ecosystem, absent/
-stale/unhashable snapshot, denied network without local snapshot, missing
+stale/unrevisionable snapshot, denied network without local snapshot, missing
 freshness policy, incomplete version-range match, timeout, or invalid receipt is
 `UNVERIFIED` or `UNSUPPORTED`. It never supports “none” or “no known CVEs.”
 
-A valid zero-match statement must name the exact inventory hash, snapshot ID/
-hash/timestamp, freshness policy, scanner version, and receipt. It remains scoped
+A valid zero-match statement must name the exact inventory revision, snapshot ID/
+revision/timestamp, freshness policy, scanner version, and receipt. It remains scoped
 historical evidence.
 
 ## Secret-safe evidence contract
@@ -298,13 +297,13 @@ line: <integer>
 column: <integer or null>
 structural_anchor: <non-secret stable symbol/node ID>
 rule_id: <scanner rule>
-target_sha256: <source hash>
+target_revision: <source revision>
 confidence: HIGH | MEDIUM | LOW
 run_correlation_hmac: <truncated volatile-key HMAC or null>
 ```
 
 Prohibited fields include value, source line/context, match length, entropy,
-prefix/suffix, encoding, plaintext digest, reversible representation, volatile
+prefix/suffix, encoding, plaintext identifier, reversible representation, volatile
 key, raw command output, and protected denied path. Finding identity is derived
 from rule, secret type, normalized allowed path, and structural anchor—not value,
 HMAC, or line.
@@ -382,33 +381,33 @@ as project exploitability/severity.
 
 ## Stable findings
 
-Fingerprint material is:
+identity material is:
 
 ```text
 stable rule/check ID + category + canonical allowed target path + stable source
 and sink/authority/structural IDs + normalized defect class
 ```
 
-Exclude title, prose, line/column, hashes, secret/HMAC, timestamp, profile,
+Exclude title, prose, line/column, revisions, secret/HMAC, timestamp, profile,
 reviewer, confidence, and severity. Finding ID is:
 
 ```text
-SEC-<CATEGORY>-<first-12-of-SHA256(fingerprint)>
+SEC-<CATEGORY>-<scope-id>-<finding-ordinal>
 ```
 
 Finding shape:
 
 ```yaml
 finding_id: <stable ID>
-fingerprint: <full hash>
+identity: <full revision>
 lifecycle_observation: OPEN | STILL_OPEN | CANDIDATE_RESOLVED | REGRESSED |
                        SUPERSEDED | UNVERIFIED
 evidence_class: CONFIRMED | SUPPORTED
 confidence: HIGH | MEDIUM | LOW
 category: <category>
 defect_class: <stable class>
-threat_scope_hash: <hash>
-targets: [{path, sha256, structural_id, redacted_location}]
+threat_scope_revision: <revision>
+targets: [{path, revision, structural_id, redacted_location}]
 trust_boundaries: [<IDs>]
 source_validator_sink: <secret-safe IDs/evidence>
 severity_model: CGS-SEC-IEX/v1
@@ -430,15 +429,15 @@ Discovery never emits `RESOLVED` or changes an external lifecycle record.
 
 An existing risk record is referenceable only with:
 
-- finding ID and fingerprint;
-- exact target commit/build/source-scope/threat-scope hashes;
+- finding ID and identity;
+- exact target commit/build/source-scope/threat-scope revisions;
 - approver identity and independently verifiable security/product authority;
 - rationale, bounded affected scope, compensating controls;
-- signed acceptance timestamp and immutable record hash;
+- signed acceptance timestamp and immutable record revision;
 - expiry timestamp or objective review trigger; and
 - originating audit record ID.
 
-Expired, scope/hash-mismatched, unsigned, self-authored, ordinary acknowledged,
+Expired, scope/revision-mismatched, unsigned, self-authored, ordinary acknowledged,
 or authority-unverifiable records are invalid. The audit cannot create/modify
 acceptance. A valid reference does not erase the finding, change IEX severity,
 make incomplete coverage complete, or change `FINDINGS` to no findings.
@@ -474,10 +473,10 @@ schema: cgs.security-review-worker/v1
 run_id: <run ID>
 role: <role>
 profile: <profile>
-target_manifest_hash: <hash>
-threat_scope_hash: <hash>
+target_manifest_revision: <revision>
+threat_scope_revision: <revision>
 assigned_checks: [<IDs>]
-targets: [{path, sha256, structural IDs only}]
+targets: [{path, revision, structural IDs only}]
 boundaries_and_flows: [<secret-safe IDs>]
 constraints: {read_only: true, no_secret_values: true,
               may_decide_outcome: false, may_accept_risk: false}
@@ -494,7 +493,7 @@ without valid receipts is advisory only.
 
 Prior input must be one immutable persisted `cgs.review-evidence/v1` envelope with
 a `cgs.security-audit/v2` extension, canonical record ID, exact prior target/source/
-threat/build/tool/advisory identities, stable finding fingerprints, and a relation
+threat/build/tool/advisory identities, stable finding identities, and a relation
 to the same project. A conversation copy may guide diagnostics but cannot prove
 lifecycle convergence.
 
@@ -507,14 +506,14 @@ Evaluation order:
 4. inspect changed trust boundaries, authority, assets, entry points, flows,
    dependencies, and build/export/platform state;
 5. run the current profile's complete check plan; and
-6. reuse fingerprints/IDs and record dispositions.
+6. reuse identities/IDs and record dispositions.
 
 Dispositions:
 
 - `STILL_OPEN`: same defect remains;
 - `CANDIDATE_RESOLVED`: current audit evidence meets closure condition, pending
   independent remediation/test/lifecycle authority;
-- `REGRESSED`: a previously closed/superseded defect fingerprint recurs;
+- `REGRESSED`: a previously closed/superseded defect identity recurs;
 - `SUPERSEDED`: current authoritative rule/schema replaces it with exact successor;
 - `UNVERIFIED`: closure/diff evidence is incomplete.
 
@@ -562,11 +561,11 @@ For a valid meaningful scope return:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical normalized payload with record_id omitted>
-artifact_id: security-audit:<first-16-of-source-scope-manifest-hash>
+record_id: <stable business ID>
+artifact_id: security-audit:<first-16-of-source-scope-manifest-revision>
 artifacts:
   - path: <canonical allowed path>
-    sha256: <complete hash>
+    revision: <complete revision>
     role: source | build-config | build-artifact | threat-source |
           engine-platform-config | adapter | rulepack | tool-receipt |
           component-source | advisory-snapshot | prior-review
@@ -577,25 +576,25 @@ timestamp: <ISO-8601 UTC with fractional seconds>
 finding_ids: [<stable SEC IDs>]
 producer:
   tool: security-audit
-  version: sha256:<skill_bundle_sha256>
+  version: <skill_bundle_version>
 extension:
   schema: cgs.security-audit/v2
   run_id: SEA-<compact UTC>-<scope12>-<UUIDv4>
   project_id: <canonical repository identity>
   profile: full | network | save | input | quick
   source_revision: {commit: <commit or null>, dirty_state: <state>, vcs_receipt_id: <ID>}
-  hashes:
-    source_scope_manifest: <hash>
-    build_config_manifest: <hash or null>
-    component_inventory: <hash or null>
-    threat_scope: <hash>
-    check_plan: <hash>
-    skill_bundle: <hash>
-  stale_key: <digest of project/profile/revision/manifests/scope/adapters/tools/rules/advisory/reviewers>
+  revisions:
+    source_scope_manifest: <revision>
+    build_config_manifest: <revision or null>
+    component_inventory: <revision or null>
+    threat_scope: <revision>
+    check_plan: <revision>
+    skill_bundle: <revision>
+  stale_key: <identifier of project/profile/revision/manifests/scope/adapters/tools/rules/advisory/reviewers>
   limits: <all effective fixed limits>
   threat_scope: <complete cgs.security-threat-scope/v1>
   manifests: {source_config: [<rows>], build: [<rows>], components: [<rows>]}
-  routing: {engine_platform_sources: [<path/hash>], adapters: [<rows>], reviewers: [<rows>]}
+  routing: {engine_platform_sources: [<path/revision>], adapters: [<rows>], reviewers: [<rows>]}
   check_plan: [<planned check rows>]
   tool_receipts: [<cgs.security-tool-receipt/v1 rows>]
   manual_flow_receipts: [<cgs.security-manual-flow/v1 rows>]
@@ -610,11 +609,11 @@ extension:
     prior_record_id: <ID or null>
     prior_profile: <profile or null>
     diff_evidence: <exact evidence or null>
-    dispositions: [{finding_id, fingerprint, disposition, evidence}]
+    dispositions: [{finding_id, identity, disposition, evidence}]
     current_attack_surface_checks: [<IDs>]
   mutation_guard:
-    before_root: <hash>
-    after_root: <hash>
+    before_root: <revision>
+    after_root: <revision>
     status: UNCHANGED | CHANGED | INCOMPLETE
     changed_paths_redacted: [<safe rows>]
   outcome: <same as generic verdict>

@@ -21,7 +21,7 @@ zero project writes.
 2. Apply explicit → tracker active ID → session active ID/reference precedence.
 3. Resolve one canonical plan and validate its declared sprint ID.
 4. For current, cross-check all present active declarations for agreement.
-5. Record selector values, paths, raw hashes, and resolution rule.
+5. Record selector values, paths, declared revisions, and resolution rule.
 
 Missing or ambiguous resolution stops with `run_status: BLOCKED`,
 `data_status: UNAVAILABLE`, `health_status: UNKNOWN`, no story reads, and one
@@ -35,7 +35,7 @@ mtime, filename order, or a guessed latest sprint.
    story IDs/paths, priorities, estimates, owners, and dependency IDs.
 3. Read exact referenced story bytes or exact inline records; record missing
    paths without substituting status.
-4. Build the deterministic story-set records/hash.
+4. Build the deterministic story-set records/revision.
 5. Validate the complete dependency graph and record all coverage gaps.
 
 Identity, unsafe-path, or contradictory/cyclic graph data is fail-closed. Missing
@@ -45,7 +45,7 @@ health operands are retained as unknown; they are not zeros or backlog.
 
 1. Determine whether the tracker applies to the selected current/historical ID.
 2. If applicable, validate schema, selected/active IDs, plan revision, story-set
-   hash, update time, one-to-one story coverage, controlled statuses, and story
+   revision, update time, one-to-one story coverage, controlled statuses, and story
    projection agreement.
 3. If a well-formed tracker names another sprint during an explicit historical
    query, mark it NOT_APPLICABLE and use fallback evidence.
@@ -70,7 +70,7 @@ implementation-looking path is a hint or progress input.
 ## Phase 5 — Validate recovery/review projections
 
 1. Read only exact derived checkpoint paths that exist.
-2. Validate checkpoint identity, plan/source/baseline/current hashes, write sets,
+2. Validate checkpoint identity, plan/source/baseline/current revisions, write sets,
    test/error evidence, and resume point against raw bytes.
 3. Require unresolved recovery and both status projections to remain IN_PROGRESS.
 4. Validate IN_REVIEW post-write/test/log evidence and absence of unresolved work.
@@ -83,7 +83,7 @@ valid checkpoint is a recovery annotation only; IN_REVIEW is unfinished.
 1. Read only `production/config/sprint-status.yaml` and apply its bound.
 2. Validate `cgs.sprint-status-config/v1`, revision/time, stale value/day basis,
    timezone/calendar, priority weights, health thresholds, and estimate unit.
-3. Hash and record the configuration plus any exact calendar source.
+3. revision and record the configuration plus any exact calendar source.
 4. Require estimate-unit compatibility with the plan.
 
 Absent or malformed configuration produces stable data gaps, unknown dependent
@@ -120,7 +120,7 @@ directional signal, not a forecast.
 
 1. Apply `SS-HEALTH-01..05` in order.
 2. Record exact rule ID, input tuple, matching stable story/finding IDs, config
-   revision/hash, estimate unit, and limitations.
+   revision/revision, estimate unit, and limitations.
 3. Keep DATA_CONFLICT, critical-path BLOCKED, schedule LAGGING, and story BLOCKED
    in their distinct fields.
 4. With absent dates or other required inputs, emit only
@@ -140,10 +140,10 @@ directional signal, not a forecast.
 
 ## Phase 11 — Revalidate and stop
 
-1. Re-resolve and rehash every inspected selector, plan, story, tracker,
+1. Re-resolve and revalidate every inspected selector, plan, story, tracker,
    checkpoint, configuration, and calendar source.
 2. If anything changed, discard derived counts/health and return DATA_CONFLICT
-   with expected/observed hashes.
+   with expected/observed revisions.
 3. Confirm the empty write set, no gate/workflow invocation, and no mutation.
 4. State that status/estimate inspection did not run tests, prove delivery,
    inspect implementation slugs, or alter project state. Stop.

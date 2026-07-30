@@ -10,17 +10,17 @@ write scope.
    outside it and do not follow symbolic links or junctions out of root.
 3. Create a streaming, sorted mutation snapshot for all regular project files
    except version-control internals, declared cache/build/output directories, and
-   other exclusions already defined by an owner-approved project manifest. Hash
-   path, size, and file SHA-256. Process at most 256 paths in memory per chunk and
-   fold chunk hashes into one root hash. The empty allowed-write set is explicit.
+   other exclusions already defined by an owner-approved project manifest. revision
+   path, size, and file revision. Process at most 256 paths in memory per chunk and
+   fold chunk revisions into one root revision. The empty allowed-write set is explicit.
 4. If the baseline cannot cover an in-scope path, record the exact gap. The run
    can continue for diagnostic findings but must be `PARTIAL`.
-5. Read and hash the current `ux-design` main and continuation sources and the
-   UX-review rules. Compute the author-schema and bundle hashes. Parse exactly one
+5. Read and revision the current `ux-design` main and continuation sources and the
+   UX-review rules. Validate the explicit author-schema and bundle versions. Parse exactly one
    author-declared profile version, content profile, schema construction, routing
-   matrix, and stable section sets; build/hash
+   matrix, and stable section sets; build/revision
    `cgs.ux-author-contract-manifest/v1` and record
-   `author_contract_manifest_sha256`.
+   `author_contract_manifest_version`.
 6. Apply the rules-file support gate before candidate scoring. Continue only when
    the declared tuple is supported and the assertion matrix covers every author
    profile/section. Otherwise return `MIGRATION REQUIRED` with null verdict and
@@ -39,7 +39,7 @@ For `all`, `hud`, or `patterns`, enumerate regular Markdown files directly under
 links, search the whole repository, or infer authority from arbitrary files.
 For each candidate, read only enough header bytes to determine:
 
-- normalized path and SHA-256;
+- normalized path and revision;
 - `Artifact Type`, if parseable;
 - `Schema Version`, `Profile Version`, `Content Profile`, `Artifact ID`, and
   `Authoring Receipt ID`, if parseable;
@@ -57,7 +57,7 @@ Apply selector filtering after metadata routing:
 
 The traditional filenames `design/ux/hud.md` and
 `design/ux/interaction-patterns.md` may locate candidates but cannot override
-their metadata. Hash the sorted complete manifest rows. Review at most eight
+their metadata. revision the sorted complete manifest rows. Review at most eight
 eligible targets. Every remaining eligible row is `UNCHECKED / LIMIT_REACHED` and
 forces batch `PARTIAL`.
 
@@ -65,11 +65,11 @@ forces batch `PARTIAL`.
 
 For each selected target:
 
-1. Hash its exact bytes and parse the required author header.
+1. validate its declared revision and parse the required author header.
 2. Validate type, author schema version, supported author-declared profile
    version/content profile, stable Artifact ID, and applicable Screen ID. Require
    READY_FOR_REVIEW to resolve its stable external authoring receipt ID to a
-   current path/hash from the supplied handoff or bounded context evidence.
+   current path/revision from the supplied handoff or bounded context evidence.
 3. Choose the review profile from the artifact type matrix.
 4. Treat a conflicting template marker or filename as evidence of invalid
    identity, not as a new route. If both metadata and marker are absent for one
@@ -83,14 +83,14 @@ For each selected target:
 Do not score a legacy artifact against the current checklist. This includes a
 target declaring unsupported legacy `ux-profile-schema-v1`, an author/target content-profile
 mismatch, or a Schema Version that does not equal the computed current author
-hash. Return `MIGRATION REQUIRED` with the actual/expected author contract and
+revision. Return `MIGRATION REQUIRED` with the actual/expected author contract and
 manifest identities.
 
 ## 4. Resolve bounded context
 
-Resolve the target's exact `Context Manifest SHA-256`. The manifest defines the
+Resolve the target's exact `Context Manifest revision`. The manifest defines the
 only authority records eligible for dependency and requirement resolution. Read
-records by exact path and verify every declared hash before use.
+records by exact path and verify every declared revision before use.
 
 Use this order:
 
@@ -142,7 +142,7 @@ At standard depth, set `NOT_REQUESTED` and continue. At expert depth:
    evidence, profile, and subjective check keys.
 2. Dispatch at most one `ux-designer` reviewer with read-only/no-verdict
    constraints.
-3. Validate the returned worker schema and target hash.
+3. Validate the returned worker schema and target revision.
 4. Independently normalize supported candidate findings and compare evaluations
    with local evidence.
 
@@ -155,11 +155,11 @@ or silently downgrade to standard depth.
 When a valid prior record is supplied:
 
 1. Verify the envelope, extension, canonical record ID, artifact identity, prior
-   target hash, author schema hash, author contract manifest hash, profile/content
+   target revision, author schema revision, author contract manifest revision, profile/content
    versions, and persisted evidence path. A prior different author contract is a
    migration boundary, not convergence evidence.
 2. Obtain reproducible exact diff evidence between prior and current target bytes.
-3. Re-evaluate every prior open or accepted-risk fingerprint first.
+3. Re-evaluate every prior open or accepted-risk identity first.
 4. Evaluate changed stable sections and their current dependency/requirement
    cross-references for regressions.
 5. Apply stable ID reuse and explicit dispositions from the rules file.
@@ -173,7 +173,7 @@ pretending convergence occurred.
 ## 9. Finalize verdict and evidence
 
 Confirm that every required assertion has exactly one state; every artifact and
-dependency used has path and SHA-256; the denominator is explicit; and all
+dependency used has path and revision; the denominator is explicit; and all
 consultation/convergence states are recorded. Apply the deterministic verdict
 precedence from `SKILL.md`.
 
@@ -199,7 +199,7 @@ The reviewer never repairs or reverts a change. It reports the evidence only.
 
 Lead with target identity and verdict/run status. Then show:
 
-1. target/profile/content/author-contract/schema/hash and support status;
+1. target/profile/content/author-contract/schema/revision and support status;
 2. dependency and denominator completeness;
 3. findings ordered `MAJOR`, `BLOCKING`, then `ADVISORY`;
 4. assertion-state summary and any `UNEVALUATED` checks;

@@ -1,4 +1,4 @@
 interface:
   display_name: "Asset Audit"
   short_description: "Bounded adapter/resolver-backed asset evidence audit"
-  default_prompt: "Use $asset-audit with one exact project-local manifest and the closed category enum to run a bounded, hash-bound, strictly read-only audit of asset rules, binary metadata, provenance, license-policy evidence, and engine-native references. Unsupported syntax, adapter, resolver, or incomplete coverage returns PARTIAL; never write, invoke a recorder, infer content completeness, or recommend automatic deletion."
+  default_prompt: "Use $asset-audit with one exact project-local manifest and the closed category enum to run a bounded, revision-bound, strictly read-only audit of asset rules, binary metadata, provenance, license-policy evidence, and engine-native references. Unsupported syntax, adapter, resolver, or incomplete coverage returns PARTIAL; never write, invoke a recorder, infer content completeness, or recommend automatic deletion."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Team Level"
-  short_description: "Build one hash-bound level spec with bounded agents and one writer"
+  short_description: "Build one version-bound level spec with bounded agents and one writer"
   default_prompt: "Use $team-level with exactly one level ID to coordinate bounded read-only specialists, deterministic timeouts and checkpoints, destination-routed proposals, one authorized writer, and independent accessibility, level-review, and post-source QA evidence before design approval."

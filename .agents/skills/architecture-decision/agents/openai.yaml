@@ -1,4 +1,4 @@
 interface:
   display_name: "Architecture Decision"
   short_description: "Author one collision-safe Proposed ADR"
-  default_prompt: "Use $architecture-decision with a cgs.architecture-decision-request/v2 manifest to author or retrofit one single-decision Proposed ADR through collision-safe allocation, bounded source evidence, user-selected alternatives, dependency graph checks, section CAS/checkpoints, an external authoring receipt, and independent review/lifecycle handoffs."
+  default_prompt: "Use $architecture-decision with a cgs.architecture-decision-request/v2 manifest to author or retrofit one single-decision Proposed ADR through collision-safe allocation, bounded source evidence, user-selected alternatives, dependency graph checks, section atomic conflict check/checkpoints, an external authoring receipt, and independent review/lifecycle handoffs."

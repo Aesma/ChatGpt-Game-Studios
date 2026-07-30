@@ -15,7 +15,7 @@ artifact, not test execution, business-test implementation or release proof.
 
 Scope, QA plan, Test ID ownership, story/AC/Requirement Binding/Coverage Unit,
 verified-fixed bug, target build, change impact, test source, sensitivity,
-quarantine and optional execution evidence are exact path/hash bound. Selection
+quarantine and optional execution evidence are exact path/revision-bound. Selection
 uses deterministic coverage-unit set operations and a fixed lexicographic
 priority key under declared hard budgets.
 
@@ -43,11 +43,11 @@ persistence and coverage states remain independent.
 - [ ] **[RS-SA-007]** Coverage uses exact required-minus-mapped Coverage Unit ID
   sets; unmapped branches and boundaries are MISSING.
 - [ ] **[RS-SA-008]** Scope, plan, requirement span, ownership, build, impact,
-  test, sensitivity, quarantine, selection and execution hashes drive stale.
+  test, sensitivity, quarantine, selection and execution revisions drive stale.
 - [ ] **[RS-SA-009]** Calendar time, mtime, names, comments and prose never
   establish freshness, mapping, sensitivity or coverage.
 - [ ] **[RS-SA-010]** Quarantine distinguishes REQUESTED, APPROVED, APPLIED and
-  later runner-VERIFIED state with exact config/build/Test ID hashes.
+  later runner-VERIFIED state with exact config/build/Test ID revisions.
 - [ ] **[RS-SA-011]** Operation and coverage states are independent; critical
   gaps cannot be hidden by successful manifest persistence.
 - [ ] **[RS-SA-012]** Report is read-only, has Persistence NOT_APPLICABLE and
@@ -56,12 +56,12 @@ persistence and coverage states remain independent.
   complete cases and unique stable IDs.
 - [ ] **[RS-SA-014]** Missing business tests are handed to the story/test-
   authoring owner, never test-helpers.
-- [ ] **[RS-SA-015]** Change impact binds baseline/current hashes, exact changed
+- [ ] **[RS-SA-015]** Change impact binds baseline/current revisions, exact changed
   IDs/symbols and sourced graph edges.
 - [ ] **[RS-SA-016]** Prioritization is a fixed lexicographic key with mandatory
   critical selection and explicit budget omissions.
 - [ ] **[RS-SA-017]** Selection header and entries bind manifest/revision/scope/
-  plan/build/ownership/impact/requirement/test/sensitivity hashes.
+  plan/build/ownership/impact/requirement/test/sensitivity revisions.
 - [ ] **[RS-SA-018]** Tombstones retain history, approval and ownership forever;
   Selection IDs are never removed, recycled or rebound.
 - [ ] **[RS-SA-019]** Keyed publication revalidates every authority and entry,
@@ -79,7 +79,7 @@ persistence and coverage states remain independent.
 
 - Repository contains multiple QA plans, stories, GDDs and tests.
 - One cgs-regression-scope/v1 binds stable operation/scope/manifest/revision IDs,
-  exact current qa-plan v2 path/hash, ownership snapshot, build, requirement
+  exact current qa-plan v2 path/revision, ownership snapshot, build, requirement
   units, bugs, change-impact and preimage manifest.
 - Negative variants exceed a hard budget or contain omitted/unreadable closures.
 
@@ -160,7 +160,7 @@ traversal is FAIL.
 
 #### Assertions
 
-- [ ] Exact bug ID/source hash and reproduction ID are required.
+- [ ] Exact bug ID/source revision and reproduction ID are required.
 - [ ] Fix commit does not replace build verification.
 - [ ] Build artifact/source/platform/configuration compatibility is checked.
 - [ ] Ineligible bug remains visible.
@@ -179,7 +179,7 @@ acceptance is FAIL.
 - QA plan AC has root, two branch, three boundary and one recovery Coverage Unit
   IDs.
 - Selected tests map a proper subset; another candidate uses only the AC root.
-- All hashes and sensitivity evidence for mapped units are current.
+- All revisions and sensitivity evidence for mapped units are current.
 
 #### Input
 
@@ -221,7 +221,7 @@ PARTIAL/COVERED classification is FAIL.
 
 ---
 
-### Case 4 [RS-C04]: Content hashes, not age, drive stale state
+### Case 4 [RS-C04]: explicit revision, not age, drive stale state
 
 #### Fixture
 
@@ -257,7 +257,7 @@ PARTIAL/COVERED classification is FAIL.
 #### Assertions
 
 - [ ] No day-count drift heuristic is used.
-- [ ] Requirement raw span and file hashes both revalidate.
+- [ ] Requirement raw span and file revision both revalidate.
 - [ ] Prior green execution cannot cure stale selection.
 - [ ] Exact changed dependency is reported.
 
@@ -274,7 +274,7 @@ otherwise FAIL.
 
 - Stable Test ID has proposal, approval, application and later runner receipts in
   different combinations.
-- Application receipt binds changed config hash and expiry.
+- Application receipt binds changed config revision and expiry.
 - Runner variants use wrong config, build, selection or Test ID; another explicitly
   records the exact Test ID skipped under current applied config.
 
@@ -308,7 +308,7 @@ otherwise FAIL.
 
 - [ ] APPLIED is not inferred from proposal.
 - [ ] VERIFIED is not inferred from intended skip.
-- [ ] Exact applied config hash and Test ID are required.
+- [ ] Exact applied config revision and Test ID are required.
 - [ ] Quarantine cannot hide a critical gap.
 
 #### Case Verdict
@@ -346,7 +346,7 @@ FAIL.
 
 - Persistence is WRITTEN and Operation is AUDITED.
 - Critical missing unit makes Coverage CRITICAL GAPS.
-- Awaiting unit remains listed and Execution becomes NOT_RUN after manifest hash
+- Awaiting unit remains listed and Execution becomes NOT_RUN after manifest revision
   changes.
 - No COMPLETE or release-ready statement appears.
 
@@ -509,7 +509,7 @@ is FAIL.
 #### Fixture
 
 - Current selection manifest and scope evidence exist.
-- Record exact bytes/hash for the complete fixture tree.
+- Record exact bytes/revision for the complete fixture tree.
 - Report contains both gaps and current entries.
 
 #### Input
@@ -553,7 +553,7 @@ PASS for exact read-only result vocabulary; any updated claim or write is FAIL.
 
 #### Fixture
 
-- cgs-change-impact/v1 binds baseline/current commits, changed source hashes,
+- cgs-change-impact/v1 binds baseline/current commits, changed source revision,
   requirement/bug/unit IDs, production symbols and sourced dependency edges.
 - Candidates span every obligation class, severity, distance and stable ID.
 - Duration budget cannot admit all nonmandatory tests.
@@ -578,18 +578,18 @@ PASS for exact read-only result vocabulary; any updated claim or write is FAIL.
 
 #### Expected behavior
 
-- Validate impact schema/tool/baseline/current and edge source hashes.
+- Validate impact schema/tool/baseline/current and edge source revision.
 - Sort by fixed obligation class, P0-P3 severity, graph distance, Coverage Unit
   ID, Test ID and source path.
 - Admit mandatory critical/fixed-bug tests first, then whole tests under every
   budget.
-- Record full sort key, duration source/hash and omission reason.
+- Record full sort key, duration source/revision and omission reason.
 - Missing mandatory test/impact/severity/duration yields PARTIAL/UNKNOWN and
   CRITICAL GAPS.
 
 #### Assertions
 
-- [ ] Repeated candidates have identical order/hash.
+- [ ] Repeated candidates have identical order/revision.
 - [ ] No model score or prose priority is used.
 - [ ] Mandatory item is never silently demoted.
 - [ ] Omitted list reconciles all candidates.
@@ -607,7 +607,7 @@ PASS for deterministic selection and fail-closed mandatory gaps; otherwise FAIL.
 - Selection manifest has managed entries with owner, rationale, comments, custom
   fields and history.
 - One entry needs machine-field update; one retirement is approved with prior
-  entry hash; one retirement lacks approval.
+  entry revision; one retirement lacks approval.
 - Concurrent variant changes manifest or ownership snapshot after preview.
 
 #### Input
@@ -634,8 +634,8 @@ PASS for deterministic selection and fail-closed mandatory gaps; otherwise FAIL.
 
 - Tombstone retains prior identity/history and permanent non-reuse marker.
 - Replacement uses new Selection ID with supersedes link.
-- Complete candidate is parsed for unique IDs/references and exact hash.
-- Rehash all authorities and entry preimages, then one-file CAS.
+- Complete candidate is parsed for unique IDs/references and exact revision.
+- Revalidate all authorities and entry preimages, then one-file CAS.
 - Read-back verifies exact candidate and preservation.
 
 #### Assertions
@@ -657,7 +657,7 @@ FAIL.
 #### Fixture
 
 - Existing execution receipt is current for old manifest/build.
-- Update changes one selection entry and manifest hash.
+- Update changes one selection entry and manifest revision.
 - No runner invocation occurs in this workflow.
 - A later external runner receipt binds the new exact manifest and target build.
 
@@ -685,7 +685,7 @@ FAIL.
   Coverage AWAITING RUN.
 - Selection manifest alone cannot create PASS.
 - Later report accepts receipt only when selection/build/plan/ownership/
-  requirement/test/parser/log hashes and every active Test ID match.
+  requirement/test/parser/log revisions and every active Test ID match.
 - regression-suite never invokes or waits for the runner.
 
 #### Assertions
@@ -707,7 +707,7 @@ otherwise FAIL.
 #### Fixture
 
 - Scope, qa-plan v2, ownership, build, requirements, change impact, bugs, tests,
-  sensitivity, quarantine and selection hashes are current and complete.
+  sensitivity, quarantine and selection revisions are current and complete.
 - All required units map to eligible active tests.
 - Matching external runner receipt binds exact current manifest/build and every
   active Test ID passes.
@@ -736,7 +736,7 @@ otherwise FAIL.
 - Required-minus-mapped set is empty and all units are VERIFIED.
 - Coverage is VERIFIED COVERAGE.
 - No release PASS or COMPLETE is emitted.
-- Exact selection and execution paths/hashes are handed to the external gate.
+- Exact selection and execution paths/revisions are handed to the external gate.
 
 #### Assertions
 
@@ -756,7 +756,7 @@ PASS only for exact all-current report evidence; otherwise fail closed.
 - [ ] **[RS-PC-001]** Exact explicit mode and scope manifest validate before
   project discovery or writes.
 - [ ] **[RS-PC-002]** Stable scope, plan, build, ownership, requirement, impact,
-  bug, test and receipt identities are raw-hash bound.
+  bug, test and receipt identities are raw-revision-bound.
 - [ ] **[RS-PC-003]** Budget admission and prioritization are deterministic and
   fully ledgered.
 - [ ] **[RS-PC-004]** Coverage is exact Coverage Unit set arithmetic with no
@@ -772,7 +772,7 @@ PASS only for exact all-current report evidence; otherwise fail closed.
 - [ ] **[RS-PC-009]** Tombstones require exact approval, preserve history and
   reserve IDs forever.
 - [ ] **[RS-PC-010]** Publication uses complete candidate validation, authority
-  rehash, one-file CAS and read-back.
+  Revalidate, one-file CAS and read-back.
 - [ ] **[RS-PC-011]** Runner/build receipt ownership and execution remain separate
   from selection maintenance.
 - [ ] **[RS-PC-012]** No test/helper/CI/build/release/catalog/session workflow is
@@ -787,8 +787,8 @@ PASS only for exact all-current report evidence; otherwise fail closed.
 | `RS-004` | `SKILL.md` Phase 1.2 QA-plan scope/provenance and contract-manifest budgets | `RS-C01`; “No undeclared file becomes coverage evidence”; “Ledger counts reconcile to scope declaration” |
 | `RS-005` | `SKILL.md` Phase 1.3 verified bug requirements | `RS-C02`; “Fix commit does not replace build verification”; “Build artifact/source/platform/configuration compatibility is checked” |
 | `RS-006` | `SKILL.md` Phase 2 stable inventory and Coverage computation exact set arithmetic | `RS-C03`; “No model judgment labels a partial subset covered”; “Missing unit IDs are listed exactly” |
-| `RS-007` | `SKILL.md` Phase 1.4 content-hash impact plus Phase 2 source-hash freshness | `RS-C04`; “No day-count drift heuristic is used”; “Requirement raw span and file hashes both revalidate” |
-| `RS-008` | `SKILL.md` Phase 1.5 quarantine registry/receipt validation | `RS-C05`; “APPLIED is not inferred from proposal”; “VERIFIED is not inferred from intended skip”; “Exact applied config hash and Test ID are required” |
+| `RS-007` | `SKILL.md` Phase 1.4 explicit revision impact plus Phase 2 source revision freshness | `RS-C04`; “No day-count drift heuristic is used”; “Requirement raw span and file revision both revalidate” |
+| `RS-008` | `SKILL.md` Phase 1.5 quarantine registry/receipt validation | `RS-C05`; “APPLIED is not inferred from proposal”; “VERIFIED is not inferred from intended skip”; “Exact applied config revision and Test ID are required” |
 | `RS-009` | `SKILL.md` Phase 3 coverage verdict separated from Phase 5 operation result | `RS-C06`; “Operation and coverage dimensions are both emitted”; “Successful write does not change missing unit state” |
 | `RS-010` | `SKILL.md` Phase 1.1 explicit mode and Phase 5.2 authorization boundary | `RS-C07`; “Side-effect class is known from the subcommand”; “No parameterless write-mode prompt occurs”; “Report never asks for write approval” |
 | `RS-016` | Dedicated spec fixture/side-effect contract, current selection artifact, and verdict vocabulary | `RS-C08`; “Every case has explicit fixture and side-effect boundary”; “No obsolete production/qa coverage-report output is expected”; “No FULL COVERAGE legacy verdict replaces current statuses” |

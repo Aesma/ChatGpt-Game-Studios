@@ -19,10 +19,10 @@ This specification validates `reverse-document` as a hard-bounded brownfield obs
 Only this form is accepted:
 
 ```text
-$reverse-document --manifest <request-path> --expect-manifest <sha256:...>
+$reverse-document --manifest <request-path>
 ```
 
-Both flags are required exactly once. The manifest must be a regular repository-local file with schema v2 and exact expected hash. No arguments prints usage and performs zero source reads, questions, writes, delegates, or verdicts. Unknown flags, moving aliases, directories, malformed hashes, traversal, symlink/reparse escapes, or schema mismatch return `ERROR`.
+Both flags are required exactly once. The manifest must be a regular repository-local file with schema v2 and exact expected revision. No arguments prints usage and performs zero source reads, questions, writes, delegates, or verdicts. Unknown flags, moving aliases, directories, malformed revisions, traversal, symlink/reparse escapes, or schema mismatch return `ERROR`.
 
 The request controls only proposed scope. It is not intent attestation, content approval, promotion approval, or write authorization.
 
@@ -30,8 +30,8 @@ The request controls only proposed scope. It is not intent attestation, content 
 
 ### A. P0 safety invariants retained
 
-1. The three missing external template paths are never used; `reverse-document-profile-v2` is inline, versioned, structurally checked, and exact-byte hash-bound before source reads.
-2. Missing, malformed, duplicated, unreadable, or hash-mismatched profile returns `ERROR — PROFILE_UNAVAILABLE`, with zero source analysis and writes.
+1. The three missing external template paths are never used; `reverse-document-profile-v2` is inline, versioned, structurally checked, and exact-byte version-bound before source reads.
+2. Missing, malformed, duplicated, unreadable, or revision-mismatched profile returns `ERROR — PROFILE_UNAVAILABLE`, with zero source analysis and writes.
 3. Every row has exactly one class: `OBSERVED`, `USER_ATTESTED_INTENT`, `UNKNOWN`, or `PROPOSED_CHANGE_UNIMPLEMENTED`.
 4. Bugs, workarounds, experiments, comments, tests, names, patterns, and commits cannot establish approved intent.
 5. Missing/recommended behavior appears only under UNIMPLEMENTED/NOT ADR sections, never as current behavior, rules, architecture, acceptance criteria, or implementation.
@@ -42,18 +42,18 @@ The request controls only proposed scope. It is not intent attestation, content 
 1. Request, every source, optional prior report, output target, and all existing output-parent segments normalize under the repository root.
 2. Traversal, outside-root resolution, symlink, junction, reparse point, mount escape, special device, socket, pipe, duplicate, and case-collision inputs are rejected.
 3. Source bodies must be individually declared regular files. Directories are descriptive labels only and never implicit/unbounded read scopes.
-4. Declared and actual path, size, media/language type, generated state, and SHA-256 are compared before use.
+4. Declared and actual path, size, media/language type, generated state, and revision are compared before use.
 5. Output must match the profile route, its parent chain must remain safe, and the final run-specific target must not exist.
 6. Archives/binaries/executables/object files without an explicit safe read-only adapter are `UNSUPPORTED`; no parser is guessed.
 
 ### C. Inventory-first bounded sampling — RDOC-005
 
-1. The canonical inventory is frozen and hashed before source-body reads.
-2. Processing order is deterministic by priority, dependency depth, normalized path, and expected hash.
+1. The canonical inventory is frozen and versioned before source-body reads.
+2. Processing order is deterministic by priority, dependency depth, normalized path, and expected revision.
 3. Dependencies affect ordering but cannot expand beyond exact declared inventory.
 4. Request budgets may only lower fixed ceilings: manifest 256 KiB, 256 entries, 32 bodies, 256 KiB/file, 1 MiB aggregate body bytes, 512 KiB parsed text, depth 3, 128 edges, 8 generated bodies, 512 KiB prior report, 3 clarification rounds, and 512 KiB output.
 5. The workflow stops before a read that would exceed a ceiling.
-6. Every omitted entry retains path/hash/size/type/dependency and reason: `OMITTED_INVENTORY_BOUND`, `OMITTED_BUDGET`, `OMITTED_DEPENDENCY_BOUND`, `UNSUPPORTED`, `UNREADABLE`, or `CHANGED_DURING_RUN`; an unvalidated entry is never presented as checked.
+6. Every omitted entry retains path/revision/size/type/dependency and reason: `OMITTED_INVENTORY_BOUND`, `OMITTED_BUDGET`, `OMITTED_DEPENDENCY_BOUND`, `UNSUPPORTED`, `UNREADABLE`, or `CHANGED_DURING_RUN`; an unvalidated entry is never presented as checked.
 7. Omission/unsupported coverage prevents COMPLETE and yields `PARTIAL` when at least one safe source was checked; no safely checkable essential source yields `ERROR` and zero writes.
 8. The report never claims sampled evidence represents omitted code.
 
@@ -77,19 +77,19 @@ Exactly one profile and one route pattern exist per artifact type:
 
 Profile/type/route disagreement is `ERROR`. No second concept location, authoritative route, date-only path, or caller-selected alternate is legal.
 
-### F. Immutable version/hash/tool provenance — RDOC-008
+### F. Immutable version/revision/tool provenance — RDOC-008
 
-1. Every report embeds unchanged canonical `cgs.reverse-document-provenance/v2` bytes and their SHA-256.
-2. Provenance contains request path/schema/expected/actual hash; project/artifact/run identity; profile path/version/hash; route/ABSENT baseline; inventory and observation-snapshot hashes; every included/omitted/unsupported/unreadable/changed file with path/hash/size/type/ranges/disposition; supporting build/tree/commit identity; dependency order; requested/effective/consumed budgets; parser/adapter/tool/skill versions; all claim/attestation/proposal IDs and evidence; attestation identity/status; prior lineage; coverage/status/authority/limitations.
+1. Every report embeds unchanged canonical `cgs.reverse-document-provenance/v2` bytes and their revision.
+2. Provenance contains request path/schema/expected/actual revision; project/artifact/run identity; profile path/version/revision; route/ABSENT baseline; inventory and observation-snapshot revisions; every included/omitted/unsupported/unreadable/changed file with path/revision/size/type/ranges/disposition; supporting build/tree/commit identity; dependency order; requested/effective/consumed budgets; parser/adapter/tool/skill versions; all claim/attestation/proposal IDs and evidence; attestation identity/status; prior lineage; coverage/status/authority/limitations.
 3. Missing tool/adapter version is explicit `UNAVAILABLE` and caps dependent claims at Unknown/Partial.
-4. VCS identity and timestamps are supporting context, never substitutes for source hashes.
+4. VCS identity and timestamps are supporting context, never substitutes for source revisions.
 5. The final observation snapshot is frozen after bounded reads and binds every checked/omitted/unsupported/unreadable/unvalidated/changed disposition. Only then is run ID `RDOC-RUN-<UTC-basic-milliseconds>-<snapshot8>-<profile8>` minted; the output route is create-only.
-6. Existing/prior reports are immutable. A later run uses a new route and exact prior path/hash lineage; in-place merge, overwrite, or append is forbidden.
-7. Final report SHA-256 is an external read-back receipt, avoiding a circular self-hash claim.
+6. Existing/prior reports are immutable. A later run uses a new route and exact prior path/revision lineage; in-place merge, overwrite, or append is forbidden.
+7. Final report revision is an external read-back receipt, avoiding a circular self-revision claim.
 
 ### G. Truthful attestation identity — RDOC-009
 
-1. Every attested claim links an immutable `cgs.reverse-document-attestation/v1` record with exact question, options, answer, linked IDs, UTC timestamp, and record SHA-256.
+1. Every attested claim links an immutable `cgs.reverse-document-attestation/v1` record with exact question, options, answer, linked IDs, UTC timestamp, and record revision.
 2. Identity is copied verbatim only when explicitly supplied by the user for the attestation.
 3. Explicit identity uses `USER_SUPPLIED_IDENTITY`; it is not called verified, signed, or approved.
 4. Confirmed intent without identity uses `UNVERIFIED_IDENTITY` and `attested-by: unverified`; no confirmation uses `NONE`.
@@ -99,7 +99,7 @@ Profile/type/route disagreement is `ERROR`. No second concept location, authorit
 
 ### H. Fact, inference, intent, and proposal separation — RDOC-010
 
-1. `OBSERVED` requires exact source/build/test/config/runtime evidence with path/hash/range or serialized key.
+1. `OBSERVED` requires exact source/build/test/config/runtime evidence with path/revision/range or serialized key.
 2. An inference is never Observed; it is an `UNKNOWN` row with `statement-kind: INFERENCE_UNVERIFIED`, cited observed premises, and required resolution evidence.
 3. `USER_ATTESTED_INTENT` requires the exact explicit attestation record; source structure, comments, tests, and model confidence cannot populate it.
 4. `PROPOSED_CHANGE_UNIMPLEMENTED` records desired behavior only with `implementation-status: NOT_OBSERVED_OR_UNIMPLEMENTED` and `decision-status: PROPOSED_ONLY`.
@@ -119,12 +119,12 @@ Every section appears exactly once. Claims about feel, fun, success, fantasy, or
 
 ## Immutable write protocol
 
-1. Freeze and hash request, profile, inventory, observation snapshot, included source bytes, attestations, provenance, candidate, and absent target.
-2. Show the complete candidate and one mutation manifest: `CREATE`, exact target, `must_not_exist`, bytes/length/hash, evidence hashes, owner/recorder, create 1/modify 0/delete 0, and non-writes.
+1. Freeze and revision request, profile, inventory, observation snapshot, included source bytes, attestations, provenance, candidate, and absent target.
+2. Show the complete candidate and one mutation manifest: `CREATE`, exact target, `must_not_exist`, bytes/length/revision, evidence revisions, owner/recorder, create 1/modify 0/delete 0, and non-writes.
 3. Obtain explicit authorization for that exact create. Content approval and attestation are insufficient.
-4. Revalidate all hashes, path safety, target absence, candidate, and identities immediately before writing.
+4. Revalidate all revisions, path safety, target absence, candidate, and identities immediately before writing.
 5. Drift/collision returns `BLOCKED`, writes nothing, and requires a new preview/authorization.
-6. On success, atomically create where supported, read back, validate schema/class boundaries, record external SHA-256, and enumerate exactly one changed path.
+6. On success, atomically create where supported, read back, validate schema/class boundaries, record external revision, and enumerate exactly one changed path.
 7. No merge, overwrite, append, downstream invocation, commit, push, or publication occurs.
 
 ## Outcome contract
@@ -137,7 +137,7 @@ Exactly one outcome is returned:
 - `BLOCKED`
 - `ERROR`
 
-Every result includes artifact/run/profile/authority, request/profile/inventory/snapshot/provenance hashes, target/hash or `NOT_WRITTEN`, requested/effective/consumed budgets, included/omitted/unsupported scope, class counts/IDs, attestation status/record hashes, Unknowns/inferences, unimplemented proposals, prior lineage, authorization state, and `auto_executed: false`.
+Every result includes artifact/run/profile/authority, request/profile/inventory/snapshot/provenance revisions, target/revision or `NOT_WRITTEN`, requested/effective/consumed budgets, included/omitted/unsupported scope, class counts/IDs, attestation status/record revisions, Unknowns/inferences, unimplemented proposals, prior lineage, authorization state, and `auto_executed: false`.
 
 COMPLETE always means only complete within the exact bounded observation scope and remains non-authoritative.
 
@@ -145,13 +145,13 @@ COMPLETE always means only complete within the exact bounded observation scope a
 
 ### Positive cases
 
-- A valid exact v2 request with supported sources produces deterministic inventory/snapshot/provenance hashes and a source-cited fact table.
+- A valid exact v2 request with supported sources produces deterministic inventory/snapshot/provenance revisions and a source-cited fact table.
 - A budget overflow after checked sources yields PARTIAL, lists every remaining manifest entry and reason, and makes no omitted-scope claim.
 - A comment saying `intentional` is an observed comment while rationale remains an inference/Unknown.
 - A user confirms intent without identity; the record is `UNVERIFIED_IDENTITY`, `attested-by: unverified`.
 - An explicitly supplied identity is preserved verbatim as `USER_SUPPLIED_IDENTITY`, never verified/approved.
 - Architecture patterns and alternatives remain observed structure/NOT ADR candidates pending explicit user decision and independent ADR ownership.
-- A second run links the exact old report/hash but creates a new run-specific report.
+- A second run links the exact old report/revision but creates a new run-specific report.
 - Exact write authorization creates and verifies one absent path.
 
 ### Negative cases
@@ -165,7 +165,7 @@ COMPLETE always means only complete within the exact bounded observation scope a
 - An unimplemented edge case enters current behavior/rules/architecture/acceptance criteria.
 - An architecture report receives an ADR number/path/status.
 - Concept output can choose between two locations.
-- Provenance omits source hashes, scope, tool versions, budgets, omissions, or attestation records.
+- Provenance omits source revisions, scope, tool versions, budgets, omissions, or attestation records.
 - Identity is inferred or emitted as `verified-by`/verified/approved.
 - Existing report is merged, overwritten, appended, or used as the output target.
 - Content approval or attestation is treated as write/promotion authorization.
@@ -176,11 +176,11 @@ Any negative case is a contract failure.
 
 | Finding | Closure evidence |
 |---|---|
-| RDOC-004 | Section B validates repository-local regular-file scope, parent/target safety, type/size/count/hash, and reparse/symlink rejection |
+| RDOC-004 | Section B validates repository-local regular-file scope, parent/target safety, type/size/count/revision, and reparse/symlink rejection |
 | RDOC-005 | Section C defines inventory-first dependency ordering, non-raiseable hard ceilings, explicit unsupported/omitted entries, and PARTIAL semantics |
 | RDOC-006 | Section D makes architecture output non-ADR and preserves explicit user decision plus independent ADR ownership |
 | RDOC-007 | Section E defines one profile and one immutable route per artifact type |
-| RDOC-008 | Section F defines immutable v2 provenance with exact source/profile/tool/version/scope hashes and run lineage |
+| RDOC-008 | Section F defines immutable v2 provenance with exact source/profile/tool/version/scope revisions and run lineage |
 | RDOC-009 | Section G permits only explicit user-supplied identity and otherwise records `unverified` |
 | RDOC-010 | Section H and all behavioral cases prohibit intent inference and separate facts, inferences, attestations, unknowns, and unimplemented proposals |
 

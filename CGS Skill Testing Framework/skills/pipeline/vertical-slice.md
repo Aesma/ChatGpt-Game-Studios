@@ -1,5 +1,7 @@
 # Skill Test Spec: $vertical-slice
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
 `$vertical-slice` plans or independently evaluates one exact vertical-slice run.
@@ -28,7 +30,7 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
 
 - [ ] VS-S001: Frontmatter contains only `name` and non-empty `description`;
       `name` is `vertical-slice`.
-- [ ] VS-S002: Invocation accepts only exact hash-bound request/report paths for
+- [ ] VS-S002: Invocation accepts only exact revision-bound request/report paths for
       explicit `plan`, `evaluate`, and read-only `status` modes.
 - [ ] VS-S003: No-argument, positional, glob, directory, absolute, traversal,
       symlink-escape, case-ambiguous, latest, mtime, and session-inferred scope is
@@ -37,15 +39,15 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
       applied before source resolution.
 - [ ] VS-S005: Owned writes are only one create-only plan or one create-only
       evaluation report; status and all other artifacts are non-writes.
-- [ ] VS-S006: Exact candidates receive one bounded approval and full CAS/readback
+- [ ] VS-S006: Exact candidates receive one bounded approval and full version and existence conflict check/readback
       verification; existing output paths are never overwritten.
 
 ### P0 regression protections
 
 - [ ] VS-S007: One hypothesis permits attempt 01 and one targeted attempt 02 only.
 - [ ] VS-S008: Attempt-02 requires an exact current attempt-01 PIVOT report with
-      the same hypothesis-definition hash and stable findings.
-- [ ] VS-S008A: A CAS-backed hypothesis-history reservation makes each
+      the same hypothesis-definition revision and stable findings.
+- [ ] VS-S008A: A version-and-existence-conflict-checked hypothesis-history reservation makes each
       hypothesis/attempt unique across run IDs; implementation requires an exact
       plan-finalization receipt.
 - [ ] VS-S009: Evidence and Workflow axes are deterministic and cannot be upgraded
@@ -57,18 +59,18 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
       isolated worktree; no multi-week conversational changeset exists.
 - [ ] VS-S013: Report/evidence bind exact plan, prerequisite, hypothesis, scope,
       source commit/tree, candidate/build, engine/platform, batch, session,
-      network, velocity, decision-matrix, and workflow-contract hashes.
+      network, velocity, decision-matrix, and workflow-contract revisions.
 - [ ] VS-S014: Any later code/content/configuration/build/evidence/contract change
       makes a report stale and gate-ineligible.
 - [ ] VS-S015: Gate eligibility needs verified persisted CURRENT
-      COMPLETE/PROCEED/PROCEED/PROCEED and exact candidate/report hashes.
+      COMPLETE/PROCEED/PROCEED/PROCEED and exact candidate/report revisions.
 
 ### VS-005 — prerequisite completeness and status
 
 - [ ] VS-S016: Plan consumes exactly `cgs.vertical-slice-prerequisites/v2`.
 - [ ] VS-S017: Every required source role has fixed cardinality and admitted
-      lifecycle status; adapters are version/hash bound.
-- [ ] VS-S018: Each source row binds stable ID, canonical path, raw hash, schema,
+      lifecycle status; adapters are version/revision-bound.
+- [ ] VS-S018: Each source row binds stable ID, canonical path, declared revision, schema,
       exact fields/locators, applicability, and authority.
 - [ ] VS-S019: Required missing/unreadable/invalid/stale/unapproved/unsupported/
       over-limit sources produce stable findings and block with zero writes.
@@ -77,15 +79,15 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
 
 ### VS-006 — stable scope closure
 
-- [ ] VS-S021: Scope begins from an explicit hash-bound product-owner proposal
+- [ ] VS-S021: Scope begins from an explicit revision-bound product-owner proposal
       containing stable system/requirement/AC/dependency IDs.
 - [ ] VS-S022: Required closure is computed from authoritative slice-required
       markers, start→challenge→resolution, dependency edges, criteria, and
       applicable network/UX/accessibility rows.
 - [ ] VS-S023: Every required node/edge appears exactly once; unknown, duplicate,
       orphan, or omitted rows block.
-- [ ] VS-S024: `scope_sha256` binds the complete ordered scope and prerequisite
-      hashes; approval binds that scope hash.
+- [ ] VS-S024: `scope_revision` binds the complete ordered scope and prerequisite
+      revisions; approval binds that scope revision.
 - [ ] VS-S025: Scope changes require a new plan and cannot be absorbed by a batch.
 
 ### VS-007 — finite implementation/checkpoint budget
@@ -107,10 +109,10 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
 - [ ] VS-S032: At least two testers are independent of producing/evaluating owners
       and at least one is unfamiliar with the slice.
 - [ ] VS-S033: Every session receipt binds pseudonymous tester/session, exact
-      candidate/build, environment, UTC times/events, raw path/hash, producer/
+      candidate/build, environment, UTC times/events, raw path/revision, producer/
       observer identities, and attestation.
 - [ ] VS-S034: Duplicate, abandoned, wrong-build, stale, unattested, owner-
-      conflicted, summary-only, chat-only, or unhashed evidence cannot count.
+      conflicted, summary-only, chat-only, or unversioned evidence cannot count.
 - [ ] VS-S035: Insufficient cardinality/cells/raw capture makes Workflow PARTIAL,
       Evidence INCONCLUSIVE unless a verified preapproved kill predicate controls,
       and Gate Eligible NO; a different non-kill failure cannot manufacture a
@@ -149,7 +151,7 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
 
 **Fixture**
 
-- Exact plan request/prerequisite/scope-proposal hashes validate.
+- Exact plan request/prerequisite/scope-proposal revisions validate.
 - Every required source role is current with an admitted status.
 - Authoritative graph has stable system/requirement/AC/dependency IDs and scope is
   closed for one start→challenge→resolution loop.
@@ -157,21 +159,21 @@ CGS Skill Testing Framework/skills/pipeline/vertical-slice.md
 
 **Expected**
 
-1. Compute hypothesis and scope hashes.
+1. Record hypothesis and scope revisions.
 2. Render exact criteria, kill rules, finite story/batch/checkpoints, build
    contract, session/network matrix, velocity schema, verdict matrix, and owners.
 3. Preview/authorize/create/readback-verify only `plan.md`.
 4. Mark `implementation_authorized: false` and stop.
 
 - [ ] VS-C01-A: No worktree/code/build/evidence/report/index/stage artifact changes.
-- [ ] VS-C01-B: Output includes exact plan hash and all explicit non-writes.
+- [ ] VS-C01-B: Output includes exact plan revision and all explicit non-writes.
 
 ### Case 2: VS-005 — missing prerequisite roles block
 
 **Fixture:** prerequisites omit SYSTEMS_INDEX and CONTROL_MANIFEST; one GDD path is
 missing and another has native status Draft without an admitted adapter.
 
-**Expected:** emit stable findings naming every role/path/status/hash and owner;
+**Expected:** emit stable findings naming every role/path/status/revision and owner;
 return BLOCKED/INCONCLUSIVE with zero writes.
 
 - [ ] VS-C02-A: Present sources do not hide missing roles.
@@ -183,13 +185,13 @@ return BLOCKED/INCONCLUSIVE with zero writes.
 | Variant | Observation | Expected |
 |---|---|---|
 | 3a | two GAME_CONCEPT rows | BLOCKED duplicate authority |
-| 3b | source raw hash differs | BLOCKED HASH_MISMATCH |
+| 3b | source declared revision differs | BLOCKED REVISION_MISMATCH |
 | 3c | unknown schema/status | BLOCKED UNSUPPORTED |
-| 3d | status adapter missing hash | BLOCKED INVALID |
+| 3d | status adapter missing revision | BLOCKED INVALID |
 | 3e | required accessibility source omitted without N/A authority | BLOCKED ABSENT |
 | 3f | source count/bytes exceeds limit | BLOCKED OVER_LIMIT |
 
-- [ ] VS-C03-A: Every failure remains path/role/ID/hash specific.
+- [ ] VS-C03-A: Every failure remains path/role/ID/revision specific.
 - [ ] VS-C03-B: User assurance cannot bypass any row.
 
 ### Case 4: VS-006 — stable scope closure passes
@@ -199,11 +201,11 @@ dependencies, requirement/AC rows, applicable UX/accessibility/network bindings,
 and exact stories. All IDs/edges are unique and traceable.
 
 **Expected:** compute the least closure, prove set/edge equality, freeze ordered
-`cgs.vertical-slice-scope/v2`, and bind user approval to its hash.
+`cgs.vertical-slice-scope/v2`, and bind user approval to its revision.
 
 - [ ] VS-C04-A: “All core systems” is replaced by explicit stable IDs.
-- [ ] VS-C04-B: Scope hash changes when any node, edge, quality, environment, or
-      prerequisite hash changes.
+- [ ] VS-C04-B: Scope revision changes when any node, edge, quality, environment, or
+      prerequisite revision changes.
 
 ### Case 5: VS-006 — “key GDD” omission is blocked
 
@@ -225,7 +227,7 @@ passes; CP-COMPILE fails. Time/path budget remains.
 and require a fresh targeted remediation task if its one budget remains.
 
 - [ ] VS-C06-A: No build/fix/recompile loop occurs in the initial task.
-- [ ] VS-C06-B: Failure receipt contains commands/exits/log hashes and actual paths.
+- [ ] VS-C06-B: Failure receipt contains commands/exits/log revisions and actual paths.
 - [ ] VS-C06-C: Vertical-slice planner/evaluator performs no implementation write.
 
 ### Case 7: VS-007 — remediation exhaustion and bug relabeling
@@ -259,8 +261,8 @@ independence are verified; criteria still use their frozen thresholds.
 | 9a | one completed session | NOT_RUN / insufficient cardinality |
 | 9b | three receipts, same tester | INVALID duplicate cardinality |
 | 9c | three testers, no unfamiliar tester | NOT_RUN required cohort |
-| 9d | wrong build hash | INVALID |
-| 9e | raw video path without hash | UNKNOWN |
+| 9d | wrong build revision | INVALID |
+| 9e | raw video path without revision | UNKNOWN |
 | 9f | chat summary only | NOT_RUN |
 | 9g | capture/evaluator owner conflict | INVALID |
 
@@ -335,14 +337,14 @@ kill predicate, and Gate Eligible NO.
 ### Case 14: VS-010 — valid simulated network cells
 
 **Fixture:** two target-condition sessions use two real peers controlled by
-distinct humans. Receipts bind simulator executable/version/config hash and
+distinct humans. Receipts bind simulator executable/version/config revision and
 observed latency/jitter/loss/bandwidth telemetry to the candidate build.
 
 **Expected:** validate each frozen network threshold and result independently;
 requested simulator settings alone are not used.
 
 - [ ] VS-C14-A: Target and adverse cells stay separate.
-- [ ] VS-C14-B: Raw telemetry hashes are part of the evidence set.
+- [ ] VS-C14-B: Raw telemetry revisions are part of the evidence set.
 
 ### Case 15: Missing sample coverage prevents a PIVOT generalization
 
@@ -360,7 +362,7 @@ sample unless it is a preapproved kill predicate.
 ### Case 16: Same hypothesis stops after one targeted rerun
 
 **Fixture:** attempt 01 CURRENT report is PIVOT; attempt 02 preserves hypothesis
-hash and targets findings; its result is again PIVOT; attempt 03 is requested.
+revision and targets findings; its result is again PIVOT; attempt 03 is requested.
 
 **Expected:** attempt 02 permits only KILL or NEW_HYPOTHESIS_REQUIRED; attempt 03
 writes nothing and requires a genuinely new hypothesis.
@@ -389,7 +391,7 @@ invalid KILL upgrade yields AWAITING/BLOCKED, never PROCEED.
 sessions S1, velocity V1, network N1. Change any one byte or rebuild same filename
 to B2.
 
-**Expected:** status rehashes the exact graph, returns STALE and Gate Eligible NO,
+**Expected:** status revalidate the exact graph, returns STALE and Gate Eligible NO,
 and writes nothing.
 
 - [ ] VS-C18-A: Same filename/mtime does not preserve identity.
@@ -403,7 +405,7 @@ receipts bind C1/B1.
 **Expected:** mark receipts INVALID, Workflow PARTIAL, Evidence INCONCLUSIVE absent
 higher precedence, Gate Eligible NO.
 
-- [ ] VS-C19-A: Report/candidate/session hashes form one identity chain.
+- [ ] VS-C19-A: Report/candidate/session revisions form one identity chain.
 
 ### Case 20: Declined or failed report persistence
 
@@ -443,7 +445,7 @@ threshold; every required criterion PASS; no kill predicate; independent roles;
 product owner PROCEED; report create is authorized and verified.
 
 **Expected:** COMPLETE/PROCEED/PROCEED/PROCEED, CURRENT, Persistence VERIFIED,
-Gate Eligible YES; exact report/candidate hashes returned; stop for separate gate.
+Gate Eligible YES; exact report/candidate revisions returned; stop for separate gate.
 
 - [ ] VS-C23-A: All eligibility predicates hold simultaneously.
 - [ ] VS-C23-B: The skill does not invoke gate-check or update project stage.
@@ -452,8 +454,8 @@ Gate Eligible YES; exact report/candidate hashes returned; stop for separate gat
 
 | Finding | Contract remediation | Primary cases |
 |---|---|---|
-| VS-005 | versioned complete prerequisite manifest; fixed roles/cardinality/status/hash/adapters; stable blockers | 2–3 |
-| VS-006 | explicit product scope proposal; authoritative graph closure; stable system/requirement/AC/edge IDs; frozen scope hash | 4–5 |
+| VS-005 | versioned complete prerequisite manifest; fixed roles/cardinality/status/revision/adapters; stable blockers | 2–3 |
+| VS-006 | explicit product scope proposal; authoritative graph closure; stable system/requirement/AC/edge IDs; frozen scope revision | 4–5 |
 | VS-007 | numeric per-story/batch/finding budgets; required checkpoints; immediate PARTIAL/BLOCKED stop; no repair loop | 6–7 |
 | VS-008 | three-session/tester minimum; independence/unfamiliar cohort; immutable build-bound raw receipts | 8–9, 19 |
 | VS-009 | immutable weighted units/intervals; fixed formulas and thresholds; missing operands UNKNOWN | 10–11 |
@@ -464,7 +466,7 @@ Gate Eligible YES; exact report/candidate hashes returned; stop for separate gat
 - [ ] VS-X001: Catalog spec path remains
       `CGS Skill Testing Framework/skills/pipeline/vertical-slice.md`.
 - [ ] VS-X002: A gate consumer receives only an exact CURRENT persisted eligible
-      report/candidate hash pair; the workflow does not claim the gate migrated.
+      report/candidate revision pair; the workflow does not claim the gate migrated.
 - [ ] VS-X003: Plan authorization never authorizes implementation batches.
 - [ ] VS-X004: Batch/build/playtest/velocity/network/evidence artifacts remain
       separately owned and immutable.

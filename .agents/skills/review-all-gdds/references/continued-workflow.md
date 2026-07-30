@@ -13,7 +13,7 @@ worker, or emit experiential observations.
 ### 4a. Generate the complete candidate ledger
 
 Use the typed event, state, dependency, resource, formula, and ownership graph
-to generate, fingerprint, score, sort, and select candidates exactly as defined
+to generate, identity, score, sort, and select candidates exactly as defined
 by `cgs.cross-gdd-rules/v1`. Do not begin walkthroughs before the complete
 candidate ledger exists.
 
@@ -21,7 +21,7 @@ Record for every candidate:
 
 - stable scenario ID and normalized trigger;
 - ordered system IDs and typed edges;
-- evidence paths, sections, and hashes;
+- evidence paths, sections, and revisions;
 - each risk-score component and total score; and
 - selection state: `SELECTED` or `UNSELECTED_SAMPLE_SCOPE`.
 
@@ -34,7 +34,7 @@ incomplete, list the missing graph scope and force `PARTIAL`.
 
 Assign selected scenarios to bounded workers using the standard
 `cgs.cross-gdd-worker/v1` result. A worker receives only the scenario's graph
-slice and exact-hash GDD inputs within the shard limits. For each scenario,
+slice and exact-revision GDD inputs within the shard limits. For each scenario,
 trace:
 
 1. trigger and preconditions;
@@ -44,8 +44,8 @@ trace:
 5. declared failure or recovery behavior.
 
 Every claim cites stable system IDs, canonical paths, sections, and exact input
-hashes. Verify the worker hash echo and account for every selected scenario. A
-worker error, hash mismatch, budget overflow, or unchecked selected scenario is
+revisions. Verify the worker revision echo and account for every selected scenario. A
+worker error, revision mismatch, budget overflow, or unchecked selected scenario is
 a required coverage gap and forces `PARTIAL`.
 
 ### 4c. Classify only under the active mode
@@ -74,11 +74,11 @@ the versioned extension. Do not create a sidecar.
 
 ```gate-evidence
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical-record-payload>
-artifact_id: system-gdd-set:<project-id-digest>:<manifest-prefix>
+record_id: <stable business ID>
+artifact_id: system-gdd-set:<project-id-identifier>:<manifest-prefix>
 artifacts:
   - path: <canonical repository-relative path>
-    sha256: <lowercase SHA-256 of exact bytes>
+    revision: <explicit artifact revision>
     role: system-gdd | game-concept | pillars | systems-index | approval-evidence | consistency-evidence
     system_id: <stable system ID or null>
 reviewer: review-all-gdds:<run-id>
@@ -87,7 +87,7 @@ timestamp: <ISO-8601 UTC>
 finding_ids: [<stable XGDD IDs>]
 producer:
   tool: review-all-gdds
-  version: sha256:<ordered main/continuation/ruleset bundle digest>
+  version: <ordered main/continuation/ruleset bundle identifier>
 extension:
   schema: cgs.cross-gdd-review/v2
   run_id: <UTC timestamp>-<manifest prefix>
@@ -98,10 +98,10 @@ extension:
     commit: <commit ID or null>
     input_state: clean | dirty | includes-untracked-inputs
   ruleset_id: cgs.cross-gdd-rules/v1
-  ruleset_sha256: <exact ruleset bytes hash>
-  skill_bundle_sha256: <ordered main/continuation/ruleset bytes digest>
-  manifest_sha256: <ordered manifest digest>
-  stale_key: <project/ruleset/mode/sorted-artifact-set digest>
+  ruleset_revision: <exact ruleset bytes revision>
+  skill_bundle_version: <ordered main/continuation/ruleset bytes identifier>
+  manifest_revision: <ordered manifest identifier>
+  stale_key: <project/ruleset/mode/sorted-artifact-set identifier>
   coverage_status: COMPLETE | PARTIAL
   limits:
     max_system_gdds: <effective value>
@@ -121,7 +121,7 @@ extension:
     impact_system_ids: []
   consistency_evidence:
     path: <path or null>
-    sha256: <hash or null>
+    revision: <revision or null>
     producer_verdict: <PASS | FINDINGS | PARTIAL | ERROR | null>
     currentness: CURRENT | STALE | UNBOUND | MISSING | NOT_APPLICABLE
   coverage:
@@ -140,7 +140,7 @@ extension:
         reason: UNSELECTED_SAMPLE_SCOPE
   findings:
     - id: <stable XGDD ID>
-      fingerprint_sha256: <hash>
+      identity_revision: <revision>
       rule_id: <versioned rule ID>
       evidence_class: DETERMINISTIC | HYPOTHESIS | COVERAGE
       severity: BLOCKER | WARNING | ADVISORY | INFO | COVERAGE_GAP
@@ -155,7 +155,7 @@ extension:
   accepted_risk_refs:
     - record_id: <separate verified record ID>
       path: <path>
-      sha256: <hash>
+      revision: <revision>
       finding_ids: []
       scope: <bounded scope>
       owner: <owner identity>
@@ -166,25 +166,20 @@ extension:
 
 ### 5a. Canonical record identity
 
-Compute `record_id` as SHA-256 over canonical JSON of the complete
-`gate-evidence` object with `record_id` omitted. Sort object keys
-lexicographically. Preserve array semantics, but first sort:
+Allocate `record_id` as a stable business ID before rendering the complete `gate-evidence` object. Keep it unchanged across presentation projections. Sort object keys lexicographically for deterministic serialization. Preserve array semantics, but first sort:
 
 - `artifacts` by path, role, then system ID;
 - `finding_ids` and all ID-only arrays lexicographically;
 - `coverage` by check ID then shard ID; and
 - `findings` by finding ID.
 
-Use UTF-8, lowercase hexadecimal hashes, no insignificant whitespace, and JSON
-`null` rather than omitted required fields. Recompute the digest after final
-verdict and coverage are known. The human-readable projection is not part of
-the canonical record payload.
+Use UTF-8, no insignificant whitespace, and JSON `null` rather than omitted required fields. Validate the stable record ID, schema version, final verdict, and coverage after rendering. The human-readable projection is not authoritative record content.
 
 ### 5b. Accepted-risk references
 
 Default `accepted_risk_refs` to an empty list. Include a reference only when a
 separate record is project-local, owner-signed, names this exact run or finding
-IDs, has bounded scope and expiry, and its exact hash and currentness can be
+IDs, has bounded scope and expiry, and its exact revision and currentness can be
 verified. Missing, expired, stale, or unbound records confer no exception.
 
 Never create, sign, or repair a risk record. Never set a finding disposition to
@@ -197,8 +192,8 @@ After the machine block, render all of these sections from the same normalized
 data:
 
 1. **Run Identity** — project, run, requested mode, effective scope, source
-   revision, ruleset, manifest digest, stale key, and verdict.
-2. **Input and Approval Manifest** — every included/excluded system, exact hash,
+   revision, ruleset, manifest identifier, stale key, and verdict.
+2. **Input and Approval Manifest** — every included/excluded system, exact revision,
    approval record/currentness, priority, and role.
 3. **Incremental Scope** — baseline validation, deltas, graph-closure members,
    tombstones, or the exact full-fallback reason.
@@ -254,8 +249,8 @@ The path must not exist. Refuse overwrite. Do not silently select a replacement
 path after a collision; generate a new run/path proposal and obtain new
 approval. A correction is a new immutable report whose extension names
 `supersedes_run_id`; it never edits the prior report. After the authorized write,
-read it back, parse the `gate-evidence` block, recompute `record_id`, manifest
-digest, and saved file hash, then report verification.
+read it back, parse the `gate-evidence` block, revalidate `record_id`, manifest
+identifier, and saved file revision, then report verification.
 
 Write no sidecar. Under every outcome, do not modify or create source GDDs,
 systems index, registry, session state, lifecycle status, approval/sign-off,
@@ -282,7 +277,7 @@ workflow automatically.
 
 ## Error recovery protocol
 
-If a worker is blocked, errors, returns mismatched hashes, exceeds a limit, or
+If a worker is blocked, errors, returns mismatched revisions, exceeds a limit, or
 omits required checks:
 
 1. retain its raw status and reason;
@@ -297,7 +292,7 @@ failed check, or changing mode. Never produce `PASS` from incomplete work.
 
 ## Collaborative protocol
 
-1. Hash and inventory before analysis.
+1. revision and inventory before analysis.
 2. Keep product decisions with the owner.
 3. Keep deterministic evidence, hypotheses, and coverage gaps distinct.
 4. Expose all selected and unselected scope.

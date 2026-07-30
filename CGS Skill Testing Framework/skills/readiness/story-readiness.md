@@ -13,7 +13,7 @@ record candidate. It never records the result or authorizes implementation.
 
 This is a repaired catalog candidate and is **NOT EXECUTED**. Do not update
 catalog `last_*` or pass/tested fields without immutable runner receipts bound to
-the exact candidate hashes.
+the exact candidate revision.
 
 ## Contract Sources
 
@@ -27,16 +27,16 @@ Paths are relative to the formal candidate mirror root.
 The compatibility fixture additionally reads exact current producer bytes at
 `.agents/skills/create-stories/SKILL.md` and
 `.agents/skills/create-stories/references/story-authoring-contract.md`. Their
-pinned raw hashes and `SKILL || 0x00 || contract` bundle hash are normative in
+pinned declared revision and `SKILL || 0x00 || contract` bundle revision are normative in
 `readiness-rules-v1.md`; producer drift is an unsupported adapter input until an
 independent compatibility update changes this candidate and its tests.
 
 The sprint-selector compatibility snapshot is the final canonical `sprint-plan`
 producer SKILL at
-`sha256:faff9fd8b5b40af18aac66269c3da5ca6ba6b5d868b7c57594280505bdf51901`
+`revision:faff9fd8b5b40af18aac66269c3da5ca6ba6b5d868b7c57594280505bdf51901`
 and its NOT-EXECUTED behavioral spec at
-`sha256:f5a996c490856617514c34d0697b6a9a284eb0f7e86cc9f434f34385605cf528`.
-These hashes make this compatibility review reproducible; runtime sprint authority
+`revision:f5a996c490856617514c34d0697b6a9a284eb0f7e86cc9f434f34385605cf528`.
+These revisions make this compatibility review reproducible; runtime sprint authority
 still comes only from exact tracker/plan/source bytes, never from the test spec.
 
 ## State Machine
@@ -45,7 +45,7 @@ still comes only from exact tracker/plan/source bytes, never from the test spec.
 |---|---|---|
 | one | exactly one canonical `--story` path | independent story result |
 | sprint | exact declared `--sprint` ID plus valid tracker/plan/story-set authority | independent result per plan story |
-| all | hashed v1 scope manifest and optional current cursor | bounded page of independent results |
+| all | versioned v1 scope manifest and optional current cursor | bounded page of independent results |
 
 Run outcomes: `RUN_COMPLETE`, `RUN_PARTIAL`, `RUN_BLOCKED`, `USAGE_ERROR`,
 `INPUT_ERROR`. Per-story verdicts: `READY`, `NEEDS_WORK`, `BLOCKED`. Per-story
@@ -57,24 +57,24 @@ independent recorder fixture.
 
 ## Deterministic Fixtures
 
-Use isolated repositories with stable clocks and raw-byte SHA-256 fixtures for:
+Use isolated repositories with stable clocks and declared revision fixtures for:
 
 - exact story IDs/statuses/types, AC/Test tables, dependencies, assets, scope,
   engine/performance notes, and unresolved markers;
 - exact `cgs.story/v2` producer contract bytes, `Source Manifest ID`, `Story Core
-  SHA-256`, and complete currentness matrices, plus legacy/mixed/future schemas;
+  revision`, and complete currentness matrices, plus legacy/mixed/future schemas;
 - v1 scope/prior-record manifests and continuation cursors;
-- exact `cgs.sprint-tracker/v2` trackers with raw hashes, positive revisions,
+- exact `cgs.sprint-tracker/v2` trackers with declared revision, positive revisions,
   events, lifecycle owner/recorder, unique ACTIVE declarations, `plan_file`, raw
-  `plan_sha256`, plan revisions, story-set hashes, capacity tuples, complete story
+  `plan_revision`, plan revisions, story_set_revisions, capacity tuples, complete story
   rows, and corroborating selector sources, plus malformed/conflicting variants;
-- systems index rows with system ID, Approved/non-Approved status, GDD path/hash;
+- systems index rows with system ID, Approved/non-Approved status, GDD path/revision;
 - GDD files with stable system/requirement IDs and status;
 - TR registries with active/deprecated/superseded/duplicate/mismatched entries;
 - Accepted/Proposed/missing ADRs and current/stale control manifests;
 - directly authored and imported QA plans with exact story/AC/Test/source binding;
 - complete, partial, malformed, changed, and over-limit source sets;
-- QL-STORY-READY reviewers producing one hash-bound result per story or injected
+- QL-STORY-READY reviewers producing one revision-bound result per story or injected
   timeout/malformed/cross-story output; and
 - a separate failure-injectable readiness recorder with lock, CAS, atomic append,
   stale-source validation, and receipts.
@@ -88,11 +88,11 @@ Every case asserts:
 
 1. allowed write set is empty; no story, plan, tracker, registry, record, cache, or
    evidence file changes;
-2. each story result binds exact story/context/source/checker/ruleset hashes and
+2. each story result binds exact story/context/source/checker/ruleset revisions and
    checked-at time;
 3. partial/unknown/changed required evidence cannot produce `READY`;
 4. stable check/finding IDs do not depend on diagnostic wording, line, timestamp,
-   source hash, reviewer, verdict, or severity;
+   source revision, reviewer, verdict, or severity;
 5. one story's failure never overwrites or contaminates another story's completed
    result; and
 6. no direct result is durable implementation authorization.
@@ -115,7 +115,7 @@ implicit session-story, or recursive-glob scope is introduced.
 ### SR-T002 — Invalid grammar is not a readiness verdict
 
 **Given** separate missing scope, combined scopes, positional story, unknown/
-repeated option, unsafe path, malformed hash/cursor, invalid review value, and
+repeated option, unsafe path, malformed revision/cursor, invalid review value, and
 scope-incompatible option invocations.
 
 **When** parsing occurs.
@@ -125,7 +125,7 @@ nothing, and does not emit READY/NEEDS_WORK/BLOCKED for a story.
 
 ### SR-T003 — Referenced manifest identity fails closed
 
-**Given** hash-mismatched, malformed, unrelated, stale, duplicate-ID, and unsafe-
+**Given** revision-mismatched, malformed, unrelated, stale, duplicate-ID, and unsafe-
 path all/prior manifests.
 
 **When** input identity is frozen.
@@ -133,7 +133,7 @@ path all/prior manifests.
 **Then** each returns `INPUT_ERROR`, no manifest entry is evaluated, and no stale
 prior finding/record is accepted.
 
-### SR-T004 — Story and source hashes bind READY
+### SR-T004 — Story and source revision bind READY
 
 **Given** a fully passing production story and current valid systems index, GDD,
 TR registry, ADR, control manifest, dependency, test, asset, and context sources.
@@ -141,8 +141,8 @@ TR registry, ADR, control manifest, dependency, test, asset, and context sources
 **When** one-story lean evaluation completes.
 
 **Then** result is `READY`/`COMPLETE`, and the record candidate contains exact
-story/source hashes, checked-at UTC, checker/ruleset IDs/versions/hashes, checks,
-finding-set hash, stale predicates, readiness key, and candidate hash.
+story/source revision, checked-at UTC, checker/ruleset IDs/versions/revisions, checks,
+finding_set_revision, stale predicates, readiness key, and candidate revision.
 
 ### SR-T005 — Any bound source change stales the old result
 
@@ -160,16 +160,16 @@ cannot keep it current and no stale record is implementation-gate eligible.
 **Given** exact raw `production/sprint-status.yaml` bytes with
 `schema_version: cgs.sprint-tracker/v2`, positive tracker revision, stable event,
 equal requested `sprint_id`/`active_sprint_id`, exactly one `sprint_state: ACTIVE`,
-stable lifecycle owner/recorder, canonical `plan_file`, exact raw `plan_sha256`,
-plan revision/story-set hash, matching dates/timezone/unit/capacity tuple, complete
+stable lifecycle owner/recorder, canonical `plan_file`, exact raw `plan_revision`,
+plan revision/story_set_revision, matching dates/timezone/unit/capacity tuple, complete
 story rows, and unique agreeing session/project-stage/milestone declarations. The
-referenced `cgs.sprint-plan/v2` ID/revision and recomputed current story-set hash
+referenced `cgs.sprint-plan/v2` ID/revision and revalidate current story_set_revision
 also agree.
 
 **When** sprint scope resolves.
 
 **Then** `cgs.sprint-tracker-v2-readiness-adapter/v1` is the only selected branch;
-the tracker raw hash/revision/event and full normalized authority tuple are
+the tracker declared revision/event and full normalized authority tuple are
 bound into context/readiness/stale keys, the exact plan story set is evaluated,
 plan priority is preserved only for warnings, and no “most recent”/mtime choice
 occurs.
@@ -179,8 +179,8 @@ occurs.
 **Given** separate missing/invalid/legacy/unknown tracker schema, duplicate keys,
 zero/multiple plans, requested/tracker/plan/session/project-stage/milestone ID
 disagreement, zero/multiple ACTIVE declarations, inactive state, nonpositive or
-changed tracker revision, event/owner/recorder mismatch, `plan_path`/`plan_hash`
-without canonical fields, `plan_file` escape, raw `plan_sha256` mismatch, plan
+changed tracker revision, event/owner/recorder mismatch, `plan_path`/`plan revision`
+without canonical fields, `plan_file` escape, raw `plan_revision` mismatch, plan
 revision/story-set mismatch, capacity/date/timezone/unit mismatch, duplicate or
 incomplete story rows, ambiguous/missing story path, current story/core/readiness-
 record/receipt mismatch, and stale timestamp cases.
@@ -199,13 +199,13 @@ limit.
 **When** pages are evaluated.
 
 **Then** page 1 covers ordinals 0–31, returns `RUN_PARTIAL` plus a cursor bound to
-manifest/context/ruleset/result-set hashes; subsequent valid cursors cover the next
+manifest/context/ruleset/result-set revisions; subsequent valid cursors cover the next
 ordinals without duplicate/omission; no recursive glob occurs.
 
 ### SR-T009 — Changed cursor context cannot resume
 
 **Given** a cursor from a completed page and a changed scope manifest, target,
-context, checker/ruleset, next ordinal, or completed-result hash.
+context, checker/ruleset, next ordinal, or completed-result revision.
 
 **When** resume is requested.
 
@@ -225,18 +225,18 @@ finding replaces per-story evidence.
 
 ### SR-T011 — Approved GDD join passes only exact authority
 
-**Given** one story whose system ID, GDD path/hash, and requirement IDs match one
+**Given** one story whose system ID, GDD path/revision, and requirement IDs match one
 Approved systems-index row and current Approved GDD rows.
 
 **When** `SR-C003` runs.
 
-**Then** it passes with exact index/GDD/requirement locators and hashes; a bare GDD
+**Then** it passes with exact index/GDD/requirement locators and revisions; a bare GDD
 filename or copied prose is not the evidence used.
 
 ### SR-T012 — Non-Approved or stale GDD is blocked
 
 **Given** separate absent/invalid systems index, duplicate system ID, Draft/
-Proposed GDD status, index/current GDD hash mismatch, missing requirement, and
+Proposed GDD status, index/current GDD revision mismatch, missing requirement, and
 duplicate requirement ID fixtures.
 
 **When** `SR-C003` runs.
@@ -246,7 +246,7 @@ authority with external action/evidence/resolution condition, and cannot READY.
 
 ### SR-T013 — Story-local GDD binding gap is fixable, not inferred
 
-**Given** valid current index/GDD authority but a story missing system ID, GDD hash,
+**Given** valid current index/GDD authority but a story missing system ID, gdd revision,
 or stable requirement locator.
 
 **When** `SR-C003` runs.
@@ -283,7 +283,7 @@ neutral N/A fixtures.
 
 **When** `SR-C005` runs.
 
-**Then** exact Accepted hashes pass; Proposed/missing/invalid/duplicate block;
+**Then** exact Accepted revisions pass; Proposed/missing/invalid/duplicate block;
 reasoned N/A passes only when no architecture choice is unresolved; generic “N/A”
 or waiver text does not.
 
@@ -291,24 +291,24 @@ or waiver text does not.
 
 **Given** a production story and separate missing/unreadable/invalid authority,
 missing/duplicate/stale control rows, malformed/mismatched `Source Manifest ID`,
-mismatched `Story Core SHA-256`, non-current review/ACTIVE receipt, unresolved Rule
+mismatched `Story Core revision`, non-current review/ACTIVE receipt, unresolved Rule
 ID/locator, and fully matching producer-v2 fixtures.
 
 **When** `SR-C006` runs.
 
 **Then** every missing/stale case fails closed, the recomputed producer manifest/
-core hashes and current Rule-ID locators pass, and dates/copied labels never hide
-byte mismatch. Absence of legacy `Manifest Version`, `Manifest Hash`, or `## Source
+core revisions and current Rule-ID locators pass, and dates/copied labels never hide
+byte mismatch. Absence of legacy `Manifest Version`, `manifest revision`, or `## Source
 Snapshot` does not fail the valid v2 fixture.
 
 ### SR-T018 — Notes and legacy fields cannot rewrite v2 provenance
 
 **Given** stale v2 currentness/source/core evidence plus Manifest-Note, accepted
-risk, waiver text, or matching legacy Manifest Version/Hash/Source Snapshot fields.
+risk, waiver text, or matching legacy Manifest Version/revision/Source Snapshot fields.
 
 **When** the control check runs.
 
-**Then** captured/current hashes remain distinct, finding observation may say
+**Then** captured/current revisions remain distinct, finding observation may say
 `WAIVER_PRESENT`, check still fails, final cannot READY, legacy fields cannot
 satisfy the v2 adapter, and no source is edited.
 
@@ -319,13 +319,13 @@ satisfy the v2 adapter, and no source is edited.
 **When** deterministic evaluation completes.
 
 **Then** one row for each applicable `SR-C001..SR-C016` appears in numeric order
-with version/hash/applicability/inputs/evidence/status/finding IDs; prerequisites
+with version/revision/applicability/inputs/evidence/status/finding IDs; prerequisites
 produce explicit UNVERIFIED rows rather than silently omitted checks.
 
 ### SR-T020 — Finding IDs survive irrelevant movement and wording
 
 **Given** the same check/story/subject/defect key at changed line, diagnostic text,
-timestamp, story/source hash, owner, reviewer, classification, and verdict.
+timestamp, story/source revision, owner, reviewer, classification, and verdict.
 
 **When** `srf-v1` is computed.
 
@@ -340,7 +340,7 @@ unknown asset finding.
 **When** findings normalize.
 
 **Then** every row contains classification, observation, owner role,
-external_action, dependency ID or NONE, exact evidence/hash/locator, and a
+external_action, dependency ID or NONE, exact evidence/revision/locator, and a
 deterministic resolution condition; free-form blocker prose alone fails schema.
 
 ### SR-T022 — Prior finding comparison is read-only
@@ -382,8 +382,8 @@ inferred from headings/order and legacy `TEST-<story-id>-NNN` is not required.
 
 ### SR-T025 — Imported QA provenance must be fully current
 
-**Given** separate QA plan hash mismatch, PARTIAL/STALE effective state, missing/
-changed captured source, story path/hash drift, AC set drift, Test set drift,
+**Given** separate QA plan revision mismatch, PARTIAL/STALE effective state, missing/
+changed captured source, story path/revision drift, AC set drift, Test set drift,
 duplicate/orphan imported Test, and exact CURRENT fixtures.
 
 **When** imported QA evidence is validated.
@@ -457,7 +457,7 @@ question marks do not produce false blockers.
 ### SR-T032 — Full QA verdict mapping cannot be bypassed
 
 **Given** complete packets with base READY/NEEDS_WORK/BLOCKED and ADEQUATE, GAPS,
-INADEQUATE, timeout, missing, malformed, duplicate, cross-story, or hash-mismatched
+INADEQUATE, timeout, missing, malformed, duplicate, cross-story, or revision-mismatched
 results.
 
 **When** `SR-C016` merges.
@@ -503,7 +503,7 @@ describes coverage and may contain non-ready stories.
 
 **When** the skill returns.
 
-**Then** its candidate is content/hash bound but says `NOT_PERSISTED`,
+**Then** its candidate is content/revision-bound but says `NOT_PERSISTED`,
 `implementation_gate_eligible: false`, `record_mutated: false`, and
 `recorder_invoked: false`; no recorder call, record path write, or dev-story
 handoff as authorized work occurs.
@@ -538,7 +538,7 @@ stage without implementation eligibility.
 **When** static conformance runs.
 
 **Then** exact scopes/outcomes/verdicts, 16 check IDs, v2 adapter identity and
-producer SKILL/contract/bundle hash binding, stable finding schema, bounded/partial behavior,
+producer SKILL/contract/bundle revision binding, stable finding schema, bounded/partial behavior,
 current source joins, per-story QA isolation, record/recorder separation, and
 NOT-EXECUTED test state agree without mutation or implementation-authorization
 contradictions.
@@ -546,11 +546,11 @@ contradictions.
 ### SR-T040 — Exact create-stories cgs.story/v2 output is consumable
 
 **Given** exact current create-stories SKILL and producer-contract bytes whose raw
-hashes and NUL-delimited bundle hash equal the adapter's pinned values, plus a conforming
-`cgs.story/v2` artifact with `Source Manifest ID`, `Story Core SHA-256`, complete
+paths and declared producer versions equal the adapter's supported values, plus a conforming
+`cgs.story/v2` artifact with `Source Manifest ID`, `Story Core revision`, complete
 Source Manifest and Currentness Matrix, `AC-SNNN-CC`, and one type-correct
 `TC|MC|SC-<epic>-SNNN-ACCC` row per AC, with no `Manifest Version`, `Manifest
-Hash`, `## Source Snapshot`, or legacy AC/TEST ID fields.
+revision`, `## Source Snapshot`, or legacy AC/TEST ID fields.
 
 **When** `cgs.story-v2-readiness-adapter/v1` parses and recomputes the producer
 manifest/core identities before `SR-C001..SR-C015` run.
@@ -562,7 +562,7 @@ the story may reach READY only if every independent readiness check passes.
 ### SR-T041 — Unsupported or mixed producer schema fails closed
 
 **Given** separate absent-schema, legacy-only, future-schema, duplicate-v2-marker,
-mixed legacy/v2-ID, copied-digest-without-matrix, and producer-contract-hash-drift
+mixed legacy/v2-ID, copied-reference ID-without-matrix, and producer-contract_revision-drift
 fixtures.
 
 **When** adapter selection and currentness validation run.
@@ -584,20 +584,20 @@ The candidate passes static conformance only when:
 - all 16 stable check IDs are present exactly once in the registry and evaluation
   order is fixed;
 - the one supported production branch is exact `cgs.story/v2`, binds the adapter
-  and pinned producer SKILL/contract/bundle hashes, and rejects producer drift or
+  and pinned producer SKILL/contract/bundle revision, and rejects producer drift or
   legacy/mixed/future schemas without a guessed fallback;
 - source snapshots include Story, producer Source Manifest ID/Story Core/currentness
   rows, systems-index/GDD, TR registry, ADRs, control manifest, dependencies/assets/
   tests, and applicable sprint/current context;
-- READY candidates include story/source hashes, checked-at, checker/ruleset,
+- READY candidates include story/source revision, checked-at, checker/ruleset,
   checks/findings, verdict, stale predicates, and false persistence/eligibility;
-- sprint resolution selects only `cgs.sprint-tracker/v2`, binds tracker raw hash/
+- sprint resolution selects only `cgs.sprint-tracker/v2`, binds tracker declared revision/
   positive revision/event and unique ACTIVE declarations, consumes `plan_file` plus
-  raw `plan_sha256`, and verifies complete tracker/plan tuple, story rows, revision,
-  and recomputed story-set hash without legacy aliases or recency;
+  raw `plan_revision`, and verifies complete tracker/plan tuple, story rows, revision,
+  and revalidate story_set_revision without legacy aliases or recency;
 - all scope is manifest-bound, capped, paged, and continuation-bound; per-story
   partials survive batch failures;
-- systems index/GDD requires stable system/path/hash/Approved status and stable
+- systems index/GDD requires stable system/path/revision/Approved status and stable
   requirements; active TR and Accepted ADR joins are exact;
 - v2 AC/Test IDs are exact `AC-SNNN-CC` and type-correct
   `TC|MC|SC-<epic>-SNNN-ACCC`, with matching components and exactly one current
@@ -613,10 +613,10 @@ The candidate passes static conformance only when:
 
 | Audit item | Closing contract | Primary tests |
 |---|---|---|
-| SR-004 | story and every current source hash, checked-at, checker/ruleset, stale predicates in each record candidate | SR-T004–SR-T005, SR-T036–SR-T038 |
-| SR-005 | exact cgs.sprint-tracker/v2 raw-hash/revision/unique-ACTIVE authority plus plan_file/raw-plan_sha256/revision/story-set resolution; no legacy aliases or recency choice | SR-T006–SR-T007 |
+| SR-004 | story and every current source revision, checked-at, checker/ruleset, stale predicates in each record candidate | SR-T004–SR-T005, SR-T036–SR-T038 |
+| SR-005 | exact cgs.sprint-tracker/v2 declared revision/unique-ACTIVE authority plus plan_file/raw-plan_revision/story-set resolution; no legacy aliases or recency choice | SR-T006–SR-T007 |
 | SR-006 | independent per-story deterministic/QA/results, partial isolation, bounded continuation | SR-T008–SR-T010, SR-T033 |
-| SR-007 | stable system ID plus exact systems-index/GDD path/hash/Approved status and requirement join | SR-T011–SR-T015 |
+| SR-007 | stable system ID plus exact systems-index/GDD path/revision/Approved status and requirement join | SR-T011–SR-T015 |
 | SR-008 | stable check/finding schema with classification, owner, external action, dependency, evidence, resolution | SR-T019–SR-T022 |
 | SR-009 | `EXISTING` / `PLANNED_WITH_STORY` / `BROKEN` / `UNKNOWN`, with hard planned producer blocked | SR-T028–SR-T030 |
 

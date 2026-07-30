@@ -48,15 +48,15 @@ Both modes require these stable request fields:
 
 - `request_id`, `mode`, and an explicit ordered matrix of stable
   `platform_profile_id`, `hardware_class_id`, and `scenario_id` cells;
-- an exact build identity comprising `build_id`, `artifact_sha256`,
+- an exact build identity comprising `build_id`, `artifact_revision`,
   `source_commit`, `source_tree_state`, `configuration`, engine product/version,
-  and engine executable or package receipt SHA-256;
-- exact repository-relative paths and SHA-256 values for a platform profile,
+  and engine executable or package receipt revision;
+- exact repository-relative paths and revision values for a platform profile,
   hardware profile, scenario definition, adapter registry, metric registry, unit
   registry, comparison policy, and performance budget manifest;
 - capture constraints: warm-up duration, measured duration, repetition count,
   sample interval, seed or `NONE`, save/checkpoint or `NONE`, input-script ID and
-  hash or `NONE`, graphics preset, resolution, render scale, VSync, frame cap,
+  revision or `NONE`, graphics preset, resolution, render scale, VSync, frame cap,
   power mode, thermal policy, background-load policy, and profiler-overhead mode;
 - required metric IDs and markers for every matrix cell; and
 - whether one optional analyst review is requested.
@@ -87,14 +87,14 @@ per-file or aggregate bound. If declared work exceeds a structural limit, return
 `ERROR — REQUEST EXCEEDS FIXED BOUND`. If a valid export is within the byte bound
 but normalized trace content exceeds a series, sample, marker, repetition, metric,
 finding, or rendering limit, stop at the stated deterministic boundary, record
-the complete candidate identity digest, included and omitted counts, boundary,
-and overflow digest, and return `PARTIAL — BOUNDED TRACE`; never extrapolate an
+the complete candidate identity revision, included and omitted counts, boundary,
+and overflow revision, and return `PARTIAL — BOUNDED TRACE`; never extrapolate an
 overall verdict from the retained prefix.
 
 Read every selected configuration artifact as exact bytes, verify its declared
-SHA-256, and record its normalized repository-relative path and hash. A missing,
+revision, and record its normalized repository-relative path and revision. A missing,
 changed, malformed, ambiguous, or unsupported critical configuration artifact is
-an `ERROR` before analysis. Recompute all selected configuration and input hashes
+an `ERROR` before analysis. re-read and validate all declared selected configuration and input revisions
 immediately before returning. If any changed, return `ERROR — INPUT CHANGED
 DURING ANALYSIS` without a budget verdict or evidence record.
 
@@ -104,7 +104,7 @@ DURING ANALYSIS` without a budget verdict or evidence record.
 
 The platform profile, hardware profile, scenario definition, metric registry,
 unit registry, comparison policy, and budget manifest are authoritative only at
-their verified versions and hashes.
+their verified versions and revisions.
 
 ### Budget source and precedence
 
@@ -132,7 +132,7 @@ Every rule must declare a stable `rule_id`, metric ID, comparison operator,
 threshold, canonical unit, evaluation statistic, allowed exceedance or spike
 policy, minimum measured duration, minimum repetitions, warm-up requirement, and
 severity mapping. Record the selected rule ID, specificity level, source path,
-and source hash beside each result.
+and source revision beside each result.
 
 ### Units and sample semantics
 
@@ -141,7 +141,7 @@ Require metric schema `cgs.performance-metric-registry/v1` and unit schema
 unit, direction (`lower-is-better`, `higher-is-better`, or bounded), sample
 semantics, aggregation eligibility, and valid numeric domain. Convert only by an
 explicit versioned rule in the selected unit registry and record conversion ID,
-source unit, canonical unit, factor or formula, registry version, and hash.
+source unit, canonical unit, factor or formula, registry version, and revision.
 
 Never infer that FPS and frame time are interchangeable, convert decimal and
 binary byte units silently, merge CPU and GPU time, or aggregate counters,
@@ -163,11 +163,11 @@ deterministic row per platform-by-hardware-by-scenario cell containing:
 
 - exact build artifact and source identity;
 - platform profile, hardware class, OS/driver, power, and thermal requirements;
-- scenario version/hash, seed, save/checkpoint, input script, graphics settings,
+- scenario version/revision, seed, save/checkpoint, input script, graphics settings,
   resolution, render scale, VSync, frame cap, and background-load rules;
 - warm-up, duration, sample interval, repetitions, required markers and metrics;
 - required profiler product/version, exporter ID/version, adapter ID/version,
-  adapter executable or package hash, export schema/version, and overhead mode;
+  adapter executable or package revision, export schema/version, and overhead mode;
 - applicable budget rule IDs and canonical units; and
 - expected export filenames and the exact `analyze-export --manifest ...
   --input ...` handoff, without claiming the files already exist.
@@ -195,7 +195,7 @@ are unsupported.
 An adapter entry is valid only when it declares:
 
 - stable adapter ID and semantic version;
-- exact executable/package identity and SHA-256;
+- exact executable/package identity and revision;
 - supported exporter products, versions, schemas, and platform profiles;
 - deterministic arguments, parser schema, metric and unit mappings, marker
   mapping, output schema `cgs.performance-trace/v1`, and receipt schema
@@ -205,20 +205,20 @@ An adapter entry is valid only when it declares:
 - validator tests and their immutable receipt IDs for the exact adapter version.
 
 Execute only the declared adapter with fixed arguments inside the stated time
-and resource limits. Hash the raw input before execution. Validate the resulting
-receipt: adapter ID/version/hash, exact argv, start/end UTC timestamps, exit
-status, raw-input path/hash/bytes, normalized-output hash/bytes, warnings, and
+and resource limits. record the raw-input path and declared revision before execution. Validate the resulting
+receipt: adapter ID/version/revision, exact argv, start/end UTC timestamps, exit
+status, raw-input path/revision/bytes, normalized-output revision/bytes, warnings, and
 validator identity must bind to this run. Reject a missing, oversized,
-malformed, hash-mismatched, unvalidated, timed-out, or nonzero adapter receipt.
+malformed, revision-mismatched, unvalidated, timed-out, or nonzero adapter receipt.
 Never parse an unknown format heuristically or edit the raw export.
 
 The normalized `cgs.performance-trace/v1` must retain, for every sample and
 marker, raw source identity, repetition, timestamp relative to measured-window
 start, metric ID, numeric value, source unit, canonical unit, and conversion ID.
 It must also carry the complete capture provenance from Phase 0 plus profiler
-product/version, exporter ID/version, adapter ID/version/hash, export settings,
+product/version, exporter ID/version, adapter ID/version/revision, export settings,
 overhead mode, warm-up completion, measured duration, sample interval, capture
-start UTC, repetition identity, and raw/normalized hashes.
+start UTC, repetition identity, and raw/normalized revisions.
 
 Classify outcomes mechanically:
 
@@ -281,7 +281,7 @@ completeness.
 
 ## Phase 5: Compare an explicit baseline without false causality
 
-Never infer a baseline. When `--baseline` is provided, hash and validate it as
+Never infer a baseline. When `--baseline` is provided, revision and validate it as
 either a complete `cgs.performance-report/v1` payload with a valid embedded
 `cgs.review-evidence/v1` record, or profiler exports processed through the same
 adapter-validation path. A report also needs an exact current
@@ -290,12 +290,12 @@ exact bytes if it is offered as durable evidence; without one it may be used as
 disclosed conversational context only, never as gate evidence.
 
 Compute deltas only when the comparison policy permits and these keys match:
-platform-profile ID/version/hash, hardware-class ID/version/hash, scenario
-ID/version/hash, seed/save/input identity, graphics/resolution/render-scale,
+platform-profile ID/version/revision, hardware-class ID/version/revision, scenario
+ID/version/revision, seed/save/input identity, graphics/resolution/render-scale,
 VSync/frame-cap, power/thermal/background-load policy, profiler/exporter/adapter
 identity, export and overhead settings, metric ID, sample semantics, canonical
 unit and conversion rule, warm-up/duration/sample interval/repetition policy,
-budget manifest/rule, and comparison-policy version/hash. Build ID, artifact hash,
+budget manifest/rule, and comparison-policy version/revision. Build ID, artifact revision,
 and source commit are the explicitly differing comparison axis.
 
 For each comparable metric report absolute and percentage delta for the exact
@@ -322,7 +322,7 @@ adapter warning that affects interpretation, or statistically supported change.
 Each finding uses:
 
 ```yaml
-id: PFF-<category-slug>-<12-lowercase-hex>
+id: PFF-<category-slug>-<stable-business-key>
 category: BUDGET | COVERAGE | ADAPTER | BASELINE | STATISTICS
 metric_id: <stable ID or NONE>
 rule_id: <stable ID or NONE>
@@ -331,7 +331,7 @@ status: OPEN
 first_seen_build_id: <stable build ID>
 current_build_id: <stable build ID>
 evidence:
-  trace_sha256: <hash or NONE>
+  trace_revision: <revision or NONE>
   repetition_ids: [<stable IDs>]
   statistic: <name or NONE>
   observed: <value and canonical unit or NONE>
@@ -340,12 +340,12 @@ claim_boundary: <observation, not unsupported cause>
 recommendation: <bounded hypothesis and experiment or NONE>
 ```
 
-Compute the 12-hex suffix from SHA-256 of UTF-8 canonical JSON containing only
+Build the suffix from declared business IDs and the UTC run ID, using only
 the repository identity, category, metric ID, rule ID, platform-profile ID,
 hardware-class ID, and scenario ID. Do not include file paths, line numbers,
-severity, observed values, thresholds, status, timestamps, current build hashes,
-or report hashes. Sort findings by category, metric ID, rule ID, and cell ID.
-Coalesce identical canonical identities and list all supporting repetitions.
+severity, observed values, thresholds, status, timestamps, current build revisions,
+or report revisions. Sort findings by category, metric ID, rule ID, and cell ID.
+Coalesce identical stable business identities and list all supporting repetitions.
 
 When `analyst_review: true`, the skill may ask at most one
 `performance-analyst` for a read-only review of the already calculated bounded
@@ -400,7 +400,7 @@ UTF-8 JSON with lexicographically sorted object keys, preserved array order,
 JSON number grammar, and no insignificant whitespace. The canonical payload must
 include contract and schema versions; request, build, platform, hardware,
 scenario, capture, profiler, exporter, adapter, registry, policy, budget, raw
-input, normalized trace, and baseline identities/hashes; limits; coverage ledger;
+input, normalized trace, and baseline identities/revisions; limits; coverage ledger;
 statistics; rule decisions; verdicts; stable findings; review status and review
 coverage; omissions;
 producer `perf-profile@cgs.perf-profile/v2`; and a UUIDv4 run ID and UTC timestamp
@@ -411,10 +411,10 @@ For a complete `analyze-export` result only, emit one fenced block labeled
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: <sha256 of canonical record excluding only record_id>
+record_id: <stable business record ID plus run_id>
 artifact_kind: performance-runtime-report
 artifact_identity: <request_id>/<build_id>
-artifact_sha256: <sha256 of canonical cgs.performance-report/v1 payload>
+artifact_revision: <explicit report revision>
 producer: perf-profile@cgs.perf-profile/v2
 run_id: <UUIDv4>
 generated_at_utc: <RFC 3339 UTC>
@@ -427,7 +427,7 @@ recorder_receipt: NONE
 ```
 
 `performance_targets_met_candidate` is true only for `WITHIN BUDGET`. This record
-is hash-bound but not durable evidence because the skill is read-only. It always
+is revision-bound but not durable evidence because the skill is read-only. It always
 retains `persistence: NONE` and `recorder_receipt: NONE`; an external receipt never
 rewrites the analyzer output.
 
@@ -435,26 +435,23 @@ rewrites the analyzer output.
 
 The only compatible durable-recording interface is
 `cgs.performance-report-recorder-receipt/v1`. The independent recorder receives
-the exact complete returned report bytes and all exact source bindings, recomputes
-the embedded `cgs.performance-report/v1` payload hash and
-`cgs.review-evidence/v1` record ID, and proves a create-only compare-and-set plus
+the exact complete returned report bytes and all exact source bindings, validates the embedded explicit cgs.performance-report/v1 payload revision and stable cgs.review-evidence/v1 record ID, and proves a create-only compare-and-set plus
 read-back. The analyzer, its optional analyst reviewer, and the recorder identities
 must all differ.
 
-Compute `performance_candidate_sha256` over canonical JSON containing the exact
-request ID/hash; build ID, candidate ID, artifact hash, source commit/tree state,
+Set performance_candidate_revision from the recorder-owned monotonic revision. Canonical JSON contains the exact
+request ID/revision; build ID, candidate ID, artifact revision, source commit/tree state,
 engine/configuration; ordered platform-profile, hardware-class and scenario
-identities/hashes; budget path/schema/hash and ordered rule IDs; policy/registry/
-adapter/profiler/exporter identities/hashes; ordered raw-input and normalized-trace
-hashes; canonical payload hash; evidence record ID; and report raw-byte hash. Use
-the lowercase digest without `sha256:` in these exact paths:
+identities/revisions; budget path/schema/revision and ordered rule IDs; policy/registry/
+adapter/profiler/exporter identities/revisions; ordered raw-input and normalized-trace
+revisions; canonical payload revision, evidence record ID, and report revision. Use the stable candidate business ID and record business ID in these exact paths:
 
 ```text
-production/qa/evidence/performance/<performance_candidate_sha256>/reports/<record_id_sha256>.md
-production/qa/evidence/performance/<performance_candidate_sha256>/receipts/<record_id_sha256>.yaml
+production/qa/evidence/performance/<performance_candidate_id>/reports/<record_id>.md
+production/qa/evidence/performance/<performance_candidate_id>/receipts/<record_id>.yaml
 ```
 
-`record_id_sha256` is the lowercase digest portion of the embedded generic
+`record_id` is the declared revision portion of the embedded generic
 `record_id`. Both targets must be absent; a recorder may not choose an alias,
 overwrite a prior result, or derive identity from a timestamp.
 
@@ -462,31 +459,31 @@ The receipt is canonical UTF-8 YAML and contains at least:
 
 ```yaml
 schema: cgs.performance-report-recorder-receipt/v1
-receipt_id: sha256:<canonical receipt payload with receipt_id omitted>
-recorder: {identity: <independent ID>, version: <version>, implementation_sha256: <hash>}
+receipt_id: <stable business receipt ID plus recorder run ID>
+recorder: {identity: <independent ID>, version: <version>, implementation_revision: <revision>}
 producer: perf-profile@cgs.perf-profile/v2
 source:
-  report_raw_sha256: sha256:<hash>
+  report_raw_revision: <explicit revision>
   report_bytes: <positive integer>
   payload_schema: cgs.performance-report/v1
-  payload_sha256: sha256:<hash>
+  payload_revision: <explicit revision>
   evidence_schema: cgs.review-evidence/v1
-  evidence_record_id: sha256:<hash>
+  evidence_record_id: <stable business record ID>
   analyzer_persistence: NONE
   analyzer_recorder_receipt: NONE
 identity:
-  performance_candidate_sha256: sha256:<hash>
-  request: {id: <ID>, sha256: sha256:<hash>}
-  build: {id: <ID>, candidate_id: <ID>, artifact_sha256: sha256:<hash>, source_commit: <ID>, source_tree_state: <state>, configuration: <ID>}
-  platform_matrix_sha256: sha256:<ordered platform/hardware/scenario identity digest>
-  budget: {schema: cgs.performance-budget/v2, path: <canonical path>, sha256: sha256:<hash>, rule_set_sha256: sha256:<hash>}
-  input_set_sha256: sha256:<ordered raw export/adapter receipt/normalized trace digest>
+  performance_candidate_revision: <explicit revision>
+  request: {id: <ID>, revision: <explicit revision>}
+  build: {id: <ID>, candidate_id: <ID>, artifact_revision: <explicit revision>, source_commit: <ID>, source_tree_state: <state>, configuration: <ID>}
+  platform_matrix_revision: <explicit revision for ordered platform/hardware/scenario identity revision>
+  budget: {schema: cgs.performance-budget/v2, path: <canonical path>, revision: <explicit revision>, rule_set_revision: <explicit revision>}
+  input_set_revision: <explicit revision for ordered raw export/adapter receipt/normalized trace revision>
 target:
-  report_path: production/qa/evidence/performance/<performance_candidate_sha256>/reports/<record_id_sha256>.md
-  receipt_path: production/qa/evidence/performance/<performance_candidate_sha256>/receipts/<record_id_sha256>.yaml
+  report_path: production/qa/evidence/performance/<performance_candidate_id>/reports/<record_id>.md
+  receipt_path: production/qa/evidence/performance/<performance_candidate_id>/receipts/<record_id>.yaml
   expected_report_preimage: ABSENT
   expected_receipt_preimage: ABSENT
-  persisted_report_sha256: sha256:<same report raw hash>
+  persisted_report_revision: <matching explicit report revision>
   persisted_report_bytes: <same byte count>
 write:
   compare_and_set: CREATED
@@ -494,7 +491,7 @@ write:
   write_completed_at_utc: <RFC3339 UTC>
   read_back: VERIFIED
   read_back_at_utc: <RFC3339 UTC>
-  read_back_sha256: sha256:<same report raw hash>
+  read_back_revision: <matching explicit report revision>
 decision:
   verdict: WITHIN BUDGET | CONCERNS | OVER BUDGET
   performance_targets_met: true | false
@@ -503,7 +500,7 @@ decision:
 ```
 
 The receipt repeats every exact candidate/build/platform/budget/input binding; the
-set digests are not substitutes for the underlying bounded ordered rows. It is
+set revisions are not substitutes for the underlying bounded ordered rows. It is
 valid only for a complete analyzer record whose coverage is `COMPLETE`, whose
 candidate flag agrees with the unchanged verdict, whose report target bytes equal
 the returned bytes, and whose CAS/read-back are verified. `gate_evidence_eligible:
@@ -513,7 +510,7 @@ for the unchanged `WITHIN BUDGET` verdict. `CONCERNS` and `OVER BUDGET` remain
 eligible conclusive evidence with `performance_targets_met: false`.
 
 A receipt with a changed verdict/payload, reused target, wrong canonical path,
-identity overlap, partial matrix, missing underlying bindings, stale hash,
+identity overlap, partial matrix, missing underlying bindings, stale revision,
 non-created CAS, or failed/unknown read-back is invalid and gate-ineligible. The
 recorder cannot change calculations, coverage, findings, or verdict, and cannot
 turn preparation, partial, bounded, error, or measurement-required output into a

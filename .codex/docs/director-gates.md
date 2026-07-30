@@ -35,17 +35,17 @@ The optional configuration record is `production/review-mode.txt` with exactly o
 
 No other consumer inherits those mappings. In particular, a team orchestrator cannot expose an inert mode parameter merely because it uses this document.
 
-When a declared consumer resolves a mode it records the source (explicit argument or exact configuration path/hash), resolved value, applicable gate IDs, and run/skip disposition. Missing configuration uses the consumer's declared default; there is no repository-wide implied default.
+When a declared consumer resolves a mode it records the source (explicit argument or exact configuration path), resolved value, applicable gate IDs, and run/skip disposition. Missing configuration uses the consumer's declared default; there is no repository-wide implied default.
 
-Mode affects only the advisory director/lead gate listed by the consumer. It MUST NOT skip canonical readiness checks, independent QA, accessibility, security, test evidence, source-hash/currentness validation, non-waivable blockers, required role separation, or recorder receipts. A skipped advisory gate is `N/A`, never APPROVE/READY and never proof of completion.
+Mode affects only the advisory director/lead gate listed by the consumer. It MUST NOT skip canonical readiness checks, independent QA, accessibility, security, test evidence, source/currentness validation, non-waivable blockers, required role separation, or recorder receipts. A skipped advisory gate is `N/A`, never APPROVE/READY and never proof of completion.
 
 ---
 
 ## Invocation contract
 
-Before delegation, the consumer freezes an input manifest containing gate ID, reviewer role, exact artifact paths and raw SHA-256 values, transitive evidence hashes, catalog/config hashes when applicable, and expected verdict vocabulary. Delegation is read-only. The reviewer may not edit the reviewed artifact or persist the authoritative gate record.
+Before delegation, the consumer freezes an input manifest containing gate ID, reviewer role, exact artifact paths, declared versions or revisions when available, evidence identifiers, catalog/config versions when applicable, and expected verdict vocabulary. Delegation is read-only. The reviewer may not edit the reviewed artifact or persist the authoritative gate record.
 
-For multiple applicable gates, delegation may be parallel, but all results must be collected before aggregation. Each result is bound to the frozen manifest and reviewer identity. A separate authorized recorder, when required by the consumer, persists unchanged result bytes plus its raw hash and emits the consumer-declared receipt. No gate is auto-executed and no result advances project stage.
+For multiple applicable gates, delegation may be parallel, but all results must be collected before aggregation. Each result references the input manifest and reviewer identity. A separate authorized recorder, when required by the consumer, persists the result plus its typed identity and emits the consumer-declared receipt. No gate is auto-executed and no result advances project stage.
 
 ---
 
@@ -66,7 +66,7 @@ strictest verdict — one NOT READY overrides all READY verdicts.
 
 ## Recording Gate Outcomes
 
-A Markdown status line is informative only. When a consumer requires durable evidence, an independently authorized recorder persists the exact review result and a typed receipt bound to gate ID, reviewer identity, input-manifest hash, reviewed artifact hashes, verdict, findings, timestamp, and supersession chain. Stale, malformed, self-authored, or hash-mismatched results are invalid. Only the project-stage authority recorder can advance stage after a current eligible gate record.
+A Markdown status line is informative only. When a consumer requires durable evidence, an independently authorized recorder persists the exact review result and a typed receipt bound to gate ID, reviewer identity, input-manifest identity, reviewed artifact paths and versions, verdict, findings, timestamp, and supersession chain. Stale, malformed, self-authored, or identity-mismatched results are invalid. Only the project-stage authority recorder can advance stage after a current eligible gate record.
 
 ---
 
@@ -126,19 +126,19 @@ is eligible.
 ### CD-SYSTEMS — Systems Decomposition Vision Check
 
 **Trigger**: At `$map-systems`' single pre-write checkpoint, after the complete
-canonical index candidate is frozen and SHA-256-bound but before any authoritative
+canonical index candidate is complete but before any authoritative
 index/state write — validates the complete system set before GDD authoring begins
 
 **Context to pass**:
 - Complete proposed systems-index bytes, destination path
-  (`design/gdd/systems-index.md`), and candidate SHA-256
+  (`design/gdd/systems-index.md`)
 - Game pillars and core fantasy (from `design/gdd/game-concept.md`)
 - Priority tier assignments (MVP / Vertical Slice / Alpha / Full Vision)
 - Any high-risk or bottleneck systems identified in the dependency map
 
 **Prompt**:
-> "Read-only review: do not edit the candidate or any file. Bind the response to
-> the supplied candidate SHA-256. Review this systems decomposition against the game's design pillars. Does the
+> "Read-only review: do not edit the candidate or any file. Identify the reviewed
+> candidate by its destination path and declared revision. Review this systems decomposition against the game's design pillars. Does the
 > full set of MVP-tier systems collectively deliver the core fantasy? Are there
 > systems whose mechanics don't serve any stated pillar — indicating they may be
 > scope creep? Are there pillar-critical player experiences that have no system
@@ -526,9 +526,9 @@ sections in COMPLETE state and freezes the exact review candidate bytes; before
 any asset specification, generation, import, outsourcing, or implementation
 
 **Context to pass**:
-- Canonical art bible path (`design/art/art-bible.md`) and exact raw-byte SHA-256
-- AB-1 schema version; all nine stable section IDs, states, and section hashes
-- Ordered dependency/source manifest with current hashes
+- Canonical art bible path (`design/art/art-bible.md`) and declared revision
+- AB-1 schema version; all nine stable section IDs and states
+- Ordered dependency/source manifest with declared revisions
 - Author identity and evidence that the assigned `art-director` reviewer did not
   author, revise, or persist the candidate
 - Proposed immutable external review-record ID/path; the reviewer itself is read-only
@@ -537,8 +537,8 @@ any asset specification, generation, import, outsourcing, or implementation
 - Visual identity anchor chosen during brainstorm (from `design/gdd/game-concept.md`)
 
 **Prompt**:
-> "Independently and read-only review the exact art-bible candidate hash supplied;
-> echo that hash and the nine-section manifest in the response. Review completeness
+> "Independently and read-only review the art-bible candidate supplied;
+> echo its path and revision and the nine-section manifest in the response. Review completeness
 > and internal consistency. Does the color
 > system match the mood targets? Does the shape language follow from the visual
 > identity statement? Are the asset standards achievable within the platform
@@ -552,12 +552,12 @@ any asset specification, generation, import, outsourcing, or implementation
 
 **Verdicts**: APPROVE / CONCERNS / REJECT
 
-The response must include reviewer identity, reviewed artifact/dependency hashes,
+The response must include reviewer identity, reviewed artifact paths, revisions, and dependencies,
 stable finding IDs, timestamp, and separation attestation. A separate recorder may
 persist those unchanged bytes as an immutable review record. The reviewer never
 writes the art bible or record. Any candidate/section/dependency byte change makes
 APPROVE stale; DRAFT/PARTIAL, missing identity separation, malformed output, or
-hash mismatch cannot authorize asset production.
+revision mismatch cannot authorize asset production.
 
 ---
 

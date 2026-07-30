@@ -1,5 +1,7 @@
 # Behavioral Test Spec: `$help`
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Purpose
 
 Verify that `$help` is a strictly read-only recommender that consumes one
@@ -58,7 +60,7 @@ Tests never run project-stage-detect or any recommended workflow.
 **Then:**
 
 - stage is copied exactly from the packet and labelled diagnostic only;
-- all preceding prerequisites are VERIFIED_PASS with receipt IDs and current hashes;
+- all preceding prerequisites are VERIFIED_PASS with receipt IDs and current revisions;
 - S is the one primary action;
 - outcome is HELP_RECOMMENDATION_READY;
 - detector evidence is not reused as a completion receipt.
@@ -83,7 +85,7 @@ Run these variants:
 **Assertions:**
 
 - [ ] Schema is exactly `cgs.project-stage-detection/v2`
-- [ ] Packet ID, project root ID, catalog hash, entry states, and manifest hash are
+- [ ] Packet ID, project root ID, catalog revision, entry states, and manifest revision are
       verified before stage use
 - [ ] Reproducible packet-declared ABSENT/UNREADABLE entries may form a CURRENT
       diagnostic packet whose detector result remains blocked
@@ -102,7 +104,7 @@ Run separate earliest-required-step fixtures containing:
 - an artifact matching a catalog glob without approval evidence;
 - a document-internal `Status: Approved` string;
 - a current authoritative FAIL/BLOCKED/REJECTED receipt;
-- a historical PASS receipt whose source or artifact hash changed; and
+- a historical PASS receipt whose source or artifact revision changed; and
 - one complete current catalog-policy PASS bundle.
 
 **Expected classification:**
@@ -111,7 +113,7 @@ Run separate earliest-required-step fixtures containing:
 |---|---|
 | Empty template / populated draft / glob match / internal status text | PRESENT_UNVERIFIED |
 | Current negative receipt | BLOCKED |
-| Old receipt with current hash drift | STALE |
+| Old receipt with current revision drift | STALE |
 | Complete current accepted PASS bundle | VERIFIED_PASS |
 
 **Assertions:**
@@ -119,7 +121,7 @@ Run separate earliest-required-step fixtures containing:
 - [ ] Only the final variant may satisfy the required prerequisite
 - [ ] PRESENT_UNVERIFIED recommends the catalog verification/receipt action
 - [ ] BLOCKED recommends resolving the recorded blocker
-- [ ] STALE recommends revalidation on current hashes
+- [ ] STALE recommends revalidation on current revisions
 - [ ] No non-verified state receives a checkmark or “completed” wording
 - [ ] A detector stage or receipt is not substituted for the step receipt
 
@@ -156,7 +158,7 @@ Run `sprint-status.yaml`, session state, and task-note variants with:
 2. missing/unsupported schema version;
 3. unknown status vocabulary;
 4. missing/unauthorized owner;
-5. stale updated-at, target, source, or catalog hash;
+5. stale updated-at, target, source, or catalog revision;
 6. structurally valid current status record not accepted as a completion receipt; and
 7. a catalog policy that explicitly accepts the record only as one member of a
    larger current receipt bundle.
@@ -171,7 +173,7 @@ Run `sprint-status.yaml`, session state, and task-note variants with:
 **Assertions:**
 
 - [ ] A filename or `done` value never makes status authoritative
-- [ ] Schema, version, owner, updated-at, vocabulary, target, and hashes are checked
+- [ ] Schema, version, owner, updated-at, vocabulary, target, and revisions are checked
 - [ ] Status state cannot override a current negative or conflicting receipt
 - [ ] The earliest affected verification action remains primary
 
@@ -198,8 +200,8 @@ Run `sprint-status.yaml`, session state, and task-note variants with:
 
 **Assertions:**
 
-- [ ] Exact run ID, receipt ID, scope, inputs, source/artifact hashes, producer,
-      verdict, timestamp, catalog hash, and lineage/supersession are validated
+- [ ] Exact run ID, receipt ID, scope, inputs, source/artifact revisions, producer,
+      verdict, timestamp, catalog revision, and lineage/supersession are validated
 - [ ] No “latest,” “last completed,” directory order, or same-named artifact rule exists
 - [ ] Receipt IDs and run IDs appear in structured output
 
@@ -215,15 +217,15 @@ Run these variants:
 | Catalog policy required for routing is missing/malformed/unsupported | UNKNOWN; HELP_NO_SAFE_RECOMMENDATION or HELP_DIAGNOSTIC_REQUIRED |
 | Required receipt/source/artifact cannot be read | UNKNOWN; exact coverage gap; no later step |
 | Catalog evidence-read entry/byte limit would be crossed | UNKNOWN + READ_BUDGET_EXCEEDED |
-| Evidence changes between initial read and final rehash | STALE |
+| Evidence changes between initial read and final revalidate | STALE |
 | Candidate location is confirmed absent | MISSING, not UNKNOWN or PASS |
-| Invalid invocation/root/path/hash/packet selection | HELP_INPUT_ERROR |
+| Invalid invocation/root/path/revision/packet selection | HELP_INPUT_ERROR |
 
 **Assertions:**
 
 - [ ] Access error is not converted to absence, pass, or empty content
 - [ ] No silent truncation or unbounded scan
-- [ ] Raw path/hash/source state and exact reason remain visible
+- [ ] Raw path/revision/source state and exact reason remain visible
 - [ ] A later required step is never recommended after UNKNOWN
 - [ ] No command is invented when catalog policy is incomplete
 
@@ -297,8 +299,8 @@ satisfies a required prerequisite.
 
 ## HELP-011 — Stable recommendation identity
 
-**Given:** Identical packet ID, packet manifest hash, catalog hash, help evidence
-snapshot hash, primary action, reason codes, and same-level conflict IDs.
+**Given:** Identical packet ID, packet manifest revision, catalog revision, help evidence
+snapshot revision, primary action, reason codes, and same-level conflict IDs.
 
 **Then:** Two runs produce the same recommendation_id.
 
@@ -332,14 +334,14 @@ Every response contains:
 - exact outcome enum and stable recommendation_id;
 - help snapshot time and stage context;
 - stage source exactly `cgs.project-stage-detection/v2`;
-- packet ID/source/raw hash/project root/result/resolution/declared/detected stage/
-  confidence/manifest hash;
-- catalog path/version/hash;
+- packet ID/source/declared revision/project root/result/resolution/declared/detected stage/
+  confidence/manifest revision;
+- catalog path/version/revision;
 - one primary action, affected prerequisite, state, and reason codes;
 - all same-level conflicts;
 - verified, claimed, present_unverified, stale, blocked, missing, contradictory,
   and unknown evidence buckets;
-- receipt/run IDs and current hashes;
+- receipt/run IDs and current revisions;
 - packet contradictions, read errors, coverage gaps, and blocking reasons;
 - `auto_executed: false`, `files_written: none`, and the advisory disclaimer.
 
@@ -361,7 +363,7 @@ The candidate bundle passes only if:
   source states without rejecting a reproducible diagnostic UNKNOWN packet;
 - artifact presence, internal status text, user/status claims, and detector output
   cannot become VERIFIED_PASS;
-- sprint status validates schema/owner/time/vocabulary/hashes before any catalog-
+- sprint status validates schema/owner/time/vocabulary/revisions before any catalog-
   permitted use;
 - repeatable work requires exact current run/scope/lineage receipt identity;
 - negative, stale, conflicting, missing, over-limit, and unreadable evidence cannot advance;

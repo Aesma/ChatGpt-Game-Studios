@@ -12,7 +12,7 @@ records a dependency-safe alternative. Each section uses:
 
     Context -> Decision Classification -> Questions -> Options -> Decision
     -> Draft -> Semantic Preflight -> Product Approval
-    -> Transactional CAS -> Atomic Write -> Revision Record -> Checkpoint
+    -> Transactional version and existence conflict check -> Atomic Write -> Revision Record -> Checkpoint
 
 Product approval confirms exact content inside the already authorized boundary.
 Never request filesystem permission again while paths, sections, limits, owners,
@@ -31,7 +31,7 @@ Every material statement traces to one stable record:
       path: <exact path or null>
       artifact_or_requirement_id: <stable ID or null>
       locator: <section/row/field or null>
-      sha256: <raw hash or null>
+      revision: <declared revision or null>
     options: []
     selected: <outcome or routed question>
     inputs: []
@@ -52,7 +52,7 @@ Every material statement traces to one stable record:
   questions outside the UX artifact.
 
 Platform/input/accessibility facts are hard constraints only when exact profile
-IDs/versions/hashes validate. A temporary answer is provisional derived content,
+IDs/versions/revisions validate. A temporary answer is provisional derived content,
 creates an OPEN blocking finding, and cannot make a section CURRENT.
 
 Consultants propose evidence only. They are never product decision owner, target
@@ -69,7 +69,7 @@ Before product approval:
 1. run every applicable cgs.ux-content-profile/v2 assertion in Phase 6;
 2. confirm every material choice/constraint maps to decision IDs;
 3. confirm platform/accessibility/requirement/pattern/navigation references use
-   exact stable IDs and current hashes;
+   exact stable IDs and current revisions;
 4. reject implementation/QA/review material and content owned by another
    artifact;
 5. detect duplicate component/element/pattern/event/finding/AC IDs;
@@ -80,27 +80,27 @@ If preflight changes the draft, show the full new body and rerun it. Earlier
 approval never applies to changed bytes.
 
 Ask approve exact body, revise, or stop. If stopped, preserve only
-APPROVED_NOT_WRITTEN evidence when exact draft bytes and all bound hashes are in
+APPROVED_NOT_WRITTEN evidence when exact draft bytes and all bound revisions are in
 the checkpoint; otherwise keep PENDING. Exceeding maximum three revision rounds
 returns PARTIAL with one unresolved decision/finding.
 
-### Transactional CAS, revision record, and checkpoint
+### Transactional version and existence conflict check, revision record, and checkpoint
 
 Immediately before target write:
 
-Treat the checks below as one five-part compare-and-set gate: **Target CAS**,
-**Section CAS**, **Context CAS**, **Authorization CAS**, and **Writer CAS**. Every
+Treat the checks below as one five-part compare-and-set gate: **Target version and existence conflict check**,
+**Section version and existence conflict check**, **Context version and existence conflict check**, **Authorization version and existence conflict check**, and **Writer version and existence conflict check**. Every
 part must pass against the authorized baseline in the same transaction attempt.
 
-1. re-hash current target and selected section body;
-2. re-hash every external context source used by the section plus the
-   context-manifest digest; the mutable target is checked only by target/section
-   CAS and is not treated as external context evidence;
-3. revalidate authorization hash, writer identity, scope, approved draft bytes,
+1. revalidate current target and selected section body;
+2. revalidate every external context source used by the section plus the
+   context-manifest identifier; the mutable target is checked only by target/section
+   version and existence conflict check and is not treated as external context evidence;
+3. revalidate authorization revision, writer identity, scope, approved draft bytes,
    and expected operation;
 4. reject duplicate/ambiguous section anchors; and
 5. confirm all out-of-scope byte ranges equal the checkpoint baseline/current
-   hashes.
+   revisions.
 
 Mismatch returns ERROR — CONCURRENT TARGET CHANGE or
 ERROR — CONTEXT EVIDENCE CHANGED with no transaction write.
@@ -113,21 +113,21 @@ Append revision provenance:
     id: UXREV-<artifact-id>-<section-id>-<NNN>
     mode: create | fill-gaps | revise-sections | migrate-schema
     section_id: <stable ID>
-    before_target_sha256: <hash>
-    after_target_sha256: <hash>
-    before_section_sha256: <hash or ABSENT>
-    after_section_sha256: <hash>
+    before_target_revision: <revision>
+    after_target_revision: <revision>
+    before_section_revision: <revision or ABSENT>
+    after_section_revision: <revision>
     decision_ids: []
-    source_hashes: []
-    authorization_sha256: <hash>
+    source_revisions: []
+    authorization_revision: <revision>
     writer_task_id: <actual identity>
     operation: insert | replace | move-without-edit
     timestamp_utc: <RFC3339 seconds Z>
 
 Then append one cgs.ux-design-checkpoint/v2 record through checkpoint-recorder
-create-if-absent CAS. If receipt/checkpoint persistence fails after a verified
+create-if-absent version and existence conflict check. If receipt/checkpoint persistence fails after a verified
 target write, leave the content-derived artifact Status unchanged, report
-Workflow Verdict PARTIAL and the exact unreceipted target hash, emit no review
+Workflow Verdict PARTIAL and the exact unreceipted target revision, emit no review
 handoff, and never replay the write.
 
 ## Phase 6: cgs.ux-content-profile/v2 assertions
@@ -142,7 +142,7 @@ necessary but not sufficient. Record PASS/FAIL for every assertion ID.
 - UXS-02 arrival-context: prior activity/action, player state, pressure/urgency,
   and journey evidence or OPEN owned gap.
 - UXS-03 navigation-position: stable screen IDs for root/parent/current and all
-  alternate access, each source-hash-bound.
+  alternate access, each source-version-bound.
 - UXS-04 entry-exit: every edge has trigger, source/destination ID, carried
   state, irreversible effect, and neighbor evidence.
 - UXS-05 layout: exact required H3s; hierarchy precedes zones; component
@@ -159,7 +159,7 @@ necessary but not sufficient. Record PASS/FAIL for every assertion ID.
 - UXS-10 data: stable source owner, read/write intent, trigger/rate, null/empty/
   stale/error behavior, privacy/sensitivity.
 - UXS-11 accessibility: every obligation traces to external foundation
-  ID/version/tier/hash and covers applicable input, reflow, non-color, focus,
+  ID/version/tier/revision and covers applicable input, reflow, non-color, focus,
   announcements, and reduced motion.
 - UXS-12 localization: exact string owner/profile, expansion/reflow/truncation,
   plural/gender, date/number, placeholder, and targeted bidi constraints.
@@ -173,7 +173,7 @@ necessary but not sufficient. Record PASS/FAIL for every assertion ID.
   measurable implications/conflicts.
 - HUD-02 information: every declared requirement maps to item/owner and Must
   Show/Contextual/On Demand/Hidden decision.
-- HUD-03 zones: exact platform-profile ID/version/hash, safe-zone, aspect,
+- HUD-03 zones: exact platform-profile ID/version/revision, safe-zone, aspect,
   resolution, viewport, text-scale, focal/split-screen assumptions.
 - HUD-04 elements: stable IDs, data owner/form/update/visibility/priority,
   null/error behavior, states, and pattern IDs.
@@ -181,25 +181,25 @@ necessary but not sufficient. Record PASS/FAIL for every assertion ID.
   transitions, priority/contention/queue, density, reduced motion.
 - HUD-06 variants: every declared platform/device/input/resolution/aspect/
   text-scale target; unsupported target is OPEN blocking gap.
-- HUD-07 accessibility: foundation ID/tier/hash, non-color cues, reflow,
+- HUD-07 accessibility: foundation ID/tier/revision, non-color cues, reflow,
   assistive exposure, attention, focus, motion.
 - HUD-08 questions: dependency-finding contract v1.
 
 ### interaction-pattern-library assertions
 
 - PAT-01 overview: external library owner, canonical scope, consumers,
-  content/profile/schema/context hashes.
+  content/profile/schema/context revisions.
 - PAT-02 catalog: unique UXP-GLOBAL IDs, versions, status, category, exact
   anchors, source proposal IDs, owner.
 - PAT-03 patterns: one entry/catalog ID with states, declared inputs, focus,
   cancel/back, multimodal feedback, accessibility/localization, data/event
   boundaries, use/non-use, current references.
-- PAT-04 gaps: unmerged local UXP-<screen-id>-<slug> IDs, source screen/hash,
+- PAT-04 gaps: unmerged local UXP-<screen-id>-<slug> IDs, source screen/revision,
   requested disposition, owner, blocking status.
 - PAT-05 questions: dependency-finding contract v1.
 
 Only the dedicated library target/owner may write global patterns. Each pattern
-patch uses target/entry/context CAS. Collision, stale base, duplicate semantics,
+patch uses target/entry/context version and existence conflict check. Collision, stale base, duplicate semantics,
 or unowned cross-screen behavior blocks.
 
 ## Phase 7: Reference-first acceptance criteria
@@ -212,7 +212,7 @@ UXS-13 items use:
         owner: <artifact owner>
         path: <exact source path>
         locator: <section/row>
-        sha256: <raw hash>
+        revision: <declared revision>
     decision_refs: [<UXDEC IDs>]
     local_precondition: <screen/HUD state>
     action_or_input: <declared user/system input>
@@ -222,7 +222,7 @@ UXS-13 items use:
     evidence_method: <observable local check>
     validation_owner: <owner>
 
-Reference the product rule by ID/locator/hash; do not copy/rephrase it as a
+Reference the product rule by ID/locator/revision; do not copy/rephrase it as a
 second authority. Include enough local precondition/input/result to execute the
 UX check after loading the cited requirement. Missing/stale requirement evidence
 creates a blocking finding; never invent or duplicate the product rule.
@@ -236,19 +236,19 @@ implementation structure, or redefine gameplay outcomes.
 Run deterministic checks over exact context:
 
 1. every applicable requirement is covered or has OPEN owned finding;
-2. navigation edges agree by screen ID and neighbor hash;
-3. global pattern references resolve at declared library hash and local
+2. navigation edges agree by screen ID and neighbor revision;
+3. global pattern references resolve at declared library revision and local
    proposals remain non-global;
 4. accessibility obligations trace to current foundation/tier;
 5. data UI defines applicable null/empty/stale/loading/error behavior;
 6. platform/input/resolution/aspect/text-scale declarations are covered;
 7. every profile section occurs once and passes all content assertions;
-8. author/decision/revision provenance matches identities/hashes; and
+8. author/decision/revision provenance matches identities/revisions; and
 9. every AC references current requirement and decision evidence.
 
 Use contract cgs.ux-dependency-finding/v1:
 
-    id: UXD-<artifact-id>-<check-id>-<fingerprint>
+    id: UXD-<artifact-id>-<check-id>-<identity>
     severity: BLOCKING | ADVISORY
     category: requirement | navigation | pattern | accessibility | data |
       platform | schema | provenance | acceptance
@@ -256,18 +256,18 @@ Use contract cgs.ux-dependency-finding/v1:
       path: <exact path>
       artifact_or_requirement_id: <ID>
       locator: <section/row/field>
-      sha256: <raw hash>
+      revision: <declared revision>
       observed: <fact>
     expected: <rule>
     owner: <resolution owner>
     destination: <artifact/workflow>
     acceptance: <objective close condition>
-    first_seen_target_sha256: <hash>
-    last_evaluated_target_sha256: <hash>
+    first_seen_target_revision: <revision>
+    last_evaluated_target_revision: <revision>
     status: OPEN | RESOLVED | WAIVED
-    resolution: <current-hash evidence or null>
+    resolution: <current-revision evidence or null>
 
-Fingerprint is deterministic over category, owner, source ID/locator, expected,
+identity is deterministic over category, owner, source ID/locator, expected,
 and observed normalized facts. Preserve IDs across re-evaluation. RESOLVED
 requires current evidence meeting acceptance. BLOCKING WAIVED remains unresolved
 and prevents readiness. A user cannot close an external-owner gap by acceptance.
@@ -292,12 +292,12 @@ Record:
     section_id: <stable ID>
     role: <consultant role>
     question: <one bounded question>
-    input_paths_sha256: []
+    input_paths_revision: []
     required: true | false
     started_at_utc: <timestamp>
     deadline_seconds: 60
     status: complete | partial | timeout | failed | side-effect | skipped
-    output_sha256: <canonical result hash or null>
+    output_revision: <canonical result revision or null>
     evidence_summary: <bounded evidence or null>
     fallback: none | explicit-product-decision | section-blocked
 
@@ -313,12 +313,12 @@ delegate.
 
 ## Phase 10: Checkpoint recovery and mode safety
 
-On --resume validate exact request/checkpoint paths, v2 chain/payload hashes,
+On --resume validate exact request/checkpoint paths, v2 chain/payload revisions,
 artifact/run/profile/content/author schema, authorization, target, context,
 owners, section states/assertions, decisions/revisions, consultations, findings,
 budgets, next transition, and absence of late writes.
 
-- all hashes current: resume APPROVED_NOT_WRITTEN exact bytes first, otherwise
+- all revisions current: resume APPROVED_NOT_WRITTEN exact bytes first, otherwise
   next PENDING legal section;
 - target mismatch: BLOCKED — TARGET/AUTHORIZATION DRIFT, zero write;
 - context source mismatch: mark only dependent sections STALE and require new
@@ -329,17 +329,17 @@ budgets, next transition, and absence of late writes.
 - missing checkpoint: resume unavailable.
 
 Non-placeholder text is not completion evidence. No conversation memory
-reconstructs approval, provenance, receipt, or hashes.
+reconstructs approval, provenance, receipt, or revisions.
 
 ## Phase 11: Final receipt, result, and independent-review handoff
 
-Re-read target, re-run content/cross-reference gates, and re-hash every external
+Re-read target, re-run content/cross-reference gates, and revalidate every external
 context-evidence entry (not the mutable-target-baseline entry). Append the final
-cgs.ux-authoring-receipt/v1 checkpoint only after a final CAS writes the
+cgs.ux-authoring-receipt/v1 checkpoint only after a final version and existence conflict check writes the
 content-derived artifact Status and stable receipt ID, then reads the final
-target hash. The receipt is valid only when target,
-section revisions, decision records, context digest, authorization, writer/
-recorder identities, and finding set all recompute.
+target revision. The receipt is valid only when target,
+section revisions, decision records, context identifier, authorization, writer/
+recorder identities, and finding set all revalidate.
 
 Set artifact Status from content/dependency state, then set Workflow Verdict:
 
@@ -351,7 +351,7 @@ Set artifact Status from content/dependency state, then set Workflow Verdict:
   Workflow Verdict READY_FOR_REVIEW and independent-review handoff;
 - READY_FOR_REVIEW target but receipt append/verification failed:
   Workflow Verdict PARTIAL, no review handoff, report exact unreceipted target
-  hash without reverting content;
+  revision without reverting content;
 - safe work preserved but content/evidence/dependency/consultation/migration is
   incomplete:
   artifact Status and Workflow Verdict PARTIAL;
@@ -363,14 +363,14 @@ Set artifact Status from content/dependency state, then set Workflow Verdict:
 
 Never emit COMPLETE, APPROVED, or IMPLEMENTATION READY.
 
-Return artifact/run/screen IDs, profile/content/author schema hashes, actual
-author/recorder identities, target pre/post/hash, context digest, section state/
-assertions, decision/revision IDs, authorization hash, consultations, findings,
-receipt ID/path/hash, non-writes, and exactly one next action.
+Return artifact/run/screen IDs, profile/content/author schema revisions, actual
+author/recorder identities, target pre/post/revision, context identifier, section state/
+assertions, decision/revision IDs, authorization revision, consultations, findings,
+receipt ID/path/revision, non-writes, and exactly one next action.
 
 READY_FOR_REVIEW next action is a fresh independent read-only UX review of exact
-target and cgs.ux-authoring-receipt/v1 path/hash. Reviewer identity differs from
-author/recorder and returns hash-bound current-schema evidence. This workflow
+target and cgs.ux-authoring-receipt/v1 path/revision. Reviewer identity differs from
+author/recorder and returns version-bound current-schema evidence. This workflow
 does not invoke review, persist review evidence, start visual production, or
 implement UI.
 

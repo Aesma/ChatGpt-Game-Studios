@@ -1,7 +1,17 @@
 ---
 name: create-control-manifest
-description: "Author or update one bounded DRAFT control manifest as a source-faithful derived view of current Accepted ADR rules and stable TR scope, with deterministic conflicts, monotonic versions, immutable provenance, and CAS publication."
+description: "Author or update one bounded DRAFT control manifest as a source-faithful derived view of current Accepted ADR rules and stable TR scope, with deterministic conflicts, monotonic versions, immutable provenance, and atomic conflict check publication."
 ---
+
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
 
 # Create Control Manifest
 
@@ -9,15 +19,14 @@ description: "Author or update one bounded DRAFT control manifest as a source-fa
 
 ```text
 $create-control-manifest <new | update | audit>
-  [--architecture-review <path> --expect-architecture-review <sha256:...>]
-  [--prior-manifest-review <path> --expect-prior-manifest-review <sha256:...>]
+  [--architecture-review <path>]
+  [--prior-manifest-review <path>]
 ```
 
-Each evidence path requires its matching expected raw SHA-256 and vice versa. The
-user may explicitly supply exactly one complete inline record instead of the
-corresponding path pair. Reject missing/duplicate/unknown flags, positional extras,
-directories, globs, traversal, outside-root or root-escaping symlink paths,
-malformed hashes, and both path/inline forms for the same record.
+Each evidence flag names one canonical path. The user may explicitly supply exactly one
+complete inline record instead of the corresponding path form. Reject missing/duplicate/
+unknown flags, positional extras, directories, globs, traversal, outside-root or
+root-escaping symlink paths, malformed records, and both path/inline forms for the same record.
 
 Never search for newest/nearest/highest-numbered evidence.
 
@@ -64,7 +73,7 @@ is Active, a story is current, or a gate is ready.
 ## Phase 0: Freeze root and bind catalog identity
 
 Resolve exactly one repository root and UTC snapshot. Read exact raw bytes and
-lowercase SHA-256.
+positive integer revision.
 
 Read `.codex/docs/workflow-catalog.yaml` first. Require unique phase/workflow IDs
 and exactly one `control-manifest` entry whose command identifies this workflow and
@@ -131,7 +140,7 @@ envelopes. Construct the complete intended source set before loading ADR bodies.
 Use architecture/registry exact paths and the catalog-bounded ADR declaration;
 never read every ADR merely because it matches a broad convention. Validate exact
 lifecycle/review evidence first and parse rule-bearing sections only for
-ACCEPTED_CURRENT ADRs. Excluded ADR paths/statuses/hashes remain visible.
+ACCEPTED_CURRENT ADRs. Excluded ADR paths/statuses/revisions remain visible.
 
 Read technical preferences and pinned engine references only for exact normative/
 constraint sections. Never scan engine source or promote descriptive guidance.
@@ -145,14 +154,14 @@ apparently complete rules.
 ## Phase 3: Validate current architecture, review, TR, and ADR evidence
 
 Require `docs/architecture/architecture.md` to parse as
-`cgs.master-architecture/v3`. Validate its exact hash, source manifest,
+`cgs.master-architecture/v3`. Validate its exact revision, source manifest,
 append-only provenance, stable derived TR map, and ADR decision ledger. Text found
 only in architecture never becomes a rule.
 
 When architecture-review evidence is supplied, require generic
 `cgs.review-evidence/v1`, producer `architecture-review`, extension
 `cgs.architecture-review/v2`, full-mode PASS, COMPLETE coverage, internally valid
-record identity, exact architecture-derived path/hash, and reproducible source
+record identity, exact architecture-derived path/revision, and reproducible source
 manifest/ADR/TR inputs.
 
 Missing/stale/nonpass review keeps Architecture State DRAFT/PARTIAL/
@@ -178,7 +187,7 @@ architecture ledger. Missing/fuzzy scope linkage is UNKNOWN.
 
 Apply `cgs.control-rule/v2` exactly. For every item preserve stable rule ID, kind,
 RFC level, complete scope/conditions, exact meaning, source ID/path/section/
-locator/excerpt plus excerpt/source/lifecycle hashes, sorted current TR IDs,
+locator/excerpt plus excerpt/source/lifecycle revisions, sorted current TR IDs,
 derivation state, and supersedes IDs.
 
 Preserve normative strength:
@@ -222,7 +231,7 @@ or scope width never silently wins.
 
 For overlapping non-superseded incompatible rules, compute the stable
 `CONFLICT-*` ID from sorted rule IDs plus overlap scope; retain every path/section/
-hash and mark BLOCKED. Do not choose/merge/downgrade/waive inside this derived
+revision and mark BLOCKED. Do not choose/merge/downgrade/waive inside this derived
 workflow.
 
 Ambiguous/malformed normative wording, missing source/scope/TR/lifecycle data, or
@@ -250,9 +259,9 @@ Version/payload rules:
 - CREATE version = 1;
 - content/provenance UPDATE version = base + 1;
 - exact no-op preserves base version/generated time and writes nothing;
-- Payload SHA-256 is canonical semantic payload identity, excluding volatile/
+- Payload revision is canonical semantic payload identity, excluding volatile/
   status/review/self fields; and
-- exact candidate artifact SHA-256 is external, never embedded as its own hash.
+- exact candidate artifact revision is external, never embedded as its own revision.
 
 For update construct BASE + deterministic current SOURCES -> CANDIDATE and show
 stable-ID diff sets: unchanged, provenance-only, added, retired/superseded,
@@ -269,7 +278,7 @@ provenance are identical, operation UNCHANGED and no event/version/time change.
 
 Show complete candidate/lossless representation, source manifest/limits,
 architecture/review/ADR/TR states, every rule/finding/source, complete diff,
-version/payload/candidate hashes, local extensions, provenance event, conflicts,
+version/payload/candidate revisions, local extensions, provenance event, conflicts,
 unknowns, and Active blockers.
 
 The user may correct extraction only by pointing to loaded source evidence. Do not
@@ -279,25 +288,25 @@ source separately.
 
 ---
 
-## Phase 7: Approve one changeset and execute CAS
+## Phase 7: Approve one changeset and execute atomic conflict check
 
 Preview exactly:
 
 ```text
-docs/architecture/control-manifest.md: CREATE | REPLACE with candidate_sha256
+docs/architecture/control-manifest.md: CREATE | REPLACE with candidate_revision
 all other persistent writes: NONE
 ```
 
 Obtain one approval bound to the complete preview/diff, source manifest, base,
 ruleset, architecture/review/ADR/TR evidence, rules/findings, version/payload/
-candidate hashes, provenance append, Local Extensions, and destination parent.
+candidate revisions, provenance append, Local Extensions, and destination parent.
 This is file authorization only—not source approval, independent review, Active
 recording, story freshness, or gate permission.
 
 If declined, return STOPPED/DECLINED and zero writes. Do not ask again per rule,
 layer, source, or section.
 
-Immediately before mutation, execute the reference-contract CAS over the complete
+Immediately before mutation, execute the reference-contract atomic conflict check over the complete
 bound closure, directory membership, base/provenance, deterministic extraction,
 diff, version, payload, and rerendered candidate.
 
@@ -305,8 +314,8 @@ Any mismatch is BLOCKED/CONFLICT with exact old/new evidence and zero writes. Do
 not merge, refresh, retry, overwrite, request a new review, or implicitly accept
 changed bytes.
 
-After CAS, atomically publish only exact candidate bytes, re-read and verify
-artifact hash/v2 schema/version/payload/source ledger/stable rules/conflicts/
+After atomic conflict check, atomically publish only exact candidate bytes, re-read and verify
+artifact revision/v2 schema/version/payload/source ledger/stable rules/conflicts/
 unknowns/extensions/provenance/DRAFT-or-PARTIAL/NOT_CURRENT, and confirm no other
 persistent path changed.
 
@@ -323,7 +332,7 @@ Never repair or revert external concurrent changes.
 
 When prior control-manifest review is explicitly supplied, validate it only under
 the catalog-declared generic/extension/ruleset contract. Require exact current
-artifact/payload/source-manifest hashes, complete rule/conflict/unknown coverage,
+artifact/payload/source-manifest revisions, complete rule/conflict/unknown coverage,
 internal identity, reviewer/author separation when declared, and passing/nonpassing
 verdict preserved exactly.
 
@@ -336,7 +345,7 @@ Choose exactly one highest-priority catalog-derived action:
 1. refresh/resolve current architecture, architecture review, TR, or ADR lifecycle
    evidence;
 2. resolve first deterministic BLOCKED/UNKNOWN source conflict;
-3. run independent control-manifest review for exact current hashes;
+3. run independent control-manifest review for exact current revisions;
 4. invoke a separate Active recorder when all exact conditions are declared/met;
 5. route to the unique downstream consumer only for a current Active receipt; or
 6. Stop.
@@ -347,15 +356,15 @@ claim gate readiness from file presence, or invoke anything.
 Return:
 
 - workflow/profile/operation/context states;
-- catalog identity/hash and route ID/command or gap;
-- manifest path/base/candidate/on-disk artifact hashes;
+- catalog identity/revision and route ID/command or gap;
+- manifest path/base/candidate/on-disk artifact revisions;
 - source manifest ID and budget use;
-- architecture path/hash/review/currentness and stable TR states;
+- architecture path/revision/review/currentness and stable TR states;
 - ADR/lifecycle/engine source states;
-- base/candidate monotonic versions and payload hashes;
+- base/candidate monotonic versions and payload revisions;
 - rule/retired/conflict/unknown IDs and rule-level diff;
 - Local Extensions and provenance event/chain state;
-- external manifest-review state/record/hash;
+- external manifest-review state/record/revision;
 - Active blockers and exactly one next action;
 - `Active Mutation: NONE`, `Review Record Mutation: NONE`,
   `Source Mutation: NONE`, `Session-State Mutation: NONE`,

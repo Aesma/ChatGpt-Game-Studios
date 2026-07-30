@@ -1,5 +1,7 @@
 # Skill Test Spec: $changelog
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Skill Summary
 
 `$changelog` produces a deterministic local candidate from one explicit immutable Git
@@ -7,20 +9,20 @@ range. Every narrative claim is bound to surviving net-diff evidence; plans and 
 documents remain explanatory context. Version, date, intended target, candidate,
 deployment, local creation, and publication are distinct identities and states. The
 default mode is read-only; persistence may only create one absent immutable artifact
-through create-only CAS and never edits changelog history.
+through create-only version and existence conflict check and never edits changelog history.
 
 ---
 
 ## Static Assertions
 
 - [ ] Frontmatter has only matching `name` and non-empty `description`
-- [ ] Invocation requires `--request` plus `--expect-request`; request schema is
+- [ ] Invocation requires `--request` plus `explicit request revision`; request schema is
   `cgs.changelog-request/v2`
 - [ ] Request supplies exact from/to refs, expected commits/trees, repository identity,
   merge-base/ancestry policy, and no latest/recent/count-based discovery
-- [ ] Release identity separately hashes version, source-backed date, intended target,
+- [ ] Release identity separately revisions version, source-backed date, intended target,
   and immutable Git range
-- [ ] Every claim binds surviving path/patch/hunk hashes and supporting commits;
+- [ ] Every claim binds surviving path/patch/hunk revisions and supporting commits;
   non-Git sources are context only
 - [ ] Merge, revert, partial-revert, fixup, net-zero and claim-dedup semantics use final
   surviving hunks
@@ -31,12 +33,12 @@ through create-only CAS and never edits changelog history.
 - [ ] Player projection is independently rendered, default-denies security/privacy
   ambiguity, and never stores removed secret/PII bytes in redaction receipts
 - [ ] Internal category and claim ordering are deterministic and identical evidence
-  yields identical hashed narrative bytes
+  yields identical versioned narrative bytes
 - [ ] Analysis is read-only and persistence is only one ABSENT-target atomic
-  create-new guarded by full-input CAS/read-back
+  create-new guarded by full-input version and existence conflict check/read-back
 - [ ] Append, insert, revise, upsert, overwrite, truncate, delete, historical rewrite,
   external messaging, and publication are forbidden
-- [ ] Non-Git, parse, ref, ancestry, evidence, sanitization, target-exists, CAS, and
+- [ ] Non-Git, parse, ref, ancestry, evidence, sanitization, target-exists, version and existence conflict check, and
   read-back failures have truthful non-COMPLETE terminal states
 - [ ] Phases are uniquely numbered 1 through 8 with explicit input/output boundaries
 
@@ -60,13 +62,13 @@ through create-only CAS and never edits changelog history.
 
 | Phase | Input | Output | Mutation |
 |---|---|---|---|
-| 1 — Parse, resolve, and pin | Hash-pinned v2 request, repository objects, frozen policies | Validated request, full refs/commits/trees/merge-base and repository-state identity | None |
-| 2 — Enumerate and compute | Verified range | Complete topology, commit-list hash, surviving net diff, revert/net-zero trace | None |
+| 1 — Parse, resolve, and pin | version-pinned v2 request, repository objects, frozen policies | Validated request, full refs/commits/trees/merge-base and repository-state identity | None |
+| 2 — Enumerate and record | Verified range | Complete topology, commit-list revision, surviving net diff, revert/net-zero trace | None |
 | 3 — Claim and classify | Surviving hunks, frozen classification policy, exact context | Source-bound deduplicated claims or UNRESOLVED records | None |
-| 4 — Verify release evidence | Version/date/target declarations and optional candidate/deployment receipts | Independent identity hashes and evidence states | None |
-| 5 — Render internal entry | Verified identities and claims | Deterministically ordered internal candidate bytes/hash | None |
+| 4 — Verify release evidence | Version/date/target declarations and optional candidate/deployment receipts | Independent identity revisions and evidence states | None |
+| 5 — Render internal entry | Verified identities and claims | Deterministically ordered internal candidate records/revision | None |
 | 6 — Sanitize player projection | Eligible claims and frozen redaction policy | Player candidate or SANITIZATION_BLOCKED, plus non-secret receipts | None |
-| 7 — Create-only CAS | Explicit mutation authority, candidate hash, ABSENT target | One verified new file, BLOCKED, or RECOVERY_REQUIRED | Create one absent target only |
+| 7 — Create-only version and existence conflict check | Explicit mutation authority, candidate revision, ABSENT target | One verified new file, BLOCKED, or RECOVERY_REQUIRED | Create one absent target only |
 | 8 — Terminal result | All prior receipts/states | Final status, identities, non-writes, blockers, one legal next action | None |
 
 No other phase number or implicit post-processing stage is allowed.
@@ -85,7 +87,7 @@ HEAD plus dirty/untracked bytes.
 **Assertions:**
 
 - [ ] No 30/100/N commit or tag cap is used
-- [ ] Range, commit-list, net-diff, repository-state and provenance hashes are recorded
+- [ ] Range, commit-list, net-diff, repository-state and provenance revisions are recorded
 - [ ] Original refs and resolved full commits/trees/merge-base are retained
 - [ ] A budget stop is PARTIAL, never a truncated success
 
@@ -97,7 +99,7 @@ HEAD plus dirty/untracked bytes.
 but neither maps to a surviving net hunk in the selected range.
 
 **Expected behavior:** Record both as `CONTEXT_ONLY_NOT_RELEASE_EVIDENCE` with exact
-path/hash and create no X/Y changelog claim.
+path/revision and create no X/Y changelog claim.
 
 **Assertions:**
 
@@ -129,13 +131,13 @@ player projection, and report `narrative_status: HAS_UNRESOLVED`.
 another hunk matches no rule. Evidence order is shuffled between two runs.
 
 **Expected behavior:** Apply the declared precedence so security wins for the first;
-classify the second UNRESOLVED; produce identical ordered claim bytes/hashes in both
+classify the second UNRESOLVED; produce identical ordered claim records/revisions in both
 runs.
 
 **Assertions:**
 
-- [ ] Exact policy schema/version/hash and rule IDs are recorded
-- [ ] Fixed category order and claim-hash order are used
+- [ ] Exact policy schema/version/revision and rule IDs are recorded
+- [ ] Fixed category order and claim-revision order are used
 - [ ] Multiple/no match never triggers an improvised category
 
 ---
@@ -168,7 +170,7 @@ hunks, and generate one claim per exact claim identity without duplicate merge c
 **Assertions:**
 
 - [ ] Partial reverts link original/revert commits and omit removed hunks
-- [ ] Claim identity uses sorted surviving hunk hashes and normalized observed effect
+- [ ] Claim identity uses sorted surviving hunk revisions and normalized observed effect
 - [ ] Similar prose cannot merge distinct effects
 
 ---
@@ -179,7 +181,7 @@ hunks, and generate one claim per exact claim identity without duplicate merge c
 private player identifier, issue ID, commit/path/host details, and deployment logs.
 
 **Expected behavior:** Independently render and scan the player projection, remove or
-block data per the frozen policy, and place only hashes/rule/reason codes in internal
+block data per the frozen policy, and place only revisions/rule/reason codes in internal
 redaction receipts.
 
 **Assertions:**
@@ -196,7 +198,7 @@ redaction receipts.
 **Fixture:** A surviving security fix could reveal an unreleased exploit and the policy
 cannot safely generalize it.
 
-**Expected behavior:** Keep a hashed `SECURITY_INTERNAL` claim, return
+**Expected behavior:** Keep a versioned `SECURITY_INTERNAL` claim, return
 SANITIZATION_BLOCKED for the player projection, and emit no public bytes.
 
 **Assertions:**
@@ -212,7 +214,7 @@ SANITIZATION_BLOCKED for the player projection, and emit no public bytes.
 **Fixture:** Version label is supplied, its tag points to another commit, a date lacks
 its declared source, and intended target differs from deployment environment.
 
-**Expected behavior:** Preserve separate version/date/target hashes and mark each exact
+**Expected behavior:** Preserve separate version/date/target revisions and mark each exact
 mismatch. Do not use generated-at, tag, commit, build, or deploy time as release date.
 
 **Assertions:**
@@ -246,7 +248,7 @@ second is deployment MISMATCH. Neither supports deployment/public-availability c
 **Fixture:** A valid request selects `analyze-only` and both internal and sanitized
 player candidates.
 
-**Expected behavior:** Return deterministic candidate bytes and hashes with
+**Expected behavior:** Return deterministic candidate bytes and revisions with
 `Artifact Status: GENERATED` and an explicit zero-write/non-publication receipt.
 
 **Assertions:**
@@ -257,19 +259,19 @@ player candidates.
 
 ---
 
-## Case 12: Create-only uses absent-target CAS
+## Case 12: Create-only uses absent-target version and existence conflict check
 
-**Fixture:** A request authorizes one candidate hash and target expected ABSENT. Test
+**Fixture:** A request authorizes one candidate revision and target expected ABSENT. Test
 variants pre-create the target or drift a ref, policy, context, receipt, parent, or
-candidate hash before commit.
+candidate revision before commit.
 
 **Expected behavior:** Any conflict returns BLOCKED with zero writes. With stable
 inputs, an atomic no-replace primitive creates exactly one file, which is flushed,
-strictly parsed, read back, and hash verified.
+strictly parsed, read back, and revision verified.
 
 **Assertions:**
 
-- [ ] CAS covers request, Git objects, repo state, policies, context, receipts,
+- [ ] version and existence conflict check covers request, Git objects, repo state, policies, context, receipts,
   candidate, parent identity, and ABSENT target
 - [ ] Append/insert/revise/upsert/overwrite/truncate/delete modes do not exist
 - [ ] Existing changelog/history bytes cannot be touched or reordered
@@ -280,7 +282,7 @@ strictly parsed, read back, and hash verified.
 ## Case 13: No Git or invalid evidence is fail-closed
 
 **Fixture:** The root is not a Git work tree; separate variants have missing shallow
-objects, malformed request/policy, unrelated ancestry, and mismatched expected hashes.
+objects, malformed request/policy, unrelated ancestry, and mismatched expected revisions.
 
 **Expected behavior:** Return BLOCKED, identify the exact failed identity/check, write
 nothing, and provide exactly one safe corrective action.
@@ -305,7 +307,7 @@ identity contracts, fixed category order, and terminal states.
 
 - [ ] No duplicate/missing phase number exists
 - [ ] `GENERATED`, `CREATED`, `PARTIAL`, `BLOCKED`, and `RECOVERY_REQUIRED` meanings match
-- [ ] Terminal result includes all identities, hashes, statuses, non-writes, blockers,
+- [ ] Terminal result includes all identities, revisions, statuses, non-writes, blockers,
   and exactly one legal next action
 
 ---
@@ -315,9 +317,9 @@ identity contracts, fixed category order, and terminal states.
 - [ ] Explicit immutable range and final net diff reproduce every source claim
 - [ ] Merge/revert/fixup/dedup logic reports only surviving semantics
 - [ ] Frozen deterministic categories never turn ambiguity into fact
-- [ ] Security/privacy filtering is independent, hash-bound, and does not echo secrets
+- [ ] Security/privacy filtering is independent, revision-bound, and does not echo secrets
 - [ ] Version/date/target/candidate/deployment/publication identities stay separate
-- [ ] Default behavior is read-only; optional persistence is ABSENT create-only CAS
+- [ ] Default behavior is read-only; optional persistence is ABSENT create-only version and existence conflict check
 - [ ] Output is local and never auto-published
 
 ---

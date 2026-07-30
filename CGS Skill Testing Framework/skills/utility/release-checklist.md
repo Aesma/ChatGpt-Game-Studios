@@ -14,17 +14,17 @@ full CAS. Gate, deployment and publication authority are always absent.
 ## Static Assertions
 
 - [ ] Frontmatter contains only matching `name` and non-empty `description`
-- [ ] Invocation requires hash-pinned `cgs.release-checklist-request/v2`
+- [ ] Invocation requires revision-pinned `cgs.release-checklist-request/v2`
 - [ ] Release, candidate, build, artifact, source commit/tree, platform/configuration,
   policy, instruction-chain and evidence snapshot identities are mandatory
 - [ ] Deployment scope/state is explicit; a receipt binds the same candidate/artifact/
   source/target and missing deployment cannot satisfy deployment-dependent items
-- [ ] All root-to-target AGENTS paths/hashes and closest-file precedence decisions are
+- [ ] All root-to-target AGENTS paths/revisions and closest-file precedence decisions are
   loaded and reported
 - [ ] Only exact evidence-index paths/dependencies are read under hard item/file/byte/
   depth/time ceilings; arbitrary/latest/mtime scans are forbidden
 - [ ] Each stable policy item has exactly one PASS, FAIL, UNKNOWN or N/A status and a
-  deterministic item-row hash
+  deterministic item-row revision
 - [ ] PASS/FAIL require complete CURRENT authoritative evidence; stale/partial/missing/
   unavailable/invalid/inconclusive inputs cannot PASS
 - [ ] N/A and waiver have distinct authority contracts; a waiver never rewrites item
@@ -48,9 +48,9 @@ full CAS. Gate, deployment and publication authority are always absent.
 
 | Finding | Required regression |
 |---|---|
-| RC-004 | Case 2: exact root-to-target AGENTS chain, hashes and closest precedence |
+| RC-004 | Case 2: exact root-to-target AGENTS chain, revisions and closest precedence |
 | RC-005 | Case 8: canonical S1–S4 and explicit versioned migration mapping |
-| RC-006 | Cases 3–5: manifest-indexed bounded evidence with hash/time/tool/exit/completeness checks |
+| RC-006 | Cases 3–5: manifest-indexed bounded evidence with revision/time/tool/exit/completeness checks |
 | RC-007 | Cases 6–7: authoritative platform/cert/legal/store/manual/N/A/waiver receipts |
 | RC-008 | Cases 10–11: full candidate/checklist identity path, create-only CAS, no date overwrite |
 | RC-009 | Cases 12–13: checklist normalizes only; downstream gate is sole decision owner and is not invoked |
@@ -61,12 +61,12 @@ full CAS. Gate, deployment and publication authority are always absent.
 
 | Phase | Input | Output | Mutation |
 |---|---|---|---|
-| 1 — Request/instructions | Hash-pinned request plus root-to-target AGENTS chain | Strict effective instruction/policy scope | None |
+| 1 — Request/instructions | revision-pinned request plus root-to-target AGENTS chain | Strict effective instruction/policy scope | None |
 | 2 — Release/build/deploy identities | Release and build manifests, artifact and optional deployment receipts | Independent immutable release/candidate/deployment identities | None |
 | 3 — Indexed evidence | Ordered index and declared dependencies | Complete evidence states/freshness/coverage | None |
 | 4 — Technical/bug/content | Current structured receipts and policy rules | Candidate-bound technical/bug/content results | None |
 | 5 — External/manual authority | Platform/cert/store/legal/privacy/security/manual receipts | Verified authority or UNKNOWN/FAIL evidence | None |
-| 6 — Item rows/delta | Policy, evidence states and exact predecessor | One status/hash per item and deterministic delta | None |
+| 6 — Item rows/delta | Policy, evidence states and exact predecessor | One status/revision per item and deterministic delta | None |
 | 7 — Aggregate/identity | Ordered rows and identities | Counts, operational status and checklist identity; no gate verdict | None |
 | 8 — Analyze or record | Candidate report and optional mutation authority | Zero-write candidate or one CAS-created report | Create one absent target only |
 | 9 — Consumer packet | Frozen report/identities/statuses | Exact gate-consumer contract and one next action | None |
@@ -81,13 +81,13 @@ No implicit gate, deployment, publication or owner-invocation phase exists.
 Every item has complete CURRENT positive evidence; an exact production deployment
 receipt is supplied for deployment-dependent rows.
 
-**Expected behavior:** Emit every stable item once as PASS, deterministic row hashes,
+**Expected behavior:** Emit every stable item once as PASS, deterministic row revisions,
 counts and checklist identity. Workflow is NORMALIZED, recorder ANALYSIS_ONLY, Gate
 Decision NOT_EVALUATED.
 
 **Assertions:**
 
-- [ ] Every PASS cites exact evidence/dependency hashes and candidate/platform binding
+- [ ] Every PASS cites exact evidence/dependency revisions and candidate/platform binding
 - [ ] Deployment receipt cannot satisfy unrelated legal/manual/build items
 - [ ] No RELEASE READY/GO/ship/publish verdict appears
 
@@ -98,13 +98,13 @@ Decision NOT_EVALUATED.
 **Fixture:** Root and nested target instructions contain an intentional precedence
 override. Variants omit/reorder a file or change its bytes.
 
-**Expected behavior:** Read every declared file in full, verify hashes, record the
+**Expected behavior:** Read every declared file in full, verify revisions, record the
 effective closest-file decision. Any missing/reordered/mismatched or unresolved
 conflict is BLOCKED before evidence normalization and write.
 
 **Assertions:**
 
-- [ ] Loaded paths/hashes and shadowed decisions appear in the report
+- [ ] Loaded paths/revisions and shadowed decisions appear in the report
 - [ ] Reading root AGENTS alone is insufficient
 - [ ] Instruction drift invalidates recorder authority
 
@@ -132,7 +132,7 @@ no stale result contributes to PASS.
 depth exceeds limit, or total evidence hits byte/time ceilings.
 
 **Expected behavior:** Affected rows are UNKNOWN with PARTIAL_EVIDENCE/UNAVAILABLE,
-workflow PARTIAL, and exact completed/omitted counts/hashes plus resume cursor.
+workflow PARTIAL, and exact completed/omitted counts/revisions plus resume cursor.
 
 **Assertions:**
 
@@ -145,7 +145,7 @@ workflow PARTIAL, and exact completed/omitted counts/hashes plus resume cursor.
 ## Case 5: Technical execution receipt requires full current evidence
 
 **Fixture:** Compare a complete candidate-bound test execution receipt to a test plan,
-selection-only manifest, quick run where full is required, result without exit/log hash,
+selection-only manifest, quick run where full is required, result without exit/log revision,
 and a current conclusive failure.
 
 **Expected behavior:** Only the complete positive receipt can PASS; incomplete variants
@@ -171,7 +171,7 @@ Variants are UNKNOWN/invalid waiver. None becomes PASS or readiness.
 **Assertions:**
 
 - [ ] N/A binds item/policy/release/candidate/platform/rationale/authority/expiry
-- [ ] Waiver binds exact FAIL/UNKNOWN row hash and never changes item status
+- [ ] Waiver binds exact FAIL/UNKNOWN row revision and never changes item status
 - [ ] Only downstream gate applies waiver policy
 
 ---
@@ -189,7 +189,7 @@ are evaluated only by their policy PASS/FAIL rules. The model/recorder never att
 **Assertions:**
 
 - [ ] Receipts bind reviewed bytes, candidate/build/artifact/platform and jurisdiction
-- [ ] Issuer is verified against exact authority-registry hash
+- [ ] Issuer is verified against exact authority-registry revision
 - [ ] Missing/expired/wrong-scope receipt never becomes PASS or N/A
 
 ---
@@ -197,7 +197,7 @@ are evaluated only by their policy PASS/FAIL rules. The model/recorder never att
 ## Case 8: Bug severity mapping is canonical and versioned
 
 **Fixture:** Current registry contains S1–S4 plus legacy Critical/High/Medium/Low labels.
-One variant supplies the policy's exact versioned mapping hash; another does not.
+One variant supplies the policy's exact versioned mapping revision; another does not.
 
 **Expected behavior:** Canonical S1 Critical, S2 Major/High, S3 Moderate/Medium, S4
 Minor/Low are used only through the declared schema/mapping. Unmapped legacy severity is
@@ -236,12 +236,12 @@ changes two stable rows. Generated-at metadata differs outside the identity.
 
 **Expected behavior:** Both current runs yield identical ordered rows/counts/reasons/
 checklist identity. Delta uses RESOLVED/REGRESSED/CHANGED/UNCHANGED/ADDED/REMOVED by
-stable item/row hashes; prior evidence never affects current status.
+stable item/row revisions; prior evidence never affects current status.
 
 **Assertions:**
 
 - [ ] Invalid predecessor makes comparison unavailable; no newest fallback
-- [ ] Target uses full candidate and checklist identity hashes, never date/short/latest
+- [ ] Target uses full candidate and checklist identity revisions, never date/short/latest
 - [ ] Same inputs cannot produce colliding same-day mutable reports
 
 ---
@@ -252,7 +252,7 @@ stable item/row hashes; prior evidence never affects current status.
 or drift request, instruction, manifest, build/artifact/deployment, policy/authority,
 evidence, parent or report bytes before commit.
 
-**Expected behavior:** Analyze-only returns candidate bytes/hash with zero writes.
+**Expected behavior:** Analyze-only returns candidate bytes/revision with zero writes.
 Stable authorized recorder uses atomic no-replace/create-new and read-back; any drift or
 existing target writes nothing; post-create mismatch is RECOVERY_REQUIRED.
 

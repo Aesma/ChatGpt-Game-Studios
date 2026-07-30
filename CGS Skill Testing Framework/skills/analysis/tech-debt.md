@@ -5,12 +5,12 @@
 `tech-debt` has four strictly read-only modes: `scan`, `add`, `prioritize`, and
 `report`. It classifies heuristic/analyzer output as candidates, validates and
 replays an append-only lifecycle register, computes advisory-only priority views,
-and returns hash-bound proposals for a separate recorder. The skill never mutates
+and returns revision-bound proposals for a separate recorder. The skill never mutates
 the register or invokes the recorder.
 
 This specification is a repaired catalog candidate. It is **NOT EXECUTED** and
 must not set catalog pass/tested fields until a real runner records immutable test
-receipts against the exact candidate hashes.
+receipts against the exact candidate revisions.
 
 ## Contract Sources
 
@@ -25,10 +25,10 @@ All paths above are relative to the formal candidate mirror root.
 
 | Mode | Required inputs | Read-only terminal states |
 |---|---|---|
-| `scan` | hashed scope manifest; hashed or exactly absent register | `SCAN_COMPLETE`, `NO_NEW_DEBT_FOUND`, `SCAN_PARTIAL`, errors |
-| `add` | hashed/exactly absent register; optional hashed manual record | `INPUT_REQUIRED`, `ADD_PREVIEW_READY`, `ADD_DUPLICATE_FOUND`, errors |
-| `prioritize` | hashed or exactly absent register | `PRIORITY_VIEW_READY`, `PRIORITY_VIEW_PARTIAL`, errors |
-| `report` | hashed or exactly absent register; optional one baseline selector | `REPORT_READY`, `REPORT_PARTIAL`, errors |
+| `scan` | versioned scope manifest; versioned or exactly absent register | `SCAN_COMPLETE`, `NO_NEW_DEBT_FOUND`, `SCAN_PARTIAL`, errors |
+| `add` | versioned/exactly absent register; optional versioned manual record | `INPUT_REQUIRED`, `ADD_PREVIEW_READY`, `ADD_DUPLICATE_FOUND`, errors |
+| `prioritize` | versioned or exactly absent register | `PRIORITY_VIEW_READY`, `PRIORITY_VIEW_PARTIAL`, errors |
+| `report` | versioned or exactly absent register; optional one baseline selector | `REPORT_READY`, `REPORT_PARTIAL`, errors |
 
 Common parse/input terminal states are `USAGE_ERROR`, `INPUT_ERROR`, and
 `REGISTER_ERROR`. The skill never emits `REGISTER_UPDATED`, `MUTATION_FAILED`,
@@ -44,17 +44,17 @@ skill outcomes.
 Use isolated repositories with:
 
 - canonical project UUID, fixed source snapshots, explicit dirty-state receipts,
-  symlink fixtures, stable clocks, and deterministic hash calculations;
+  symlink fixtures, stable clocks, and deterministic revision calculations;
 - valid/absent/legacy/malformed `cgs.tech-debt-register/v3` fixtures, including
-  full event and payload hash chains;
+  full event and payload revision chains;
 - injectable UUIDv4 providers for proposal/recorder collision tests;
 - `cgs.tech-debt-scan-scope/v1` manifests containing first-party source,
   generated output, vendor code, build/cache paths, tests, ambiguous paths, and
-  exact hashes;
+  exact revisions;
 - fake versioned text, AST-complexity, and token-clone analyzers that record exact
   argv/subset/config/rulepack/side effects and can complete, timeout, fail, mutate,
   or return malformed output;
-- failure-injectable independent recorder implementing lock, CAS, prepared-file,
+- failure-injectable independent recorder implementing lock, atomic conflict check, prepared-file,
   atomic replace/create, flush, post-read verification, and immutable receipts;
 - immutable VCS rename receipts and sprint-history receipts; and
 - before/after filesystem snapshot instrumentation.
@@ -71,10 +71,10 @@ Every test asserts:
    `recorder_invoked: false`.
 2. A candidate is not accepted debt and analyzer output never chooses lifecycle,
    product priority, or scheduling.
-3. A fingerprint/alias has at most one owning debt UUID; existing event bytes and
+3. A stable key/alias has at most one owning debt UUID; existing event bytes and
    order never change.
 4. Every claim is bound to exact target, register, rulepack/config/analyzer, and
-   evidence hashes, or explicitly `UNVERIFIED`/`UNKNOWN`.
+   evidence revisions, or explicitly `UNVERIFIED`/`UNKNOWN`.
 5. Outcome vocabulary matches the state machine and partial/error outcomes list
    every missing/invalid input.
 
@@ -82,7 +82,7 @@ Every test asserts:
 
 ### TD-001 — Exact scan grammar succeeds
 
-**Given** a valid hashed v1 scope manifest and matching v3 register identity.
+**Given** a valid versioned v1 scope manifest and matching v3 register identity.
 
 **When** invoked as the documented `scan --scope ... --register ...` grammar with
 the two options in either allowed order.
@@ -93,7 +93,7 @@ no undeclared positional/default scope is used.
 ### TD-002 — Invalid invocation is an execution error
 
 **Given** separate invocations with no mode, unknown mode, positional scope,
-unknown/repeated option, missing value, malformed UUID/hash/path, both report
+unknown/repeated option, missing value, malformed UUID/revision/path, both report
 baseline options, or a mode-incompatible option.
 
 **When** parsing occurs.
@@ -103,8 +103,8 @@ write, and never emits `FAIL` or a quality verdict.
 
 ### TD-003 — Input and register identity errors are distinct
 
-**Given** (a) a scope/manual/baseline byte-hash mismatch and (b) a register byte-
-hash mismatch.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+revision mismatch.
 
 **When** the corresponding mode freezes input identity.
 
@@ -124,12 +124,12 @@ view; report returns partial/`UNKNOWN` metrics; no mode creates the file.
 
 ### TD-005 — Malformed and legacy registers fail closed
 
-**Given** separate malformed/hash-broken v3 and valid recognized v2 registers.
+**Given** separate malformed/revision-broken v3 and valid recognized v2 registers.
 
 **When** any mode loads them.
 
 **Then** the malformed fixture returns `REGISTER_ERROR`; v2 returns
-`REGISTER_ERROR` subtype `MIGRATION_REQUIRED` plus a byte-hash-bound migration
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 proposal; neither is repaired, reinterpreted, or written.
 
 ### TD-006 — TODO/FIXME is only a heuristic candidate
@@ -151,7 +151,7 @@ evidence of a maintainability defect.
 **When** scan runs.
 
 **Then** the result is only a size-rule `HEURISTIC_CANDIDATE`; observed size and
-threshold remain evidence but are excluded from stable fingerprint identity.
+threshold remain evidence but are excluded from stable key identity.
 
 ### TD-008 — Exclusions require positive classification
 
@@ -193,7 +193,7 @@ config/subset identities and deterministic output.
 **When** it completes within limits and mutation snapshot remains unchanged.
 
 **Then** the v1 receipt contains all required command, capability, count, timing,
-hash, and side-effect fields; supported results may be `EVIDENCE_SUPPORTED` but
+revision, and side-effect fields; supported results may be `EVIDENCE_SUPPORTED` but
 remain candidates.
 
 ### TD-012 — Failed, stale, side-effecting, and over-limit analyzers stay unknown
@@ -207,39 +207,39 @@ mutation-observed, unreadable-file, and hard-cap fixtures.
 preserved, every gap is enumerated, and outcome is `SCAN_PARTIAL` (or
 `INPUT_ERROR` if no stable meaningful evidence remains).
 
-### TD-013 — Stable fingerprint ignores volatile movement
+### TD-013 — Stable key ignores volatile movement
 
 **Given** identical rule ID, canonical path, stable symbol, defect class, and
-semantic evidence key at different line/column/byte offsets, source hashes,
+semantic evidence key at different line/column/byte offsets, source revisions,
 timestamps, diagnostic wording, and analyzer versions.
 
-**When** `td-fp-v2` is computed.
+**When** `td-key-v1` is computed.
 
-**Then** all variants produce the same lowercase SHA-256 and candidate ID.
+**Then** all variants produce the same structured stable key and candidate ID.
 
-### TD-014 — Semantic identity changes split fingerprints
+### TD-014 — Semantic identity changes split stable keys
 
 **Given** pairs differing in stable rule ID, canonical path, qualified symbol,
 defect class, or semantic evidence key.
 
-**When** `td-fp-v2` length-delimited normalization runs.
+**When** `td-key-v1` length-delimited normalization runs.
 
-**Then** each meaningful difference produces a different fingerprint, while NFC,
+**Then** each meaningful difference produces a different stable key, while NFC,
 slash, and allowed whitespace equivalents do not.
 
 ### TD-015 — Rename alias requires evidence or user selection
 
 **Given** a registered finding moved to a new path/symbol.
 
-**When** scan sees the new raw fingerprint.
+**When** scan sees the new raw stable key.
 
 **Then** immutable VCS move evidence or an exact user-selected alias may produce a
-`FINGERPRINT_ALIAS` proposal for the existing UUID; without it, the result remains
+`STABLE_KEY_ALIAS` proposal for the existing UUID; without it, the result remains
 a new candidate and the old item is not auto-resolved.
 
 ### TD-016 — Identical rescan is idempotent
 
-**Given** registered fingerprint F whose latest source/evidence identity is R/E.
+**Given** registered stable key F whose latest source/evidence identity is R/E.
 
 **When** the identical scope is scanned again at R/E.
 
@@ -250,7 +250,7 @@ proposed, the register is unchanged, and complete analysis returns
 ### TD-017 — New source observation preserves debt identity
 
 **Given** registered F last observed at R1/E1 and materially new evidence R2/E2
-with the same stable fingerprint.
+with the same stable key.
 
 **When** the owner selects it after scan.
 
@@ -269,7 +269,7 @@ transition.
 
 ### TD-019 — Duplicate ownership makes the register invalid
 
-**Given** two debt UUIDs own the same primary fingerprint/alias, or one UUID/event
+**Given** two debt UUIDs own the same primary stable key/alias, or one UUID/event
 ID has conflicting records.
 
 **When** any mode replays the register.
@@ -288,8 +288,8 @@ does not synthesize description, paths, evidence, category, owner, or estimates.
 
 ### TD-021 — Manual add is candidate-only and deduplicated
 
-**Given** valid manual fixtures that (a) produce a new `manual@2` fingerprint and
-(b) match an existing fingerprint.
+**Given** valid manual fixtures that (a) produce a new `manual@2` stable key and
+(b) match an existing stable key.
 
 **When** add runs after owner selection.
 
@@ -312,7 +312,7 @@ ordinary owner triage is not treated as acceptance authority.
 
 **Given** valid event chains exercising `CREATED`, `TRIAGED_OPEN`, `ACCEPTED`,
 `REOPENED`, `RESOLVED`, and `SUPERSEDED` with required owners, reasons,
-timestamps, hashes, authority, controls, evidence, and successors.
+timestamps, revisions, authority, controls, evidence, and successors.
 
 **When** prioritize/report replay them.
 
@@ -324,7 +324,7 @@ unchanged.
 
 **Given** separate fixtures with `CREATED -> REOPENED`, a transition after
 terminal `SUPERSEDED`, acceptance without reason/review trigger, resolution
-without evidence/authority, broken predecessor, or bad payload/event hash.
+without evidence/authority, broken predecessor, or bad payload/event revision.
 
 **When** any mode replays the register.
 
@@ -340,7 +340,7 @@ valid evidence and equal exact score 4.
 
 **Then** order is A, B, C by impact and remaining documented tie-breaks; exact
 rationals are retained, three decimals displayed, every source event/evidence and
-tie-break is shown, and the register hash is unchanged.
+tie-break is shown, and the register revision is unchanged.
 
 ### TD-026 — Missing score inputs remain unscored
 
@@ -360,18 +360,18 @@ user preference different from both.
 
 **When** prioritize displays the view.
 
-**Then** register bytes/hash/order are identical, no priority/schedule event is
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 appended, and an external decision can appear only in a new exact proposal after
 separate user/producer selection.
 
 ### TD-028 — Report baseline is an exact ancestor
 
-**Given** a valid event UUID and a valid ancestor register hash in separate runs.
+**Given** a valid event UUID and a valid ancestor register revision in separate runs.
 
 **When** report runs.
 
 **Then** it computes exact created/observed/accepted/reopened/resolved/superseded
-transitions over the interval and records the cursor/hash in a read-only report.
+transitions over the interval and records the cursor/revision in a read-only report.
 
 ### TD-029 — Missing or incomparable report evidence stays unknown
 
@@ -394,7 +394,7 @@ three-sprint aging is `UNKNOWN` without stable transition evidence.
 prepared file, or mutate the register; proposal markers are `NOT_PERSISTED` and
 `NOT_AUTHORIZATION` and a future write requires fresh exact authorization.
 
-### TD-031 — CAS conflict requires new proposal and consent
+### TD-031 — atomic conflict check conflict requires new proposal and consent
 
 **Given** an independently authorized proposal for base tuple H1/R1/E1 and another
 writer advances the register to H2/R2/E2.
@@ -402,13 +402,13 @@ writer advances the register to H2/R2/E2.
 **When** the recorder fixture receives the stale proposal.
 
 **Then** it returns `CAS_CONFLICT`, writes nothing, performs no last-writer-wins or
-hidden retry, and any retry path is replay → new proposal/hash → new authorization
+hidden retry, and any retry path is replay → new proposal/revision → new authorization
 → new transaction.
 
 ### TD-032 — UUID collision invalidates authorization
 
 **Given** a reserved event/debt UUID absent at proposal time but present at recorder
-CAS validation.
+atomic conflict check validation.
 
 **When** the recorder fixture validates uniqueness.
 
@@ -417,13 +417,13 @@ writes nothing, and regeneration requires a new proposal and authorization.
 
 ### TD-033 — Exact replay is idempotent, not duplicate append
 
-**Given** a recorder retry whose exact proposed event IDs/hashes and final content
+**Given** a recorder retry whose exact proposed event IDs/revisions and final content
 are already committed.
 
 **When** the recorder fixture validates current state.
 
 **Then** it returns `ALREADY_APPLIED` without a write. A merely equivalent event
-with different IDs/hashes is a CAS/proposal conflict, not silently adopted.
+with different IDs/revisions is a atomic conflict check/proposal conflict, not silently adopted.
 
 ### TD-034 — Atomic failure preserves base or absence
 
@@ -454,7 +454,7 @@ skill does not revert, overwrite, or attribute the concurrent edit.
 
 **Then** all four modes, exact outcome vocabularies, candidate-only heuristic
 boundary, versioned analyzer receipts, v3 lifecycle states, read-only analyzer/
-recorder separation, stable fingerprinting, CAS/UUID/atomicity rules, and
+recorder separation, stable keying, atomic conflict check/UUID/atomicity rules, and
 NOT-EXECUTED status agree without contradictory mutation claims.
 
 ## Static Conformance Checks
@@ -470,15 +470,15 @@ The candidate passes static conformance only if:
   versioned analyzer receipts;
 - generated/vendor/test exclusions require positive evidence and remain visible;
 - v3 schema contains status, owners, acceptance/resolution/supersession reasons,
-  timestamps, evidence, payload/event hashes, UUIDs, and both chain dimensions;
-- `td-fp-v2` is deterministic, length-delimited, and excludes volatile fields;
+  timestamps, evidence, payload/event revisions, UUIDs, and both chain dimensions;
+- `td-key-v1` is deterministic, length-delimited, and excludes volatile fields;
 - replay detects duplicate ownership, invalid lifecycle, UUID collisions, and
-  chain/hash corruption;
+  chain/revision corruption;
 - priority formula, allowed values, exact ordering, unscored behavior, and all six
   tie-breaks are fixed and read-only;
 - report baseline/sprint-aging behavior is evidence-bound;
 - proposal schema binds exact base/final bytes and says not persisted/authorized;
-- independent recorder contract requires authorization, exclusive CAS, UUID
+- independent recorder contract requires authorization, exclusive atomic conflict check, UUID
   checks, atomic replacement/create, post-verification, and a fresh proposal plus
   fresh authorization after conflict; and
 - no catalog test/pass field is changed by this unexecuted specification.
@@ -494,8 +494,16 @@ The candidate passes static conformance only if:
 | TDB-008 | strict grammar, schemas, and execution errors distinct from quality | TD-001–TD-003 |
 | TDB-009 | zero-write four modes; independent recorder only | TD-030, TD-035–TD-036 |
 | TDB-010 | repaired four-mode state-machine spec and synchronized vocabulary; test status remains NOT EXECUTED | TD-001–TD-036 |
-| TDB-011 | stable UUID/fingerprint, CAS base tuple, no stale retry, atomic failure behavior | TD-013–TD-019, TD-031–TD-034 |
+| TDB-011 | stable UUID/stable key, atomic conflict check base tuple, no stale retry, atomic failure behavior | TD-013–TD-019, TD-031–TD-034 |
 
 P0 protections remain covered: scan idempotence/dedup (TD-013–TD-019), fixed
 evidence-based advisory scoring (TD-025–TD-027), and append-only history
 (TD-023–TD-024, TD-027–TD-034).
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

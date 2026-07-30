@@ -3,7 +3,7 @@
 ## Skill Summary
 
 `$security-audit` is a bounded, strictly read-only security assessment. It freezes
-a hash-bound threat scope before checks, routes engine/platform capabilities from
+a version-bound threat scope before checks, routes engine/platform capabilities from
 current configuration, consumes versioned tool/manual/advisory evidence, redacts
 secret material, reports unsupported and unverified scope, and returns stable
 findings in `cgs.review-evidence/v1` with a `cgs.security-audit/v2` extension.
@@ -33,16 +33,16 @@ finding.
       `NOT_APPLICABLE`; every required gap fails closed
 - [ ] Engine/platform routing requires an exact compatible versioned adapter and
       configured role; filenames/engine brand never prove support
-- [ ] Tool receipts bind executable/version/argv/cwd, adapter/rule/config hashes,
-      target subset hash, timestamps/deadline/exit, counts/bytes, result/redacted
-      log hashes, and side effects
+- [ ] Tool receipts bind executable/version/argv/cwd, adapter/rule/config revisions,
+      target subset revision, timestamps/deadline/exit, counts/bytes, result/redacted
+      log revisions, and side effects
 - [ ] Keyword matches cannot create findings or no-findings coverage
 - [ ] `CGS-SEC-IEX/v1` uses evidence-backed I×E×X, keeps confidence separate, and
       is explicitly not CVSS
 - [ ] Provider CVSS is preserved only with exact supplied version/vector/score
-- [ ] Stable finding identity excludes secret/HMAC, line, hashes, prose,
+- [ ] Stable finding identity excludes secret/HMAC, line, revisions, prose,
       timestamp, reviewer, confidence, and severity
-- [ ] Secret-safe output forbids value/context/length/encoding/plain digest/raw
+- [ ] Secret-safe output forbids value/context/length/encoding/plain identifier/raw
       log/protected denied path and uses only volatile per-run HMAC correlation
 - [ ] Security/product owner-signed risk records are external and cannot alter
       finding existence, severity, coverage, or audit outcome
@@ -91,7 +91,7 @@ Assertions:
 - [ ] Ordinary audit has an empty write set and requests no write approval
 - [ ] It returns conversation-only generic/v2 evidence
 - [ ] It refuses to act as recorder and states a separate exact authorization/
-      redaction/hash revalidation transaction is required
+      redaction/revision revalidation transaction is required
 - [ ] It writes no report, cache, finding state, waiver, or session file
 
 ---
@@ -105,7 +105,7 @@ Assertions:
 - [ ] Full requires security-engineer; quick does not
 - [ ] At most one exact configured engine/platform role is additionally required
 - [ ] Total reviewers never exceed two and are dispatched in one parallel batch
-- [ ] Reviewers receive redacted hash-bound packets and no outcome/risk authority
+- [ ] Reviewers receive redacted version-bound packets and no outcome/risk authority
 
 ---
 
@@ -121,7 +121,7 @@ Assertions:
 - [ ] Client→server purchase flow names source, validation/authority, sink, and
       crossed boundaries
 - [ ] Client code is never assumed authoritative
-- [ ] Threat-scope hash freezes before check planning
+- [ ] Threat-scope revision freezes before check planning
 
 ---
 
@@ -156,7 +156,7 @@ Assertions:
 
 ### Case 7: Engine/platform routing is exact or unsupported
 
-Fixtures: (a) engine/version/language/platform and a compatible hashed adapter are
+Fixtures: (a) engine/version/language/platform and a compatible versioned adapter are
 configured; (b) engine known but version unsupported; (c) platform unconfigured;
 (d) adapter is mutating/side effects unknown.
 
@@ -191,7 +191,7 @@ currency-grant sink without server/backend verification.
 
 Assertions:
 
-- [ ] Manual/dataflow receipt binds exact target hashes and stable source,
+- [ ] Manual/dataflow receipt binds exact target revisions and stable source,
       authority/validation, sink, boundary, and effect IDs
 - [ ] Evidence class is CONFIRMED or SUPPORTED, with independent confidence
 - [ ] Finding has stable SEC ID, IEX factors, owner, containment, remediation,
@@ -237,7 +237,7 @@ Assertions:
 
 - [ ] Exact threat/build evidence selects exposure for each
 - [ ] No “any multiplayer HIGH becomes CRITICAL” rule exists
-- [ ] Score is recomputed only from documented factors
+- [ ] Score is revalidate only from documented factors
 - [ ] Context cannot post-hoc bump the resulting band
 
 ---
@@ -270,10 +270,10 @@ Assertions:
 
 ---
 
-### Case 15: Expired or hash-mismatched acceptance is invalid
+### Case 15: Expired or revision-mismatched acceptance is invalid
 
 Fixtures: Otherwise valid owner-signed records with expired review date, wrong
-finding fingerprint, wrong source/threat/build hash, or unverifiable authority.
+finding identity, wrong source/threat/build revision, or unverifiable authority.
 
 Assertions:
 
@@ -287,7 +287,7 @@ Assertions:
 ### Case 16: Tool receipt must be complete and versioned
 
 Fixtures: Valid receipt; missing tool/rule version; stale target subset; absent
-redacted log hash; unexplained nonzero exit; zero scanned eligible files.
+redacted log revision; unexplained nonzero exit; zero scanned eligible files.
 
 Assertions:
 
@@ -302,7 +302,7 @@ Assertions:
 ### Case 17: Timeout and reviewer failure fail closed
 
 Fixtures: Required scanner exceeds 120 seconds; reviewer times out, blocks,
-declines, returns wrong scope hash, or leaks raw source/secret material.
+declines, returns wrong scope revision, or leaks raw source/secret material.
 
 Assertions:
 
@@ -338,7 +338,7 @@ Assertions:
 - [ ] Only complete zero-match variant emits the scoped snapshot-bound sentence
 - [ ] All other variants are `UNVERIFIED` or `UNSUPPORTED`
 - [ ] None says “none” or “no known CVEs” from unavailable evidence
-- [ ] Component/snapshot/scanner/range provenance is exact and hashed
+- [ ] Component/snapshot/scanner/range provenance is exact and versioned
 
 ---
 
@@ -359,15 +359,15 @@ Assertions:
 ### Case 21: Prior review identity and stable IDs validate
 
 Fixture: Immutable persisted prior v2 full record has canonical ID, exact target/
-scope/build/tool/advisory identities, and OPEN stable finding fingerprints.
+scope/build/tool/advisory identities, and OPEN stable finding identities.
 
 Input: `$security-audit full --prior-review production/security/record.md`
 
 Assertions:
 
-- [ ] Prior identity/project/profile/hashes/fingerprints validate before scanning
+- [ ] Prior identity/project/profile/revisions/identities validate before scanning
 - [ ] Invalid/unrelated/noncanonical prior record returns `ERROR`
-- [ ] Same defect retains SEC ID despite title/line/hash/severity changes
+- [ ] Same defect retains SEC ID despite title/line/revision/severity changes
 - [ ] Prior findings are evaluated before new attack surface
 
 ---
@@ -441,7 +441,7 @@ Assertions:
 - [ ] First keeps applicable external boundaries/categories
 - [ ] Second may use evidence-backed N/A
 - [ ] Marketing label alone never sets applicability
-- [ ] Platform/config/source hashes support both decisions
+- [ ] Platform/config/source revisions support both decisions
 
 ---
 
@@ -466,10 +466,10 @@ unexpectedly emits raw matched value/context.
 
 Assertions:
 
-- [ ] Safe result emits only permitted type/path/location/anchor/rule/hash/
+- [ ] Safe result emits only permitted type/path/location/anchor/rule/revision/
       confidence/volatile-HMAC fields
-- [ ] Finding ID does not use value, HMAC, line, or target hash
-- [ ] Unsafe output is quarantined; raw value/plain digest/context is absent from
+- [ ] Finding ID does not use value, HMAC, line, or target revision
+- [ ] Unsafe output is quarantined; raw value/plain identifier/context is absent from
       conversation, record, reviewer packet, and staged evidence
 - [ ] Volatile HMAC key is never emitted/persisted and audit performs no rotation
 
@@ -496,7 +496,7 @@ Fixture: A meaningful partial full audit with confirmed findings.
 
 Assertions:
 
-- [ ] Generic envelope has canonical record ID, artifact hashes, reviewer,
+- [ ] Generic envelope has canonical record ID, artifact revisions, reviewer,
       verdict, timestamp, finding IDs, and producer version
 - [ ] v2 extension contains threat/manifests/routing/checks/receipts/advisories/
       coverage/findings/risk/re-audit/mutation/stale evidence
@@ -509,7 +509,7 @@ Assertions:
 ## Protocol Compliance
 
 - [ ] Threat scope and exact engine/platform identity precede check planning
-- [ ] Manifests and every denominator are bounded, hash-bound, and explicit
+- [ ] Manifests and every denominator are bounded, version-bound, and explicit
 - [ ] Unsupported capability differs from N/A and missing/failed evidence
 - [ ] Every tool/manual/advisory/reviewer claim has current versioned receipts
 - [ ] Keyword candidates never become findings or clean coverage

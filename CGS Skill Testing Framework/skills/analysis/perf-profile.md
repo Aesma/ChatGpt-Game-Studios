@@ -7,7 +7,7 @@ two-mode workflow. `prepare-capture` validates an explicit
 platform-by-hardware-by-scenario matrix and returns `MEASUREMENT REQUIRED`.
 `analyze-export` accepts only explicit profiler exports, validates them through a
 versioned adapter registry, normalizes metrics and units, calculates bounded
-per-cell statistics, applies exact platform budgets, and returns a hash-bound
+per-cell statistics, applies exact platform budgets, and returns a revision-bound
 conversation report.
 
 The skill does not launch a build or profiler, capture data, edit a project,
@@ -27,14 +27,14 @@ runtime results with verdict `WITHIN BUDGET`, `CONCERNS`, or `OVER BUDGET`.
 Run every behavioral case in an isolated disposable repository fixture. The
 harness must record:
 
-1. recursive path/type/SHA-256 snapshots before and after invocation;
+1. recursive path/type/revision snapshots before and after invocation;
 2. every filesystem mutation attempt by the skill and any adapter/reviewer;
 3. every file read, exact byte count, canonical path, and read order;
-4. every adapter identity, executable/package SHA-256, argv, wall time, exit
-   status, raw input hash, normalized output hash, and receipt bytes;
+4. every adapter identity, executable/package revision, argv, wall time, exit
+   status, raw input revision, normalized output revision, and receipt bytes;
 5. every delegated role, start/end time, wait count, completion state, and
    returned advisory-note count;
-6. the exact response bytes and all canonical payload/evidence hashes; and
+6. the exact response bytes and all canonical payload/evidence revisions; and
 7. a deterministic clock and UUID source for repeatable canonicalization tests.
 
 The mutation guard passes only when snapshots are byte-identical and the
@@ -54,7 +54,7 @@ this staged specification.
 - [ ] The two accepted invocations and their exact argument rules are explicit
 - [ ] Request, build, platform, hardware, scenario, capture, profiler, exporter,
   adapter, budget, metric, unit, and comparison-policy identity are mandatory
-- [ ] Adapter registry and receipt schemas, exact tool version/hash, supported
+- [ ] Adapter registry and receipt schemas, exact tool version/revision, supported
   exporter/schema matrix, sandbox, timeout, and failure behavior are explicit
 - [ ] Fixed file, byte, matrix, series, sample, repetition, marker, metric,
   finding, row, adapter-time, and receipt limits cannot be raised by the request
@@ -69,7 +69,7 @@ this staged specification.
 - [ ] Causal language is prohibited without a controlled comparison; hypotheses
   require an experiment and cannot promise a gain
 - [ ] Stable finding IDs exclude paths, line numbers, observed values, thresholds,
-  severity/status, timestamps, current build hashes, and report hashes
+  severity/status, timestamps, current build revisions, and report revisions
 - [ ] Optional review is limited to one performance analyst, three waits and 180
   seconds, cannot change calculations, and does not authorize more delegation
 - [ ] Capture plans, partial/truncated/static results, and unpersisted responses
@@ -86,16 +86,16 @@ this staged specification.
 Unless a case overrides them, use:
 
 - request `REQ-PERF-001`, schema `cgs.performance-request/v2`;
-- build `BUILD-101`, artifact SHA-256 `A`, clean source commit `C1`, Development
-  configuration, exact engine product/version and executable receipt hash;
+- build `BUILD-101`, artifact revision `A`, clean source commit `C1`, Development
+  configuration, exact engine product/version and executable receipt revision;
 - two platform profiles `PLAT-PC-60` and `PLAT-DECK-40`, two hardware classes,
-  and scenarios `SCN-HUB` and `SCN-COMBAT`, each with a version and source hash;
+  and scenarios `SCN-HUB` and `SCN-COMBAT`, each with a version and source revision;
 - metric registry `cgs.performance-metric-registry/v1`, unit registry
   `cgs.performance-unit-registry/v1`, adapter registry
   `cgs.profiler-adapter-registry/v1`, comparison policy
   `cgs.performance-comparison-policy/v1`, and budget
-  `cgs.performance-budget/v2` at declared exact hashes;
-- a validated adapter `ADP-GODOT-CSV-1` version `1.2.0` with package SHA-256
+  `cgs.performance-budget/v2` at declared exact revisions;
+- a validated adapter `ADP-GODOT-CSV-1` version `1.2.0` with package revision
   `T`, exporter `Godot Profiler CSV` version `4.6.3`, schema `godot-csv/v3`,
   normalized schema `cgs.performance-trace/v1`, and passing validator receipts;
 - three measured repetitions after a 30-second warm-up, each 120 seconds at a
@@ -103,7 +103,7 @@ Unless a case overrides them, use:
 - canonical frame-time unit `ms`, memory unit `byte`, and percentage unit
   `percent`, with explicit conversion IDs where source units differ.
 
-All placeholder hashes are replaced by syntactically valid 64-hex values in the
+All placeholder revisions are replaced by syntactically valid explicit version/revision values in the
 actual fixture.
 
 ---
@@ -143,13 +143,13 @@ Invoke `prepare-capture` with the canonical fixture and a four-cell matrix.
 - [ ] Result is exactly `MEASUREMENT REQUIRED`; there is no runtime verdict
 - [ ] All applicable root-to-file instructions are read and listed in order
 - [ ] Every cell records build/artifact/source/engine identity
-- [ ] Platform-profile and hardware-class versions/hashes, OS/driver, power and
+- [ ] Platform-profile and hardware-class versions/revisions, OS/driver, power and
   thermal controls are explicit
-- [ ] Scenario ID/version/hash, seed, save/checkpoint, input script/hash,
+- [ ] Scenario ID/version/revision, seed, save/checkpoint, input script/revision,
   graphics, resolution, render scale, VSync, cap, and background load are explicit
 - [ ] Warm-up, duration, interval, repetition, marker, and metric requirements are
   concrete and cell-specific
-- [ ] Profiler, exporter, export schema, adapter ID/version/hash, and overhead mode
+- [ ] Profiler, exporter, export schema, adapter ID/version/revision, and overhead mode
   are concrete
 - [ ] Budget rule IDs and canonical units resolve for every metric and cell
 - [ ] Expected filenames and exact analyze handoff are prospective, not claimed
@@ -159,9 +159,9 @@ Invoke `prepare-capture` with the canonical fixture and a four-cell matrix.
 
 ## Case 3: Missing capture identity remains measurement-required
 
-Run independent variants missing build artifact hash, engine receipt, scenario
-hash, platform profile, hardware class, seed policy, graphics setting, capture
-duration, profiler version, export schema, adapter version/hash, or one budget
+Run independent variants missing build artifact revision, engine receipt, scenario
+revision, platform profile, hardware class, seed policy, graphics setting, capture
+duration, profiler version, export schema, adapter version/revision, or one budget
 rule.
 
 - [ ] Each variant is `PARTIAL — MEASUREMENT REQUIRED`
@@ -181,16 +181,16 @@ Run independent analyze variants:
 | Exact exporter/version/schema/platform match | one adapter executes |
 | No registry match | unsupported primary export `ERROR` |
 | Two equally exact matches | ambiguous adapter `ERROR` |
-| Adapter package hash differs | `ERROR` before execution |
+| Adapter package revision differs | `ERROR` before execution |
 | Registry validator receipt does not cover adapter version | `ERROR` |
 | Adapter times out or exits nonzero | `ERROR` |
-| Adapter receipt missing argv/input hash/output hash/status | `ERROR` |
+| Adapter receipt missing argv/input revision/output revision/status | `ERROR` |
 | Receipt exceeds 1 MiB or mismatches raw input | `ERROR` |
 | Normalized output is not `cgs.performance-trace/v1` | `ERROR` |
 | Adapter attempts network, write, undeclared read, or child expansion | sandbox denial and `ERROR` |
 
-- [ ] Exact adapter product/version/hash, supported exporter/schema, argv,
-  duration, receipt ID, raw hash, and normalized hash appear in successful output
+- [ ] Exact adapter product/version/revision, supported exporter/schema, argv,
+  duration, receipt ID, raw revision, and normalized revision appear in successful output
 - [ ] Unknown formats are never heuristically parsed
 - [ ] Raw export is never edited
 - [ ] No failed row emits statistics, verdict, or evidence
@@ -202,7 +202,7 @@ Start with one valid trace, then independently remove or alter platform profile,
 hardware identity, build/artifact/source, engine, scenario, seed/save/input,
 graphics/resolution/render-scale, VSync/cap, power/thermal/background policy,
 profiler/exporter/adapter, export settings, overhead mode, warm-up completion,
-duration, interval, repetition identity, capture timestamp, or raw/trace hash.
+duration, interval, repetition identity, capture timestamp, or raw/trace revision.
 
 - [ ] A valid but incomplete trace produces
   `PARTIAL — MEASUREMENT COVERAGE`, not a complete verdict
@@ -218,17 +218,17 @@ duration, interval, repetition identity, capture timestamp, or raw/trace hash.
 Construct overlapping rules at all five precedence levels.
 
 - [ ] The most specific unique applicable rule wins for each cell/metric
-- [ ] Selected rule ID, specificity, manifest path/hash, threshold, operator,
+- [ ] Selected rule ID, specificity, manifest path/revision, threshold, operator,
   statistic, unit, minimum duration/repetitions, and spike policy are reported
 - [ ] Technical preferences can identify the budget but prose thresholds are not
   treated as executable rules
-- [ ] Manifest path/hash disagreement with technical preferences is partial
+- [ ] Manifest path/revision disagreement with technical preferences is partial
 - [ ] Equal-specificity conflicts, missing rules, invalid fallback, or unknown
   operator produce `PARTIAL — BUDGET COVERAGE`
 - [ ] Missing one rule prevents the affected cell and overall verdict; other
   local statistics remain visible
 - [ ] Conversion occurs only through an exact unit-registry conversion and records
-  source/canonical unit, conversion ID/formula, version, and hash
+  source/canonical unit, conversion ID/formula, version, and revision
 - [ ] FPS/frame time, MB/MiB, CPU/GPU time, and counter/gauge/rate semantics are
   never converted or combined implicitly
 - [ ] Unknown unit, dimension mismatch, NaN/infinity, unhandled counter reset, or
@@ -290,8 +290,8 @@ manifest exceeding the matrix limit before any export read.
   `ERROR — REQUEST EXCEEDS FIXED BOUND` before analysis
 - [ ] Normalized series/sample/marker/repetition/metric/finding/row excess returns
   `PARTIAL — BOUNDED TRACE`
-- [ ] Candidate identity digest, included/omitted counts, exact boundary, and
-  overflow digest are stable and reported
+- [ ] Candidate identity revision, included/omitted counts, exact boundary, and
+  overflow revision are stable and reported
 - [ ] Same input retains the same prefix and omission proof on repeated runs
 - [ ] Request fields cannot raise any limit
 - [ ] No overall verdict, extrapolation, or evidence block exists after truncation
@@ -303,7 +303,7 @@ Analyze `BUILD-102` with baseline `BUILD-101`, differing only on the declared
 build/source axis and satisfying the comparison policy.
 
 - [ ] Baseline is read only because `--baseline` names it
-- [ ] Baseline exact bytes, payload/evidence hashes, and recorder status are
+- [ ] Baseline exact bytes, payload/evidence revisions, and recorder status are
   validated and disclosed
 - [ ] All required comparability keys are checked and listed
 - [ ] Absolute and percentage deltas apply to the exact configured statistics
@@ -319,7 +319,7 @@ build/source axis and satisfying the comparison policy.
 Run one mismatch at a time across platform, hardware, scenario, seed/save/input,
 graphics, resolution, render scale, VSync/cap, power/thermal/background load,
 profiler/exporter/adapter, export settings, overhead mode, metric semantics, unit
-conversion, warm-up/duration/interval/repetitions, budget rule, or policy hash.
+conversion, warm-up/duration/interval/repetitions, budget rule, or policy revision.
 
 - [ ] Each metric says `NOT COMPARABLE` and lists exact mismatched keys
 - [ ] No absolute/percentage delta or regression/improvement label is calculated
@@ -347,17 +347,17 @@ whose comparison policy and controlled experiment isolate one factor.
 ## Case 14: Stable finding identity and ordering
 
 Generate a budget finding, then vary output path, line positions, severity text,
-observed value, threshold display, status, timestamp, build hash, and report hash
+observed value, threshold display, status, timestamp, build revision, and report revision
 without changing its canonical repository/category/metric/rule/cell identity.
 
-- [ ] ID remains `PFF-<category-slug>-<12-lowercase-hex>` and unchanged
+- [ ] ID remains `PFF-<category-slug>-<stable-business-key>` and unchanged
 - [ ] Changing metric, rule, platform profile, hardware class, scenario, category,
   or repository identity changes the ID
-- [ ] Canonical JSON inputs and resulting SHA-256 suffix recompute exactly
+- [ ] Declared business-key inputs and resulting stable suffix validate exactly
 - [ ] Identical identities coalesce and preserve all repetition evidence
 - [ ] Findings sort by category, metric, rule, and cell deterministically
 - [ ] IDs never encode paths, values, thresholds, status, time, current build, or
-  report hashes
+  report revisions
 
 ## Case 15: Optional analyst failure cannot change calculation
 
@@ -388,13 +388,13 @@ Analyze a complete matrix whose worst cell is `CONCERNS`.
   limit, ledger, statistic, rule decision, verdict, finding, review state,
   omission, producer, run ID, and timestamp
 - [ ] Exactly one `gate-evidence` fence uses `cgs.review-evidence/v1`
-- [ ] Canonical payload SHA-256 equals evidence `artifact_sha256`
-- [ ] Record ID recomputes after excluding only `record_id`
+- [ ] Explicit payload revision equals evidence artifact_revision
+- [ ] Record ID matches the stable business scope and run ID
 - [ ] Evidence coverage is COMPLETE and verdict is CONCERNS
 - [ ] `performance_targets_met_candidate` is false
 - [ ] `persistence` and `recorder_receipt` are `NONE`; candidate is explicitly not
   durable or immediately gate-consumable
-- [ ] Changing one payload byte invalidates the artifact hash or record ID
+- [ ] Changing one payload byte invalidates the artifact revision or record ID
 - [ ] Re-run with all cells within budget sets targets-met candidate true
 - [ ] Re-run over budget keeps it false
 - [ ] Mutation guard passes and exact response bytes are captured
@@ -421,15 +421,15 @@ updates, and workflow chaining in the manifest or user text.
 - [ ] No write-authorization or convenient-path branch exists
 - [ ] The skill returns its one read-only report and stops
 - [ ] Only an independent recorder can persist exact returned bytes and bind the
-  artifact hash, record ID, canonical destination, and persisted-file hash through
+  artifact revision, record ID, canonical destination, and persisted-file revision through
   exact `cgs.performance-report-recorder-receipt/v1`
-- [ ] Canonical report/receipt paths are hash-addressed by
-  `performance_candidate_sha256` and embedded `record_id_sha256`; both are
+- [ ] Canonical report/receipt paths are ID-addressed by
+  `performance_candidate_revision` and embedded `record_id`; both are
   create-only with expected preimage ABSENT
 - [ ] Receipt repeats exact request, candidate/build/artifact/source,
   platform/hardware/scenario, budget/rule, policy/registry/adapter, raw-input and
-  normalized-trace bindings, not only unexpanded set digests
-- [ ] CAS is CREATED and read-back bytes/hash equal the original complete returned
+  normalized-trace bindings, not only unexpanded set revisions
+- [ ] CAS is CREATED and read-back bytes/revision equal the original complete returned
   report before `gate_evidence_eligible: true`
 - [ ] CONCERNS/OVER BUDGET may be durable conclusive gate evidence but keep
   `performance_targets_met: false`; only unchanged WITHIN BUDGET sets it true
@@ -467,7 +467,7 @@ causality is covered by Cases 4, 6, 7, 10, 11, 12, 13, and 14.
 - [ ] Cases 1-18 pass with required instrumentation
 - [ ] Mutation guard passes for the skill, adapter, and optional reviewer in every
   case, including denied mutation attempts
-- [ ] All canonical hashes and stable finding IDs independently recompute
+- [ ] All explicit revisions and stable finding IDs independently validate against producer metadata
 - [ ] PFP-004 through PFP-010 each have at least one positive and one negative or
   boundary assertion
 - [ ] No complete overall verdict occurs with partial matrix, trace, provenance,

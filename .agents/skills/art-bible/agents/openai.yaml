@@ -1,4 +1,4 @@
 interface:
   display_name: "Art Bible"
   short_description: "Author one evidence-bound AB-1 Art Bible"
-  default_prompt: "Use $art-bible with a cgs.art-bible-request/v2 manifest to author or revise one nine-section AB-1 artifact through bounded current evidence, explicit decision provenance, content-profile assertions, CAS writes, immutable authoring receipts, and an independent hash-bound review handoff."
+  default_prompt: "Use $art-bible with a cgs.art-bible-request/v2 manifest to author or revise one nine-section AB-1 artifact through bounded current evidence, explicit decision provenance, content-profile assertions, CAS writes, immutable authoring receipts, and an independent revision-bound review handoff."

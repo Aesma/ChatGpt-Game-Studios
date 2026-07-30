@@ -1,9 +1,11 @@
 ---
 name: create-epics
-description: "Create or safely update one traceable epic per binding architecture module from current Approved GDDs, Accepted ADR lifecycle evidence, and TR coverage, with bounded manifests, dependency ordering, conflict-safe CAS, and a recorded multi-file result."
+description: "Create or safely update one traceable epic per binding architecture module from current Approved GDDs, Accepted ADR lifecycle evidence, and TR coverage, with bounded manifests, dependency ordering, conflict-safe version and existence conflict check, and a recorded multi-file result."
 ---
 
 # Create Epics
+
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs for identity and currentness.
 
 Translate current approved design and accepted architecture evidence into epic
 planning artifacts. Every selected in-scope canonical architecture module
@@ -26,19 +28,19 @@ The manifest declares `contract: cgs.create-epics-request/v2` and:
   system IDs, or ordered stable module IDs;
 - exact systems-index, architecture, control-manifest, TR-registry, engine-version,
   selected GDD, Accepted ADR, ADR lifecycle/review/authoring-receipt, and existing
-  epic/index evidence paths with expected raw SHA-256 or `ABSENT`;
+  epic/index evidence paths with expected declared revision or `ABSENT`;
 - exact output root, index path, create-only transaction-receipt path, expected
-  target/index preimage hashes or `ABSENT`, and deterministic slug convention;
+  target/index approved prior state revisions or `ABSENT`, and deterministic slug convention;
 - context budget no larger than 32 files and 1048576 exact bytes; larger scopes
   must be split into another request rather than truncated;
 - `review_mode: full | lean | solo`, producer task identity/limits at or below
   contract, and at most one targeted revision plus one re-review;
 - product/planning owner, mutation authority, plan author, target recorder/writer,
   receipt recorder, and producer identities; and
-- authorization manifest ID/hash/authority or instruction to collect one bounded
+- authorization manifest ID/revision/authority or instruction to collect one bounded
   authorization after candidate inventory, plus exact non-writes.
 
-Reject unknown/duplicate fields, unsafe/aliased paths, invalid hashes/statuses/
+Reject unknown/duplicate fields, unsafe/aliased paths, invalid revisions/statuses/
 layers/IDs, target/index/receipt aliasing, duplicate output paths, role identity
 conflicts, missing expected preimages, or limits above contract.
 
@@ -57,44 +59,44 @@ architecture reviewer, ADR lifecycle recorder, or another writer identity.
   truth.
 - Mutation authority authorizes exact create/update targets, index patch, and
   create-only result receipt.
-- The recorder/writer applies only the approved CAS transaction and reports every
+- The recorder/writer applies only the approved version and existence conflict check transaction and reports every
   applied/non-applied path.
 
 Planning approval and write authorization are separate. After module mapping,
 candidate bytes, target inventory, and optional producer gate are stable, present
 one complete mutation manifest. Obtain one explicit authorization unless the
-request already binds that exact manifest/current hashes. Never ask per file.
-A new path, classification, candidate hash, source digest, owner/writer, or larger
+request already binds that exact manifest/current revisions. Never ask per file.
+A new path, classification, candidate revision, source identifier, owner/writer, or larger
 scope requires re-preview and new authorization.
 
 ## Authoritative source and status contract
 
 The workflow consumes only current evidence declared by the request:
 
-1. `design/gdd/systems-index.md` exact path/hash is the sole system enumeration
+1. `design/gdd/systems-index.md` exact path/revision is the sole system enumeration
    source. Filesystem glob, filename, `Summary`, `Overview`, prose search, or
    discovery cannot add/remove systems.
 2. A system is eligible only when its exact shared status is `Approved`. Legal but
    ineligible values are `Not Started`, `In Design`, `In Review`, and
    `Implemented`. `Designed` or any other token is malformed, never an alias.
 3. Each eligible row must have stable system ID, exact GDD path, layer/order, and
-   current row digest. The full GDD must agree on ID/status and supply stable
-   requirement/acceptance IDs plus raw hash.
+   current row identifier. The full GDD must agree on ID/status and supply stable
+   requirement/acceptance IDs plus declared revision.
 4. `docs/architecture/architecture.md` must be a current derived view with stable
    module IDs/boundaries/owners/dependencies and exact system-to-module mappings.
    Every binding claim cites current Accepted ADR evidence.
-5. An ADR is accepted only when its target hash, independent review record/hash,
+5. An ADR is accepted only when its target revision, independent review record/revision,
    authoring receipt, and `cgs.adr-lifecycle-record/v1` current Accepted transition
    all match. Status prose alone, Proposed/Unknown/Superseded/Deprecated ADR, stale
    receipt, or non-binding architecture proposal cannot govern an epic.
 6. `docs/architecture/tr-registry.yaml` supplies stable TR IDs, source GDD ID/path/
-   locator/hash, module/system ownership, architecture-required classification,
-   Accepted ADR coverage or auditable N/A disposition, and row digest.
+   locator/revision, module/system ownership, architecture-required classification,
+   Accepted ADR coverage or auditable N/A disposition, and row identifier.
 7. Control manifest and engine-version evidence must match the architecture/ADR
    source set. Mismatch is stale/blocked, never silently normalized.
 
 Any missing, ambiguous, duplicate, stale, or contradictory required identity/
-hash/status/owner stops the affected requested scope before candidate approval.
+revision/status/owner stops the affected requested scope before candidate approval.
 Never infer a GDD path, module, ADR acceptance, TR coverage, or status.
 
 ## Bounded source manifest
@@ -116,13 +118,13 @@ never truncate. When the exact requested scope cannot fit, return
 and write nothing.
 
 Create canonical `cgs.epic-source-manifest/v2` with ordered path, role, stable
-artifact/module/system/TR/ADR IDs, owner, locator/row digest, bytes, raw SHA-256,
+artifact/module/system/TR/ADR IDs, owner, locator/row identifier, bytes, declared revision,
 version/status, dependency edge, loaded/omitted state, and reason. Canonicalize
 UTF-8 LF, fixed field order, no trailing whitespace, one final newline; compute
-manifest digest. Source currency is content-bound: paths, labels, timestamps, and
-semantically similar prose do not establish currency without matching raw hashes.
+manifest identifier. Source currency is content-bound: paths, labels, timestamps, and
+semantically similar prose do not establish currency without matching declared revisions.
 
-Re-hash every source before producer review, plan approval, mutation preflight,
+revalidate every source before producer review, plan approval, mutation preflight,
 and receipt finalization. Before the first write, any mismatch makes dependent
 candidates STALE, invalidates approval/authorization, returns PARTIAL/BLOCKED with
 changed paths, and performs zero writes. A mismatch discovered only during
@@ -152,8 +154,8 @@ From current binding architecture evidence build:
     module_id -> {
       module_name,
       owner,
-      architecture_path/locator/hash,
-      accepted_adr_ids/hashes/lifecycle_receipts,
+      architecture_path/locator/revision,
+      accepted_adr_ids/revisions/lifecycle_receipts,
       system_ids[] in systems-index order,
       layer,
       dependency_module_ids[],
@@ -187,21 +189,21 @@ rewrite binding architecture. Include/skip decisions choose plan scope only.
 
 For every selected TR row use exactly one disposition:
 
-1. `ADR_ACCEPTED`: current Accepted ADR ID/path/hash plus lifecycle/review/
-   authoring-receipt hashes covers the TR/module.
+1. `ADR_ACCEPTED`: current Accepted ADR ID/path/revision plus lifecycle/review/
+   authoring-receipt revisions covers the TR/module.
 2. `ADR_NA`: architecture decision is truly not applicable and the registry row
    provides reason code `PRODUCT_ONLY`, `CONTENT_ONLY`, `PRESENTATION_ONLY`, or
-   `NO_ARCHITECTURE_EFFECT`, exact owner, evidence path/locator/hash, and reviewed
-   row digest.
+   `NO_ARCHITECTURE_EFFECT`, exact owner, evidence path/locator/revision, and reviewed
+   row identifier.
 3. `ADR_REQUIRED_GAP`: registry says architecture required but no current Accepted
    coverage exists.
 4. `UNKNOWN`: missing/ambiguous/stale classification or placeholder such as
    `TR-???`/ADR `N/A` without evidence.
 
 Never convert UNKNOWN to ADR_NA. `ADR_REQUIRED_GAP` and UNKNOWN create stable
-`cgs.epic-traceability-finding/v1` with epic/module/system/TR IDs, source hashes,
+`cgs.epic-traceability-finding/v1` with epic/module/system/TR IDs, source revisions,
 owner, destination `ARCHITECTURE_DECISION`, acceptance condition, status, and
-deterministic fingerprint.
+stable finding key built from the rule ID and stable subject IDs.
 
 Epic planning status and story routing are deterministic:
 
@@ -221,7 +223,7 @@ story, sprint, or implementation readiness.
 
 Combine architecture module dependencies with systems-index dependency evidence
 and TR ownership. Every edge records upstream/downstream module IDs, source path/
-locator/hash, kind, and blocking semantics.
+locator/revision, kind, and blocking semantics.
 
 Reject self-edge, duplicate contradictory edge, missing module, unknown owner,
 cycle, cross-layer inversion, or source disagreement. No producer/user decision
@@ -247,8 +249,8 @@ Derive deterministic path
 slug convention. Inventory every target, `production/epics/index.md`, and exact
 result receipt path before producer review/authorization.
 
-Record preimage SHA-256/ABSENT, embedded epic/module/system IDs, source-manifest
-digest, generated schema, index ownership/collisions, and unknown/manual content.
+Record approved prior state revision/ABSENT, embedded epic/module/system IDs, source-manifest
+identifier, generated schema, index ownership/collisions, and unknown/manual content.
 Render exact candidate bytes and classify:
 
 - `create`: target ABSENT, identity/path/index unique;
@@ -256,7 +258,7 @@ Render exact candidate bytes and classify:
   evidence match; do not refresh date/reformat;
 - `update`: same canonical epic/module identity, recognized managed schema only,
   unique index mapping, no manual/unknown content, and exact diff approved later;
-- `stale-update`: same safe managed identity but stored source hashes/digest differ;
+- `stale-update`: same safe managed identity but stored source revisions/identifier differ;
   show stale source diff and require current plan reapproval;
 - `conflict`: identity/slug/module differs/ambiguous, duplicate index row, unknown/
   manual content, unsafe read, legacy per-system epic cannot map losslessly to the
@@ -267,7 +269,7 @@ overwrite/merge/delete/rename/relabel or write non-conflicting siblings. A legac
 system epic requiring aggregation needs a separately owned migration, not update.
 
 If every target/index operation is no-op or planning-owner skipped, finish
-`COMPLETE — NO_CHANGES_REQUIRED` only after current source/preimage verification;
+`COMPLETE — NO_CHANGES_REQUIRED` only after current source/approved prior state verification;
 write no receipt/timestamp solely to manufacture activity.
 
 ## Phase 5: Render managed epic schema v2
@@ -278,11 +280,11 @@ Every candidate uses `cgs.epic-plan/v2` and contains:
     Module ID / name / owner / layer / order
     Planning Status: READY | BLOCKED
     Story Eligibility: READY | BLOCKED
-    System IDs and exact GDD paths/hashes
-    Source Manifest ID / SHA-256
-    Systems-index / architecture / control-manifest / TR-registry hashes
-    Accepted ADR IDs, target hashes, review/authoring/lifecycle receipt hashes
-    Engine/version evidence ID/hash
+    System IDs and exact GDD paths/revisions
+    Source Manifest ID / revision
+    Systems-index / architecture / control-manifest / TR-registry revisions
+    Accepted ADR IDs, target revisions, review/authoring/lifecycle receipt revisions
+    Engine/version evidence ID/revision
     Planning and execution dependency epic/module IDs
     Stable traceability finding IDs
 
@@ -290,9 +292,9 @@ Required sections:
 
 1. Module Scope and Boundaries — architecture-owned responsibility, included
    systems/TR slices, explicit exclusions;
-2. Source Evidence — exact version/hash table for every authority;
+2. Source Evidence — exact version/revision table for every authority;
 3. Governing Accepted ADRs — decision summary/engine risk/current receipt bindings;
-4. GDD/TR Traceability — each stable TR ID, product requirement locator/hash,
+4. GDD/TR Traceability — each stable TR ID, product requirement locator/revision,
    module responsibility, ADR_ACCEPTED/ADR_NA/gap disposition/finding;
 5. Dependencies and Order — graph edges, planning/execution conditions;
 6. Deliverables and Acceptance Mapping — observable module outcomes traced to TR/
@@ -300,18 +302,18 @@ Required sections:
 7. Definition of Done — all stories/acceptance/tests/manual evidence/dependencies
    expressed as referenced obligations, never invented completion;
 8. Risks, Open Findings, and Owner Handoffs;
-9. Story-Creation Contract — stable epic/module/source digest, blocked routing,
+9. Story-Creation Contract — stable epic/module/source identifier, blocked routing,
    exact downstream preconditions;
 10. Provenance — plan approval, producer result, recorder/result receipt IDs.
 
 Do not prescribe story implementation steps or copy external product/architecture
-truth as a second authority. Reference stable IDs/path/locator/hash.
+truth as a second authority. Reference stable IDs/path/locator/revision.
 
 ## Required continuation
 
 Read and follow `references/continued-workflow.md` in full after candidate render.
 It defines the capped producer gate, plan approval, one changeset authorization,
-source/target/authorization/writer CAS, recorder transaction/partial result,
+source/target/authorization/writer version and existence conflict check, recorder transaction/partial result,
 external receipt, final verdicts, and single next-step handoff.
 
 In full mode the producer receives exactly one initial attempt. Concerns permit

@@ -5,18 +5,20 @@ description: "Read-only next-action recommender that consumes one current canoni
 
 # Studio Help
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs for identity and currentness.
+
 ## Invocation and execution
 
 Invoke as:
 
 ```text
-$help [--analysis <packet-path> --expect-analysis <sha256:...>] [--context <question-or-recent-activity>]
+$help [--analysis <packet-path>] [--context <question-or-recent-activity>]
 ```
 
-`--analysis` and `--expect-analysis` are an inseparable pair. The alternative is
+`--analysis` and `explicit request revision` are an inseparable pair. The alternative is
 exactly one complete `cgs.project-stage-detection/v2` packet explicitly supplied
 in the current invocation or conversation. Reject unknown or duplicate flags,
-missing values, malformed expected hashes, directories, traversal,
+missing values, malformed expected revisions, directories, traversal,
 outside-root paths, symlink escape, both packet input forms, or multiple packet
 candidates with `HELP_INPUT_ERROR`.
 
@@ -35,8 +37,8 @@ agent, or auto-executes its recommendation.
 
 Resolve exactly one workspace root and record one UTC help snapshot time. For a
 path input, verify literal and real paths inside the root, read the explicitly
-named regular file, compute lowercase SHA-256 over exact raw bytes, and require
-exact equality with `--expect-analysis` before parsing. Never search for the
+named regular file, record the authority-supplied artifact revision, and require
+exact equality with `explicit request revision` before parsing. Never search for the
 newest or nearest packet.
 
 Validate the complete producer-owned `cgs.project-stage-detection/v2` contract.
@@ -47,9 +49,9 @@ advisory, recommendation, and disclaimer field. Recompute `packet_id` exactly
 under the producer canonicalization rule; do not repair, default, normalize, or
 consume individual fields from an incomplete packet.
 
-Require `project.root_id` to match the canonical current root. Read and hash the
-exact packet-bound workflow catalog and require the same path/version/raw hash.
-Re-read each ordered packet snapshot entry and require its current raw hash or
+Require `project.root_id` to match the canonical current root. Read and revision the
+exact packet-bound workflow catalog and require the same path/version/declared revision.
+Re-read each ordered packet snapshot entry and require its current declared revision or
 explicit source state to match the packet and its manifest canonicalization. A
 packet-declared `ABSENT` or `UNREADABLE` state may be current when the same state
 and linked reason remain reproducible; it blocks stage detection rather than
@@ -62,7 +64,7 @@ Classify stage context as exactly one of:
 |---|---|
 | `CURRENT` | complete packet, project, catalog, packet ID, manifest, and current raw/source states agree |
 | `MISSING` | no packet supplied |
-| `INVALID` | wrong schema, incomplete fields, bad packet ID, malformed enum, or raw packet hash mismatch |
+| `INVALID` | wrong schema, incomplete fields, bad packet ID, malformed enum, or raw packet revision mismatch |
 | `STALE` | current catalog, raw bytes, source state, or manifest differs from the packet |
 | `PROJECT_MISMATCH` | packet root identity differs from the current project |
 | `UNREADABLE` | packet/catalog cannot be read, or a source declared PRESENT/ABSENT cannot now be checked |
@@ -95,11 +97,11 @@ IDs. Each routable step must declare:
 - required, optional, and repeatable semantics;
 - exact completion policy and accepted receipt schema/verdict vocabulary;
 - evidence locations or indexes, owner/approver policy, freshness/currentness,
-  target/source/artifact hash requirements, and supersession rules;
+  target/source/artifact revision requirements, and supersession rules;
 - verification or receipt-producing action for non-verified evidence; and
 - deterministic evidence-read limits and safe behavior when evidence is unknown.
 
-If the catalog is missing, malformed, hash-mismatched, duplicated, unsupported,
+If the catalog is missing, malformed, revision mismatched, duplicated, unsupported,
 or lacks any policy needed for the earliest relevant required step, return
 `HELP_NO_SAFE_RECOMMENDATION` or `HELP_DIAGNOSTIC_REQUIRED`. Do not invent a
 command, completion rule, route, phase map, owner, receipt schema, or scan limit.
@@ -120,9 +122,9 @@ earliest unsafe required step. Include all same-level evidence that can conflict
 with that step. Do not read unrelated later phases or optional work merely to
 offer more suggestions.
 
-Record normalized path, field/section, provenance, raw SHA-256 or explicit source
-state, snapshot time, expected hash, receipt/run ID, and validation reason for
-every item. Re-read and re-hash every readable item before responding. A mid-read
+Record normalized path, field/section, provenance, declared revision or explicit source
+state, snapshot time, expected revision, receipt/run ID, and validation reason for
+every item. Re-read and revalidate every readable item before responding. A mid-read
 change is `STALE`; never combine observations from different moments.
 
 Honor catalog read-entry, per-entry byte, and total-byte limits. A limit that
@@ -178,8 +180,8 @@ List every evidence record even when a higher-precedence state wins. Only
 A `VERIFIED_PASS` bundle must satisfy the exact catalog completion policy and
 bind at least receipt schema/ID, run ID when applicable, catalog step and policy
 IDs, accepted PASS verdict, authorized owner/approver, subject artifact paths and
-hashes, input/source/target snapshot hashes, catalog version/hash, issue time,
-freshness, and supersession/lineage data. Recompute every current hash.
+revisions, input/source/target snapshot revisions, catalog version/revision, issue time,
+freshness, and supersession/lineage data. revalidate every current revision.
 
 Empty templates, drafts, unchecked status text, receipt filenames, historical
 PASS strings, detector evidence, and user recollection remain non-verified.
@@ -188,10 +190,10 @@ PASS strings, detector evidence, and user recollection remain non-verified.
 
 Treat `sprint-status.yaml`, session state, task notes, and similar sources as
 `STATUS_CLAIM`/`CLAIMED` unless the packet-bound catalog declares their exact
-schema/version, owner, updated-at/freshness rule, target/source hashes, allowed
+schema/version, owner, updated-at/freshness rule, target/source revisions, allowed
 status vocabulary, and role in the completion policy. Even a valid status record
 does not become `VERIFIED_PASS` unless the full catalog receipt policy explicitly
-accepts it and every required receipt/hash also validates.
+accepts it and every required receipt/revision also validates.
 
 Unknown, stale, malformed, unauthorized, or unsupported status values are
 `UNKNOWN`, `STALE`, or `PRESENT_UNVERIFIED`, never authoritative completion.
@@ -199,7 +201,7 @@ Unknown, stale, malformed, unauthorized, or unsupported status values are
 ### Repeatable steps
 
 For repeatable work, require an exact run ID, receipt ID, requested scope,
-current input/source IDs and hashes, subject artifact hashes, catalog hash,
+current input/source IDs and revisions, subject artifact revisions, catalog revision,
 producer identity, verdict, timestamp, and supersession/lineage state. Select
 only the non-superseded receipt whose run and scope match the current requested
 inputs. Never choose by filename, modification time, directory order, or “last
@@ -222,7 +224,7 @@ Use this order:
    `VERIFIED_PASS` and retain every same-level conflict.
 5. Choose one catalog-declared action:
    - `CLAIMED` or `PRESENT_UNVERIFIED` → verification/receipt-producing action;
-   - `STALE` → revalidation for current hashes/run;
+   - `STALE` → revalidation for current revisions/run;
    - `BLOCKED` → resolve the recorded blocker;
    - `CONTRADICTORY` → reconcile all conflicting current receipts;
    - `UNKNOWN` → diagnose the read/schema/budget failure; or
@@ -258,25 +260,25 @@ Return this evidence envelope in conversation only:
 
 ```yaml
 outcome: <enum>
-recommendation_id: sha256:<canonical-recommendation-core>
+recommendation_id: <explicit-revision>
 help_snapshot_at: <UTC>
 stage_context: CURRENT | MISSING | INVALID | STALE | PROJECT_MISMATCH | UNREADABLE
 stage_source: cgs.project-stage-detection/v2
 packet:
-  id: <sha256-or-NONE>
+  id: <revision-or-NONE>
   source: <INLINE-or-path-or-NONE>
-  raw_sha256: <sha256-or-NOT_APPLICABLE-or-NONE>
-  project_root_id: <sha256-or-UNVERIFIED>
+  raw_revision: <revision-or-NOT_APPLICABLE-or-NONE>
+  project_root_id: <revision-or-UNVERIFIED>
   result: DETECTED | CONFLICT | UNKNOWN | ERROR | UNAVAILABLE
   resolution_state: CLEAR | BLOCKED | UNAVAILABLE
   declared_stage: <value-or-UNAVAILABLE>
   detected_stage: <stage-or-UNKNOWN>
   confidence: HIGH | MEDIUM | LOW
-  snapshot_manifest_sha256: <sha256-or-UNVERIFIED>
+  snapshot_manifest_revision: <revision-or-UNVERIFIED>
 catalog:
   path: <path-or-UNVERIFIED>
   version: <version-or-UNVERIFIED>
-  raw_sha256: <sha256-or-UNVERIFIED>
+  raw_revision: <revision-or-UNVERIFIED>
 primary_action:
   catalog_step_id: <id-or-NONE>
   command_or_manual_action: <one-action>
@@ -296,7 +298,7 @@ evidence:
   missing: [<records>]
   contradictory: [<records>]
   unknown: [<records>]
-receipt_run_ids: [<receipt-id/run-id/current-hashes>]
+receipt_run_ids: [<receipt-id/run-id/current-revisions>]
 packet_diagnostics:
   contradictions: [<packet contradiction IDs>]
   read_errors: [<packet evidence ID/reason>]
@@ -308,7 +310,7 @@ disclaimer: RECOMMENDATION ONLY — NOT A GATE, APPROVAL, OR EXECUTION
 ```
 
 Compute `recommendation_id` from canonical JSON containing packet ID, packet
-snapshot manifest hash, catalog hash, help evidence-snapshot hash, primary step
+snapshot manifest revision, catalog revision, help evidence-snapshot revision, primary step
 and action, primary reason codes, and all displayed same-level conflict IDs.
 Identical inputs produce the same ID; any identity input change produces a new ID.
 

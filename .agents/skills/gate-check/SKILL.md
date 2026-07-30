@@ -1,7 +1,17 @@
 ---
 name: gate-check
-description: "Validate one catalog-authorized adjacent phase transition with a bounded, hash-bound, read-only assessment. Produces PASS, CONCERNS, FAIL, or PARTIAL without changing project stage."
+description: "Validate one catalog-authorized adjacent phase transition with a bounded, revision-bound, read-only assessment. Produces PASS, CONCERNS, FAIL, or PARTIAL without changing project stage."
 ---
+
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
 
 # Phase Gate Validation
 
@@ -67,8 +77,8 @@ the root and every admitted input. Capture:
 - invocation tokens after parsing;
 - run ID and UTC start timestamp;
 - source revision/ref and dirty state when available;
-- shared catalog path/hash and declared stage-schema/profile versions;
-- repository path/size/hash snapshot needed by the mutation guard; and
+- shared catalog path/revision and declared stage-schema/profile versions;
+- repository path/size/revision snapshot needed by the mutation guard; and
 - explicit evidence identities supplied by the caller.
 
 If the root is ambiguous, unsafe, or changes identity during preflight, return
@@ -86,10 +96,10 @@ full. Apply its **Versioned stage authority input** rules before profile work.
    canonical record for this project; it cannot override the catalog.
 3. Validate the authority record's schema, owner, current stage, transition-from,
    timestamp, source snapshot, previous-record chain, and required gate receipt.
-4. Re-hash all referenced authority/receipt inputs and enforce the catalog's
+4. re-read all referenced authority/receipt inputs and enforce the catalog's
    freshness/dirty-state policy.
 5. Read plain `production/stage.txt`, when present, only as a
-   `LEGACY_DECLARATION`: record path/hash/value and any contradiction. Never use
+   `LEGACY_DECLARATION`: record path/revision/value and any contradiction. Never use
    it to select or validate a stage.
 
 If the catalog lacks this contract, the record is missing/invalid/stale, the
@@ -101,7 +111,7 @@ result: ERROR
 reason_code: STAGE_AUTHORITY_UNVERIFIED | TRANSITION_SCHEMA_CONFLICT | AUTHORITY_CONFLICT
 transition_id: <requested-or-null>
 authority_record: <path-or-null>
-catalog_sha256: <hash>
+catalog_revision: <revision>
 stage_mutated: false
 ```
 
@@ -114,11 +124,11 @@ Do not emit a gate record or continue to artifacts.
   or mismatched edge is `ERROR`.
 - Without a transition argument, select the single catalog edge whose origin is
   the validated authority stage, show exact ID/origin/candidate plus authority
-  path/hash, and ask for confirmation. Rejection stops without a gate record.
+  path/revision, and ask for confirmation. Rejection stops without a gate record.
   Zero or multiple outgoing edges is `ERROR`; `Release` has no outgoing edge.
 
 Record `selection_mode: EXPLICIT | AUTHORITY_AUTO_CONFIRMED`, confirmation status,
-authority record path/hash, catalog graph version, and exact edge in the run state.
+authority record path/revision, catalog graph version, and exact edge in the run state.
 
 ### Resolve review mode once
 
@@ -137,17 +147,14 @@ full, then select exactly the profile mapped above. Verify the selected profile'
 ID, transition, origin, and candidate agree with the validated catalog edge.
 Mismatch or missing profile is `ERROR`.
 
-Build the scope manifest using only the selected profile's FIXED, MANIFEST, and
-EXPLICIT discovery rules. Record every admitted/excluded/unreadable/ambiguous
-path, read mode, size, current raw hash, and discovery source. Canonicalize and
-hash the complete manifest as `scope_manifest_sha256` before evaluation.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Track the selected profile's hard ceilings for:
 
 - manifest entries;
 - full-content file count;
 - context bytes;
-- bytes hashed;
+- bytes versioned;
 - tool actions; and
 - elapsed assessment time.
 
@@ -172,7 +179,7 @@ check schema from `evaluation-contract.md`.
 - Verify exact predicates; do not use file existence as proof of substantive
   content, approval, execution, playability, coverage, or quality.
 - Use structured extraction/search for large files when the profile permits it;
-  cite exact path/hash/field or section for expected and observed values.
+  cite exact path/revision/field or section for expected and observed values.
 - Run configured read-only test commands only when the selected profile names an
   exact execution manifest/runner and the action remains inside its budgets.
   Never synthesize a runner or infer PASS from source files or a zero exit code
@@ -183,7 +190,7 @@ check schema from `evaluation-contract.md`.
 ### Prior-result checks
 
 Use only the profile's producer adapter. Revalidate native schema, persistence,
-identity, complete dependency manifest, exact current hashes, coverage, producer
+identity, complete dependency manifest, exact current revisions, coverage, producer
 verdict, and profile threshold. Preserve native and normalized verdicts.
 
 A `cgs.review-evidence/v1` wrapper is acceptable only when the adapter allows it
@@ -196,7 +203,7 @@ an envelope, recorder receipt, persistence state, or legacy adapter. Do not acce
 - a report selected by glob/mtime;
 - conversation-only output where persistence is required;
 - a legacy verdict string or filename;
-- aggregate hashes that omit required per-input hashes; or
+- aggregate revisions that omit required per-input revisions; or
 - accepted risk/director opinion as approval.
 
 Missing bindings are `UNBOUND`; changed/mismatched/expired bindings are `STALE`.
@@ -212,7 +219,7 @@ including these non-substitutable rules:
 - performance requires a complete current `cgs.review-evidence/v1` plus
   `cgs.performance-report/v1` and `cgs.performance-budget/v2` chain, together
   with an independent `cgs.performance-report-recorder-receipt/v1` proving the
-  canonical create-only target, exact bytes, CAS/read-back, RECORDED persistence,
+  canonical create-only target, exact bytes, atomic conflict check/read-back, RECORDED persistence,
   and `gate_evidence_eligible: true`; the analyzer's `persistence: NONE`
   candidate alone is not gate evidence;
 - UX review requires durable gate evidence, while the current P1 producer's
@@ -220,31 +227,7 @@ including these non-substitutable rules:
 - cross-GDD review requires the `cgs.review-evidence/v1` envelope together with
   `cgs.cross-gdd-review/v2`, full effective scope, and complete coverage;
 - release-checklist remains a collector with `Gate Decision: NOT EVALUATED`;
-- localization requires the exact non-persisted `cgs.review-evidence/v1`
-  candidate from `localize/evidence-review@cgs.localize-evidence-review/v1`,
-  with `persistence: NONE`, `gate_evidence_candidate: true`,
-  `recorder_receipt: NONE`, unchanged native `QA_EVIDENCE_VERIFIED` or
-  `QA_EVIDENCE_REJECTED`, and exact path/raw-hash-bound
-  `cgs.localization-evidence-manifest/v2`
-  extension, plus an independent current
-  `cgs.localization-evidence-review-recorder-receipt/v1`. Recompute the generic
-  record and `localization_candidate_sha256`; revalidate
-  `cgs.localization-request/v2`, `cgs.localization-manifest/v2`, the declared
-  `cgs.localization-catalog/v2` path/raw hash/`catalog_identity_sha256`, every
-  ordered `cgs.localization-package/v1` path/raw-hash/ID/payload row, source/
-  keyset/per-key, locale/translation/freeze/build/font/UI/runtime/raw-evidence
-  identities, coverage, currentness and expiry. Require distinct recorder,
-  canonical create-only
-  `production/qa/evidence/localization/<localization_candidate_sha256>/reports/<record_id_sha256>.md`
-  and
-  `production/qa/evidence/localization/<localization_candidate_sha256>/receipts/<record_id_sha256>.yaml`
-  targets, `expected_report_preimage: ABSENT`,
-  `expected_receipt_preimage: ABSENT`, exact `persisted_report_sha256`/bytes,
-  `compare_and_set: CREATED`, matching `read_back_sha256`,
-  `read_back: VERIFIED`, `evidence_persistence: RECORDED`, and
-  `gate_evidence_eligible: true`. The generic candidate alone,
-  `PARTIAL_EVIDENCE`, changed verdict, self-recording, wrong/reused target,
-  stale binding, failed CAS/read-back, or unknown version is incomplete;
+- Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 - vertical slice requires one explicitly supplied current persisted
   `cgs.vertical-slice-evaluation-report/v2` PROCEED graph;
 - smoke requires persisted `cgs-smoke-check-receipt/v2` sprint PASS with
@@ -268,11 +251,7 @@ explicitly states `evidence_source: ATTESTATION_ALLOWED`. Ask all exact versione
 questions together and require `YES|NO|UNKNOWN`, accountable operator, observation
 time, and subject identity.
 
-Validate or emit `cgs.gate-attestation/v1` exactly as defined by
-`evaluation-contract.md`. Bind it to the profile, transition, complete scope
-manifest hash, and exact artifact/build/report hashes. Missing, ambiguous,
-expired, or mismatched attestations never pass. Do not ask a human to replace an
-objective test, review, runtime, legal, certification, or localization receipt.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 The attestation remains conversational. Do not save or sign it for the user.
 
@@ -289,7 +268,7 @@ Apply the **Director advisory panel** contract from `evaluation-contract.md`.
   `producer`/`PR-PHASE-GATE`, and
   `art-director`/`AD-PHASE-GATE`.
 
-Pass only the exact transition/candidate, scope manifest hash, bounded artifact
+Pass only the exact transition/candidate, scope manifest revision, bounded artifact
 summary, and domain context. Each gate gets one attempt and a 120-second deadline.
 Preserve READY/CONCERNS/NOT READY as native advisory results. A director cannot
 change a blocking check or force FAIL. Any enabled missing, timed-out, blocked,
@@ -324,7 +303,7 @@ Challenge the draft using the actual check set:
 2. Re-scan normalized checks for accidental PASS from unknown/manual/unbound/
    stale/advisory evidence.
 3. Verify every profile check ID appears exactly once.
-4. Re-hash authority, scope manifest, and accepted evidence.
+4. re-read authority, scope manifest, and accepted evidence.
 5. Reapply the decision table and record whether the verdict changed.
 
 Do not generate a fixed number of generic questions or expand scope during this

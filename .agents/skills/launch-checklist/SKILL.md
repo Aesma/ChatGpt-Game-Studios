@@ -13,29 +13,29 @@ decision, and a recorded assessment grants no deployment or publication authorit
 
 Invoke only as:
 
-`$launch-checklist --request <path> --expect-request <sha256>`
+`$launch-checklist --request <path> --request <revision>`
 
 Require both flags exactly once. With a missing/invalid flag or unknown argument, show
 that usage and stop before project reads, evidence loading, output, delegation, or
 writes. Reject directories, globs, traversal, moving aliases, symlink/junction/reparse
 escape, unsafe IDs, unsupported schemas, duplicate/unknown fields, and expected/actual
-request hash mismatch.
+request revision mismatch.
 
 The request is strict `cgs.launch-checklist-request/v2` and declares:
 
 - mode `ASSESS` or `SIMULATE`, stable release/run/assessment IDs, and operation
   `analyze-only` or `record-assessment`; SIMULATE permits only analyze-only;
-- one exact `cgs.launch-candidate-manifest/v2` path/hash;
-- candidate/build IDs, artifact path/hash, source commit/tree/ref/tag, engine/toolchain
+- one exact `cgs.launch-candidate-manifest/v2` path/revision;
+- candidate/build IDs, artifact path/revision, source commit/tree/ref/tag, engine/toolchain
   and full platform/configuration/region/channel/store matrix;
 - exact launch-policy, authority-registry and `cgs.launch-risk-profile/v1` paths,
-  schemas, versions and hashes;
-- one exact `cgs.launch-test-evidence-manifest/v2` path/hash plus ordered evidence and
+  schemas, versions and revisions;
+- one exact `cgs.launch-test-evidence-manifest/v2` path/revision plus ordered evidence and
   dependency inventory keyed by stable check ID;
-- exact applicable root-to-assessment-target `AGENTS.md` path/hash chain in precedence
+- exact applicable root-to-assessment-target `AGENTS.md` path/revision chain in precedence
   order;
-- optional exact `release-evidence-checklist` Schema Version 2 report path/hash and
-  optional previous launch-assessment path/hash, never latest-file discovery;
+- optional exact `release-evidence-checklist` Schema Version 2 report path/revision and
+  optional previous launch-assessment path/revision, never latest-file discovery;
 - evidence cutoff trusted-time receipt and fixed item/file/byte/depth/time budgets;
 - for recording, the immutable assessment root, recorder, mutation authority/expiry,
   create-new capability, maximum report bytes and explicit non-writes.
@@ -81,36 +81,31 @@ The request/policy may lower but never raise:
 
 Read only explicit inventory paths. Stop before exceeding a ceiling and return
 `Workflow Status: PARTIAL` with required/loaded/failed/omitted/stale/manual counts,
-paths/hashes, exact reason and identity-bound resume cursor. Never silently sample,
+paths/revisions, exact reason and identity-bound resume cursor. Never silently sample,
 truncate or render omitted inputs as zero/PASS. Partial loading affecting any HARD
 check deterministically blocks readiness; advisory-only partial loading yields
 CONCERNS but never LAUNCH_READY.
 
-## Canonical identities and statuses
+## stable business identities and statuses
 
-Use strict schema parsers and record SHA-256 of exact raw bytes before parsing.
+Use strict schema parsers and record path, byte count, and declared revision before parsing.
 Canonical serialization is UTF-8/LF/NFC, schema field order, sorted sets and stable
 check-ID order.
 
 ```text
-launch_candidate_identity_sha256 = sha256(release/product/version + candidate/build/
-  artifact/source + platform/configuration/region/channel/store matrix + manifest)
-risk_requirement_identity_sha256 = sha256(risk-profile bytes + launch-policy rule +
-  selected risk dimensions + derived soak/recovery/capacity requirements/rationale)
-instruction_chain_sha256 = sha256(ordered AGENTS paths/raw hashes + precedence decisions)
-test_evidence_manifest_sha256 = sha256(candidate identity + platform matrix + ordered
-  test/run/evidence entries and dependency hashes)
-evidence_snapshot_sha256 = sha256(cutoff-time receipt + ordered check/evidence raw hashes,
-  states, bindings, coverage and omissions)
-check_row_sha256 = sha256(check/policy/gate/applicability + evidence states/hashes +
-  check status + owner + attestation/N-A/waiver + reason)
-assessment_identity_sha256 = sha256(assessment ID + launch candidate/risk/policy/
-  authority/instruction/test/evidence identities + ordered row hashes + verdict + delta)
+launch_candidate_id = stable release/product/candidate/build business ID tuple
+launch_candidate_revision = explicit candidate revision
+risk_requirement_id = stable risk-profile and policy-rule IDs
+risk_requirement_revision = explicit policy revision
+instruction_chain_revision = explicit instruction-set revision
+test_evidence_manifest_revision = explicit manifest revision
+evidence_snapshot_revision = explicit snapshot revision at the declared cutoff
+check_row_revision = explicit monotonic row revision
+assessment_id = LAUNCH-{candidate-id}-{UTC-run-id}
+assessment_revision = explicit monotonic assessment revision
 ```
 
-Identical request and input bytes produce identical rows, counters, reasons, verdict
-and assessment identity. Generated-at is taken from the trusted cutoff receipt or kept
-outside the identity.
+The same declared request revision and input revisions produce the same rows, counters, reasons, and verdict. Each execution has its own UTC run ID; generated-at comes from the trusted cutoff receipt.
 
 Use independent fields:
 
@@ -154,12 +149,12 @@ result only `Simulation Projection`. Simulation is never durable evidence.
 
 ## Phase 1 — Validate request, instructions, candidate, and policy
 
-Strictly parse and hash request, launch/candidate/build manifests, launch policy,
+Strictly parse and revision request, launch/candidate/build manifests, launch policy,
 authority registry, risk profile, test evidence manifest and indexes. Reject malformed
-syntax, duplicate keys, unsupported artifacts and hash/identity drift.
+syntax, duplicate keys, unsupported artifacts and revision/identity drift.
 
 Read in full every applicable `AGENTS.md` from project root through the requested
-assessment target. Verify ordered paths/hashes, apply closest-file precedence and
+assessment target. Verify ordered paths/revisions, apply closest-file precedence and
 record loaded, shadowed and effective rules. A missing, extra, reordered, mismatched or
 unresolved instruction conflict is ERROR with zero writes.
 
@@ -167,23 +162,23 @@ The launch candidate manifest binds release/product/version/launch-window identi
 candidate/build/artifact/source, immutable tag, engine/toolchain, full target matrix,
 mandatory domains, stable check IDs, gate classes, applicability, owner, exact evidence
 contract/index entry, freshness/expiry, expected observable, N/A/waiver authority and
-policy hashes. Do not invent or omit domains/checks.
+policy revisions. Do not invent or omit domains/checks.
 
-Re-hash local artifact bytes; remote artifact needs a trusted content/build attestation.
+re-read local artifact bytes; remote artifact needs a trusted content/build attestation.
 Build receipt binds artifact/source/toolchain/config/platform, argv, result/exit code,
-times, producer/verifier and complete log hash. Any core mismatch is ERROR.
+times, producer/verifier and complete log revision. Any core mismatch is ERROR.
 
 ## Phase 2 — Load the complete test-evidence manifest — LC-004
 
 `cgs.launch-test-evidence-manifest/v2` binds the exact launch candidate, release policy,
-QA-plan/test-selection/source hashes, full target matrix and each required check/test
+QA-plan/test-selection/source revisions, full target matrix and each required check/test
 entry. Each execution entry contains run/test IDs, platform/configuration/device,
-runner/tool/parser versions, exact command/argv and environment/config hash, start/end
+runner/tool/parser versions, exact command/argv and environment/config revision, start/end
 times, exit code, result, per-test result/duration/source/requirement mapping, skips/
-omissions/quarantines/crashes, raw output/log/artifact paths+hashes, completeness and
-receipt signature/hash.
+omissions/quarantines/crashes, raw output/log/artifact paths+revisions, completeness and
+receipt signature/revision.
 
-Re-hash every entry and dependency. A plan, template, selected test list, discovered
+re-read every entry and dependency. A plan, template, selected test list, discovered
 file, CI badge, log directory or exit code without complete bound logs/results cannot
 PASS. The full platform/configuration matrix required by policy must be covered; one
 platform cannot stand in for another. Different build/commit/artifact, changed test
@@ -191,7 +186,7 @@ source/selection/log, incomplete result or stale tool/policy binding is UNKNOWN/
 never PASS. Exact CURRENT conclusive negative evidence becomes FAIL under policy.
 
 An optional `release-evidence-checklist` Schema Version 2 is normalized input only.
-Re-hash its request/release/candidate/build/deployment/policy/instruction/evidence/
+re-read its request/release/candidate/build/deployment/policy/instruction/evidence/
 checklist identities, every row and dependency. Its Gate Decision must be
 NOT_EVALUATED. File existence, NORMALIZED workflow, PASS counts or waivers never
 substitute for launch-specific checks or the launch verdict.
@@ -206,8 +201,8 @@ authority.
 
 Compute required soak duration, workload/profile, checkpoint cadence, sample coverage,
 capacity margin, recovery objectives and any required repetitions exclusively from
-those typed inputs/rules. Record rule ID/version/hash, input values, derived minimums,
-rounding/unit normalization and rationale as `risk_requirement_identity_sha256`.
+those typed inputs/rules. Record rule ID/version/revision, input values, derived minimums,
+rounding/unit normalization and rationale as `risk_requirement_revision`.
 Never impose a universal 8-hour duration, pick a convenient tier, lower a requirement,
 or infer missing risk inputs. Missing/ambiguous policy or profile makes the affected
 HARD checks UNKNOWN and blocks readiness.
@@ -222,23 +217,23 @@ Failed/insufficient/inconclusive execution cannot pass even if a report says COM
 Use only exact indexed persisted artifacts and recursively verify their dependencies.
 
 - Smoke: exact candidate-bound sprint/full scope, PASS, eligible handoff, current QA
-  plan/test manifest, complete automated/manual/log hashes; quick/targeted/incomplete/
+  plan/test manifest, complete automated/manual/log revisions; quick/targeted/incomplete/
   warning/stale/unpersisted variants cannot PASS where full launch scope is required.
 - Regression: current selection/requirements/test-source/failure-sensitivity plus one
   matching complete execution receipt for every active stable test; selection alone,
   gaps, awaiting run, stale, quarantine without authorized disposition or missing
   sensitivity is UNKNOWN.
 - Soak/performance/capacity: apply Phase 3 requirements and exact protocol/manifest/raw/
-  sample/result hashes.
+  sample/result revisions.
 - Playtest/accessibility/manual experience: completed candidate-bound session/case,
-  exact participant/profile/device/scope, raw/ledger/attachment hashes and policy-
+  exact participant/profile/device/scope, raw/ledger/attachment revisions and policy-
   required attester/verifier; protocols and subjective model interpretation cannot PASS.
 - Test-evidence review: exact persisted full-scope candidate-bound review with adequate
-  evidence, passing execution, eligible closure and all referenced hashes. Conversation,
+  evidence, passing execution, eligible closure and all referenced revisions. Conversation,
   targeted, partial, stale, unavailable or mismatched review cannot PASS.
 
 Source/security/config/content/localization/assets scans require structured bounded
-receipts with commit/roots/rules/tool/argv/exit/counts/findings/omissions/log hashes.
+receipts with commit/roots/rules/tool/argv/exit/counts/findings/omissions/log revisions.
 Never run an ad hoc unbounded scan or infer a pass from file presence.
 
 ## Phase 5 — Verify external receipts and immutable sign-offs — LC-007
@@ -250,20 +245,20 @@ distribution and similar external facts default to UNKNOWN/MANUAL_REQUIRED.
 A valid `cgs.external-launch-receipt/v2` binds stable check IDs, exact release/candidate/
 build/artifact/platform/region/channel/account/product, external object/submission/job/
 version ID, expected observable and result, issuer/provider authority, source API/export
-payload path/hash, issued/observed/verified times, expiry, verifier identity/method and
-signature/receipt hash. Screenshots, copied URLs/emails, local policy files and model
+payload path/revision, issued/observed/verified times, expiry, verifier identity/method and
+signature/receipt revision. Screenshots, copied URLs/emails, local policy files and model
 statements are not receipts.
 
 A valid `cgs.launch-owner-attestation/v2` binds attestation ID, owner identity/role and
 authority-registry proof, stable check IDs, release/candidate/build/artifact/source/
-platform scope, exact statement/result, reviewed paths/hashes, signed-at, valid-until,
-signature or identity-verification receipt and attestation hash. The workflow never
+platform scope, exact statement/result, reviewed paths/revisions, signed-at, valid-until,
+signature or identity-verification receipt and attestation revision. The workflow never
 creates, fills, copies or signs it. Typed names, checkbox/signature blocks, silence,
 or older-build attestations remain UNKNOWN.
 
 Any change to candidate/build/artifact/source/platform, reviewed bytes, policy or
 authority registry makes a build-bound receipt/attestation STALE. N/A needs the same
-immutable identity/time/scope/hash plus explicit applicability rule and rationale.
+immutable identity/time/scope/revision plus explicit applicability rule and rationale.
 Waiver/risk acceptance remains separate from evidence readiness and cannot yield PASS.
 
 ## Phase 6 — Validate recovery rehearsal and objectives — LC-006
@@ -271,11 +266,11 @@ Waiver/risk acceptance remains separate from evidence readiness and cannot yield
 A plan/runbook or pipeline presence never proves rollback, restore, failover, hotfix or
 go-live recovery. Require `cgs.recovery-rehearsal-receipt/v2` with rehearsal ID; exact
 candidate/build/artifact and production-equivalent environment/data/schema; immutable
-runbook/procedure hash; accountable owner, operator and verifier; injected failure;
-executed step IDs; start/end timestamps; command/log/artifact/backup/restore hashes;
+runbook/procedure revision; accountable owner, operator and verifier; injected failure;
+executed step IDs; start/end timestamps; command/log/artifact/backup/restore revisions;
 policy/risk-profile RTO, RPO and hotfix objectives with units; measured recovery time,
 recovery point/data loss, integrity/consistency checks and service validation; outcome,
-unresolved findings and signed receipt hash.
+unresolved findings and signed receipt revision.
 
 Compare measured values to the exact Phase 3 objectives. A CURRENT conclusive failed
 rehearsal or exceeded RTO/RPO is HARD FAIL and LAUNCH_BLOCKED. Missing, plan-only,
@@ -289,72 +284,65 @@ Emit every ordered stable check once as `cgs.launch-check-row/v2`:
 
 ```text
 check ID, domain, gate class, applicability, expected observable, owner,
-evidence type/path/raw hash/dependencies/state/freshness/coverage, candidate/platform
-binding, check status, N/A/attestation/waiver references, exact reason, row hash
+evidence type/path/raw revision/dependencies/state/freshness/coverage, candidate/platform
+binding, check status, N/A/attestation/waiver references, exact reason, row revision
 ```
 
 Assign PASS/FAIL/UNKNOWN/NOT_APPLICABLE only by policy typed rules. Preserve complete
 load counters by domain/gate/platform. Evidence retrieval/parsing/limit/timeout failure
 sets visible PARTIAL/UNAVAILABLE coverage; never suppress an omitted row.
 
-If an exact predecessor path/hash is supplied, verify schema/report/assessment/candidate/
-policy namespace and stable IDs. Compare row hashes as RESOLVED, REGRESSED, CHANGED,
+If an exact predecessor path/revision is supplied, verify schema/report/assessment/candidate/
+policy namespace and stable IDs. Compare row revisions as RESOLVED, REGRESSED, CHANGED,
 UNCHANGED, ADDED or REMOVED. Prior evidence never affects current verdict. A candidate,
 build, artifact or reviewed-byte change makes old bound receipts/sign-offs stale; an
 invalid predecessor makes comparison unavailable, never a latest-file search.
 
 ## Phase 8 — Derive readiness and immutable assessment identity — LC-008/009
 
-Apply the deterministic algorithm only after all rows/counters exist. Report blockers,
-concerns and unknown/manual/stale/partial/unavailable evidence separately. Compute the
-assessment identity from every frozen input/row/verdict/delta.
+Apply the readiness algorithm only after all rows/counters exist. Report blockers, concerns, and unknown/manual/stale/partial/unavailable evidence separately. Allocate the assessment ID from the stable candidate business ID and UTC run ID; bind every frozen input, row, verdict, and delta through explicit revisions.
 
 The immutable report target is exactly:
 
-```text
-production/releases/{release-id}/{launch-candidate-identity-sha256}/launch-readiness/
-{assessment-identity-sha256}.md
-```
+    production/releases/{release-id}/{candidate-id}/launch-readiness/{assessment-id}.md
 
-Both digest segments are full 64-character lowercase hex. Each assessment ID/run and
-changed input produces a new identity/path. Never use a date-only, mutable, short-hash,
-latest, or in-place status file, and never overwrite an existing assessment.
+Use assessment_id = LAUNCH-{candidate-id}-{UTC-run-id}. Record candidate_revision and assessment_revision explicitly inside the report. Each run gets a create-only path; never use a date-only, mutable, latest, or in-place status file, and never overwrite an existing assessment.
 
 `LAUNCH_READY`, `LAUNCH_BLOCKED` and `CONCERNS` are objective evidence verdicts only.
 The user/separate launch gate remains the single final decision owner. This workflow
 does not call gate-check or team-release, and the gate must consume exact assessment/
-candidate/policy/evidence hashes and independently record its decision.
+candidate/policy/evidence revisions and independently record its decision.
 
 ## Phase 9 — Analyze, simulate, or create one report
 
-ASSESS + analyze-only returns exact report bytes/hash with `Recorder Status:
+ASSESS + analyze-only returns exact report bytes/revision with `Recorder Status:
 ANALYSIS_ONLY` and zero writes. SIMULATE begins and ends with:
 
 `SIMULATION — NOT A LAUNCH VERDICT — NO SIGN-OFFS OR FILES CREATED`
 
 It returns `Readiness Verdict: UNDETERMINED`, a clearly labeled Simulation Projection,
-`Recorder Status: SIMULATION`, no durable report path/hash, and zero files, signatures,
+`Recorder Status: SIMULATION`, no durable report path/revision, and zero files, signatures,
 receipts, submissions, messages or external actions.
 
 ASSESS + record-assessment may create the one absent canonical report only. Its parent
 must already exist. Preview one mutation manifest containing request/launch candidate/
-risk/policy/authority/instruction/test/evidence/row/assessment/delta hashes, target
-expected ABSENT, exact report bytes/hash, recorder, create-new primitive, maximum bytes,
+risk/policy/authority/instruction/test/evidence/row/assessment/delta revisions, target
+expected ABSENT, exact report bytes/revision, recorder, create-new primitive, maximum bytes,
 authority/expiry and non-writes.
 
-Immediately before create, CAS every input/dependency/object/artifact hash, cutoff and
+Immediately before create, CAS every input/dependency/object/artifact revision, cutoff and
 authority validity, parent identity, report bytes and target ABSENT state. Use atomic
 no-replace/create-new; if unavailable, target exists or anything drifts, write nothing.
 Flush, close, strictly parse, read back and verify internal identities/rows/counters/
-verdict/report hash. A post-create mismatch is RECOVERY_REQUIRED with exact expected/
-actual hashes; never overwrite or silently delete evidence.
+verdict/report revision. A post-create mismatch is RECOVERY_REQUIRED with exact expected/
+observed revisions; never overwrite or silently delete evidence.
 
 ## Phase 10 — Terminal packet and stop
 
 Return `cgs.launch-checklist-result/v2` with request/release/candidate/build/artifact/
 source/platform/risk/policy/authority/instruction/test/evidence/assessment identities;
 coverage counters; every row/status; QA/external/manual/recovery results; blockers,
-concerns and omissions; verdict/projection; recorder/target/hash or NOT_WRITTEN;
+concerns and omissions; verdict/projection; recorder/target/revision or NOT_WRITTEN;
 Launch Decision NOT_RECORDED; authority NONE fields; non-writes; and exactly one legal
 next owner/action.
 

@@ -30,7 +30,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - [ ] Author never writes Approved or invalid status Designed
 - [ ] Legal index states are exactly Not Started, In Design, In Review, Approved, Implemented
 - [ ] No inline or per-section formal review gate exists
-- [ ] Fresh-task whole-artifact review handoff is target-hash-bound
+- [ ] Fresh-task whole-artifact review handoff is target-revision-bound
 - [ ] Implementation/ADR material is forbidden in GDD and routed to ADR/TECH
 - [ ] Every section write has semantic and transactional preflight
 - [ ] Complete changeset is authorized once before first write
@@ -41,16 +41,16 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - [ ] All eight required sections have content-level assertions
 - [ ] Context ordering, 12-file cap, 524288-byte cap, manifest, and overflow behavior are explicit
 - [ ] Registry claim classes and legacy-unverified behavior are explicit
-- [ ] Transactional preflight re-hashes target, registry, and cited evidence
+- [ ] Transactional preflight re-reads target, registry, and cited evidence
 - [ ] Consultation is capped at one per section, three per run, one 60-second attempt
 - [ ] Consultation result states are complete, partial, timeout, failed, skipped
 - [ ] requirement, applicability, content_state, and workflow_state are distinct
 - [ ] Optional absence and bounded not-applicable semantics are explicit
 - [ ] Supported optional names are Visual/Audio Requirements, UI Requirements, and Open Questions
 - [ ] Decision records define exactly four authority classes
-- [ ] Resume preserves origin mode, authorized scope, and baseline hashes
-- [ ] Content mutation invalidates prior review-handoff hashes
-- [ ] Author handoff binds target SHA, content profile, and context-manifest digest
+- [ ] Resume preserves origin mode, authorized scope, and baseline revisions
+- [ ] Content mutation invalidates prior review-handoff revisions
+- [ ] Author handoff binds target SHA, content profile, and context-manifest reference ID
 
 ---
 
@@ -62,7 +62,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 
 - game-concept.md and systems-index.md exist.
 - movement target/checkpoint do not exist.
-- registry and index hashes are recorded.
+- registry and index revisions are recorded.
 
 **Input:**
 
@@ -76,7 +76,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 3. Every section follows decision, draft, semantic preflight, approval,
    transactional preflight, atomic write, and checkpoint update.
 4. Whole-artifact validation changes only Status to In Review and records target
-   plus context-manifest hashes.
+   plus context-manifest revisions.
 5. It returns an independent-review handoff and stops.
 
 **Assertions:**
@@ -86,7 +86,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - [ ] No review, sign-off, ADR, or engine document was created
 - [ ] Each canonical required section occurs exactly once
 - [ ] Status is In Review, never Approved
-- [ ] Checkpoint target hash equals final GDD hash
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - [ ] No inline review gate ran
 
 ---
@@ -98,7 +98,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - Existing GDD has substantive Overview, Detailed Rules, and Dependencies.
 - Formulas/Edge Cases are placeholders; Acceptance Criteria is missing.
 - All other required sections are substantive.
-- Baseline body hashes are recorded.
+- Baseline body revisions are recorded.
 
 **Input:**
 
@@ -115,7 +115,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 **Assertions:**
 
 - [ ] Only baseline missing, empty, or placeholder-only required sections are eligible
-- [ ] Baseline substantive body hashes are unchanged
+- [ ] Baseline substantive body revisions are unchanged
 - [ ] No optional section is auto-created
 - [ ] Whole-artifact handoff occurs only when all sections validate
 
@@ -126,7 +126,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 **Fixture:**
 
 - Existing complete GDD has substantive Formulas.
-- Target and Formulas body hashes are recorded.
+- Target and Formulas body revisions are recorded.
 
 **Input:**
 
@@ -134,7 +134,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 
 **Expected behavior:**
 
-1. Current Formulas body/hash are shown.
+1. Current Formulas body/revision are shown.
 2. User makes and approves a new product decision.
 3. Preflight verifies target, evidence, and selected baseline.
 4. Exactly Formulas changes; other bodies are preserved.
@@ -218,7 +218,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 2. Registry candidates become checkpoint handoffs only.
 3. Index and registry remain unchanged.
 4. No review/sign-off evidence is written.
-5. Author outputs target hash and fresh-task review command, then stops.
+5. Author outputs target revision and fresh-task review command, then stops.
 
 **Assertions:**
 
@@ -240,15 +240,15 @@ context, registry evidence, decisions, consultations, and review invalidation.
 
 **Expected behavior:**
 
-- A may compare-and-set external index status Approved.
+- A may atomic conflict check external index status Approved.
 - B returns STALE REVIEW and changes nothing.
 - C cannot authorize Approved.
 - Index pre-state mismatch returns CONCURRENT INDEX CHANGE.
 
 **Assertions:**
 
-- [ ] Approval evidence includes exact target/hash
-- [ ] Recorder re-hashes immediately before mutation
+- [ ] Approval evidence includes exact target/revision
+- [ ] Recorder re-reads immediately before mutation
 - [ ] Only external recorder may set Approved
 - [ ] Stale/partial/advisory/non-APPROVED/missing-receipt evidence changes nothing
 
@@ -317,7 +317,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 
 1. Candidates use stable documented order.
 2. No file is partially loaded.
-3. Checkpoint records loaded path/role/size/hash, omitted candidates, totals,
+3. Checkpoint records loaded path/role/size/revision, omitted candidates, totals,
    and CONTEXT_BUDGET_EXCEEDED.
 4. Status becomes partial and GDD remains unchanged.
 
@@ -335,7 +335,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 
 **Fixture:**
 
-- A: legacy registry has no source hash.
+- A: legacy registry has no source revision.
 - B: current target-owned claim.
 - C: current external-owner claim contradicts draft.
 - D: registry changes after semantic preflight.
@@ -352,7 +352,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - [ ] Six claim classes are defined
 - [ ] Semantic claim comparison precedes approval
 - [ ] Conflict-driven draft change requires new approval
-- [ ] Transaction preflight re-hashes registry/evidence
+- [ ] Transaction preflight re-reads registry/evidence
 - [ ] Registry is never edited
 
 ---
@@ -376,7 +376,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 **Assertions:**
 
 - [ ] Complete/partial/timeout/failed/skipped states exist
-- [ ] Section, role, question, hashes, required, status, fallback are recorded
+- [ ] Section, role, question, revisions, required, status, fallback are recorded
 - [ ] Fourth run consultation and second section adviser are rejected
 - [ ] Missing specialist output is not invented
 
@@ -413,7 +413,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 **Fixture:**
 
 - A user product choice has alternatives.
-- Hard constraint has current owner path/section/hash.
+- Hard constraint has current owner path/section/revision.
 - A curve derives from accepted inputs.
 - Engine storage choice appears.
 
@@ -427,7 +427,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 **Assertions:**
 
 - [ ] Exactly four decision classes exist
-- [ ] Hard constraint has path/section/hash
+- [ ] Hard constraint has path/section/revision
 - [ ] Derived constraint preserves derivation
 - [ ] Written section references decision IDs
 - [ ] User preference cannot silently override external-owner evidence
@@ -441,7 +441,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - A checkpoint originated new.
 - B originated fill-gaps with two baseline gaps.
 - C originated revise-section with substantive selected baseline.
-- All v3 hashes match.
+- All v3 revisions match.
 
 **Expected behavior:**
 
@@ -462,17 +462,17 @@ context, registry evidence, decisions, consultations, and review invalidation.
 
 **Fixture:**
 
-- Complete GDD/checkpoint has prior handoff target hash.
+- Complete GDD/checkpoint has prior handoff target revision.
 - One revise-section mutation is authorized.
 - Variant B changes loaded context before final validation.
 
 **Expected behavior:**
 
-1. First mutation records review_handoff.invalidated_target_sha256 and
+1. First mutation records review_handoff.invalidated_target_revision and
    invalidation_reason, clears active handoff, and demotes stale status to
    In Design.
 2. New handoff appears only after artifact/current-context validation.
-3. Handoff binds target hash, profile, manifest digest.
+3. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 4. Variant B remains partial with no new review request.
 
 **Assertions:**
@@ -494,7 +494,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 **Expected behavior:**
 
 1. Static/spec/category axes map each assertion to current evidence.
-2. Results record implementation/spec hashes.
+2. Results record implementation/spec revisions.
 3. Shared catalog writer registers only actual results in separate scope.
 4. Unexecuted or stale fields remain visible.
 
@@ -503,7 +503,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - [ ] Three validation axes are separate
 - [ ] Failures/unexecuted checks are not hidden
 - [ ] This candidate does not mutate shared catalog
-- [ ] Current hashes are required for registration
+- [ ] Current revisions are required for registration
 
 ---
 
@@ -517,7 +517,7 @@ context, registry evidence, decisions, consultations, and review invalidation.
 - [ ] GDD contains design truth only
 - [ ] Author completion is at most In Review
 - [ ] One independent whole-artifact review follows authoring
-- [ ] Recorder approval is current-hash-bound and compare-and-set
+- [ ] Recorder approval is current-revision-bound and atomic conflict check
 - [ ] Workflow stops after review handoff
 - [ ] system-gdd/v2 and checkpoint v3 state are deterministic
 - [ ] Context, registry, and decisions are provenance-bound
@@ -533,16 +533,24 @@ context, registry evidence, decisions, consultations, and review invalidation.
 | `DSG-005` | Section 2; continuation Section 5 | Case 9: `Eight sections have explicit content assertions`; `Any failure blocks In Review` |
 | `DSG-006` | Section 3 bounded context | Case 10: `Both numeric limits are enforced`; `Required context is not silently omitted` |
 | `DSG-007` | Section 3 registry claim classification | Case 11: `Six claim classes are defined`; `Registry is never edited` |
-| `DSG-008` | Continuation Sections 4c–4d | Case 11: `Semantic claim comparison precedes approval`; `Transaction preflight re-hashes registry/evidence` |
+| `DSG-008` | Continuation Sections 4c–4d | Case 11: `Semantic claim comparison precedes approval`; `Transaction preflight re-reads registry/evidence` |
 | `DSG-009` | Continuation Section 6 | Case 12: `Complete/partial/timeout/failed/skipped states exist`; `Missing specialist output is not invented` |
 | `DSG-010` | Section 2; continuation Section 5 optional material | Case 13: `Optional absence is not a gap`; `Exactly three supported optional names exist` |
 | `DSG-011` | Continuation Section 4a | Case 14: `Exactly four decision classes exist`; `Derived constraint preserves derivation` |
 | `DSG-012` | Section 1; continuation Section 9 | Cases 4/15: `Missing checkpoint makes resume unavailable`; `Resume never broadens permission` |
 | `DSG-013` | Continuation Sections 4e and 8 | Case 16: `Prior evidence is not copied to changed bytes`; `Stale target/context cannot authorize Approved` |
-| `DSG-014` | SKILL P1 audit traceability and required-spec boundary | Case 17: `Three validation axes are separate`; `Failures/unexecuted checks are not hidden`; `Current hashes are required for registration` |
+| `DSG-014` | SKILL P1 audit traceability and required-spec boundary | Case 17: `Three validation axes are separate`; `Failures/unexecuted checks are not hidden`; `Current revisions are required for registration` |
 
 This matrix traces every exact P1 ID from the 2026-07-20 design-system audit.
 DSG-001 through DSG-004 are separately classified P0 findings. Slug collision
 matrices and stable entity identifiers remain separate DSG-015/DSG-016 work and
 are intentionally outside this P1 specification. The rows are written-contract
 coverage, not executed test results.
+
+## Path-first integrity regression
+
+1. Invoke the skill with canonical project-relative paths and no caller-supplied content-derived token.
+2. Verify that schema versions, stable IDs, permissions, lifecycle state, and path or ID collisions remain enforced.
+3. Verify that generated IDs are allocated independently of file bytes.
+4. For a permitted mutation, change a declared revision or target state after preview and verify that the atomic conflict check stops the write.
+5. Verify that an authorized unchanged candidate is staged beside the target, atomically replaced, re-read, and rolled back on failure.

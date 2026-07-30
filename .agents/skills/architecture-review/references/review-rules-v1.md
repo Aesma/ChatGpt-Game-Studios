@@ -1,5 +1,7 @@
 # Architecture Review Ruleset v1
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs.
+
 This file is normative for `$architecture-review`.
 
 ```yaml
@@ -24,15 +26,15 @@ smaller available context but never raised ad hoc. Record effective limits.
 
 | Evidence kind | Sole authority | Derived/non-authoritative consumers |
 |---|---|---|
-| Player-visible product rule and its approval | Current exact-hash owner-approved GDD | Requirement registry, ADR, architecture, story, test |
-| Stable technical requirement ID/lifecycle | Owner-approved requirement lifecycle record bound to immutable GDD source text/hash | Traceability and architecture indexes |
+| Player-visible product rule and its approval | Current exact-revision owner-approved GDD | Requirement registry, ADR, architecture, story, test |
+| Stable technical requirement ID/lifecycle | Owner-approved requirement lifecycle record bound to immutable GDD source text/revision | Traceability and architecture indexes |
 | Binding technical decision/lifecycle | Current usable ADR within approved requirement bounds | `architecture.md`, control/traceability indexes, stories |
 | Stable system identity and lifecycle enum | Systems-index owner/recorder | GDDs, architecture, planning and review reports |
 | Architecture aggregation | No independent authority; `architecture.md` is a derived view | Gate and implementation planning |
 | Traceability/coverage index | No independent authority; derived from exact source links | Gate dashboards and reports |
 | Implementation claim | Current story/change evidence explicitly linked to governing requirement/ADR | Derived trackers |
-| Test execution result | Authoritative test-run evidence store for exact test and target hashes | Stories, reports, dashboards |
-| Engine/API compatibility fact | Pinned project VERSION and directly applicable current reference hash | ADR/architecture prose |
+| Test execution result | Authoritative test-run evidence store for exact test and target revisions | Stories, reports, dashboards |
+| Engine/API compatibility fact | Pinned project VERSION and directly applicable current reference revision | ADR/architecture prose |
 
 Rules of precedence:
 
@@ -102,8 +104,8 @@ Apply these empty-set outcomes:
 ## Finding record and stable identity
 
 ```yaml
-id: ARCH-<rule-slug>-<first-12-fingerprint-hex>
-fingerprint_sha256: <lowercase SHA-256>
+id: ARCH-<rule-slug>-<stable-source-id>-<sequence>
+finding_key: <rule-id>:<stable-source-id>:<location-id>
 rule_id: <ID from this file>
 evidence_class: DETERMINISTIC | INCOMPLETE | INFORMATIONAL
 severity: BLOCKER | INCOMPLETE | INFO
@@ -112,7 +114,7 @@ summary: <bounded factual statement>
 targets:
   - source_id: <stable requirement/ADR/story/test ID or null>
     path: <canonical project-relative path>
-    sha256: <exact source hash>
+    revision: <exact source revision>
     location: <field, heading, or line>
 destination_owner: <actual authority owner>
 acceptance_test: <objective evidence needed to close>
@@ -121,13 +123,11 @@ reviewer_roles: []
 accepted_risk_record_ids: []
 ```
 
-Fingerprint is SHA-256 over canonical JSON containing `rule_id`, sorted stable
-source IDs, and sorted path/hash/location evidence tuples. Exclude wording,
-severity, reviewer, date, and run ID. Same evidence retains identity across
-runs; changed exact bytes produce new identity.
+Build the finding key from `rule_id`, sorted stable source IDs, and normalized location IDs. Exclude wording,
+severity, reviewer, date, and run ID. The same business IDs retain identity across runs; changed evidence updates the explicit revision and state without changing the finding ID.
 
 Risk acceptance is never a finding disposition. `RESOLVED_IN_INPUT` requires
-current hashed evidence satisfying the recorded acceptance test. Reports may
+current versioned evidence satisfying the recorded acceptance test. Reports may
 retain imported resolved evidence but never mark an open item resolved from user
 permission alone.
 
@@ -157,7 +157,7 @@ a blocker.
 | `AR.ENGINE.INCOMPATIBLE_CURRENT_DECISION` | Current ADR decision explicitly requires an API/version/module prohibited by current pinned evidence | `BLOCKER / OPEN` under blocker proof |
 | `AR.TEST.CURRENT_EXECUTED_FAIL` | Authoritative current run for required exact test/target reports failure | `BLOCKER / OPEN` |
 | `AR.REQUIREMENT.CANDIDATE_OR_UNAPPROVED` | Prose lacks stable ID/current lifecycle/source binding/approval | `INCOMPLETE / OPEN`; never allocate an ID |
-| `AR.REQUIREMENT.REGISTRY_DRIFT` | Registry source text/path/hash differs from current GDD evidence | `INCOMPLETE / OPEN`; GDD remains product authority |
+| `AR.REQUIREMENT.REGISTRY_DRIFT` | Registry source text/path/revision differs from current GDD evidence | `INCOMPLETE / OPEN`; GDD remains product authority |
 | `AR.TRACE.UNVERIFIED_LINK` | Only implicit, fuzzy, filename, system-name, ambiguous, or stale relationship exists | `INCOMPLETE / OPEN` |
 | `AR.COVERAGE.NONCRITICAL_REQUIREMENT_GAP` | Admitted requirement without explicit critical/Foundation/Core classification has no usable ADR | `INCOMPLETE / OPEN`; unknown criticality also remains incomplete |
 | `AR.TEST.STALE_OR_MISSING_EXECUTION` | Required test evidence is stale, discovered-only, absent, ambiguous, or unreadable | `INCOMPLETE / OPEN` |
@@ -165,7 +165,7 @@ a blocker.
 | `AR.INPUT.MISSING_OR_STALE` | Required input class is missing, stale, unreadable, or unknown | `INCOMPLETE / OPEN` |
 | `AR.COVERAGE.BUDGET_OR_SHARD` | Artifact/index/edge/byte limit is exceeded or planned shard/check remains unchecked | `INCOMPLETE / OPEN` |
 | `AR.REVIEWER.REQUIRED_FAILURE` | Required reviewer is not DONE on exact manifest/check set | `INCOMPLETE / OPEN` |
-| `AR.REVIEWER.EVIDENCE_CONFLICT` | Same fingerprint has incompatible facts, outcome, or evidence hashes | `INCOMPLETE / OPEN`; retain all provenance |
+| `AR.REVIEWER.EVIDENCE_CONFLICT` | Same finding key has incompatible facts, outcome, or evidence revisions | `INCOMPLETE / OPEN`; retain all provenance |
 | `AR.DERIVED.DRIFT` | Derived architecture/traceability/index content disagrees with current source authority | `INCOMPLETE / OPEN` only when the derived artifact is required by declared scope; otherwise `INFO / INFORMATIONAL` |
 
 Legacy labels, imported reviewer severity, inferred Foundation/Core wording, or

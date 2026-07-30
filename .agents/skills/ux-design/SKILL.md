@@ -1,6 +1,6 @@
 ---
 name: ux-design
-description: "Author one versioned screen, HUD, or interaction-pattern UX artifact through explicit modes, content-profile validation, bounded evidence, decision provenance, CAS writes, and a hash-bound review receipt."
+description: "Author one versioned screen, HUD, or interaction-pattern UX artifact through explicit modes, content-profile validation, bounded evidence, decision provenance, version and existence conflict check writes, and a version-bound review receipt."
 ---
 
 # UX Design
@@ -30,26 +30,26 @@ The manifest contract is cgs.ux-design-request/v2 and must declare:
 - stable artifact ID, run ID, profile, and screen ID where applicable;
 - profile: ux-spec, hud-design, or interaction-pattern-library;
 - mode: create, fill-gaps, revise-sections, or migrate-schema;
-- exact target path and expected raw-byte SHA-256, or ABSENT for create;
+- exact target path and expected declared revision, or ABSENT for create;
 - exact selected stable section IDs for revise-sections and expected baseline
-  body hashes;
-- exact context paths/hashes, requirement IDs/owners, and one-hop navigation
-  neighbor IDs/paths/hashes;
+  body revisions;
+- exact context paths/revisions, requirement IDs/owners, and one-hop navigation
+  neighbor IDs/paths/revisions;
 - requested context budgets not exceeding 16 files and 524288 exact bytes;
 - platform contract cgs.platform-input-profile/v1: stable profile ID, version,
-  exact path/hash, supported platforms/devices/inputs, resolutions/aspects,
+  exact path/revision, supported platforms/devices/inputs, resolutions/aspects,
   safe zones, text scales, and primary input, or MISSING;
-- accessibility foundation stable ID, version/tier, exact path/hash, external
+- accessibility foundation stable ID, version/tier, exact path/revision, external
   owner, or MISSING;
-- pattern-library path/hash and external UX-library owner, or ABSENT;
-- player-journey and art-bible exact paths/hashes when applicable;
+- pattern-library path/revision and external UX-library owner, or ABSENT;
+- player-journey and art-bible exact paths/revisions when applicable;
 - product decision owner, mutation authority, target writer task identity,
   checkpoint recorder task identity, maximum revision rounds at most 3,
   consultation limits at or below this contract, and checkpoint root;
 - exact target/checkpoint mutation boundary and explicit non-writes.
 
 IDs are stable slugs/UUIDs, never dates alone. create requires an absent target;
-other modes require an existing target matching expected hash. The exact target
+other modes require an existing target matching expected revision. The exact target
 must be stated:
 
 - ux-spec: design/ux/<screen-id>.md
@@ -65,12 +65,11 @@ person, or unavailable external task as byte author/recorder.
 
 ## Versioned profile and content contracts
 
-The exact bytes of this SKILL.md, one NUL byte, and the exact bytes of
-references/continued-workflow.md define author_schema_hash. Record:
+Use explicit schema versions; do not derive them from file contents. Record:
 
 - Profile Version: ux-profile-schema-v2
 - Content Profile: cgs.ux-content-profile/v2
-- Schema Version: ux-design-author-sha256:<author_schema_hash>
+- Schema Version: ux-design-author-v2
 
 Each section has one stable ID and exact H2 heading. Emit its ID immediately
 before the heading:
@@ -121,7 +120,7 @@ viewport/scale assumptions; it is not pixel authority.
 
 | ID | Exact required H2 heading | Content-profile contract |
 |---|---|---|
-| PAT-01 | Overview | Scope, external owner, consumers, profile/hash provenance |
+| PAT-01 | Overview | Scope, external owner, consumers, profile/revision provenance |
 | PAT-02 | Pattern Catalog | Canonical ID/name/category/version/status/entry anchor |
 | PAT-03 | Patterns | Owner-approved states, inputs, feedback, accessibility, use/non-use |
 | PAT-04 | Gaps & Patterns Needed | Local proposal IDs/source screen/owner/disposition |
@@ -137,7 +136,7 @@ may merge canonical patterns.
 Every target begins with:
 
     > **Artifact Type**: ux-spec | hud-design | interaction-pattern-library
-    > **Schema Version**: ux-design-author-sha256:<author_schema_hash>
+    > **Schema Version**: ux-design-author-<author_schema_version>
     > **Profile Version**: ux-profile-schema-v2
     > **Content Profile**: cgs.ux-content-profile/v2
     > **Artifact ID**: <stable-artifact-id>
@@ -148,11 +147,11 @@ Every target begins with:
     > **Platform Target**: <declared targets | DEPENDENCY-GAP>
     > **Platform Profile ID**: <stable ID | MISSING>
     > **Platform Profile Version**: <version | MISSING>
-    > **Platform Profile SHA-256**: <sha256 | MISSING>
+    > **Platform Profile revision**: <revision | MISSING>
     > **Input Profile IDs**: <stable IDs | MISSING>
-    > **Accessibility Foundation**: <ID/version/path/hash/tier | MISSING>
+    > **Accessibility Foundation**: <ID/version/path/revision/tier | MISSING>
     > **Requirement IDs**: <stable IDs and owners>
-    > **Context Manifest SHA-256**: <hash>
+    > **Context Manifest revision**: <revision>
     > **Authoring Receipt ID**: <stable receipt ID | PENDING>
 
 Temporary user answers cannot replace a platform/input/accessibility source. If
@@ -192,32 +191,29 @@ close or waive a blocking owner gap.
 ## Phase 0: Parse invocation and validate manifest identity
 
 Parse flags first. Then read only the exact request manifest and validate its
-contract, IDs, profile, mode, target/checkpoint roots, expected hashes, owners,
+contract, IDs, profile, mode, target/checkpoint roots, expected revisions, owners,
 budgets, and non-writes. Do not read design context or ask design questions
 before target/profile identity is known.
 
 Invalid/unsupported input returns ERROR with no artifact status/verdict/write.
-Missing mandatory identity/owner/hash evidence returns BLOCKED with no write.
+Missing mandatory identity/owner/revision evidence returns BLOCKED with no write.
 
 ## Phase 1: Inventory target and authorize one mutation boundary
 
-Read applicable AGENTS.md root-to-target and the profile schema sources. For an
-existing target, read raw bytes, compute target and section-body hashes, reject
-duplicate IDs/headings, and inventory every required section against
-cgs.ux-content-profile/v2.
+Read applicable AGENTS.md root-to-target and the profile schema sources. For an existing target, read it once, validate its explicit target revision and section IDs, reject duplicate IDs/headings, and inventory every required section against `cgs.ux-content-profile/v2`.
 
 - fill-gaps may select only MISSING/PLACEHOLDER content.
 - revise-sections may select explicit SUBSTANTIVE sections whether evidence is
   CURRENT or STALE.
 - migrate-schema maps legacy headings/content to stable IDs and preserves exact
-  content hashes; ambiguous/unmappable fragments block until decided.
+  content revisions; ambiguous/unmappable fragments block until decided.
 - create scopes all profile-required sections against ABSENT target.
 
 Present one mutation manifest before broader context loading:
 
     Operation: <mode>
     Target: <exact path>
-    Expected target: <hash | ABSENT>
+    Expected target: <revision | ABSENT>
     Checkpoint root: <exact path>
     Artifact/run/profile/schema IDs: <values>
     Authorized section IDs/body baselines: <ordered list>
@@ -231,7 +227,7 @@ Per-section product approval is not filesystem authorization. New path/section,
 operation, owner, writer, or larger limit requires a revised manifest and new
 authorization.
 
-## Phase 2: Load bounded hash-manifested context
+## Phase 2: Load bounded revision-manifested context
 
 After authorization, select candidates in stable order:
 
@@ -251,18 +247,18 @@ context file, including AGENTS and target, against hard maxima 16 files and
 size before load; never truncate or partially read.
 
 The context manifest records ordered path, role, artifact/requirement IDs,
-selected range, bytes, raw SHA-256, owner, dependency edge, loaded/omitted
+selected range, bytes, declared revision, owner, dependency edge, loaded/omitted
 state, and reason. Canonicalize UTF-8 LF, fixed field order, no trailing
-whitespace, one final newline; record digest.
+whitespace, one final newline; record identifier.
 
 For an existing target, mark its manifest entry mutable-target-baseline. Its
-baseline hash remains provenance but is not revalidated as external context
+baseline revision remains provenance but is not revalidated as external context
 after authorized target writes. Target currentness is always checked separately
-by target/section CAS. All other loaded entries are context evidence and must
-continue to match their manifest hashes.
+by target/section version and existence conflict check. All other loaded entries are context evidence and must
+continue to match their manifest revisions.
 
 If any mandatory/selected candidate exceeds budget, is missing, or mismatches
-declared hash, append at most an authorized PARTIAL checkpoint with reason
+declared revision, append at most an authorized PARTIAL checkpoint with reason
 CONTEXT_BUDGET_EXCEEDED or CONTEXT_EVIDENCE_INVALID, leave target unchanged, and
 stop. Required context is never silently omitted.
 
@@ -272,20 +268,20 @@ the first product question.
 
 ## Phase 3: Build create, fill, revision, or migration plan
 
-For every authorized section, list baseline body hash/state, content assertion
-results, source requirements/hashes, decision dependencies, exact byte
+For every authorized section, list baseline body revision/state, content assertion
+results, source requirements/revisions, decision dependencies, exact byte
 region/anchor, and planned operation.
 
 For migration, produce deterministic old-heading to stable-ID mapping, proposed
-moves, before hashes, and unresolved fragments. Never discard, duplicate, or
+moves, before revisions, and unresolved fragments. Never discard, duplicate, or
 rewrite moved content silently.
 
 Each selected content write uses compare-and-set:
 
-1. re-read target and require current hash equals checkpoint current target hash;
-2. require current section body equals stored baseline/current body hash;
-3. re-hash context evidence used by the draft;
-4. require authorization manifest hash and writer identity still match;
+1. re-read target and require current revision equals checkpoint current target revision;
+2. require current section body equals stored baseline/current body revision;
+3. revalidate context evidence used by the draft;
+4. require authorization manifest revision and writer identity still match;
 5. reject any out-of-scope byte change.
 
 Target mismatch returns ERROR — CONCURRENT TARGET CHANGE. Evidence mismatch
@@ -295,7 +291,7 @@ that transaction.
 ## Phase 4: Create/migrate skeleton and initialize receipt chain
 
 After context and plan succeed, the target writer performs only authorized
-CAS writes. Create writes the exact profile skeleton with placeholders.
+version and existence conflict check writes. Create writes the exact profile skeleton with placeholders.
 fill/revise preserves every unselected byte. Migration applies only approved
 mappings.
 
@@ -305,27 +301,27 @@ The checkpoint recorder appends under:
       <sequence>-<phase>.yaml
 
 Every record uses cgs.ux-design-checkpoint/v2 and includes previous checkpoint
-path/hash, request/context/schema/authorization/target hashes, mode, full section
+path/revision, request/context/schema/authorization/target revisions, mode, full section
 state/assertions, decision/revision IDs, writer identities, operation ledger,
 consultation results, open findings, budgets, next legal step, UTC timestamp,
-and canonical payload SHA-256. Sequence and previous hash use create-if-absent
+and canonical payload revision. Sequence and previous revision use create-if-absent
 compare-and-set; never rewrite a checkpoint.
 
-After the final target content/header CAS and read-back hash, the final immutable
+After the final target content/header version and existence conflict check and read-back revision, the final immutable
 record additionally declares
-cgs.ux-authoring-receipt/v1 and binds pre/post target hashes, context manifest,
+cgs.ux-authoring-receipt/v1 and binds pre/post target revisions, context manifest,
 content/profile/author schema, applied section/revision/decision IDs,
-authorization hash, unresolved findings, author/recorder identities, and exact
+authorization revision, unresolved findings, author/recorder identities, and exact
 target path. Its stable receipt ID may appear in the target header, but its path
-or hash must not: the receipt binds the already-final target and therefore stays
-external to avoid a target/receipt hash cycle. The receipt is authoring evidence,
+or revision must not: the receipt binds the already-final target and therefore stays
+external to avoid a target/receipt revision cycle. The receipt is authoring evidence,
 not review approval.
 
-Read back and hash every write. Drift, wrong writer, or path expansion halts
+Read back and validate the declared revision for every write. Drift, wrong writer, or path expansion halts
 PARTIAL/BLOCKED without reverting user work. Receipt construction failure after
 verified final target content leaves the content status unchanged but reports
 Workflow Verdict PARTIAL, emits no review handoff, and names the exact
-unreceipted target hash.
+unreceipted target revision.
 
 ## Required continuation
 
@@ -337,9 +333,9 @@ recovery, final receipt, and independent-review handoff.
 ## Non-implementation and review boundary
 
 After authoring, stop. A fresh independent reviewer reads the exact target,
-content/profile/author schema, context digest, and authoring receipt path/hash.
+content/profile/author schema, context identifier, and authoring receipt path/revision.
 Only a separate authorized recorder may persist review evidence after rechecking
-all hashes.
+all revisions.
 
 READY_FOR_REVIEW is not approval or implementation readiness. A conversation
 approval, author self-review, stale receipt, stale target, or advisory review
@@ -354,7 +350,7 @@ claim that the case was executed.
 | Audit ID | Normative clause | Dedicated spec evidence |
 |---|---|---|
 | `UXD-005` | Phase 1 mode/content/evidence inventory and Phase 3 mutation planning | Case 4 — `UXD-C04-A`, `UXD-C04-B`, and `UXD-C04-C` |
-| `UXD-006` | Phase 2 bounded hash-manifested context | Case 6 — `UXD-C06-A`, `UXD-C06-B`, and `UXD-C06-C` |
+| `UXD-006` | Phase 2 bounded revision-manifested context | Case 6 — `UXD-C06-A`, `UXD-C06-B`, and `UXD-C06-C` |
 | `UXD-007` | Phase 0 request resolution before Phase 2 context/questions | Case 7 — `UXD-C07-A`, `UXD-C07-B`, and `UXD-C07-C` |
 | `UXD-008` | `references/continued-workflow.md` Phase 5 decision and revision provenance | Case 8 — `UXD-C08-A`, `UXD-C08-B`, and `UXD-C08-C` |
 | `UXD-009` | Required artifact header and independent state axes for platform/input evidence | Case 9 — `UXD-C09-A`, `UXD-C09-B`, and `UXD-C09-C` |

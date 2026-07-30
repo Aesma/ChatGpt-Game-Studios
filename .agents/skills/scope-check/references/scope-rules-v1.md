@@ -1,5 +1,7 @@
 # Scope-check rules v1
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs.
+
 This file is normative for `scope-check`.
 
 ## Contract identity
@@ -14,8 +16,7 @@ This file is normative for `scope-check`.
 - Generic envelope: `cgs.review-evidence/v1`
 - Scope-check extension: `cgs.scope-check/v2`
 
-Compute `skill_bundle_sha256` over exact `SKILL.md` bytes, one NUL byte, exact
-`continued-workflow.md` bytes, one NUL byte, then exact `scope-rules-v1.md` bytes.
+Record the explicit `skill_bundle_revision` supplied for the declared versions of `SKILL.md`, `continued-workflow.md`, and `scope-rules-v1.md`.
 
 ## Fixed limits
 
@@ -35,7 +36,7 @@ Compute `skill_bundle_sha256` over exact `SKILL.md` bytes, one NUL byte, exact
 | Estimate/capacity receipts | 256 |
 | Dependency/interface edges | 4096 |
 | Acceptance/test mapping rows | 4096 |
-| Paths per input re-hash batch | 64 |
+| Paths per input revalidate batch | 64 |
 
 Bounds do not authorize silent truncation. Preserve every discoverable identity
 as `UNCHECKED_LIMIT` and return `PARTIAL` after a meaningful core comparison. A
@@ -47,12 +48,12 @@ core artifact too large to establish identity/schema/completeness returns
 Every input artifact uses:
 
 ```text
-<canonical-project-relative-path>@sha256:<64-lowercase-hex>
+<canonical-project-relative-path>
 ```
 
 The path must resolve to one regular file inside repository root without an
-escaping symlink/junction. Hash exact bytes before parsing and require equality.
-The identity is path plus byte hash plus internal schema/artifact ID/version;
+escaping symlink/junction. Validate exact bytes before parsing and require equality.
+The identity is path plus artifact revision plus internal schema/artifact ID/version;
 neither path nor filename alone is immutable identity.
 
 ## Baseline artifact contract
@@ -67,11 +68,11 @@ source_revision: {commit_or_content_revision, recorded_at}
 approval:
   state: APPROVED
   decision_id: <stable ID>
-  record: <path@sha256>
+  record: <path@revision>
   approver_id: <identity>
-  authority_ref: <path@sha256 plus role/scope>
+  authority_ref: <path@revision plus role/scope>
   approved_at: <ISO-8601 UTC>
-  signature_or_record_digest: <immutable proof>
+  signature_or_record_id: <immutable proof>
 completeness:
   state: COMPLETE
   declared_entry_count: <integer>
@@ -85,8 +86,8 @@ entries:
 exclusions: [{scope_id_or_non_goal_id, semantic_fields}]
 ```
 
-The external exact byte hash is authoritative for bytes; the internal record must
-bind that hash through its approval record. Missing/invalid approval, authority,
+The external explicit artifact revision is authoritative for version selection; the internal record must
+bind that revision through its approval record. Missing/invalid approval, authority,
 version, parent/timebox, stable IDs, completeness, or normalization schema is
 `INSUFFICIENT EVIDENCE`. Do not infer approval from status prose or location.
 
@@ -103,7 +104,7 @@ baseline_ref:
   baseline_id: <exact ID>
   baseline_version: <exact version>
   path: <exact canonical path>
-  sha256: <exact baseline bytes hash>
+  revision: <explicit baseline revision>
 completeness:
   state: COMPLETE
   declared_entry_count: <integer>
@@ -123,7 +124,7 @@ The current manifest, not implementation evidence, defines current scope. Silent
 deletion of baseline IDs without an explicit removal row is `CONFLICT`.
 
 Story/epic/sprint/milestone/feature artifacts are eligible only when they directly
-implement this schema or point through an exact `path@sha256` to one unique
+implement this schema or point through an exact `path@revision` to one unique
 companion manifest. Fuzzy parent lookup is forbidden.
 
 ## Semantic normalization and stable Scope IDs
@@ -134,7 +135,7 @@ fields, stable reference encoding, null handling, and canonical serialization.
 
 Title, heading level, row number, rendering order, Markdown formatting, comments,
 and timestamps are presentation fields unless the schema explicitly declares one
-semantic. Hash the canonical semantic payload plus acceptance boundary per Scope
+semantic. Validate the canonical semantic payload plus acceptance boundary per Scope
 ID. Never use an LLM summary, fuzzy similarity, or item count as semantic identity.
 
 Duplicate/missing Scope IDs, incompatible adapters, schema disagreement, or
@@ -144,7 +145,7 @@ canonicalization failure is `UNMAPPED`/`CONFLICT` and blocks a complete result.
 
 Delta type:
 
-| Baseline | Current | Semantic hashes | Delta type |
+| Baseline | Current | Semantic revisions | Delta type |
 |---|---|---|---|
 | absent | present | n/a | `ADDED` |
 | present | absent with explicit removal | n/a | `REMOVED` |
@@ -153,21 +154,21 @@ Delta type:
 | missing/non-unique/uncanonicalizable ID | any | unknown | `UNMAPPED` |
 | incompatible parent/link/record or silent deletion | any | conflicting | `CONFLICT` |
 
-Fingerprint material:
+finding key material:
 
 ```text
 baseline ID + baseline version + parent scope ID + stable Scope ID + delta type
 ```
 
-Exclude artifact/entry hashes, current manifest ID/version, title, row/line,
+Exclude artifact/entry revisions, current manifest ID/version, title, row/line,
 timestamp, decision state, risk state, and impact. Delta ID is:
 
 ```text
-SCP-DELTA-<delta-type>-<first-12-of-SHA256(fingerprint)>
+SCP-DELTA-<scope-id>-<delta-type>-<stable-entry-id>-<sequence>
 ```
 
-Each delta stores fingerprint, Scope ID, type, baseline/current artifact and entry
-hashes, source locations, semantic field-level differences, authority state,
+Each delta stores finding key, Scope ID, type, baseline/current artifact and entry
+revisions, source locations, semantic field-level differences, authority state,
 allowed-state classification, risk references, impact evidence, and notes.
 
 ## Change-decision authority
@@ -181,19 +182,19 @@ state: FINAL_APPROVED | PROPOSED | REJECTED | SUPERSEDED
 operation: ADD | REMOVE | MODIFY
 scope_ids: [<exact IDs>]
 delta_ids: [<exact IDs>]
-baseline: {id, version, path, sha256}
-current: {manifest_id, path, sha256, entry_hashes}
+baseline: {id, version, path, revision}
+current: {manifest_id, path, revision, entry_revision}
 parent_scope_id: <ID>
 timebox_or_release_id: <ID>
 decision_owner: {identity, role}
-authority_ref: {path, sha256, permitted_parent_scope, permitted_operations}
+authority_ref: {path, revision, permitted_parent_scope, permitted_operations}
 rationale: <product decision rationale>
 decided_at: <ISO-8601 UTC>
-signature_or_record_digest: <immutable proof>
+signature_or_record_id: <immutable proof>
 supersedes: [<decision IDs>]
 ```
 
-Admission requires exact operation/Scope/Delta/hash/parent/timebox match, current
+Admission requires exact operation/Scope/Delta/revision/parent/timebox match, current
 owner authority for that scope/operation, final state, timestamp, immutable proof,
 and no conflicting final record.
 
@@ -206,7 +207,7 @@ Authority state:
   `inspect` allowlist -> `UNVERIFIED_RECORD`;
 - owner lacks verified authority -> `UNAUTHORIZED_RECORD`;
 - record superseded/outdated for the pair -> `STALE_RECORD`;
-- any bound hash differs -> `HASH_MISMATCH`;
+- any bound revision differs -> `REVISION_MISMATCH`;
 - multiple contradictory final records -> `CONFLICTING_RECORD`;
 - unchanged entry -> `NOT_APPLICABLE`.
 
@@ -243,21 +244,21 @@ delta_ids: [<exact IDs>]
 scope_ids: [<exact IDs>]
 dimension: schedule | quality | integration | other
 exposure_evidence: <exact impact receipts/state>
-baseline_sha256: <hash>
-current_sha256: <hash>
-evidence_manifest_sha256: <hash>
+baseline_revision: <revision>
+current_revision: <revision>
+evidence_manifest_revision: <revision>
 accepted_scope: <bounded statement>
 owner: {identity, role}
-authority_ref: {path, sha256, permitted_dimensions/scopes}
+authority_ref: {path, revision, permitted_dimensions/scopes}
 rationale: <reason>
 compensating_controls: [<controls/evidence>]
 accepted_at: <ISO-8601 UTC>
 expires_at_or_review_trigger: <timestamp/objective trigger>
-signature_or_record_digest: <immutable proof>
+signature_or_record_id: <immutable proof>
 ```
 
 The audit may reference only a current ACTIVE, unexpired, authority-verified,
-signature-valid, exact-hash/scope-matching record. It cannot create/renew/apply a
+signature-valid, exact-revision/scope-matching record. It cannot create/renew/apply a
 record. Risk acceptance never changes delta type/authority/classification,
 evidence coverage, or baseline identity.
 
@@ -267,12 +268,12 @@ A new baseline is usable only as a new exact input after a separately created:
 
 ```yaml
 schema: cgs.scope-rebaseline/v1
-old_baseline: {id, version, sha256}
-new_baseline: {id, version, sha256}
+old_baseline: {id, version, revision}
+new_baseline: {id, version, revision}
 included_change_decision_ids: [<IDs>]
 product_owner_and_authority: <verified evidence>
 decided_at: <ISO-8601 UTC>
-signature_or_record_digest: <proof>
+signature_or_record_id: <proof>
 ```
 
 An edited file, a proposed record, “cuts completed,” a newer modification time, or
@@ -285,11 +286,11 @@ this record.
 schema: cgs.scope-evidence-manifest/v1
 manifest_id: <stable ID>
 path: <canonical path>
-sha256: <exact hash>
-baseline: {path, sha256, id, version}
-current: {path, sha256, manifest_id}
+revision: <exact revision>
+baseline: {path, revision, id, version}
+current: {path, revision, manifest_id}
 allowlist:
-  - {path, sha256, purpose: implementation | change-decision | authority |
+  - {path, revision, purpose: implementation | change-decision | authority |
          estimate | capacity | dependency | test | risk-acceptance |
          rebaseline-reference, source_id}
 git_evidence:
@@ -300,18 +301,18 @@ completeness: COMPLETE
 ```
 
 Effective budgets are the smaller of declared and fixed limits. No glob, directory
-hint, fuzzy reference, missing hash, or repository search is allowed. Git evidence
+hint, fuzzy reference, missing revision, or repository search is allowed. Git evidence
 is read only for the exact IDs/range and only as implementation activity; it never
 creates scope, authorization, justification, estimate, or risk acceptance.
 
 An invalid manifest identity/binding is `INSUFFICIENT EVIDENCE` for `inspect`.
-Within a valid manifest, unavailable/hash-mismatched/unsupported/over-limit paths
+Within a valid manifest, unavailable/revision mismatched/unsupported/over-limit paths
 or receipts make inspect coverage `PARTIAL`; preserve core deltas.
 
 ## Effort evidence
 
 Every changed Scope ID must have baseline/current estimate receipts bound to exact
-entry/artifact hashes, same calibrated method/unit, same confidence/uncertainty
+entry/artifact revisions, same calibrated method/unit, same confidence/uncertainty
 policy, and compatible estimator provenance.
 
 For intervals `[B_low,B_high]` and `[C_low,C_high]`, absolute effort delta is:
@@ -336,7 +337,7 @@ UNVERIFIED | NOT_APPLICABLE
 ### Schedule
 
 Requires complete changed-ID effort interval and current capacity/timebox interval
-in the same calibrated unit/method, all bound to exact pair/evidence hashes.
+in the same calibrated unit/method, all bound to exact pair/evidence revisions.
 
 - effort upper bound ≤ capacity lower bound -> `SUPPORTED_NO_EXPOSURE`;
 - effort lower bound > capacity upper bound -> `SUPPORTED_EXPOSURE`;
@@ -391,7 +392,7 @@ schedule: <impact state>
 quality: <impact state>
 integration: <impact state>
 risk_acceptance: {status, valid, invalid, unchecked}
-input_mutation_guard: {status, before_hashes, after_hashes, changed}
+input_mutation_guard: {status, before_revision, after_revision, changed}
 ```
 
 Coverage ratios are evidence availability only, never scope-health/risk scores.
@@ -405,8 +406,8 @@ Apply in precedence order:
 |---|---|
 | invalid syntax/path/alias/type/schema or unreadable input | `ERROR` |
 | discover/no arguments/missing required pair member | `INPUT REQUIRED` |
-| baseline/current identity, approval, linkage, parent, completeness, stable IDs, normalization, or final core re-hash invalid/stale/conflicting | `INSUFFICIENT EVIDENCE` |
-| core comparison is meaningful but core/evidence budget, declared allowlist, receipt, or evidence re-hash leaves requested scope unchecked | `PARTIAL` |
+| baseline/current identity, approval, linkage, parent, completeness, stable IDs, normalization, or final core revalidate invalid/stale/conflicting | `INSUFFICIENT EVIDENCE` |
+| core comparison is meaningful but core/evidence budget, declared allowlist, receipt, or evidence revalidate leaves requested scope unchecked | `PARTIAL` |
 | complete core identity/diff, no ADDED/REMOVED/MODIFIED/UNMAPPED/CONFLICT | `NO SCOPE DELTA` |
 | complete core identity/diff, at least one ADDED/REMOVED/MODIFIED, no UNMAPPED/CONFLICT | `SCOPE DELTA FOUND` |
 
@@ -423,11 +424,11 @@ For a valid meaningful comparison return:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical normalized payload with record_id omitted>
+record_id: <project-id>:<UTC-run-id>:<record-sequence>
 artifact_id: scope-check:<baseline-id>:<baseline-version>:<current-manifest-id>
 artifacts:
   - path: <canonical project-relative path>
-    sha256: <complete lowercase hash>
+    revision: <complete explicit revision>
     role: baseline | current | baseline-approval | normalization-schema |
           evidence-manifest | change-decision | authority | estimate | capacity |
           dependency | test | risk-acceptance | rebaseline-reference
@@ -438,18 +439,18 @@ timestamp: <ISO-8601 UTC with fractional seconds>
 finding_ids: [<stable SCP-DELTA IDs for non-unchanged rows>]
 producer:
   tool: scope-check
-  version: sha256:<skill_bundle_sha256>
+  version: <explicit-revision>
 extension:
   schema: cgs.scope-check/v2
   run_id: SCP-<compact UTC>-<pair12>-<UUIDv4>
   project_id: <canonical repository identity>
   operation: compare | inspect
-  baseline: {path, sha256, byte_length, schema, id, version, source_revision,
+  baseline: {path, revision, byte_length, schema, id, version, source_revision,
              parent_scope_id, timebox_or_release_id, approval_record_id}
-  current: {path, sha256, byte_length, schema, id, version, source_revision,
+  current: {path, revision, byte_length, schema, id, version, source_revision,
             parent_scope_id, timebox_or_release_id, declared_baseline_ref}
-  comparison_key: <digest of project/baseline identity/current identity/normalizer>
-  normalization: {schema_id, version, source_path, source_sha256}
+  comparison_key: <identifier of project/baseline identity/current identity/normalizer>
+  normalization: {schema_id, version, source_path, source_revision}
   limits: <all effective fixed limits>
   deltas: [<stable sorted complete delta rows including unchanged>]
   delta_summary: {added, removed, modified, unchanged, unmapped, conflict}
@@ -462,12 +463,12 @@ extension:
   coverage: <complete core/evidence ledger>
   unchecked: [<stable identities/reasons>]
   input_mutation_guard:
-    before: [{path, sha256}]
-    after: [{path, sha256}]
+    before: [{path, revision}]
+    after: [{path, revision}]
     status: UNCHANGED | CHANGED | INCOMPLETE
   result: <same as generic verdict>
   neutral_options: [<0 or 2-3 unranked options with Scope IDs/owner/action>]
-  stale_key: <digest of pair/approval/normalizer/evidence/decisions/receipts>
+  stale_key: <identifier of pair/approval/normalizer/evidence/decisions/receipts>
   gate_evidence_status: NOT_PERSISTED
   gate_evidence_eligible: false
   operation_boundary: READ_ONLY
@@ -478,6 +479,6 @@ verdict. Core `INSUFFICIENT EVIDENCE` may return a diagnostic generic envelope o
 when both artifact identities were readable enough to bind the failure; otherwise
 return the bounded error object.
 
-Every consumed artifact is listed with exact hash and revalidated before output.
+Every consumed artifact is listed with exact revision and revalidated before output.
 Direct output is non-persisted and grants no product, planning, gate, or mutation
 authority.

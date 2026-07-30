@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Improve"
   short_description: "Severity-gate isolated skill patches against frozen evidence"
-  default_prompt: "Use $skill-improve to freeze independent hash-bound acceptance and current skill-test evidence, stage a target-local candidate, classify conclusive severity/scenario deltas, and CAS-apply only a verified improvement without weakening its oracle or overwriting concurrent work."
+  default_prompt: "Use $skill-improve to freeze independent revision-bound acceptance and current skill-test evidence, stage a target-local candidate, classify conclusive severity/scenario deltas, and version and existence conflict check-apply only a verified improvement without weakening its oracle or overwriting concurrent work."

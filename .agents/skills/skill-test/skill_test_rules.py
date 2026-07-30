@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -19,10 +18,6 @@ OUTPUT_SCHEMA = "cgs-skill-test-runner-output/v1"
 RULES_SCHEMA = "cgs-skill-test-rules/v1"
 MANIFEST_SCHEMA = "cgs-skill-test-validator-manifest/v1"
 RUNNER_VERSION = "1.0.0"
-
-
-def sha256_bytes(data: bytes) -> str:
-    return "sha256:" + hashlib.sha256(data).hexdigest()
 
 
 def read_json_yaml(path: Path) -> tuple[dict[str, Any], bytes]:
@@ -218,7 +213,7 @@ def load_selected(repo_root: Path, ledger: dict[str, Any], rules: dict[str, Any]
             try:
                 data = future.result(timeout=timeout)
                 loaded[rel] = data
-                ledger["loaded"].append({"path": rel, "bytes": len(data), "sha256": sha256_bytes(data)})
+                ledger["loaded"].append({"path": rel, "bytes": len(data)})
             except FutureTimeout:
                 ledger["failed"].append({"path": rel, "reason": "read-timeout"})
             except OSError as exc:
@@ -381,6 +376,8 @@ def verify_manifest(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
         return {"valid": False, "errors": [f"manifest-load:{exc.__class__.__name__}"]}
     if manifest.get("schema") != MANIFEST_SCHEMA:
         errors.append("manifest-schema")
+    if manifest.get("version") != RUNNER_VERSION:
+        errors.append("manifest-version")
     for field in ("runner", "rules"):
         item = manifest.get(field)
         if not isinstance(item, dict):
@@ -389,10 +386,9 @@ def verify_manifest(repo_root: Path, manifest_path: Path) -> dict[str, Any]:
         try:
             path = (repo_root / item["path"]).resolve(strict=True)
             path.relative_to(repo_root.resolve(strict=True))
-            actual = sha256_bytes(path.read_bytes())
-            if actual != item.get("sha256"):
-                errors.append(f"{field}-hash")
-            if item.get("version") != "1.0.0":
+            if not path.is_file():
+                errors.append(f"{field}-path")
+            if item.get("version") != RUNNER_VERSION:
                 errors.append(f"{field}-version")
             if field == "rules":
                 parsed, _ = read_json_yaml(path)
@@ -547,7 +543,7 @@ def main(argv: list[str] | None = None) -> int:
         payload = {"schema": OUTPUT_SCHEMA, "mode": "manifest", "manifest_validation": manifest_result}
         print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         return 0
-    rules, rules_raw = read_json_yaml(repo_root / ".agents/skills/skill-test/rules-v1.yaml")
+    rules, _ = read_json_yaml(repo_root / ".agents/skills/skill-test/rules-v1.yaml")
     if rules.get("schema") != RULES_SCHEMA:
         raise ValueError("rules schema mismatch")
     if args.mode == "static":
@@ -567,7 +563,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "schema": OUTPUT_SCHEMA,
         "mode": args.mode,
-        "rules": {"version": rules["version"], "sha256": sha256_bytes(rules_raw)},
+        "rules": {"schema": rules["schema"], "version": rules["version"], "path": ".agents/skills/skill-test/rules-v1.yaml"},
         **result,
     }
     print(json.dumps(payload, sort_keys=True, separators=(",", ":")))

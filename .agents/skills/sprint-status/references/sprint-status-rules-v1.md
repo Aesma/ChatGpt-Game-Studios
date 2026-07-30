@@ -4,15 +4,15 @@ This private contract is normative for `sprint-status`. If it conflicts with
 `SKILL.md`, stop with `run_status: ERROR` before reading sprint evidence. Never
 choose the more permissive interpretation.
 
-## Canonical bytes, paths, and hashes
+## Canonical bytes, paths, and revisions
 
 - Read text as UTF-8 without BOM. Canonical derived records use LF.
 - Project paths are root-relative, slash-separated, Unicode NFC, and confined to
   the project after canonical resolution. Reject absolute/device paths,
   traversal, alternate data streams, and symlinks/reparse points escaping the
   project.
-- A raw source hash is lowercase SHA-256 over exact bytes. A declared hash has
-  the form `sha256:<64-lowercase-hex>`.
+- A raw source revision is explicit revision declared by the source. A declared revision has
+  the form `<explicit-revision>`.
 - Stable IDs are compared exactly after schema validation; do not case-fold,
   trim, repair, or infer them from prose.
 - Derived objects use canonical JSON: UTF-8/LF, object keys sorted by Unicode
@@ -72,19 +72,15 @@ priority, non-negative integer estimate, owner or `UNKNOWN`, and a unique array
 of dependency story IDs. Controlled priorities are `MUST_HAVE`, `SHOULD_HAVE`,
 and `COULD_HAVE` after the explicit spellings below are normalized.
 
-## Story-set hash
+## Story-set revision
 
 For every plan story, build exactly:
 
 ```text
-<story-id>\t<normalized-path-or-INLINE>\t<source-hash-or-MISSING>
+<story-id>\t<normalized-path-or-INLINE>\t<source-revision-or-MISSING>
 ```
 
-For a referenced story, hash raw bytes. For an inline story, hash the exact UTF-8
-inline bytes. For an absent referenced file, use literal `MISSING`. Sort records
-by `story-id` in Unicode code-point order, join with LF and no trailing LF, hash
-the resulting bytes, and prefix the digest with `sha256:`. Duplicate/missing IDs
-or duplicate normalized paths are conflicts, not hash inputs to repair.
+For a referenced story, read the declared path and validate its schema and explicit revision. For an inline story, use the plan-owned story ID and revision. For an absent referenced file, use literal `MISSING`. Sort records by `story-id` in Unicode code-point order for presentation only. Read `story_set_revision` from the authoritative sprint plan; never calculate an identifier from the record bytes. Duplicate or missing IDs and duplicate normalized paths are conflicts.
 
 ## Tracker schema and normalization
 
@@ -95,7 +91,7 @@ schema_version
 sprint_id
 active_sprint_id              # current report only
 plan_revision
-story_set_hash
+story_set_revision
 updated_at
 stories[]
 ```
@@ -131,12 +127,12 @@ Priority spellings normalize only as follows:
 
 ## Data status
 
-- `VERIFIED`: exact tracker/plan/story identity, revision, hash, complete
+- `VERIFIED`: exact tracker/plan/story identity, revision, revision, complete
   coverage, and every required downstream input verify.
 - `PARTIAL`: no applicable tracker or a non-conflicting optional/coverage gap is
   explicitly retained. A required missing health input still forces health
   UNKNOWN.
-- `DATA_CONFLICT`: two applicable authorities disagree, a declared hash/revision
+- `DATA_CONFLICT`: two applicable authorities disagree, a declared revision/revision
   fails, a status/checkpoint projection contradicts another, or a source changes
   during the run. No counts or health derived from the conflicting snapshot.
 - `UNAVAILABLE`: sprint cannot be uniquely resolved or its required plan cannot
@@ -159,7 +155,7 @@ stale_day_basis: CALENDAR_DAYS | WORKING_DAYS
 timezone: <IANA timezone>
 working_calendar:
   path: <canonical path or null>
-  sha256: <declared hash or null>
+  revision: <declared revision or null>
 priority_weights:
   MUST_HAVE: <positive integer>
   SHOULD_HAVE: <positive integer>
@@ -170,13 +166,13 @@ health:
 estimate_unit: <exact supported project unit>
 ```
 
-For CALENDAR_DAYS, calendar path/hash must be null. For WORKING_DAYS, the
-calendar is required, project-confined, hash-verified, and must define the full
+For CALENDAR_DAYS, calendar path/revision must be null. For WORKING_DAYS, the
+calendar is required, project-confined, revision-verified, and must define the full
 sprint/as-of date range, working weekdays, holidays, and exceptions without
 overlap. Missing or invalid configuration creates stable missing-field findings;
 no threshold or weight defaults exist in the skill or spec.
 
-Always output configuration path, revision, raw hash, `stale_after_days`, day
+Always output configuration path, revision, declared revision, `stale_after_days`, day
 basis, timezone, calendar identity, priority weights, schedule-lag threshold,
 Must-Have time trigger, and estimate unit.
 
@@ -245,7 +241,7 @@ weighted completion and health UNKNOWN. Never use task count as a substitute.
 - `AHEAD` when `schedule_lag_bps < 0`; and
 - `WITHIN_TOLERANCE` otherwise.
 
-Keep exact integer operands, unit, priority weights, config revision/hash, and
+Keep exact integer operands, unit, priority weights, config revision/revision, and
 coverage. These calculations are a rough directional signal from estimates, not
 a forecast or delivery promise.
 
@@ -272,25 +268,20 @@ LAGGING. ON_TRACK never means DONE and is prohibited with a required unknown.
 ## Recovery and review evidence
 
 A dev-story checkpoint is usable only when its schema, story/path identity, plan
-hash, source/baseline/current hashes, intended/actual write sets, evidence/error,
+revision, source/baseline/current revisions, intended/actual write sets, evidence/error,
 and resume point validate against raw current bytes. It cannot override tracker or
 story status.
 
 Unresolved PARTIAL/BLOCKED recovery requires both projections IN_PROGRESS.
-IN_REVIEW requires a matching plan hash, post-write implementation/evidence
-hashes, executed blocking test with exit code zero, and log hash, with no
+IN_REVIEW requires a matching plan revision, post-write implementation/evidence
+revisions, executed blocking test with exit code zero, and log revision, with no
 unresolved transaction. Contradictions are DATA_CONFLICT.
 
 ## Stable findings
 
-Use `cgs.sprint-status-finding/v1`. Its stable ID is `SSF-` plus the first 20
-lowercase hex characters of SHA-256 over canonical:
+Use `cgs.sprint-status-finding/v1`. Allocate its stable ID as `SSF-<sprint-id>-<finding-type>-<finding-ordinal>`. Persist the ID across reruns and keep subject and field IDs as separate fields.
 
-```text
-{schema_version,sprint_id,finding_type,subject_ids,field_ids}
-```
-
-Sort/deduplicate ID arrays. Exclude wording, line, observed value/hash,
+Sort/deduplicate ID arrays. Exclude wording, line, observed value/revision,
 classification, status, timestamp, and recommendation so the same logical gap
 retains its ID. A row includes classification `CONFLICT|BLOCKER|DATA_GAP|RISK|
 WARNING`, source refs, expected/observed values, affected calculations, owner or

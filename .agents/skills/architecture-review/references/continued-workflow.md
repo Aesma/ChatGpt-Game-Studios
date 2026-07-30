@@ -1,5 +1,7 @@
 # Architecture Review — Required workflow continuation
 
+Treat revisions as supplied metadata; never calculate them from file content. Use stable business IDs, canonical paths, schema versions, explicit revisions, and UTC run IDs.
+
 This continuation is part of `$architecture-review`. The main contract and
 `cgs.architecture-review-rules/v1` govern every phase. This file may format and,
 after exact authorization, save one immutable report; it never repairs or
@@ -13,11 +15,11 @@ is stored under a versioned extension. Do not create a sidecar.
 
 ```gate-evidence
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical-record-payload>
-artifact_id: architecture-traceability:<project-digest>:<mode>:<manifest12>
+record_id: <project-id>:<UTC-run-id>:<record-sequence>
+artifact_id: architecture-traceability:<project-id>:<mode>:<UTC-run-id>
 artifacts:
   - path: <canonical project-relative path>
-    sha256: <lowercase complete-file SHA-256>
+    revision: <explicit revision>
     role: GDD | systems-index | requirement-registry | ADR | architecture-derived | engine-reference | project-standard | story | test-source | test-run
     source_id: <stable ID or null>
 reviewer: architecture-review:<run-id>
@@ -26,10 +28,10 @@ timestamp: <ISO-8601 UTC with fractional seconds>
 finding_ids: [<stable ARCH finding IDs>]
 producer:
   tool: architecture-review
-  version: sha256:<ordered main/continuation/ruleset bundle digest>
+  version: <explicit-revision>
 extension:
   schema: cgs.architecture-review/v2
-  run_id: AR-<compact UTC fractional timestamp>-<manifest12>-<UUIDv4>
+  run_id: AR-<compact-UTC-fractional>-<UUIDv4>
   project_id: <canonical repository root plus repository identity>
   mode: full | coverage | consistency | engine | single-gdd | rtm
   target:
@@ -40,10 +42,10 @@ extension:
     commit: <commit ID or null>
     input_state: clean | dirty | includes-untracked-inputs
   ruleset_id: cgs.architecture-review-rules/v1
-  ruleset_sha256: <exact ruleset bytes hash>
-  skill_bundle_sha256: <ordered main/continuation/ruleset bytes digest>
-  target_manifest_hash: <canonical ordered manifest digest>
-  stale_key: <project/mode/target/ruleset/sorted-artifact-set digest>
+  ruleset_revision: <explicit ruleset revision>
+  skill_bundle_revision: <ordered main/continuation/ruleset bytes identifier>
+  target_manifest_revision: <canonical ordered manifest identifier>
+  stale_key: <project/mode/target/ruleset/sorted-artifact-set identifier>
   coverage_status: COMPLETE | PARTIAL
   limits:
     max_artifacts_per_shard: <effective value>
@@ -61,7 +63,7 @@ extension:
       reason: <explicit evidence>
   manifest_entries:
     - path: <canonical path>
-      sha256: <hash>
+      revision: <revision>
       source_type: <type>
       source_id: <ID or null>
       source_revision: <commit or WORKTREE>
@@ -77,7 +79,7 @@ extension:
   reviewers:
     - role: <role>
       status: DONE | DECLINED | TIMEOUT | ERROR | NOT_APPLICABLE
-      target_manifest_hash: <hash or null>
+      target_manifest_revision: <revision or null>
       completed_check_ids: []
       unchecked_scope: []
   requirement_baseline:
@@ -95,10 +97,10 @@ extension:
     - test_id: <ID>
       state: EXECUTED_PASS | EXECUTED_FAIL | STALE_RUN | DISCOVERED_NOT_EXECUTED | MISSING_EVIDENCE | NOT_APPLICABLE
       run_id: <ID or null>
-      target_hash: <hash or null>
+      target_revision: <revision or null>
   findings:
     - id: <stable ARCH ID>
-      fingerprint_sha256: <hash>
+      finding_key: <revision>
       rule_id: <versioned rule ID>
       evidence_class: DETERMINISTIC | INCOMPLETE | INFORMATIONAL
       severity: BLOCKER | INCOMPLETE | INFO
@@ -119,10 +121,10 @@ extension:
   accepted_risk_refs:
     - record_id: <separate record ID>
       path: <path>
-      sha256: <hash>
+      revision: <revision>
       finding_ids: []
       scope: <exact scope>
-      target_manifest_hash: <hash>
+      target_manifest_revision: <revision>
       owner: <identity>
       signature: <verifiable identity evidence>
       signed_at: <timestamp>
@@ -136,8 +138,7 @@ coverage, or verdict.
 
 ### 8a. Canonical record identity
 
-Compute `record_id` as SHA-256 over canonical JSON of the complete
-`gate-evidence` object with `record_id` omitted. Sort object keys
+Set `record_id` to `architecture-review:<project-id>:<UTC-run-id>:<record-sequence>`. Sort object keys
 lexicographically. Before serialization, sort:
 
 - `artifacts` and `manifest_entries` by path, role/type, then source ID;
@@ -148,9 +149,9 @@ lexicographically. Before serialization, sort:
 - `traceability` by requirement ID; and
 - `findings` by stable finding ID.
 
-Use UTF-8, lowercase hash hex, no insignificant whitespace, and explicit JSON
+Use UTF-8, explicit revision hex, no insignificant whitespace, and explicit JSON
 `null` for required empty values. Recompute after the final mutation-guard state
-and verdict are known. The human projection and saved report file hash are not
+and verdict are known. The human projection and saved report file revision are not
 part of the record payload.
 
 ### 8b. Human-readable projection
@@ -158,16 +159,16 @@ part of the record payload.
 Render these sections from the same normalized data:
 
 1. **Run Identity** — record/run IDs, mode, exact target, project/source
-   revision, ruleset and producer hashes, target manifest hash, stale key, and
+   revision, ruleset and producer revisions, target manifest revision, stale key, and
    verdict.
 2. **Input-Class Ledger** — every class's applicability, presence, currentness,
    paths, and reason, including missing and not-applicable classes.
 3. **Target Manifest** — every actual review input with type, stable ID, path,
-   hash, revision, currentness, and consumed scope.
+   revision, revision, currentness, and consumed scope.
 4. **Coverage and Shards** — every planned artifact/index/group/edge/check,
    shard limits, completed and unchecked scope, and mode-forbidden
    `NOT_APPLICABLE` rows.
-5. **Reviewer Ledger** — exact profile, role status, manifest hash, checks, and
+5. **Reviewer Ledger** — exact profile, role status, manifest revision, checks, and
    unchecked scope.
 6. **Requirement Baseline** — admitted IDs, candidate requirements, registry
    drift, unknown classification, and source-owner evidence.
@@ -194,7 +195,7 @@ The report must state:
 - only current `EXECUTED_PASS` is passing evidence;
 - derived architecture/index text never overrules source authority;
 - accepted risk is separate and cannot change the verdict; and
-- any manifest, mode, target, scope, or ruleset-hash change makes it `STALE`.
+- any manifest, mode, target, scope, or ruleset-revision change makes it `STALE`.
 
 ---
 
@@ -204,18 +205,18 @@ Present the complete machine block and projection in conversation first.
 
 Default behavior is zero writes. If the user asks to save, propose exactly:
 
-`docs/architecture/reviews/architecture-review-<compact-UTC-fractional>-<manifest12>-<uuid8>.md`
+`docs/architecture/reviews/architecture-review-<compact-UTC-fractional>-<uuid8>.md`
 
 The compact timestamp is `YYYYMMDDTHHMMSSffffffZ`, using six fractional digits;
-`uuid8` is the first eight lowercase hex characters of the run UUID. Preserve
+`uuid8` is the first eight characters of the normalized run UUID. Preserve
 the full UUID in the machine record. Confirm the path does not exist, show it as
 the complete changeset, and obtain explicit approval before the first write.
 
 Create only that report. Do not create/update a latest pointer, review index,
 parent policy, registry, lifecycle record, traceability artifact, status, log,
 sign-off, risk record, or session state. Re-read saved bytes, parse and
-recompute `record_id` and `target_manifest_hash`, compute the saved file
-SHA-256, and report all three. The file hash is returned in conversation, not
+revalidate `record_id` and `target_manifest_revision`, record the saved file
+revision, and report all three. The file revision is returned in conversation, not
 embedded self-referentially.
 
 If the proposed path already exists, refuse overwrite/append/rename. Generate a
@@ -229,7 +230,7 @@ existing report by a vague “latest” rule.
 Immediately before returning:
 
 1. repeat the Phase 0 streaming tree snapshot using the same path batches;
-2. compare every project-relative path, size, and SHA-256;
+2. compare every project-relative path, size, and revision;
 3. permit no difference for conversational output;
 4. after authorized save, permit only the exact new report path;
 5. list every unauthorized added/removed/changed path; and
@@ -252,12 +253,12 @@ attempt requires a new immutable run and authorization.
 ## Phase 11: Prior-report currentness and risk disposition
 
 For an explicitly identified prior record, recompute its exact mode, target,
-ruleset hash, input classes, manifest entries, target manifest hash, and stale
+ruleset revision, input classes, manifest entries, target manifest revision, and stale
 key. Return `CURRENT` only when all reproduce. Otherwise return `STALE` with the
 exact differences. A stale report has no current gate value.
 
 If a separate accepted-risk record is supplied, verify record/report/finding
-IDs, file hash, target manifest, exact scope, owner/signature, signed timestamp,
+IDs, file revision, target manifest, exact scope, owner/signature, signed timestamp,
 and expiry. Report `CURRENT`, `EXPIRED`, `STALE`, or `UNBOUND` separately. Never
 create, sign, renew, store, or use it to rewrite the review.
 
@@ -267,8 +268,8 @@ create, sign, renew, store, or use it to rewrite the review.
 
 Return:
 
-- record ID, run ID, target manifest hash, and stale key;
-- saved report path/file hash if one was successfully authorized and verified;
+- record ID, run ID, target manifest revision, and stale key;
+- saved report path/file revision if one was successfully authorized and verified;
 - `PASS`, `BLOCKED`, or `PARTIAL` with exact reason codes;
 - the single highest-priority open finding and actual destination owner; and
 - one fresh-task recommendation.
@@ -281,7 +282,7 @@ status/index/session record, or automatically rerun after another ADR. Include
 
 ## Error recovery
 
-If a shard or reviewer declines, times out, errors, mismatches hashes, exceeds a
+If a shard or reviewer declines, times out, errors, mismatches revisions, exceeds a
 limit, or omits a check:
 
 1. preserve its raw status and evidence;

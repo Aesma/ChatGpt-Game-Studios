@@ -1,6 +1,6 @@
 ---
 name: ux-review
-description: Read-only, profile-aware review of UX specifications, HUD designs, and interaction-pattern libraries. Uses the current ux-design author schema, hash-bound evidence, deterministic verdicts, bounded batch/reviewer execution, and stable finding convergence.
+description: Read-only, profile-aware review of UX specifications, HUD designs, and interaction-pattern libraries. Uses the current ux-design author schema, version-bound evidence, deterministic verdicts, bounded batch/reviewer execution, and stable finding convergence.
 ---
 
 # UX Review
@@ -36,21 +36,21 @@ or a prior review with a batch selector. Return usage plus `ERROR`; do not guess
 1. Be strictly read-only. Do not edit the target, dependencies, registries,
    reports, or project state. Do not persist the returned review record.
 2. Read the current `ux-design` `SKILL.md` and its continuation reference before
-   reviewing. Compute `author_schema_hash` as SHA-256 of the exact main bytes,
-   one NUL byte, then the exact continuation bytes. Parse their normative author
-   declarations and construct/hash `cgs.ux-author-contract-manifest/v1`; accept
+   reviewing. Use the explicit author schema version declared by `ux-design`. Parse the main and
+   continuation files' normative author declarations and construct the versioned
+   `cgs.ux-author-contract-manifest/v1`; accept
    only a reviewer-supported declared profile/content/schema tuple and record
-   `author_contract_manifest_sha256`.
+   `author_contract_manifest_version`.
 3. Use artifact metadata to select the profile. Aliases select candidates only;
    a filename, directory name, or user label never overrides metadata.
-4. Use exact local bytes and SHA-256 for every artifact or dependency used as
-   evidence. A path without a matching hash is not current evidence.
+4. Use exact local bytes and revision for every artifact or dependency used as
+   evidence. A path without a matching revision is not current evidence.
 5. Keep mechanical checks local. A consultation may add evidence or findings but
    cannot waive a failed assertion, redefine the schema, or emit the verdict.
 6. `Accepted risk` is not approval. It remains a visible open finding with an
    owner, rationale, scope, and expiry or review trigger.
 7. A conversation response is not persistable gate evidence. A separate recorder
-   must revalidate all hashes before persistence.
+   must revalidate all revisions before persistence.
 
 ## Load the review contract
 
@@ -66,7 +66,7 @@ mutation guard, and rendering procedure.
 
 ## Route each target
 
-Resolve the exact file, read its bytes, and hash it. Parse these header fields:
+Resolve the exact file, read its bytes, and validate its declared revision. Parse these header fields:
 
 - `Artifact Type`
 - `Schema Version`
@@ -78,17 +78,17 @@ Resolve the exact file, read its bytes, and hash it. Parse these header fields:
 - `Platform Profile`
 - `Accessibility Foundation`
 - `Requirement IDs`
-- `Context Manifest SHA-256`
+- `Context Manifest revision`
 - `Authoring Receipt ID`
 
 Before profile routing, require the current author sources to declare one
 coherent contract and require that exact declared tuple to be in the reviewer
 support set. The currently supported tuple is `ux-profile-schema-v2`,
 `cgs.ux-content-profile/v2`, and
-`ux-design-author-sha256:<computed author_schema_hash>`. Then require the target
+`ux-design-author-<computed author_schema_version>`. Then require the target
 header to match all three values exactly. An unsupported declaration, missing or
 conflicting author value, incomplete assertion-matrix coverage, unsupported legacy `ux-profile-schema-v1`,
-or target hash/profile/content mismatch returns
+or target revision/profile/content mismatch returns
 `MIGRATION REQUIRED` with null verdict. Do not route or score content under a
 fallback or mixed contract.
 
@@ -131,7 +131,7 @@ NOT_APPLICABLE | UNEVALUATED
   conflicts with evidence, or cites a stale/unresolved source.
 - `MISSING` means the required field, section, row, or semantic element is absent.
 - `NOT_APPLICABLE` is allowed only for an assertion marked conditional by the
-  current schema and only with a current source ID/path/hash plus specific
+  current schema and only with a current source ID/path/revision plus specific
   rationale. An unsupported `N/A` is `INVALID`.
 - `UNEVALUATED` means the reviewer could not finish the assertion. It forces a
   partial result.
@@ -144,12 +144,12 @@ incompatible schemas.
 ## Resolve dependencies and trace requirements
 
 Build a dependency ledger before quality scoring. Validate each referenced path,
-hash, stable ID, and declared version. In particular:
+revision, stable ID, and declared version. In particular:
 
-- Platform authority is the exact `Platform Profile` `path@hash` resolved through
+- Platform authority is the exact `Platform Profile` `path@revision` resolved through
   the bounded context manifest. `Platform Target` prose is not a fallback.
 - Accessibility authority is the exact `Accessibility Foundation`
-  `path@hash/tier`. The committed tier must exist and be readable.
+  `path@revision/tier`. The committed tier must exist and be readable.
 - The requirement denominator is the union of current stable IDs declared in the
   artifact and current owner-approved in-scope requirement IDs for the same
   stable artifact/screen identity in the bounded context manifest.
@@ -170,15 +170,15 @@ completed, the result is also `PARTIAL`.
 
 Perform deterministic mechanical checks locally. At `expert` depth, dispatch at
 most one `ux-designer` reviewer using the worker schema in the rules reference.
-Decline, timeout, malformed output, target-hash mismatch, or substantive evidence
+Decline, timeout, malformed output, target-revision mismatch, or substantive evidence
 conflict makes the run `PARTIAL`; local mechanical results remain authoritative.
 
 When `--prior-review` is supplied, verify its generic and UX schemas, record ID,
-target identity, prior target hash, author schema hash, author contract manifest
-hash, profile/content versions, and finding fingerprints.
+target identity, prior target revision, author schema revision, author contract manifest
+revision, profile/content versions, and finding identities.
 Evaluate every prior `OPEN` or accepted-risk finding first. Then inspect the exact
 prior-to-current diff and current cross-references for revision-introduced
-regressions. Reuse a stable finding ID when its fingerprint is unchanged. Record
+regressions. Reuse a stable finding ID when its identity is unchanged. Record
 `RESOLVED`, `OPEN`, `REGRESSED`, or `SUPERSEDED` explicitly. Never declare
 convergence from a prose summary or an unrelated/stale record.
 
@@ -203,7 +203,7 @@ open blocking or major finding. Accepted-risk references never change this rule.
 
 For one target, return one `cgs.review-evidence/v1` envelope with a
 `cgs.ux-review/v2` extension exactly as defined in the rules reference. Include
-the target hash, author schema hash, author contract manifest hash, profile,
+the target revision, author schema revision, author contract manifest revision, profile,
 profile/content versions and support status, complete
 dependency and requirement ledgers, assertion states, stable findings,
 consultation state, convergence data, verdict, and gate-evidence status.
@@ -229,6 +229,6 @@ same exact bytes.
 
 A review is complete only when target discovery is bounded and explicit, every
 eligible target has either its own complete record or an `UNCHECKED` entry, every
-required assertion has one state, every evidence claim is hash-bound, prior open
+required assertion has one state, every evidence claim is version-bound, prior open
 findings are reconciled when requested, and the mutation guard proves that no
 input or project file changed during the run.

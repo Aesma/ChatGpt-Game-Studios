@@ -1,6 +1,6 @@
 ---
 name: review-all-gdds
-description: "Report-only, hash-bound holistic review of an approved system-GDD manifest. Uses bounded graph shards, imports current deterministic consistency evidence, records sampled design hypotheses, and returns PASS, CONCERNS, FAIL, or PARTIAL."
+description: "Report-only, version-bound holistic review of an approved system-GDD manifest. Uses bounded graph shards, imports current deterministic consistency evidence, records sampled design hypotheses, and returns PASS, CONCERNS, FAIL, or PARTIAL."
 ---
 
 ## Invocation and execution
@@ -37,7 +37,7 @@ repeat a per-document `$design-review`, choose product truth, populate the
 entity registry, or author fixes.
 
 Run it after all MVP system GDDs have independent approval evidence for their
-current hashes and before architecture begins. It may preserve useful findings
+current revisions and before architecture begins. It may preserve useful findings
 from provisional inputs, but provisional, stale, or incomplete input evidence
 forces `PARTIAL` and can never authorize architecture.
 
@@ -49,20 +49,20 @@ forces `PARTIAL` and can never authorize architecture.
 - **Report-only boundary:** conversation output is the default. The only
   permitted mutation is one new, explicitly authorized immutable report.
 - **Evidence identity:** every report binds project identity, mode, source
-  revision, canonical input paths, exact-byte SHA-256 hashes, ruleset version,
+  revision, canonical input paths, declared revisions, ruleset version,
   run ID, planned shards, and coverage.
 - **Staleness:** any added, removed, renamed, or changed artifact in the bound
   manifest, or a different ruleset version, invalidates the report's
   `stale_key`. A stale report is not gate evidence.
 - **Incomplete work:** a provisional input, missing approval record, stale or
   missing consistency report, worker error, unchecked required shard, input
-  budget overflow, hash mismatch, or unresolved merge conflict produces
+  budget overflow, revision mismatch, or unresolved merge conflict produces
   `PARTIAL`; it can never produce `PASS` or `FAIL`.
 - **Blocking boundary:** design-theory observations are
   `HYPOTHESIS / ADVISORY`. Only a rule in the versioned severity matrix applied
   to reproducible current evidence can block.
 - **Accepted risk:** `FAIL` is never relabeled. A separate owner-signed,
-  hash-bound `ACCEPTED_RISK` record may be referenced, but the reviewer neither
+  version-bound `ACCEPTED_RISK` record may be referenced, but the reviewer neither
   creates it nor changes the run verdict.
 - **No hidden corpus:** every included and excluded system ID, supporting input,
   shard, check, and scenario candidate is represented in the report.
@@ -127,17 +127,17 @@ Emit no run verdict, spawn no workers, write nothing, and stop.
 
 ### 1b. Validate current approval evidence
 
-For every review-set GDD, compute SHA-256 over its exact bytes and locate an
+For every review-set GDD, validate its stable system ID, schema version, and explicit revision, then locate an
 independent `design-review` evidence record using an explicit link when one is
 present, otherwise an unambiguous project-local `cgs.review-evidence/v1` record
-whose producer is `design-review` and whose artifact path and hash exactly
-match. Validate the record hash before using it.
+whose producer is `design-review` and whose artifact path and revision exactly
+match. Validate the record revision before using it.
 
 Record, per system:
 
-- system ID, priority, declared lifecycle status, canonical path, and GDD hash;
-- approval record path, record hash, producer verdict, and reviewed artifact
-  hash; and
+- system ID, priority, declared lifecycle status, canonical path, and GDD revision;
+- approval record path, record revision, producer verdict, and reviewed artifact
+  revision; and
 - eligibility: `APPROVED_CURRENT`, `PROVISIONAL`, `STALE`, `UNBOUND`, or
   `MISSING`.
 
@@ -149,7 +149,7 @@ evidence, mark their limitations, and force the overall verdict to `PARTIAL`.
 
 ### 1c. Build a compact typed graph before full reads
 
-Hash supporting inputs actually used: game concept, pillars, systems index,
+revision supporting inputs actually used: game concept, pillars, systems index,
 approval records, and the supplied consistency report. Do **not** read
 `design/registry/entities.yaml` directly. Registry validation and comparison
 belong to `$consistency-check`; this workflow consumes its bound result.
@@ -161,7 +161,7 @@ From the systems index and bounded extraction of each GDD's `Summary`,
 - nodes: stable system IDs and declared events/resources/formulas/invariants;
 - edges: authoritative dependency, data dependency, state trigger, rule
   dependency, ownership handoff, and formula input/output;
-- edge evidence: path, section, exact hash, units/ranges when declared; and
+- edge evidence: path, section, exact revision, units/ranges when declared; and
 - unresolved tokens: aliases, targets, units, or scopes that could not be
   normalized without guessing.
 
@@ -170,7 +170,7 @@ index. Never require the target GDD to restate the reverse relationship.
 `DEPENDENCY_TARGET_MISSING` and `DEPENDENCY_DECLARATION_MISMATCH` use separate
 rules from the matrix; neither is called “asymmetry.”
 
-Hashing a file and extracting named sections does not authorize an unbounded
+revision validation a file and extracting named sections does not authorize an unbounded
 whole-corpus prompt. Full document reads happen only inside the bounded shards
 that need them. If a required section cannot be extracted or a file cannot fit
 the single-shard byte limit, record the exact unchecked document/check and
@@ -182,14 +182,14 @@ For `since-last-review`, require the explicit `baseline:` value. A path must
 resolve to one immutable report inside the project. A run ID may be resolved
 only when exactly one report embeds that ID; zero or multiple matches are not a
 trustworthy baseline. Validate the baseline's schema, record ID, project ID,
-ruleset ID, manifest digest, stable system IDs, and complete path/hash set. Do
+ruleset ID, manifest identifier, stable system IDs, and complete path/revision set. Do
 not use report modification time, Git `name-only`, or filename recency.
 
 Compare baseline and current manifests by stable system ID and classify:
 
 - added or removed system;
 - same ID with a renamed path;
-- same ID/path with changed exact-byte hash; or
+- same ID/path with changed declared revision; or
 - unchanged.
 
 Build the union of the baseline and current typed graphs. Seed the impact set
@@ -197,7 +197,7 @@ with every added, removed, renamed, or changed system, then traverse both
 outgoing and derived incoming edges transitively until a fixed point. Removed
 nodes remain baseline tombstones so their former dependents are not lost.
 Untracked and dirty current inputs participate through their current exact-byte
-hashes like every other input.
+revisions like every other input.
 
 If concept, pillars, systems index, ruleset, graph identity, or consistency
 evidence scope changed, the effect is global: set `effective_scope: full` and
@@ -211,20 +211,20 @@ Create an ordered manifest and record:
 
 - project ID: canonical repository root plus repository identity;
 - run ID: UTC timestamp plus the first 12 characters of the ordered manifest
-  digest;
+  identifier;
 - requested mode and effective scope;
 - source revision: commit ID or null plus `clean`, `dirty`, or
   `includes-untracked-inputs`;
-- every system/supporting path, stable ID/role, exact SHA-256, approval state,
+- every system/supporting path, stable ID/role, exact revision, approval state,
   and baseline delta;
-- ruleset ID, exact ruleset SHA-256, skill-bundle SHA-256 over the ordered main
+- ruleset ID, exact ruleset revision, skill-bundle revision over the ordered main
   file, continuation, and ruleset bytes, and all active limits; and
 - every required check and planned shard ID.
 
-The `manifest_sha256` is the SHA-256 of the canonical ordered manifest. The
-`stale_key` is the SHA-256 of canonical JSON containing project ID, ruleset ID,
-exact ruleset hash, requested mode, and the sorted complete path/hash artifact
-set. Never use a timestamp as either digest.
+The `manifest_revision` is the explicit revision for the canonical ordered manifest. The
+`stale_key` is the revision of canonical JSON containing project ID, ruleset ID,
+exact ruleset revision, requested mode, and the sorted complete path/revision artifact
+set. Never use a timestamp as either identifier.
 
 ---
 
@@ -234,19 +234,19 @@ Run this phase only where the mode matrix says `REQUIRED`.
 
 In `full` and `since-last-review`, consistency-evidence validation and the first
 independent theory-shard batch may run in parallel after the Phase 1 manifest is
-locked. They consume disjoint slices, use the same run ID and hashes, and must
+locked. They consume disjoint slices, use the same run ID and revisions, and must
 both finish before scenario selection or verdict computation. Parallelism never
 changes the deterministic merge order.
 
 Validate the explicitly supplied `consistency-report:` as
 `cgs.consistency-report/v1`. It must contain a valid record ID, the same project
-ID, exact current path/hash coverage for the complete review set, a coverage
+ID, exact current path/revision coverage for the complete review set, a coverage
 ledger, stable finding IDs, evidence locations, and verdict
-`PASS | FINDINGS | PARTIAL | ERROR`. Recompute all referenced current hashes.
+`PASS | FINDINGS | PARTIAL | ERROR`. revalidate all referenced current revisions.
 Registry content, when used by the producer, is evidence owned and validated by
 that report; do not separately load or reinterpret the registry here.
 
-- Missing, malformed, `PARTIAL`, `ERROR`, hash-mismatched, or scope-incomplete
+- Missing, malformed, `PARTIAL`, `ERROR`, revision-mismatched, or scope-incomplete
   consistency evidence is a required coverage gap and forces this run to
   `PARTIAL`.
 - `PASS` imports no deterministic findings.
@@ -281,7 +281,7 @@ Sort systems by normalized domain then stable system ID, and edges by edge type,
 source ID, target ID, then evidence path. Fill shards greedily in that order.
 Every in-scope node and edge must map to at least one planned shard. No worker
 receives the whole corpus unless the complete corpus itself fits one bounded
-shard. Pass only the shard's paths, exact hashes, compact graph slice, applicable
+shard. Pass only the shard's paths, exact revisions, compact graph slice, applicable
 checks, pillars/invariants needed by that slice, run ID, and ruleset excerpt.
 Do not pass the entity registry, unrelated engine details, or an unbounded
 conversation transcript.
@@ -295,7 +295,7 @@ available context cannot complete a planned shard, mark it unchecked and force
 Within each shard, inspect progression-loop interaction, attention demands,
 strategy trade-offs, economic sources/sinks, difficulty curves, pillar
 alignment, and player-fantasy coherence. Full-read only the GDDs assigned to
-that shard and verify their hashes before and after analysis.
+that shard and verify their revisions before and after analysis.
 
 Each theory item is `HYPOTHESIS / ADVISORY` and must contain exact evidence,
 assumptions, a plausible counterexample or compensating mechanic, a validation
@@ -317,7 +317,7 @@ shard_id: <planned shard ID>
 status: DONE | PARTIAL | ERROR
 input_manifest:
   - path: <canonical path>
-    sha256: <exact hash used>
+    revision: <exact revision used>
 checks:
   - check_id: <ruleset check ID>
     status: DONE | PARTIAL | ERROR | NOT_APPLICABLE
@@ -328,21 +328,21 @@ findings: []
 Workers never emit the overall review verdict. Run independent shards in
 parallel up to the available concurrency, then continue in deterministic
 batches; do not omit a shard because all workers cannot start simultaneously.
-The coordinator validates every echoed hash and accounts for the Cartesian set
+The coordinator validates every echoed revision and accounts for the Cartesian set
 of planned shard/check pairs.
 
 ### 3d. Merge deterministically
 
-Normalize every finding using the ruleset. Its fingerprint is SHA-256 over
-`rule_id + normalized targets + sorted evidence path/hash/section tuples`; its
-stable ID derives from that fingerprint. Sort merged results by phase, rule ID,
-severity rank, fingerprint, then source worker ID.
+Normalize every finding using the ruleset. Its identity is revision over
+`rule_id + normalized targets + sorted evidence path/revision/section tuples`; its
+stable ID derives from that identity. Sort merged results by phase, rule ID,
+severity rank, identity, then source worker ID.
 
-Deduplicate identical fingerprints while retaining every producer/worker
-provenance. If the same fingerprint carries incompatible facts, severity,
-disposition, or evidence hashes, do not choose one result: record an
+Deduplicate identical identities while retaining every producer/worker
+provenance. If the same identity carries incompatible facts, severity,
+disposition, or evidence revisions, do not choose one result: record an
 `EVIDENCE_CONFLICT`, list both results as unresolved, and force `PARTIAL`.
-Missing workers, mismatched hashes, missing planned checks, or non-empty
+Missing workers, mismatched revisions, missing planned checks, or non-empty
 unchecked required scope also force `PARTIAL` while preserving completed
 evidence.
 

@@ -1,5 +1,7 @@
 # Skill Test Spec: qa-plan
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 > **Spec ID**: qa-plan-v2
 > **Spec Schema**: cgs-skill-spec/v2
 > **Category**: utility
@@ -10,12 +12,12 @@
 
 qa-plan consumes one cgs-qa-plan-scope/v1 manifest and creates one immutable
 cgs-qa-plan/v2 at production/qa/plans using its stable plan ID. Scope is resolved
-only from stable sprint, feature or story authority IDs and exact paths/hashes.
+only from stable sprint, feature or story authority IDs and exact paths/revisions.
 No newest-file, title substring, path substring, mtime or legacy positional
 selection is allowed.
 
 The plan binds exact scope, story, GDD, ADR, control, raw requirement-span,
-candidate/build, Test ID ownership, dependency and available evidence hashes. It
+candidate/build, Test ID ownership, dependency and available evidence revisions. It
 maps every AC to one coverage item and one or more method-specific Test IDs,
 observable/risk tags, dependencies, evidence levels and gaps. Partial, stale or
 unknown state is explicit and never complete gate input. The plan itself always
@@ -32,10 +34,10 @@ other files remain non-writes.
 - [ ] **[QP-SA-001]** Frontmatter has exactly non-empty name and description and
   name is qa-plan.
 - [ ] **[QP-SA-002]** cgs-qa-plan-workflow-contract/v1 declares v1 scope input,
-  v2 immutable output, ownership snapshot, states, hashes and non-writes.
+  v2 immutable output, ownership snapshot, states, revisions and non-writes.
 - [ ] **[QP-SA-003]** Only the exact scope-manifest invocation is accepted; all
   positional, bracketed and legacy epic-slug forms fail before writes.
-- [ ] **[QP-SA-004]** Scope uses stable manifest IDs and exact paths/hashes, never
+- [ ] **[QP-SA-004]** Scope uses stable manifest IDs and exact paths/revisions, never
   newest, mtime, title, substring or unbounded glob selection.
 - [ ] **[QP-SA-005]** Every expected missing, unreadable, invalid, omitted and
   unprocessed story remains in the ledger and makes coverage partial.
@@ -53,11 +55,11 @@ other files remain non-writes.
   canonical `cgs.playtest-report/v2` reports plus independent current
   `cgs.playtest-report-recorder-receipt/v1` under production/playtests.
 - [ ] **[QP-SA-012]** Approval exposes every candidate byte through a full
-  artifact/diff and hash-bound lossless chunks; summary-only approval is invalid.
+  artifact/diff and revision-bound lossless chunks; summary-only approval is invalid.
 - [ ] **[QP-SA-013]** Every story, GDD, ADR, control and scope authority carries
-  exact raw-file SHA-256.
-- [ ] **[QP-SA-014]** Every requirement binding carries owner, file hash, exact
-  raw byte span, span hash and parser/tool identity.
+  exact raw-file revision.
+- [ ] **[QP-SA-014]** Every requirement binding carries owner, file revision, exact
+  raw byte span, span revision and parser/tool identity.
 - [ ] **[QP-SA-015]** Build binding is BOUND, PRE_IMPLEMENTATION or
   REQUIRED_MISSING with exact identity and fail-closed effects.
 - [ ] **[QP-SA-016]** Test ID ownership prevents duplicate owners, cross-AC
@@ -82,7 +84,7 @@ other files remain non-writes.
 - Several sprint files have different mtimes.
 - Two features share similar title text and story paths.
 - One cgs-qa-plan-scope/v1 names stable plan/scope IDs, exact active sprint or
-  feature authority path/hash and ordered stable story path/hash rows.
+  feature authority path/revision and ordered stable story path/revision rows.
 
 #### Input
 
@@ -102,7 +104,7 @@ other files remain non-writes.
 
 #### Expected behavior
 
-- Scope membership is resolved from stable IDs and exact declared paths/hashes.
+- Scope membership is resolved from stable IDs and exact declared paths/revisions.
 - Mtime, newest file, title/path substring and unbounded glob results are ignored.
 - Scope source and story membership disagreement is invalid.
 - Canonical duplicate IDs/paths are rejected.
@@ -111,7 +113,7 @@ other files remain non-writes.
 
 - [ ] Reordering directory entries does not change scope.
 - [ ] Similar feature names do not add stories.
-- [ ] The exact scope authority hash is recorded.
+- [ ] The exact scope authority revision is recorded.
 - [ ] No undeclared story is read for planning.
 
 #### Case Verdict
@@ -143,7 +145,7 @@ is FAIL.
 
 #### Expected non-writes
 
-- Missing placeholders, synthetic story files, guessed hashes, Test ID registry
+- Missing placeholders, synthetic story files, guessed revisions, Test ID registry
   and downstream gate state.
 
 #### Expected behavior
@@ -151,13 +153,13 @@ is FAIL.
 - Missing and unreadable stories remain source and scope-ledger rows with exact
   statuses and reason IDs.
 - Scope Coverage and Plan State are PARTIAL; Effective State is UNKNOWN.
-- No digest, AC, requirement span or Test ID is invented.
+- No identifier, AC, requirement span or Test ID is invented.
 - Result never describes the plan as complete downstream planning or gate input.
 
 #### Assertions
 
 - [ ] All three declared story IDs reconcile in the ledger.
-- [ ] Missing paths have no fabricated hash.
+- [ ] Missing paths have no fabricated revision.
 - [ ] Verdict is PARTIAL after a verified write.
 - [ ] Gate Evidence remains NO.
 
@@ -204,7 +206,7 @@ PASS for a transparent partial artifact and fail-closed result; COMPLETE is FAIL
 
 #### Assertions
 
-- [ ] Same inputs produce the same ledger and candidate hash.
+- [ ] Same inputs produce the same ledger and candidate revision.
 - [ ] Counts reconcile to every declared story and authority.
 - [ ] No half-loaded closure becomes current.
 - [ ] Scope Coverage is PARTIAL after any omission.
@@ -223,7 +225,7 @@ otherwise FAIL.
 - A story declares Visual/Feel.
 - One AC has an exact deterministic formula observable and boundary requirements.
 - Another AC genuinely requires subjective feel evaluation.
-- All requirement bindings have exact source spans and hashes.
+- All requirement bindings have exact source spans and revisions.
 
 #### Input
 
@@ -370,8 +372,8 @@ FAIL.
 - Plan item requires feel/judgment evidence.
 - Candidate paths include a protocol, raw log, ingest-only session, director
   review, legacy session-log and canonical completed report.
-- Completed report variants differ in schema, status, build/source hash,
-  completed-result hash or sign-off.
+- Completed report variants differ in schema, status, build/source revision,
+  completed-result revision or sign-off.
 
 #### Input
 
@@ -419,10 +421,10 @@ otherwise FAIL.
 #### Fixture
 
 - A large plan exceeds one UI page.
-- Candidate bytes, total length and full SHA-256 are known.
+- Candidate bytes, total length and full revision are known.
 - One preview variant shows only summary plus selected sections.
-- Another provides ordered lossless chunks with byte ranges and individual hashes
-  whose concatenation equals the candidate hash.
+- Another provides ordered lossless chunks with byte ranges and individual revisions
+  whose concatenation equals the candidate revision.
 
 #### Input
 
@@ -434,7 +436,7 @@ otherwise FAIL.
 
 #### Expected writes
 
-- None until every byte is inspectable and the exact hash is approved.
+- None until every byte is inspectable and the exact revision is approved.
 - After valid approval, only the plan may be written.
 
 #### Expected non-writes
@@ -445,11 +447,11 @@ otherwise FAIL.
 #### Expected behavior
 
 - Full direct artifact is valid.
-- Pagination is valid only when every ordered byte range and chunk hash
-  reconciles to total bytes and candidate hash.
+- Pagination is valid only when every ordered byte range and chunk revision
+  reconciles to total bytes and candidate revision.
 - Summary, sampled matrix, collapsed middle and changed-section-only previews are
   insufficient.
-- Approval binds exact output path, operation and candidate hash.
+- Approval binds exact output path, operation and candidate revision.
 
 #### Assertions
 
@@ -460,7 +462,7 @@ otherwise FAIL.
 
 #### Case Verdict
 
-PASS when only full hash-bound content authorizes the write; summary approval is
+PASS when only full revision-bound content authorizes the write; summary approval is
 FAIL.
 
 ---
@@ -586,24 +588,24 @@ PASS when valid and negative structures classify exactly; otherwise FAIL.
 
 #### Expected behavior
 
-- Each requirement row records binding ID, owner, file hash, exact byte span and
-  span hash.
+- Each requirement row records binding ID, owner, file revision, exact byte span and
+  span revision.
 - BOUND records candidate/build/artifact/source commit/platform/configuration.
 - PRE_IMPLEMENTATION keeps items PLANNED and Gate Evidence NO.
 - REQUIRED_MISSING makes plan PARTIAL and Effective State UNKNOWN.
 - Evidence promotes only through IMPLEMENTED, DISCOVERED, EXECUTED and VERIFIED
-  when each current exact hash receipt exists; otherwise UNKNOWN.
+  when each current exact revision receipt exists; otherwise UNKNOWN.
 
 #### Assertions
 
-- [ ] Span hash never replaces full-file hash.
-- [ ] Build name/date cannot replace artifact hash.
+- [ ] Span revision never replaces full-file revision.
+- [ ] Build name/date cannot replace artifact revision.
 - [ ] Stale receipt cannot promote evidence.
 - [ ] Plan itself is never execution evidence.
 
 #### Case Verdict
 
-PASS for exact binding and promotion rules; guessed hash or level is FAIL.
+PASS for exact binding and promotion rules; guessed revision or level is FAIL.
 
 ---
 
@@ -611,7 +613,7 @@ PASS for exact binding and promotion rules; guessed hash or level is FAIL.
 
 #### Fixture
 
-- Ownership snapshot contains owned IDs, one retired tombstone and revision/hash.
+- Ownership snapshot contains owned IDs, one retired tombstone and version/revision.
 - AC variants request a new deterministic ID, conflict with another AC, reuse a
   tombstone and map to multiple owners.
 - Dependency graph includes valid edges, missing endpoint and ambiguous cycle.
@@ -622,7 +624,7 @@ PASS for exact binding and promotion rules; guessed hash or level is FAIL.
 
 #### Expected reads
 
-- Ownership snapshot, source plan hashes, AC bindings and dependency authorities.
+- Ownership snapshot, source plan revisions, AC bindings and dependency authorities.
 
 #### Expected writes
 
@@ -639,12 +641,12 @@ PASS for exact binding and promotion rules; guessed hash or level is FAIL.
   publication.
 - Conflict, multiple owner, cross-AC mapping or tombstone reuse makes plan
   PARTIAL and prevents COMPLETE.
-- Every dependency edge records source/path/hash/relation; missing endpoints,
+- Every dependency edge records source/path/revision/relation; missing endpoints,
   unknown owners and ambiguous cycles remain coverage gaps.
 
 #### Assertions
 
-- [ ] Snapshot revision drift before publish blocks CAS.
+- [ ] Snapshot revision drift before publish blocks version and existence conflict check.
 - [ ] IDs are never recycled.
 - [ ] All ACs and dependencies reconcile in the matrix.
 - [ ] No name similarity invents a dependency edge.
@@ -656,11 +658,11 @@ BLOCKED, never COMPLETE.
 
 ---
 
-### Case 13 [QP-C13]: Immutable plan publication uses exclusive CAS
+### Case 13 [QP-C13]: Immutable plan publication uses exclusive version and existence conflict check
 
 #### Fixture
 
-- Candidate bytes, path and full hash are approved.
+- Candidate bytes, path and full revision are approved.
 - Every authority and ownership snapshot still matches preview.
 - Target variants are absent, byte-identical, different, or appear concurrently.
 
@@ -686,7 +688,7 @@ BLOCKED, never COMPLETE.
 
 #### Expected behavior
 
-- Immediately rehash all sources, requirement spans, build, dependency,
+- Immediately revalidate all sources, requirement spans, build, dependency,
   ownership and evidence state.
 - Require target absent or approved identical no-op.
 - Use same-filesystem staged exclusive create/compare-and-set.
@@ -712,13 +714,13 @@ PASS for exact create/no-op/conflict behavior; overwrite or false success is FAI
 #### Fixture
 
 - Valid exact scope manifest fits all budgets.
-- Every story and authority loads with exact hashes and unambiguous requirement
+- Every story and authority loads with exact revisions and unambiguous requirement
   spans.
 - Build binding is BOUND or valid PRE_IMPLEMENTATION.
 - ACs have complete observable/risk, methods, dependencies and unique Test ID
   ownership.
 - Available evidence levels are classified from current receipts.
-- Full candidate bytes are approved and CAS publication/read-back succeeds.
+- Full candidate bytes are approved and version and existence conflict check publication/read-back succeeds.
 
 #### Input
 
@@ -750,7 +752,7 @@ PASS for exact create/no-op/conflict behavior; overwrite or false success is FAI
 #### Assertions
 
 - [ ] Artifact schema and all v2 mandatory sections exist.
-- [ ] Plan raw hash equals reported and read-back hash.
+- [ ] Plan declared revision equals reported and read-back revision.
 - [ ] All non-writes remain byte-identical.
 - [ ] Any partial/stale/unknown predicate prevents COMPLETE.
 
@@ -767,7 +769,7 @@ closed.
   or writes.
 - [ ] **[QP-PC-002]** Scope selection, IDs, canonical paths and hard budgets are
   deterministic and manifest-bound.
-- [ ] **[QP-PC-003]** Every source and raw requirement span is hash-bound with an
+- [ ] **[QP-PC-003]** Every source and raw requirement span is revision-bound with an
   explicit owner and parser/tool.
 - [ ] **[QP-PC-004]** Build and evidence states distinguish bound,
   pre-implementation, required-missing, current, partial, stale and unknown.
@@ -777,11 +779,11 @@ closed.
   publication.
 - [ ] **[QP-PC-007]** Dependency and coverage gaps remain explicit and cannot be
   score-filled or inferred by name.
-- [ ] **[QP-PC-008]** Full lossless candidate bytes and hash are inspectable
+- [ ] **[QP-PC-008]** Full lossless candidate bytes and revision are inspectable
   before one-file authorization.
 - [ ] **[QP-PC-009]** Partial, stale and unknown plans are not complete
   downstream inputs and Gate Evidence is always NO.
-- [ ] **[QP-PC-010]** Publication is immutable, exclusive CAS and read-back
+- [ ] **[QP-PC-010]** Publication is immutable, exclusive version and existence conflict check and read-back
   verified.
 - [ ] **[QP-PC-011]** Result ledger reports only selected and verified operations.
 - [ ] **[QP-PC-012]** No story/state/catalog/authority/evidence/downstream write or
@@ -793,8 +795,8 @@ closed.
 
 | Audit ID | SKILL clause | Case/assertion |
 |---|---|---|
-| `QP-004` | Phase 1 exact scope resolution | Case 1: exact scope authority hash; no undeclared story read |
-| `QP-005` | Phase 1 partial ledger; Phase 4 Plan State Rules | Case 2: no fabricated hash; PARTIAL verdict; Gate Evidence NO |
+| `QP-004` | Phase 1 exact scope resolution | Case 1: exact scope authority revision; no undeclared story read |
+| `QP-005` | Phase 1 partial ledger; Phase 4 Plan State Rules | Case 2: no fabricated revision; PARTIAL verdict; Gate Evidence NO |
 | `QP-006` | Phase 1 budgets; Phase 2 bounded context | Case 3: reconciled counts; no half-loaded CURRENT; PARTIAL coverage |
 | `QP-007` | Phase 2.2 declared-type preservation | Case 4: story unchanged; mismatch finding retains declared/derived/source data |
 | `QP-008` | Phase 3 multi-label coverage | Case 5: secondary coverage retained; no primary tie-breaker |
@@ -807,8 +809,8 @@ closed.
 The matrix above replaces range-only coverage with one independently inspectable
 row for every exact P1 ID in the 2026-07-20 qa-plan audit.
 
-Cases 11 through 14 cover the requested exact story/build/requirement hashes,
+Cases 11 through 14 cover the requested exact story/build/requirement revisions,
 Test ID ownership, evidence levels, dependency/coverage matrix, partial/unknown
-semantics and immutable CAS publication. This specification is a written
+semantics and immutable version and existence conflict check publication. This specification is a written
 behavioral contract; it does not claim that a plan fixture or downstream evidence
 was executed.

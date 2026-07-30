@@ -1,6 +1,6 @@
 ---
 name: map-systems
-description: "Author or safely update one stable-ID systems index from explicit product decisions, validate its dependency graph, publish one hash-bound Draft, and stop with catalog-derived routing."
+description: "Author or safely update one stable-ID systems index from explicit product decisions, validate its dependency graph, publish one revision-bound Draft, and stop with catalog-derived routing."
 ---
 
 # Map Systems
@@ -40,7 +40,7 @@ gate receipts, and latest pointers are read-only or outside scope.
 This workflow is not a reviewer or gate owner. It spawns no CD, TD, producer, or
 other reviewer. Every changed candidate is `Status: Draft` with
 `Formal Sign-off: NOT_PERFORMED`. A separate catalog-declared owner may later
-review or sign the exact hash. User content/changeset approval is not formal
+review or sign the exact revision. User content/changeset approval is not formal
 sign-off.
 
 Use only these result fields and values:
@@ -62,7 +62,7 @@ passed, a system GDD completed, or a downstream workflow ran.
 ## Phase 0: Freeze root and bind the workflow catalog
 
 Resolve exactly one repository root. Reject ambiguous roots, traversal, and
-root-escaping real paths. Freeze one UTC snapshot and exact raw SHA-256 values.
+root-escaping real paths. Freeze one UTC snapshot and exact declared revision values.
 
 Read `.codex/docs/workflow-catalog.yaml` before interpreting a route. Require a
 parseable catalog with unique phase and workflow IDs and exactly one workflow
@@ -128,7 +128,7 @@ mtime, similarity, or inferred GDD state.
 Resolve the next route from the catalog:
 
 1. if the catalog declares a required formal sign-off/transition for this index,
-   require its exact current hash-bound receipt; when absent, recommend only the
+   require its exact current revision-bound receipt; when absent, recommend only the
    catalog's sign-off action without a system selector;
 2. only when the catalog explicitly declares formal sign-off not required,
    resolve the unique allowed repeatable consumer and append the stable System ID
@@ -136,8 +136,8 @@ Resolve the next route from the catalog:
 3. when sign-off policy is undeclared/ambiguous or neither route is safe, return
    `Route State: UNKNOWN`/`BLOCKED` and `Stop`.
 
-Return index path/hash, selected System ID/name/status/order, sign-off state,
-catalog path/hash, exact catalog entry/command or gap, `Index Operation:
+Return index path/revision, selected System ID/name/status/order, sign-off state,
+catalog path/revision, exact catalog entry/command or gap, `Index Operation:
 NOT_REQUESTED`, `Auto Executed: false`, and one handoff or `Stop`. Then stop.
 
 ---
@@ -166,7 +166,7 @@ budget use and stop with zero writes. Do not sample or replace an invalid existi
 index.
 
 When no index exists, operation is `CREATE`. When one exists, validate its schema,
-stable IDs, references, graph, and preserved manual fields, record its base hash,
+stable IDs, references, graph, and preserved manual fields, record its base revision,
 and ask the user to choose one bounded intent:
 
 - add systems;
@@ -278,9 +278,9 @@ Status: Draft
 Formal Sign-off: NOT_PERFORMED
 ```
 
-Render exact UTF-8/LF bytes and compute `candidate_sha256`. Show:
+Assign candidate_revision from the explicit base revision plus one, then render exact UTF-8/LF bytes. Show:
 
-- input paths/hashes and context-budget use;
+- input paths/revisions and context-budget use;
 - complete candidate bytes or a lossless reviewable representation;
 - stable-ID registry, active/retired changes, and provenance;
 - typed graph, cycles/bottlenecks, priority, and order;
@@ -289,7 +289,7 @@ Render exact UTF-8/LF bytes and compute `candidate_sha256`. Show:
 - unresolved risks/catalog gaps; and
 - the sole possible filesystem change.
 
-Any user change after rendering produces a new decision, rerender, diff, and hash.
+Any user change after rendering produces a new decision, rerender, diff, and revision.
 This workflow does not spawn reviewers. Formal review/sign-off belongs only to the
 catalog-declared external owner and is never claimed here.
 
@@ -298,17 +298,17 @@ UNCHANGED`; do not rewrite or mint a no-op decision merely to claim completion.
 
 ---
 
-## Phase 7: Obtain one hash-bound changeset approval
+## Phase 7: Obtain one revision-bound changeset approval
 
 Preview exactly one operation:
 
 ```text
-design/gdd/systems-index.md: CREATE | REPLACE with candidate_sha256
+design/gdd/systems-index.md: CREATE | REPLACE with candidate_revision
 all other writes: NONE
 ```
 
-Bind the preview to candidate hash, base hash/absence, catalog/template/concept/
-pillar hashes, bounded reference closure, decision IDs, destination parent state,
+Bind the preview to candidate revision, base revision/absence, catalog/template/concept/
+pillar revisions, bounded reference closure, decision IDs, destination parent state,
 and complete diff. Explicitly state:
 
 ```text
@@ -320,7 +320,7 @@ Downstream Workflow Execution: NONE
 
 Obtain one approval for the exact displayed changeset. If declined, return
 `STOPPED`, `Index Operation: DECLINED`, and zero writes. Do not ask again per row,
-section, or field. Approval never extends to a changed candidate hash or another
+section, or field. Approval never extends to a changed candidate revision or another
 path.
 
 ---
@@ -328,16 +328,16 @@ path.
 ## Phase 8: Compare-and-set, publish once, and verify
 
 Immediately before mutation, execute the complete compare-and-set contract in the
-reference. Re-hash root-bound catalog, template, concept, pillars, base/absence,
+reference. re-read root-bound catalog, template, concept, pillars, base/absence,
 bounded reference closure/directory states, destination parent, and rerendered
 candidate.
 
 Any difference returns `BLOCKED`, `Index Operation: CONFLICT`, exact old/new
-hashes or states, and zero writes. Do not merge, refresh, retry, overwrite, or
+revisions or states, and zero writes. Do not merge, refresh, retry, overwrite, or
 request implicit acceptance of new bytes.
 
 After CAS succeeds, atomically publish only the exact candidate bytes, re-read
-them, verify the hash and complete v2 registry/graph/order/provenance invariants,
+them, verify the revision and complete v2 registry/graph/order/provenance invariants,
 and confirm no other path was changed by this workflow.
 
 - verified exact write -> `Index Operation: CREATE` or `UPDATE` and authoring may
@@ -352,7 +352,7 @@ Never repair or revert external concurrent changes.
 
 ## Phase 9: Return one catalog-derived next action and stop
 
-After a verified write or `UNCHANGED`, re-read the catalog hash and resolve:
+After a verified write or `UNCHANGED`, re-read the catalog revision and resolve:
 
 1. a required formal sign-off/transition owner and exact action, when declared;
 2. only when the catalog explicitly declares formal sign-off not required, the
@@ -361,15 +361,15 @@ After a verified write or `UNCHANGED`, re-read the catalog hash and resolve:
 3. `Route State: UNKNOWN`/`NO_ROUTE` and `Stop` when sign-off policy or a safe
    route is undeclared.
 
-Do not infer sign-off from user approval, status text, agent opinion, prior hash,
+Do not infer sign-off from user approval, status text, agent opinion, prior revision,
 or file presence. Do not invent a gate profile/transition ID or reuse an old
-sign-off after the candidate hash changes.
+sign-off after the candidate revision changes.
 
 Return:
 
 - workflow/index operation and context states;
-- catalog path/contract/version/hash;
-- index path/base hash/candidate hash/on-disk hash;
+- catalog path/contract/version/revision;
+- index path/base revision/candidate revision/on-disk revision;
 - counts of required, user-selected candidate, excluded/deferred, active, and
   retired systems;
 - decision IDs and structured diff summary;

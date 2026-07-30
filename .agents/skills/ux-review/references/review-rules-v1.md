@@ -17,37 +17,30 @@ being reviewed.
 
 ## Author-contract compatibility gate
 
-Read the exact current `ux-design` main and continuation sources specified by the
-author itself. Compute their raw hashes and `author_schema_hash` as specified in
-`SKILL.md`. Parse exactly one normative declaration for Profile Version, Content
-Profile, Schema Version construction, artifact-type/profile routing, and each
-stable section-ID set. Construct canonical
+Read the exact current `ux-design` main and continuation sources specified by the author itself. Validate their paths, declared versions, and schemas. Read `author_schema_version` from the author contract; do not calculate it from source bytes. Parse exactly one normative declaration for Profile Version, Content Profile, Schema Version construction, artifact-type/profile routing, and each stable section-ID set. Construct canonical
 `cgs.ux-author-contract-manifest/v1` with:
 
 ```yaml
 schema: cgs.ux-author-contract-manifest/v1
 author_tool: ux-design
-main: {path: <path>, sha256: <raw hash>}
-continuation: {path: <path>, sha256: <raw hash>}
-author_schema_hash: <NUL-delimited digest>
-schema_version: ux-design-author-sha256:<same digest>
+main: {path: <path>, revision: <declared revision>}
+continuation: {path: <path>, revision: <declared revision>}
+author_schema_version: <NUL-delimited identifier>
+schema_version: ux-design-author-<same identifier>
 profile_version: <exact author declaration>
 content_profile: <exact author declaration>
 artifact_profiles:
   - {artifact_type, profile_id, stable_section_ids}
 ```
 
-Sort artifact profiles by artifact type and keep stable section IDs in author
-order, then compute `author_contract_manifest_sha256` over canonical JSON with
-that hash field omitted. The author source declarations—not a reviewer filename
-or legacy constant—supply the expected target values.
+Sort artifact profiles by artifact type and keep stable section IDs in author order. Validate the explicit `author_contract_manifest_version` declared by the author contract. The author source declarations—not a reviewer filename or legacy constant—supply the expected target values.
 
 This reviewer version supports exactly the current author contract:
 
 ```text
 profile_version: ux-profile-schema-v2
 content_profile: cgs.ux-content-profile/v2
-schema_version: ux-design-author-sha256:<computed current author_schema_hash>
+schema_version: ux-design-author-<computed current author_schema_version>
 ```
 
 Acceptance is strict, not open-ended. Continue to content review only when:
@@ -61,16 +54,13 @@ Acceptance is strict, not open-ended. Continue to content review only when:
 
 Missing/multiple/inconsistent author declarations, an unsupported author profile
 or content version (including unsupported legacy `ux-profile-schema-v1`), assertion-matrix coverage
-drift, or any target schema/profile/content/hash mismatch returns `MIGRATION
-REQUIRED` with null verdict, expected/observed identities, author source hashes,
-and the manifest hash when computable. Never fall back to v1, accept an arbitrary
-manifest claim, substitute a remembered hash, or score content under mixed
+drift, or any target schema/profile/content/revision mismatch returns `MIGRATION
+REQUIRED` with null verdict, expected/observed identities, author source revisions,
+and the manifest revision when computable. Never fall back to v1, accept an arbitrary
+manifest claim, substitute a remembered revision, or score content under mixed
 contracts.
 
-Compute `skill_bundle_sha256` from the exact UX-review `SKILL.md` bytes, one NUL
-byte, exact `continued-workflow.md` bytes, one NUL byte, then exact
-`review-rules-v1.md` bytes. Expose it as the generic producer version and in the
-UX extension so consumers can detect reviewer-contract staleness.
+Use the explicit `skill_bundle_version` declared by this skill package. Validate that the main skill and both referenced rule files declare compatible schema versions and expose that bundle version as the generic producer version.
 
 ## Fixed bounds
 
@@ -105,7 +95,7 @@ parseable content rather than a label alone.
 | Check key | Assertion | Failure severity |
 |---|---|---|
 | `HDR-ARTIFACT-TYPE` | Artifact Type is present, recognized, and consistent with the routed profile. | `MAJOR` |
-| `HDR-SCHEMA-VERSION` | Schema Version exactly matches the current author schema hash. | route error or migration |
+| `HDR-SCHEMA-VERSION` | Schema Version exactly matches the current author schema revision. | route error or migration |
 | `HDR-PROFILE-VERSION` | Profile Version exactly matches the supported version declared by the current author-contract manifest. | route error or migration |
 | `HDR-CONTENT-PROFILE` | Content Profile exactly matches the supported content contract declared by the current author-contract manifest. | route error or migration |
 | `HDR-ARTIFACT-ID` | Artifact ID is a stable, non-placeholder ID. | `MAJOR` |
@@ -114,11 +104,11 @@ parseable content rather than a label alone.
 | `HDR-AUTHOR-TASK` | Author Task ID is stable and non-placeholder. | `BLOCKING` |
 | `HDR-LAST-UPDATED` | Last Updated UTC is parseable and not a template value. | `BLOCKING` |
 | `HDR-PLATFORM-TARGET` | Platform Target is declared, but is treated only as a label. | `BLOCKING` |
-| `HDR-PLATFORM-PROFILE` | Platform Profile contains an exact path and SHA-256 resolvable through the context manifest. | dependency gap |
-| `HDR-ACCESSIBILITY` | Accessibility Foundation contains an exact path, SHA-256, and committed tier when applicable. | dependency gap |
+| `HDR-PLATFORM-PROFILE` | Platform Profile contains an exact path and revision resolvable through the context manifest. | dependency gap |
+| `HDR-ACCESSIBILITY` | Accessibility Foundation contains an exact path, revision, and committed tier when applicable. | dependency gap |
 | `HDR-REQUIREMENT-IDS` | Requirement IDs are stable IDs or an explicitly schema-permitted empty set with source-backed rationale. | denominator gap |
-| `HDR-CONTEXT-MANIFEST` | Context Manifest SHA-256 resolves to the exact bounded manifest used by the author. | dependency gap |
-| `HDR-AUTHORING-RECEIPT` | Authoring Receipt ID is stable and non-placeholder; READY_FOR_REVIEW must resolve its external current receipt path/hash from the supplied handoff/context evidence. | dependency gap |
+| `HDR-CONTEXT-MANIFEST` | Context Manifest revision resolves to the exact bounded manifest used by the author. | dependency gap |
+| `HDR-AUTHORING-RECEIPT` | Authoring Receipt ID is stable and non-placeholder; READY_FOR_REVIEW must resolve its external current receipt path/revision from the supplied handoff/context evidence. | dependency gap |
 
 `MISSING`, `EMPTY`, `PLACEHOLDER`, or `INVALID` never satisfies an assertion.
 Foundation fields cannot use `NOT_APPLICABLE` unless the current author schema
@@ -167,7 +157,7 @@ resolved platform profile excludes it and that exact evidence is recorded.
 
 | Check key | Required semantic content |
 |---|---|
-| `PAT-01-OVERVIEW` | Scope, owner, consumers, current profile IDs/hashes, and governing requirements. |
+| `PAT-01-OVERVIEW` | Scope, owner, consumers, current profile IDs/revisions, and governing requirements. |
 | `PAT-02-CATALOG` | One canonical row per pattern with stable ID, name, category, version, status, and resolvable anchor. |
 | `PAT-03-PATTERNS` | One owned definition per catalog row, including states, inputs, feedback, accessibility, use cases, and non-use cases. |
 | `PAT-04-GAPS` | Stable proposed-gap IDs, source requirement IDs, owner, and disposition; an empty set must be explicit. |
@@ -188,7 +178,7 @@ For each header and profile check:
 5. If it is malformed, contradictory, uses unstable IDs, lacks required semantic
    elements, or cites unresolved/stale evidence, emit `INVALID`.
 6. Emit `NOT_APPLICABLE` only for a conditional assertion with the exact source
-   ID, path, hash, and rationale stored in `not_applicable_evidence`.
+   ID, path, revision, and rationale stored in `not_applicable_evidence`.
 7. Emit `VALID` only after all required elements and evidence checks succeed.
 8. Emit `UNEVALUATED` only when a declared bound or operational failure prevents
    completion; add the exact cause to `partial_reasons`.
@@ -205,21 +195,21 @@ Every dependency-ledger row contains:
 kind: platform-profile | accessibility-foundation | context-manifest |
       requirement-source | pattern-library | data-contract |
       performance-source | other
-declared_reference: <verbatim path@hash[/tier] or stable ID>
+declared_reference: <verbatim path@revision[/tier] or stable ID>
 resolved_path: <normalized project-relative path or null>
-expected_sha256: <lowercase hex or null>
-actual_sha256: <lowercase hex or null>
+expected_revision: <declared revision string or null>
+actual_revision: <resolved revision string or null>
 stable_ids: [<ids actually consumed>]
 status: CURRENT | MISSING | UNREADABLE | STALE | CONTRADICTORY | OVERFLOW
 ```
 
-- `Platform Profile` must resolve and its actual hash must equal the declared
-  hash. Never substitute `Platform Target`, a spec header, a remembered platform,
+- `Platform Profile` must resolve and its actual revision must equal the declared
+  revision. Never substitute `Platform Target`, a spec header, a remembered platform,
   or a similarly named file.
-- `Accessibility Foundation` must resolve, match the declared hash, and define
+- `Accessibility Foundation` must resolve, match the declared revision, and define
   the declared committed tier. Missing/stale/unreadable/tierless authority is a
   dependency gap. The target cannot be certified compliant or approved.
-- The context-manifest hash must be current before its records can establish
+- The context-manifest revision must be current before its records can establish
   scope. Do not discover authority through an unbounded repository scan.
 - When a required dependency exceeds a fixed bound, record `OVERFLOW`, mark the
   affected assertions `UNEVALUATED`, and return `PARTIAL`.
@@ -234,7 +224,7 @@ Construct the denominator from two exact sets:
    pattern-library identity.
 
 Normalize and deduplicate IDs without dropping provenance. For each denominator
-ID store source path/hash, owner/approval state, scope match, target locations,
+ID store source path/revision, owner/approval state, scope match, target locations,
 and coverage state:
 
 ```text
@@ -267,7 +257,7 @@ input-lock semantics, cancellation, recovery, optimistic-state correction, and
 clear perceived-response behavior. They do not impose a generic `X ms` budget.
 
 A numeric runtime budget is evaluable only when the target cites an exact current
-technical/performance stable ID and source path/hash that defines platform,
+technical/performance stable ID and source path/revision that defines platform,
 hardware class, scenario, metric, and threshold. If such a requirement is needed
 for an acceptance claim but its evidence is unavailable, add
 `NEEDS-PERFORMANCE-EVIDENCE`, mark the assertion `UNEVALUATED`, and return
@@ -279,22 +269,22 @@ review only verifies the source-bound UX contract.
 Finding severity is exactly `MAJOR`, `BLOCKING`, or `ADVISORY`. Finding state is
 exactly `OPEN`, `ACCEPTED_RISK`, `RESOLVED`, `REGRESSED`, or `SUPERSEDED`.
 
-Build a fingerprint from:
+Build a identity from:
 
 ```text
 artifact stable ID + profile ID + check key + stable subject ID + normalized
 defect class
 ```
 
-Do not include byte hashes, line numbers, prose wording, or timestamps in the
-fingerprint. Set the finding ID to:
+Do not include byte revisions, line numbers, prose wording, or timestamps in the
+identity. Set the finding ID to:
 
 ```text
-UXF-<sanitized-artifact-id>-<check-key>-<first-8-of-sha256(fingerprint)>
+UXF-<sanitized-artifact-id>-<check-key>-<finding-ordinal>
 ```
 
-Each finding stores the fingerprint, target hash, exact evidence location,
-evidence hash where applicable, expected assertion, observed state, consequence,
+Each finding stores the identity, target revision, exact evidence location,
+evidence revision where applicable, expected assertion, observed state, consequence,
 remediation, severity, state, and prior finding ID when converging. Findings may
 share a check key only when their stable subject IDs differ.
 
@@ -318,10 +308,10 @@ for verdict purposes and cannot produce `APPROVED`.
 
 The prior record must be a persistently readable `cgs.review-evidence/v1`
 envelope with a `cgs.ux-review/v2` extension, a valid canonical record ID, the
-same target path and stable artifact ID, an exact prior target hash, and the
-author schema hash, author contract manifest hash, profile version, and content
+same target path and stable artifact ID, an exact prior target revision, and the
+author schema revision, author contract manifest revision, profile version, and content
 profile used in that run. Reject malformed, unrelated, self-authored, or
-hash-inconsistent evidence with `ERROR`. If the prior record used a different
+revision-inconsistent evidence with `ERROR`. If the prior record used a different
 otherwise valid author contract, do not compare findings across schemas: return
 `MIGRATION REQUIRED` with null verdict until a separately evidenced artifact/
 review migration supplies compatible current bytes.
@@ -331,9 +321,9 @@ prior exact target bytes to current bytes through reproducible version-control o
 archived-byte evidence. Then check changed stable sections and their current
 cross-references for regressions. Record each prior finding as:
 
-- `OPEN`: same fingerprint and defect remains;
+- `OPEN`: same identity and defect remains;
 - `RESOLVED`: assertion is now valid and no equivalent defect remains;
-- `REGRESSED`: it was resolved but the same fingerprint recurred;
+- `REGRESSED`: it was resolved but the same identity recurred;
 - `SUPERSEDED`: current schema intentionally replaces the assertion, with exact
   schema evidence and successor finding/check ID.
 
@@ -350,15 +340,15 @@ At `standard` depth, consultation status is `NOT_REQUESTED` and is complete. At
 schema: cgs.ux-review-worker/v1
 run_id: <run ID>
 target_path: <normalized path>
-target_sha256: <hash>
+target_revision: <revision>
 artifact_id: <stable ID>
 profile_id: <profile>
-author_schema_hash: <hash>
-author_contract_manifest_sha256: <hash>
+author_schema_version: <revision>
+author_contract_manifest_version: <revision>
 profile_version: ux-profile-schema-v2
 content_profile: cgs.ux-content-profile/v2
 assigned_check_keys: [<subjective quality checks>]
-evidence_paths_and_hashes: [<bounded exact sources>]
+evidence_paths_and_revisions: [<bounded exact sources>]
 constraints:
   may_write: false
   may_decide_verdict: false
@@ -369,7 +359,7 @@ Accept only:
 ```yaml
 schema: cgs.ux-review-worker/v1
 status: DONE | DECLINED | TIMEOUT | ERROR
-target_sha256: <same hash>
+target_revision: <same revision>
 evaluations: [{check_key, state, evidence, rationale}]
 candidate_findings: [{check_key, stable_subject_id, defect_class, severity,
                       evidence, rationale}]
@@ -385,26 +375,26 @@ Return this complete envelope in the conversation:
 
 ```yaml
 schema: cgs.review-evidence/v1
-record_id: sha256:<canonical SHA-256 over the normalized record with record_id omitted>
+record_id: <stable business ID>
 artifact_id: ux:<stable Artifact ID>
 artifacts:
-  - {role: target, path: <path>, sha256: <hash>, source_id: <Artifact ID>}
-  - {role: author-schema-main, path: <path>, sha256: <hash>, source_id: null}
-  - {role: author-schema-continuation, path: <path>, sha256: <hash>, source_id: null}
-  - {role: dependency, path: <path>, sha256: <hash>, source_id: <stable ID or null>}
+  - {role: target, path: <path>, revision: <revision>, source_id: <Artifact ID>}
+  - {role: author-schema-main, path: <path>, revision: <revision>, source_id: null}
+  - {role: author-schema-continuation, path: <path>, revision: <revision>, source_id: null}
+  - {role: dependency, path: <path>, revision: <revision>, source_id: <stable ID or null>}
 reviewer: ux-review:<run-id>
 verdict: APPROVED | NEEDS REVISION | MAJOR REVISION NEEDED | PARTIAL
 timestamp: <ISO-8601 UTC with fractional seconds>
 finding_ids: [<all finding IDs>]
 producer:
   tool: ux-review
-  version: sha256:<ordered main/continuation/ruleset bundle digest>
+  version: <ordered main/continuation/ruleset bundle identifier>
 extension:
   schema: cgs.ux-review/v2
   run_id: <stable run ID>
   target:
     path: <path>
-    sha256: <hash>
+    revision: <revision>
     artifact_id: <ID>
     screen_id: <ID or null>
     artifact_type: <type>
@@ -413,10 +403,10 @@ extension:
     profile_id: screen-spec | hud | pattern-library
     profile_version: ux-profile-schema-v2
     content_profile: cgs.ux-content-profile/v2
-    author_schema_hash: <hash>
-    author_contract_manifest_sha256: <hash>
+    author_schema_version: <revision>
+    author_contract_manifest_version: <revision>
     author_contract_support_status: SUPPORTED
-    skill_bundle_sha256: <hash>
+    skill_bundle_version: <revision>
     review_depth: standard | expert
   dependency_ledger: [<complete rows>]
   requirement_coverage:
@@ -426,7 +416,7 @@ extension:
     coverage_ratio: <number or null>
     rows: [<complete coverage rows>]
   assertion_results:
-    - {check_key: <key>, state: <state>, evidence: <locations/hashes>,
+    - {check_key: <key>, state: <state>, evidence: <locations/revisions>,
        not_applicable_evidence: <object or null>}
   consultation:
     status: NOT_REQUESTED | DONE | DECLINED | TIMEOUT | ERROR
@@ -435,16 +425,16 @@ extension:
   convergence:
     requested: <boolean>
     prior_record_id: <ID or null>
-    prior_target_sha256: <hash or null>
+    prior_target_revision: <revision or null>
     diff_evidence: <exact source or null>
-    prior_findings: [{finding_id, fingerprint, disposition, successor_id}]
+    prior_findings: [{finding_id, identity, disposition, successor_id}]
     regression_checks: [<changed-section/cross-reference checks>]
   findings: [<complete finding objects>]
   accepted_risk_refs: [<complete risk objects>]
   partial_reasons: [<bounded exact causes>]
   mutation_guard:
-    before_root: <streaming tree hash>
-    after_root: <streaming tree hash>
+    before_root: <streaming tree revision>
+    after_root: <streaming tree revision>
     status: UNCHANGED | CHANGED | INCOMPLETE
   approval_status: APPROVED | NOT_APPROVED
   gate_evidence_status: NOT_PERSISTED
@@ -461,14 +451,14 @@ null` and do not forge the complete review envelope.
 schema: cgs.ux-review-batch/v1
 run_id: <run ID>
 selector: all | hud | patterns
-manifest_sha256: <hash of sorted manifest rows>
+manifest_revision: <explicit revision for sorted manifest rows>
 limits: {targets_per_batch: 8}
 status: COMPLETE | PARTIAL | ERROR
 targets:
-  - {path, sha256, artifact_id, artifact_type,
+  - {path, revision, artifact_id, artifact_type,
      review_record_id, verdict, status: REVIEWED | ERROR}
 unchecked:
-  - {path, sha256, artifact_type_or_unknown, reason: LIMIT_REACHED | DEPENDENCY_OVERFLOW}
+  - {path, revision, artifact_type_or_unknown, reason: LIMIT_REACHED | DEPENDENCY_OVERFLOW}
 summary_counts: {reviewed, errors, unchecked}
 gate_evidence_status: NOT_PERSISTED
 gate_evidence_eligible: false
@@ -482,7 +472,7 @@ own complete generic envelope and verdict.
 Apply the deterministic precedence in `SKILL.md`. `PARTIAL` means review
 certification is incomplete; it is not a weaker approval. A separate recorder
 may persist a record only after recalculating its canonical ID and every artifact
-hash. Until then, and for every output produced directly by this skill:
+revision. Until then, and for every output produced directly by this skill:
 
 ```text
 gate_evidence_status = NOT_PERSISTED

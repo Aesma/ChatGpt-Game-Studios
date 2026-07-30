@@ -40,7 +40,7 @@ catalog, or test result.
 
 Every publication is per-file atomic after one batch CAS. Cross-file atomicity is
 not claimed. A mid-publication failure is `PARTIAL_WRITE` with exact observed
-hashes; it is never reported as a successful batch or silently rolled back.
+revisions; it is never reported as a successful batch or silently rolled back.
 
 ## 2. Canonical invocation and root/path rules
 
@@ -50,21 +50,21 @@ Supported forms:
 $create-stories author <epic-path>
   [--batch-size <1..12>]
   [--cursor <cgs.story-batch-cursor/v1 token>]
-  --epic-receipt <path> --expect-epic-receipt <sha256:...>
-  [--qa-plan <path> --expect-qa-plan <sha256:...>]
-  [--qa-review <path> --expect-qa-review <sha256:...>]
+  --epic-receipt <path> --epic-receipt <revision:...>
+  [--qa-plan <path> --qa-plan <revision:...>]
+  [--qa-review <path> --qa-review <revision:...>]
 
 $create-stories audit <epic-path>
-  [--epic-receipt <path> --expect-epic-receipt <sha256:...>]
-  [--qa-plan <path> --expect-qa-plan <sha256:...>]
-  [--qa-review <path> --expect-qa-review <sha256:...>]
+  [--epic-receipt <path> --epic-receipt <revision:...>]
+  [--qa-plan <path> --qa-plan <revision:...>]
+  [--qa-review <path> --qa-review <revision:...>]
 ```
 
 The epic path must be an explicit canonical project-relative path matching
 `production/epics/<one-segment-slug>/EPIC.md`. Reject bare slugs, discovery,
 globs, directories, newest/nearest selection, traversal, root escape, symlink
 escape, unknown/duplicate flags, invalid batch size, path without its expected
-hash, and path plus inline evidence for the same record.
+revision, and path plus inline evidence for the same record.
 
 `audit` is strictly read-only. It creates no candidate, approval request,
 temporary file, report, QA delegation, cursor file, or persistent mutation.
@@ -73,7 +73,7 @@ temporary file, report, QA delegation, cursor file, or persistent mutation.
 
 Freeze one repository-root identity and UTC snapshot. Record normalized
 project-relative path, real-path/root result, role, stable source ID, consumed
-scope, state, revision, exact raw-byte SHA-256, or explicit
+scope, state, revision, exact declared revision, or explicit
 `ABSENT|UNREADABLE`.
 
 Hard ceilings:
@@ -108,26 +108,25 @@ Layered loading:
    envelopes;
 2. enumerate only direct children of the selected epic directory and build the
    complete intended story inventory;
-3. construct and hash the complete ordered source/target manifest;
+3. construct the complete ordered source/target manifest;
 4. validate exact currentness before loading GDD acceptance, ADR implementation,
    control-rule, or QA item bodies;
 5. load only sections linked by the selected epic/TR/rule/QA closure; and
-6. re-hash every complete source, target, and directory membership before approval
+6. re-read every complete source, target, and directory membership before approval
    and CAS.
 
 Never recursively enumerate `production/epics`, all GDDs, all ADRs, engine
-source, QA directories, sprints, or test files. Hashing a file does not authorize
+source, QA directories, sprints, or test files. validating a file's declared revision does not authorize
 unbounded semantic ingestion.
 
 Canonicalize the ordered manifest as UTF-8/LF JSON with lexicographic keys and
 arrays sorted by role, stable ID, normalized path, and scope:
 
 ```text
-source_manifest_id = sha256:<canonical ordered source/target manifest>
+source_manifest_id = SM-<epic_id>-<UTC-run-id>
 ```
 
-Any byte, state, real path, revision, membership, role, scope, or evidence change
-changes the identity.
+A state, real path, declared revision, membership, role, scope, or evidence change creates a new manifest revision while preserving the stable manifest business ID.
 
 ## 4. Current epic, GDD, TR, ADR, and control admission
 
@@ -139,12 +138,12 @@ Mutation requires one current supported epic with:
 - canonical `epic_id: EPIC-MODULE:<module_id>`, module ID, sorted system IDs,
   layer/order, canonical slug/path,
   and legal epic state;
-- exact GDD/architecture/TR/control/ADR source-snapshot paths and hashes;
-- exact `cgs.epic-source-manifest/v2` identity/hash and downstream
+- exact GDD/architecture/TR/control/ADR source-snapshot paths and revisions;
+- exact `cgs.epic-source-manifest/v2` identity/revision and downstream
   Story-Creation Contract;
 - current append-only provenance with no duplicate identity or path owner; and
 - one exact `cgs.create-epics-result-receipt/v1` that binds the current epic
-  path/hash, source manifest, module map, dependency graph, authorization, writer,
+  path/revision, source manifest, module map, dependency graph, authorization, writer,
   and observed COMPLETE artifact state.
 
 A legacy or malformed epic may be audited but cannot be mutated or silently
@@ -156,20 +155,20 @@ deterministic; affected stories remain BLOCKED and the batch cannot be COMPLETE.
 
 ### GDD and acceptance source
 
-Each admitted product statement comes from a current exact GDD hash with current
+Each admitted product statement comes from a current exact GDD revision with current
 independent `APPROVED` evidence for the applicable content profile. Status text,
 filename, epic prose, architecture prose, or a prior story never approves a GDD.
 
 Record source artifact/requirement ID, path, section, stable locator, exact
-criterion excerpt, excerpt hash, complete source hash, approval record ID/hash,
+criterion excerpt, excerpt revision, complete source revision, approval record ID/revision,
 and applicable system/epic IDs. If a source-owned requirement/criterion ID is
-absent, use the approved exact path/locator/excerpt fingerprint and treat later
+absent, use the approved exact path/locator/excerpt stable business key and treat later
 identity drift as an explicit migration, never fuzzy continuity.
 
 ### TR
 
 Admit a TR only from current architecture/TR evidence when its stable ID,
-source requirement/approval hashes, `currentness: CURRENT`, and
+source requirement/approval revisions, `currentness: CURRENT`, and
 `mapping_state: DERIVED_COVERED|DECISION_GAP` reproduce exactly.
 
 - `DERIVED_COVERED` may support an AUTHOR_COMPLETE planning artifact when all other evidence is
@@ -184,7 +183,7 @@ including every `TR-???` form, are forbidden in memory, previews, and files.
 
 ### ADR
 
-An ADR is `ACCEPTED_CURRENT` only when exact path/hash, stable ADR ID,
+An ADR is `ACCEPTED_CURRENT` only when exact path/revision, stable ADR ID,
 Accepted lifecycle transition, recorder identity/time, independent review,
 dependency/supersession chain, and TR coverage are current and non-conflicting.
 
@@ -224,7 +223,7 @@ Identity excludes title, prose summary, priority, extraction order, display
 order, filename slug, date, and batch membership.
 
 ```text
-story_id = STORY-<first 16 lowercase hex of sha256(canonical story_key)>
+story_id = STORY-<epic_id>-<stable-slice-boundary-id>
 ```
 
 The epic's append-only identity ledger owns a monotonic `story_slot: SNNN`.
@@ -233,13 +232,13 @@ retired gap, recycle a slot/ID, suffix a collision, or renumber because stories
 were reordered.
 
 Preserve a story ID/slot only while the same stable epic/source/slice ownership
-remains. A split, merge, moved criterion, changed fingerprint-owned source
+remains. A split, merge, moved criterion, changed stable business key-owned source
 identity, or changed observable slice boundary retires the old story and creates
 new IDs/slots with explicit `supersedes_story_ids`. A source-owned stable
 requirement ID whose approved wording changes may preserve identity while its
-source/excerpt hashes and revision diff change.
+source/excerpt revisions and revision diff change.
 
-Any full-hash collision, duplicate ledger owner, duplicate current path, or
+Any full-revision collision, duplicate ledger owner, duplicate current path, or
 conflicting persisted key is an epic-wide `IDENTITY_CONFLICT`.
 
 ### Story path
@@ -258,7 +257,7 @@ migration. Path identity is ledger-owned, not rediscovered from title.
 
 Each criterion uses `AC-SNNN-CC`, where `SNNN` is the immutable story slot and
 `CC` is a monotonically allocated two-digit criterion slot in that story.
-Each row binds exactly one approved source criterion identity/locator/excerpt hash
+Each row binds exactly one approved source criterion identity/locator/excerpt revision
 and one or more exact TR IDs.
 
 Preserve the AC ID while the same source criterion remains owned by the same story.
@@ -289,7 +288,7 @@ mtime, filename, title, or prose similarity.
 ### Dependencies
 
 Every dependency records stable story ID, canonical path, exact current story or
-candidate core hash, `HARD|SOFT`, reason/source ID, and status. Cross-epic
+candidate core revision, `HARD|SOFT`, reason/source ID, and status. Cross-epic
 dependencies require an explicit current target; they are never discovered by
 title.
 
@@ -329,7 +328,7 @@ keep the affected candidate `BLOCKED` for a scope decision.
 
 ### Exact QA-plan selection
 
-Use a QA plan only when explicitly supplied by exact path plus expected raw hash
+Use a QA plan only when explicitly supplied by exact path plus expected raw revision
 or exactly linked by the current epic. Never choose “latest” or search by sprint,
 epic title, story slug, or modification time.
 
@@ -340,39 +339,28 @@ For every imported item require exact:
  epic_id,
  story_id,
  canonical story path,
- captured_story_artifact_sha256,
- story_core_sha256,
- ac_set_sha256,
+ captured_story_artifact_revision,
+ story_core_revision,
+ ac_set_revision,
  AC ID,
  Test ID)
 ```
 
-The plan and every captured source must be CURRENT, complete, uniquely bound, and
-hash-valid. The captured story artifact hash must equal the current exact raw
-story bytes; core and AC-set hashes are deterministically recomputed from those
-bytes and compared with the imported item set. A same-name item from another
-sprint/epic/story is unrelated.
-PARTIAL/STALE/ambiguous/mismatched evidence is not imported.
-
-`story_core_sha256` is the canonical story source/scope/slice/AC/dependency
-payload excluding QA specs, advisory review, final-readiness fields, revision
-history, generated time, and hashes. This avoids self-reference while binding
-tests to the exact behavior under test. The exact rendered artifact hash remains
-external.
+The plan and every captured source must be CURRENT, complete, uniquely bound, and revision-valid. The captured story artifact revision and imported item revisions must match explicit producer metadata; a same-name item from another sprint/epic/story is unrelated. PARTIAL/STALE/ambiguous/mismatched evidence is not imported. story_core_revision is an explicit monotonic revision assigned whenever source, scope, slice, AC, or dependency state changes, and QA binds that revision exactly. No ID or revision is derived from content bytes.
 
 ### One capped QA assessment
 
 For `author`, validate a supplied current `cgs.story-qa-review/v2`; otherwise
 request at most one read-only `qa-lead` assessment for the selected batch.
 Hard cap: 12 stories, one attempt, 60 seconds, no retry, no nested delegation, no
-mutation. Freeze one batch payload containing every story ID/path/core hash,
+mutation. Freeze one batch payload containing every story ID/path/core revision,
 source-manifest ID, AC/Test mapping, types, test bodies, and limitations.
 
 The result must return one separate record per story:
 
 ```text
 story_id
-received_story_core_sha256
+received_story_core_revision
 verdict: ADEQUATE | GAPS | INADEQUATE | UNKNOWN
 stable_finding_ids
 coverage_by_AC_and_Test_ID
@@ -380,7 +368,7 @@ reviewer_task_id
 no_mutation: true
 ```
 
-Missing story result, payload/hash mismatch, duplicate/unknown story result,
+Missing story result, payload/revision mismatch, duplicate/unknown story result,
 malformed/late/partial/timeout/failed assessment, matching author identity, or
 mutation is `UNKNOWN` for only affected stories. No batch-wide verdict may be
 copied onto each story.
@@ -437,22 +425,22 @@ Required identity fields:
 
 ```text
 Schema: cgs.story/v2
-Story ID: STORY-<16 lowercase hex>
+Story ID: STORY-<epic-id>-<slice-boundary-id>
 Story Slot: SNNN
 Epic ID: <stable ID>
 Canonical Path: production/epics/<slug>/story-NNN-<slug>.md
 Revision: <positive monotonic integer>
-Prior Artifact SHA-256: <sha256:... | ABSENT>
-Source Manifest ID: sha256:<digest>
-Story Core SHA-256: sha256:<digest>
+Prior Artifact revision: <revision:... | ABSENT>
+Source Manifest ID: <stable business ID plus UTC run ID>
+Story Core Revision: <explicit monotonic revision>
 Story Status: AUTHOR_COMPLETE | NEEDS_WORK | BLOCKED | RETIRED
 Readiness Verdict: NOT_EVALUATED
 Readiness Evidence: NONE_CURRENT
 Priority: must-have | should-have | nice-to-have
-Priority Source: <path + stable ID/locator + sha256>
+Priority Source: <path + stable ID/locator + revision>
 ```
 
-The story never embeds its own current artifact hash. New revision is 1; a
+The story never embeds its own current artifact revision. New revision is 1; a
 content/provenance update is base + 1; exact no-op preserves version/time/history
 and writes nothing.
 
@@ -460,7 +448,7 @@ Only the current story type's evidence contract is rendered. Do not emit the
 other four type templates as if they were required.
 
 Each actual update appends one immutable event with event ID, base/candidate
-revision, base artifact hash, source-manifest/core hashes, changed stable IDs,
+revision, base artifact revision, source-manifest/core revisions, changed stable IDs,
 batch ID, generated-at UTC, and author task identity. Never edit/delete/reorder
 prior events.
 
@@ -477,19 +465,19 @@ sections are:
 Schema: cgs.story-registry/v2
 Epic ID: EPIC-MODULE:<module_id>
 Epic Path: production/epics/<epic-slug>/EPIC.md
-Epic Artifact SHA-256: sha256:<digest>
-Create-Epics Receipt ID / SHA-256: <exact current receipt>
-Epic Source Manifest ID / SHA-256: <exact current source manifest>
+Epic Artifact Revision: <declared epic revision>
+Create-Epics Receipt ID / revision: <exact current receipt>
+Epic Source Manifest ID / revision: <exact current source manifest>
 Registry Revision: <positive monotonic integer>
-Prior Registry Artifact SHA-256: <sha256:... | ABSENT>
-Current Registry Payload SHA-256: sha256:<canonical semantic payload>
+Prior Registry Artifact revision: <revision:... | ABSENT>
+Current Registry Revision: <explicit monotonic revision>
 ```
 
 Ordered sections are Authority Boundary, Current Story Registry, Story Identity
 Ledger, Criterion Allocation Ledger, Retired/Superseded Identities, Batch History,
 Local Extensions, and Registry Revision History. The current registry is a
 derived projection; all allocation/retirement/history ledgers are append-only.
-This author never embeds the registry's own current artifact hash.
+This author never embeds the registry's own current artifact revision.
 
 On first safe publication the registry revision is 1. A semantic/trace update is
 base + 1. Exact no-op preserves registry revision/time/history and writes nothing.
@@ -500,8 +488,8 @@ Before decomposition, inventory:
 
 - read-only EPIC identity/source snapshot/provenance and exact result receipt;
 - `STORIES.md` current registry and append-only ledgers, or exact ABSENT state;
-- every direct-child file and exact hash/ABSENT state;
-- every supported story ID, slot, key hash, path, revision/history, AC/Test ID,
+- every direct-child file and exact revision/ABSENT state;
+- every supported story ID, slot, key revision, path, revision/history, AC/Test ID,
   dependency, local extension, and current status; and
 - every collision by story ID, slot, path, key, source criterion, AC ID, and Test
   ID.
@@ -539,9 +527,9 @@ mutations, default 8 and hard maximum 12. Selection order is:
 5. canonical path.
 
 Do not use title, file mtime, directory enumeration order, or prior display
-number. A cursor is canonical `cgs.story-batch-cursor/v1` binding epic ID/hash,
-source-manifest ID, inventory hash, ordering ruleset hash, last selected story ID,
-remaining IDs, and cursor SHA-256. It is returned inline, never persisted.
+number. A cursor is canonical `cgs.story-batch-cursor/v1` binding epic ID/revision,
+source-manifest ID, inventory revision, ordering ruleset revision, last selected story ID,
+remaining IDs, and cursor revision. It is returned inline, never persisted.
 
 Outcome:
 
@@ -562,7 +550,7 @@ completion.
 
 Preview one exact changeset containing selected story CREATE/UPDATE/RETIRE paths,
 the precise `STORIES.md` registry/append-only-ledger candidate,
-all preimage hashes/states, complete stable-ID diffs, candidate bytes/hashes,
+all preimage revisions/states, complete stable-ID diffs, candidate bytes/revisions,
 source manifest, QA result, append-only events, and every omitted/blocked item.
 
 Use existing bounded authorization or obtain one approval for that complete
@@ -571,13 +559,13 @@ final readiness, implementation, test evidence, or an epic completion claim.
 
 Immediately before mutation:
 
-1. re-read/re-hash the full source and target closure;
+1. re-read the full source and target closure;
 2. re-enumerate direct-child membership and unique registry/ledger ownership;
 3. rebuild source manifest, decomposition, story keys/IDs/slots, AC/Test IDs,
    dependency DAG, status matrix, inventory classification, batch selection, and
    candidate bytes;
 4. revalidate supplied/generated QA payload and exact per-story records; and
-5. require every state/hash/identity/diff/cursor/candidate to equal the approved
+5. require every state/revision/identity/diff/cursor/candidate to equal the approved
    preview.
 
 Any difference is `CAS_CONFLICT`: zero new mutations, no refresh/merge/retry,
@@ -585,13 +573,13 @@ and no reuse of authorization.
 
 Publish selected files in the previewed order using same-directory temporary
 files and atomic per-file create/replace. Re-read each result immediately and
-verify exact bytes/hash/schema/ID/revision/status/readiness separation/
+verify exact bytes/revision/schema/ID/revision/status/readiness separation/
 source/AC/Test/dependency/local-extension/history invariants. Publish
 `STORIES.md` last and derive its current registry plus new append-only events
 only from exact verified story results. Never mutate EPIC.md or the epics index.
 
 If any write/readback fails, stop. Report exact verified, uncertain, unchanged,
-and not-attempted paths/hashes as `PARTIAL_WRITE`. Never claim cross-file
+and not-attempted paths/revisions as `PARTIAL_WRITE`. Never claim cross-file
 rollback, delete a successfully written file, repair concurrent work, or report
 COMPLETE.
 
@@ -599,11 +587,11 @@ COMPLETE.
 
 Return:
 
-- workflow/profile/outcome and exact epic ID/path/hash/schema;
-- catalog identity/hash and route state;
-- source-manifest ID, budget use, inventory hash, batch ID/cursor;
+- workflow/profile/outcome and exact epic ID/path/revision/schema;
+- catalog identity/revision and route state;
+- source-manifest ID, budget use, inventory revision, batch ID/cursor;
 - current GDD/TR/ADR/control evidence matrix;
-- every story ID/slot/path/class/base/candidate/on-disk hash;
+- every story ID/slot/path/class/base/candidate/on-disk revision;
 - story status, readiness NOT_EVALUATED, priority/type/slice/dependencies;
 - exact AC/Test IDs and coverage;
 - per-story QA verdict/finding IDs;
@@ -617,7 +605,7 @@ Priority order for the one action:
 2. resolve the first deterministic affected GDD/TR/ADR/control/slice/QA gap;
 3. continue the returned bounded cursor;
 4. run catalog-declared `story-readiness` for the first exact
-   AUTHOR_COMPLETE path/hash; or
+   AUTHOR_COMPLETE path/revision; or
 5. Stop.
 
 Never execute the next action, hardcode a gate/implementation/sprint command when

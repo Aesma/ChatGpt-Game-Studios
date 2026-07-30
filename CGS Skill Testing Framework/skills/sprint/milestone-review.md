@@ -1,5 +1,7 @@
 # Skill Test Spec: $milestone-review
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 ## Candidate status
 
 `NOT EXECUTED` — this P1 remediation specification defines static and behavioral
@@ -9,7 +11,7 @@ write, producer review, or project-stage decision is claimed by this document.
 ## Skill summary
 
 `$milestone-review` resolves one stable milestone ID, validates a bounded
-hash-bound evidence manifest, computes deterministic metrics, freezes an
+revision-bound evidence manifest, computes deterministic metrics, freezes an
 evidence-only draft before optional producer review, derives independent
 delivery/quality/risk/evidence/decision/write states, and optionally creates one
 authorized immutable report. Scope changes and risk acceptance remain user-owned
@@ -49,8 +51,8 @@ of this candidate changeset.
 | `MR-005` | Define exact absent/empty/malformed/inconsistent milestone handling | Static 4; Cases 4, 5 |
 | `MR-006` | Keep Protect/Cut recommendations as evidence-backed candidates; final scope change is user-owned | Static 9; Cases 13, 14 |
 | `MR-007` | Define feature progress and adjusted-day formulas, sources, unknowns, and confidence | Static 7–8; Cases 7, 8 |
-| `MR-008` | Define immutable report path/version/run ID/source hashes and write protocol | Static 13–16; Cases 17–20 |
-| `MR-009` | Freeze evidence-only draft before same-hash producer review, then derive verdict | Static 10–12; Cases 9–12 |
+| `MR-008` | Define immutable report path/version/run ID/source revisions and write protocol | Static 13–16; Cases 17–20 |
+| `MR-009` | Freeze evidence-only draft before same-revision producer review, then assign verdict | Static 10–12; Cases 9–12 |
 
 Exactly these six IDs are the P1 authority for this candidate. Adjacent
 hardening assertions support their safe implementation but do not change the
@@ -72,13 +74,13 @@ Verified by static inspection; no fixture is required.
 4. [ ] Absent, zero-byte, malformed/schema-conflicting, and internally
    inconsistent milestones have exact BLOCKED subtypes and cannot enter metric,
    draft, producer, verdict, decision, or write phases.
-5. [ ] The evidence manifest binds raw hashes/revisions, exact target build,
+5. [ ] The evidence manifest binds declared revisions/revisions, exact target build,
    freshness, repository revision, exact sprint ID set, tracker, bugs, tests,
    performance, risk, and pillar/player-goal evidence.
 6. [ ] Fixed file/row/aggregate limits and exact source states are defined;
    missing, empty, stale, mismatched, or over-limit required evidence becomes
    partial and never silently becomes zero.
-7. [ ] Every metric record requires source refs/hashes, named formula, operands,
+7. [ ] Every metric record requires source refs/revisions, named formula, operands,
    denominator, unit/basis, result or `UNKNOWN`, confidence, and limitation.
 8. [ ] AC completion, planned/completed units, sprint count, bug/test/performance,
    compatible velocity, and ceiling adjusted working days have deterministic
@@ -87,25 +89,25 @@ Verified by static inspection; no fixture is required.
    `CANDIDATE_NOT_DECIDED` objects with evidence, effects, pillar/player impact,
    dependencies, alternative/tradeoff, owner, and separate user-decision schema.
 10. [ ] `cgs.milestone-evidence-draft/v1` explicitly excludes producer, risk,
-    verdict, decision, authorization, path, and write fields and is frozen/hash-
+    verdict, decision, authorization, path, and write fields and is frozen/revision-
     displayed before review.
 11. [ ] Full-mode producer review receives and must echo the exact milestone,
-    target, `source_snapshot_sha256`, and `evidence_draft_sha256`; it has no write
+    target, `source_snapshot_revision`, and `evidence_draft_revision`; it has no write
     or scope-decision authority.
-12. [ ] Producer timeout/unavailability/malformed/hash mismatch becomes
+12. [ ] Producer timeout/unavailability/malformed/revision mismatch becomes
     `risk_status: UNKNOWN` and `evidence_verdict: PARTIAL`; lean/solo use exact
     `NOT_REVIEWED` skip receipts.
 13. [ ] Report schema is `cgs.milestone-review-report/v2` and path is exactly
     `production/milestones/reviews/<milestone-id>/<run-id>.md`.
 14. [ ] Run ID, canonical byte format, report/source/draft/producer/decision
-    hashes, fixed section order, and no-overwrite collision rule are defined.
-15. [ ] Exact candidate path/hash/size/source base set/singleton write set is
+    revisions, fixed section order, and no-overwrite collision rule are defined.
+15. [ ] Exact candidate path/revision/size/source base set/singleton write set is
     previewed and authorized before the first project write.
 16. [ ] Every authority/source is compare-and-set revalidated, target absence is
-    rechecked, create uses atomic no-replace semantics, and post-write bytes/hash
+    rechecked, create uses atomic no-replace semantics, and post-write records/revision
     and source stability are verified.
 17. [ ] Stable finding IDs and scope-candidate IDs exclude volatile prose,
-    timestamps, reviewer, severity/status, and observed hashes/values.
+    timestamps, reviewer, severity/status, and observed revisions/values.
 18. [ ] The final run envelope reports all layered fields independently and
     explicitly states that it did not run tests, captures, fixes, transitions, or
     downstream workflows.
@@ -117,10 +119,10 @@ Verified by static inspection; no fixture is required.
 **Fixture:**
 
 - Both authority files declare `milestone-03` and the milestone/manifest validate.
-- Every required source row is unique, in bounds, current, hash/revision/build
+- Every required source row is unique, in bounds, current, version/revision/build
   matched, and mapped to every required criterion/threshold.
 - Delivery checks and quality checks all pass.
-- Full-mode producer returns valid `ON_TRACK` for the exact frozen hashes.
+- Full-mode producer returns valid `ON_TRACK` for the exact frozen revisions.
 - No governance decision or report authorization is supplied.
 
 **Input:** `$milestone-review current --review full`
@@ -143,7 +145,7 @@ newest mtime and filename order would select another file.
 
 **Input:** `$milestone-review current`
 
-**Expected:** only `milestone-03` resolves, with both authority hashes recorded.
+**Expected:** only `milestone-03` resolves, with both authority revisions recorded.
 No timestamp or filename fallback appears.
 
 ---
@@ -183,10 +185,10 @@ or sprint IDs; conflicting target builds/criteria.
 ## Case 6: Evidence gaps propagate without erasing verified facts
 
 **Fixture:** tracker and sprint sources verify; bug registry is missing, tests are
-empty, one performance hash mismatches, and an unrelated threshold conclusively
+empty, one performance revision mismatches, and an unrelated threshold conclusively
 fails from verified evidence.
 
-**Expected:** ledger states `MISSING`, `EMPTY`, and `HASH_MISMATCH`; dependent
+**Expected:** ledger states `MISSING`, `EMPTY`, and `REVISION_MISMATCH`; dependent
 metrics/checks are `UNKNOWN`; the verified failure remains `FAIL` and has its own
 finding; `evidence_status: PARTIAL`, `quality_status: FAIL`, and first-rule
 `evidence_verdict: PARTIAL`. Missing counts are not zero.
@@ -201,7 +203,7 @@ point value also exists but is out of basis.
 
 **Expected:** AC completion operands are `6/8` with display `75.00%`; planned and
 completed units are `8` and `6`; the unrelated point value is not mixed. Metric
-rows show exact source hashes, formula versions, basis, confidence, and limits.
+rows show exact source revisions, formula versions, basis, confidence, and limits.
 
 **Unknown variants:** zero AC denominator, duplicate mapping, missing state map,
 or missing required tracker source produces `UNKNOWN`, not `0%`.
@@ -229,8 +231,8 @@ declared produces `UNKNOWN` with limitation.
 
 **Expected:** canonical draft bytes contain the allowlisted evidence fields and
 no producer result, `risk_status`, `evidence_verdict`, `decision_status`,
-governance record, write authorization, report path/hash, or
-`artifact_write_status`. Draft bytes/hash/size are frozen and shown before any
+governance record, write authorization, report path/revision, or
+`artifact_write_status`. Draft records/revision/size are frozen and shown before any
 review dispatch.
 
 ---
@@ -238,10 +240,10 @@ review dispatch.
 ## Case 10: Producer must review the identical frozen draft
 
 **Fixture:** full mode; producer returns `AT_RISK`, echoes exact milestone/target,
-source snapshot and draft hashes, and supplies valid sourced risks with owners
+source snapshot and draft revisions, and supplies valid sourced risks with owners
 and deadlines.
 
-**Expected:** the original draft hash remains unchanged; receipt validates;
+**Expected:** the original draft revision remains unchanged; receipt validates;
 `risk_status: AT_RISK`; complete delivery/quality/evidence yields
 `evidence_verdict: CONDITIONAL_GO`. Producer text cannot alter metric, scope, or
 objective inputs.
@@ -251,7 +253,7 @@ objective inputs.
 ## Case 11: Producer failure is explicit PARTIAL
 
 **Variants:** timeout; unavailable delegation; over-limit/malformed response;
-duplicate response; different milestone/build/source/draft hash; invented metric.
+duplicate response; different milestone/build/source/draft revision; invented metric.
 
 **Expected:** one stable reviewer gap, `risk_status: UNKNOWN`,
 `evidence_verdict: PARTIAL`, original draft preserved, no silent retry, no GO.
@@ -285,8 +287,8 @@ not imply commitment.
 
 ## Case 14: Only a valid user artifact decides scope
 
-**Variants:** no scope-decision artifact; valid artifact bound to candidate hash;
-artifact with stale candidate hash or missing user-owned rationale/owner.
+**Variants:** no scope-decision artifact; valid artifact bound to candidate revision;
+artifact with stale candidate revision or missing user-owned rationale/owner.
 
 **Expected:** no artifact leaves candidate undecided; valid artifact is quoted
 without applying a mutation; stale/incomplete artifact becomes a gap and is not
@@ -310,12 +312,12 @@ rationale, owners, and deadlines are recorded only as governance evidence.
 ## Case 16: Stable finding IDs survive volatile changes
 
 **Fixture:** rerun the same logical failed check with changed wording, line,
-timestamp, source hash/value, classification, state, and reviewer; then run a
+timestamp, source revision/value, classification, state, and reviewer; then run a
 different check against the same scope item.
 
 **Expected:** the first finding retains the same `MRF-<20hex>` ID and updated
-evidence; the different check receives another ID. Full fingerprint inputs and
-hashes are available for verification.
+evidence; the different check receives another ID. Full finding key inputs and
+revisions are available for verification.
 
 ---
 
@@ -325,9 +327,9 @@ hashes are available for verification.
 exist; no authorization yet.
 
 **Expected:** schema `cgs.milestone-review-report/v2`; path exactly
-`production/milestones/reviews/<id>/<UTC>-<12hex>.md`; all source revisions/hashes,
+`production/milestones/reviews/<id>/<UTC>-<UTC-run-id>.md`; all source revisions/revisions,
 draft/producer/decision/finding/candidate identities and layered derivations are
-embedded; preview shows `CREATE_NEW`, exact report hash/bytes/source base set and
+embedded; preview shows `CREATE_NEW`, exact report revision/bytes/source base set and
 singleton write set. Project remains unchanged.
 
 ---
@@ -344,11 +346,11 @@ no overwrite, append, counter, alternate timestamp, suffix, rename, or delete.
 
 ## Case 19: Source changes after authorization invalidates transaction
 
-**Fixture:** user authorizes exact candidate; an authority or source raw hash,
+**Fixture:** user authorizes exact candidate; an authority or source declared revision,
 revision, join, or target absence changes before atomic create.
 
 **Expected:** no report write; old candidate/path/authorization are stale. Any
-future attempt requires a fresh evidence run, source/draft/report hashes, run ID,
+future attempt requires a fresh evidence run, source/draft/report revisions, run ID,
 path, preview, and authorization.
 
 ---

@@ -174,15 +174,16 @@ Use `AskUserQuestion` now.
             with self.subTest(expected=expected):
                 self.assertEqual(sut.aggregate(outcomes)["validation"], expected)
 
-    def test_manifest_hash_binding_and_mismatch(self) -> None:
+    def test_manifest_path_version_and_schema_validation(self) -> None:
         package = self.root / ".agents" / "skills" / "skill-test"
         package.mkdir(parents=True)
         shutil.copy2(PACKAGE / "skill_test_rules.py", package / "skill_test_rules.py")
         shutil.copy2(PACKAGE / "rules-v1.yaml", package / "rules-v1.yaml")
         manifest = {
             "schema": sut.MANIFEST_SCHEMA,
-            "runner": {"path": ".agents/skills/skill-test/skill_test_rules.py", "version": "1.0.0", "sha256": sut.sha256_bytes((package / "skill_test_rules.py").read_bytes())},
-            "rules": {"path": ".agents/skills/skill-test/rules-v1.yaml", "version": "1.0.0", "sha256": sut.sha256_bytes((package / "rules-v1.yaml").read_bytes())},
+            "version": "1.0.0",
+            "runner": {"path": ".agents/skills/skill-test/skill_test_rules.py", "version": "1.0.0"},
+            "rules": {"path": ".agents/skills/skill-test/rules-v1.yaml", "version": "1.0.0"},
             "allowed_argv": [["--repo-root", "<path>", "--mode", "audit"]],
             "output_schema": sut.OUTPUT_SCHEMA,
             "interpreter": {"minimum_version": "3.11.0", "maximum_exclusive_version": "3.14.0"},
@@ -192,11 +193,12 @@ Use `AskUserQuestion` now.
         path = package / "validator-manifest-v1.yaml"
         path.write_text(json.dumps(manifest), encoding="utf-8")
         self.assertTrue(sut.verify_manifest(self.root, path)["valid"])
-        manifest["runner"]["sha256"] = "sha256:" + "0" * 64
+        manifest["rules"]["version"] = "2.0.0"
         path.write_text(json.dumps(manifest), encoding="utf-8")
         result = sut.verify_manifest(self.root, path)
         self.assertFalse(result["valid"])
-        self.assertIn("runner-hash", result["errors"])
+        self.assertIn("rules-version", result["errors"])
+        self.assertIn("rules-schema-version", result["errors"])
 
     def test_allowed_argv_is_exact(self) -> None:
         self.assertTrue(sut.allowed_argv(["--repo-root", "C:/repo", "--mode", "audit"]))

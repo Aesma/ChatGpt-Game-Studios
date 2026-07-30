@@ -1,12 +1,22 @@
 ---
 name: code-review
-description: Performs a strictly read-only, hash-bound review of explicit project source targets against their complete applicable rule chain, Accepted ADR evidence, deterministic analysis receipts, and bounded specialist coverage.
+description: Performs a strictly read-only, revision-bound review of explicit project source targets against their complete applicable rule chain, Accepted ADR evidence, deterministic analysis receipts, and bounded specialist coverage.
 ---
+
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
 
 # Code Review
 
 Review exact project source targets without modifying them. Build a bounded,
-hash-bound manifest; load the complete rule chain for every target; distinguish
+revision-bound manifest; load the complete rule chain for every target; distinguish
 verified analysis from judgment; and return stable findings in a generic review
 evidence envelope. This workflow neither fixes code nor completes a story.
 
@@ -69,24 +79,24 @@ Do not exclude a path merely because its directory name resembles `vendor` or
 `generated`.
 
 For every candidate record normalized path, type classification, size, complete
-SHA-256, origin target, eligibility, and exclusion reason. Sort by normalized
-path and hash the complete manifest. The fixed bounds are in the rules reference.
+revision, origin target, eligibility, and exclusion reason. Sort by normalized
+path and revision the complete manifest. The fixed bounds are in the rules reference.
 Every eligible file beyond a limit remains visible as `UNCHECKED`; an unreadable
 or unchecked eligible file makes coverage `PARTIAL`. A direct ineligible file is
 an input error rather than a silent exclusion.
 
-Re-hash every target immediately before evidence rendering. If bytes no longer
-match the reviewed hash, mark `TARGET_CHANGED_DURING_REVIEW` and return
+re-read every target immediately before evidence rendering. If bytes no longer
+match the reviewed revision, mark `TARGET_CHANGED_DURING_REVIEW` and return
 `PARTIAL`.
 
 ## Load the complete rule chain
 
 For each target, discover `AGENTS.md` from repository root through every target
-parent. Read and hash the entire chain in root-to-leaf order; the closest
+parent. Read the entire chain and record each declared revision in root-to-leaf order; the closest
 applicable file wins only where the project guidance explicitly grants that
 precedence. Follow directly linked standards when their subject applies, including
 coding standards and configured technical preferences. Record every source path,
-SHA-256, scope, precedence, stable rule ID, normative wording, and severity.
+revision, scope, precedence, stable rule ID, normative wording, and severity.
 
 Do not use one target's nested rules for another target. Do not replace the chain
 with remembered repository conventions. If an applicable rule source cannot be
@@ -112,7 +122,7 @@ Commit messages may be recorded as non-authoritative discovery clues, but never
 create an ADR binding, establish scope, or prove compliance. Do not search old
 commits to choose among renamed, stale, duplicate, or multiple ADRs.
 
-Resolve every explicit ADR ID to one exact current path and SHA-256. Read status,
+Resolve every explicit ADR ID to one exact current path and revision. Read status,
 Decision, and Consequences. Only `Accepted` ADRs provide compliance rules. A
 readable non-Accepted ADR is `ADR_NOT_EVALUATED` and may produce a source-bound
 `WARNING`; it is never compliance evidence. A missing, unreadable, ambiguous,
@@ -136,15 +146,11 @@ current build/module graph; hot-path allocation and runtime performance require
 compatible analyzer/profiler evidence. Natural-language inspection alone cannot
 verify those properties.
 
-Every tool/receipt row identifies tool, version, configuration hash, input hashes,
-invocation or receipt path, result hash, and currentness. Missing capability,
-timeout, incompatible configuration, stale input, ambiguous output, or a tool
-that cannot run read-only yields `UNVERIFIED`. Any required `UNVERIFIED` check is
-a named coverage gap and forces `PARTIAL`; never report it as pass.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 ## Route bounded reviewers
 
-Mechanical rule, hash, parser, graph, and receipt checks remain local. Build one
+Mechanical rule, revision, parser, graph, and receipt checks remain local. Build one
 deduplicated reviewer plan from exact project configuration and target types:
 
 - `lead-programmer` owns the integrated code-quality/architecture review;
@@ -161,8 +167,8 @@ project routing contract explicitly permits that fallback. Otherwise record
 
 Deduplicate roles before dispatch. At most three reviewers total may run in one
 parallel batch, including the lead. Reviewer selection and overflow use the
-deterministic table in the rules reference. Each receives the same manifest hash,
-only its assigned target hashes/rules, a read-only boundary, and no verdict
+deterministic table in the rules reference. Each receives the same manifest revision,
+only its assigned target revisions/rules, a read-only boundary, and no verdict
 authority. A required reviewer not dispatched because of the cap, or returning
 unavailable/declined/blocked/timeout/error/malformed/target-mismatched evidence,
 forces `PARTIAL`. Reviewer silence is never clean evidence.
@@ -170,19 +176,15 @@ forces `PARTIAL`. Reviewer silence is never clean evidence.
 If the lead role is unavailable, the current agent may perform that exact role
 locally and record `DONE_LOCAL_FALLBACK`; no engine or QA role may be silently
 substituted. Normalize every usable reviewer observation against a current rule
-ID and target hash. Unsupported advice is `INFO`, not a blocking rule.
+ID and target revision. Unsupported advice is `INFO`, not a blocking rule.
 
 ## Normalize stable findings
 
-Finding severity is exactly `BLOCKING`, `WARNING`, or `INFO`. Derive severity
-from the applicable rule source and the deterministic mapping in the rules file;
-reviewer rhetoric cannot raise severity. Every finding includes a stable ID and
-fingerprint, rule source/path/hash, target path/hash, stable symbol or subject,
-exact evidence location, check state, consequence, owner, and remediation.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
-The fingerprint excludes target byte hashes, line numbers, wording, timestamps,
+The stable key excludes target byte revisions, line numbers, wording, timestamps,
 and reviewer identity, so an unchanged defect retains its ID across revisions.
-Hashes remain in the evidence record for staleness. Security, performance, and
+revisions remain in the evidence record for staleness. Security, performance, and
 test-execution observations are routed to their owning domains as candidate
 findings; code review does not duplicate their approval gates.
 
@@ -190,13 +192,13 @@ findings; code review does not duplicate their approval gates.
 
 Coverage is `COMPLETE` only when:
 
-- every eligible target in the bounded manifest was read, hashed, and reviewed;
+- every eligible target in the bounded manifest was read, versioned, and reviewed;
 - every applicable rule source and precedence decision is current and resolved;
 - every required rule check is verified pass/fail or evidence-backed N/A;
 - required ADR scope is explicit and every explicit ADR was resolved/status
   checked, with every Accepted ADR evaluated;
 - every required reviewer completed with usable target-bound evidence; and
-- before/after mutation and final target-hash guards are complete and unchanged.
+- before/after mutation and final target-revision guards are complete and unchanged.
 
 Apply this precedence exactly:
 
@@ -213,7 +215,7 @@ table. `INFO` is advisory and does not block approval.
 
 Return one `cgs.review-evidence/v1` envelope with a `cgs.code-review/v2`
 extension as defined in the rules reference. Include the complete target
-manifest, exact target hashes, rule chains/ledger, ADR and tool evidence,
+manifest, exact target revisions, rule chains/ledger, ADR and tool evidence,
 reviewer plan/results, coverage gaps, stable findings, mutation guard, verdict,
 and stale key.
 

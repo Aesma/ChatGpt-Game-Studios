@@ -1,7 +1,17 @@
 ---
 name: quick-design
-description: "Create one immutable, evidence-gated low-risk design delta proposal against explicit target, section, owner, and base hashes; application, review, lifecycle recording, and implementation remain separate."
+description: "Create one immutable, evidence-gated low-risk design delta proposal against explicit target, section, owner, and base revisions; application, review, lifecycle recording, and implementation remain separate."
 ---
+
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
 
 # Quick Design
 
@@ -13,7 +23,7 @@ evidence, lifecycle record, source file, or test.
 
 A proposal records rationale and requested delta. It is not design truth.
 Production work consumes only the updated authoritative GDD after separately
-owned application, current-hash independent review, and lifecycle recording.
+owned application, current-revision independent review, and lifecycle recording.
 
 ## Invocation and exact identity
 
@@ -25,7 +35,7 @@ Use exactly one form:
       --target <design/gdd/system-slug.md>
       --target-id <SYS-stable-id>
       --section "<exact level-two heading>" [--section "<heading>" ...]
-      --expect-base <sha256:64-lowercase-hex>
+
       [--supersedes <exact-proposal-path>]
 
     $quick-design propose "<hypothesis>"
@@ -49,11 +59,11 @@ Proposal ID is the exact pair <change-id>@<version>. The canonical path is:
 
 The path is collision-free by stable change/version identity, not by a
 same-day filename. Created At UTC in the proposal is an RFC3339 UTC timestamp
-with seconds and Z. The target base hash remains a separate identity binding.
+with seconds and Z. The target base revision remains a separate identity binding.
 
 A later revision is a fresh immutable version. It must use a new version, bind
 the then-current target evidence, and name the exact predecessor path and
-SHA-256 in Supersedes. Never update or overwrite an existing proposal.
+revision in Supersedes. Never update or overwrite an existing proposal.
 
 ## Roles, decisions, and authority boundary
 
@@ -67,7 +77,7 @@ Keep these owners separate:
 3. Application author — a later authorized design-system task applies accepted
    delta IDs to exact GDD sections and produces external application evidence.
 4. Independent reviewer — a fresh design-review task reviews the complete
-   updated GDD and emits hash-bound review evidence.
+   updated GDD and emits revision-bound review evidence.
 5. Lifecycle recorder — a separate owner validates proposal, application,
    review, current GDD, and record pre-state before recording APPLIED or
    SUPERSEDED.
@@ -84,7 +94,7 @@ Use the same decision ownership classes as the staged design-system contract:
 
 - product-choice — selected by user/named product owner;
 - evidence-backed-hard-constraint — current owner source path, artifact ID,
-  section/row, exact SHA-256, and fact;
+  section/row, exact revision, and fact;
 - derived-design-constraint — inputs, derivation, assumptions, and user
   acceptance when it affects the proposed product outcome; and
 - technical-handoff — implementation/architecture question routed out.
@@ -148,7 +158,7 @@ For a production proposal, canonicalize and require:
 - one existing non-symlink Markdown file whose direct parent is design/gdd/;
 - one supplied SYS-<canonical-kebab-slug> target ID;
 - one or more unique supplied exact level-two headings in invocation order; and
-- one required --expect-base lowercase sha256 value.
+- one required revision value.
 
 Reject directories, globs, URLs, junction escapes, multiple paths, concept/index
 documents, reviews, quick specs, stories, data, or unsupported document
@@ -163,24 +173,24 @@ display names.
 
 Compute and record:
 
-- target raw-byte SHA-256;
-- systems-index raw-byte SHA-256 and exact owner row locator;
-- each supplied section's exact raw heading-bound SHA-256; and
+- target declared revision;
+- systems-index declared revision and exact owner row locator;
+- each supplied section's exact raw heading-bound revision; and
 - each required first-level dependency evidence path, artifact ID, locator, and
-  raw-byte SHA-256.
+  declared revision.
 
 The stable section ID is <SYS-id>#<lowercase-kebab canonical heading>. Record
 both that ID and the exact heading. Reject two headings that normalize to the
 same section ID.
 
---expect-base must equal the computed target hash. Duplicate/missing/ambiguous
+Read the target directly and record its declared revision; no caller-supplied base token is accepted. Duplicate/missing/ambiguous
 headings, a delta not assigned to a supplied section, unreadable bytes, missing
 owner, or contradictory dependency evidence fails before risk classification.
 Do not search for a "most relevant" target or section.
 
 If --supersedes is supplied, validate exactly one predecessor: project-local
 non-symlink proposal file, contract cgs.quick-design-proposal/v2, same change ID,
-lower version, exact path/hash, same target system identity for production
+lower version, exact path/revision, same target system identity for production
 changes, and lifecycle compatibility. An invalid predecessor returns
 ERROR — INVALID PREDECESSOR. A new version always rebinds current base, sections,
 index, dependencies, and decisions; it never reapplies stale bytes.
@@ -203,7 +213,7 @@ Create one risk assessment contract cgs.quick-design-risk/v2. Every row has:
       - path: <exact path>
         artifact_id: <SYS-id or stable artifact ID>
         locator: <section/row/field>
-        sha256: <64-lowercase-hex>
+        revision: <non-empty stable value>
         quote_or_fact: <minimal fact>
     owner: <authoritative artifact/product owner>
     derivation: <why evidence produces result>
@@ -224,7 +234,7 @@ Evaluate every fixed row:
 | QDR-009 | Cannot prove the change stays inside supplied target sections and existing owner | YES redirects |
 
 Each row must be YES, NO, or UNKNOWN. Missing evidence means UNKNOWN, not NO,
-and blocks. Record the ordered canonical risk-record SHA-256 using UTF-8, LF,
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 no trailing whitespace, fixed field order, and one final newline.
 
 For EXPERIMENT_ONLY, evaluate the same rows against exact prototype-scope
@@ -233,11 +243,11 @@ provably isolated; UNKNOWN blocks, and YES rejects experiment-only routing
 instead of converting a production change into a prototype label.
 
 The product owner may change the requested design, after which every row is
-re-evaluated against the same still-current source hashes. User confirmation of
-a label cannot alter a fact, evidence hash, owner, or derivation.
+re-evaluated against the same still-current source revisions. User confirmation of
+a label cannot alter a fact, evidence revision, owner, or derivation.
 
 Any YES redirects before drafting/writing. For QDR-008, return a structured
-range-change handoff in conversation: target path/ID/section/hash, exact current
+range-change handoff in conversation: target path/ID/section/revision, exact current
 range/unit/owner evidence, requested value, unresolved product-choice owner,
 affected dependency owners, and next owner design-system revise-section. The
 full authoring path decides a new range and later propagation/review. quick-design
@@ -266,7 +276,7 @@ when it remains presentation content owned by the supplied existing system. If
 it requires a new stable owner, state/lifecycle, interface, accessibility policy,
 or systems-index row, QDR-001/002/003/006 is YES and redirects.
 
-Show the complete risk record, evidence/record hashes, derived profile, and
+Show the complete risk record, evidence/record revisions, derived profile, and
 required review depth. User may proceed, revise the product change, or redirect,
 but may not select a profile inconsistent with facts.
 
@@ -285,7 +295,7 @@ Create QDD decision records:
     source_path: <path or null>
     source_artifact_id: <ID or null>
     source_locator: <section/row/field or null>
-    source_sha256: <hash or null>
+    source_revision: <revision or null>
     inputs: []
     derivation: null
     assumptions: []
@@ -326,12 +336,12 @@ Use this exact header:
     Required Review Depth: lean-or-full | full | NOT_APPLICABLE
     Target GDD Path: <exact path | NOT_APPLICABLE>
     Target System ID: <SYS-id | NOT_APPLICABLE>
-    Base GDD SHA-256: <sha256:... | NOT_APPLICABLE>
+    Base GDD revision: <positive integer | NOT_APPLICABLE>
     Systems Index Path: design/gdd/systems-index.md | NOT_APPLICABLE
-    Systems Index SHA-256: <sha256:... | NOT_APPLICABLE>
+    Systems Index revision: <positive integer | NOT_APPLICABLE>
     Risk Record Contract: cgs.quick-design-risk/v2
-    Risk Record SHA-256: <sha256:...>
-    Supersedes Path/SHA-256: <exact path/hash | NONE>
+    Risk Record revision: <positive integer>
+    Supersedes Path/revision: <exact path/revision | NONE>
     Currentness at Creation: CURRENT
     Implementation Eligible: NO
 
@@ -339,11 +349,10 @@ Then include exactly seven level-two sections:
 
 1. Product Decision — QDD records, selected outcome, rationale, authority,
    hard/derived provenance, non-goals, and routed technical questions.
-2. Base Snapshot — ordered target path/ID/base hash, exact section headings/
-   section IDs/hashes, index row/hash, dependency evidence, and minimal current
+2. Base Snapshot — ordered target path/ID/base revision, exact section headings/
+   section IDs/revisions, index row/revision, dependency evidence, and minimal current
    statements.
-3. Structural Risk Evidence — complete ordered cgs.quick-design-risk/v2 record,
-   canonicalization rule/digest, and derived profile.
+3. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 4. Proposed Delta — stable QDDELTA-<NNN> IDs; each maps to one supplied section,
    decision IDs, before/after product meaning, unchanged invariants, and owner.
    State: "This proposal does not replace the authoritative GDD."
@@ -376,10 +385,10 @@ CREATE_IF_ABSENT semantics. Otherwise obtain one authorization.
 Immediately before create:
 
 1. assert canonical proposal path does not exist;
-2. re-read/re-hash target, all supplied sections, systems index row/file,
+2. re-read/re-read target, all supplied sections, systems index row/file,
    dependencies, owner evidence, and predecessor;
-3. recompute risk results and canonical risk-record digest;
-4. confirm approved draft bytes still bind those exact hashes/decision IDs; and
+3. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+4. confirm approved draft bytes still bind those exact revisions/decision IDs; and
 5. confirm path, Proposal ID, change/version, and predecessor chain agree.
 
 Any source mismatch returns ERROR — STALE BASE — REBASE REQUIRED with zero
@@ -388,8 +397,8 @@ modification. The create operation is atomic create-if-absent; a concurrent
 winner cannot be overwritten.
 
 After atomic create, re-read bytes and verify contract, IDs, timestamp, source
-hashes, risk digest, sections, status, and content. Report proposal raw-byte
-SHA-256. Declined/partial/failed results use the precedence matrix. Only verified
+revisions, risk reference ID, sections, status, and content. Report proposal raw-byte
+revision. Declined/partial/failed results use the precedence matrix. Only verified
 bytes return PROPOSAL_CREATED.
 
 ## Phase 7: Separate application, revision evidence, review, and record
@@ -398,7 +407,7 @@ After creation, stop with independent handoffs.
 
 Application:
 
-- A separate design author re-hashes proposal and every bound source.
+- A separate design author re-reads proposal and every bound source.
 - Each accepted QDDELTA is applied through staged design-system
   revise-section for its exact canonical section with separate authorization.
 - Product choices remain proposal decision-owner decisions; the application
@@ -406,59 +415,51 @@ Application:
 - If any base/section/index/dependency/risk evidence changed, do not reapply.
   Create a new proposal version with --supersedes against the new base.
 - The application owner produces immutable evidence contract
-  cgs.design-application/v1 with receipt ID, proposal path/hash, target path/ID,
-  pre/post raw GDD hashes, applied delta IDs, exact changed line ranges or patch
-  content, application task ID, UTC timestamp, and payload SHA-256.
+  cgs.design-application/v1 with receipt ID, proposal path/revision, target path/ID,
+  pre/post raw GDD revisions, applied delta IDs, exact changed line ranges or patch
+  content, application task ID, UTC timestamp, and payload revision.
 
 Review:
 
 - A fresh staged design-review task reviews the complete post-application GDD.
 - QD-TUNING and QD-COSMETIC require formal lean or full; QD-LOCAL requires full.
-- If re-reviewing a prior report, supply its exact path plus the
-  cgs.design-application/v1 receipt as revision evidence. The prior report must
-  declare cgs.design-review/v2. The receipt's pre-hash must equal prior report
-  target hash and post-hash current target hash.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - Review evidence must use cgs.review-evidence/v1, formal APPROVED, independent,
-  current target path/hash, required depth, and recomputable report/evidence
-  hashes. solo/advisory/partial cannot approve.
+  current target path/revision, required depth, and recomputable report/evidence
+  revisions. solo/advisory/partial cannot approve.
 
 Record:
 
-- A separate recorder re-hashes proposal, application receipt, current GDD,
+- A separate recorder re-reads proposal, application receipt, current GDD,
   review evidence/report, and expected lifecycle predecessor before appending.
 - APPLIED/SUPERSEDED records use contract cgs.quick-design-lifecycle/v2 and an
   explicit fresh path:
 
       design/quick-specs/<change-id>/<version>/records/<record-id>.md
 
-- APPLIED binds proposal path/hash, application receipt path/hash/task,
-  pre/post/current GDD path/hash, review report/evidence path/hash/depth/verdict/
-  reviewer identity, recorder identity, previous record path/hash or NONE,
-  UTC timestamp, and Implementation Eligible YES.
-- SUPERSEDED binds the same identity graph plus successor proposal path/hash and
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+- SUPERSEDED binds the same identity graph plus successor proposal path/revision and
   Implementation Eligible NO.
 
-Records are append-only. Never select by mtime. Conflicts, stale hashes, reused
+Records are append-only. Never select by mtime. Conflicts, stale revisions, reused
 roles, missing receipts, or unexpected pre-state authorize nothing. quick-design
 never writes these artifacts.
 
 ## Phase 8: Read-only status and re-application safety
 
-status reads only exact proposal and optional exact record. Validate contracts,
-canonical paths, Proposal ID/change/version, raw hashes, evidence payload hashes,
-role independence, and record predecessor.
+Allocate a collision-checked stable ID from declared domain identifiers plus a UUID or run-scoped sequence; never derive it from file bytes.
 
 Without record: PROPOSED; CURRENT only if every production base/index/section/
 dependency binding still matches; Implementation Eligible NO.
 
 With APPLIED: YES requires simultaneously:
 
-- proposal and lifecycle v2 identities/hashes match;
+- proposal and lifecycle v2 identities/revisions match;
 - application v1 receipt binds proposal, expected pre-base, applied delta IDs,
-  and current post-GDD hash;
-- current GDD equals post hash;
+  and current post-GDD revision;
+- current GDD equals post revision;
 - independent review evidence v1 is APPROVED at required depth and targets that
-  same current path/hash;
+  same current path/revision;
 - record predecessor and recorder independence are valid;
 - no valid SUPERSEDED record is supplied; and
 - every explicit reference revalidates.
@@ -474,17 +475,17 @@ Valid SUPERSEDED always has eligibility NO and reports exact successor.
 EXPERIMENT_ONLY never becomes APPLIED.
 
 A production story may cite proposal as rationale only. Its authoritative source
-must be the updated current GDD path/hash plus exact current APPLIED record
-path/hash. Separate story-readiness remains required; this workflow never chains
+must be the updated current GDD path/revision plus exact current APPLIED record
+path/revision. Separate story-readiness remains required; this workflow never chains
 to implementation.
 
 ## Final response contract
 
 Report:
 
-- exact inspected/created paths and raw-byte hashes;
+- exact inspected/created paths and raw-byte revisions;
 - target system/section identities;
-- risk record, profile, and evidence digest;
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - decision IDs/owners and unresolved routed questions;
 - all six status axes;
 - exact non-writes;
@@ -508,9 +509,9 @@ write or lifecycle authority.
 |---|---|
 | QDS-005 | Phases 2–4 persist typed risk facts and user-owned decisions before any profile label. |
 | QDS-006 | Phase 1 resolves one exact GDD, stable system owner, and explicit sections. |
-| QDS-007 | Phase 6 uses compare-and-create identity/CAS and forbids same-day overwrite. |
+| QDS-007 | Phase 6 uses compare-and-create identity/atomic conflict check and forbids same-day overwrite. |
 | QDS-008 | Phases 2 and 3 redirect any tuning outside the approved range. |
 | QDS-009 | Phase 3 routes production new-system work to the systems-index/design owner. |
 | QDS-010 | Phases 7 and 8 bind base/predecessor/currentness and make re-application ineligible. |
 | QDS-011 | Status axes and precedence distinguish invalid, partial, blocked, declined, and persistence failure. |
-| QDS-012 | The final response contract exposes exact hashes while the formal spec keeps catalog evidence unexecuted until run. |
+| QDS-012 | The final response contract exposes exact revisions while the formal spec keeps catalog evidence unexecuted until run. |

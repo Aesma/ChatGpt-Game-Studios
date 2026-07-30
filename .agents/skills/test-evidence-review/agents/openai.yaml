@@ -1,4 +1,4 @@
 interface:
   display_name: "Test Evidence Review"
   short_description: "Review typed structural and execution evidence"
-  default_prompt: "Use $test-evidence-review with one exact hash-bound review manifest to assess structural quality and current-build execution independently; remain read-only unless --persist requests one immutable CAS-verified report."
+  default_prompt: "Use $test-evidence-review with one exact revision-bound review manifest to assess structural quality and current-build execution independently; remain read-only unless --persist requests one immutable atomically verified report."

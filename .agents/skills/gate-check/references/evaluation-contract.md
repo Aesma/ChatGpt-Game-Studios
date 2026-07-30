@@ -26,7 +26,7 @@ source: DETERMINISTIC | PRODUCER_RECORD | ATTESTATION | DIRECTOR
 status: PASS | FAIL | ADVISORY | UNKNOWN | NOT_EVALUATED | NOT_APPLICABLE | UNBOUND | STALE
 expected: <profile rule>
 observed: <redacted exact observation>
-artifact_sha256: [<current hashes>]
+artifact_revision: [<current revisions>]
 evidence_record_ids: [<validated IDs>]
 attestation_ids: [<validated IDs>]
 finding_ids: [<stable IDs>]
@@ -44,7 +44,7 @@ Apply these rules in order:
 1. Profile says the check does not apply, and the stated applicability condition
    was evaluated: `NOT_APPLICABLE`.
 2. A required prior-result record is missing or lacks a required identity,
-   manifest, producer, verdict, timestamp, persistence, or hash field: `UNBOUND`.
+   manifest, producer, verdict, timestamp, persistence, or revision field: `UNBOUND`.
 3. A supplied record or attestation is expired, superseded, scope-mismatched,
    build-mismatched, or differs from current exact bytes: `STALE`.
 4. The check was not run because required scope, input, tool result, director
@@ -93,7 +93,7 @@ producer verdicts.
 A policy waiver is different from accepted risk. A waiver may satisfy a check
 only when that exact transition profile names an authorized waiver schema and the
 supplied current record includes authority, scope, finding IDs, artifact/build
-hashes, signed timestamp, and expiry. No current P1 transition profile authorizes
+revisions, signed timestamp, and expiry. No current P1 transition profile authorizes
 a generic waiver. Therefore a conversational permission, director opinion, or
 unchecked `waived` label never passes a blocking check.
 
@@ -106,18 +106,18 @@ chain. The authority packet used by this skill contains at least:
 ```yaml
 schema_version: <catalog-declared version>
 record_path: <repository-relative path>
-record_sha256: <raw hash>
+record_revision: <declared revision>
 stage: <one of the seven exact stages>
 owner: <catalog-authorized owner>
 transition_from: <prior stage or null under schema>
 updated_at: <ISO-8601 with timezone>
-source_snapshot_hash: <hash>
-previous_authority_record_sha256: <hash or schema-authorized null>
+source_snapshot_revision: <revision>
+previous_authority_record_revision: <revision or schema-authorized null>
 gate_receipt:
   required: true | false
   record_id: <ID or null>
   path: <path or null>
-  sha256: <hash or null>
+  revision: <revision or null>
 ```
 
 If the shared catalog lacks the schema/graph/owner/receipt rules, or the authority
@@ -126,7 +126,7 @@ record is missing, malformed, stale, unauthorized, or contradictory, return
 inside this skill.
 
 `production/stage.txt` may be read only as a `LEGACY_DECLARATION`. Record its path,
-raw hash, and value as an advisory observation. It cannot select a transition,
+declared revision, and value as an advisory observation. It cannot select a transition,
 increase confidence, satisfy the authority check, or override the versioned
 record. A conflicting legacy value is reported as a contradiction but does not
 replace the authority stage.
@@ -134,8 +134,8 @@ replace the authority stage.
 ## 5. Bounded scope manifest
 
 Build only the profile-defined manifest. A manifest row records canonical
-repository-relative path, role, discovery rule, current raw SHA-256, size, and
-read mode (`FULL_CONTENT`, `STRUCTURED_EXTRACT`, `HASH_ONLY`, or
+repository-relative path, role, discovery rule, current declared revision, size, and
+read mode (`FULL_CONTENT`, `STRUCTURED_EXTRACT`, `METADATA_ONLY`, or
 `EXTERNAL_RECEIPT`). Reject traversal, outside-root paths, root-escaping symlinks,
 generated/vendor/cache paths, and ambiguous repository roots.
 
@@ -149,7 +149,7 @@ Each transition profile declares these hard budgets:
 - maximum manifest entries;
 - maximum files whose full contents enter model context;
 - maximum extracted/full-content bytes entering model context;
-- maximum exact bytes hashed locally;
+- maximum source bytes retained locally for explicit validation;
 - maximum tool actions; and
 - maximum elapsed assessment time.
 
@@ -159,17 +159,17 @@ concurrent change, or unresolved scope conflict makes profile coverage partial
 and yields `PARTIAL` unless a confirmed blocking failure already requires `FAIL`.
 Do not sample and infer that unchecked scope passed.
 
-Hashing and structured search may inspect bytes without placing those bytes in
-conversation context, but they still count against the profile's hash/action/time
+revision tracking and structured search may inspect bytes without placing those bytes in
+conversation context, but they still count against the profile's revision/action/time
 budgets. Exclude `.git/`, generated builds not explicitly named by a candidate,
 vendor/third-party/import/cache directories, `skill-fix-work/`, and the testing
 framework unless a profile explicitly names one of those paths as evidence.
 
-Immediately before the verdict, re-hash the authority record, complete scope
+Immediately before the verdict, re-read the authority record, complete scope
 manifest, and every accepted evidence record. A changed authority record makes
 the run `ERROR — AUTHORITY CHANGED DURING CHECK` with no gate record. Another
 changed required input is `SNAPSHOT_CHANGED`, incomplete coverage, and cannot
-produce PASS. An evidence hash mismatch is `STALE` under the status rules above.
+produce PASS. An evidence revision mismatch is `STALE` under the status rules above.
 
 ## 6. Producer-record adapters
 
@@ -188,21 +188,13 @@ cannot upgrade an ineligible native verdict or omit native dependencies.
 Do not wrap a native record synthetically and do not infer a legacy adapter from
 a similar filename or verdict. For a generic producer, validate the envelope,
 the exact current extension/payload schema and version, the canonical payload or
-artifact hash, and any producer-authorized recorder receipt. For a native
+artifact revision, and any producer-authorized recorder receipt. For a native
 producer, validate the exact native schema/version and every required companion
 receipt. Unknown or missing envelope, extension, payload, native-record, budget,
 or recorder-receipt versions fail closed as `INCOMPLETE`; missing identity is
 `UNBOUND`, and a changed current binding is `STALE`.
 
-Reject conversation-only records when the producer contract says they are not
-persisted gate evidence. Reject a wrapper whose payload cannot be reproduced.
-An envelope marked `persistence: NONE`, `gate_evidence_eligible: false`, or
-otherwise candidate-only remains `INCOMPLETE` even when its candidate verdict is
-favorable. A recorder can make it eligible only when the current producer or
-profile defines the recorder's exact schema/version and the complete receipt
-validates; the gate must not invent that contract.
-Do not accept document-internal approval, legacy summary logs, `latest` pointers,
-or an aggregate hash when the producer requires per-input hashes.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
 Native verdict normalization uses four outcomes:
 
@@ -227,7 +219,7 @@ the accountable operator identity. Normalize each answer to `YES`, `NO`, or
 
 ```yaml
 schema: cgs.gate-attestation/v1
-attestation_id: sha256:<canonical payload excluding attestation_id>
+attestation_id: <stable allocated ID>
 check_id: <stable profile check ID>
 question_version: <profile ID + question version>
 question: <exact question>
@@ -236,21 +228,20 @@ operator: <user-supplied accountable identity>
 identity_assurance: USER_ASSERTED | VERIFIED
 issued_at: <ISO-8601 with timezone>
 observed_at: <ISO-8601 with timezone>
-expires_at: <profile deadline or null when hash-bound only>
+expires_at: <profile deadline or null when revision-bound only>
 transition_id: <exact transition ID>
 profile_id: <exact profile ID>
-scope_manifest_sha256: <current manifest hash>
+scope_manifest_revision: <current manifest revision>
 subjects:
   - path_or_id: <artifact/build/report identity>
-    sha256: <current hash>
+    revision: <current revision>
 supporting_receipt_ids: [<IDs>]
 ```
 
 Validation rules:
 
-- Missing operator, time, question version, subject hash, or scope hash is
-  `UNBOUND`.
-- Expiry, profile/check mismatch, or subject/scope hash change is `STALE`.
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+- Expiry, profile/check mismatch, or subject/scope revision change is `STALE`.
 - `YES` maps to `PASS`, `NO` maps to `FAIL` for a blocking question or
   `ADVISORY` for an advisory question, and `UNKNOWN` maps to `UNKNOWN`.
 - An unanswered or ambiguously answered required question remains
@@ -274,7 +265,7 @@ They are `class: ADVISORY`, `source: DIRECTOR`. Their
 `coverage_required` is true in lean/full and false in solo.
 
 For `lean` and `full`, dispatch the four profile-independent phase gates in
-parallel with the exact transition ID, candidate stage, scope manifest hash,
+parallel with the exact transition ID, candidate stage, scope manifest revision,
 bounded artifact summary, and domain-specific context. Each dispatch has one
 attempt and a 120-second response deadline. Do not silently retry, substitute the
 current agent, or accept a response for an older manifest.
@@ -285,7 +276,7 @@ Each result records:
 gate_id: CD-PHASE-GATE | TD-PHASE-GATE | PR-PHASE-GATE | AD-PHASE-GATE
 agent_role: <expected role>
 attempt: 1
-scope_manifest_sha256: <hash>
+scope_manifest_revision: <revision>
 started_at: <time>
 ended_at: <time or null>
 native_verdict: READY | CONCERNS | NOT_READY | null

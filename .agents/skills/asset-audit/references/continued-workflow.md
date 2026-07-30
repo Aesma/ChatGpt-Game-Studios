@@ -15,23 +15,23 @@ On failure, return usage/non-evidence diagnostics only and stop.
 
 ## Phase 1 — Validate and lock one audit manifest
 
-1. Read manifest raw bytes once; enforce the 1 MiB cap and compute SHA-256.
+1. Read manifest raw bytes once; enforce the 1 MiB cap and record the explicit revision.
 2. Parse `cgs.asset-audit-manifest/v1` with duplicate-key detection.
 3. Resolve literal/real paths without following symlinks/junctions.
 4. Validate unique stable target/build/artifact/platform/configuration and every
-   declared source path/hash/schema/relationship.
+   declared source path/revision/schema/relationship.
 5. Load inventory plus its versioned completeness receipt and verify all stable
-   asset IDs/paths/hashes/types/import/LFS/provenance/license fields.
-6. Reject scope identity/path/hash/schema conflicts before adapters run.
+   asset IDs/paths/revisions/types/import/LFS/provenance/license fields.
+6. Reject scope identity/path/revision/schema conflicts before adapters run.
 
 Never infer latest/current inputs or recursively discover undeclared asset roots.
 
 ## Phase 2 — Build bounded manifests and one-pass indexes
 
 1. Apply fixed limits; manifest values may only lower them.
-2. Sort and hash the complete candidate identity stream.
+2. Sort the complete candidate identity stream.
 3. Retain bounded rows and exact overflow counts, boundary keys, and omitted
-   sequence digests.
+   sequence revisions.
 4. Build inventory, rule, adapter, provenance, license, production, and reference
    indexes once.
 5. Emit aggregate OVER_LIMIT coverage for uninspected entries; do not sample or
@@ -42,7 +42,7 @@ NON-COMPLIANT; the gap still remains visible.
 
 ## Phase 3 — Resolve effective rules
 
-1. Load root-to-target applicable `AGENTS.md` paths/hashes.
+1. Load root-to-target applicable `AGENTS.md` paths/revisions.
 2. Load technical preferences, art direction, provenance/license policy, and
    explicitly advisory fallbacks.
 3. Normalize stable rule records and apply same-key instruction precedence.
@@ -54,7 +54,7 @@ coverage incomplete. Do not ask a specialist, use memory, or invent a default.
 
 ## Phase 4 — Validate adapter and resolver registries
 
-1. Validate adapter/resolver IDs, versions, executable/parser/normalizer hashes,
+1. Validate adapter/resolver IDs, versions, executable/parser/normalizer revisions,
    supported engines/platforms/types/schemas/operators/syntaxes, typed argv,
    sandbox/no-network policy, time/output caps, result schemas, and cleanup.
 2. Confirm OS-level project-read-only isolation before any execution.
@@ -66,10 +66,10 @@ coverage incomplete. Do not ask a specialist, use memory, or invent a default.
 
 For each deterministic selected asset/rule pair:
 
-1. revalidate asset/import/rule/adapter/target hashes and signature;
+1. revalidate asset/import/rule/adapter/target revisions and signature;
 2. run only the registered argv inside the declared read-only sandbox and bounds;
 3. capture `cgs.asset-adapter-receipt/v1` plus before/after snapshots;
-4. validate receipt binding/schema/result/log digests;
+4. validate receipt binding/schema/result/log revisions;
 5. compare typed expected/actual values with the registered operator; and
 6. emit PASS, conclusive FAIL, UNVERIFIED, or evidence-backed N/A.
 
@@ -91,7 +91,7 @@ Never infer origin/rights from path, URL, extension, project location, or memory
 
 1. Match exact engine/version/target to the registered resolver.
 2. Verify every declared static/dynamic/native syntax and parser/normalizer.
-3. Validate current build/dependency/inventory hashes.
+3. Validate current build/dependency/inventory revisions.
 4. Parse locations to normalized asset IDs and emit exact graph edges/receipts.
 5. Prove mechanism coverage before classifying each asset/reference.
 6. Apply REFERENCED, UNREFERENCED_CONFIRMED, POSSIBLY_ORPHANED,
@@ -103,7 +103,7 @@ perform automatic deletion.
 
 ## Phase 8 — Consume production state and preserve ownership
 
-1. Rehash exact asset manifest/spec/transaction/validation inputs when applicable.
+1. re-read exact asset manifest/spec/transaction/validation inputs when applicable.
 2. Accept READY_FOR_PRODUCTION only under its complete current contract.
 3. Preserve DRAFT/BLOCKED_NOT_FOR_PRODUCTION as HARD production-target failures.
 4. Mark missing/stale/mismatched state UNKNOWN/incomplete rather than upgrading it.
@@ -112,17 +112,17 @@ perform automatic deletion.
 
 ## Phase 9 — Normalize findings and coverage
 
-1. Build stable AAF fingerprints from stable logical IDs only.
+1. Build stable AAF business keys from stable logical IDs only.
 2. Attach current evidence, severity from the effective rule, owner, limitation,
    status, and objective closure condition.
-3. Deduplicate only identical full fingerprints; conflicting evidence forces a
+3. Deduplicate only identical full stable business keys; conflicting evidence forces a
    coverage conflict.
 4. Emit one bounded coverage row for every required candidate/channel/check.
 5. Require current positive evidence for NOT_APPLICABLE.
 
 ## Phase 10 — Revalidate immutable snapshot
 
-1. Re-enumerate declared roots and rehash every locked project input.
+1. Re-enumerate declared roots and re-read every locked project input.
 2. Compare asset/import/cache mutation snapshots.
 3. Mark added/removed/renamed/changed inputs STALE and discard affected old-byte
    conclusions without mixing snapshots.
@@ -136,14 +136,14 @@ current conclusive HARD failure, incomplete/unknown coverage, advisory failure,
 then fully proven compliance. Preserve known findings and all gaps regardless of
 which row controls.
 
-`--summary` must retain identical machine target, input hashes, manifest/overflow,
+`--summary` must retain identical machine target, input revisions, manifest/overflow,
 rule precedence, coverage, state sets, finding IDs, limitations, verdict, and
-payload/envelope hashes.
+payload/envelope revisions.
 
 ## Phase 12 — Construct and return evidence
 
 1. Build canonical `cgs.asset-audit-report/v1` under `cgs.asset-audit/v3`.
-2. Recompute every artifact, manifest, receipt, payload, and envelope hash.
+2. re-read and validate every declared artifact, manifest, receipt, payload, and envelope revision.
 3. Wrap it in `cgs.review-evidence/v1`; on any construction mismatch return
    `ERROR — EVIDENCE CONSTRUCTION FAILED` with no record.
 4. Mark conversation output not durable/not persisted.

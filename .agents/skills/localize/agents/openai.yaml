@@ -1,7 +1,7 @@
 interface:
   display_name: "Localize"
-  short_description: "Run hash-bound locale packages and evidence with owner separation"
-  default_prompt: "Use $localize only with an explicit hash-pinned v2 request. Bind source catalog, stable key, plural/placeholder, locale and translation identities; keep translator and reviewer distinct; process bounded locale/key batches with partial results; treat pseudo-localization and static UI/RTL/VO checks as test candidates until build-bound evidence exists; enforce consent/privacy; and protect every catalog/package import or export with exact owner authorization and CAS."
+  short_description: "Run version-bound locale packages and evidence with owner separation"
+  default_prompt: "Use $localize only with an explicit version-pinned v2 request. Bind source catalog, stable key, plural/placeholder, locale and translation identities; keep translator and reviewer distinct; process bounded locale/key batches with partial results; treat pseudo-localization and static UI/RTL/VO checks as test candidates until build-bound evidence exists; enforce consent/privacy; and protect every catalog/package import or export with exact owner authorization and version and existence conflict check."
 
 policy:
   allow_implicit_invocation: true

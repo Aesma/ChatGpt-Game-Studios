@@ -1,5 +1,7 @@
 # Skill Improve Spec: `$skill-improve`
 
+All revisions in this specification are supplied metadata; no identity or currentness decision is derived from file content.
+
 > **Spec ID**: skill-improve-v2
 > **Spec Schema**: cgs-skill-spec/v2
 > **Category**: utility
@@ -13,7 +15,7 @@
 verifier, integrator, and recovery-owner tasks preserve independence.
 
 **Owned outputs:** immutable run evidence under
-`.codex/skill-improve-runs/{run-id}/`; only a verified `apply` or hash-guarded
+`.codex/skill-improve-runs/{run-id}/`; only a verified `apply` or revision-guarded
 `recover` may mutate exact target-local paths under
 `.agents/skills/{skill-name}/`.
 
@@ -57,8 +59,8 @@ the live package, and recovery never restores saved full contents.
 - [ ] **[SI-SA-007]** Improvement uses stable scenarios and severity, never
   warning/failure counts alone.
 - [ ] **[SI-SA-008]** Candidate/apply evidence binds raw source, candidate,
-  patch, full diff, tool, environment, and observed hashes.
-- [ ] **[SI-SA-009]** Apply and recovery use all-file CAS and never overwrite a
+  patch, full diff, tool, environment, and observed revisions.
+- [ ] **[SI-SA-009]** Apply and recovery use all-file version and existence conflict check and never overwrite a
   diverged path.
 - [ ] **[SI-SA-010]** Recovery evidence has an explicit location, retention
   rule, and manual conflict procedure.
@@ -75,8 +77,8 @@ the live package, and recovery never restores saved full contents.
 
 - An independently approved acceptance manifest identifies the target,
   objective, severity taxonomy, scenarios, runner identities, and owners.
-- Current `cgs-skill-test-rules/v1` and validator manifest hashes match.
-- A supplied `cgs-skill-test-receipt/v2` rehashes to freshness `CURRENT`.
+- Current `cgs-skill-test-rules/v1` and validator manifest revisions match.
+- A supplied `cgs-skill-test-receipt/v2` revalidate to freshness `CURRENT`.
 - Impact discovery completes within its frozen budget.
 
 #### Input
@@ -100,19 +102,19 @@ the live package, and recovery never restores saved full contents.
 
 #### Expected behavior
 
-1. Validates skill-test receipt schema, content hash, all dependencies, and
+1. Validates skill-test receipt schema, declared revision, all dependencies, and
    freshness before treating it as evidence.
 2. Records selected/loaded/failed/omitted/excluded impact ledger and stable
    caller/callee/schema edges with source lines.
 3. Freezes source, authority, runner, environment, scenario, receipt, and graph
-   hashes before candidate work.
-4. Re-hashes before writing and read-backs the immutable lock.
+   revisions before candidate work.
+4. revalidate before writing and read-backs the immutable lock.
 5. Returns `ORACLE_FROZEN`, Apply Eligible `NO`.
 
 #### Assertions
 
 - [ ] **[SI-C01-A01]** No target or oracle bytes change.
-- [ ] **[SI-C01-A02]** Receipt freshness is hash-based, not date-based.
+- [ ] **[SI-C01-A02]** Receipt freshness is revision-based, not date-based.
 - [ ] **[SI-C01-A03]** Every impact edge has evidence and an owner.
 - [ ] **[SI-C01-A04]** Missing impact or receipt coverage is not hidden.
 
@@ -243,7 +245,7 @@ Run `freeze`, then attempt `stage` with only target-local authorization.
 
 #### Expected behavior
 
-1. Reports every direct edge with stable ID, path, line, hash, and owner.
+1. Reports every direct edge with stable ID, path, line, revision, and owner.
 2. Nested consumers are not omitted.
 3. Returns `BLOCKED — SEPARATE OWNER CHANGE REQUIRED`.
 4. Does not let the candidate author declare shared consumers unaffected.
@@ -265,7 +267,7 @@ occurs; otherwise `FAIL`.
 
 #### Fixture
 
-- Frozen target has two files with known raw hashes.
+- Frozen target has two files with known declared revisions.
 - Authorized candidate modifies one and creates one target-local file.
 - Patch/diff tool and environment identities are available.
 
@@ -276,7 +278,7 @@ Run `stage`, conclusive `verify`, then `apply`.
 #### Expected reads
 
 - Every base/candidate file, oracle, runner/tool, environment, forward/inverse
-  patch, diff receipt, verification, and current live preimage.
+  patch, diff receipt, verification, and current live approved prior state.
 
 #### Expected writes
 
@@ -290,24 +292,24 @@ Run `stage`, conclusive `verify`, then `apply`.
 
 #### Expected behavior
 
-1. Diff receipt records every path/action/raw base and candidate hash, complete
-   diff hash, options, newline/binary policy, tool version/hash, and patch hashes.
+1. Diff receipt records every path/action/raw base and candidate revision, complete
+   diff revision, options, newline/binary policy, tool version/revision, and patch revisions.
 2. Execution receipts include argv, cwd, environment, timestamps, exit code,
-   stdout/stderr/result hashes, stable outcomes, and producer identity.
-3. Apply performs all-file CAS, writes verified postimages, then read-backs each
-   raw hash.
+   stdout/stderr/result revisions, stable outcomes, and producer identity.
+3. Apply performs all-file version and existence conflict check, writes verified postimages, then read-backs each
+   declared revision.
 4. Application receipt binds the exact diff and observed final state.
 
 #### Assertions
 
-- [ ] **[SI-C05-A01]** Every changed byte has source and postimage provenance.
+- [ ] **[SI-C05-A01]** Every changed byte has source and applied state provenance.
 - [ ] **[SI-C05-A02]** Missing execution fields cannot be PASS.
-- [ ] **[SI-C05-A03]** Receipt hashes reproduce the exact candidate and apply.
+- [ ] **[SI-C05-A03]** Receipt revisions verify the exact candidate and apply.
 - [ ] **[SI-C05-A04]** No complete-success claim precedes read-back.
 
 #### Case Verdict
 
-`PASS` only when all receipts and final hashes verify; otherwise `FAIL` or
+`PASS` only when all receipts and final revisions verify; otherwise `FAIL` or
 `PARTIAL` when execution evidence is incomplete before live mutation.
 
 ---
@@ -370,10 +372,10 @@ Run `freeze` or `verify` for each variant.
 
 #### Fixture
 
-- A two-file apply is interrupted after one postimage is published.
+- A two-file apply is interrupted after one applied state is published.
 - Candidate mirror, forward/inverse patches, diff receipt, and failed
   application receipt exist under the immutable run root.
-- Another task changes the published file to a divergent hash.
+- Another task changes the published file to a divergent revision.
 - Acceptance manifest omits `retain_until`.
 
 #### Input
@@ -382,7 +384,7 @@ Run `freeze` or `verify` for each variant.
 
 #### Expected reads
 
-- Failed receipt, current/base/candidate hashes, both patches, diff receipt,
+- Failed receipt, current/base/candidate revisions, both patches, diff receipt,
   tool identity, retention policy, and exact recovery direction.
 
 #### Expected writes
@@ -397,10 +399,10 @@ Run `freeze` or `verify` for each variant.
 #### Expected behavior
 
 1. Classifies paths DIVERGED and BASE before mutation.
-2. All-file recovery CAS stops the entire recovery.
+2. All-file recovery version and existence conflict check stops the entire recovery.
 3. Retention defaults to indefinite and no mode prunes evidence.
-4. Handoff lists exact hashes, first conflict, patch/tool identity, and bounded
-   human three-way/CAS/read-back steps.
+4. Handoff lists exact revisions, first conflict, patch/tool identity, and bounded
+   human three-way/version and existence conflict check/read-back steps.
 5. Never instructs copying a backup or saved original over current bytes.
 
 #### Assertions
@@ -408,7 +410,7 @@ Run `freeze` or `verify` for each variant.
 - [ ] **[SI-C07-A01]** Recovery location and evidence are explicit.
 - [ ] **[SI-C07-A02]** Retention cannot expire implicitly.
 - [ ] **[SI-C07-A03]** Divergence preserves external work.
-- [ ] **[SI-C07-A04]** Manual recovery remains hash-guarded and authorized.
+- [ ] **[SI-C07-A04]** Manual recovery remains revision-guarded and authorized.
 
 #### Case Verdict
 
@@ -436,7 +438,7 @@ Run independent `verify` for every variant.
 
 #### Expected reads
 
-- Frozen repeat policy, seeds/order/timeouts, environment and runner hashes,
+- Frozen repeat policy, seeds/order/timeouts, environment and runner revisions,
   baseline/candidate scenario receipts, severities, and targeted findings.
 
 #### Expected writes
@@ -519,9 +521,9 @@ Run `stage` and attempt `verify`.
 
 #### Fixture
 
-- Verified candidate expects live hash A.
-- Another task changes the target to hash B before apply.
-- Separate recovery variant expects candidate hash C but observes divergent D.
+- Verified candidate expects live revision A.
+- Another task changes the target to revision B before apply.
+- Separate recovery variant expects candidate revision C but observes divergent D.
 
 #### Input
 
@@ -529,7 +531,7 @@ Run `apply`, then independently evaluate the recovery variant.
 
 #### Expected reads
 
-- Every current path hash, candidate pre/postimage, oracle, verification,
+- Every current path revision, candidate pre/applied state, oracle, verification,
   patches, application/recovery destination state, and transaction plan.
 
 #### Expected writes
@@ -543,10 +545,10 @@ Run `apply`, then independently evaluate the recovery variant.
 
 #### Expected behavior
 
-1. All-file CAS detects A != B before apply publication.
+1. All-file version and existence conflict check detects A != B before apply publication.
 2. Recovery detects C != D before any inverse patch.
 3. Preserves B and D exactly; never restores A or C from saved content.
-4. Requires a new oracle or human hash-guarded recovery task.
+4. Requires a new oracle or human revision-guarded recovery task.
 
 #### Assertions
 
@@ -595,7 +597,7 @@ Run independent `stage`, `verify`, and `apply` tasks.
 1. Stage leaves live target unchanged.
 2. Verify classifies `IMPROVEMENT`, Test `PASS`, Apply Eligible `YES`, verdict
    `VERIFIED_IMPROVEMENT`.
-3. Apply revalidates all hashes and publishes only verified postimages.
+3. Apply revalidates all revisions and publishes only verified postimages.
 4. Read-back yields Candidate `APPLIED`, Mutation `APPLIED`, verdict `APPLIED`.
 5. Stops before catalog recording, another run, commit, or publication.
 
@@ -603,7 +605,7 @@ Run independent `stage`, `verify`, and `apply` tasks.
 
 - [ ] **[SI-C11-A01]** All role tasks are distinct.
 - [ ] **[SI-C11-A02]** Every required scenario is conclusive.
-- [ ] **[SI-C11-A03]** Applied bytes equal verified candidate hashes.
+- [ ] **[SI-C11-A03]** Applied bytes equal verified candidate revisions.
 - [ ] **[SI-C11-A04]** No automatic chained workflow occurs.
 
 #### Case Verdict
@@ -618,7 +620,7 @@ Run independent `stage`, `verify`, and `apply` tasks.
 #### Fixture
 
 - Independent authority owner supplies an approved immutable oracle-change
-  receipt with old/new hashes and stable requirement mapping.
+  receipt with old/new revisions and stable requirement mapping.
 - New oracle intentionally changes one product behavior but retains all safety
   and authorization requirements.
 - Candidate is staged only after a new lock is frozen.
@@ -643,7 +645,7 @@ Freeze with `--prior-lock` and `--oracle-change`, then verify independently.
 
 #### Expected behavior
 
-1. Validates independent owner, rationale, hashes, stable ID mapping, impact,
+1. Validates independent owner, rationale, revisions, stable ID mapping, impact,
    and explicit waiver for every removed requirement.
 2. Runs candidate against both old and new frozen scenario sets.
 3. Reports separate matrices and rejects any non-waived old safety regression.
@@ -653,7 +655,7 @@ Freeze with `--prior-lock` and `--oracle-change`, then verify independently.
 
 - [ ] **[SI-C12-A01]** Old evidence remains visible after new oracle passes.
 - [ ] **[SI-C12-A02]** Safety removal requires explicit authorized waiver.
-- [ ] **[SI-C12-A03]** Dual-oracle status is hash-bound and reproducible.
+- [ ] **[SI-C12-A03]** Dual-oracle status is revision-bound and reproducible.
 
 #### Case Verdict
 
@@ -677,7 +679,7 @@ otherwise `FAIL`.
 - [ ] **[SI-PC-006]** Impact graph coverage is deterministic and incomplete
   coverage blocks application.
 - [ ] **[SI-PC-007]** Candidate testing never installs or swaps live files.
-- [ ] **[SI-PC-008]** Every live apply/recovery path passes all-file CAS before
+- [ ] **[SI-PC-008]** Every live apply/recovery path passes all-file version and existence conflict check before
   the first write.
 - [ ] **[SI-PC-009]** Recovery evidence is retained and no full-content restore
   is permitted.
@@ -704,7 +706,7 @@ otherwise `FAIL`.
 These are the eight exact P1 IDs from the 2026-07-20 skill-improve audit. The
 rows are written-contract coverage and do not assert execution.
 
-This spec validates the written workflow contract and immutable evidence/CAS
+This spec validates the written workflow contract and immutable evidence/version and existence conflict check
 protocol. It does not execute `$skill-improve` or `$skill-test`, supply the
 currently missing candidate-root skill-test argv, prove filesystem transaction
 support, or authorize cleanup of run evidence. Candidate-aware skill-test

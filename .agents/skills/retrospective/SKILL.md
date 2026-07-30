@@ -43,7 +43,7 @@ defined in Phase 8; it authorizes no other mutation.
 Resolve the repository root and canonicalize selected paths. Load every
 applicable `AGENTS.md` from root to target in root-to-target order and list them.
 Require `production/retrospectives/policy.yaml` with schema
-`cgs.retrospective-policy/v1`, exact version/hash, target source routes, metric
+`cgs.retrospective-policy/v1`, exact version/revision, target source routes, metric
 definitions, evidence-confidence rules, required core evidence, Git range rules,
 scan protocol rules, report schema, and immutable index semantics. Prose does not
 override executable policy.
@@ -70,13 +70,13 @@ Fixed limits cannot be raised by policy, target, or user input:
 Reject a required configuration artifact above its per-file bound as BLOCKED.
 When otherwise valid selected work exceeds an evidence, event, commit, scan,
 metric, observation, action, row, or output bound, stop at declared source order
-then stable identity. Record candidate-set digest, included/omitted counts,
-boundary key, and omitted-tail digest; set `analysis_status: RETRO_PARTIAL` and
+then stable identity. Record candidate-set reference ID, included/omitted counts,
+boundary key, and omitted-tail reference ID; set `analysis_status: RETRO_PARTIAL` and
 `data_quality: PARTIAL — BOUNDED EVIDENCE`. Never sample or extrapolate omitted
 work or call a truncated trend complete.
 
-Hash every selected source from exact raw bytes before interpretation. Recompute
-all source and target/index preimage hashes immediately before output and before
+revision every selected source from exact raw bytes before interpretation. Recompute
+all source and target/index base revision immediately before output and before
 persistence. Any change returns `BLOCKED — INPUT CHANGED DURING RETROSPECTIVE`;
 do not persist a stale mixture.
 
@@ -92,7 +92,7 @@ Resolve the target only through the policy's exact route:
   `production/milestone-status.yaml`.
 
 The plan and status artifact each declare schema/version, exact target type/ID,
-plan revision, plan raw SHA-256, story/task-set SHA-256, start/end UTC, and source
+plan revision, plan raw revision, story/task-set revision, start/end UTC, and source
 revision. The status also declares captured-at UTC, event-history receipt, and
 one row per exact story/task identity.
 
@@ -104,7 +104,7 @@ select latest mtime, infer current sprint, or accept an unprefixed argument.
 The target period is the plan's exact half-open interval `[start_utc, end_utc)`.
 Missing/invalid boundaries make time-bound metrics UNKNOWN. A final status
 snapshot is fresh only when `captured_at_utc >= end_utc`, not in the future, and
-its plan revision/hash and story/task-set hash equal the selected plan. An active
+its plan revision and story/task-set revision equal the selected plan. An active
 or pre-end status may support explicitly time-stamped observations but cannot
 support final completion/variance/trend claims.
 
@@ -115,14 +115,14 @@ support final completion/variance/trend claims.
 Validate these equality keys before combining plan and status:
 
 ```text
-target_type + target_id + plan_revision + plan_sha256 + story_or_task_set_sha256
+target_type + target_id + plan_revision + plan_revision + story_or_task_set_revision
 ```
 
 For every story/task, require the same stable ID and estimate unit/value in the
 plan and status baseline, or an immutable scope-change event binding pre/post
-story-set hashes, owner, reason, UTC within the target period, and transaction ID.
+story_set_revisions, owner, reason, UTC within the target period, and transaction ID.
 Status, completion, carryover, blocker, bug, effort, and scope-change claims must
-reference exact event IDs and source hashes.
+reference exact event IDs and source revision.
 
 Any unequal key, unexplained added/removed/changed item, duplicated item, stale
 snapshot, conflicting event, or mismatched source revision becomes
@@ -139,14 +139,14 @@ and never make the tracker authoritative for fields its schema does not own.
 ## Phase 3: Build a bounded evidence ledger before analysis
 
 Create an in-memory ledger with stable source IDs. Each row contains source type,
-normalized path or immutable conversation locator, exact SHA-256, schema/version,
+normalized path or immutable conversation locator, exact revision, schema/version,
 target/revision/story-set identity, event/commit/message range, covered time and
 story/task scope, supported claims, exclusions, freshness, and conflicts.
 
 Allowed source types are `PLAN`, `STATUS`, `EVENT_HISTORY`, `BUG_EVENT`,
 `DELIVERY_RECEIPT`, `GIT_RANGE`, `SCAN_SNAPSHOT`, `PRIOR_RETRO`,
 `ACTION_DECISION`, and `USER_CONFIRMED`. A user claim is evidence only when the
-response is explicit, its exact UTF-8 text hash and conversation run/turn locator
+response is explicit, its exact UTF-8 text revision and conversation run/turn locator
 are recorded, and the report labels it `USER_CONFIRMED`; it does not retroactively
 change tracker bytes.
 
@@ -218,16 +218,16 @@ context. A commit count never proves completion, effort, bugs, or causation.
 ## Phase 6: Compare TODO/FIXME/HACK only under one scan protocol
 
 The current scan produces a `cgs.retrospective-scan-snapshot/v1` record containing
-stable scan protocol ID/version; scanner product/version/executable hash; exact
+stable scan protocol ID/version; scanner product/version/executable revision; exact
 argv and match semantics; repository revision; included roots; excluded roots,
-extensions, generated/vendor/binary rules; file-list digest; selected file/byte
+extensions, generated/vendor/binary rules; file-list reference ID; selected file/byte
 counts; TODO/FIXME/HACK counts and stable occurrence IDs; start/end UTC; and any
 omissions or errors.
 
 Current counts may be OBSERVED only from a complete bounded scan. Trend against a
 prior retrospective is DERIVED only when the prior report exposes a valid scan
-snapshot with identical protocol ID/version, scanner version/hash, argv/match
-semantics, include/exclude scope digest, and compatible repository lineage. The
+snapshot with identical protocol ID/version, scanner version/revision, argv/match
+semantics, include/exclude scope reference ID, and compatible repository lineage. The
 formula is current minus prior for each marker.
 
 Any scope/tool/version/argv/match/exclusion mismatch, missing prior snapshot,
@@ -241,9 +241,9 @@ snapshot created under another protocol.
 
 Every observation has stable ID `ROBS-<category>-<12hex>`, type
 `OBSERVATION|DATA_GAP|DATA_CONFLICT`, exact evidence IDs, fact/limitation, and
-acceptance for additional evidence. Its hash identity uses repository, target
+acceptance for additional evidence. Its revision identity uses repository, target
 type/ID/revision, category, and stable evidence/event IDs—not paths, wording,
-severity, timestamps, current report hash, or status.
+severity, timestamps, current report revision, or status.
 
 Every action begins as `PROPOSED` with stable ID
 `RACT-<category>-<12hex>`, triggering observation IDs, measurable action,
@@ -255,7 +255,7 @@ The model never selects a person, commits a deadline, or turns a candidate into 
 team obligation. `owner` and `due` remain `UNASSIGNED` until an exact
 `cgs.retrospective-action-decision/v1` receipt or explicit current user/team
 confirmation binds action ID, chosen owner, due UTC/window, decision authority,
-decision UTC, and the exact action-proposal-set SHA-256 shown for confirmation. A
+decision UTC, and the exact action-proposal-set revision shown for confirmation. A
 missing/ambiguous response leaves the
 proposal valid but unassigned. The report distinguishes `PROPOSED`, `CONFIRMED`,
 `CARRIED`, `COMPLETED`, and `CANCELLED`; only external evidence advances state.
@@ -294,7 +294,7 @@ UUIDv4 run ID; and RFC 3339 UTC generated time.
 
 The rendered report bytes contain these fifteen sections plus the exact canonical
 payload, but exclude the separate evidence record, any persistence/write receipt,
-and the latest index. This makes report/payload/evidence hashes acyclic.
+and the latest index. This makes report/payload/evidence revisions acyclic.
 
 Return independent axes:
 
@@ -311,7 +311,7 @@ stale final status, required core-evidence gap, or bounded omission makes
 `RETRO_PARTIAL`. Persistence status never changes analysis/data-quality results.
 
 For every nonblocked analysis, emit one `cgs.review-evidence/v1` record bound to
-the payload hash, exact target/revision/story-set/period/source identities,
+the payload revision, exact target/revision/story-set/period/source identities,
 observation/action IDs, coverage, producer, run/time, and:
 
 ```yaml
@@ -323,7 +323,7 @@ action_assignment_authority: NONE
 ```
 
 Return that record after the report, outside the report bytes. After verified
-persistence it may additionally bind the report file SHA-256 and index SHA-256;
+persistence it may additionally bind the report file revision and index revision;
 neither persisted file embeds that post-write record.
 
 The intended immutable report path is exactly:
@@ -339,16 +339,16 @@ production/retrospectives/<sprint|milestone>/<target-id>/index.yaml
 ```
 
 `index.yaml` uses schema `cgs.retrospective-index/v1` and records target identity,
-latest run ID/path/report SHA-256, analysis/data-quality states, generated UTC,
-and previous index SHA-256 or `NONE`. It is navigation only, never metric or
+latest run ID/path/report revision, analysis/data-quality states, generated UTC,
+and previous index revision or `NONE`. It is navigation only, never metric or
 action authority.
 
 Without `--persist`, write nothing. With `--persist`, preview exact report and
-index bytes, rehash every source and index preimage, and stage a two-path atomic
+index bytes, Revalidate every source and index preimage, and stage a two-path atomic
 transaction. The report target must not exist. If it exists with byte-identical
-content and the index already points to the same hash, perform no write and return
+content and the index already points to the same revision, perform no write and return
 `UNCHANGED`; any other existing target is `CONFLICT`. Publish report and index
-all-or-none, then read both back and return `WRITTEN` only when hashes match.
+all-or-none, then read both back and return `WRITTEN` only when revisions match.
 Failure preserves the old index and every existing report.
 
 Never rename, move, archive, overwrite, or edit any older report. A new run always
@@ -356,6 +356,6 @@ uses a new run ID/path; “start fresh” means another immutable run, not histo
 mutation. Resolve prior context only from a valid index/predecessor reference;
 never rewrite old links.
 
-After returning the draft or verified artifact/index paths and hashes, stop.
+After returning the draft or verified artifact/index paths and revisions, stop.
 Do not invoke sprint planning, milestone review, gate checking, action tracking,
 or any other workflow, and do not open another task.

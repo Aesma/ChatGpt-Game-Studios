@@ -1,7 +1,17 @@
 ---
 name: tech-debt
-description: Analyze technical-debt candidates and append-only register evidence through four strictly read-only modes, with stable fingerprints, versioned analyzer receipts, explicit lifecycle state, advisory ranking, and separately authorized CAS recorder proposals.
+description: Analyze technical-debt candidates and append-only register evidence through four strictly read-only modes, with stable keys, versioned analyzer receipts, explicit lifecycle state, advisory ranking, and separately authorized atomic conflict check recorder proposals.
 ---
+
+## Path-first integrity
+
+Accept canonical project-relative paths directly; do not require a caller-supplied
+content-derived token. Validate project-root containment, regular-file type, declared
+schema/version, stable IDs, permissions, lifecycle state, and path or ID collisions.
+Allocate collision-safe IDs independently of file bytes. Before any permitted write,
+re-read referenced records and target state, preview the exact authorized changes,
+then use same-directory staging plus atomic replacement and rollback on failure.
+
 
 # Tech Debt
 
@@ -18,13 +28,13 @@ sprint scope, estimate delivery time, or certify project quality.
 Use exactly one of these forms:
 
 ```text
-$tech-debt scan --scope <project-relative-manifest>@sha256:<64-lower-hex>
-                --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
-$tech-debt add --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
-               [--candidate <project-relative-record>@sha256:<64-lower-hex>]
-$tech-debt prioritize --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
-$tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>|ABSENT:<project-relative-path>
-                  [--baseline-event <uuid>|--baseline-hash <64-lower-hex>]
+$tech-debt scan --scope <project-relative-manifest>
+                --register <project-relative-path>|ABSENT:<project-relative-path>
+$tech-debt add --register <project-relative-path>|ABSENT:<project-relative-path>
+               [--candidate <project-relative-record>]
+$tech-debt prioritize --register <project-relative-path>|ABSENT:<project-relative-path>
+$tech-debt report --register <project-relative-path>|ABSENT:<project-relative-path>
+                  [--baseline-event <uuid>]
 ```
 
 - `scan` requires one immutable `cgs.tech-debt-scan-scope/v1` manifest.
@@ -35,12 +45,12 @@ $tech-debt report --register <project-relative-path>@sha256:<64-lower-hex>|ABSEN
 - Paths must be canonical project-relative paths: `/` separators, Unicode NFC,
   no absolute path, drive prefix, URI, traversal, glob, symlink escape, or
   case-ambiguous match.
-- `@sha256:` binds the exact bytes. A hash mismatch, unreadable input, schema
+- `@revision:` binds the exact bytes. A revision mismatch, unreadable input, schema
   mismatch, unrelated project/register ID, or mutable/ambiguous resolution is
   an input identity error.
 
 An absent/unknown mode, positional argument, unknown/repeated option, missing
-value, malformed UUID/hash/path, illegal option combination, or unexpected
+value, malformed UUID/revision/path, illegal option combination, or unexpected
 payload returns `USAGE_ERROR`. A well-formed invocation whose referenced input is
 invalid returns `INPUT_ERROR`; an invalid register returns `REGISTER_ERROR`.
 These are execution states, not debt or project-quality verdicts. Do no scan,
@@ -62,7 +72,7 @@ priority are not skill outcomes.
 ## Load the contract
 
 Read [debt-rules-v1.md](references/debt-rules-v1.md) completely. It defines
-bounded scope, candidate and analyzer receipts, exclusions, fingerprinting,
+bounded scope, candidate and analyzer receipts, exclusions, stable keying,
 register schema/lifecycle, scoring, report baselines, change proposals, and the
 independent recorder protocol.
 
@@ -90,8 +100,8 @@ workflow.
 The caller identifies the authoritative register; do not discover one by name.
 A present register must validate exactly as `cgs.tech-debt-register/v3`, including
 its project/register UUIDs, monotonic revision, append-only global event sequence,
-event/payload hashes, global and per-debt predecessor chains, UUID uniqueness,
-fingerprint ownership, lifecycle transitions, and full-file SHA-256.
+event/payload revisions, global and per-debt predecessor chains, UUID uniqueness,
+stable key ownership, lifecycle transitions, and declared revision.
 
 Replay valid events to obtain the current view. Never treat a materialized table,
 sorted report, comment, or prose summary as authoritative. Unknown legacy state
@@ -106,7 +116,7 @@ For `ABSENT:<path>`:
 - `report` returns `REPORT_PARTIAL` with absence and all register-derived metrics
   `UNKNOWN`.
 
-Absence never creates a file. A malformed, hash-mismatched, conflicting, or
+Absence never creates a file. A malformed, revision-mismatched, conflicting, or
 unsupported register returns `REGISTER_ERROR` in every mode. A recognized legacy
 schema returns `REGISTER_ERROR` subtype `MIGRATION_REQUIRED` plus a read-only
 migration proposal; it is never repaired or reinterpreted here.
@@ -116,7 +126,7 @@ migration proposal; it is never repaired or reinterpreted here.
 Every scanner result is a `cgs.tech-debt-candidate/v2`. It must name its stable
 rule, exact source evidence, frozen scope, analyzer receipt(s), confidence,
 verification state, intentional-design alternative, triage requirement,
-fingerprint, and any register match.
+stable key, and any register match.
 
 Candidate states are:
 
@@ -137,22 +147,19 @@ the scan `SCAN_PARTIAL`. Never fabricate a result or replace unsupported analysi
 with prose review or text similarity.
 
 Generated output, vendored/third-party dependencies, caches, build artifacts,
-engine imports, and test fixtures are excluded only by hashed scope/classification
+engine imports, and test fixtures are excluded only by versioned scope/classification
 evidence. Tests are excluded from generic size/clone rules unless a test-specific
 rule is explicitly enabled. Every exclusion is visible in the coverage ledger;
 missing classification is `UNVERIFIED`, not an inferred exclusion.
 
 ## Stable identity and deduplication
 
-Use `td-fp-v2` exactly as defined in the rules reference. A fingerprint excludes
-line/column, source hash/revision, timestamp, analyzer version, diagnostic prose,
-severity, confidence, score, owner, and status. A candidate without every required
-canonical identity field is `UNVERIFIED` and receives no invented fingerprint.
+Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 
-Replay all primary fingerprints and aliases before classifying a candidate:
+Replay all primary stable keys and aliases before classifying a candidate:
 
-- one fingerprint/alias has at most one owning `debt_id`;
-- an existing fingerprint preserves its UUID and may produce one `OBSERVED`
+- one stable key/alias has at most one owning `debt_id`;
+- an existing stable key preserves its UUID and may produce one `OBSERVED`
   proposal only for materially new evidence at a new source identity;
 - the same source/evidence produces no event;
 - a resolved match is `REAPPEARED`, but remains `RESOLVED` unless an authorized
@@ -161,11 +168,11 @@ Replay all primary fingerprints and aliases before classifying a candidate:
 - a path/symbol move obtains an alias only from an immutable VCS move receipt or
   a user-selected alias proposal; absent that evidence it remains a new candidate;
   and
-- duplicate fingerprint owners, duplicate/conflicting UUIDs, broken aliases, or
+- duplicate stable key owners, duplicate/conflicting UUIDs, broken aliases, or
   event-chain conflicts return `REGISTER_ERROR`.
 
 The analyzer never assigns a debt UUID. A proposal may reserve an RFC 4122 UUIDv4,
-but the independent recorder must collision-check it under CAS; a collision
+but the independent recorder must collision-check it under atomic conflict check; a collision
 invalidates the proposal and authorization.
 
 ## Mode: scan
@@ -175,8 +182,7 @@ invalidates the proposal and authorization.
 2. Validate/replay the register or establish exact absence.
 3. Run only declared read-only analyzer commands. Emit a
    `cgs.tech-debt-analyzer-receipt/v1` for every requested check.
-4. Normalize candidate evidence, compute stable fingerprints when possible, and
-   deduplicate against the replayed index.
+4. Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 5. Return new, matched, unchanged, reappeared, unverified, excluded, unsupported,
    timed-out, and over-limit rows separately.
 6. Present only a `cgs.tech-debt-change-proposal/v1` for owner-selected candidates.
@@ -197,11 +203,11 @@ numeric value requires evidence and the fixed scales.
 
 Manual input is still a candidate. It cannot declare `ACCEPTED`, `RESOLVED`,
 `SUPERSEDED`, product priority, or sprint scheduling. Use the `manual@2` rule and
-`td-fp-v2`, then deduplicate against the register. Return:
+`td-key-v1`, then deduplicate against the register. Return:
 
 - `INPUT_REQUIRED` when no candidate record or required field is present;
 - `ADD_DUPLICATE_FOUND` with the stable existing debt ID and an optional exact
-  `OBSERVED`/triage proposal when the fingerprint matches; or
+  `OBSERVED`/triage proposal when the stable key matches; or
 - `ADD_PREVIEW_READY` with an exact `CREATED`/`CREATE_REGISTER` proposal after
   owner selection.
 
@@ -246,7 +252,7 @@ Replay the immutable event log without writing. Report current counts by categor
 lifecycle status, and verification state; effort-point distribution and unknown
 count; evidence ages; and explicit data gaps.
 
-Change/trend requires a valid baseline event UUID or register hash that is an
+Change/trend requires a valid baseline event UUID or register revision that is an
 ancestor of the current chain. Compute created, observed, accepted, reopened,
 resolved, and superseded transitions from exact event cursors. Derive age only
 from recorded UTC event timestamps. “Older than three completed sprints” requires
@@ -264,26 +270,25 @@ Any user-selected creation, observation, lifecycle, alias, estimate, priority, o
 schedule change is represented only as a
 `cgs.tech-debt-change-proposal/v1`. The proposal binds:
 
-- canonical register path, project/register IDs, schema, base content SHA-256,
-  base revision, last global event UUID/hash, and operation `CREATE_REGISTER` or
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
+  base revision, last global event UUID/revision, and operation `CREATE_REGISTER` or
   `APPEND_EVENTS`;
-- exact ordered proposed events, reserved UUIDs, predecessor IDs, payload hashes,
-  proposed final revision/hash, fingerprint dedup results, and affected debt IDs;
+- Use the artifact declared schema, stable ID, and monotonic revision; do not compute a content-derived token.
 - owner selection and decision-authority references required by the event type;
-- proposal ID/hash, creation/expiry time, and an explicit statement that it is
+- proposal ID/revision, creation/expiry time, and an explicit statement that it is
   `NOT_PERSISTED` and `NOT_AUTHORIZATION`.
 
 The independent `cgs.tech-debt-recorder/v1` protocol in the rules reference is
 the only writer contract. This skill does not implement, dispatch, or simulate
-it. A future recorder requires a new exact authorization over one proposal hash.
+it. A future recorder requires a new exact authorization over one proposal revision.
 Analyzer conversation, a scan request, owner triage, or prior authorization is
 not write authority.
 
 ## Return and stop
 
 Return the mode, outcome, normalized invocation, project/target/register identity,
-input hashes, bounded coverage ledger, analyzer receipts, exclusions/gaps,
-candidates and fingerprints, dedup/lifecycle view, advisory calculations or
+input revisions, bounded coverage ledger, analyzer receipts, exclusions/gaps,
+candidates and stable keys, dedup/lifecycle view, advisory calculations or
 report baseline, proposal (if selected), before/after mutation evidence, and stale
 key. Mark every direct result:
 
