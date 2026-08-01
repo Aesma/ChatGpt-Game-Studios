@@ -16,6 +16,11 @@
   <a href="https://learn.chatgpt.com/docs/codex"><img src="https://img.shields.io/badge/built%20for-Codex-111111?logo=openai" alt="Built for Codex"></a>
 </p>
 
+<p align="center">
+  Adapted from / 改编自
+  <a href="https://github.com/Donchitos/Claude-Code-Game-Studios">Donchitos/Claude-Code-Game-Studios</a>.
+</p>
+
 ---
 
 ## Why This Exists
