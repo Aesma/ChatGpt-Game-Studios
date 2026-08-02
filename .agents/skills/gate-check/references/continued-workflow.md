@@ -30,9 +30,12 @@ This file contains required phases of `$gate-check`. Read it in full when the ma
 - [Optional improvements that aren't blocking]
 
 ### Verdict: [PASS / CONCERNS / FAIL]
-- **PASS**: All required artifacts present, all quality checks passing
-- **CONCERNS**: Minor gaps exist but can be addressed during the next phase
-- **FAIL**: Critical blockers must be resolved before advancing
+- **FAIL**: any blocking Required item is absent, any explicit auto-check fails,
+  or any director returns NOT READY/REJECT
+- **CONCERNS**: no blocker exists, but at least one Recommended item is absent
+  or a confirmed non-blocking quality concern remains
+- **PASS**: every blocking/quality check passes and no blocking manual item is
+  unanswered. An unanswered blocking manual item cannot PASS.
 ```
 
 ---
@@ -81,7 +84,8 @@ Do NOT reference the draft verdict text — re-check specific files or ask the u
 
 ## 6. Update Stage on PASS
 
-When the verdict is **PASS** and the user confirms they want to advance:
+When the verdict is **PASS**, or **CONCERNS** and the user explicitly accepts
+the listed non-blocking concerns, and the user confirms they want to advance:
 
 1. Write the new stage name to `production/stage.txt` (single line, no trailing newline)
 2. Subsequent `$studio-status` runs report the new stage from this file
@@ -148,7 +152,7 @@ Based on the verdict, suggest specific next steps:
 - **Small design change needed?** → `$quick-design` for changes under ~4 hours (bypasses full GDD pipeline)
 - **No UX specs?** → `$ux-design [screen name]` to author specs, or `$team-ui [feature]` for full pipeline
 - **UX specs not reviewed?** → `$ux-review [file]` or `$ux-review all` to validate
-- **No accessibility requirements doc?** → run `$ux-design` which creates both `design/accessibility-requirements.md` and `design/ux/interaction-patterns.md` in one step
+- **No accessibility requirements doc?** → author `design/ux/accessibility-requirements.md` explicitly from the existing template in an authorized edit; `$ux-design` does not create it implicitly
 - **No interaction pattern library?** → `$ux-design patterns` to initialize it
 - **GDDs not cross-reviewed?** → `$review-all-gdds` (run after all MVP GDDs are individually approved)
 - **Cross-GDD consistency issues?** → fix flagged GDDs, then re-run `$review-all-gdds`
@@ -169,7 +173,7 @@ Based on the verdict, suggest specific next steps:
 - **No player journey map?** → Create `design/player-journey.md` from the template at `.codex/docs/templates/player-journey.md` — or author it collaboratively using `$ux-design` Phase 2b.
 - **Need a quick sprint check?** → `$sprint-status` for current sprint progress snapshot
 - **Performance unknown?** → `$perf-profile`
-- **Not localized?** → `$localize`
+- **Not localized?** → `$localize scan` first; use the explicit locale-taking mode required by the resulting work
 - **Ready for release?** → `$launch-checklist`
 
 ---
@@ -181,12 +185,15 @@ This skill follows the collaborative design principle:
 1. **Scan first**: Check all artifacts and quality gates
 2. **Ask about unknowns**: Don't assume PASS for things you can't verify
 3. **Present findings**: Show the full checklist with status
-4. **User decides**: The verdict is a recommendation — the user makes the final call
-5. **Get approval**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+4. **User decides within the verdict boundary**: concerns may be accepted, but a
+   FAIL remains the current-stage result
+5. **Get approval**: Add an eligible stage edit to the complete changeset preview; do not write it until that changeset is authorized.
 6. **Never auto-fix**: If required artifacts are missing, report the FAIL verdict and
    name the skill to run (e.g. "run `$test-setup`"). Do NOT create missing files or
    re-run the gate automatically. Creating files to manufacture a PASS defeats the
    gate's purpose.
 
-**Never** block a user from advancing — the verdict is advisory. Document the risks
-and let the user decide whether to proceed despite concerns.
+A FAIL, including any NOT READY/REJECT result or blocking artifact/manual item,
+cannot be overridden into phase advancement and cannot write `stage.txt`.
+The user may accept the risk while remaining in the current stage. CONCERNS may
+be explicitly accepted and advanced as described above.

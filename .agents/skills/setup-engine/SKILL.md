@@ -1,6 +1,6 @@
 ---
 name: setup-engine
-description: "Configure the project's game engine and version. Pins the engine in AGENTS.md, detects knowledge gaps, and populates engine reference docs via web search when the version is beyond the LLM's training data."
+description: "Configure or refresh the project engine documentation from verified official version sources while preserving existing project choices."
 ---
 
 ## Invocation and execution
@@ -23,6 +23,13 @@ Four modes:
 - **No args**: `$setup-engine` — fully guided mode (engine recommendation + version)
 - **Refresh**: `$setup-engine refresh` — update reference docs (see Section 10)
 - **Upgrade**: `$setup-engine upgrade [old-version] [new-version]` — migrate to a new engine version (see Section 11)
+
+Before any mode proposes edits, read the three existing version/configuration
+sources: root `AGENTS.md`, `docs/technical-preferences.md` (or the read-only
+`docs/technical-preferences.md` template when the project file does not
+exist), and `docs/engine-reference/<engine>/VERSION.md`. Show field-level old/new
+values and preserve every field outside the user's selected setup/reconfigure scope.
+If the sources conflict, surface the conflict before drafting changes.
 
 ---
 
@@ -123,10 +130,12 @@ The user can select multiple topics. Answer each selected topic in depth before 
 
 Once the engine is chosen:
 
-- If version was provided, use it
-- If no version provided, use web search to find the latest stable release:
-  - Search: `"[engine] latest stable version [current year]"`
-  - Confirm with the user: "The latest stable [engine] is [version]. Use this?"
+- For a provided or discovered version, verify the exact release against the
+  engine's official release/version documentation and show the source.
+- If no version is provided, use web search restricted to official engine sources
+  to locate the latest stable release.
+- Ask the user to confirm the verified version. If official verification is
+  unavailable or ambiguous, do not write a version.
 
 ---
 
@@ -148,7 +157,9 @@ Record the choice. It determines the AGENTS.md template, naming conventions, spe
 
 ---
 
-Read `AGENTS.md` and show the user the proposed Technology Stack changes.
+Read `AGENTS.md` and show the user field-level old/new Technology Stack changes.
+For an existing configuration, change only the fields the user selected for
+reconfiguration and preserve the rest.
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
 Do not edit yet. Apply this and all later proposed files together only after the complete changeset is authorized.
@@ -177,11 +188,19 @@ Update the Technology Stack section, replacing the `[CHOOSE]` placeholders with 
 
 ## 5. Populate Technical Preferences
 
-After updating AGENTS.md, create or update `.codex/docs/technical-preferences.md` with
-engine-appropriate defaults. Read the existing template first, then fill in:
+After updating AGENTS.md, create or update `docs/technical-preferences.md` with
+engine-appropriate defaults. If it does not exist, read
+`docs/technical-preferences.md` only as the initial template; never write
+project state under `.codex/`. Preserve unselected existing fields.
 
 ### Engine & Language Section
 - Fill from the engine choice made in step 4
+
+### Rendering and Physics
+- Present engine-supported current defaults as candidates and ask the user to
+  confirm the Rendering and Physics fields.
+- If either remains undecided, keep an explicit placeholder and do not describe
+  the project as fully configured.
 
 ### Naming Conventions (engine defaults)
 
@@ -307,26 +326,14 @@ Add this file to the complete changeset preview and write it only after the one 
 
 ---
 
-## 6. Determine Knowledge Gap
+## 6. Verify Version Documentation
 
-Check whether the engine version is likely beyond the LLM's training data.
-
-**Known approximate coverage** (update this as models change):
-- LLM knowledge cutoff: **May 2025**
-- Godot: training data likely covers up to ~4.3
-- Unity: training data likely covers up to ~2023.x / early 6000.x
-- Unreal: training data likely covers up to ~5.3 / early 5.4
-
-Compare the user's chosen version against these baselines:
-
-- **Within training data** → `LOW RISK` — reference docs optional but recommended
-- **Near the edge** → `MEDIUM RISK` — reference docs recommended
-- **Beyond training data** → `HIGH RISK` — reference docs required
-
-Inform the user which category they're in and why.
+Use current official engine documentation for the user-confirmed version.
+Record the official source and verification date in the existing VERSION
+document format. Do not infer risk from an LLM training cutoff and do not write
+model-knowledge fields into project documentation.
 
 ---
-
 ## Required continuation
 
 Before continuing, read [references/continued-workflow.md](references/continued-workflow.md) in full. It contains the remaining required phases, output formats, recovery rules, and handoff instructions; execute them in order.

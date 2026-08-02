@@ -62,6 +62,11 @@ Treat the complete described file set as one bounded changeset: use existing tas
 - [ ] Existing helper is detected and surfaced
 - [ ] User is given extend vs. new file choice
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Only Godot+GDScript+GdUnit4, Unity+C#+NUnit, and Unreal+C+++Automation combinations are generated; unsupported combinations BLOCK
+- [ ] Godot generic signal wrappers with assumed arity are not generated without a project-proven GdUnit4 pattern
+- [ ] Factories construct actual production types/scenes and never use bare Node metadata as Player/attacker/target substitutes
+- [ ] Unreal helper and include are under the existing `Source/Tests/` contract
+- [ ] Write Output says validated only after an actual configured command succeeds; failures BLOCK and absent execution is `not verified`
 5. File is written; verdict is COMPLETE with advisory note
 
 **Assertions:**

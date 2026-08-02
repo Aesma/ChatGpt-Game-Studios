@@ -2,105 +2,34 @@
 
 This file contains required phases of `$setup-engine`. Read it in full when the main `SKILL.md` reaches its Required continuation section, then execute the phases in order.
 
-## 7. Populate Engine Reference Docs
+## 7. Maintain Engine Reference Docs
 
-### If WITHIN training data (LOW RISK):
+Use current official documentation for the confirmed engine/version. Update the
+existing `docs/engine-reference/<engine>/VERSION.md` format with the version,
+project pin/verification date, and official source links. Do not add LLM cutoff,
+training-coverage, or model-risk fields and do not branch the file set on them.
 
-Create a minimal `docs/engine-reference/<engine>/VERSION.md`:
-
-```markdown
-# [Engine] — Version Reference
-
-| Field | Value |
-|-------|-------|
-| **Engine Version** | [version] |
-| **Project Pinned** | [today's date] |
-| **LLM Knowledge Cutoff** | May 2025 |
-| **Risk Level** | LOW — version is within LLM training data |
-
-## Note
-
-This engine version is within the LLM's training data. Engine reference
-docs are optional but can be added later if agents suggest incorrect APIs.
-
-Run `$setup-engine refresh` to populate full reference docs at any time.
-```
-
-Do NOT create breaking-changes.md, deprecated-apis.md, etc. — they would
-add context cost with minimal value.
-
-### If BEYOND training data (MEDIUM or HIGH RISK):
-
-Create the full reference doc set by searching the web:
-
-1. **Search for the official migration/upgrade guide**:
-   - `"[engine] [old version] to [new version] migration guide"`
-   - `"[engine] [version] breaking changes"`
-   - `"[engine] [version] changelog"`
-   - `"[engine] [version] deprecated API"`
-
-2. **Fetch and extract** from official documentation:
-   - Breaking changes between each version from the training cutoff to current
-   - Deprecated APIs with replacements
-   - New features and best practices
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-After the one changeset authorization, create all listed files without requesting another confirmation.
-
-3. **Create the full reference directory**:
-   ```
-   docs/engine-reference/<engine>/
-   ├── VERSION.md              # Version pin + knowledge gap analysis
-   ├── breaking-changes.md     # Version-by-version breaking changes
-   ├── deprecated-apis.md      # "Don't use X → Use Y" tables
-   ├── current-best-practices.md  # New practices since training cutoff
-   └── modules/                # Per-subsystem references (create as needed)
-   ```
-
-4. **Populate each file** using real data from the web searches, following
-   the format established in existing reference docs. Every file must have
-   a "Last verified: [date]" header.
-
-5. **For module files**: Only create modules for subsystems where significant
-   changes occurred. Don't create empty or minimal module files.
+Only update additional reference files when they already exist and the official
+source supplies a relevant change. Preview every changed existing file; do not
+create an expanded reference tree merely because a version is newer.
 
 ---
 
-## 8. Update AGENTS.md Import
+## 8. Update Root AGENTS.md Link
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, update the `@` import under "Engine Version Reference" to point to the
-correct engine:
-
-```markdown
-## Engine Version Reference
-
-@docs/engine-reference/<engine>/VERSION.md
-```
-
-If the previous import pointed to a different engine (e.g., switching from
-Godot to Unity), update it.
+Keep root `AGENTS.md` in its existing Markdown-link form. Update the existing
+`Engine version reference` link and Technology Stack fields for the confirmed
+engine/version. Do not add an `@file` import because Codex does not expand it.
 
 ---
 
-## 9. Update Agent Instructions
+## 9. Preserve Framework Agent Definitions
 
-Add the agent-instruction edits to the complete changeset preview and do not write them until that changeset is authorized.
-
-For the chosen engine's specialist agents, verify they have a
-"Version Awareness" section. If not, add one following the pattern in
-the existing Godot specialist agents.
-
-The section should instruct the agent to:
-1. Read `docs/engine-reference/<engine>/VERSION.md`
-2. Check deprecated APIs before suggesting code
-3. Check breaking changes for relevant version transitions
-4. Use web search to verify uncertain APIs
+`setup`, `refresh`, and `upgrade` must not modify `.codex/agents` or copy project
+version state into shared role definitions. Engine roles consume the project
+technical preferences and root version-reference link as read-only context.
 
 ---
-
 ## 10. Refresh Subcommand
 
 If invoked as `$setup-engine refresh`:
@@ -123,10 +52,11 @@ If invoked as `$setup-engine upgrade [old-version] [new-version]`:
 
 ### Step 1 — Read Current Version State
 
-Read `docs/engine-reference/<engine>/VERSION.md` to confirm the current pinned
-version, risk level, and any migration note URLs already recorded. If
-`old-version` was not provided as an argument, use the pinned version from this
-file.
+Read root `AGENTS.md`, `docs/technical-preferences.md`, and
+`docs/engine-reference/<engine>/VERSION.md` to confirm the current engine/version
+state and any migration note URLs already recorded. If `old-version` was not
+provided, use the mutually consistent current version; conflicts must be resolved
+before any write.
 
 ### Step 2 — Fetch Migration Guide
 
@@ -171,7 +101,6 @@ Recommended migration order (dependency-sorted):
   2. [next system]
   ...
 ```
-
 If no deprecated APIs are found in `src/`, report: "No deprecated API usage
 found in src/ — upgrade may be low-risk."
 
@@ -180,35 +109,35 @@ found in src/ — upgrade may be low-risk."
 Ask the user whether the upgrade should be included in the proposed changeset:
 
 > "Pre-upgrade audit complete. Found [N] files using deprecated APIs.
-> Proceed with upgrading VERSION.md to [new-version]?
-> (This will update the pinned version and add migration notes — it does NOT
-> change any source files. Source migration is done manually or via stories.)"
+> Has the actual project/engine configuration already been migrated to and
+> verified on [new-version]?"
 
-Treat the answer as a scope decision, then present the complete changeset for its one authorization.
+If the user cannot confirm the actual project version, end with the pre-upgrade
+audit and do not advance any documentation pin. If confirmed, present one
+field-level changeset that updates root `AGENTS.md`,
+`docs/technical-preferences.md`, and
+`docs/engine-reference/<engine>/VERSION.md` together. If any target cannot be
+safely updated from its previewed baseline, write none and report incomplete.
 
-### Step 5 — Update VERSION.md
+### Step 5 — Update the Three Version Sources
 
-Once the complete changeset is authorized:
+Once the complete changeset is authorized and the actual project version is
+confirmed, update all three existing sources to the same engine/version:
 
-1. Update `docs/engine-reference/<engine>/VERSION.md`:
-   - `Engine Version` → `[new-version]`
-   - `Project Pinned` → today's date
-   - `Last Docs Verified` → today's date
-   - Re-evaluate and update the `Risk Level` and `Post-Cutoff Version Timeline`
-     table if the new version falls beyond the LLM knowledge cutoff
-   - Add a `## Migration Notes — [old-version] → [new-version]` section
-     containing: migration guide URL, key breaking changes, deprecated APIs
-     found in this project, and recommended migration order from the audit
+1. root `AGENTS.md` Technology Stack and existing version-reference Markdown link;
+2. `docs/technical-preferences.md` Engine & Language fields while preserving
+   unrelated project choices;
+3. `docs/engine-reference/<engine>/VERSION.md` version, pin/verification date,
+   official migration URL, and project-specific migration notes.
 
-2. If `breaking-changes.md` or `deprecated-apis.md` exist in the engine
-   reference directory, append the new version's changes to those files.
-
+Do not write LLM cutoff/risk fields. If existing `breaking-changes.md` or
+`deprecated-apis.md` files are also previewed, update only relevant sections.
 ### Step 6 — Post-Upgrade Reminder
 
 After updating VERSION.md, output:
 
 ```
-VERSION.md updated: [engine] [old-version] → [new-version]
+Project version documentation updated consistently: [engine] [old-version] → [new-version]
 
 Next steps:
 1. Migrate deprecated API usages in the [N] files listed above
@@ -224,38 +153,34 @@ Next steps:
 
 ## 12. Output Summary
 
-After setup is complete, output:
+Report whether this run produced a verified setup, a documentation-only update,
+or a pre-upgrade audit. Never imply that an engine binary/source migration
+occurred from documentation edits alone.
 
 ```
-Engine Setup Complete
-=====================
-Engine:          [name] [version]
-Language:        [GDScript | C# | GDScript + C# | C# | C++ + Blueprint]
-Knowledge Risk:  [LOW/MEDIUM/HIGH]
-Reference Docs:  [created/skipped]
-AGENTS.md:       [updated]
-Tech Prefs:      [created/updated]
-Agent Config:    [verified]
-
-Next Steps:
-1. Review docs/engine-reference/<engine>/VERSION.md
-2. [If from $brainstorm] Run $map-systems to decompose your concept into individual systems
-3. [If from $brainstorm] Run $design-system to author per-system GDDs (guided, section-by-section)
-4. [If from $brainstorm] Run $prototype [core-mechanic] to validate the core idea before writing GDDs
-5. [If fresh start] Run $brainstorm to discover your game concept
-6. Create your first milestone: $sprint-plan new
+Engine documentation result
+===========================
+Engine/version:  [name] [version]
+Official source: [URL]
+AGENTS.md:        [updated/unchanged]
+Tech Prefs:      [updated/unchanged; unresolved fields listed]
+Version ref:     [updated/unchanged]
+Actual project:  [user-confirmed / not confirmed]
 ```
+
+If Rendering, Physics, Language, or the actual project version remains
+unconfirmed, report **INCOMPLETE** with those fields. Otherwise report
+**COMPLETE — project version documentation updated**; do not claim a binary
+migration.
 
 ---
-
-Verdict: **COMPLETE** — engine configured and reference docs populated.
-
 ## Guardrails
 
-- NEVER guess an engine version — always verify via web search or user confirmation
+- NEVER guess an engine version — verify it against current official engine documentation and obtain user confirmation
 - NEVER overwrite existing reference docs silently — preview whether each file is appended, updated, or replaced
 - If reference docs already exist for a different engine, surface the replacement in the complete changeset preview
-- Always show the user what you're about to change before making AGENTS.md edits
+- Always show field-level old/new values before editing AGENTS.md or technical preferences
+- NEVER write project configuration or version state under `.codex/`, and never modify `.codex/agents` from setup/refresh/upgrade
 - If web search returns ambiguous results, show the user and let them decide
 - When the user chose **GDScript**: copy the GDScript AGENTS.md template from Appendix A1 exactly. NEVER add "C++ via GDExtension" to the Language field. GDScript projects may use GDExtension, but it is not a primary project language. The `godot-gdextension-specialist` in the routing table is available for when native extensions are needed — it does not make C++ a project language.
 

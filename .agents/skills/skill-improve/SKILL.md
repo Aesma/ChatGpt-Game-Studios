@@ -21,7 +21,10 @@ Require one skill name and verify `.agents/skills/[name]/SKILL.md` and `agents/o
 
 ## Phase 2: Establish a baseline
 
-Run `$skill-test static [name]`. If the catalog assigns a category, also run `$skill-test category [name]`; run `$skill-test spec [name]` when a behavioral spec exists. Record every failure and warning with file-and-line evidence.
+Run `$skill-test static [name]`. If the catalog assigns a category, also run
+`$skill-test category [name]`; run `$skill-test spec [name]` when a behavioral
+spec exists. Record every existing check/assertion by stable identity, status,
+and file-and-line evidence. Counts are summary only.
 
 If all applicable checks pass, report that no improvement is needed and stop.
 
@@ -41,16 +44,33 @@ Include category or spec failures separately. Do not rewrite passing sections me
 
 ## Phase 4: Preview one changeset
 
-Show concise before/after excerpts and list every file to change, including `SKILL.md`, `agents/openai.yaml`, and any directly affected spec or catalog entry. Obtain one approval for this complete changeset.
+Show concise before/after excerpts and list only the files actually required.
+Default edits are the target `SKILL.md` and metadata. A directly affected spec
+or catalog entry may change only when independent static evidence shows it is
+stale relative to an existing authoritative project contract; never remove a
+target behavior, delete an assertion, lower its severity, or change category to
+manufacture a pass. Obtain one approval for the complete changeset.
 
 ## Phase 5: Apply and revalidate
 
-After approval, apply all listed edits without further file-by-file prompts. Re-run every baseline check and compare before/after counts. If the proposed fix requires additional files or broader behavior changes, stop and request a revised changeset approval.
+Before applying, confirm each target still equals the previewed baseline saved in
+memory. After approval, apply all listed edits without further file-by-file
+prompts. Re-run every baseline check and compare the same check/assertion
+identities, not just aggregate counts. If a proposed fix needs broader files or
+behavior, stop and request a revised changeset approval.
 
 ## Phase 6: Keep or restore
 
-- If results improve and no new failures appear, keep the edits and report the evidence.
-- If results are unchanged or worse, restore the saved original contents as part of the already disclosed conditional changeset, then re-run static validation.
+- Keep edits only when the target issue improves, no new FAIL or WARN appears,
+  and no existing check/assertion is downgraded. Counts are summary evidence,
+  never the decision rule.
+- If any baseline check that previously ran cannot be re-run, treat the result as
+  unverified and use the disclosed conditional restore.
+- Before restore, confirm every target still equals this run's written result.
+  Restore only those verified targets to their in-memory originals, then re-run
+  validation. If any target differs, stop without overwriting the concurrent
+  edit and report **BLOCKED — restore conflict**; never restore the whole file
+  over another writer.
 
 Do not use destructive repository-wide reset commands.
 

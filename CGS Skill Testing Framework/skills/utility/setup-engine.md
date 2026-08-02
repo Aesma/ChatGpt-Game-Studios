@@ -106,3 +106,18 @@ Verified automatically by `$skill-test static` — no fixture needed.
   from VERSION.md) is surfaced by the skill but not assertion-tested here.
 - Performance budget defaults per engine are noted as engine-specific but
   exact default values are not assertion-tested.
+
+## P0 Contract Coverage
+
+- [ ] A provided or discovered engine version is verified against current
+  official engine documentation; no LLM cutoff/training-risk field or branch remains.
+- [ ] Root AGENTS keeps its existing Markdown version-reference link and never
+  receives an `@file` import; setup/refresh/upgrade do not modify `.codex/agents`.
+- [ ] Project state is written to `docs/technical-preferences.md`; the `.codex`
+  technical-preferences file is read-only template input. Rendering and Physics
+  must be confirmed or remain explicit placeholders with an incomplete result.
+- [ ] Existing configuration is shown field-by-field and only selected fields
+  change; unselected project choices are preserved.
+- [ ] Upgrade changes the version pin only after the actual project version is
+  confirmed, then updates AGENTS, project technical preferences, and VERSION
+  together or writes none. Documentation edits never claim a binary migration.

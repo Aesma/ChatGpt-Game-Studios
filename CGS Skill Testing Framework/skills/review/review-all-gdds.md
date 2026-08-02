@@ -176,3 +176,16 @@ review; delegating to a director gate would create a circular dependency.
   cognitive overload are not individually fixture-tested — they follow the same
   pattern as consistency checks and are validated via the pillar drift case structure.
 - The `since-last-review` scoping mode is not tested here — it is a runtime concern.
+
+## P0 Contract Coverage
+
+- [ ] The reviewed system set comes only from existing Design Doc paths in
+  systems-index; context docs and prior `gdd-cross-review-*` reports are excluded.
+- [ ] A one-way `Depends On` entry is valid without a reciprocal dependents list;
+  missing targets or conflicts with systems-index are still reported.
+- [ ] `full` runs both phases, a single focus runs only its selected phase, and
+  `since-last-review` runs a full check over its selected set.
+- [ ] PASS means zero blockers and zero warnings; CONCERNS means warnings but no
+  blockers; FAIL means at least one blocker. INFO does not change the verdict.
+- [ ] Declining the optional report causes zero file changes. The workflow never
+  writes session state or changes systems-index statuses.

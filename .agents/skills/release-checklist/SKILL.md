@@ -1,6 +1,6 @@
 ---
 name: release-checklist
-description: "Generates a comprehensive pre-release validation checklist covering build verification, certification requirements, store metadata, and launch readiness."
+description: "Generate an internal release readiness checklist from release-scope stories, open bugs, QA evidence, build evidence, and changelog status."
 ---
 
 ## Invocation and execution
@@ -9,179 +9,105 @@ Invoke this workflow as `$release-checklist`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[platform: pc|console|mobile|all]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[release or milestone identifier]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 > **Explicit invocation only**: This skill should only run when the user explicitly requests it with `$release-checklist`. Do not auto-invoke based on context matching.
 
-## Phase 1: Parse Arguments
+## Phase 1: Resolve Internal Release Scope
 
-Read the argument for the target platform (`pc`, `console`, `mobile`, or `all`). If no platform is specified, default to `all`.
-
----
-
-## Phase 2: Load Project Context
-
-- Read `AGENTS.md` for project context, version information, and platform targets.
-- Read the current milestone from `production/milestones/` to understand what features and content should be included in this release.
+Resolve the requested release or milestone from an explicit argument or an existing
+active release/milestone reference. This workflow covers internal readiness only:
+release-scope stories, bugs, QA/build evidence, and changelog status. Platform
+certification, store metadata, distribution, and launch operations belong to the
+existing `$launch-checklist` workflow and are not duplicated here.
 
 ---
 
-## Phase 3: Scan Codebase
+## Phase 2: Load Existing Evidence
 
-Scan for outstanding issues:
+Read the current release or milestone artifact and load:
 
-- Count `TODO` comments
-- Count `FIXME` comments
-- Count `HACK` comments
-- Note their locations and severity
+- every story explicitly included in the release scope and its current status;
+- open bug reports from the project's existing QA bug location, including severity;
+- the latest QA plan/sign-off, smoke or regression evidence, and applicable test results;
+- existing build/CI evidence for the release scope;
+- the changelog entry for the target release.
 
-Check for test results in any test output directories or CI logs if available.
+Do not infer PASS from an empty checkbox or a missing artifact. Record every missing,
+out-of-scope, or unreadable source as **NOT VERIFIED** and cite the expected path.
 
 ---
 
-## Phase 4: Generate the Release Checklist
+## Phase 3: Evaluate Blocking State
+
+Assign `PASS`, `FAIL`, or `NOT VERIFIED` to each internal readiness item with a
+source path. Apply these verdict rules deterministically:
+
+- Any open CRITICAL/HIGH bug, incomplete release-scope story, or blocking QA
+  failure results in **RELEASE BLOCKED**.
+- If there are no blocking failures but any remaining evidence is advisory or
+  NOT VERIFIED, the result is **CONCERNS**.
+- **RELEASE READY** is allowed only when every blocking item has existing
+  evidence showing it passed.
+
+---
+
+## Phase 4: Generate the Internal Checklist
+
+Use this structure:
 
 ```markdown
-## Release Checklist: [Version] -- [Platform]
-Generated: [Date]
+# Internal Release Readiness: [Version]
 
-### Codebase Health
-- TODO count: [N] ([list top 5 if many])
-- FIXME count: [N] ([list all -- these are potential blockers])
-- HACK count: [N] ([list all -- these need review])
+**Generated**: [date]
+**Release scope**: [artifact path]
 
-### Build Verification
-- [ ] Clean build succeeds on all target platforms
-- [ ] No compiler warnings (zero-warning policy)
-- [ ] All assets included and loading correctly
-- [ ] Build size within budget ([target size])
-- [ ] Build version number correctly set ([version])
-- [ ] Build is reproducible from tagged commit
+## Release-Scope Stories
 
-### Quality Gates
-- [ ] Zero S1 (Critical) bugs
-- [ ] Zero S2 (Major) bugs -- or documented exceptions with producer approval
-- [ ] All critical path features tested and signed off by QA
-- [ ] Performance within budgets:
-  - [ ] Target FPS met on minimum spec hardware
-  - [ ] Memory usage within budget
-  - [ ] Load times within budget
-  - [ ] No memory leaks over extended play sessions
-- [ ] No regression from previous build
-- [ ] Soak test passed (4+ hours continuous play)
+| Story | Status | Evidence | Result |
+|-------|--------|----------|--------|
+| [story] | [status] | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
 
-### Content Complete
-- [ ] All placeholder assets replaced with final versions
-- [ ] All TODO/FIXME in content files resolved or documented
-- [ ] All player-facing text proofread
-- [ ] All text localization-ready (no hardcoded strings)
-- [ ] Audio mix finalized and approved
-- [ ] Credits complete and accurate
-```
+## Open Bugs
 
-Add platform-specific sections based on the argument:
+| Bug | Severity | Status | Result |
+|-----|----------|--------|--------|
+| [bug] | [severity] | [status] | [PASS/FAIL] |
 
-**For `pc`:**
-```markdown
-### Platform Requirements: PC
-- [ ] Minimum and recommended specs verified and documented
-- [ ] Keyboard+mouse controls fully functional
-- [ ] Controller support tested (Xbox, PlayStation, generic)
-- [ ] Resolution scaling tested (1080p, 1440p, 4K, ultrawide)
-- [ ] Windowed, borderless, and fullscreen modes working
-- [ ] Graphics settings save and load correctly
-- [ ] Steam/Epic/GOG SDK integrated and tested
-- [ ] Achievements functional
-- [ ] Cloud saves functional
-- [ ] Steam Deck compatibility verified (if targeting)
-```
+## QA and Build Evidence
 
-**For `console`:**
-```markdown
-### Platform Requirements: Console
-- [ ] TRC/TCR/Lotcheck requirements checklist complete
-- [ ] Platform-specific controller prompts display correctly
-- [ ] Suspend/resume works correctly
-- [ ] User switching handled properly
-- [ ] Network connectivity loss handled gracefully
-- [ ] Storage full scenario handled
-- [ ] Parental controls respected
-- [ ] Platform-specific achievement/trophy integration tested
-- [ ] First-party certification submission prepared
-```
+| Check | Evidence | Result |
+|-------|----------|--------|
+| QA sign-off | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
+| Build/CI | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
 
-**For `mobile`:**
-```markdown
-### Platform Requirements: Mobile
-- [ ] App store guidelines compliance verified
-- [ ] All required device permissions justified and documented
-- [ ] Privacy policy linked and accurate
-- [ ] Data safety/nutrition labels completed
-- [ ] Touch controls tested on multiple screen sizes
-- [ ] Battery usage within acceptable range
-- [ ] Background behavior correct (pause, resume, terminate)
-- [ ] Push notification permissions handled correctly
-- [ ] In-app purchase flow tested (if applicable)
-- [ ] App size within store limits
-```
+## Changelog
 
-**Store and launch sections (all platforms):**
-```markdown
-### Store / Distribution
-- [ ] Store page metadata complete and proofread
-  - [ ] Short description
-  - [ ] Long description
-  - [ ] Feature list
-  - [ ] System requirements (PC)
-- [ ] Screenshots up to date and per-platform resolution requirements met
-- [ ] Trailers up to date
-- [ ] Key art and capsule images current
-- [ ] Age rating obtained and configured:
-  - [ ] ESRB
-  - [ ] PEGI
-  - [ ] Other regional ratings as required
-- [ ] Legal notices, EULA, and privacy policy in place
-- [ ] Third-party license attributions complete
-- [ ] Pricing configured for all regions
+| Target | Evidence | Result |
+|--------|----------|--------|
+| [version] | [path or NOT VERIFIED] | [PASS/NOT VERIFIED] |
 
-### Launch Readiness
-- [ ] Analytics / telemetry verified and receiving data
-- [ ] Crash reporting configured and dashboard accessible
-- [ ] Day-one patch prepared and tested (if needed)
-- [ ] On-call team schedule set for first 72 hours
-- [ ] Community launch announcements drafted
-- [ ] Press/influencer keys prepared for distribution
-- [ ] Support team briefed on known issues and FAQ
-- [ ] Rollback plan documented (if critical issues found post-launch)
+## Verdict: [RELEASE READY / CONCERNS / RELEASE BLOCKED]
 
-### Go / No-Go: [READY / NOT READY]
-
-**Rationale:**
-[Summary of readiness assessment. List any blocking items that must be
-resolved before launch. If NOT READY, list the specific items that need
-resolution and estimated time to address them.]
-
-**Sign-offs Required:**
-- [ ] QA Lead
-- [ ] Technical Director
-- [ ] Producer
-- [ ] Creative Director
+[Evidence-backed rationale and exact blocking/advisory items.]
 ```
 
 ---
 
 ## Phase 5: Save Checklist
 
-Present the checklist to the user with: total checklist items, number of known blockers (FIXME/HACK counts, known bugs).
+Target `production/releases/release-checklist-[date].md`. Before proposing the
+write, check whether the exact target already exists. If it exists, read it and
+offer a targeted update or stop; never silently overwrite it.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file, creating the directory if needed.
+Present the complete checklist and the exact create/update in the complete
+changeset preview. Write only after that changeset is authorized.
 
 ---
 
-## Phase 6: Next Steps
+## Phase 6: Handoff
 
-- Run `$gate-check` for a formal phase gate verdict before proceeding to release.
-- Coordinate final sign-offs via `$team-release`.
+Report the final internal verdict and saved path. For platform certification,
+store, distribution, or launch preparation, provide `$launch-checklist` as the
+separate existing handoff; do not execute it automatically.

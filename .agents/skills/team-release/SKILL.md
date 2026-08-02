@@ -70,6 +70,7 @@ Delegate to **producer**:
 
 ### Phase 2: Release Candidate
 Delegate to **release-manager**:
+- Present the exact release branch and version-file changes at the existing Phase 2 decision point; obtain explicit authorization for branch creation and version changes. File changeset approval alone does not authorize Git operations.
 - Cut release branch from the agreed commit
 - Bump version numbers in all relevant files
 - Generate the release checklist using `$release-checklist`
@@ -92,7 +93,9 @@ Delegate (can run in parallel with Phase 3 if resources available):
 
 ### Phase 5: Go/No-Go
 Delegate to **producer**:
-- Collect sign-off from: qa-lead, release-manager, devops-engineer, security-engineer (if spawned in Phase 3), network-programmer (if spawned in Phase 3), and technical-director
+- Consume the two persisted checklist reports matching the Phase 1 version/date/scope. Prefer exact paths returned by this run; otherwise accept only user-specified paths under `production/releases/release-checklist-[date].md` and `production/launch/launch-checklist-[date].md` whose bodies match the release scope. Never choose by modification time.
+- Internal readiness passes only with `RELEASE READY`; `CONCERNS`, `RELEASE BLOCKED`, missing, malformed, or mismatched reports are NO-GO. External readiness passes only with a persisted `LAUNCH READY`; `CONCERNS`, `LAUNCH BLOCKED`, missing, malformed, mismatched, or dry-run-only output is NO-GO.
+- Collect sign-off from qa-lead, release-manager, devops-engineer, security-engineer (if spawned), and network-programmer (if spawned). Use a technical-director result only when the internal release checklist explicitly cites an existing one; otherwise do not invent or require an undispatched sign-off.
 - Evaluate any open issues — are they blocking or can they ship?
 - Make the go/no-go call
 - Output: release decision with rationale
@@ -102,36 +105,34 @@ Delegate to **producer**:
 - Ask the user directly with options:
   - Fix the blocker and re-run the affected phase
   - Defer the release to a later date
-  - Override NO-GO with documented rationale (user must provide written justification)
+  - Provide additional evidence and re-run the Phase 5 decision
 - **Skip Phase 6 entirely** — do not tag, deploy to staging, deploy to production, or spawn community-manager.
 - Produce a partial report summarizing Phases 1–5 and what was skipped (Phase 6) and why.
 - Verdict: **BLOCKED** — release not deployed.
 
-After the user selects "Override NO-GO with documented rationale":
-- Ask (plain text, not structured prompt): "Please describe the justification for overriding the NO-GO verdict. This will be embedded in the release record."
-- Wait for the user's written justification.
-- Embed the justification text in the partial approval record before Phase 6: append a "⚠️ Override Justification: [user's text]" field.
-- Only then proceed to Phase 6.
+User rationale may supplement evidence, but it cannot change a checklist verdict or directly enter Phase 6. Re-run Phase 5 after the underlying persisted reports/sign-offs are corrected. Any checklist CONCERNS/BLOCKED result, build failure, missing required sign-off, S1/S2, security/privacy blocker, or multiplayer stability blocker deterministically remains NO-GO.
 
 ### Phase 6: Deployment (if GO)
-Delegate to **release-manager** + **devops-engineer**:
-- Tag the release in version control
-- Generate changelog using `$changelog`
-- Deploy to staging for final smoke test
-- Deploy to production
+Before any action, display the exact tag, staging target, and production target. Obtain explicit authorization separately for tag creation, staging deployment, and production deployment; the file changeset approval and Phase 2 branch/version authorization do not cover these operations.
+
+Assign exclusive ownership and run sequentially:
+- **release-manager** owns version/tag/changelog only and prepares the changelog plus tag plan; it does not deploy.
+- **devops-engineer** owns build artifacts and deployments only. It deploys the handed-off artifact/version to staging and waits for an actual smoke result.
+- Only an actual staging smoke PASS allows the release-manager to create the authorized tag and allows the devops-engineer to request/use explicit production authorization. FAIL or UNKNOWN returns BLOCKED and skips tag and production actions not yet performed.
+- Exactly one devops-engineer deployment task may target production.
 - Human team action: Monitor dashboards and error rates for 48 hours post-release. Schedule a follow-up retrospective using `$retrospective` at the 48-hour mark.
 
-Delegate to **community-manager** (in parallel with deployment):
+Delegate to **community-manager** in parallel only for drafts:
 - Finalize patch notes using `$patch-notes [version]`
 - Prepare launch announcement (store page updates, social media, community post)
 - Draft known issues post if any S3+ issues shipped
-- Output: all player-facing release communication, ready to publish on deploy confirmation
+- Output: unpublished player-facing release communication drafts. Do not publish during Phase 6.
 
 ### Phase 7: Post-Release
 - **release-manager**: Generate release report (what shipped, what was deferred, metrics)
 - **producer**: Update milestone tracking, communicate to stakeholders
 - **qa-lead**: Monitor incoming bug reports for regressions
-- **community-manager**: Publish all player-facing communication, monitor community sentiment
+- **community-manager**: After production deployment is confirmed successful, publish player-facing communication only after a separate explicit `publish` instruction. Without it, leave drafts unpublished. A failed/BLOCKED deployment must not emit a success announcement.
 - **analytics-engineer**: Confirm live dashboards are healthy; alert if any critical events are missing
 - Schedule post-release retrospective if issues occurred
 
@@ -157,6 +158,8 @@ Common blockers:
 
 All file writes (release checklists, changelogs, patch notes, deployment scripts) are
 delegated to sub-agents and sub-skills. The orchestrator obtains one combined changeset authorization before delegation, and every delegate writes only inside that boundary without prompting again. This orchestrator does not write files directly.
+
+This file authorization never authorizes branch creation, tagging, staging/production deployment, or external publishing; those use the explicit decisions in Phases 2, 6, and 7.
 
 ## Output
 

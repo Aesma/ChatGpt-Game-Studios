@@ -20,11 +20,11 @@ independent stories.
 - [ ] Contains verdict keywords for sign-off report: APPROVED, APPROVED WITH CONDITIONS, NOT APPROVED
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 2. Phase 2: Spawns `qa-lead` through Codex subagent delegation; produces strategy table classifying all 4 stories; no blockers flagged; presents to user; user-input request: user selects "Looks good — proceed to test plan"
-3. Phase 3: Produces QA plan document; asks "May I apply the proposed changeset?"; writes after approval
-4. Phase 4: Spawns `qa-lead` through Codex subagent delegation; reviews `tests/smoke/`; returns PASS; reports "Smoke check passed. Proceeding to test case writing."
+3. Phase 2 accepts only a current sprint/build smoke report whose body says base mode `sprint` and coverage checked; quick/UNKNOWN/mismatched evidence stops
+4. Phase 3: qa-lead alone writes `production/qa/qa-plan-[sprint-slug]-[date].md` after one changeset includes plan, cases, conditional bugs, `production/qa/qa-[date].md`, and session state
 5. Phase 5: Spawns `qa-tester` through Codex subagent delegation for each Visual/Feel and Integration story (2–3 stories); run in parallel; presents test cases grouped by story; user-input request per group; user approves
 6. Phase 6: Walks through each approved story; user marks all as PASS; result summary: "Stories PASS: 4, FAIL: 0, BLOCKED: 0"
-7. Phase 7: Spawns `qa-lead` through Codex subagent delegation to produce sign-off report; report shows all stories PASS; no bugs filed; Verdict: APPROVED; asks "May I apply the proposed changeset?"; writes after approval
+7. Phase 6: qa-lead produces `production/qa/qa-[date].md`; report shows all stories PASS and Verdict: APPROVED without a second authorization
 8. Verdict: COMPLETE — QA cycle finished
 
 **Assertions:**
@@ -32,6 +32,8 @@ independent stories.
 - [ ] Strategy table in Phase 2 classifies all 4 stories with correct types
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Smoke check PASS allows pipeline to continue without user intervention
+- [ ] Quick mode, coverage NOT CHECKED, missing, or scope/build-mismatched smoke evidence stops at Phase 2
+- [ ] Auto Test PASS comes from a current observed result, not a file's existence
 - [ ] Phase 5 qa-tester tasks for independent stories are issued in parallel
 - [ ] Sign-off report includes Test Coverage Summary table and Verdict: APPROVED
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
@@ -53,7 +55,7 @@ independent stories.
 2. Phase 4: Spawns `qa-lead` through Codex subagent delegation; smoke check returns FAIL; two specific failures are identified
 3. Skill reports: "Smoke check failed. QA cannot begin until these issues are resolved: [list of 2 failures]. Fix them and re-run `$smoke-check`, or re-run `$team-qa` once resolved."
 4. Skill stops immediately after Phase 4 — no Phase 5, 6, or 7 is executed
-5. No sign-off report is produced; no "May I apply the proposed changeset?" for a sign-off is issued
+5. No sign-off report is produced and UNKNOWN is never converted to PASS WITH WARNINGS
 
 **Assertions:**
 - [ ] Smoke check FAIL causes the pipeline to halt at Phase 4 — Phases 5, 6, 7 are NOT executed
@@ -144,12 +146,13 @@ independent stories.
 3. After Story C FAIL: qa-tester spawned to write bug report `BUG-001-crash-ability-activation.md` with S1 severity
 4. Result summary presented: "Stories PASS: 1, PASS WITH NOTES: 1, FAIL: 1 — bugs filed: BUG-001 (S1), BLOCKED: 1"
 5. Phase 7: qa-lead produces sign-off report covering all 4 stories; BUG-001 listed as S1/Open; Story D listed as BLOCKED; Verdict: NOT APPROVED
-6. Sign-off report written after "May I apply the proposed changeset?" approval
+6. Sign-off report uses the already-authorized `production/qa/qa-[date].md` path
 7. Next step: "Resolve S1/S2 bugs and re-run `$team-qa` or targeted manual QA before advancing."
 
 **Assertions:**
 - [ ] All 4 stories appear in the Phase 7 sign-off report Test Coverage Summary table — none are silently omitted
 - [ ] Story D (BLOCKED) is listed in the report with a BLOCKED status, not silently dropped
+- [ ] Story D being in-scope and BLOCKED independently requires NOT APPROVED, even without the S1 bug
 - [ ] S1 bug causes Verdict: NOT APPROVED regardless of the other stories passing
 - [ ] PASS WITH NOTES stories do not downgrade to FAIL — they are tracked separately
 - [ ] BUG-001 severity is listed as S1 in the Bugs Found table
@@ -162,6 +165,9 @@ independent stories.
 
 - [ ] `user-input request` used at Phase 2 (strategy review), Phase 5 (test case approval per group), and Phase 6 (per-story manual QA result)
 - [ ] Phase 4 smoke check is a hard gate: FAIL halts the pipeline at Phase 4 with no exceptions
+- [ ] Phase 2 smoke eligibility is a hard gate: FAIL, UNKNOWN, quick mode, coverage NOT CHECKED, or scope mismatch halts with no sign-off
+- [ ] In-scope Must Have BLOCKED/Skipped/missing evidence always maps to NOT APPROVED
+- [ ] Existing same-day sign-off is never silently overwritten; the user must confirm updating that exact path
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Bug reports are always written by `qa-tester` through Codex subagent delegation — orchestrator does not write directly
 - [ ] Phase 5 qa-tester tasks for independent stories are issued in parallel where possible

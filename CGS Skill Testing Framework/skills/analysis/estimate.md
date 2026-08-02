@@ -45,13 +45,14 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 **Expected behavior:**
 1. Skill reads the story file — assesses clarity, AC count, tech stack
 2. Skill reads sprint history to determine average velocity
-3. Skill outputs estimate: M (1–2 days) with reasoning
+3. Skill outputs estimate: M plus optimistic/expected/pessimistic days with reasoning
 4. No files are written
 
 **Assertions:**
 - [ ] Estimate is M for a clear, well-scoped story with known tech
 - [ ] Reasoning references AC count, tech stack familiarity, and velocity data
 - [ ] Estimate is presented as a range (e.g., "1–2 days"), not a single point
+- [ ] Output contains both the T-shirt size and monotonic three-point day estimates
 - [ ] No files are written
 
 ---
@@ -92,7 +93,7 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 1. Skill reads story — assesses complexity
 2. Skill attempts to read sprint velocity data — finds none
 3. Skill notes: "No sprint history found — using conservative defaults for velocity"
-4. Estimate is produced using default assumptions (e.g., 1 story point = 1 day)
+4. Estimate uses the documented conservative S/M/L/XL day intervals without inventing a point-to-day conversion
 5. No files are written
 
 **Assertions:**
@@ -100,6 +101,7 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 - [ ] Output explicitly notes that conservative defaults are being used
 - [ ] Estimate is still produced (not blocked by missing velocity)
 - [ ] Conservative defaults produce a higher (not lower) estimate range
+- [ ] Confidence is lowered and no precise point conversion is claimed
 
 ---
 
@@ -114,7 +116,7 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 **Expected behavior:**
 1. Skill reads sprint file — identifies 4 stories
 2. Skill estimates each story individually: S, M, M, L
-3. Skill computes sprint total: approximately 6–8 story points
+3. Skill computes a sprint aggregate day range from the resolved story ranges
 4. Skill presents per-story estimates followed by sprint total
 5. No files are written
 
@@ -122,6 +124,7 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 - [ ] Each story receives its own estimate label
 - [ ] Sprint total is presented after individual estimates
 - [ ] Total is a sum range derived from individual ranges
+- [ ] Missing or unresolvable story paths are listed as unestimated and excluded from numeric totals
 - [ ] Skill handles sprint files (not just single story files) as input
 
 ---
@@ -148,11 +151,20 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 
 ---
 
+### Case 6: Invalid path is not treated as prose
+
+**Assertions:**
+- [ ] A nonexistent path, directory, project-external path, or non-Markdown file produces a clear error
+- [ ] The filename is not estimated as a natural-language task
+- [ ] No partial estimate is fabricated from path text
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads story file before estimating
 - [ ] Reads sprint velocity history when available
-- [ ] Produces effort range (S/M/L/XL), not a single number
+- [ ] Produces both S/M/L/XL and optimistic/expected/pessimistic day ranges
 - [ ] Does not write any files
 - [ ] No director gates are invoked
 - [ ] Always produces an estimate (never blocked by missing data; uses defaults instead)

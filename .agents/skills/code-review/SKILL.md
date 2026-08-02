@@ -14,13 +14,16 @@ Delegate substantive work to the `lead-programmer` Codex subagent role when it i
 
 ## Phase 1: Load Target Files
 
-Read the target file(s) in full. Read AGENTS.md for project coding standards.
+Read every target file in full. For each target, read every applicable
+`AGENTS.md` from the repository root through the target's parent directory.
+Apply the closest rule when instructions conflict, and list the actual standards
+files used in the final report.
 
 ---
 
 ## Phase 2: Identify Engine Specialists
 
-Read `.codex/docs/technical-preferences.md`, section `## Engine Specialists`. Note:
+Read `docs/technical-preferences.md`, section `## Engine Specialists`. Note:
 
 - The **Primary** specialist (used for architecture and broad engine concerns)
 - The **Language/Code Specialist** (used when reviewing the project's primary language files)
@@ -167,6 +170,12 @@ Collect all specialist findings before producing output.
 ### Verdict: [APPROVED / APPROVED WITH SUGGESTIONS / CHANGES REQUIRED]
 ```
 
+Verdict mapping is deterministic:
+- `CHANGES REQUIRED`: any blocker, ADR violation, or required acceptance
+  criterion that the implementation makes untestable.
+- `APPROVED WITH SUGGESTIONS`: no required change, but at least one advisory finding.
+- `APPROVED`: no findings that require a change or suggestion.
+
 This skill is read-only — no files are written.
 
 ---
@@ -174,12 +183,12 @@ This skill is read-only — no files are written.
 ## Phase 9: Next Steps
 
 Ask the user directly:
-- Prompt: "Code review complete — verdict: [APPROVED / CHANGES REQUIRED / MAJOR REVISION]. How would you like to proceed?"
+- Prompt: "Code review complete — verdict: [APPROVED / APPROVED WITH SUGGESTIONS / CHANGES REQUIRED]. How would you like to proceed?"
 - Options (adjust based on verdict):
   - If APPROVED:
     - `[A] Run $story-done to mark the story complete`
     - `[B] Stop here`
-  - If CHANGES REQUIRED or MAJOR REVISION:
+  - If CHANGES REQUIRED:
     - `[A] Fix the issues and re-run $code-review`
     - `[B] Run $story-done anyway with noted exceptions`
     - `[C] Stop here`

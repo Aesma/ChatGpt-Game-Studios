@@ -61,7 +61,9 @@ For each story, collect:
 
 ## 3. Locate Evidence Files
 
-For each story, find the evidence:
+For each story, first validate every path explicitly declared in its `## Test Evidence` section. The path must stay inside the project and must exist. Only when no path is declared may the conventions below be used as fallbacks; label any fallback match as inferred rather than a confirmed story link.
+
+Fallback conventions:
 
 **Logic stories**: Find files matching `tests/unit/[system]/[story-slug]_test.*`
   - If not found, also try: Search in `tests/unit/[system]/` for files
@@ -72,7 +74,7 @@ For each story, find the evidence:
 
 **Visual/Feel and UI stories**: Find files matching `production/qa/evidence/[story-slug]-evidence.*`
 
-**Config/Data stories**: Find files matching `production/qa/smoke-*.md` (any smoke check report)
+**Config/Data stories**: A smoke report is evidence only when its body explicitly links the current story/system and the relevant acceptance criterion. An unrelated global smoke report is not evidence.
 
 Note what was found (path) or not found (gap) for each story.
 
@@ -81,6 +83,8 @@ Note what was found (path) or not found (gap) for each story.
 ## 4. Review Automated Test Quality (Logic / Integration)
 
 For each test file found, read it and evaluate:
+
+Also inspect the current scope's existing execution result. ADEQUATE requires an identifiable current PASS for that test/evidence scope. If no current run result is available, record `execution status unknown` and cap the story at INCOMPLETE. This review does not add a test-execution phase and does not substitute for smoke or QA.
 
 ### Assertion coverage
 
@@ -114,6 +118,10 @@ Pattern: `test_[scenario]_[expected_outcome]`
 
 Flag functions named generically (`test_1`, `test_run`, `testBasic`) as
 **naming issues** — they make failures harder to diagnose.
+
+### Coding-standard quality
+
+Apply the existing coding-standard checks for deterministic behavior, isolation from live external systems/state, and absence of unexplained hardcoded test data in addition to naming. These findings participate in the same story-level quality verdict; they do not introduce a test-path mode or a second verdict vocabulary.
 
 ### Formula traceability
 
@@ -167,7 +175,7 @@ For each story, assign a verdict:
 
 | Verdict | Meaning |
 |---------|---------|
-| **ADEQUATE** | Test/evidence exists, passes quality checks, all criteria covered |
+| **ADEQUATE** | Static test/evidence quality is sufficient, all criteria are covered, and a current scope pass result is identifiable |
 | **INCOMPLETE** | Test/evidence exists but has quality gaps (thin assertions, missing sign-offs) |
 | **MISSING** | No test or evidence found for a story type that requires it |
 
@@ -248,8 +256,7 @@ Verdict: **COMPLETE** — evidence review finished. Use CONCERNS if BLOCKING ite
 
 - **Report quality issues, do not fix them** — this skill reads and evaluates;
   it does not modify test files or evidence documents
-- **ADEQUATE means adequate for shipping, not perfect** — avoid nitpicking
-  tests that are functioning and comprehensive enough to give confidence
+- **ADEQUATE means static evidence quality is sufficient for this review, not release approval**. Missing current execution results cap the story at INCOMPLETE.
 - **BLOCKING vs. ADVISORY distinction is important** — only flag BLOCKING when
   the gap leaves a story criterion genuinely unverified
 - **Single changeset approval** — the report file is optional; when requested, include it in the complete preview and write it only after the one approval

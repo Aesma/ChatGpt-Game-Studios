@@ -9,8 +9,7 @@ parallel phase (Step 4). Compiles all team outputs into a single level design
 document saved to `design/levels/[level-name].md`. It uses user input for genuine
 design choices or blockers, not routine step transitions. The full output file set is
 authorized once as a bounded changeset, then writes are delegated to subagents. Produces a summary report
-with verdict COMPLETE / BLOCKED and handoffs to `$design-review`, `$dev-story`,
-`$qa-plan`.
+with verdict COMPLETE / BLOCKED and handoffs to `$dev-story` and `$qa-plan`.
 
 ---
 
@@ -21,7 +20,7 @@ with verdict COMPLETE / BLOCKED and handoffs to `$design-review`, `$dev-story`,
 - [ ] Contains verdict keywords: COMPLETE, BLOCKED
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 8. Summary report: area overview, encounter count, estimated asset list, narrative beats, cross-team dependencies, verdict: COMPLETE
-9. Next steps listed: `$design-review design/levels/forest-dungeon.md`, `$dev-story`, `$qa-plan`
+9. Next steps list `$dev-story` and `$qa-plan`; no incompatible `$design-review` call is made
 
 **Assertions:**
 - [ ] All five sources read during context gathering before any agent is spawned
@@ -31,7 +30,8 @@ with verdict COMPLETE / BLOCKED and handoffs to `$design-review`, `$dev-story`,
 - [ ] All file writes delegated to sub-agents — orchestrator does not write directly
 - [ ] Level doc saved to `design/levels/forest-dungeon.md` (slugified from argument)
 - [ ] Verdict COMPLETE in final summary report
-- [ ] Next steps include `$design-review`, `$dev-story`, `$qa-plan`
+- [ ] Next steps include `$dev-story` and `$qa-plan`, not `$design-review`
+- [ ] Arguments expose no `--review`; every listed core role remains part of the pipeline
 - [ ] Summary report includes: area overview, encounter count, estimated asset list, narrative beats
 
 ---
@@ -102,20 +102,19 @@ with verdict COMPLETE / BLOCKED and handoffs to `$design-review`, `$dev-story`,
 2. accessibility-specialist returns: BLOCKING concern — "Critical path hazard distinction relies on color only (toxic pools vs. shallow water). Shape, icon, or audio cue required per Enhanced accessibility tier."
 3. art-director returns Step 4 output (complete)
 4. Skill presents both Step 4 results via `user-input request` — BLOCKING concern highlighted prominently
-5. `user-input request` offers:
-   - (a) Return to level-designer + art-director to redesign hazard visual/audio language before Step 5
-   - (b) Document as a known accessibility gap and proceed to Step 5 with the concern logged
-6. Skill does NOT silently proceed past the BLOCKING concern
-7. If user chooses (a): level-designer and art-director revision spawned; re-run Step 4 accessibility check
-8. Final report includes BLOCKING concern and its resolution status regardless of user choice
+5. The only completion option is return to level-designer + art-director to redesign before Step 5; the user may also stop
+6. Skill does NOT proceed past the BLOCKING concern
+7. After revision, accessibility-specialist re-runs the check and must clear/downgrade it before Step 5
+8. Final report includes the concern and resolution status
 
 **Assertions:**
 - [ ] BLOCKING accessibility concern is not treated as advisory — it is surfaced as a blocker
 - [ ] `user-input request` presents the specific concern text (not just "accessibility issue found")
-- [ ] Step 5 (qa-tester) does NOT begin without user acknowledging the BLOCKING concern
+- [ ] Step 5 does NOT begin while the BLOCKING concern remains
 - [ ] Revision path offered: level-designer + art-director can be sent back before proceeding
 - [ ] Final report includes the accessibility concern and its resolution status
 - [ ] art-director's completed output is NOT discarded when accessibility-specialist blocks
+- [ ] User acceptance/documentation cannot convert an unresolved blocker into COMPLETE
 
 ---
 
@@ -158,7 +157,14 @@ with verdict COMPLETE / BLOCKED and handoffs to `$design-review`, `$dev-story`,
 - [ ] Partial report always produced even when agents are BLOCKED
 - [ ] Accessibility BLOCKING concerns surface before sign-off and require explicit user acknowledgment
 - [ ] Verdict is one of COMPLETE / BLOCKED
-- [ ] Next steps present at end: `$design-review`, `$dev-story`, `$qa-plan`
+- [ ] Next steps present at end: `$dev-story`, `$qa-plan`
+- [ ] Missing target stops before all reads, spawns, authorization, and verdict output
+- [ ] Core roles are not conditional on a review mode
+- [ ] Steps 1–5 are analysis-only; routine transitions do not repeatedly ask approval
+- [ ] The only written output is the exact slugged final level document
+- [ ] level-designer is its sole writer after one complete changeset authorization
+- [ ] Narrative and QA checklist content are embedded sections, not independent files
+- [ ] A BLOCKING accessibility concern requires revision and re-check before Step 5/COMPLETE
 
 ---
 

@@ -7,12 +7,21 @@ description: "Reviews a game design document for completeness, internal consiste
 
 Invoke this workflow as `$design-review`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+This workflow is read-only. It never modifies the target GDD, systems index,
+review log, or any other project file, and therefore never requests changeset
+authorization.
 
 Arguments: `[path-to-design-doc] [--depth full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 ## Phase 0: Parse Arguments
+
+Require exactly one target path and optionally one valid
+`--depth [full|lean|solo]`. Normalize the path and accept only an existing
+project-local Markdown file directly under `design/gdd/`. Explicitly reject
+`game-concept.md`, `systems-index.md`, anything under `design/gdd/reviews/`,
+directories, non-Markdown files, project-external paths, missing/multiple
+targets, and unknown flags. On invalid input, stop without a verdict.
 
 Extract `--depth [full|lean|solo]` if present. Default is `full` when no flag is given.
 
@@ -96,7 +105,7 @@ Read the GDD and identify every domain present. A GDD can touch multiple domains
 | Multiplayer, sync, replication | `network-programmer` |
 | Audio cues, music triggers | `audio-director` |
 | Performance, draw calls, memory | `performance-analyst` |
-| Engine-specific patterns or APIs | Primary engine specialist (from `.codex/docs/technical-preferences.md`) |
+| Engine-specific patterns or APIs | Primary engine specialist (from `docs/technical-preferences.md`) |
 | Acceptance criteria, test coverage | `qa-lead` |
 | Data schema, resource structure | `systems-designer` |
 | Any gameplay system | `game-designer` (always) |
@@ -112,7 +121,11 @@ with its own context window. It is NOT task tracking. Do NOT simulate specialist
 perspectives internally. Do NOT reason through domain views yourself. You MUST issue
 actual subagent delegations. A simulated review is not a specialist review.**
 
-Issue all subagent delegations simultaneously. Do NOT spawn one at a time.
+Deduplicate the relevant role list, rank it by the target GDD's principal
+risks, and inspect the currently available subagent capacity. Keep execution
+space for the primary task. Start only the roles that fit; run the remainder in
+bounded batches as slots become available. Never fabricate a role result that
+was not actually returned.
 
 **Prompt each specialist adversarially:**
 > "Here is the GDD for [system] and the main review's structural findings so far.
@@ -131,7 +144,15 @@ Issue all subagent delegations simultaneously. Do NOT spawn one at a time.
 
 ### Step 3 — Senior lead review
 
-After all specialists respond, spawn `creative-director` as the **senior reviewer**:
+After all attempted specialist batches settle, list any role that did not
+complete and the reason. Use completed findings to produce NEEDS REVISION or
+MAJOR REVISION NEEDED when those existing conditions are already established.
+If missing reviews are necessary to establish a clean result, state that the
+full review is incomplete and do not issue a verdict. If no required specialist
+succeeds, stop with a clear error and no verdict.
+
+Then spawn `creative-director` as the **senior reviewer** only if the preceding
+full review has enough real completed results:
 - Provide: the GDD, all specialist findings, any disagreements between them
 - Ask: "Synthesise these findings. What are the most important issues? Do you agree with the specialists? What is your overall verdict on this design?"
 - The creative-director's synthesis becomes the **final verdict** in Phase 4.
@@ -187,87 +208,21 @@ Label clearly: "Rough scope signal: M (producer should verify before sprint plan
 ### Verdict: [APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED]
 ```
 
-This skill is read-only — no files are written during Phase 4.
+This entire skill is read-only — no files are written in any phase.
 
 ---
 
 ## Phase 5: Next Steps
 
-Ask the user directly for ALL closing interactions. Never omit the explicit choice prompt.
+Output non-writing guidance and end the review.
 
-**First structured prompt — what to do next:**
-
-If APPROVED (first-pass, no revision needed), proceed directly to the systems-index structured prompt, review-log structured prompt, then the final closing structured prompt. Do not show a separate "what to do" structured prompt — the final closing structured prompt covers next steps.
-
-If NEEDS REVISION or MAJOR REVISION NEEDED, options:
-- `[A] Revise the GDD now — address blocking items together`
-- `[B] Stop here — revise in a separate session`
-- `[C] Accept as-is and move on (only if all items are advisory)`
-
-**If user selects [A] — Revise now:**
-
-Work through all blocking items, asking for design decisions only where you cannot resolve the issue from the GDD and existing docs alone. Group all design-decision questions into a single grouped set of questions presented directly to the user before making any edits — do not interrupt mid-revision for each blocker individually.
-
-After all revisions are complete, show a summary table (blocker → fix applied) and ask the user directly for a **post-revision closing structured prompt**:
-
-- Prompt: "Revisions complete — [N] blockers resolved. What next?"
-- If the app indicates context compaction, or the review has been unusually long, recommend running the full re-review in a fresh Codex task. Do not claim a numeric context percentage.
-- Options:
-  - `[A] Re-review in a fresh Codex task — run `$design-review [doc-path]` there
-  - `[B] Accept revisions and mark Approved — update systems index, skip re-review`
-  - `[C] Move to next system — $design-system [next-system] (#N in design order)`
-  - `[D] Stop here`
-
-Never end the revision flow with plain text. Always close with this structured prompt.
-
-**Second structured prompt — tracking records (combined, for APPROVED path):**
-
-When the verdict is APPROVED, use a single a direct question to the user with `allow multiple selections` to batch the two tracking updates:
-- Prompt: "Verdict: APPROVED. I can update the tracking records now. Select any you'd like me to complete:"
-- Options:
-  - `Update systems-index.md status to 'Approved' for [system]`
-  - `Append approval entry to design/gdd/reviews/[doc-name]-review-log.md`
-
-If the review-log option is selected, append the same format as below. Execute both selected actions before showing the final closing structured prompt.
-
-When the verdict is NEEDS REVISION or MAJOR REVISION NEEDED, use separate structured prompts as before:
-
-Use a second a direct question to the user:
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-- Options: `[A] Yes — update it` / `[B] No — leave it as-is`
-
-Use a third a direct question to the user:
-- Prompt: "Should the proposed changeset include this review summary in `design/gdd/reviews/[doc-name]-review-log.md`? This preserves revision history for future re-reviews."
-- Options: `[A] Yes — append to review log` / `[B] No — skip`
-
-Once the complete changeset is authorized, append an entry in this format:
-```
-## Review — [YYYY-MM-DD] — Verdict: [APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED]
-Scope signal: [S/M/L/XL]
-Specialists: [list]
-Blocking items: [count] | Recommended: [count]
-Summary: [2-3 sentence summary of key findings from creative-director verdict]
-Prior verdict resolved: [Yes / No / First review]
-```
-
----
-
-**Final closing structured prompt — always show after all file writes complete:**
-
-Once the systems-index and review-log structured prompts are answered, check project state and show one final a direct question to the user:
-
-Before building options, read:
-- `design/gdd/systems-index.md` — find any system with Status: In Review or NEEDS REVISION (other than the one just reviewed)
-- Count `.md` files in `design/gdd/` (excluding game-concept.md, systems-index.md) to determine if `$review-all-gdds` is worth offering (≥2 GDDs)
-- Find the next system with Status: Not Started in design order
-
-Build the option list dynamically — only include options that are genuinely next:
-- `[_] Run $design-review [other-gdd-path] — [system name] is still [In Review / NEEDS REVISION]` (include if another GDD needs review)
-- `[_] Run $consistency-check — verify this GDD's values don't conflict with existing GDDs` (always include if ≥1 other GDD exists)
-- `[_] Run $review-all-gdds — holistic design-theory review across all designed systems` (include if ≥2 GDDs exist)
-- `[_] Run $design-system [next-system] — next in design order` (always include, name the actual system)
-- `[_] Stop here`
-
-Assign letters A, B, C… only to included options. Mark the most pipeline-advancing option as `(recommended)`.
-
-Never end the skill with plain text after file writes. Always close with this structured prompt.
+- For APPROVED, explain the existing downstream step without changing
+  `systems-index.md` or a review log.
+- For NEEDS REVISION or MAJOR REVISION NEEDED, list the exact existing GDD
+  sections that require revision and any decisions the user must make. Tell the
+  user to revise in a separate explicit request and then invoke
+  `$design-review [same-path]` again.
+- Do not implement revisions, mark Approved, offer a skip-re-review path, update
+  tracking files, or create/append a review log during this run.
+- Offer Stop and at most the directly relevant next action. Do not claim any
+  document or status was changed.

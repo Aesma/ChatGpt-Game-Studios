@@ -39,6 +39,12 @@ appropriate design or architecture documentation. Use this when:
 - `src/core/event-system.cpp` → Specific file
 - `prototypes/stealth-mech/` → Prototype directory
 
+The resolved input must be one existing file or directory contained within the
+project. Reject project-external paths. Within a directory, read only text source
+or configuration files directly relevant to the selected type and applicable
+AGENTS instructions. Skip generated output, binaries, and sensitive or denied
+files. If no valid text input remains, stop with zero writes.
+
 **Examples**:
 ```text
 $reverse-document design src/gameplay/magic-system
@@ -127,15 +133,18 @@ Based on type, use appropriate template:
 
 | Type | Template | Output Path |
 |------|----------|-------------|
-| `design` | `templates/design-doc-from-implementation.md` | `design/gdd/[system-name].md` |
-| `architecture` | `templates/architecture-doc-from-code.md` | `docs/architecture/[decision-name].md` |
-| `concept` | `templates/concept-doc-from-prototype.md` | `prototypes/[name]/CONCEPT.md` or `design/concepts/[name].md` |
+| `design` | `.codex/docs/templates/design-doc-from-implementation.md` | `design/gdd/[system-name].md` |
+| `architecture` | `.codex/docs/templates/architecture-doc-from-code.md` | `docs/architecture/[decision-name].md` |
+| `concept` | `.codex/docs/templates/concept-doc-from-prototype.md` | `prototypes/[name]/CONCEPT.md` or `design/concepts/[name].md` |
+
+If the selected template is absent, stop; do not invent a replacement structure.
 
 **Draft structure**:
-- Capture **what exists** (mechanics, patterns, implementation)
-- Document **why it exists** (intent clarified with user)
-- Identify **what's missing** (edge cases not handled, gaps in design)
-- Flag **follow-up work** (balance tuning, missing features)
+- Put code/test-backed facts under **Observed implementation**.
+- Put clarified future or desired behavior under **User-stated intent**.
+- Put every difference under **Gap**; intent never rewrites the observed state.
+- Mark an Acceptance Criterion implemented only when code/test evidence proves it.
+- Flag **follow-up work** (balance tuning, missing features).
 
 ## Phase 6: Show Draft and Request Approval
 
@@ -161,7 +170,9 @@ Treat the response as a draft-scope decision. The user may request changes befor
 
 ## Phase 7: Write Document with Metadata
 
-When approved, write the file with special markers:
+Before requesting write authorization, resolve the exact output target and check
+whether it exists. If it exists, read it and offer a targeted update or stop;
+never overwrite it silently. When approved, write the file with special markers:
 
 ```markdown
 ---
@@ -179,6 +190,12 @@ verified-by: [User name]
 
 [Rest of document...]
 ```
+
+For a new design GDD, also update the existing
+`design/gdd/systems-index.md` corresponding row in the same changeset. If no
+unique existing system row can be identified, stop and ask the user to select
+an existing system rather than inventing a new system decision. Preview the
+new/updated document and index edit together.
 
 ## Phase 8: Flag Follow-Up Work
 
@@ -241,10 +258,11 @@ User: Yes, write it.
 
 Agent: ✅ Written to design/gdd/[system-name].md
        ✅ Marked as [REVERSE-DOCUMENTED]
-       ✅ Flagged [value] scaling for rebalancing
+       ✅ Recorded observed [value] scaling separately from the intended linear rule
+       ✅ Flagged the implementation/intent difference as a Gap
 
        Next steps:
-       - Update [formula] to [corrected scaling]
+       - Implement and verify the documented formula gap before marking it current
        - Run $balance-check to validate [curve]
        - Document [mechanic] as core pillar in game-pillars.md
 ```

@@ -42,21 +42,21 @@ the `$team-ui` pipeline.
 - **`patterns`**: validate `design/ux/interaction-patterns.md` specifically
 - **No argument**: ask the user which spec to validate
 
-For `all`, output a summary table first (file | verdict | primary issue) then
-full detail for each.
+Route each file before review. The two reserved paths are `design/ux/hud.md` (HUD) and `design/ux/interaction-patterns.md` (pattern library). Any other candidate must match the header contract of `.codex/docs/templates/ux-spec.md`; otherwise report it as unsupported and issue no verdict. `all` reviews and summarizes only these three supported types, with unsupported Markdown listed separately.
 
 ---
 
 ## Phase 2: Load Cross-Reference Context
 
-Before validating any spec, load:
+Before validating any spec, load the authoritative template for its routed type: `.codex/docs/templates/ux-spec.md`, `.codex/docs/templates/hud-design.md`, or `.codex/docs/templates/interaction-pattern-library.md`. Its current headings and requirements are the completeness contract; do not maintain a second copied section schema.
 
-1. **Input & Platform config**: Read `.codex/docs/technical-preferences.md` and
+Then load:
+
+1. **Input & Platform config**: Read `docs/technical-preferences.md` and
    extract `## Input & Platform`. This is the authoritative source for which input
    methods the game supports — use it to drive the Input Method Coverage checks in
    Phase 3A, not the spec's own header. If unconfigured, fall back to the spec header.
-2. The accessibility tier committed to in `design/accessibility-requirements.md`
-   (if it exists)
+2. The accessibility tier committed to in `design/accessibility-requirements.md`. This central document is the only tier authority. If it is missing or still placeholder, report `tier unknown` and do not claim COMPLIANT. If the spec header differs from its committed tier, record a blocker. Use only Basic / Standard / Comprehensive / Exemplary; never guess a mapping for legacy names.
 3. The interaction pattern library at `design/ux/interaction-patterns.md` (if
    it exists)
 4. The GDDs referenced in the spec's header (read their UI Requirements sections)
@@ -65,144 +65,15 @@ Before validating any spec, load:
 
 ---
 
-## Phase 3A: UX Spec Validation Checklist
+## Phase 3: Template-Routed Validation
 
-Run all checks against a `ux-spec.md`-based document.
+For each supported file, compare it against the current authoritative template selected in Phase 1. Check every required heading and substantive placeholder, then apply the quality rules described by that same template.
 
-### Completeness (required sections)
+- **UX spec**: validate purpose/player need, arrival context, navigation and entry/exit, layout/component inventory, applicable states, interactions for configured inputs, data ownership, accessibility, localization, and acceptance criteria.
+- **HUD**: validate the HUD template's information architecture, applicable gameplay contexts, layout zones, element specs, feedback, visual budget, platform adaptation, tuning knobs, accessibility, and acceptance criteria.
+- **Pattern library**: validate the pattern template's catalog and entries, standard controls actually used by the project, navigation/loading/error patterns, animation/sound standards, accessibility, and internal consistency.
 
-- [ ] Document header present with Status, Author, Platform Target
-- [ ] Purpose & Player Need — has a player-perspective need statement (not
-  developer-perspective)
-- [ ] Player Context on Arrival — describes player's state and prior activity
-- [ ] Navigation Position — shows where screen sits in hierarchy
-- [ ] Entry & Exit Points — all entry sources and exit destinations documented
-- [ ] Layout Specification — zones defined, component inventory table present
-- [ ] States & Variants — at minimum: loading, empty/populated, and error states
-  documented
-- [ ] Interaction Map — covers all target input methods (check platform target
-  in header)
-- [ ] Data Requirements — every displayed data element has a source system and owner
-- [ ] Events Fired — every player action has a corresponding event or null
-  explanation
-- [ ] Transitions & Animations — at least enter/exit transitions specified
-- [ ] Accessibility Requirements — screen-level requirements present
-- [ ] Localization Considerations — max character counts for text elements
-- [ ] Acceptance Criteria — at least 5 specific testable criteria
-
-### Quality Checks
-
-**Player Need Clarity**
-- [ ] Purpose is written from player perspective, not system/developer perspective
-- [ ] Player goal on arrival is unambiguous ("The player arrives wanting to ___")
-- [ ] The player context on arrival is specific (not just "they opened the
-  inventory")
-
-**Completeness of States**
-- [ ] Error state is documented (not just happy path)
-- [ ] Empty state is documented (no data scenario)
-- [ ] Loading state is documented if the screen fetches async data
-- [ ] Any state with a timer or auto-dismiss is documented with duration
-
-**Input Method Coverage**
-- [ ] If platform includes PC: keyboard-only navigation is fully specified
-- [ ] If platform includes console/gamepad: d-pad navigation and face button
-  mapping documented
-- [ ] No interaction requires mouse-like precision on gamepad
-- [ ] Focus order is defined (Question group order for keyboard, d-pad order for gamepad)
-
-**Data Architecture**
-- [ ] No data element has "UI" listed as the owner (UI must not own game state)
-- [ ] Update frequency is specified for all real-time data (not just "realtime" —
-  what triggers update?)
-- [ ] Null handling is specified for all data elements (what shows when data is
-  unavailable?)
-
-**Accessibility**
-- [ ] Accessibility tier from `accessibility-requirements.md` is matched or exceeded
-- [ ] If Basic tier: no color-only information indicators
-- [ ] If Standard tier+: focus order documented, text contrast ratios specified
-- [ ] If Comprehensive tier+: screen reader announcements for key state changes
-- [ ] Colorblind check: any color-coded elements have non-color alternatives
-
-**GDD Alignment**
-- [ ] Every GDD UI Requirement referenced in the header is addressed in this spec
-- [ ] No UI element displays or modifies game state without a corresponding GDD
-  requirement
-- [ ] No GDD UI Requirement is missing from this spec (cross-check the referenced
-  GDD sections)
-
-**Pattern Library Consistency**
-- [ ] All interactive components reference the pattern library (or note they are
-  new patterns)
-- [ ] No pattern behavior is re-specified from scratch if it already exists in
-  the pattern library
-- [ ] Any new patterns invented in this spec are flagged for addition to the
-  pattern library
-
-**Localization**
-- [ ] Character limit warnings present for all text-heavy elements
-- [ ] Any layout-critical text has been flagged for 40% expansion accommodation
-
-**Acceptance Criteria Quality**
-- [ ] Criteria are specific enough for a QA tester who hasn't seen the design docs
-- [ ] Performance criterion present (screen opens within Xms)
-- [ ] Resolution criterion present
-- [ ] No criterion requires reading another document to evaluate
-
----
-
-## Phase 3B: HUD Validation Checklist
-
-Run all checks against a `hud-design.md`-based document.
-
-### Completeness
-
-- [ ] HUD Philosophy defined
-- [ ] Information Architecture table covers ALL systems with UI Requirements in GDDs
-- [ ] Layout Zones defined with safe zone margins for all target platforms
-- [ ] Every HUD element has a full specification (zone, visibility trigger, data
-  source, priority)
-- [ ] HUD States by Gameplay Context covers at minimum: exploration, combat,
-  dialogue/cutscene, paused
-- [ ] Visual Budget defined (max simultaneous elements, max screen %)
-- [ ] Platform Adaptation covers all target platforms
-- [ ] Tuning Knobs present for player-adjustable elements
-
-### Quality Checks
-
-- [ ] No HUD element covers the center play area without a visibility rule to
-  hide it
-- [ ] Every information item that exists in any GDD is either in the HUD or
-  explicitly categorized as "hidden/demand"
-- [ ] All color-coded HUD elements have colorblind variants
-- [ ] HUD elements in the Feedback & Notification section have queue/priority
-  behavior defined
-- [ ] Visual Budget compliance: total simultaneous elements is within budget
-
-### GDD Alignment
-
-- [ ] All systems in `design/gdd/systems-index.md` with UI category have
-  representation in HUD (or justified absence)
-
----
-
-## Phase 3C: Pattern Library Validation Checklist
-
-- [ ] Pattern catalog index is current (matches actual patterns in document)
-- [ ] All standard control patterns are specified: button variants, toggle,
-  slider, dropdown, list, grid, modal, dialog, toast, tooltip, progress bar,
-  input field, question group bar, scroll
-- [ ] All game-specific patterns needed by current UX specs are present
-- [ ] Each pattern has: When to Use, When NOT to Use, full state specification,
-  accessibility spec, implementation notes
-- [ ] Animation Standards table present
-- [ ] Sound Standards table present
-- [ ] No conflicting behaviors between patterns (e.g., "Back" behavior consistent
-  across all navigation patterns)
-
----
-
+Count a template heading as present only when it contains substantive non-placeholder content. An unsupported document receives an error but no completeness denominator or verdict.
 ## Phase 4: Output the Verdict
 
 ```markdown
@@ -237,6 +108,13 @@ Run all checks against a `hud-design.md`-based document.
 ### Verdict: APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED
 **Blocking issues**: [N] — must be resolved before implementation
 **Advisory issues**: [N] — recommended but not blocking
+
+Verdict mapping is deterministic:
+- **APPROVED**: zero blockers. Advisory findings do not lower the verdict.
+- **NEEDS REVISION**: one or more localized, fixable blockers with the document's purpose, main flow, input contract, and data ownership otherwise coherent.
+- **MAJOR REVISION NEEDED**: Purpose/Player Need is missing; the main flow, input behavior, or data ownership contradicts itself; or multiple core sections from the routed template are substantively missing.
+
+Always list blocker count and locations. Then use the matching handoff:
 
 [For APPROVED]: This spec is ready for handoff to `$team-ui` Phase 2
 (Visual Design).

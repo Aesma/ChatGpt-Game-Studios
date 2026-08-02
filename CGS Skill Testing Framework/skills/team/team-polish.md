@@ -27,6 +27,8 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 - [ ] Phase 3 (visual polish) and Phase 4 (audio polish) are explicitly run in parallel with Phase 2
 - [ ] engine-programmer is conditionally spawned in Phase 2 only when Phase 1 identifies engine-level root causes
 - [ ] Phase 6 sign-off compares metrics against budgets before issuing verdict
+- [ ] Parallel agents have mutually exclusive file ownership; overlap becomes advisory work
+- [ ] Phase 5 records executed PASS/FAIL or not run with reason, and release-critical not-run evidence prevents READY FOR RELEASE
 
 ---
 
@@ -46,7 +48,7 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 **Expected behavior:**
 1. Phase 1: performance-analyst is spawned; profiles the combat system, measures frame budget, checks memory usage; output: performance report showing all metrics within budget, no violations
 2. `user-input request` presents performance report; user approves before Phases 2, 3, and 4 begin
-3. Phase 2: performance-analyst applies minor optimizations (e.g., draw call batching); no engine-programmer needed (no engine-level root causes identified)
+3. Phase 1 resolves candidate files, assigns one owner per path, and obtains the single changeset approval. Phase 2 then applies minor optimizations; no engine-programmer is needed
 4. Phases 3 and 4 are launched in parallel alongside Phase 2:
    - Phase 3: technical-artist reviews VFX for quality, optimizes particle systems, adds screen shake and visual juice
    - Phase 4: sound-designer reviews audio events for completeness, checks mix levels, adds ambient audio layers
@@ -54,7 +56,7 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 6. Phase 5: qa-tester runs edge case tests, soak tests, stress tests, and regression tests; all pass
 7. `user-input request` presents test results; user approves before Phase 6
 8. Phase 6: orchestrator collects all results; compares before/after performance metrics against budgets; all metrics pass
-9. Subagent asks "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
+9. No subagent repeats authorization; all writes remain inside the approved ownership map
 10. Verdict: READY FOR RELEASE
 
 **Assertions:**
@@ -166,8 +168,8 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 2. Phase 5: qa-tester runs regression tests and detects "Item highlight glow on hover no longer renders — regression introduced by shader optimization in Phase 3"
 3. qa-tester returns test results with the regression noted
 4. Orchestrator surfaces the regression immediately: "qa-tester: REGRESSION FOUND — `item-highlight-hover` glow broken by Phase 3 shader optimization"
-5. Subagent files a bug report asking "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
-6. Bug report is written after approval; it includes: the broken behavior, the polish change that caused it, reproduction steps, and severity
+5. The regression is listed in the existing results and marks the candidate NEEDS MORE WORK; the workflow does not automatically create a bug file
+6. If a bug report is later requested and its path was not in the approved boundary, the revised-changeset rule is used once
 7. `user-input request` presents the regression with options:
    - Revert the shader optimization and find an alternative approach
    - Fix the shader optimization to preserve the glow effect
@@ -178,7 +180,7 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 - [ ] Regression is surfaced before Phase 6 sign-off
 - [ ] The specific broken behavior and the responsible change are both named in the report
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Bug report includes: broken behavior, causal change, reproduction steps, severity
+- [ ] No unpromised bug report is created automatically
 - [ ] `user-input request` offers options including revert, fix in place, and schedule later
 - [ ] Verdict is NEEDS MORE WORK when a regression is present and unresolved
 - [ ] Verdict may become READY FOR RELEASE only if the regression is fixed within the current polish session and qa-tester re-runs to confirm
@@ -190,6 +192,7 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 - [ ] Phase 1 (assessment) must complete before any other phase begins
 - [ ] `user-input request` is used after every phase output before the next phase launches
 - [ ] Phases 3 and 4 are always launched in parallel with Phase 2 (not deferred)
+- [ ] Before parallel work, candidate files have mutually exclusive owners; shared shader/VFX/render paths are edited by only one agent
 - [ ] engine-programmer is only spawned when Phase 1 explicitly identifies engine-level root causes
 - [ ] No files are written by the orchestrator directly — all writes are delegated to sub-agents
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
@@ -197,6 +200,7 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 - [ ] A partial report is always produced when some agents complete and others block
 - [ ] Verdict is exactly READY FOR RELEASE or NEEDS MORE WORK — no other verdict values used
 - [ ] NEEDS MORE WORK verdict always lists specific remaining issues with severity
+- [ ] Any release-critical regression, stress, soak, or target-hardware check that is not run is explicit and prevents READY FOR RELEASE
 - [ ] Next Steps handoff references `$release-checklist` (on success) and `$sprint-plan update` + `$gate-check` (on failure)
 
 ---
@@ -214,5 +218,11 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
   exercised in both directions across these cases.
 - Soak testing and stress testing (Phase 5) are validated implicitly by Case 1's
   qa-tester output. Case 5 focuses on the regression detection aspect of Phase 5.
-- The "minimum spec hardware" test path in Phase 5 is not separately tested — it follows
-  the same qa-tester delegation pattern when the hardware is available.
+- Minimum-spec hardware unavailable: record `not run` with the reason and return NEEDS MORE WORK when that evidence is release-critical; never claim READY FOR RELEASE from an unavailable run.
+
+### P0 Regression Matrix
+
+- [ ] If performance-analyst and technical-artist both identify the same shader/VFX/render file, exactly one receives write ownership and the other returns advice.
+- [ ] Before metrics come from one confirmed baseline and after metrics from the fully combined candidate.
+- [ ] A missing runnable build, unavailable stress environment, or unavailable required hardware is `not run`, never PASS.
+- [ ] A dynamically discovered bug/report path outside the original preview pauses for one revised changeset instead of prompting per subagent.

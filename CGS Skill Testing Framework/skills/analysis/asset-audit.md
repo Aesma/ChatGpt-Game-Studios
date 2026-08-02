@@ -30,8 +30,12 @@ Verified automatically by `$skill-test static` — no fixture needed.
 ## Protocol Compliance
 
 - [ ] Reads `technical-preferences.md` for naming conventions, formats, and size budgets
+- [ ] Reads the root-to-target `AGENTS.md` chain and gives the closest directory rule precedence
+- [ ] Treats hard-coded naming/format examples as defaults only when project rules are silent
 - [ ] Scans `assets/` directory recursively
 - [ ] Audit table shows file name, check type, expected value, actual value, and result
+- [ ] Unreadable binary properties, parse failures, and missing schemas are `NOT CHECKED` with a reason
+- [ ] A report containing any `NOT CHECKED` result cannot receive `COMPLIANT`
 - [ ] Does not modify any asset files
 - [ ] No director gates are invoked
 - [ ] Verdict is one of: COMPLIANT, WARNINGS, NON-COMPLIANT

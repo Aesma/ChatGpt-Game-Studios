@@ -66,9 +66,9 @@ Before checking any stories, load reference documents once (not per-story):
   (if the file does not exist, note it as missing once; do not re-flag per story)
   Also extract the `Manifest Version:` date from the header block if the file exists.
 - `docs/architecture/tr-registry.yaml` — index all entries by `id`. Used to
-  validate TR-IDs in stories. If the file does not exist, note it once; TR-ID
-  checks will auto-pass for all stories (registry predates stories, so missing
-  registry means stories are from before TR tracking was introduced).
+  validate TR-IDs in stories. If the file is missing or cannot be parsed, note
+  it once. Any story that declares a TR-ID is BLOCKED because the requirement
+  cannot be validated; never assume the story predates tracking.
 - All ADR status fields — for each unique ADR referenced across the stories being
   checked, read the ADR file and note its `Status:` field. Cache these so you
   don't re-read the same ADR for every story.
@@ -106,17 +106,16 @@ items pass or are explicitly marked N/A with a stated reason.
 
 ### Architecture Completeness
 
-- [ ] **ADR referenced or N/A stated**: The story references at least one ADR,
-  OR explicitly states "No ADR applies" with a brief reason.
-  A story with no ADR reference and no explicit N/A note fails this check.
-- [ ] **ADR is Accepted (not Proposed)**: For each referenced ADR, check its
-  `Status:` field using the cached ADR statuses loaded in Section 2.
-  - If `Status: Accepted` → pass.
-  - If `Status: Proposed` → **BLOCKED**: the ADR may change before it is accepted,
-    and the story's implementation guidance could be wrong.
-    Fix: `BLOCKED: ADR-NNNN is Proposed — wait for acceptance before implementing.`
-  - If the ADR file does not exist → **BLOCKED**: referenced ADR is missing.
-  - Auto-pass if story has an explicit "No ADR applies" N/A note.
+- [ ] **Governing ADRs are explicit**: Parse every item in the story's
+  `Governing ADRs` list. With multiple ADRs, exactly one list item must carry an
+  explicit primary marker; neither list order nor the first item implies primary.
+  Zero or multiple primary markers are **BLOCKED**. A single ADR may stand alone.
+  Missing/empty ADR data is **BLOCKED**. The only N/A form accepted is for
+  `Type: Config/Data` and must be exactly `ADR: N/A — [non-empty reason]`;
+  N/A for any other type is **BLOCKED**.
+- [ ] **Every ADR is Accepted**: Read every referenced ADR, not only the primary.
+  Each file must exist and its `Status:` must be exactly `Accepted`. Proposed,
+  missing, or any other status is **BLOCKED**.
 - [ ] **TR-ID is valid and active**: If the story contains a `TR-[system]-NNN`
   reference, look it up in the TR registry loaded in Section 2.
   - If the ID exists and `status: active` → pass.
@@ -125,15 +124,19 @@ items pass or are explicitly marked N/A with a stated reason.
     Fix: update the story to reference the current requirement ID or remove if no longer applicable.
   - If the ID does not exist in the registry → NEEDS WORK: ID was not registered
     (story may predate registry, or registry needs an `$architecture-review` run).
-  - Auto-pass if the story has no TR-ID reference OR if the registry does not exist.
+  - If the story declares a TR-ID and the registry is missing/unparseable →
+    **BLOCKED**.
+  - If the story explicitly has no TR-ID, validate its existing specific GDD or
+    quick-design requirement reference instead; do not infer that it predates tracking.
 - [ ] **Manifest version is current**: If the story has a `Manifest Version:` date
   in its header AND `docs/architecture/control-manifest.md` exists:
   - If story version matches current manifest `Manifest Version:` → pass.
   - If story version is older than current manifest → NEEDS WORK: new rules may
     apply. Fix: review changed manifest rules, update story if any forbidden/required
     entries changed, then update the story's `Manifest Version:` to current.
-  - Auto-pass if either the story has no `Manifest Version:` field OR the manifest
-    does not exist.
+  - If the manifest exists but the story has no `Manifest Version:` → NEEDS WORK.
+  - If the manifest itself does not exist, note that once under the existing
+    project-stage rule and do not pretend the version check passed.
 - [ ] **Engine notes present**: For any post-cutoff engine API this story
   is likely to touch, implementation notes or a verification requirement are
   included. If the story clearly does not touch engine APIs (e.g., it is a
@@ -202,7 +205,33 @@ items pass or are explicitly marked N/A with a stated reason.
 
 ---
 
-## 4. Verdict Assignment
+## 4. Director Gate — Story Readiness Review
+
+Run this after all local checklist items and before assigning or outputting the
+final verdict. Apply the review mode resolved in Phase 0:
+
+- `solo` → skip and note `QL-STORY-READY skipped — Solo mode.`
+- `lean` → skip and note `QL-STORY-READY skipped — Lean mode.`
+- `full` → for each story in scope, sequentially spawn `qa-lead` using gate
+  **QL-STORY-READY** and pass that story's title, full acceptance-criteria list,
+  dependency states, and provisional local verdict.
+
+Record a separate gate result for every story; never reuse one result across an
+`all` or `sprint` scope. Apply it before the final verdict:
+
+- **ADEQUATE** → adds no finding.
+- **GAPS** → that story is at least NEEDS WORK; report the specific gaps.
+- **INADEQUATE** → that story is BLOCKED.
+- If the agent/gate fails or returns no usable verdict, that story cannot be
+  READY. Report it as incomplete and keep completed story results in the
+  aggregate.
+
+This read-only gate has no accept-and-proceed or write-story option. After all
+required per-story gates finish, assign and output final verdicts once.
+
+---
+
+## 5. Verdict Assignment
 
 Assign one of three verdicts per story:
 
@@ -212,14 +241,19 @@ The story can be assigned immediately.
 **NEEDS WORK** — One or more checklist items fail, but all dependency stories
 exist and are not DRAFT. The story can be fixed before assignment.
 
-**BLOCKED** — One or more dependency stories are missing or in DRAFT state,
-OR a critical design question (flagged UNRESOLVED in a criterion or rule) has
-no owner. The story cannot be assigned until the blocker is resolved. Note:
-a story that is BLOCKED may also have NEEDS WORK items — list both.
+**BLOCKED** — Any referenced ADR is missing or not Accepted; multi-ADR primary
+markers are absent/ambiguous; ADR data is missing or N/A is invalid for the
+story type; a declared TR-ID cannot be validated because the registry is
+missing/unparseable; a dependency story is missing or DRAFT; a critical
+UNRESOLVED question has no owner; or the full QL-STORY-READY gate is INADEQUATE
+or fails to return a usable result. Any blocker forces the final verdict to
+BLOCKED even when NEEDS WORK findings also exist.
+
+**NEEDS WORK floor from the gate** — QL-STORY-READY GAPS can never produce READY.
 
 ---
 
-## 5. Output Format
+## 6. Output Format
 
 ### Single story output
 
@@ -275,7 +309,7 @@ Resolve these before the sprint begins or replan with `$sprint-plan update`.
 
 ---
 
-## 6. Collaborative Protocol
+## 7. Collaborative Protocol
 
 This skill is read-only. It never proposes edits or asks to write files.
 
@@ -301,7 +335,7 @@ in conversation. Do not use file-editing capabilities — the user (or
 
 ---
 
-## 7. Next-Story Handoff
+## 8. Next-Story Handoff
 
 After completing a single-story readiness check (not `all` or `sprint` scope):
 
@@ -327,29 +361,6 @@ If no sprint file exists or no other ready stories are found, skip this section 
 
 ---
 
-## Phase 8: Director Gate — Story Readiness Review
-
-Apply the review mode resolved in Phase 0 before spawning QL-STORY-READY:
-
-- `solo` → skip. Note: "QL-STORY-READY skipped — Solo mode." Proceed to close.
-- `lean` → skip. Note: "QL-STORY-READY skipped — Lean mode." Proceed to close.
-- `full` → spawn as normal.
-
-Spawn `qa-lead` through Codex subagent delegation using gate **QL-STORY-READY** (`.codex/docs/director-gates.md`).
-
-Pass the following context:
-- Story title
-- Acceptance criteria list (all items from the story's acceptance criteria section)
-- Dependency status (all dependencies listed and their current state: exist / DRAFT / missing)
-- Overall verdict (READY / NEEDS WORK / BLOCKED) from Phase 4
-
-Handle the verdict per standard rules in `director-gates.md`:
-- **ADEQUATE** → story is cleared. Proceed to close.
-- **GAPS [list]** → surface the specific gaps to the user by asking the user directly:
-  options: `Update story with suggested gaps` / `Accept and proceed anyway` / `Discuss further`.
-- **INADEQUATE** → surface the specific gaps; ask user whether to update the story or proceed anyway.
-
----
 
 ## Recommended Next Steps
 

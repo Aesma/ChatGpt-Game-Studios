@@ -46,15 +46,34 @@ If not found, ask: "Which story are we implementing?" Then search
 
 ## Phase 2: Load Full Context
 
-**Before loading any context, verify required files exist.** Extract the ADR path from the story's `ADR Governing Implementation` field, then check:
+**Before loading any context, verify required files exist.** Parse the story's
+current `ADR references`/`Governing ADRs` list before any write or spawn.
 
-| File | Path | If missing |
-|------|------|------------|
-| TR registry | `docs/architecture/tr-registry.yaml` | **STOP** — "TR registry not found at `docs/architecture/tr-registry.yaml`. Run `$architecture-review` to bootstrap the registry from your GDDs and ADRs." |
-| Governing ADR | path from story's ADR field | **STOP** — "ADR file [path] not found. Run `$architecture-decision` to create it, or correct the filename in the story's ADR field." |
-| Control manifest | `docs/architecture/control-manifest.md` | **WARN and continue** — "Control manifest not found — layer rules cannot be checked. Run `$create-control-manifest`." |
+The list must be non-empty, contain no duplicate reference, and contain exactly
+one explicitly marked `primary` real ADR. Resolve every ADR ID/reference to
+exactly one existing `docs/architecture/adr-*.md`; zero matches, multiple
+matches, malformed references, or zero/multiple primary markers are collected
+and reported together as BLOCKED.
 
-If the TR registry or governing ADR is missing, set the story status to **BLOCKED** in the session state and do not spawn any programmer agent.
+Read every resolved ADR Status. All real references, primary and secondary, must
+be exactly Accepted. Proposed, Deprecated, Superseded, unknown, or missing
+Status blocks implementation before story/sprint/session writes or programmer
+spawn. Put the primary Decision/Implementation Guidelines and every secondary
+Decision, constraint, Engine Compatibility, and ADR Dependencies into one
+context package. If those texts conflict and cannot be reconciled directly,
+surface the conflict and stop rather than guessing.
+
+The sole exception is Type exactly `Config/Data` with exactly one reference
+`N/A — [specific reason]`, where the reason is non-empty, non-blank, and not
+TBD/placeholder. N/A may not be mixed with a real ID. Invalid N/A, missing ADR
+field, or N/A on another story type is BLOCKED before writes/spawn. Valid N/A
+skips ADR-file loading but still requires TR registry, story AC, manifest, and
+engine preferences.
+
+The TR registry remains required. A missing registry or any ADR validation
+failure is reported read-only; do not change session/story status merely to
+record the failure.
+
 
 Read all of the following simultaneously — these are independent reads. Do not start implementation until all context is loaded:
 
@@ -62,7 +81,7 @@ Read all of the following simultaneously — these are independent reads. Do not
 Extract and hold:
 - **Story title, ID, layer, type** (Logic / Integration / Visual/Feel / UI / Config/Data)
 - **TR-ID** — the GDD requirement identifier
-- **Governing ADR** reference
+- **Complete ADR references list with one explicit primary, or the validated Config/Data N/A item**
 - **Manifest Version** embedded in story header
 - **Acceptance Criteria** — every checkbox item, verbatim
 - **Implementation Notes** — the ADR guidance section in the story
@@ -75,12 +94,11 @@ Read `docs/architecture/tr-registry.yaml`. Look up the story's TR-ID.
 Read the current `requirement` text — this is the source of truth for what the
 GDD requires now. Do not rely on any inline text in the story file (may be stale).
 
-### The governing ADR
-Read `docs/architecture/[adr-file].md`. Extract:
-- The full Decision section
-- The Implementation Guidelines section (this is what the programmer follows)
-- The Engine Compatibility section (post-cutoff APIs, known risks)
-- The ADR Dependencies section
+### All governing ADRs
+Read every validated referenced ADR. Extract the primary Decision and
+Implementation Guidelines plus every secondary Decision, constraint, Engine
+Compatibility section, and ADR Dependencies. Preserve which reference supplied
+each rule.
 
 ### The control manifest
 Read `docs/architecture/control-manifest.md`. Extract the rules for this story's layer:
@@ -92,13 +110,12 @@ Check: does the story's embedded Manifest Version match the current manifest hea
 If they differ, ask the user directly before proceeding:
 - Prompt: "Story was written against manifest v[story-date]. Current manifest is v[current-date]. New rules may apply. How do you want to proceed?"
 - Options:
-  - `[A] Update story manifest version and implement with current rules (Recommended)`
-  - `[B] Implement with old rules — I accept the risk of non-compliance`
-  - `[C] Stop here — I want to review the manifest diff first`
+  - `[A] Include the story version update in the planned changeset and implement with current rules (Recommended)`
+  - `[B] Stop here — show me the manifest difference first`
 
-If [A]: edit the story file's `Manifest Version:` field to the current manifest date before spawning the programmer. Then read the manifest carefully for new rules.
-If [B]: edit the story file's `Manifest Version:` field to the current manifest date AND add a `Manifest-Note: Proceeded with old manifest rules on [date] — non-compliance risk accepted.` line to the story header. Read the manifest for new rules anyway. Note the decision in the Phase 6 summary under "Deviations". `$story-done` will include the Manifest-Note in its deviations section without re-checking staleness.
-If [C]: stop. Do not spawn any agent. Let the user review and re-run `$dev-story`.
+There is no "old rules with a new version" path. On [A], include the exact story
+field edit in the complete Phase 2 plan and use current rules. On [B], stop
+without changing the story or spawning a programmer.
 
 ### Dependency validation
 
@@ -113,28 +130,43 @@ After extracting the **Dependencies** list from the story file, validate each:
        - `[A] Proceed anyway — I accept the dependency risk`
        - `[B] Stop — I'll complete the dependency first`
        - `[C] The dependency is done but status wasn't updated — mark it Complete and continue`
-   - If [B]: set story status to **BLOCKED** in session state and stop. Do not spawn any programmer agent.
-   - If [C]: add the dependency-status edit to the complete changeset preview and continue only after that changeset is authorized.
+   - If [B]: stop read-only and report BLOCKED; do not mutate story or session state and do not spawn a programmer.
+   - If [C]: record the dependency-status edit as a candidate for the single
+     complete Phase 2 changeset; do not authorize or write it before the source
+     and test candidates are also known.
    - If [A]: note in Phase 6 summary under "Deviations": "Implemented with incomplete dependency: [dependency title] — [status]."
 
-If a dependency file cannot be found: warn "Dependency story not found: [path]. Verify the path or create the story file."
+If a dependency path/title cannot resolve to exactly one story file, report
+BLOCKED and stop before authorization or programmer spawn. The existing
+Dependencies field must be corrected first.
 
 ---
 
 ### Engine reference
-Read `.codex/docs/technical-preferences.md`:
+Read `docs/technical-preferences.md`:
 - `Engine:` value — determines which programmer agents to use
 - Naming conventions (class names, file names, signal/event names)
 - Performance budgets (frame budget, memory ceiling)
 - Forbidden patterns
 
-### Mark Story In Progress
+### Plan, authorize, then mark In Progress
 
-Silently update two things before spawning any agent:
+First remain read-only and build the implementation plan. Identify the exact
+candidate source/config files, test/evidence files, story file, optional
+`production/sprint-status.yaml`, and
+`production/session-state/active.md`, with an intended operation for each.
+Present that complete changeset once. Only after authorization may implementation
+begin; an unlisted file discovered later pauses execution for an expanded
+preview.
 
-1. **`production/sprint-status.yaml`** (if it exists): find the entry matching this story's file path and set `status: in_progress`. Update the top-level `updated` field to today's date. If the file does not exist, skip silently.
+Then update these status fields within the authorized boundary:
 
-2. **The story file itself**: edit the `Last Updated:` field in the story header to today's date (format: `YYYY-MM-DD`). If the field does not exist in the story header, add it after the `Status:` line. This enables sprint-status staleness detection for this story.
+1. **`production/sprint-status.yaml`** (if it exists): find the entry matching this story's file path and set the canonical `status: in-progress`. Update the top-level `updated` field to today's date. If the file does not exist, skip silently.
+
+2. **The story file itself**: set its existing `Status:` field to `In Progress`
+   and edit `Last Updated:` to today's date (`YYYY-MM-DD`). If Last Updated is
+   absent, add it after Status. This enables sprint-status staleness detection
+   without closing the story.
 
 ---
 
@@ -143,8 +175,9 @@ Silently update two things before spawning any agent:
 Based on the story's **Layer**, **Type**, and **system name**, determine which
 specialist to spawn through Codex subagent delegation.
 
-**Config/Data stories — skip agent spawning entirely:**
-If the story's Type is `Config/Data`, no programmer agent or engine specialist is needed. Jump directly to Phase 4 (Config/Data note). The implementation is a data file edit — no routing table evaluation, no engine specialist.
+**Config/Data stories:** route the authorized data/config files to one existing
+primary programmer role with exclusive write ownership. Do not create a
+current-agent direct-write exception.
 
 ### Primary agent routing table
 
@@ -156,14 +189,16 @@ If the story's Type is `Config/Data`, no programmer agent or engine specialist i
 | Core or Feature — gameplay mechanics | `gameplay-programmer` |
 | Core or Feature — AI behaviour, pathfinding | `ai-programmer` |
 | Core or Feature — networking, replication | `network-programmer` |
-| Config/Data — no code | No agent needed (see Phase 4 Config note) |
+| Config/Data — no code | Existing programmer role matching the owned data directory |
 
-### Engine specialist — always spawn as secondary for code stories
+### Engine specialist — read-only secondary review for code stories
 
-Read the `Engine Specialists` section of `.codex/docs/technical-preferences.md`
-to get the configured primary specialist. Spawn them alongside the primary agent
-when the story involves engine-specific APIs, patterns, or the ADR has HIGH
-engine risk.
+Read the `Engine Specialists` section of `docs/technical-preferences.md`
+to get the configured primary specialist. The primary programmer exclusively owns
+the listed source/test writes. An engine specialist may run alongside it only as
+a read-only reviewer returning recommendations. If a specialist must own a
+different file, that non-overlapping file ownership must already be explicit in
+the authorized changeset.
 
 | Engine | Specialist agents available |
 |--------|----------------------------|
@@ -179,15 +214,19 @@ assumptions about post-cutoff engine APIs that need expert verification.
 
 ## Phase 4: Implement
 
-Spawn the chosen programmer agent(s) through Codex subagent delegation with the full context package:
+Spawn the one chosen primary programmer through Codex subagent delegation with
+the full writer context package. If an engine specialist is applicable, brief it
+separately as a read-only reviewer and do not give it source/test write tasks:
 
 Brief the agent with file paths and targeted reading instructions — do not serialize document content into the delegation prompt. The agent reads what it needs directly:
 
 1. **Story file**: `[story-path]` — read in full
 2. **GDD requirement**: look up TR-ID `[TR-XXX-NNN]` in `docs/architecture/tr-registry.yaml` — use the `requirement` field as source of truth
-3. **ADR**: `docs/architecture/[adr-file].md` — read the **Decision** and **Implementation Guidelines** sections only
+3. **ADRs**: every validated primary and secondary ADR path — read the context
+   sections assembled in Phase 2; primary drives the main pattern and secondary
+   constraints all apply
 4. **Control manifest**: `docs/architecture/control-manifest.md` — read rules for the **[layer]** layer only
-5. **Engine preferences**: `.codex/docs/technical-preferences.md` — read naming conventions and performance budgets
+5. **Engine preferences**: `docs/technical-preferences.md` — read naming conventions and performance budgets
 6. **Test file path**: `[path from story's Test Evidence section]` — this file must be created as part of implementation
 7. **Test requirement** (Logic and Integration stories only): The test file MUST be created at `[path from the story's Test Evidence section]`. Write the test alongside the implementation — do not defer it. The story cannot be closed via `$story-done` without this file present. Each acceptance criterion must have at least one test function covering it. Test file naming: `[system]_[feature]_test.[ext]`. Function naming: `test_[scenario]_[expected_outcome]`. No random seeds, no time-dependent assertions, no external I/O.
 8. **Explicit instruction**: implement this story following the ADR guidelines, respect the manifest rules, stay within the story's Out of Scope boundaries. Write clean, doc-commented public APIs.
@@ -198,12 +237,10 @@ The agent should:
 - Stay within the story's Out of Scope boundaries (do not touch unrelated files)
 - Write clean, doc-commented public APIs
 
-### Config/Data stories (no agent needed)
+### Config/Data stories
 
-For Type: Config/Data stories, no programmer agent is required. The implementation
-is editing a data file. Read the story's acceptance criteria and make the specified
-changes to the data file directly. Note which values were changed and what they
-changed from/to.
+The chosen primary programmer owns the authorized data-file edit. It reports
+the exact old/new values and may not touch unlisted files.
 
 ### Visual/Feel stories
 
@@ -215,7 +252,11 @@ check happens in `$story-done` via manual confirmation.
 
 ## Phase 5: Test Evidence Requirements
 
-The test requirement was included in the Phase 4 programmer agent brief (item 7). This phase summarizes what evidence each story type requires — used when collecting the Phase 6 summary.
+Run the affected configured test command in this phase after implementation;
+creating a test file is not verification. Record the command and actual result.
+If execution is unavailable, report `implemented, not verified`. If it fails,
+report partial/blocked and do not check the affected AC or claim Implementation
+Complete.
 
 | Story Type | Required Evidence | Notes |
 |---|---|---|
@@ -242,22 +283,24 @@ After the programmer agent(s) complete, collect:
 Present a concise implementation summary:
 
 ```
-## Implementation Complete: [Story Title]
+## [Implemented and Verified | Implemented, Not Verified | Partial | Blocked]: [Story Title]
 
 **Files changed**:
 - `src/[path]` — created / modified ([brief description])
 - `tests/[path]` — test file ([N] test functions)
 
 **Acceptance criteria covered**:
-- [x] [criterion] — implemented in [file:function]
-- [x] [criterion] — covered by test [test_name]
+- [x] [criterion] — actual passing test or directly checked non-automated evidence
+- [ ] [criterion] — implemented but not verified / failing test
 - [ ] [criterion] — DEFERRED: requires playtest (Visual/Feel)
 
 **Deviations from scope**: [None] or [list files touched outside story boundary]
 **Engine risks flagged**: [None] or [specialist finding]
 **Blockers**: [None] or [describe]
 
-**Before running `$story-done`:** run your test suite locally and confirm the tests you wrote pass. `$story-done` will re-run them automatically, but a failing test discovered there means returning to implementation context.
+**Verification**: [actual command and PASS/FAIL, or not run with reason].
+This workflow leaves the story and sprint In Progress; it never marks Complete.
+`$story-done` owns closure after the remaining evidence is verified.
 
 Ready for: `$code-review [file1] [file2]` then `$story-done [story-path]`
 ```
@@ -298,11 +341,15 @@ Common blockers:
 - ADR status is Proposed → do not implement; run `$architecture-decision` first
 - Scope too large → split into two stories via `$create-stories`
 - Conflicting instructions between ADR and story → surface the conflict, do not guess
-- Manifest version mismatch → show diff to user, ask whether to proceed with old rules or update story first
+- Manifest version mismatch → show the diff; use current rules with an explicit
+  planned version edit, or stop
 
 ## Collaborative Protocol
 
-- **File writes are delegated** — all source code, test files, and evidence docs are written by sub-agents spawned through Codex subagent delegation. The orchestrator combines every delegated write into the single changeset preview. This orchestrator does not write files directly.
+- **One primary writer** — one programmer role exclusively owns the authorized
+  source/config and test files. Engine specialists are read-only unless the
+  initial changeset assigned them a distinct non-overlapping file. The complete
+  file set is authorized before status or implementation writes.
 - **Load before implementing** — do not start coding until all context is loaded
   (story, TR-ID, ADR, manifest, engine prefs). Incomplete context produces code
   that drifts from design.

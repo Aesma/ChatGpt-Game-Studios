@@ -28,39 +28,42 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 
 Enter **retrofit mode**:
 
-1. Read the existing ADR file completely.
-2. Identify which template sections are present by scanning headings:
-   - `## Status` — **BLOCKING if missing**: `$story-readiness` cannot check ADR acceptance
-   - `## ADR Dependencies` — HIGH if missing: dependency ordering breaks
-   - `## Engine Compatibility` — HIGH if missing: post-cutoff risk unknown
-   - `## GDD Requirements Addressed` — MEDIUM if missing: traceability lost
+1. Read the existing ADR file and `.codex/docs/templates/architecture-decision-record.md` completely.
+2. Compare the ADR against the complete template in template order: title, Status,
+   Date, Last Verified, Decision Makers, Summary, Engine Compatibility, ADR
+   Dependencies, Context, Decision, Alternatives Considered, Consequences, Risks,
+   Performance Implications, Migration Plan, Validation Criteria, GDD Requirements
+   Addressed, and Related. For each item distinguish valid content, missing content,
+   placeholder content, and illegal values. Missing required Title, Status, Context,
+   Decision, or Consequences is BLOCKING; do not treat a present placeholder as valid.
 3. Present to the user:
    ```
    ## Retrofit: [ADR title]
    File: [path]
 
-   Sections already present (will not be touched):
-   ✓ Status: [current value, or "MISSING — will add"]
-   ✓ [section]
+   Valid content that will be preserved:
+   ✓ [section]: [current non-placeholder value]
 
-   Missing sections to add:
-   ✗ Status — BLOCKING (stories cannot validate ADR acceptance without this)
-   ✗ ADR Dependencies — HIGH
-   ✗ Engine Compatibility — HIGH
+   Repairs shown in template order:
+   ✗ [missing section] — [severity]
+   ✗ [placeholder section] — replace placeholder with confirmed content
+   ✗ Status: [illegal value] — replace with a valid lifecycle value
    ```
-4. Ask: "Should the revised draft include the [N] missing sections? Existing content will remain unchanged."
+4. Ask: "Should the revised draft include these [N] template repairs? Valid existing content will remain unchanged."
 5. If the user includes them in scope:
    - For **Status**: ask the user — "What is the current status of this decision?"
-     Options: "Proposed", "Accepted", "Deprecated", "Superseded by ADR-XXXX"
+     Options: "Proposed", "Accepted", "Superseded". If Superseded, capture the replacement ADR separately in Related.
    - For **ADR Dependencies**: ask — "Does this decision depend on any other ADR?
      Does it enable or block any other ADR or epic?" Accept "None" for each field.
    - For **Engine Compatibility**: read the engine reference docs (same as Step 1 below)
      and ask the user to confirm the domain. Then generate the table with verified data.
    - For **GDD Requirements Addressed**: ask — "Which GDD systems motivated this decision?
      What specific requirement in each GDD does this ADR address?"
-   - Append each missing section to the ADR file using the targeted file edit.
-   - **Never modify any existing section.** Only append or fill absent sections.
-6. After adding all missing sections, update the ADR's `## Date` field if it is absent.
+   - Build one complete revised draft in the exact template order. Insert missing
+     sections at their template positions and replace only placeholders or illegal
+     values; preserve every valid existing section verbatim.
+6. Preview the complete revised ADR and obtain the normal single changeset approval
+   before writing it. Do not append all repairs to the end of the file.
 7. Suggest: "Run `$architecture-review` to re-validate coverage now that this ADR
    has its Status and Dependencies fields."
 
@@ -239,7 +242,7 @@ Following this format:
 # ADR-[NNNN]: [Title]
 
 ## Status
-[Proposed | Accepted | Deprecated | Superseded by ADR-XXXX]
+[Proposed | Accepted | Superseded]
 
 ## Date
 [Date of decision]
@@ -341,7 +344,7 @@ to implement it.]
 ```
 
 5.5. **Engine Specialist Validation** — Before saving, spawn the **primary engine specialist** through Codex subagent delegation to validate the drafted ADR:
-   - Read `.codex/docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
+   - Read `docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
    - If no engine is configured (`[TO BE CONFIGURED]`), skip this step
    - Spawn `subagent_type: [primary specialist]` with: the ADR's Engine Compatibility section, Decision section, Key Interfaces, and the engine reference docs path. Ask them to:
      1. Confirm the proposed approach is idiomatic for the pinned engine version
@@ -358,7 +361,9 @@ to implement it.]
 5.6. **Technical Director Strategic Review** — After the engine specialist validation, spawn `technical-director` through Codex subagent delegation using gate **TD-ADR** (`.codex/docs/director-gates.md`):
    - Pass: the ADR file path (or draft content), engine version, domain, any existing ADRs in the same domain
    - The TD validates architectural coherence (is this decision consistent with the whole system?) — distinct from the engine specialist's API-level check
-   - If CONCERNS or REJECT: revise the Decision or Alternatives sections accordingly before proceeding
+   - APPROVE: continue.
+   - If CONCERNS: show every concern and ask the user whether to accept the risk, revise the draft, or stop. If revised, run TD-ADR again before proceeding.
+   - If REJECT: stop with no writes. Return to the existing drafting step, revise, and run TD-ADR again; a rejected draft cannot enter the changeset preview.
 
 5.7. **GDD Sync Check** — Before presenting the single changeset approval, scan all GDDs
 referenced in the "GDD Requirements Addressed" section for naming inconsistencies
@@ -377,25 +382,14 @@ developers reading the GDD from implementing the wrong interface.
 
 If no inconsistencies: skip this block silently.
 
-5. **Single changeset approval** — Ask the user directly:
-
-If GDD sync issues were found:
-- "ADR draft is complete. How would you like to proceed?"
-  - [A] Write ADR + update GDD in the same pass
-  - [B] Write ADR only — I'll update the GDD manually
-  - [C] Not yet — I need to review further
-
-If no GDD sync issues:
-- "ADR draft is complete. Should the proposed changeset include it?"
-  - [A] Include `docs/architecture/adr-[NNNN]-[slug].md` in the proposed changeset
-  - [B] Not yet — I need to review further
-
-Once the selected write option is included in the authorized changeset, write the file, creating the directory if needed.
-For option [A] with GDD update: also update the GDD file(s) to use the new names.
+5. **Prepare the complete changeset** — Record whether the user wants the ADR
+alone or the ADR plus the displayed GDD synchronization edits. Do not write yet.
+Continue to Step 6 so registry candidates and any story status edits are known
+before the one changeset preview.
 
 6. **Update Architecture Registry**
 
-Scan the written ADR for new architectural stances that should be registered:
+Scan the complete ADR draft for new architectural stances that should be registered:
 - State it claims ownership of
 - Interface contracts it defines (signal signatures, method APIs)
 - Performance budget it claims
@@ -423,6 +417,15 @@ Registry candidates from this ADR:
 Ask by asking the user directly:
 - Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
   - Options: "Yes — update the registry", "Not yet — I want to review the candidates", "Skip registry update"
+
+Before approval, scan for stories whose top-level Status is `Blocked` specifically
+because of this ADR. Show each exact proposed `Blocked` → `Ready` edit and let the
+user include or exclude it; never change unrelated blocked stories.
+
+Now present one complete changeset containing the full ADR draft and every selected
+GDD, registry, and story edit. List every target file and exact modification. Obtain
+one explicit approval, then apply all selected writes continuously. If approval is
+withheld, none of these files changes.
 
 If the registry update is included in the authorized changeset, append new entries. Never modify existing entries — if a stance is
 changing, set the old entry to `status: superseded_by: ADR-[NNNN]` and add the new entry.
@@ -457,5 +460,3 @@ If there are no remaining priority ADRs and no undesigned GDD systems, offer onl
 > **Never run `$architecture-review` in the same session as `$architecture-decision`.**
 > The reviewing agent must be independent of the authoring context to give an unbiased
 > assessment. Running it here would invalidate the review.
-
-Update any stories that were `Status: Blocked` pending this ADR to `Status: Ready`.

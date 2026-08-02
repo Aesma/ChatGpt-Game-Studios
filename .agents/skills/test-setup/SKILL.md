@@ -30,7 +30,7 @@ A test framework installed at sprint four costs 3 sprints.
 ## Phase 1: Detect Engine and Existing State
 
 1. **Read engine config**:
-   - Read `.codex/docs/technical-preferences.md` and extract the `Engine:` value.
+   - Read `docs/technical-preferences.md` and extract the `Engine:` value.
    - If engine is not configured (`[TO BE CONFIGURED]`), stop:
      "Engine not configured. Run `$setup-engine` first, then re-run `$test-setup`."
 
@@ -65,8 +65,9 @@ I will create the following (skipping any that already exist):
 tests/
   unit/           — Isolated unit tests for formulas, state, and logic
   integration/    — Cross-system tests and save/load round-trips
-  smoke/          — Critical path test list (15-minute manual gate)
-  evidence/       — Screenshot and manual test sign-off records
+  performance/    — Performance and budget tests
+  playtest/       — Documented playtest protocols/results
+  smoke/          — Existing critical-path seed; not one of the four standard test categories
   README.md       — Test framework documentation
 
 [Engine-specific files — see per-engine details below]
@@ -88,7 +89,7 @@ After the complete changeset authorization, create the following files:
 
 ### `tests/README.md`
 
-```markdown
+````markdown
 # Test Infrastructure
 
 **Engine**: [engine name + version]
@@ -102,8 +103,9 @@ After the complete changeset authorization, create the following files:
 tests/
   unit/           # Isolated unit tests (formulas, state machines, logic)
   integration/    # Cross-system and save/load tests
+  performance/    # Performance and budget tests
+  playtest/       # Documented playtest protocols/results
   smoke/          # Critical path test list for $smoke-check gate
-  evidence/       # Screenshot logs and manual test sign-off records
 ```
 
 ## Running Tests
@@ -122,38 +124,21 @@ tests/
 |---|---|---|
 | Logic | Automated unit test — must pass | `tests/unit/[system]/` |
 | Integration | Integration test OR playtest doc | `tests/integration/[system]/` |
-| Visual/Feel | Screenshot + lead sign-off | `tests/evidence/` |
-| UI | Manual walkthrough OR interaction test | `tests/evidence/` |
+| Visual/Feel | Screenshot + lead sign-off | `production/qa/evidence/` |
+| UI | Manual walkthrough OR interaction test | `production/qa/evidence/` |
 | Config/Data | Smoke check pass | `production/qa/smoke-*.md` |
 
 ## CI
 
 Tests run automatically on every push to `main` and on every pull request.
 A failed test suite blocks merging.
-```
-```
+````
 
 ### Engine-specific files
 
 #### Godot 4 (`Engine: Godot`)
 
-Create `tests/gdunit4_runner.gd`:
-
-```gdscript
-# GdUnit4 test runner — invoked by CI and $smoke-check
-# Usage: godot --headless --script tests/gdunit4_runner.gd
-extends SceneTree
-
-func _init() -> void:
-    var runner := load("res://addons/gdunit4/GdUnitRunner.gd")
-    if runner == null:
-        push_error("GdUnit4 not found. Install via AssetLib or addons/.")
-        quit(1)
-        return
-    var instance = runner.new()
-    instance.run_tests()
-    quit(0)
-```
+Do not generate a homemade `tests/gdunit4_runner.gd` that calls `run_tests()` and immediately exits successfully. Reuse an existing runner only when its current GdUnit4 API and failure-code propagation are already verifiable in the project. Without that evidence, create only the directory/README targets, report runner and CI as incomplete, and return BLOCKED/partial rather than COMPLETE.
 
 Create `tests/unit/.gdignore_placeholder` with content:
 `# Unit tests go here — one subdirectory per system (e.g., tests/unit/combat/)`
@@ -187,6 +172,8 @@ Use for cross-system interactions, physics, and coroutines.
 Assembly definition required: `tests/PlayMode/PlayModeTests.asmdef`
 ```
 
+Resolve the project's actual runtime assembly name before writing Unity test assemblies. Include `tests/EditMode/EditModeTests.asmdef` and `tests/PlayMode/PlayModeTests.asmdef` in the same changeset with that real reference. If it cannot be uniquely determined, stop the Unity scaffold and do not write placeholder JSON.
+
 Note in the README: **Enabling Unity Test Framework**
 ```
 Window → General → Test Runner
@@ -195,15 +182,15 @@ Window → General → Test Runner
 
 #### Unreal Engine (`Engine: Unreal` or `Engine: UE5`)
 
-Create `Source/Tests/README.md`:
+Create `Source/Tests/README.md` only with the actual project/test prefix resolved from the existing `.uproject` and tests; replace `[ActualPrefix]` below. If it cannot be resolved, do not write a placeholder README.
 ```markdown
 # Unreal Automation Tests
 Tests use the UE Automation Testing Framework.
-Run via: Session Frontend → Automation → select "MyGame." tests
-Or headlessly: UnrealEditor -nullrhi -ExecCmds="Automation RunTests MyGame.; Quit"
+Run via: Session Frontend → Automation → select "[ActualPrefix]." tests
+Or headlessly: [existing configured runner command using ActualPrefix]
 
 Test class naming: F[SystemName]Test
-Test category naming: "MyGame.[System].[Feature]"
+Test category naming: "[ActualPrefix].[System].[Feature]"
 ```
 
 ---
@@ -212,7 +199,7 @@ Test category naming: "MyGame.[System].[Feature]"
 
 ### Godot 4
 
-Create `.github/workflows/tests.yml`:
+Create `.github/workflows/tests.yml` only when the current GdUnit4 action/runner API, failure propagation, and actual report path are already verifiable. Otherwise leave CI unwritten and report BLOCKED/partial as required by Phase 3.
 
 ```yaml
 name: Automated Tests
@@ -253,7 +240,7 @@ jobs:
 
 ### Unity
 
-Create `.github/workflows/tests.yml`:
+Create `.github/workflows/tests.yml` only when the repository's existing CI configuration already provides the required Unity runner/license prerequisites. Do not create a workflow that is known to fail pending a new secret, and do not propose creating a secret. When the prerequisites are absent, stop at plan/partial state and leave the workflow unwritten.
 
 ```yaml
 name: Automated Tests
@@ -299,51 +286,11 @@ jobs:
           path: test-results/
 ```
 
-Note: Unity CI requires a `UNITY_LICENSE` secret. Add to GitHub repository
-secrets before the first CI run.
+Use only the already configured credential name; never invent or request a new secret from this workflow.
 
 ### Unreal Engine
 
-Create `.github/workflows/tests.yml`:
-
-```yaml
-name: Automated Tests
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    name: Run UE Automation Tests
-    runs-on: self-hosted  # UE requires a local runner with the editor installed
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Run Automation Tests
-        run: |
-          "$UE_EDITOR_PATH" "${{ github.workspace }}/[ProjectName].uproject" \
-            -nullrhi -nosound \
-            -ExecCmds="Automation RunTests MyGame.; Quit" \
-            -log -unattended
-        shell: bash
-
-      - name: Upload Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-logs
-          path: Saved/Logs/
-```
-
-Note: UE CI requires a self-hosted runner with Unreal Editor installed.
-Set the `UE_EDITOR_PATH` environment variable on the runner.
+Create `.github/workflows/tests.yml` only after reading a unique existing `.uproject` name, automation test prefix, configured runner command/shell, failure exit behavior, and actual log artifact path. Generate the workflow from those concrete existing values. If any prerequisite is missing, return BLOCKED/partial and do not write a workflow containing placeholder project names, test prefixes, commands, environment variables, shells, or artifact paths. Do not propose new runner credentials or configuration.
 
 ---
 
@@ -394,8 +341,9 @@ Files created:
 - tests/README.md
 - tests/unit/ (directory)
 - tests/integration/ (directory)
+- tests/performance/ (directory)
+- tests/playtest/ (directory)
 - tests/smoke/critical-paths.md
-- tests/evidence/ (directory)
 [engine-specific files]
 - .github/workflows/tests.yml
 
@@ -406,13 +354,12 @@ Next steps:
    test evidence requirements
 4. `$smoke-check` before every QA hand-off
 
-Gate note: $gate-check Technical Setup → Pre-Production now requires:
+Gate note: $gate-check Technical Setup → Pre-Production checks:
 - tests/ directory with unit/ and integration/ subdirectories
 - .github/workflows/tests.yml
-- At least one example test file
-Run $test-setup and write one example test before advancing.
+- Example tests are a separate implementation task; this scaffold does not create or promise a production example test.
 
-Verdict: **COMPLETE** — test framework scaffolded and CI/CD wired up.
+Verdict: **COMPLETE** — only when the selected engine's required scaffold and runnable existing-prerequisite CI contract are actually complete. Otherwise verdict is **BLOCKED** with the incomplete paths listed.
 ```
 
 ---

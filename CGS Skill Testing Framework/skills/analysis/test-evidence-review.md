@@ -2,174 +2,56 @@
 
 ## Skill Summary
 
-`$test-evidence-review` performs a quality review of test files in `tests/`,
-checking test naming conventions, determinism, isolation, and absence of
-hardcoded magic numbers — all against the project's test standards defined in
-`coding-standards.md`. Findings may be flagged for qa-lead review. No director
-gates are invoked. The skill does not write outside the authorized changeset. Verdicts:
-PASS, WARNINGS, or FAIL.
+`$test-evidence-review` reviews evidence per story. Inputs are a story path, `sprint`,
+or a system name. It reports ADEQUATE / INCOMPLETE / MISSING per story and
+aggregates the worst verdict. It checks criterion coverage plus naming, determinism,
+isolation, and unexplained hardcoded data. It never edits tests or evidence; only the
+optional authorized review report is writable.
 
----
+## Static Assertions
 
-## Static Assertions (Structural)
+- [ ] YAML frontmatter has only `name` and non-empty `description`
+- [ ] Accepted scopes are story path, current sprint, and system name
+- [ ] Verdicts are exactly ADEQUATE, INCOMPLETE, and MISSING
+- [ ] Explicit story evidence paths are checked before fallback conventions
+- [ ] Current execution status participates in ADEQUATE
+- [ ] Naming, determinism, isolation, and hardcoded-data quality are checked
 
-Verified automatically by `$skill-test static` — no fixture needed.
+## Cases
 
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: PASS, WARNINGS, FAIL
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff (what to do after findings are reviewed)
+### Case 1: Story evidence is adequate
 
----
+- Story declares a project-local unit-test path and every acceptance criterion maps to an assertion.
+- A current result for the same scope records PASS.
+- Naming, determinism, isolation, and test data satisfy coding standards.
+- Expected: declared path is used and story verdict is ADEQUATE.
 
-## Director Gate Checks
+### Case 2: Test exists but was not run
 
-None. Test evidence review is an advisory quality skill; QL-TEST-COVERAGE gate
-is a separate skill invocation and is NOT triggered here.
+- The declared test has strong static quality but no identifiable current execution result.
+- Expected: `execution status unknown`; verdict is INCOMPLETE, never ADEQUATE or shipping-ready.
 
----
+### Case 3: Config story has an unrelated smoke report
 
-## Test Cases
+- A global smoke PASS exists but its body does not mention the story/system or criterion.
+- Expected: it is not accepted as evidence; result is MISSING or INCOMPLETE according to other evidence.
 
-### Case 1: Happy Path — Tests follow all standards
+### Case 4: Declared path precedes fallback
 
-**Fixture:**
-- `tests/unit/combat/health_system_take_damage_test.gd` exists with:
-  - Naming: `test_health_system_take_damage_reduces_health()` (follows `test_[system]_[scenario]_[expected]`)
-  - Arrange/Act/Assert structure present
-  - No `sleep()`, `await` with time values, or random seeds
-  - No calls to external APIs or file I/O
-  - No inline magic numbers (uses constants from `tests/unit/combat/fixtures/`)
+- Story declares a valid custom evidence path while a similarly named conventional file also exists.
+- Expected: review uses the declared path. Fallback is used only when no declaration exists and is labeled inferred.
 
-**Input:** `$test-evidence-review tests/unit/combat/`
+### Case 5: Sprint/system aggregation
 
-**Expected behavior:**
-1. Skill reads test standards from `coding-standards.md`
-2. Skill reads the test file; checks all 5 standards
-3. All checks pass: naming, structure, determinism, isolation, no hardcoded data
-4. Verdict is PASS
+- All story paths come from the active sprint/epic context.
+- Each story receives ADEQUATE/INCOMPLETE/MISSING and the overall verdict is the worst present.
 
-**Assertions:**
-- [ ] Each of the 5 test standards is checked and reported
-- [ ] All checks show PASS when standards are met
-- [ ] Verdict is PASS
-- [ ] No files are written
+## Assertions
 
----
-
-### Case 2: Fail — Timing dependency detected
-
-**Fixture:**
-- `tests/unit/ui/hud_update_test.gd` contains:
-  ```gdscript
-  await get_tree().create_timer(1.0).timeout
-  assert_eq(label.text, "Ready")
-  ```
-- Real-time wait of 1 second used instead of mock or signal-based assertion
-
-**Input:** `$test-evidence-review tests/unit/ui/hud_update_test.gd`
-
-**Expected behavior:**
-1. Skill reads the test file
-2. Skill detects real-time wait (`create_timer(1.0)`) — non-deterministic timing dependency
-3. Skill flags this as a FAIL-level finding
-4. Verdict is FAIL
-5. Skill recommends replacing the timer with a signal-based assertion or mock
-
-**Assertions:**
-- [ ] Real-time wait usage is detected as a non-deterministic timing dependency
-- [ ] Finding is classified as FAIL severity (blocking — violates determinism standard)
-- [ ] Verdict is FAIL
-- [ ] Remediation suggestion references signal-based or mock-based approach
-- [ ] Skill does not edit the test file
-
----
-
-### Case 3: Fail — Test calls external API directly
-
-**Fixture:**
-- `tests/unit/networking/auth_test.gd` contains:
-  ```gdscript
-  var result = HTTPRequest.new().request("https://api.example.com/auth")
-  ```
-- Direct HTTP call to external API without a mock
-
-**Input:** `$test-evidence-review tests/unit/networking/auth_test.gd`
-
-**Expected behavior:**
-1. Skill reads the test file
-2. Skill detects direct external API call (HTTPRequest to live URL)
-3. Skill flags this as a FAIL-level finding — violates isolation standard
-4. Verdict is FAIL
-5. Skill recommends injecting a mock HTTP client
-
-**Assertions:**
-- [ ] Direct external API call is detected and flagged
-- [ ] Finding is classified as FAIL severity (violates isolation standard)
-- [ ] Verdict is FAIL
-- [ ] Remediation references dependency injection with a mock HTTP client
-- [ ] Skill does not modify the test file
-
----
-
-### Case 4: Edge Case — No Test Files Found
-
-**Fixture:**
-- User calls `$test-evidence-review tests/unit/audio/`
-- `tests/unit/audio/` directory does not exist
-
-**Input:** `$test-evidence-review tests/unit/audio/`
-
-**Expected behavior:**
-1. Skill attempts to read files in `tests/unit/audio/` — not found
-2. Skill outputs: "No test files found at `tests/unit/audio/` — run `$test-setup` to scaffold test directories"
-3. No verdict is emitted
-
-**Assertions:**
-- [ ] Skill does not crash when path does not exist
-- [ ] Output names the attempted path in the message
-- [ ] Output recommends `$test-setup` for scaffolding
-- [ ] No verdict is emitted when there is nothing to review
-
----
-
-### Case 5: Gate Compliance — No gate; QL-TEST-COVERAGE is a separate skill
-
-**Fixture:**
-- Test file has 1 WARNINGS-level finding (magic number in a non-boundary test)
-- `review-mode.txt` contains `full`
-
-**Input:** `$test-evidence-review tests/unit/combat/`
-
-**Expected behavior:**
-1. Skill reviews tests; finds 1 WARNINGS-level finding
-2. No director gate is invoked (QL-TEST-COVERAGE is invoked separately, not here)
-3. Verdict is WARNINGS
-4. Output notes: "For full test coverage gate, run `$gate-check` which invokes QL-TEST-COVERAGE"
-5. Skill offers optional report write; asks "changeset authorization" if user opts in
-
-**Assertions:**
-- [ ] No director gate is invoked in any review mode
-- [ ] Output distinguishes this skill from the QL-TEST-COVERAGE gate invocation
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Verdict is WARNINGS for advisory-level test quality issues
-
----
-
-## Protocol Compliance
-
-- [ ] Reads `coding-standards.md` test standards before reviewing test files
-- [ ] Checks naming, Arrange/Act/Assert structure, determinism, isolation, no hardcoded data
-- [ ] Does not edit any test files (read-only skill)
-- [ ] No director gates are invoked
-- [ ] Verdict is one of: PASS, WARNINGS, FAIL
-
----
-
-## Coverage Notes
-
-- Batch review of all test files in `tests/` is not explicitly tested; behavior
-  is assumed to apply the same checks file by file and aggregate the verdict.
-- The QL-TEST-COVERAGE director gate (which checks test coverage percentage) is
-  a separate concern and is intentionally NOT invoked by this skill.
+- [ ] No test-path-only invocation mode or PASS/WARNINGS/FAIL verdict remains
+- [ ] An unrelated smoke report cannot satisfy a Config/Data story
+- [ ] No current pass result means at most INCOMPLETE
+- [ ] ADEQUATE is described as static evidence-quality sufficiency, not release/shipping approval
+- [ ] Generic names, timing dependence, live external calls, and unexplained magic data are evaluated inside Automated Test Quality
+- [ ] The review never modifies test or evidence files
+- [ ] Optional report writing uses the single authorized changeset only when requested

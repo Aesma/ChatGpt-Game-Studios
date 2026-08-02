@@ -21,7 +21,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
 - [ ] Has ≥2 phase headings
 - [ ] Contains verdict keywords: CONSISTENT, CONFLICTS FOUND, DEPENDENCY GAP
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
+- [ ] Default analysis remains read-only; an authorization prompt appears only when the user explicitly asks to save the optional report
 - [ ] Has a next-step handoff at the end
 - [ ] Documents that report writing is optional and requires approval
 
@@ -155,13 +155,45 @@ required as part of the scan itself.
 
 ---
 
+### Case 6: Missing registry still runs cross-GDD checks
+
+**Fixture:**
+- `design/registry/entities.yaml` is absent or empty
+- Two system GDDs exist and contain a conflicting formula or ownership claim
+
+**Input:** `$consistency-check`
+
+**Assertions:**
+- [ ] Registry comparison is reported as unavailable rather than treated as an empty project
+- [ ] Formula, ownership, and dependency checks still run across both GDDs
+- [ ] The observed conflict prevents a clean verdict
+- [ ] No registry, failure log, session-state, or report file is written by default
+
+---
+
+### Case 7: Incremental mode without a Git anchor downgrades to full
+
+**Fixture:**
+- GDDs and a review-named file exist
+- The review file has no discoverable first-appearance commit, or the repository has no usable Git history
+
+**Input:** `$consistency-check since-last-review`
+
+**Assertions:**
+- [ ] Skill explains that the incremental anchor cannot be proved
+- [ ] Scope explicitly downgrades to `full` and includes working-tree modifications
+- [ ] Skill never produces an incremental clean verdict from an unanchored scan
+
+---
+
 ## Protocol Compliance
 
-- [ ] Reads all GDDs before producing the findings table
+- [ ] Reads every in-scope GDD's Summary/Overview, Dependencies, Formulas, and ownership sections before producing the findings table
 - [ ] Findings table shown in full before any write ask (if report is requested)
 - [ ] Verdict is one of exactly: CONSISTENT, CONFLICTS FOUND, DEPENDENCY GAP
 - [ ] No director gates — no review-mode.txt read
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Optional report path is exactly `design/consistency-report-[date].md`, and that path is cited only after a successful write
 - [ ] Ends with next-step handoff appropriate to verdict
 
 ---

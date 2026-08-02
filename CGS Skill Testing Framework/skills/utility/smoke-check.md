@@ -10,8 +10,8 @@ after explicit user approval.
 
 Verdicts: PASS (tests pass, all smoke checks pass, no missing test evidence),
 PASS WITH WARNINGS (tests pass or NOT RUN, all critical checks pass, but advisory
-gaps exist such as missing test coverage), or FAIL (any automated test failure or
-any Batch 1/Batch 2 smoke check returns FAIL).
+gaps exist such as missing test coverage), or FAIL (any automated test failure,
+confirmed failed NOT RUN result, or FAILED item in any executed base/platform batch).
 
 No director gates apply. The skill does NOT invoke any director agents.
 
@@ -143,10 +143,45 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Runs automated tests via Bash before asking any manual questions
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Verdict vocabulary is strictly PASS / PASS WITH WARNINGS / FAIL — no other verdicts
-- [ ] FAIL is triggered by automated test failures or Batch 1/Batch 2 FAIL responses
+- [ ] NOT RUN is explicitly confirmed as CONFIRMED PASS, CONFIRMED FAIL, or UNCONFIRMED before verdict assignment
+- [ ] CONFIRMED FAIL and every FAILED item in Batch 1, Batch 2, Batch 3, or a platform batch trigger FAIL
+- [ ] N/A is never treated as a failure; performance not checked remains a warning
 - [ ] PASS WITH WARNINGS is triggered when MISSING test coverage exists but no critical failures
 - [ ] NOT RUN (engine binary unavailable) is recorded as a warning, not a FAIL
 - [ ] Does not invoke director gates at any point
+
+---
+
+### Case 6: NOT RUN has an exhaustive verdict
+
+**Fixture:** automated tests cannot run; coverage has no MISSING entry; all
+executed manual checks pass.
+
+**Expected behavior and assertions:**
+- [ ] The existing manual interaction records one explicit automated-test confirmation
+- [ ] `UNCONFIRMED` produces PASS WITH WARNINGS
+- [ ] `CONFIRMED FAIL` produces FAIL
+- [ ] `CONFIRMED PASS` continues through the ordinary coverage/manual rules and can produce PASS
+- [ ] The report records the saved confirmation value and contains no unexecuted pseudo-question
+
+### Case 7: Batch 3 and platform failures block hand-off
+
+**Fixture:** automated tests pass and coverage is complete.
+
+**Expected behavior and assertions:**
+- [ ] Save/load corruption in Batch 3 produces FAIL
+- [ ] A FAILED PC, console, or mobile item produces overall FAIL
+- [ ] A Batch 3 N/A selection does not fail the run
+- [ ] Performance not checked produces PASS WITH WARNINGS when nothing failed
+
+### Case 8: Unsupported targeted positional argument stops
+
+**Input:** `$smoke-check combat`
+
+**Assertions:**
+- [ ] The skill reports the legal `sprint|quick` and `--platform` syntax
+- [ ] No project checks, questions, or report write occur
+- [ ] The skill does not interpret `combat` as a targeted mode
 
 ---
 

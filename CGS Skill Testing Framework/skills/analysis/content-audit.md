@@ -17,7 +17,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
 - [ ] Has ≥2 phase headings
 - [ ] Contains verdict keywords: COMPLETE, GAPS FOUND, MISSING CRITICAL CONTENT
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
+- [ ] Default analysis remains read-only; authorization appears only after the user explicitly chooses to save `docs/content-audit-[date].md`
 - [ ] Has a next-step handoff (what to do after gap table is reviewed)
 
 ---
@@ -145,11 +145,40 @@ None. Content audit is a read-only analysis skill; no gates are invoked.
 
 ---
 
+### Case 6: Equal file count with the wrong names is still a gap
+
+**Fixture:**
+- GDD specifies `Grunt`, `Sniper`, and `Boss`
+- The implementation contains three files/items named `Grunt`, `Sniper`, and `Medic`
+- `Boss` is absent
+
+**Assertions:**
+- [ ] Raw count equality does not produce COMPLETE
+- [ ] `Boss` is listed as missing and `Medic` is not substituted for it
+- [ ] Same-named scene/data/art files are deduplicated as one content identity
+
+---
+
+### Case 7: Pre-scan miss does not exclude a GDD
+
+**Fixture:**
+- A valid GDD contains an explicit named content list in Detailed Rules
+- It contains none of the pre-scan's common literal count phrases
+- Ordinary audio resources exist under `assets/audio/`
+
+**Assertions:**
+- [ ] The GDD is still read and audited
+- [ ] The keyword pre-scan affects ordering only
+- [ ] Existing ordinary audio resources are included, while UI/test/editor sample assets are excluded by directory semantics
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads GDDs and asset directory before producing gap table
 - [ ] Gap table shows Content Type, Specified Count, Found Count, Missing Items
 - [ ] Does not write files without explicit user approval
+- [ ] Full, single-system, and `--summary` modes all produce conversation output before any optional save
 - [ ] No director gates are invoked
 - [ ] Verdict is one of: COMPLETE, GAPS FOUND, MISSING CRITICAL CONTENT
 

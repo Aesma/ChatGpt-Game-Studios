@@ -27,6 +27,18 @@ When this skill is invoked:
    - Read `design/gdd/game-concept.md` if it exists (resume, don't restart)
    - Read `design/gdd/game-pillars.md` if it exists (build on established pillars)
 
+   If a concept exists, enter the existing resume branch before Phase 1:
+   - Compare its template sections and the Visual Identity Anchor against the
+     current file; label each Complete, Placeholder, or Missing.
+   - Show that status table and ask whether to continue only the missing items or
+     revise one or more named existing sections.
+   - Preserve every unselected section verbatim. Reuse completed taste discovery,
+     concept selection, pillars, scope, and gate results whose inputs did not
+     change; do not regenerate three concepts or restart Phase 1 by default.
+   - Run only the prompts and dependent gates needed for the selected missing or
+     revised sections. Before writing, show an exact diff against the existing
+     concept; never replace the whole file with a newly generated copy.
+
 3. **Run through ideation phases** interactively, asking the user questions at
    each phase. Do NOT generate everything silently — the goal is **collaborative
    exploration** where the AI acts as a creative facilitator, not a replacement
@@ -313,7 +325,7 @@ Once the complete changeset is authorized, generate the document using the templ
 **Path A — Design-First** (recommended if the concept is well-defined):
    1. "Run `$setup-engine` to configure the engine and populate version-aware reference docs"
    2. "Run `$art-bible` to create the visual identity specification — do this BEFORE writing GDDs. **The art bible is required before the Technical Setup gate.** It gates asset production and shapes technical architecture decisions (rendering, VFX, UI systems)."
-   3. "Use `$design-review design/gdd/game-concept.md` to validate concept completeness before going downstream"
+   3. "Check the concept's existing pillars, core-loop hypothesis, audience, scope, and visual anchor before going downstream"
    4. "Discuss vision with the `creative-director` agent for pillar refinement"
    5. "Decompose the concept into individual systems with `$map-systems` — maps dependencies, assigns priorities, and creates the systems index"
    6. "Author per-system GDDs with `$design-system` — guided, section-by-section GDD writing for each system identified in step 5"
@@ -341,9 +353,15 @@ Verdict: **COMPLETE** — game concept created and handed off for next steps.
 This is a multi-phase skill. If context reaches or exceeds 70% during any phase,
 append this notice to the current response before continuing:
 
-> **Context is approaching the limit (≥70%).** The game concept document is saved
-> to `design/gdd/game-concept.md`. Open a fresh Codex session to continue
-> if needed — progress is not lost.
+If `design/gdd/game-concept.md` was actually written during this run, say:
+
+> **Context is approaching the limit (≥70%).** The written game concept is saved
+> at `design/gdd/game-concept.md`. Open a fresh session to continue.
+
+If it has not been written, say instead:
+
+> **Context is approaching the limit (≥70%).** Current brainstorm progress exists
+> only in this conversation and has not been saved to disk.
 
 ---
 

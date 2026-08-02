@@ -4,6 +4,13 @@ This file contains required phases of `$design-system`. Read it in full when the
 
 ## 4. Section-by-Section Design
 
+Every `MANDATORY` or `Do NOT draft without consulting` statement in this
+section is conditional on the resolved review mode actually requiring that
+spawn. Full mode delegates as described. Lean and solo skip per-skill
+specialists/gates, use the current agent for the same drafting responsibility,
+and display the existing skip note; a section's claimed risk must not override
+the shared mode.
+
 Walk through each section in order. For **each section**, follow this cycle:
 
 ### The Section Cycle
@@ -130,7 +137,7 @@ quote the relevant pillar text.
 
 **Review mode check** (apply before spawning):
 - `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`creative-director` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
+- `lean` → skip this per-skill specialist and draft in the current agent with the Lean-mode note.
 - `full` → spawn as described below.
 
 **Agent delegation (MANDATORY)**: After the framing answer is given but before drafting,
@@ -139,9 +146,9 @@ spawn `creative-director` through Codex subagent delegation:
 - Ask: "Shape the Player Fantasy for this system. What emotion or power fantasy should it serve? What player moment should we anchor to? What tone and language fits the game's established feeling? Be specific — give me 2-3 candidate framings."
 - Collect the creative-director's framings and present them to the user alongside the draft.
 
-**Do NOT draft Section B without first consulting `creative-director`.** The framing
-answer tells us *what kind* of fantasy it is; the creative-director shapes *how it's
-described* — tone, language, the specific player moment to anchor to.
+When review mode requires the creative-director spawn, do not draft Section B
+until its response is available. In lean or solo, draft in the current agent
+after recording the applicable skip note.
 
 ---
 
@@ -165,7 +172,7 @@ This is usually the largest section. Break it into sub-sections:
 
 **Review mode check** (apply before spawning):
 - `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "Specialist agents not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
+- `lean` → skip this per-skill specialist and draft in the current agent with the Lean-mode note.
 - `full` → spawn as described below.
 
 **Agent delegation (MANDATORY)**: Before drafting Section C, spawn specialist agents through Codex subagent delegation in parallel:
@@ -176,7 +183,9 @@ This is usually the largest section. Break it into sub-sections:
 - Surface any disagreements between agents to the user by asking the user directly
 - Draft only after receiving specialist input
 
-**Do NOT draft Section C without first consulting the appropriate specialists.** A `systems-designer` reviewing rules and mechanics will catch design gaps the main session cannot.
+When review mode requires specialist spawns, do not draft Section C until the
+applicable responses are available. In lean or solo, draft in the current agent
+after recording the applicable skip note.
 
 **Cross-reference**: For each interaction listed, verify it matches what the
 dependency GDD specifies. If a dependency defines a value or formula and this
@@ -215,7 +224,7 @@ table. A formula without defined variables cannot be implemented without guesswo
 
 **Review mode check** (apply before spawning):
 - `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`systems-designer` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
+- `lean` → skip this per-skill specialist and draft in the current agent with the Lean-mode note.
 - `full` → spawn as described below.
 
 **Agent delegation (MANDATORY)**: Before proposing any formulas or balance values, spawn specialist agents through Codex subagent delegation in parallel:
@@ -252,7 +261,7 @@ design question, not a specification.
 
 **Review mode check** (apply before spawning):
 - `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`systems-designer` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
+- `lean` → skip this per-skill specialist and draft in the current agent with the Lean-mode note.
 - `full` → spawn as described below.
 
 **Agent delegation (MANDATORY)**: Spawn `systems-designer` through Codex subagent delegation before finalising edge cases. Provide: the completed Sections C and D, and ask them to identify edge cases from the formula and rule space that the main session may have missed. For narrative systems, also spawn `narrative-director`. Present their findings and ask the user which to include.
@@ -313,7 +322,7 @@ be independently verifiable by a QA tester without reading the GDD.
 
 **Review mode check** (apply before spawning):
 - `solo` → skip this agent spawn. Draft the section without the specialist. Add a note: "`qa-lead` not consulted — Solo mode. Review manually before production."
-- `lean` → skip unless this is a section with HIGH implementation risk (Sections D and H only). For other sections, draft without the agent.
+- `lean` → skip this per-skill specialist and draft in the current agent with the Lean-mode note.
 - `full` → spawn as described below.
 
 **Agent delegation (MANDATORY)**: Spawn `qa-lead` through Codex subagent delegation before finalising acceptance criteria. Provide: the completed GDD sections C, D, E, and ask them to validate that the criteria are independently testable and cover all core rules and formulas. Surface any gaps or untestable criteria to the user.
@@ -426,9 +435,9 @@ Registry candidates from this GDD:
     - [constant_name] [constant]: value=[N] ← matches registry ✅
 ```
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, append new entries and update `referenced_by` arrays. Never modify
+This conditional registry edit was already named in the initial complete
+changeset. Do not request another file authorization. Append new entries or
+update `referenced_by` only within that authorized condition. Never modify
 existing `value` / attribute fields without surfacing it as a conflict first.
 
 ### 5c: Offer Design Review
@@ -451,18 +460,16 @@ Present a completion summary:
 
 ### 5d: Update Systems Index
 
-After the GDD is complete (and optionally reviewed):
+After the GDD is complete:
 
-- Read the systems index
-- Update the target system's row:
-  - If design-review was run and verdict is APPROVED: Status → "Approved"
-  - If design-review was run and verdict is NEEDS REVISION: Status → "In Review"
-  - If design-review was skipped: Status → "Designed" (pending review)
-  - If the user chose "I'll review it myself first": Status → "Designed"
-  - Design Doc: link to `design/gdd/[system-name].md`
-- Update the Progress Tracker counts
+- Read the systems index.
+- Set the target row to `Designed` and link the GDD.
+- Update the Progress Tracker counts.
+- Do not set Approved or In Review from a fresh-task review that this run cannot
+  directly verify.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+This conditional index edit was included in the initial complete changeset; do
+not request another file authorization.
 
 ### 5e: Update Session State
 
@@ -567,4 +574,4 @@ This is a long-running skill. Codex skills do not have a reliable numeric contex
 - Run `$design-review design/gdd/[system-name].md` in a **fresh session** to validate the completed GDD independently
 - Run `$consistency-check` to verify this GDD's values don't conflict with other GDDs
 - Run `$map-systems next` to move to the next highest-priority undesigned system
-- Run `$gate-check pre-production` when all MVP GDDs are authored and reviewed
+- Run `$gate-check systems-design` when all MVP GDDs are authored and approved

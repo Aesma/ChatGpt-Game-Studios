@@ -41,13 +41,15 @@ First, read the argument and determine which category this change falls into:
   1-2 new states or interactions. Example: "add a parry window to the block
   mechanic", "add a charge variant to the basic attack".
 - **New Small System** — a standalone feature small enough that it has no
-  existing GDD and is under approximately one week of implementation work.
+  existing GDD, fits within approximately 4 hours of implementation, requires
+  no systems-index entry, and creates no significant cross-system contract.
   Example: "achievement popup system", "simple day/night visual cycle".
 
-If the change does NOT fit these categories — it introduces a new system with
-significant cross-system dependencies, requires more than one week of
-implementation, or fundamentally alters an existing system's core rules — stop
-and redirect to `$design-system` instead.
+Before drafting, redirect to `$design-system` if the change is likely to exceed
+approximately 4 hours of implementation, introduces a significant cross-system
+contract, changes core system rules, or adds a system that belongs in
+`design/gdd/systems-index.md`. These are hard scope boundaries regardless of the
+selected category.
 
 If there is no argument, ask the user to describe the change (plain text prompt), then classify it using the criteria above.
 
@@ -58,11 +60,12 @@ Present the inferred classification by asking the user directly:
   - `[B] Tuning — changing numbers or balance values only`
   - `[C] Tweak — small behavioral change to an existing system`
   - `[D] Addition — adding a small mechanic to an existing system`
-  - `[E] New Small System — standalone feature, under one week of work`
+  - `[E] New Small System — standalone feature, approximately 4 hours or less, no index entry`
   - `[F] This is too large — redirect me to $design-system`
 
-If [F]: stop. Verdict: **REDIRECTED** — use `$design-system` for this change.
-Otherwise: proceed with the selected type.
+If [F], or if the selected type still crosses any hard boundary above: stop.
+Verdict: **REDIRECTED** — use `$design-system` for this change. Otherwise:
+proceed with the selected type.
 
 ---
 
@@ -237,14 +240,21 @@ Present the draft to the user in full. Then ask the user directly:
 If [B]: collect the requested changes, revise the draft, and re-present this structured prompt.
 If [C]: stop. Verdict: **REDIRECTED** — use `$design-system` for this change.
 
-If [A]: add the quick-spec file to the complete changeset preview and obtain the one changeset authorization before writing.
+If [A]: determine the target quick-spec path, then check whether that exact file
+already exists. If it exists, read and show the current content and offer only a
+targeted update or stop; do not overwrite it or invent a new version name. Add
+the chosen create/update to the complete changeset preview and obtain the one
+changeset authorization before writing.
 
 Use today's date in the filename. The title should be a kebab-case description
 of the change (e.g., `jump-height-tuning-2026-03-10`,
 `parry-window-addition-2026-03-10`).
 
-If a GDD update is required, show its exact old and new text before authorization and include both the quick spec and GDD edit in the same complete changeset preview. Once that changeset is authorized, create `design/quick-specs/` if needed and apply both files without another prompt. Do not
-make GDD edits outside the approved changeset.
+This workflow writes only the quick spec. If a GDD update is required, record
+the target file, section, and required delta under `GDD Update Required?`, but
+do not edit the GDD. If the change cannot be implemented without changing core
+rules or a cross-system contract, return to the Phase 1 boundary and end as
+**REDIRECTED**.
 
 ---
 
@@ -256,7 +266,7 @@ After writing the file, output:
 Quick Design Spec written to: design/quick-specs/[filename].md
 Type: [Tuning / Tweak / Addition / New Small System]
 System: [system name]
-GDD update: [Required — pending approval / Applied / Not required]
+GDD update: [Required — not applied by this workflow / Not required]
 
 Next step: This spec is ready for `$story-readiness` validation before
 implementation. Reference this spec in the story's GDD Reference field.

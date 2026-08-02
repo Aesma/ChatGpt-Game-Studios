@@ -2,7 +2,7 @@
 
 ## Status
 
-[Proposed | Accepted | Deprecated | Superseded by ADR-XXXX]
+[Proposed | Accepted | Superseded by ADR-XXXX]
 
 ## Date
 

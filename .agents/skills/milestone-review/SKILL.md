@@ -25,20 +25,23 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 
 ## Phase 1: Load Milestone Data
 
-Read the milestone definition from `production/milestones/`. If the argument is `current`, use the most recently modified milestone file.
+Read the milestone definition from `production/milestones/`. For `current`, first follow an explicit milestone reference in the existing session, stage, or active sprint artifacts. If there is no unique reference, list the candidate milestone files and ask the user to choose; never select by modification time.
 
-Read all sprint reports for sprints within this milestone from `production/sprints/`.
+Read only sprint reports explicitly referenced by that milestone or whose header explicitly names it. Follow the milestone's explicit feature/story links, and load the attributable story status, bug/status records, test and coverage results, performance reports, and technical-debt evidence. Include only items linked by milestone ID or an explicit reference. Missing evidence is `unknown`; do not estimate percentages or counts.
 
 ---
 
 ## Phase 2: Scan Codebase Health
 
 - Scan for `TODO`, `FIXME`, `HACK` markers that indicate incomplete work
-- Check the risk register at `production/risk-register/`
+- Check the risk register at `production/risk-register/` and the milestone-linked bug, test, performance, and technical-debt evidence loaded above
+- For every metric in the report, retain its source path; where no valid numerator/denominator or measurement exists, write `unknown` rather than inventing a value
 
 ---
 
 ## Phase 3: Generate the Milestone Review
+
+Compile the complete evidence draft first, but leave the final Go/No-Go Recommendation, Conditions, and Rationale unresolved until Phase 3b.
 
 ```markdown
 # Milestone Review: [Milestone Name]
@@ -123,7 +126,7 @@ Before generating the Go/No-Go recommendation, spawn `producer` through Codex su
 
 Pass: milestone name and target date, current completion percentage, blocked story count, velocity data from sprint reports (if available), list of cut candidates.
 
-Present the producer's assessment inline within the Go/No-Go section. The producer's verdict (ON TRACK / AT RISK / OFF TRACK) informs the overall recommendation.
+Present the producer's assessment inline within the Go/No-Go section. The producer's verdict (ON TRACK / AT RISK / OFF TRACK) informs the overall recommendation. After handling that verdict and the user's risk decision, generate the final Go/No-Go Recommendation, Conditions, and Rationale, then present the complete draft. Do not show or persist a final recommendation before this ordering is complete.
 
 If OFF TRACK, ask the user directly before generating the recommendation:
 - Prompt: "Producer verdict: OFF TRACK. The milestone is in jeopardy. This review will recommend NO-GO. How do you want to proceed?"
@@ -149,9 +152,9 @@ Present the review to the user.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
-Once the complete changeset is authorized, write the file, creating the directory if needed. Verdict: **COMPLETE** — milestone review saved.
+Determine the delivery verdict from the evidence, independently of saving: output **MILESTONE COMPLETE** only when milestone delivery criteria are complete; otherwise output **MILESTONE INCOMPLETE** and list the unmet criteria. Once the complete changeset is authorized, write the report with that same delivery verdict.
 
-If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** — changeset not authorized.
+If the changeset is not authorized, state `report not saved` but do not change the already-determined milestone verdict. Input-resolution failures may still end the workflow as **BLOCKED**.
 
 ---
 

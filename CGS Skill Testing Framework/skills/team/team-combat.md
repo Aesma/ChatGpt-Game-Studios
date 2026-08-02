@@ -18,12 +18,12 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 - [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
 - [ ] Has ≥2 phase headings (Phase 1 through Phase 6 are all present)
 - [ ] Contains verdict keywords: COMPLETE, NEEDS WORK, BLOCKED
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
+- [ ] Is a mutating workflow and obtains one complete changeset authorization before the first write
 - [ ] Has a next-step handoff at the end (references `$code-review`, `$balance-check`, `$team-polish`)
 - [ ] Error Recovery Protocol section is present with all four recovery steps
 - [ ] Uses `user-input request` at phase transitions for user approval before proceeding
 - [ ] Phase 3 is explicitly marked as parallel (gameplay-programmer, ai-programmer, technical-artist, sound-designer)
-- [ ] Phase 2 includes spawning the primary engine specialist (read from `.codex/docs/technical-preferences.md`)
+- [ ] Phase 2 includes spawning the primary engine specialist (read from `docs/technical-preferences.md`)
 - [ ] Team Composition lists all seven roles (game-designer, gameplay-programmer, ai-programmer, technical-artist, sound-designer, engine specialist, qa-tester)
 
 ---
@@ -34,16 +34,16 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 
 **Fixture:**
 - `design/gdd/game-concept.md` exists and is populated
-- Engine is configured in `.codex/docs/technical-preferences.md` (Engine Specialists section filled)
+- Engine is configured in `docs/technical-preferences.md` (Engine Specialists section filled)
 - No existing GDD for the requested combat feature
 
 **Input:** `$team-combat parry and riposte system`
 
 **Expected behavior:**
-1. Phase 1 — game-designer spawned; produces `design/gdd/parry-riposte.md` covering all 8 required sections (overview, player fantasy, rules, formulas, edge cases, dependencies, tuning knobs, acceptance criteria); asks user to approve design doc
-2. Phase 2 — gameplay-programmer + ai-programmer spawned; produce architecture sketch with class structure, interfaces, and file list; then primary engine specialist is spawned to validate idioms; engine specialist output incorporated; `user-input request` presented with architecture options before Phase 3 begins
+1. Phase 1 — game-designer returns a GDD draft in conversation without writing
+2. Phase 2 — gameplay-programmer + ai-programmer return architecture and an exact ownership/file list in conversation; engine specialist validates it
 3. Phase 3 — gameplay-programmer, ai-programmer, technical-artist, sound-designer spawned in parallel; all four return outputs before Phase 4 begins
-4. Phase 4 — integration wires together all Phase 3 outputs; tuning knobs verified as data-driven; `user-input request` confirms integration before Phase 5
+4. Phase 4 — gameplay-programmer alone wires together all Phase 3 outputs in pre-approved shared integration paths
 5. Phase 5 — qa-tester spawned; writes test cases from acceptance criteria; verifies edge cases; performance impact checked against budget
 6. Phase 6 — summary report produced: design COMPLETE, all team members COMPLETE, test cases listed, verdict: COMPLETE
 7. Next steps listed: `$code-review`, `$balance-check`, `$team-polish`
@@ -53,6 +53,8 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 - [ ] Phase 3 agents launched simultaneously — no sequential dependency between gameplay-programmer, ai-programmer, technical-artist, sound-designer
 - [ ] Engine specialist runs in Phase 2 before Phase 3 begins (output incorporated into architecture)
 - [ ] All file writes delegated to sub-agents (orchestrator never calls file edits directly)
+- [ ] GDD, implementation, integration, and test paths are exact and approved only after architecture is complete
+- [ ] Every Phase 3 writer has mutually exclusive paths; shared paths belong only to Phase 4 gameplay-programmer
 - [ ] Verdict COMPLETE present in final report
 - [ ] Next steps include `$code-review`, `$balance-check`, `$team-polish`
 - [ ] Design doc covers all 8 required GDD sections
@@ -133,7 +135,7 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 ### Case 5: Architecture Phase Engine Routing — Engine specialist receives correct context
 
 **Fixture:**
-- `.codex/docs/technical-preferences.md` has Engine Specialists section populated (e.g., Primary: godot-specialist)
+- `docs/technical-preferences.md` has Engine Specialists section populated (e.g., Primary: godot-specialist)
 - Architecture sketch produced by gameplay-programmer is available
 - Engine version pinned in `docs/engine-reference/godot/VERSION.md`
 
@@ -141,14 +143,14 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 
 **Expected behavior:**
 1. Phase 2 — gameplay-programmer produces architecture sketch
-2. Skill reads `.codex/docs/technical-preferences.md` Engine Specialists section to identify the primary engine specialist agent type
+2. Skill reads `docs/technical-preferences.md` Engine Specialists section to identify the primary engine specialist agent type
 3. Engine specialist is spawned with: the architecture sketch, the GDD path, the engine version from `VERSION.md`, and explicit instructions to check for deprecated APIs
 4. Engine specialist output (idiom notes, deprecated API warnings, native system recommendations) is returned to orchestrator
 5. Orchestrator incorporates engine notes into the architecture before presenting Phase 2 results to user
 6. `user-input request` includes engine specialist's notes alongside the architecture sketch
 
 **Assertions:**
-- [ ] Engine specialist agent type is read from `.codex/docs/technical-preferences.md` — not hardcoded
+- [ ] Engine specialist agent type is read from `docs/technical-preferences.md` — not hardcoded
 - [ ] Engine specialist prompt includes the architecture sketch and GDD path
 - [ ] Engine specialist checks for deprecated APIs against the pinned engine version
 - [ ] Engine specialist output is incorporated before Phase 3 begins (not skipped or appended separately)
@@ -165,6 +167,38 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 - [ ] Partial report always produced even when agents are BLOCKED
 - [ ] Verdict is one of COMPLETE / NEEDS WORK / BLOCKED
 - [ ] Next steps present at end of output: `$code-review`, `$balance-check`, `$team-polish`
+- [ ] Phase 1–2 are analysis-only; no early GDD write occurs
+- [ ] The complete changeset is authorized once before game-designer/implementation writers run
+- [ ] Phase 4 has a single gameplay-programmer integration owner
+- [ ] Missing engine blocks implementation after engine-agnostic architecture and recommends `$setup-engine`
+- [ ] COMPLETE requires all required tests/AC pass; NEEDS WORK is non-blocking defects only; failed/unrun critical verification is BLOCKED
+
+---
+
+### Case 6: Engine not configured blocks implementation
+
+**Fixture:** technical preferences retain the engine placeholder.
+
+**Assertions:**
+- [ ] No placeholder engine specialist is spawned
+- [ ] Phase 2 may return engine-agnostic architecture in conversation
+- [ ] Phase 3, writes, and COMPLETE do not occur
+- [ ] Overall verdict is BLOCKED with `$setup-engine` guidance
+
+### Case 7: Parallel ownership and integration are non-overlapping
+
+**Assertions:**
+- [ ] Phase 2 assigns every exact path to one Phase 3 writer or reserves it for Phase 4
+- [ ] No Phase 3 agent edits a reserved shared file
+- [ ] gameplay-programmer is the only Phase 4 writer
+- [ ] A newly required path triggers the existing changeset reauthorization rule
+
+### Case 8: Validation result maps to exactly one verdict
+
+**Assertions:**
+- [ ] All required tests and acceptance criteria pass → COMPLETE
+- [ ] Only fixable non-blocking defects remain → NEEDS WORK
+- [ ] Required phase failure, unresolved engine/ADR, critical tests not run, or failed required AC/test → BLOCKED
 
 ---
 

@@ -9,7 +9,7 @@ Invoke this workflow as `$architecture-review`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[focus: full | coverage | consistency | engine | single-gdd path/to/gdd.md]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[focus: full | coverage | consistency | engine | single-gdd path/to/gdd.md | rtm]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 Delegate substantive work to the `technical-director` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
@@ -32,6 +32,21 @@ and Pre-Production.
   `docs/architecture/requirements-traceability.md` with the full
   GDD requirement → ADR → Story → Test chain. Use in Production phase when
   stories and tests exist.
+
+Execute only the phases listed for the selected mode; every unlisted phase is
+skipped, and report counts/sections cover only the selected scope:
+
+| Mode | Reads and analysis | Eligible outputs |
+|---|---|---|
+| `full` | Phases 1–6, including Phase 3b only when stories exist | report, traceability index, TR registry, and explicitly selected ancillary edits |
+| `coverage` | GDD/ADR/TR reads; Phases 2–3 | scoped report, traceability index, TR registry |
+| `consistency` | ADR and known-failure reads; Phase 4 only | scoped report and explicitly selected consistency-failure append |
+| `engine` | ADR and engine-reference reads; Phase 5 only | scoped report only |
+| `single-gdd` | the target GDD plus related ADR/TR data; Phases 2–3 for that GDD only | scoped report, index/registry rows for that GDD only |
+| `rtm` | GDD/ADR/TR/story/test reads; Phases 2, 3, and 3b | RTM plus selected report/index/registry edits |
+
+A mode must never fall through into a read, count, verdict input, or write reserved
+for another mode.
 
 ---
 
@@ -74,7 +89,7 @@ Read all inputs appropriate to the mode:
 - All files in `docs/engine-reference/[engine]/modules/`
 
 ### Project Standards
-- `.codex/docs/technical-preferences.md`
+- `docs/technical-preferences.md`
 
 Report a count: "Loaded [N] GDDs, [M] ADRs, engine: [name + version]."
 
@@ -199,9 +214,9 @@ actually exists. Note MISSING if the stated path does not exist.
 For each TR-ID in the Phase 3 matrix, add:
 - **Story**: the story file path(s) that reference this TR-ID (may be multiple)
 - **Test File**: the test file path stated in the story's Test Evidence section
-- **Test Status**: COVERED (test file exists) / MISSING (path stated but not
-  found) / NONE (no test path stated, story type may be Visual/Feel/UI) /
-  NO STORY (requirement has no story yet — pre-production gap)
+- **Test File Status**: FILE EXISTS (the stated path exists; execution is not
+  proven) / FILE MISSING (path stated but not found) / NONE (no test path stated,
+  story type may be Visual/Feel/UI) / NO STORY (requirement has no story yet)
 
 Extended matrix format:
 
@@ -210,17 +225,17 @@ Extended matrix format:
 
 | TR-ID | GDD | Requirement | ADR | Story | Test File | Test Status |
 |-------|-----|-------------|-----|-------|-----------|-------------|
-| TR-combat-001 | combat.md | Hitbox < 1 frame | ADR-0003 | story-001-hitbox.md | tests/unit/combat/hitbox_test.gd | COVERED |
+| TR-combat-001 | combat.md | Hitbox < 1 frame | ADR-0003 | story-001-hitbox.md | tests/unit/combat/hitbox_test.gd | FILE EXISTS (not executed) |
 | TR-combat-002 | combat.md | Combo window | — | story-002-combo.md | — | NONE (Visual/Feel) |
 | TR-inventory-001 | inventory.md | Persistent storage | ADR-0005 | — | — | NO STORY |
 ```
 
-RTM coverage summary:
-- COVERED: [N] — requirements with ADR + story + passing test
-- MISSING test: [N] — story exists but test file not found
+RTM linkage summary:
+- FILE EXISTS: [N] — requirements with ADR + story + a stated test file that exists; test result unknown
+- FILE MISSING: [N] — story exists but stated test file not found
 - NO STORY: [N] — requirements with ADR but no story yet
 - NO ADR: [N] — requirements without architectural coverage (from Phase 3 gaps)
-- Full chain complete (COVERED): [N/total] ([%])
+- Linked through an existing test file: [N/total] ([%]); never call this passing coverage
 
 ---
 
@@ -330,7 +345,7 @@ Post-Cutoff API Conflicts:
 ### Engine Specialist Consultation
 
 After completing the engine audit above, spawn the **primary engine specialist** through Codex subagent delegation for a domain-expert second opinion:
-- Read `.codex/docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
+- Read `docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
 - If no engine is configured, skip this consultation
 - Spawn `subagent_type: [primary specialist]` with: all ADRs that contain engine-specific decisions or `Post-Cutoff APIs Used` fields, the engine reference docs, and the Phase 5 audit findings. Ask them to:
   1. Confirm or challenge each audit finding — specialists may know of engine nuances not captured in the reference docs
@@ -383,9 +398,10 @@ Then ask the user directly:
   - [B] Show me the full diff first, then ask again
   - [C] No — leave the systems index unchanged for now
 
-If [A]: apply the updates. Status field must be exactly `Needs Revision` — no parentheticals
-(other skills match that exact string and parentheticals break the match).
-If [B]: display the complete proposed systems-index section, then re-ask by asking the user directly.
+If [A]: record these exact systems-index edits for the Phase 8 complete changeset;
+do not apply them yet. Status must be exactly `Needs Revision` — no parentheticals.
+If [B]: display the complete proposed systems-index section, then re-ask; a
+selection still does not write before the Phase 8 authorization.
 
 ---
 

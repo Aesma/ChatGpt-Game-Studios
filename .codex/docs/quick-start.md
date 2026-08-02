@@ -106,7 +106,7 @@ Ask yourself: "What department would handle this in a real studio?"
 | `$story-readiness` | Validate a story is implementation-ready before pickup |
 | `$story-done` | End-of-story completion review — verifies acceptance criteria |
 | `$estimate` | Produces structured effort estimates |
-| `$design-review` | Reviews a design document |
+| `$design-review` | Reviews a system GDD for completeness and implementability |
 | `$code-review` | Reviews code for quality and architecture |
 | `$balance-check` | Analyzes game balance data |
 | `$asset-audit` | Audits assets for compliance |
@@ -221,11 +221,10 @@ If you already know what you need, jump directly to the relevant path:
    - Produces a game concept document and recommends an engine
 2. **Set up the engine** — Run `$setup-engine` (uses the brainstorm recommendation)
    - Configures AGENTS.md, detects knowledge gaps, populates reference docs
-   - Creates `.codex/docs/technical-preferences.md` with naming conventions,
+   - Creates `docs/technical-preferences.md` with naming conventions,
      performance budgets, and engine-specific defaults
-   - If the engine version is newer than the LLM's training data, it fetches
-     current docs from the web so agents suggest correct APIs
-3. **Validate the concept** — Run `$design-review design/gdd/game-concept.md`
+   - Uses current official engine documentation when version-sensitive APIs or defaults must be verified
+3. **Confirm concept readiness** — Resolve placeholders, record creative-director approval, and verify the concept has a clear core loop, pillars, audience, and MVP boundary
 4. **Decompose into systems** — Run `$map-systems` to map all systems and dependencies
 5. **Design each system** — Run `$design-system [system-name]` (or `$map-systems next`)
    to write GDDs in dependency order
@@ -274,6 +273,8 @@ If you have design docs, prototypes, or code already:
 
 ```
 AGENTS.md                          -- Master config (read this first, ~60 lines)
+docs/
+  technical-preferences.md         -- Project-specific standards (populated by $setup-engine)
 .agents/
   skills/                          -- 74 `$skill` workflows in SKILL.md files
 .codex/
@@ -283,7 +284,6 @@ AGENTS.md                          -- Master config (read this first, ~60 lines)
   hooks/                           -- Hook scripts invoked by hooks.json
   docs/
     quick-start.md                 -- This file
-    technical-preferences.md       -- Project-specific standards (populated by $setup-engine)
     coding-standards.md            -- Coding and design doc standards
     coordination-rules.md          -- Agent coordination rules
     context-management.md          -- Context budgets and compaction instructions

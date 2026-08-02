@@ -2,61 +2,109 @@
 
 ## Skill Summary
 
-`$create-control-manifest` reads all Accepted ADRs from `docs/architecture/` and
-generates a control manifest — a summary document that captures all architectural
-constraints, required patterns, and forbidden patterns in one place. The manifest
-is the reference document that story authors use when writing story files, ensuring
-stories inherit the correct architectural rules without having to read all ADRs
-individually.
+`$create-control-manifest` extracts meaning-preserving programmer rules from
+Accepted ADRs, technical preferences, and the pinned engine reference. It writes
+`docs/architecture/control-manifest.md` only after one complete changeset
+authorization. In full review mode it runs TD-MANIFEST; lean and solo record the
+gate skip.
 
-The skill only includes Accepted ADRs; Proposed ADRs are excluded and noted. It
-has no director gates. The skill asks "May I apply the proposed changeset?"
-6. Writes the manifest after approval
+---
+
+## Static Assertions (Structural)
+
+- [ ] YAML frontmatter contains only `name` and non-empty `description`
+- [ ] Has at least two phase headings
+- [ ] Only `must`, `required`, and `always` statements become Required
+- [ ] Merely rejected alternatives do not become Forbidden
+- [ ] There is exactly one changeset authorization point
+
+---
+
+## Director Gate Checks
+
+- [ ] Full mode runs TD-MANIFEST against the complete extracted rule list
+- [ ] Lean and solo skip TD-MANIFEST and name the resolved mode
+- [ ] REJECT prevents the manifest write
+
+---
+
+## Test Cases
+
+### Case 1: Happy Path — Accepted ADR rules preserve modality and scope
+
+**Fixture:**
+- Four Accepted ADRs contain a mix of `must`, `should`, and `always`
+- One ADR lists an unselected alternative without calling it forbidden
+- Another ADR explicitly labels an API an anti-pattern
+- Review mode resolves to `full`
+
+**Expected behavior:**
+1. Required contains the explicit must/required/always rules
+2. The should statement remains advisory
+3. The ordinary rejected alternative is not turned into a Never rule
+4. The explicit anti-pattern appears under Forbidden with source and scope
+5. TD-MANIFEST runs, then the complete manifest draft is authorized once
 
 **Assertions:**
-- [ ] All 4 Accepted ADRs are represented in the manifest
-- [ ] Manifest includes distinct sections for Required Patterns and Forbidden Patterns
-- [ ] Manifest includes the source ADR number for each constraint
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Every rule preserves modality, scope, and real source
+- [ ] Cross-layer rules appear once in Global Rules unless the source defines distinct variants
+- [ ] Phase 4 content approval is not treated as file authorization
+- [ ] Phase 5 is the only write authorization point
+
+---
+
+### Case 2: Proposed ADRs are not extracted
+
+**Fixture:**
+- Three Accepted ADRs and two Proposed ADRs exist
 
 **Assertions:**
-- [ ] Only the 3 Accepted ADRs appear in the manifest content
-- [ ] Excluded Proposed ADRs are listed by name in the output
-- [ ] User sees the exclusion list before approving the write
-- [ ] Skill does NOT silently omit Proposed ADRs without noting them
+- [ ] Only Accepted ADR content becomes manifest rules
+- [ ] Proposed content cannot strengthen or forbid implementation behavior
+- [ ] The write remains subject to the single complete changeset authorization
+
+---
+
+### Case 3: Review modes use the shared TD-MANIFEST contract
+
+**Assertions:**
+- [ ] Full mode invokes TD-MANIFEST before the write
+- [ ] Lean and solo do not invoke the gate and show the appropriate skip note
+- [ ] A full-mode REJECT prevents the write
+- [ ] No mode claims that the workflow has no director gate
 
 ---
 
 ### Case 4: Edge Case — Manifest already exists
 
 **Fixture:**
-- `docs/architecture/control-manifest.md` already exists (version 1, dated last week)
-- `docs/architecture/` contains Accepted ADRs (some new since last manifest)
+- `docs/architecture/control-manifest.md` already exists
+- Current Accepted ADRs produce an updated draft
 
-**Input:** `$create-control-manifest`
-
-**Expected behavior:**
-1. Skill detects existing manifest and reads its version number / date
-2. Skill offers to regenerate: "control-manifest.md already exists (v1, [date]). Regenerate with current ADRs?"
-3. If user confirms: skill drafts updated manifest, increments version number
-4. Asks "May I apply the proposed changeset?" (overwrite)
-5. Writes updated manifest after approval
+**Input:** `$create-control-manifest update`
 
 **Assertions:**
-- [ ] Skill reads and reports the existing manifest version before offering to regenerate
-- [ ] User is offered a regenerate/skip choice — not auto-overwritten
-- [ ] Updated manifest has an incremented version number
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] No director gates — no review-mode.txt read
-- [ ] Ends with next-step handoff: `$create-epics` or `$create-stories`
+- [ ] Existing content is read before a replacement is proposed
+- [ ] The full replacement is shown at the single authorization point
+- [ ] The existing manifest is not overwritten before authorization
+- [ ] Ends with the existing next-step handoff
 
 ---
 
-## Coverage Notes
+### Case 5: Single authorization and rejected full-mode gate
 
-- The exact section structure of the generated manifest (constraint tables, pattern
-  lists) is defined by the skill body and not re-enumerated in test assertions.
-- The `version` field incrementing logic (v1 → v2) is tested via Case 4 but exact
-  version numbering format is not fixture-locked.
-- ADR parsing (extracting Required/Forbidden Patterns) depends on consistent ADR
-  structure — tested implicitly via Case 1's fixture.
+**Assertions:**
+- [ ] Phase 4 approval never writes the manifest
+- [ ] A full-mode TD-MANIFEST REJECT stops before file authorization/write
+- [ ] When the gate permits writing, Phase 5 shows the exact full draft and target once
+- [ ] No second per-file or post-review authorization prompt appears
+
+---
+
+## Protocol Compliance
+
+- [ ] Accepted ADR language is not semantically strengthened
+- [ ] Ordinary rejected alternatives are not global bans
+- [ ] Minimal formatting normalization never changes modality or scope
+- [ ] Full/lean/solo gate behavior is deterministic
+- [ ] The target file is written only after one complete changeset authorization

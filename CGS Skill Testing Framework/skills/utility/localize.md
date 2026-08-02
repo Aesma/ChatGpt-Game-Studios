@@ -3,20 +3,22 @@
 ## Skill Summary
 
 `$localize` manages the full localization pipeline: it extracts all player-facing
-strings from source files, manages translation files in `assets/localization/`,
-and validates completeness across all locale files. For new languages, it creates
+strings from source files, resolves one source-table format, and manages the
+default JSON tables in `assets/data/strings/` when no project table exists. It
+validates completeness across all locale files. For new languages, it creates
 a locale file skeleton with all current strings as keys and empty values. For
 existing locale files, it produces a diff showing additions, removals, and
 changed keys.
 
-Translation files are written to `assets/localization/[locale-code].csv` (or
-engine-appropriate format) after a "May I apply the proposed changeset?"
+The default translation files are `assets/data/strings/strings-[locale-code].json`;
+an existing project format may be used only when it resolves to one source of
+truth. Files are written after a "May I apply the proposed changeset?"
 5. File written on approval; verdict is GAPS FOUND (file created but empty values)
-6. Skill notes: "fr.csv created — send to translator to fill values"
+6. Skill notes: "strings-fr.json created — send to translator to fill values"
 
 **Assertions:**
-- [ ] All string keys from `en.csv` are present in `fr.csv`
-- [ ] All values in `fr.csv` are empty (not copied from English)
+- [ ] All string keys from `strings-en.json` are present in `strings-fr.json`
+- [ ] All values in `strings-fr.json` are empty (not copied from English)
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 5. File updated with new empty keys added, obsolete keys marked; verdict is GAPS FOUND
 
@@ -31,17 +33,17 @@ engine-appropriate format) after a "May I apply the proposed changeset?"
 ### Case 3: String Missing in One Locale — GAPS FOUND With Missing Key List
 
 **Fixture:**
-- 3 locale files exist: `en.csv`, `fr.csv`, `de.csv`
-- `de.csv` is missing 4 keys that exist in both `en.csv` and `fr.csv`
+- 3 locale files exist: `strings-en.json`, `strings-fr.json`, `strings-de.json`
+- `strings-de.json` is missing 4 keys that exist in both source and French tables
 
-**Input:** `$localize`
+**Input:** `$localize validate`
 
 **Expected behavior:**
 1. Skill reads all 3 locale files and cross-references keys
-2. `de.csv` is missing 4 keys
+2. `strings-de.json` is missing 4 keys
 3. Skill produces GAPS FOUND report listing the 4 missing keys by locale:
-   "de.csv missing: [key1], [key2], [key3], [key4]"
-4. Skill offers to add the missing keys as empty values to `de.csv`
+   "strings-de.json missing: [key1], [key2], [key3], [key4]"
+4. Skill offers to add the missing keys as empty values to `strings-de.json`
 5. After approval: file updated; verdict remains GAPS FOUND (values still empty)
 
 **Assertions:**
@@ -55,14 +57,14 @@ engine-appropriate format) after a "May I apply the proposed changeset?"
 ### Case 4: Translation File Has Syntax Error — Error With Line Reference
 
 **Fixture:**
-- `assets/localization/fr.csv` has a malformed line at line 47
+- `assets/data/strings/strings-fr.json` has malformed JSON at line 47
   (missing quote closure)
 
-**Input:** `$localize fr`
+**Input:** `$localize validate`
 
 **Expected behavior:**
-1. Skill reads `fr.csv` and encounters a parse error at line 47
-2. Skill outputs: "Parse error in fr.csv at line 47: [error detail]"
+1. Skill reads `strings-fr.json` and encounters a parse error at line 47
+2. Skill outputs: "Parse error in strings-fr.json at line 47: [error detail]"
 3. Skill cannot diff or validate the file until the error is fixed
 4. Skill does NOT attempt to overwrite or auto-fix the malformed file
 5. Skill suggests fixing the file manually and re-running `$localize`
@@ -80,7 +82,7 @@ engine-appropriate format) after a "May I apply the proposed changeset?"
 **Fixture:**
 - Source code with player-facing strings
 
-**Input:** `$localize fr`
+**Input:** `$localize extract`
 
 **Expected behavior:**
 1. Skill extracts strings and manages locale files
@@ -102,6 +104,9 @@ engine-appropriate format) after a "May I apply the proposed changeset?"
 - [ ] Flags missing keys by locale and by key name
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Verdict is LOCALIZATION COMPLETE (all locales fully translated) or GAPS FOUND
+- [ ] `brief`, `cultural-review`, `vo-pipeline`, `rtl-check`, `freeze`, and `qa` reject missing or unknown required arguments without writing
+- [ ] Active-freeze extraction previews the source-table and freeze-status edits together before either write
+- [ ] A QA plan without executed evidence has no PASS/PASS WITH CONDITIONS verdict and no producer sign-off
 
 ---
 
@@ -109,7 +114,7 @@ engine-appropriate format) after a "May I apply the proposed changeset?"
 
 - LOCALIZATION COMPLETE is only achievable when all locale files have all keys
   with non-empty values; new-language skeleton creation always results in GAPS FOUND.
-- Engine-specific locale formats (Godot `.translation`, Unity `.po` files) are
-  handled by the skill body; `.csv` is used as the canonical format in tests.
+- Existing engine-specific locale formats may be used only as the project's one
+  resolved source of truth; JSON is the canonical fallback format in tests.
 - The case where source strings change at a very high rate (continuous integration
   of new UI text) is not tested; the diff logic handles this case.

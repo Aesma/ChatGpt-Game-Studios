@@ -7,7 +7,7 @@ description: "Automatically analyze project state, detect stage, identify gaps, 
 
 Invoke this workflow as `$project-stage-detect`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+This workflow is read-only and advisory. It always returns the stage report in the conversation, never writes `production/stage.txt` or a project-stage report, and never asks for changeset authorization.
 
 Arguments: `[optional: role filter like 'programmer' or 'designer']`. Treat bracketed values as optional unless the workflow says otherwise.
 
@@ -59,23 +59,23 @@ Analyze project structure and content:
 
 **Tests** (`tests/`):
 - Count test files
-- Estimate test coverage (rough heuristic)
+- Read an existing coverage report when available; otherwise report test file counts and coverage as unknown
 
 ### 2. Classify Project Stage
 
-Based on scanned artifacts, determine stage. Check `production/stage.txt` first —
-if it exists, use its value (explicit override from `$gate-check`). Otherwise,
-auto-detect using these heuristics (check from most-advanced backward):
+Based on scanned artifacts, determine stage. Check `production/stage.txt` first. Accept only the seven exact stage values below, then still cross-check all artifact signals. For an invalid value, report it as unusable and infer without modifying the file. For a valid but materially contradictory value, report the conflict and limits in the existing rationale/summary text rather than silently treating it as proven. Otherwise auto-detect from the most advanced stage backward, requiring its own indicators and all preceding-stage artifact signals:
 
 | Stage | Indicators |
 |-------|-----------|
 | **Concept** | No game concept doc, brainstorming phase |
 | **Systems Design** | Game concept exists, systems index missing or incomplete |
 | **Technical Setup** | Systems index exists, engine not configured |
-| **Pre-Production** | Engine configured, `src/` has <10 source files |
-| **Production** | `src/` has 10+ source files, active development |
+| **Pre-Production** | Completed system-design evidence plus architecture or epic work has started, and the engine is configured |
+| **Production** | Production implementation code aligns with an active sprint and epic, with preceding design/setup evidence present |
 | **Polish** | Explicit only (set by `$gate-check` Production → Polish gate) |
 | **Release** | Explicit only (set by `$gate-check` Polish → Release gate) |
+
+Engine configuration or a source-file count is only a supporting signal and can never advance a project by itself. When signals conflict, retain the lower stage that is fully evidenced and explain the missing prerequisite.
 
 ### 3. Collaborative Gap Identification
 
@@ -100,11 +100,11 @@ Use template: `.codex/docs/templates/project-stage-report.md`
 **Stage Confidence**: [PASS — clearly detected / CONCERNS — ambiguous signals / FAIL — critical gaps block progress]
 
 ## Completeness Overview
-- Design: [X%] ([N] docs, [gaps])
-- Code: [X%] ([N] files, [systems])
-- Architecture: [X%] ([N] ADRs, [gaps])
-- Production: [X%] ([status])
-- Tests: [X%] ([coverage estimate])
+- Design: [counts/present/missing/unknown; percentage only with an explicit plan denominator]
+- Code: [counts/present/missing/unknown; percentage only with an explicit plan denominator]
+- Architecture: [counts/present/missing/unknown; percentage only with an explicit plan denominator]
+- Production: [status and evidence paths]
+- Tests: [test counts and actual coverage report value, or coverage unknown]
 
 ## Gaps Identified
 1. [Gap description + clarifying question]
@@ -134,27 +134,9 @@ If user provided a role argument (e.g., `$project-stage-detect programmer`):
 - Holistic view of all gaps
 - Highest-priority items across domains
 
-### 6. Request Approval Before Writing
+### 6. Present the Read-Only Report
 
-**Collaborative protocol**:
-```
-I've analyzed your project. Here's what I found:
-
-[Show summary]
-
-Gaps identified:
-1. [Gap 1 + question]
-2. [Gap 2 + question]
-
-Recommended next steps:
-- [Priority 1]
-- [Priority 2]
-- [Priority 3]
-
-Should the proposed changeset include the full stage analysis at `production/project-stage-report.md`?
-```
-
-Treat that answer as a content-scope choice. Present the complete changeset and obtain its one authorization before creating the file.
+After resolving key gap questions, present the full stage analysis in the conversation. Unanswered questions remain explicitly unresolved. Do not offer or attempt to save `production/project-stage-report.md` or update `production/stage.txt`.
 
 ---
 
@@ -193,7 +175,6 @@ This skill follows the collaborative design principle:
 1. **Question First**: Ask about gaps, don't assume
 2. **Present Options**: "Should I create X, or is it tracked elsewhere?"
 3. **User Decides**: Wait for direction
-4. **Show Draft**: Display report summary
-5. **Get Approval**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+4. **Show Report**: Display the complete advisory report in the conversation
 
-**Never** silently write files. Always show findings, include every artifact in the complete changeset preview, and write only after its one authorization.
+**Never** write files or request changeset authorization in this workflow.

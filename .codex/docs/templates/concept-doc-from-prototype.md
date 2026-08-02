@@ -16,6 +16,16 @@
 
 ---
 
+## Evidence Boundaries
+
+- **Observed implementation:** Record only behavior, structure, and constraints directly evidenced by source code, assets, configuration, build output, or test results.
+- **User-stated intent:** Label goals or intended behavior supplied by the user separately; intent is not evidence that a feature is implemented.
+- **Gap:** Mark missing, contradictory, or unverified behavior explicitly instead of inferring it.
+
+Acceptance criteria may be marked implemented or passing only when supported by code, build, or test evidence.
+
+---
+
 ## 1. Prototype Overview
 
 **Original Hypothesis**:

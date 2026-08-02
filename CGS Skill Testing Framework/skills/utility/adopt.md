@@ -60,7 +60,10 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Reads all artifacts silently before presenting any results
 - [ ] Shows Adoption Audit Summary and Gap Preview before asking to write
 - [ ] Uses `user-input request` before applying a not-yet-authorized changeset the adoption plan file
-- [ ] Adoption plan written to `docs/adoption-plan-[date].md` — not to any other path
+- [ ] The only possible writes are the previewed adoption plan and, when missing, `production/review-mode.txt`
+- [ ] Cancelling the complete changeset leaves both files unchanged
+- [ ] GDD format checks require the eight exact headings from `design/gdd/AGENTS.md`; aliases do not pass
+- [ ] ADR format checks include Title, Status, Context, Decision, Consequences, ADR Dependencies, Engine Compatibility, and GDD Requirements Addressed
 - [ ] Migration plan items ordered: BLOCKING first, HIGH second, MEDIUM third, LOW last
 - [ ] Phase 7 always offers a single specific next action (not a generic list)
 - [ ] Never regenerates existing artifacts — only fills gaps in what exists
@@ -75,5 +78,5 @@ Verified automatically by `$skill-test static` — no fixture needed.
   Not separately fixture-tested here.
 - The systems-index.md parenthetical status value check (BLOCKING) is a special case
   that triggers an immediate fix offer before applying a not-yet-authorized changeset the plan; not separately tested.
-- The review-mode.txt prompt (Phase 6b) runs after plan writing if `production/review-mode.txt`
-  does not exist; not separately tested here.
+- When `production/review-mode.txt` is missing, its exact value and the adoption
+  plan are shown together in the one complete changeset preview before either write.

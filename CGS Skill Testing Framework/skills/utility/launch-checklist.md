@@ -124,6 +124,9 @@ after a "May I apply the proposed changeset?"
 - [ ] Compares against previous checklist when one exists
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Verdict is LAUNCH READY, LAUNCH BLOCKED, or CONCERNS
+- [ ] An item is checked only from direct repository evidence or explicit human confirmation; absence of contrary evidence never auto-checks it
+- [ ] Evidence/manual/not-applicable notes stay on existing checkbox lines or in existing Blocking/Conditional Items text; no new schema fields, columns, tables, or sections are required
+- [ ] The persisted report uses `production/launch/launch-checklist-[date].md`, updates an existing same-day file explicitly, and compares only with the nearest earlier-dated checklist
 
 ---
 

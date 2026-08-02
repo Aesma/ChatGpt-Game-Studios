@@ -8,7 +8,8 @@ acceptance criterion against the implementation. It checks for GDD and ADR
 deviations, prompts a code review, updates the story status to `Complete`,
 logs any tech debt, and surfaces the next ready story from the sprint. It
 produces a COMPLETE / COMPLETE WITH NOTES / BLOCKED verdict and writes to
-the story file and optionally to `docs/tech-debt-register.md`.
+the story file and, when applicable, sprint-status YAML, active session state,
+and the optional tech-debt register in one authorized changeset.
 
 ---
 
@@ -30,13 +31,16 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Skill prompts the user for code review outcome (does not skip this step)
 - [ ] Verdict is COMPLETE when all criteria are verified and no deviations exist
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-4. If user says No: criterion is marked DEFERRED, verdict becomes COMPLETE WITH NOTES
+4. If user says No: the criterion is UNTESTED and BLOCKED unless the story
+   explicitly permits post-integration/playtest verification and the user gives
+   a concrete deferral reason
 5. Skill records the deferred criterion in completion notes
 6. Asks "May I apply the proposed changeset?"
 
 **Assertions:**
 - [ ] Skill asks the user about unverifiable criteria rather than assuming PASS
-- [ ] Deferred criteria result in COMPLETE WITH NOTES (not COMPLETE or BLOCKED)
+- [ ] Only story-authorized, reasoned DEFERRED criteria can result in COMPLETE WITH NOTES
+- [ ] Ordinary UNTESTED and every FAILED criterion result in BLOCKED
 - [ ] The deferred criterion is explicitly named in the completion notes
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 
@@ -54,19 +58,15 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Expected behavior:**
 1. Skill reads the GDD requirement text (max 3)
 2. Skill detects discrepancy between requirement and implementation value (5)
-3. Skill flags this as a GDD deviation and asks the user to classify it:
-   - INTENTIONAL: document the deviation and reason
-   - ERROR: implementation must be fixed before story can be marked Complete
-   - OUT OF SCOPE: requirement changed and GDD needs updating
-4. If INTENTIONAL: skill records deviation in completion notes, verdict is COMPLETE WITH NOTES
-5. If ERROR: verdict is BLOCKED until implementation is corrected
+3. Skill flags this as a BLOCKING GDD deviation
+4. Verdict is BLOCKED until implementation or the governing design is corrected
+5. No close/override option is offered
 
 **Assertions:**
 - [ ] Skill detects the mismatch between GDD requirement and implementation value
-- [ ] Skill asks the user to classify the deviation (not auto-assumes either way)
-- [ ] INTENTIONAL deviation → COMPLETE WITH NOTES (not BLOCKED)
-- [ ] ERROR deviation → BLOCKED verdict until fixed
-- [ ] Detected deviations are recorded in completion notes or tech debt register
+- [ ] GDD contradiction produces BLOCKED regardless of an intent label
+- [ ] BLOCKED cannot be overridden to Complete
+- [ ] Detected blocker is named and the workflow directs the user to fix and rerun
 
 ---
 
@@ -144,6 +144,47 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Ends by surfacing the next ready story from the sprint plan
 - [ ] Does not mark a story Complete if any criteria are in ERROR state
 - [ ] Does not skip the code review prompt
+- [ ] Missing or invalid Story Type is BLOCKED and never inferred
+- [ ] No implementation files is BLOCKED except verified Config/Data output-only work
+- [ ] Config/Data smoke evidence is related, current, and has an acceptable verdict
+- [ ] Story test evidence is treated only as a project path, never as command text
+- [ ] Performance criteria require profile/test evidence and cannot pass by assumption
+- [ ] BLOCKED never reaches Phase 7 and has no close override
+- [ ] The one preview lists story, YAML, active state, and conditional tech-debt paths
+
+---
+
+### Case 6: Missing type cannot bypass test evidence
+
+**Assertions:**
+- [ ] Missing or unknown Type produces BLOCKED before the close path
+- [ ] The workflow asks for one of the existing five types and requires a rerun
+- [ ] It does not infer type from source files or prose
+
+### Case 7: Config/Data requires scoped smoke evidence
+
+**Fixture:** a Config/Data story and smoke reports from other sprints plus one FAIL report.
+
+**Assertions:**
+- [ ] Unrelated, stale, or FAIL reports do not satisfy the requirement
+- [ ] No related acceptable report produces BLOCKED
+- [ ] A related PASS, or policy-accepted PASS WITH WARNINGS without a relevant warning, can satisfy it
+
+### Case 8: No implementation and unsafe test command
+
+**Assertions:**
+- [ ] A non-Config/Data story with no implementation files is BLOCKED
+- [ ] Test Evidence is resolved as a project-relative file path only
+- [ ] Runner unavailable/non-zero/unparseable results cannot be recorded PASS
+- [ ] Required Logic/Integration NOT RUN evidence remains BLOCKED
+
+### Case 9: Complete changeset is known before first write
+
+**Assertions:**
+- [ ] Preview lists the exact story file and existing sprint-status YAML
+- [ ] Preview lists active.md creation/append
+- [ ] Tech-debt register is listed only when that option was selected
+- [ ] Declined authorization performs zero writes
 
 ---
 

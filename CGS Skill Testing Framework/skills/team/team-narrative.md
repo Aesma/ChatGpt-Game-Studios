@@ -8,8 +8,7 @@ in parallel) → level narrative integration (level-designer) → consistency re
 (narrative-director) → polish + localization compliance (writer, localization-lead,
 and world-builder in parallel). Uses `user-input request` at each phase transition to
 present proposals as selectable options. Produces a narrative summary report and
-delivers narrative documents via subagents that each enforce the "May I apply the proposed changeset?"
-protocol. Verdict is COMPLETE when all phases succeed, or BLOCKED when a dependency
+delivers narrative documents through subagents working inside one approved changeset with non-overlapping file ownership. Verdict is COMPLETE when all phases succeed and the final candidate has no blocker, or BLOCKED when a dependency
 is unresolved.
 
 ---
@@ -22,11 +21,12 @@ is unresolved.
 - [ ] Contains "File Write Protocol" section
 - [ ] File writes are delegated to sub-agents — orchestrator does not write files directly
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Has a next-step handoff at the end (references `$design-review`, `$localize extract`, `$dev-story`)
+- [ ] Has a next-step handoff at the end (references `$localize extract` and `$dev-story`, not the system-GDD-only `$design-review`)
 - [ ] Error Recovery Protocol section is present
 - [ ] `user-input request` is used at phase transitions before proceeding
-- [ ] Phase 2 explicitly spawns world-builder and writer in parallel
+- [ ] Phase 2 permits independent drafting in parallel but prevents canon-dependent writer output from becoming final before the world-builder's check
 - [ ] Phase 5 explicitly spawns writer, localization-lead, and world-builder in parallel
+- [ ] Phase 5 checks are read-only; any resulting edit is followed by the existing narrative-director consistency re-review
 
 ---
 
@@ -45,20 +45,20 @@ is unresolved.
 **Expected behavior:**
 1. Phase 1: narrative-director is spawned; outputs a narrative brief defining the story beat, characters involved, emotional tone, and lore dependencies
 2. `user-input request` presents the narrative brief; user approves before Phase 2 begins
-3. Phase 2: world-builder and writer are spawned in parallel; world-builder produces lore entries for the Ironveil faction; writer drafts dialogue lines using character voice profiles
+3. After Phase 1, the orchestrator previews all concrete target files, assigns each to one writer, and obtains one changeset approval. Phase 2 starts independent work; writer drafts are provisional until the world-builder's canon check finishes
 4. `user-input request` presents world foundation and dialogue drafts; user approves before Phase 3 begins
 5. Phase 3: level-designer is spawned; produces environmental storytelling layout, trigger placement, and pacing plan
 6. `user-input request` presents level narrative plan; user approves before Phase 4 begins
 7. Phase 4: narrative-director reviews all dialogue against voice profiles, verifies lore consistency, confirms pacing; approves or flags issues
 8. `user-input request` presents review results; user approves before Phase 5 begins
-9. Phase 5: writer, localization-lead, and world-builder are spawned in parallel; writer performs final self-review; localization-lead validates i18n compliance; world-builder finalizes canon levels
-10. Final summary report is presented; subagent asks "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
+9. Phase 5: writer, localization-lead, and world-builder perform read-only checks in parallel; any correction is made by the file owner and sent back through Phase 4 before delivery
+10. Final summary report is presented; no subagent repeats changeset authorization
 11. Verdict: COMPLETE
 
 **Assertions:**
 - [ ] narrative-director is spawned in Phase 1 before any other agents
 - [ ] `user-input request` appears after Phase 1 output and before Phase 2 launch
-- [ ] world-builder and writer Codex subagent delegations are issued simultaneously in Phase 2 (not sequentially)
+- [ ] Independent world-builder and writer work may start together, but canon-dependent dialogue is not finalized before canon verification
 - [ ] level-designer is not launched until Phase 2 `user-input request` is approved
 - [ ] narrative-director is re-spawned in Phase 4 for consistency review
 - [ ] Phase 5 spawns all three agents (writer, localization-lead, world-builder) simultaneously
@@ -73,7 +73,7 @@ is unresolved.
 **Fixture:**
 - Existing lore entry at `design/narrative/lore/ironveil-history.md` states the Ironveil faction was founded 200 years ago
 - The new narrative brief (from Phase 1) states the Ironveil were founded 50 years ago
-- The writer has been spawned in parallel with the world-builder in Phase 2
+- The writer has started a provisional draft while the world-builder checks canon in Phase 2
 
 **Input:** `$team-narrative ironveil faction introduction cutscene`
 
@@ -88,7 +88,7 @@ is unresolved.
    - Update the existing lore entry to reflect the new canon (50 years ago)
    - Stop here and resolve the contradiction in the lore docs first
 7. Writer output is preserved but flagged as pending canon resolution — work is not discarded
-8. Orchestrator does NOT proceed to Phase 3 until the contradiction is resolved or user explicitly chooses to skip
+8. Orchestrator does NOT proceed to Phase 3 until the contradiction is resolved
 
 **Assertions:**
 - [ ] Contradiction is surfaced before Phase 3 begins
@@ -138,14 +138,14 @@ is unresolved.
    - Fix the string now (writer revises the line)
    - Note the gap and deliver the narrative doc with the issue flagged
    - Stop and resolve before finalizing
-6. If the user chooses to proceed with the issue flagged, verdict is COMPLETE with noted localization debt; if user stops, verdict is BLOCKED
+6. If the blocker is not fixed and re-reviewed, verdict is BLOCKED; it cannot be renamed as debt and delivered as COMPLETE
 
 **Assertions:**
 - [ ] localization-lead is spawned in Phase 5 simultaneously with writer and world-builder
 - [ ] Hardcoded date format is identified as a localization blocker (not silently passed)
 - [ ] The specific string key and reason are included in the issue report
-- [ ] `user-input request` offers the option to fix now vs. flag and proceed
-- [ ] Verdict notes the localization debt if the user proceeds without fixing
+- [ ] `user-input request` offers the option to fix now or stop with a partial report
+- [ ] Verdict is BLOCKED until the finding is fixed and the final candidate is re-reviewed
 - [ ] Skill does NOT automatically rewrite the offending line outside the authorized changeset
 
 ---
@@ -190,7 +190,7 @@ is unresolved.
 - [ ] BLOCKED status from any agent is surfaced immediately — not silently skipped
 - [ ] A partial report is always produced when some agents complete and others block
 - [ ] Verdict is exactly COMPLETE or BLOCKED — no other verdict values used
-- [ ] Next Steps handoff references `$design-review`, `$localize extract`, and `$dev-story`
+- [ ] Next Steps handoff references `$localize extract` and `$dev-story`, and does not send narrative documents to `$design-review`
 
 ---
 

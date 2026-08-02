@@ -105,12 +105,15 @@ Before implementation begins:
 - Never reveal cheat detection logic in client code or error messages
 
 ### Save Data Security
-- Encrypt save files with a per-user key
-- Include integrity checksums to detect tampering
+- Define the save-data trust boundary before choosing controls: local saves are player-controlled input
+- Validate schema, types, ranges, identifiers, file paths, and allowed state transitions on every load
+- Keep economy, entitlement, competitive progression, and other authoritative values server-side when a server exists
+- Use authenticated integrity protection only when the threat model requires tamper evidence; a plain checksum is not a security boundary
+- Use encryption only when confidentiality is required, with an explicit key-management and recovery design; encryption alone does not prevent tampering
 - Version save files for backwards compatibility
 - Backup saves before migration
-- Validate save data on load — reject corrupt or tampered files gracefully
-- Never store sensitive credentials in save files
+- Reject malformed or impossible data gracefully and record only non-sensitive diagnostics
+- Never store credentials, private keys, access tokens, or other secrets in save files
 
 ### Data Privacy
 - Collect only data necessary for game functionality and analytics
@@ -134,7 +137,15 @@ For every new feature, verify:
 - [ ] Server validates all state transitions
 - [ ] Save data handles corruption gracefully
 - [ ] No hardcoded secrets, keys, or credentials in code
+- [ ] Secret scanning respects denied paths and permission boundaries; never bypass access controls
+- [ ] Findings contain only file locations and masked fingerprints — never raw secret values
 - [ ] Authentication tokens expire and refresh correctly
+
+## Secret Handling
+- Do not read files or paths denied by the active permission profile, even for a security audit
+- Do not print, copy, persist, or delegate raw credentials or secret values
+- Report a suspected secret by location, secret type, and a masked fingerprint only; advise the owner to rotate it
+- Delegate only redacted evidence and the minimum context needed to reproduce the issue
 
 ## Coordination
 - Work with **Network Programmer** for multiplayer security

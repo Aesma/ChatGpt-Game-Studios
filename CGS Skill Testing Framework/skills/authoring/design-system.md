@@ -2,120 +2,92 @@
 
 ## Skill Summary
 
-`$design-system` guides the user through section-by-section authoring of a Game
-Design Document (GDD) for a single game system. All 8 required sections must be
-authored: Overview, Player Fantasy, Detailed Rules, Formulas, Edge Cases,
-Dependencies, Tuning Knobs, and Acceptance Criteria. The skill uses a
-skeleton-first approach — it creates the GDD file with all 8 section headers
-before filling any content, then applies the approved bounded document changeset
-without section-by-section re-prompts.
-
-The CD-GDD-ALIGN gate (creative-director) runs in both `full` AND `lean` modes.
-It is only skipped in `solo` mode. If an existing GDD file is found, the skill
-offers a retrofit mode to update specific sections rather than rewriting the whole
-document.
+`$design-system` authors one GDD incrementally. Before its first write it
+authorizes the GDD plus conditional registry, systems-index, and active-session
+edits. Per-section content approval occurs inside that file boundary. Full mode
+uses the configured specialists and runs CD-GDD-ALIGN once after the complete
+GDD; lean and solo skip those per-skill delegations.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: APPROVED, NEEDS REVISION, MAJOR REVISION
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-6. Section written to file after user approval
-7. Process repeats for all 8 sections
-
-**Assertions:**
-- [ ] Skeleton file is created with all 8 section headers before any content is written
-- [ ] CD-GDD-ALIGN runs on each section in lean mode (not skipped)
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-3. User selects a specific section (e.g., Formulas)
-4. Skill authors only that section, runs CD-GDD-ALIGN, asks "May I apply the proposed changeset?"
-5. Only the selected section is updated — other sections are not modified
-
-**Assertions:**
-- [ ] Skill detects and reads existing GDD before offering retrofit mode
-- [ ] User is asked which section to update — not asked to rewrite the whole document
-- [ ] Only the selected section is rewritten — others remain unchanged
-- [ ] CD-GDD-ALIGN still runs on the updated section
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-
-**Assertions:**
-- [ ] Section is NOT written when CD-GDD-ALIGN returns MAJOR REVISION
-- [ ] Gate feedback is shown to the user before requesting revision
-- [ ] CD-GDD-ALIGN runs again after the section is revised
-- [ ] Skill does NOT auto-proceed to the next section while MAJOR REVISION is unresolved
+- [ ] Any existing target path enters resume/retrofit instead of skeleton creation
+- [ ] Selected incomplete non-placeholder bodies may be replaced precisely
+- [ ] Initial changeset names all four possible existing target files
+- [ ] CD-GDD-ALIGN runs once post-GDD in full only
+- [ ] External review cannot be assumed to have returned in the authoring task
 
 ---
 
-### Case 4: Solo Mode — CD-GDD-ALIGN skipped; sections written with user approval only
+## Test Cases
+
+### Case 1: Happy Path — new GDD with one complete authorization
+
+**Assertions:**
+- [ ] Before the skeleton write, the preview names GDD, registry, systems index, and active.md with conditional operations
+- [ ] The skeleton is the first GDD write
+- [ ] Later approved sections do not trigger repeated file authorization
+- [ ] An unlisted file pauses the run for an expanded changeset
+- [ ] Full mode runs CD-GDD-ALIGN once after the complete GDD
+
+---
+
+### Case 2: Retrofit an incomplete non-placeholder section
 
 **Fixture:**
-- New GDD being authored
-- `production/session-state/review-mode.txt` contains `solo`
-
-**Input:** `$design-system [system-name]`
-
-**Expected behavior:**
-1. Skeleton file is created with 8 section headers
-2. For each section: drafted, shown to user
-3. CD-GDD-ALIGN is skipped — noted per section: "CD-GDD-ALIGN skipped — solo mode"
-4. "May I apply the proposed changeset?" asked after user reviews draft
-5. Section written after user approval
-6. No gate review at any stage
+- Existing GDD has a short but non-placeholder Formulas body
+- User selects only Formulas for replacement
 
 **Assertions:**
-- [ ] "CD-GDD-ALIGN skipped — solo mode" noted for each section
-- [ ] Sections are written after user approval alone (no gate required)
-- [ ] Skill does NOT spawn any CD-GDD-ALIGN gate in solo mode
-- [ ] Full GDD is written with only user approval in solo mode
+- [ ] Existing full Formulas body is shown before selection
+- [ ] The replacement draft targets only the Formulas section body
+- [ ] Every unselected section remains byte-for-byte unchanged
+- [ ] The existing file is not rebuilt from a skeleton
 
 ---
 
-### Case 5: Director Gate — Empty sections not written to file
-
-**Fixture:**
-- GDD authoring in progress
-- User and skill discuss one section but do not produce any approved content
-  (e.g., discussion ends without a decision, or user says "skip for now")
-
-**Input:** `$design-system [system-name]`
-
-**Expected behavior:**
-1. Section discussion produces no approved content
-2. Skill does NOT write an empty or placeholder body to the section
-3. The section header remains in the skeleton file but the body stays empty
-4. Skill moves to the next section without writing the empty one
-5. At the end, incomplete sections are listed and user is reminded to return to them
+### Case 3: Plain system-name invocation finds an existing GDD
 
 **Assertions:**
-- [ ] Empty or unapproved sections are NOT written to the file
-- [ ] Skeleton section header remains (preserves structure)
-- [ ] Skill tracks and lists incomplete sections at the end of the session
-- [ ] Skill does NOT write "TBD" or placeholder content outside the authorized changeset
+- [ ] Existing target detection does not require an explicit retrofit keyword
+- [ ] The run enters resume/retrofit automatically
+- [ ] No existing GDD is overwritten by a new skeleton
+
+---
+
+### Case 4: Lean and solo remain executable without specialists
+
+**Assertions:**
+- [ ] Every MANDATORY/Do-NOT specialist instruction is conditional on resolved mode
+- [ ] Lean and solo draft in the current agent and display the applicable skip note
+- [ ] D/H risk labels do not override the shared review mode
+- [ ] CD-GDD-ALIGN is skipped in lean and solo
+
+---
+
+### Case 5: Full-mode post-GDD CD-GDD-ALIGN
+
+**Assertions:**
+- [ ] Gate runs once only after the complete GDD exists
+- [ ] The gate does not run per section
+- [ ] The complete GDD and pillar context are passed to the gate
+- [ ] Unresolved gate results prevent a false completed review claim
+
+---
+
+### Case 6: Fresh-task design review is not imported implicitly
+
+**Assertions:**
+- [ ] Authoring completion writes systems-index status as Designed
+- [ ] The task does not infer Approved or In Review from an unreachable external result
+- [ ] A later caller with verifiable review output owns that status change
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Skeleton file created with all 8 headers before any content is written
-- [ ] CD-GDD-ALIGN runs in both full AND lean mode (not just full)
-- [ ] CD-GDD-ALIGN skipped only in solo mode — noted per section
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] MAJOR REVISION from CD-GDD-ALIGN blocks section write until resolved
-- [ ] Only approved, non-empty sections are written to the file
-- [ ] Ends with next-step handoff: `$review-all-gdds` or `$map-systems next`
-
----
-
-## Coverage Notes
-
-- The 8 required sections are validated against the project's design document
-  standards defined in `AGENTS.md` — not re-enumerated here.
-- The skill's internal section-ordering logic (which section to author first) is
-  not independently tested — the order follows the standard GDD template.
-- Pillar alignment checking within CD-GDD-ALIGN is evaluated holistically by
-  the gate agent — specific pillar checks are not fixture-tested here.
+- [ ] Incremental section writes stay within one authorized file set
+- [ ] Resume/retrofit never destroys unrelated existing content
+- [ ] Full/lean/solo delegation behavior matches the shared mode contract
+- [ ] Final systems-index status reflects only evidence available in this run

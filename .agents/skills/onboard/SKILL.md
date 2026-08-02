@@ -7,14 +7,16 @@ description: "Generates a contextual onboarding document for a new contributor o
 
 Invoke this workflow as `$onboard`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+This workflow is read-only. It produces the onboarding document in the conversation, never writes a file, and never requests changeset authorization.
 
 Arguments: `[role|area]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 ## Phase 1: Load Project Context
 
-Read AGENTS.md for project overview and standards.
+Read root `AGENTS.md` for project overview and standards. If it is missing, stop: explain that project rules cannot be summarized safely, recommend `$start`, and do not output **ONBOARDING COMPLETE**.
+
+Read `docs/technical-preferences.md`, `production/stage.txt` when present, the uniquely referenced active sprint (from existing session/stage/sprint state), and the relevant architecture overview. If no unique active sprint exists, report it as unknown rather than choosing the most recently modified file.
 
 Read the relevant agent definition from `.codex/agents/` if a specific role is specified.
 
@@ -82,19 +84,15 @@ Read recent changes (git log if available) to understand current momentum.
 
 ---
 
-## Phase 4: Save Document
+## Phase 4: Present Document
 
-Present the onboarding document to the user.
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file, creating the directory if needed.
+Present the complete onboarding document directly in the conversation. Do not create, update, or offer to save any file.
 
 ---
 
 ## Phase 5: Next Steps
 
-Verdict: **COMPLETE** — onboarding document generated.
+Verdict: **ONBOARDING COMPLETE** — onboarding document generated from the sources above. This success verdict is only for a completed orientation; missing root AGENTS.md stops without it.
 
 - Share the onboarding doc with the new contributor before their first session.
 - Run `$sprint-status` to show the new contributor current progress.

@@ -14,8 +14,8 @@
 - `audit` compares implementations, catalog entries, UI metadata, agent TOML,
   and recursively discovered specs by unique name.
 
-The validation pass is read-only. Persisting a result is optional and follows the
-single bounded-changeset policy.
+All four validation modes are read-only. Results are presented in conversation;
+the workflow does not persist a result or update catalog fields.
 
 ---
 
@@ -29,7 +29,7 @@ single bounded-changeset policy.
 - [ ] Behavioral spec paths come from `CGS Skill Testing Framework/catalog.yaml`
 - [ ] The rubric path is `CGS Skill Testing Framework/quality-rubric.md`
 - [ ] Audit compares unique names and reports missing and orphaned entries; it does not pass from totals alone
-- [ ] Optional result persistence uses existing bounded task authorization, or one complete changeset preview and confirmation before writing
+- [ ] All four modes make zero file changes and never update catalog `last_*` fields
 
 ---
 
@@ -101,7 +101,8 @@ single bounded-changeset policy.
 
 1. Resolve the implementation and spec from the catalog.
 2. Read the complete registered spec.
-3. Mark every behavioral assertion `PASS`, `PARTIAL`, or `FAIL` with evidence.
+3. Statically compare the written workflow with every behavioral assertion and
+   mark it `PASS`, `PARTIAL`, or `FAIL` with evidence.
 4. Stop with a missing-artifact result if the implementation, catalog entry, or
    spec is absent; do not guess another path.
 
@@ -110,6 +111,7 @@ single bounded-changeset policy.
 - [ ] The catalog is the authority for spec routing
 - [ ] Every case and protocol assertion receives a result
 - [ ] Missing artifacts are not silently skipped
+- [ ] PASS is described as written-contract coverage, not executed fixture behavior
 
 ---
 
@@ -148,7 +150,8 @@ single bounded-changeset policy.
 1. Discover all four implementation/spec sets recursively where applicable.
 2. Compare normalized unique names, not only counts.
 3. Report unregistered implementations, missing specs, orphaned specs, missing
-   UI metadata, duplicate names, and stale result dates.
+   UI metadata, duplicate names, and whether existing result dates are
+   missing/present/parseable; do not infer staleness age.
 4. Include `$studio-status` and `$vertical-slice` in ordinary skill coverage.
 
 **Assertions:**
@@ -163,8 +166,8 @@ single bounded-changeset policy.
 
 ## Protocol Compliance
 
-- [ ] Validation is read-only until optional persistence is explicitly selected
-- [ ] Persisted results and catalog updates are presented as one complete changeset
+- [ ] Validation is fully read-only in every mode
+- [ ] No result file or catalog update is proposed
 - [ ] Existing bounded task authorization is honored without repeated prompts
 - [ ] Findings include evidence, verdict, and the next corrective action
 
@@ -176,3 +179,14 @@ This spec validates the workflow contract and repository coverage invariants. It
 does not execute every target skill. Live behavioral execution can be added as a
 separate harness without weakening the static, category, spec-routing, or set-
 equality checks above.
+
+## P0 Contract Coverage
+
+- [ ] Every catalog category maps to an existing rubric section with defined
+  metrics. A missing/empty authority yields NON-COMPLIANT rather than invented rules.
+- [ ] Spec mode is labeled static behavioral-contract comparison and never claims
+  a fixture or target skill executed.
+- [ ] Audit reports `last_*` fields as missing/present/parseable only; it does not
+  apply an undefined stale-age policy.
+- [ ] `static`, `spec`, `category`, and `audit` all produce zero file writes and
+  never change catalog dates/results.

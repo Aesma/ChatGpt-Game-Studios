@@ -27,10 +27,20 @@ Verify the repository is initialized: run `git rev-parse --is-inside-work-tree` 
 
 ## Phase 2: Gather Change Data
 
-Read the git log since the last tag or release:
+Select the range that matches the requested target:
+
+- For a specified release tag, use the previous release tag through that target
+  tag (`[previous-tag]..[target-tag]`). Do not use `HEAD` for an older release.
+- If the specified tag is the first release tag, use history ending at that tag.
+- With no target version, use the latest release tag through `HEAD` for current
+  unreleased changes.
+- For sprint mode, use only that sprint's existing date range and closed stories.
+
+If the requested target tag or sprint boundary cannot be found, stop rather than
+substituting a different range.
 
 ```
-git log --oneline [last-tag]..HEAD
+git log --oneline [selected-start]..[selected-end]
 ```
 
 If no tags exist, read the full log or a reasonable recent range (last 100 commits).
@@ -64,45 +74,33 @@ and include this count in the Phase 4 Metrics section as: `Commits without task 
 # Internal Changelog: [Version]
 Date: [Date]
 Sprint(s): [Sprint numbers covered]
-Commits: [Count] ([first-hash]..[last-hash])
+Commits: [Count]
 
 ## New Features
 - [Feature Name] -- [Technical description, affected systems]
-  - Commits: [hash1], [hash2]
-  - Owner: [who implemented it]
   - Design doc: [link if applicable]
 
 ## Improvements
 - [Improvement] -- [What changed technically and why]
-  - Commits: [hashes]
-  - Owner: [who]
 
 ## Bug Fixes
 - [BUG-ID] [Description of bug and root cause]
   - Fix: [What was changed]
-  - Commits: [hashes]
-  - Owner: [who]
 
 ## Balance Changes
 - [What was tuned] -- [Old value -> New value] -- [Design intent]
-  - Owner: [who]
 
 ## Technical Debt / Refactoring
 - [What was cleaned up and why]
-  - Commits: [hashes]
 
 ## Miscellaneous
 - [Change that didn't fit other categories, or vague commit message]
-  - Commits: [hashes]
 
 ## Known Issues
 - [Issue description] -- [Severity] -- [ETA for fix if known]
 
 ## Metrics
 - Total commits: [N]
-- Files changed: [N]
-- Lines added: [N]
-- Lines removed: [N]
 - Commits without task reference: [N]
 ```
 
@@ -153,16 +151,14 @@ Output both changelogs to the user. The internal changelog is the primary workin
 After presenting the changelogs, ask the user:
 
 > "Should the proposed changeset include this changelog update in `docs/CHANGELOG.md`?
-> [A] Yes, append this entry (recommended if the file already exists)
-> [B] Yes, overwrite the file entirely
-> [C] No — I'll copy it manually"
+> [A] Yes, prepend this entry while preserving all existing history
+> [B] No — I'll copy it manually"
 
-- Check whether `docs/CHANGELOG.md` exists before asking. If it does, default the
-  recommendation to **[A] append**.
-- If the user selects [A]: append the new internal changelog entry to the top of
-  the existing file (newest entries first).
-- If the user selects [B]: overwrite the file with the new changelog.
-- If the user selects [C]: stop here without writing.
+- Check whether `docs/CHANGELOG.md` exists and read its current contents before
+  asking so the preview proves that prior entries are preserved.
+- If the user selects [A]: prepend the new internal changelog entry (newest first)
+  while leaving every existing entry unchanged.
+- If the user selects [B]: stop here without writing.
 
 After a successful write: Verdict: **CHANGELOG WRITTEN** — changelog saved to `docs/CHANGELOG.md`.
 If the user declines: Verdict: **COMPLETE** — changelog generated.

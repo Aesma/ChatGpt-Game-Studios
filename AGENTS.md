@@ -23,7 +23,7 @@ when its subject applies:
 
 - [Directory structure](.codex/docs/directory-structure.md)
 - [Engine version reference](docs/engine-reference/godot/VERSION.md)
-- [Technical preferences](.codex/docs/technical-preferences.md)
+- [Technical preferences](docs/technical-preferences.md)
 - [Coordination rules](.codex/docs/coordination-rules.md)
 - [Coding standards](.codex/docs/coding-standards.md)
 - [Context management](.codex/docs/context-management.md)

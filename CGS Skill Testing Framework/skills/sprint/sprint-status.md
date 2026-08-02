@@ -5,7 +5,7 @@
 `$sprint-status` is a read-only status skill that reads the current active
 sprint file and the session state to produce a concise sprint health summary.
 It reports story counts by status (Complete / In Progress / Blocked / Not Started)
-and emits one of three sprint-health verdicts: ON TRACK, AT RISK, or BLOCKED.
+and emits one of three sprint-health verdicts: ON TRACK, AT RISK, or BEHIND.
 It never writes files and does not invoke any director gates. It is designed for
 fast, low-cost status checks during a session.
 
@@ -17,7 +17,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 - [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
 - [ ] Has ≥2 phase headings or numbered check sections
-- [ ] Contains verdict keywords: ON TRACK, AT RISK, BLOCKED
+- [ ] Contains sprint-health verdict keywords: ON TRACK, AT RISK, BEHIND
 - [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
 - [ ] Has a next-step handoff (what to do based on the verdict)
 
@@ -58,7 +58,7 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 
 ---
 
-### Case 2: All Stories Complete — Sprint COMPLETE verdict
+### Case 2: All Stories Complete — ON TRACK with completion flag
 
 **Fixture:**
 - `production/sprints/sprint-004.md` exists
@@ -68,11 +68,11 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 
 **Expected behavior:**
 1. Skill reads sprint file — all stories are Complete
-2. Skill outputs ON TRACK verdict or SPRINT COMPLETE label
+2. Skill outputs ON TRACK and adds the all-Must-Haves completion flag
 3. Skill suggests running `$milestone-review` or `$sprint-plan` as next steps
 
 **Assertions:**
-- [ ] Verdict is ON TRACK or SPRINT COMPLETE when all stories are Complete
+- [ ] Verdict is ON TRACK when all stories are Complete
 - [ ] Output notes that the sprint is fully done
 - [ ] Next-step suggestion references `$milestone-review` or `$sprint-plan`
 - [ ] No files are written
@@ -105,15 +105,15 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 
 **Fixture:**
 - `production/sprints/sprint-004.md` exists
-- One story has `Status: In Progress` with a note in `active.md`:
-  `Last updated: 2026-03-30` (more than 2 days before today's session date)
+- One story file has `Status: In Progress` and `Last Updated: 2026-03-30`
+  (more than 4 days before today's session date)
 - No stories are Blocked
 
 **Input:** `$sprint-status`
 
 **Expected behavior:**
-1. Skill reads sprint file and session state
-2. Skill detects the story has been In Progress for >2 days without update
+1. Skill reads the story file's Last Updated field
+2. Skill detects the story has been In Progress for >4 days without update
 3. Skill flags the story as "stale" in the output
 4. Verdict is AT RISK (stale in-progress stories indicate a hidden blocker)
 
@@ -136,7 +136,7 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 **Expected behavior:**
 1. Skill reads sprint and produces status summary
 2. Skill does NOT invoke any director gate regardless of review mode
-3. Output is a plain status report with ON TRACK, AT RISK, or BLOCKED verdict
+3. Output is a plain status report with ON TRACK, AT RISK, or BEHIND verdict
 4. Skill does not prompt for user approval or ask to write any file
 
 **Assertions:**
@@ -154,6 +154,33 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 - [ ] Does not ask for approval
 - [ ] Ends with a recommended next step based on verdict
 - [ ] Does not pin model or reasoning settings; inherits the parent Codex session
+- [ ] Blank invocation resolves active.md, then matching YAML, then highest numbered sprint
+- [ ] Explicit historical sprint ignores singleton YAML for another sprint
+- [ ] `in-progress` and historical `in_progress` both report IN PROGRESS
+- [ ] Story BLOCKED is a risk reason, never a sprint-health verdict
+- [ ] Staleness uses the story file and a >4 day threshold; active.md is same-story fallback only
+
+---
+
+### Case 6: Explicit historical sprint is not replaced by current YAML
+
+**Fixture:** request sprint 3; markdown for sprint 3 exists; singleton YAML says sprint 4.
+
+**Assertions:**
+- [ ] Report remains scoped to sprint 3
+- [ ] YAML is identified as belonging to sprint 4 and ignored for statuses/dates
+- [ ] Markdown/story fallback is used without writing
+
+### Case 7: Current sprint source priority is deterministic
+
+**Fixture:** active.md references sprint 4, YAML says sprint 5, and sprint 6 has
+the newest modification time.
+
+**Assertions:**
+- [ ] Blank invocation selects sprint 4 from active.md
+- [ ] If active.md is invalid, matching YAML is tried next
+- [ ] Only when both are unusable is the highest numbered sprint selected
+- [ ] Modification time alone never selects the current sprint
 
 ---
 

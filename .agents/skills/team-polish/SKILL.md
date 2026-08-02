@@ -56,6 +56,8 @@ Use the Codex subagent delegation to spawn each team member as a subagent:
 
 Always provide full context in each agent's prompt (target feature/area, performance budgets, known issues). Launch independent agents in parallel where the pipeline allows it (e.g., Phases 3 and 4 can run simultaneously).
 
+Before parallel delegation, assign every candidate file to one writer. If performance and visual work overlap on a shader, particle asset, render configuration, or draw-call resource, give that path to one responsible agent and make the other agent advisory for that path.
+
 ## Pipeline
 
 ### Phase 1: Assessment
@@ -64,7 +66,10 @@ Delegate to **performance-analyst**:
 - Identify performance bottlenecks and frame budget violations
 - Measure memory usage and check for leaks
 - Benchmark against target hardware specs
-- Output: performance report with prioritized optimization list
+- Identify the concrete code, shader, VFX, audio, configuration, test-result, and report files that the pass may change; assign each to one owner
+- Output: performance report with prioritized optimization list and candidate-file ownership map
+
+After Phase 1, present those concrete files and intended changes as the single changeset and obtain approval before Phases 2–4 write anything. All before metrics must describe the same approved baseline. A newly discovered bug report or unlisted repair path is a material scope expansion and must be added through the existing revised-changeset rule.
 
 ### Phase 2: Optimization
 Delegate to **performance-analyst** (with relevant programmers as needed):
@@ -73,6 +78,8 @@ Delegate to **performance-analyst** (with relevant programmers as needed):
 - Fix memory leaks and reduce allocation pressure
 - Verify optimizations don't change gameplay behavior
 - Output: optimized code with before/after metrics
+
+Performance after metrics are measured only after the authorized outputs from Phases 2–4 are combined into one candidate version; do not compare a Phase 1 baseline with an intermediate file version.
 
 If Phase 1 identified engine-level root causes (rendering pipeline, resource loading, memory allocator), delegate those fixes to **engine-programmer** in parallel:
 - Optimize hot paths in engine systems
@@ -86,6 +93,8 @@ Delegate to **technical-artist**:
 - Add screen shake, camera effects, and visual juice where appropriate
 - Ensure effects degrade gracefully on lower settings
 - Output: polished visual effects
+
+Do not edit a shader, VFX asset, or rendering configuration owned by Phase 2; return recommendations to its owner instead.
 
 ### Phase 4: Audio Polish (parallel with Phase 2)
 Delegate to **sound-designer**:
@@ -102,11 +111,14 @@ Delegate to **qa-tester**:
 - Stress test: maximum entities, worst-case scenarios
 - Regression test: verify polish changes haven't broken existing functionality
 - Test on minimum spec hardware (if available)
-- Output: test results with any remaining issues
+- For every required check, record `executed` with PASS/FAIL, or `not run` with the concrete reason. Do not infer execution from code inspection or simulate unavailable hardware/builds.
+- Output: test results with any remaining issues and explicit executed/not-run status
 
 ### Phase 6: Sign-off
 - Collect results from all team members
 - Compare performance metrics against budgets
+- READY FOR RELEASE requires the combined candidate to meet budgets, all release-critical regression/stress/target-hardware checks to have actually run and passed, and no unresolved blocker from performance, visual, audio, or QA work
+- If a release-critical check did not run, a regression remains, or required evidence is unknown, report NEEDS MORE WORK and list the missing evidence; never convert `not run` into PASS
 - Report: READY FOR RELEASE / NEEDS MORE WORK
 - List any remaining issues with severity and recommendations
 
@@ -131,7 +143,7 @@ Common blockers:
 ## File Write Protocol
 
 All file writes (performance reports, test results, evidence docs) are delegated to
-sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+sub-agents spawned through Codex subagent delegation. After Phase 1 identifies candidate files and assigns one owner to each, the orchestrator obtains one combined changeset approval before delegation. Each sub-agent writes only its assigned paths within that boundary without prompting again. This orchestrator does not write files directly.
 
 ## Output
 

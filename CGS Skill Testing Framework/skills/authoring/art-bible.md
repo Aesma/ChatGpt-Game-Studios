@@ -2,12 +2,11 @@
 
 ## Skill Summary
 
-`$art-bible` is a guided, section-by-section art bible authoring skill. It
-produces a comprehensive visual direction document covering: Visual Style overview,
-Color Palette, Typography, Character Design Rules, Environment Style, and UI
-Visual Language. The skill follows the skeleton-first pattern: creates the file
-with all section headers immediately, then fills each section through discussion
-and writes each to disk after user approval.
+`$art-bible` is a guided, section-by-section art bible authoring skill. Its nine
+sections are Visual Identity Statement, Mood & Atmosphere, Shape Language, Color
+System, Character Design Direction, Environment Design Language, UI/HUD Visual
+Direction, Asset Standards, and Reference Direction. Fresh authoring previews
+that exact skeleton and target path before the first write.
 
 In `full` review mode, the AD-ART-BIBLE director gate (art director) runs after
 the draft is complete and before any section is written. In `lean` and `solo`
@@ -28,7 +27,10 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Assertions:**
 - [ ] Skeleton file is created first (before any section content is written)
+- [ ] The fresh skeleton contains the same nine headings and order as retrofit and authoring phases
+- [ ] The target path, skeleton, and any directory creation are authorized before the first write
 - [ ] AD-ART-BIBLE gate is invoked in full mode after draft is complete
+- [ ] AD-ART-BIBLE is executed by `art-director`, never `creative-director`
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 3. User selects Character Design Rules
 4. Skill drafts updated content; in full mode, AD-ART-BIBLE is invoked for the
@@ -71,6 +73,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 ## Protocol Compliance
 
 - [ ] Creates skeleton file immediately with all section headers
+- [ ] Uses exactly the nine canonical section names in summary, retrofit, skeleton, and assertions
 - [ ] Discusses and drafts one section at a time
 - [ ] AD-ART-BIBLE gate runs in full mode after all sections are drafted
 - [ ] AD-ART-BIBLE is skipped in lean and solo modes — noted by name
@@ -84,7 +87,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - The case where AD-ART-BIBLE returns REJECT (not just CONCERNS) is not
   separately tested; the skill would block writing and ask the user how to
   proceed (revise or override).
-- The Typography section is listed as a required art bible section but its
-  specific content requirements are not assertion-tested here.
+- Typography is handled within UI/HUD Visual Direction; it is not a separate
+  tenth section.
 - The art bible feeds into `$asset-spec` — this relationship is noted in the
   handoff but not tested as part of this skill's spec.

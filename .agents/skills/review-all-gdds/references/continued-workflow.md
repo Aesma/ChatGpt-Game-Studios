@@ -150,9 +150,9 @@ Scenarios walked: [N]
 
 ### Verdict: [PASS / CONCERNS / FAIL]
 
-PASS: No blocking issues. Warnings present but don't prevent architecture.
-CONCERNS: Warnings present that should be resolved but are not blocking.
-FAIL: One or more blocking issues must be resolved before architecture begins.
+PASS: Zero blockers and zero warnings. INFO items do not affect the verdict.
+CONCERNS: Zero blockers and one or more warnings.
+FAIL: One or more blockers.
 
 ### If FAIL — required actions before re-running:
 [Specific list of what must change in which GDD]
@@ -160,40 +160,17 @@ FAIL: One or more blocking issues must be resolved before architecture begins.
 
 ---
 
-## Phase 6: Write Report and Flag GDDs
+## Phase 6: Write Optional Report
 
-Use the single changeset approval policy:
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-- Options: `[A] Yes — write the report` / `[B] No — skip`
+Analysis is read-only. Offer one optional report write to
+`design/gdd/gdd-cross-review-[date].md` under the single changeset approval
+policy. If the user declines, finish with zero file changes.
 
-If any GDDs are flagged for revision, use a second a direct question to the user:
-- Prompt: "Should I update the systems index to mark these GDDs as needing revision? ([list of flagged GDDs])"
-- Options: `[A] Yes — update systems index` / `[B] No — leave as-is`
-- Once the complete changeset is authorized, update each flagged GDD's Status field in systems-index.md to "Needs Revision".
-  (Do NOT append parentheticals to the status value — other skills match "Needs Revision"
-  as an exact string and parentheticals break that match.)
-
-### Session State Update
-
-After writing the report (and updating the systems index when included in the authorized changeset), silently
-append to `production/session-state/active.md`:
-
-    ## Session Extract — $review-all-gdds [date]
-    - Verdict: [PASS / CONCERNS / FAIL]
-    - GDDs reviewed: [N]
-    - Flagged for revision: [comma-separated list, or "None"]
-    - Blocking issues: [N — brief one-line descriptions, or "None"]
-    - Recommended next: [the Phase 7 handoff action, condensed to one line]
-    - Report: design/gdd/gdd-cross-review-[date].md   ← only if user approved the write
-    - Report: (not written — user declined at [date])  ← only if user declined the write
-
-Use the appropriate line based on the user's response to the write-permission structured prompt in Phase 6.
-
-If `active.md` does not exist, create it with this block as the initial content.
-Confirm in conversation: "Session state updated."
+Do not modify `design/gdd/systems-index.md`, do not create or append
+`production/session-state/active.md`, and do not introduce a new status value.
+The report itself lists flagged GDDs and recommended follow-up.
 
 ---
-
 ## Phase 7: Handoff
 
 After all file writes are complete, ask the user directly for a closing structured prompt.

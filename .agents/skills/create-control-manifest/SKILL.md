@@ -37,7 +37,7 @@ status. Re-run whenever new ADRs are accepted or existing ADRs are revised.
 - Note the ADR number and title for every rule sourced
 
 ### Technical Preferences
-- Read `.codex/docs/technical-preferences.md`
+- Read `docs/technical-preferences.md`
 - Extract: naming conventions, performance budgets, approved libraries/addons,
   forbidden patterns
 
@@ -56,13 +56,18 @@ Report: "Loaded [N] Accepted ADRs, engine: [name + version]."
 For each Accepted ADR, extract:
 
 ### Required Patterns (from "Implementation Guidelines" section)
-- Every "must", "should", "required to", "always" statement
-- Every specific pattern or approach mandated
+- Only statements that explicitly use `must`, `required`, or `always`
+- Keep `should` statements advisory in the existing rule explanation; never
+  promote their modality to Required
+- Every specific pattern or approach explicitly mandated
 
-### Forbidden Approaches (from "Alternatives Considered" sections)
-- Every alternative that was explicitly rejected — *why* it was rejected becomes
-  the rule ("never use X because Y")
-- Any anti-patterns explicitly called out
+### Forbidden Approaches
+- Include only content the Accepted ADR explicitly labels `forbidden`,
+  `anti-pattern`, or `never`
+- A merely unselected/rejected alternative is not a project-wide prohibition and
+  is omitted unless the ADR itself states a narrower forbidden scope
+- Preserve the ADR's reason and applicability; do not rewrite context-specific
+  rejection into "never use X"
 
 ### Performance Guardrails (from "Performance Implications" section)
 - Budget constraints: "max N ms per frame for this system"
@@ -80,7 +85,9 @@ Classify each rule by the architectural layer of the system it governs:
 - **Feature**: Secondary systems, secondary mechanics, AI
 - **Presentation**: Rendering, audio, UI, VFX, shaders
 
-If an ADR spans multiple layers, duplicate the rule into each relevant layer.
+If an ADR spans multiple layers, place the rule once in the existing Global
+Rules section unless the ADR explicitly gives distinct layer-scoped variants.
+Do not duplicate and paraphrase it into different meanings.
 
 ---
 
@@ -122,7 +129,7 @@ Total rules extracted:
 Ask the user directly:
 - Prompt: "Does this rule summary look complete?"
 - Options:
-  - `[A] Yes — looks good, run the director review and write the manifest`
+  - `[A] Yes — approve the extracted rule content and run the applicable director review`
   - `[B] Add rules — I have additional rules to include before writing`
   - `[C] Remove rules — some extracted rules should be dropped`
   - `[D] Stop here — I need to review the ADRs first`
@@ -155,8 +162,12 @@ Apply the verdict:
 
 ## 5. Write the Control Manifest
 
+This is the only changeset authorization point. Phase 4 approved rule content
+and whether to enter review; it did not authorize a file write.
+
 Ask the user directly:
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+- Show the complete target operation and full draft in one changeset preview;
+  do not write until that changeset is authorized.
 - Options:
   - `[A] Yes — write to docs/architecture/control-manifest.md`
   - `[B] Show me the full draft first, then ask again`
@@ -290,5 +301,6 @@ After writing the manifest:
 3. **Single changeset approval** — include the manifest in the complete preview before creating or overwriting it. On write: Verdict: **COMPLETE** — control manifest written. On decline: Verdict: **BLOCKED** — user declined write.
 4. **Source every rule** — never add a rule that doesn't trace to an ADR, a
    technical preference, or an engine reference doc
-5. **No interpretation** — extract rules as stated in ADRs; do not paraphrase
-   in ways that change meaning
+5. **Meaning-preserving normalization only** — minimal formatting paraphrase is
+   allowed, but every rule must preserve the source modality, applicability
+   scope, and citation. Never strengthen advice or broaden a contextual rule.

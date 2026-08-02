@@ -114,6 +114,12 @@ authorization, or preview and confirm it once before the first write.
 - [ ] In Progress stories flagged with elevated warning before their approval ask
 - [ ] No director gates — no review-mode.txt read
 - [ ] Ends with next-step handoff appropriate to verdict (COMPLETE or NO IMPACT)
+- [ ] A dirty target compares HEAD to working tree; a clean committed target compares its latest modifying commit with that commit's parent
+- [ ] Missing two-version history stops classification as `no comparison baseline` and is never reported as NO IMPACT
+- [ ] ADRs, traceability/TR registry, epics, and stories are included only from explicit GDD-path or requirement-ID references
+- [ ] ADR historical assumptions are quoted only when the ADR actually stores that text; otherwise the limitation is stated
+- [ ] No pending replacement ADR number or `Superseded by` link is written
+- [ ] One final preview lists the unique change-impact report path and every selected downstream edit; any write failure prevents COMPLETE
 
 ---
 

@@ -8,16 +8,16 @@ a structured `design/gdd/game-concept.md` document. The skill is collaborative �
 it asks questions before proposing options and iterates until the user approves
 a concept direction.
 
-In `full` review mode, four director gates spawn in parallel after the concept
-is drafted: CD-PILLARS (creative-director), AD-CONCEPT-VISUAL (art-director),
-TD-FEASIBILITY (technical-director), and PR-SCOPE (producer). In `lean` mode,
+In `full` review mode, CD-PILLARS and AD-CONCEPT-VISUAL spawn in parallel after
+pillars are formed. TD-FEASIBILITY runs after technical risks exist and before
+scope tiers; PR-SCOPE runs after scope tiers. In `lean` mode,
 all 4 inline gates are skipped (lean mode only runs PHASE-GATEs, and brainstorm
 has none). In `solo` mode, all gates are skipped. The skill asks "May I apply the proposed changeset?"
 8. Concept written after approval
 
 **Assertions:**
 - [ ] Exactly 3 concept options are presented (not 1, not 5+)
-- [ ] All 4 director gates spawn in parallel (not sequentially)
+- [ ] CD-PILLARS and AD-CONCEPT-VISUAL spawn together; TD-FEASIBILITY and PR-SCOPE run later when their inputs exist
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Concept file is NOT written outside the authorized changeset
 - [ ] Next-step handoff to `$map-systems` is present
@@ -102,8 +102,14 @@ has none). In `solo` mode, all gates are skipped. The skill asks "May I apply th
 
 ## Coverage Notes
 
-- AD-CONCEPT-VISUAL gate (art director feasibility) is grouped with the other
-  3 gates in the parallel spawn — not independently fixture-tested.
+- Existing `game-concept.md` enters resume mode: the skill inventories complete,
+  placeholder, and missing sections, then changes only the user-selected scope.
+  Completed ideation and unchanged gate results are reused rather than restarted.
+- At the context threshold, the skill says the concept is saved only when the
+  file was actually written; otherwise it explicitly says progress is conversation-only.
+
+- AD-CONCEPT-VISUAL is paired only with CD-PILLARS; TD-FEASIBILITY and PR-SCOPE
+  retain their dependency-ordered positions.
 - The iterative concept refinement loop (user rejects all options, skill
   generates new ones) is not fixture-tested — it follows the same pattern as
   the option selection phase.

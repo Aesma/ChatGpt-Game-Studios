@@ -98,6 +98,8 @@ The skill may write a coverage report to `production/qa/` after a "May I apply t
 
 - [ ] Reads story ACs from sprint files before scanning tests
 - [ ] Matches ACs to tests by system name and scenario (not file name alone)
+- [ ] Reads the candidate test function and requires an assertion matching both
+      the criterion scenario and expected result before marking COVERED
 - [ ] Flags critical-priority untested ACs as CRITICAL GAPS
 - [ ] Flags orphan tests (exist in tests/ but no AC matches)
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
@@ -113,3 +115,12 @@ The skill may write a coverage report to `production/qa/` after a "May I apply t
   distinction in verdicts is made between the two.
 - This skill does not run the tests — it maps AC text to test assertions. Test
   execution is handled by the CI pipeline.
+
+## P0 Contract Coverage
+
+- [ ] A filename/function-name hit with no matching assertion is PARTIAL, never
+  COVERED.
+- [ ] `report` is always read-only and may COMPLETE when no manifest exists;
+  update/audit only claim an update after an authorized write.
+- [ ] Flaky entries remain enabled in CI; the manifest and recommendations do
+  not instruct users to skip or disable failing tests.

@@ -12,7 +12,13 @@ Arguments: `[task-description]`. Treat bracketed values as optional unless the w
 
 ## Phase 1: Understand the Task
 
-Read the task description from the argument. If the description is too vague to estimate meaningfully, ask for clarification before proceeding.
+Determine whether the argument is a natural-language task or a project-local
+Markdown path. For a story path, read the full file and extract ACs, ADR
+references, dependencies, type, and status. For a sprint path, read each real
+story path it lists and estimate those stories individually before aggregating.
+A nonexistent path, directory, project-external path, or non-Markdown file is a
+clear error rather than a task description. If natural language is too vague,
+ask for clarification before proceeding.
 
 Read AGENTS.md for project context: tech stack, coding standards, architectural patterns, and any estimation guidelines.
 
@@ -31,7 +37,19 @@ Identify files and modules that would need to change:
 
 ---
 
-## Phase 3: Analyze Complexity Factors
+## Phase 3: Analyze Complexity Factors and Calibrate
+
+Use observable completed work and cycle duration from existing sprint files to
+calibrate the Expected range when comparable history exists, and state the
+effect it had. If history or the required fields are unavailable, use these
+fixed conservative defaults and lower confidence: S = 0.5–1 day, M = 1–3 days,
+L = 3–7 days, XL = 7+ days. Do not invent a point-to-day conversion.
+
+For a sprint input, reuse this calibrated single-story method for every resolved
+story. List unresolved story paths as unestimated and exclude them from numeric
+totals.
+
+
 
 **Code Complexity:**
 - Lines of code in affected files
@@ -79,13 +97,19 @@ Generated: [Date]
 
 ### Effort Estimate
 
+**T-shirt size**: [S / M / L / XL] — [matching default/calibrated interval]
+
 | Scenario | Days | Assumption |
 |----------|------|------------|
 | Optimistic | [X] | Everything goes right, no surprises |
 | Expected | [Y] | Normal pace, minor issues, one round of review |
-| Pessimistic | [Z] | Significant unknowns surface, blocked for a day |
+| Pessimistic | [Z] | Significant task-specific unknowns surface |
 
 **Recommended budget: [Y days]**
+
+For sprint input, render this block per resolved story, followed by a sprint
+aggregate range derived from those story ranges. Show unresolved stories
+separately and do not fabricate values for them.
 
 ### Confidence: [High / Medium / Low]
 
@@ -129,7 +153,7 @@ This skill is read-only — no files are written. Verdict: **COMPLETE** — esti
 
 ### Guidelines
 
-- Always give a range (optimistic / expected / pessimistic), never a single number
+- Always give both a T-shirt size and an optimistic / expected / pessimistic range, never a single number
 - The recommended budget should be the expected estimate, not the optimistic one
 - Round to half-day increments — estimating in hours implies false precision for tasks longer than a day
 - Do not pad estimates silently — call out risk explicitly so the team can decide

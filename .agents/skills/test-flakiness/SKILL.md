@@ -59,7 +59,7 @@ For Unreal projects: automation logs go to `Saved/Logs/`. Search file contents f
 
 ### Option B — Local log files
 
-If a path argument is provided, read that file directly.
+If a path argument is provided, read that file directly and identify explicit run boundaries. A file containing only one independent run is insufficient history: report SUSPECT/insufficient evidence, do not calculate a flakiness rate, and do not update the quarantine table.
 
 ### Option C — No log data available
 
@@ -92,15 +92,17 @@ For each CI log or result file found, parse:
 
 Build a table: `test_id → [run1_result, run2_result, run3_result, ...]`
 
+Also capture any build/version identity already present in each input run. Do not create a hash/SHA mechanism. Runs are equivalent-code evidence only when their own logs explicitly identify the same build/version; otherwise record `code equivalence unknown`.
+
 ---
 
 ## 4. Identify Flaky Tests
 
 A test is **flaky** if it appears in the result history with both PASS and
-FAIL outcomes across runs with no code changes between them.
+FAIL outcomes across comparable runs. CONFIRMED FLAKY requires multiple runs, mixed outcomes, and explicit same-build/version evidence. Mixed outcomes with unknown code equivalence remain SUSPECT because they may represent an ordinary regression/fix sequence.
 
 Flakiness thresholds:
-- **High flakiness**: Fails in >25% of runs — quarantine immediately
+- **High flakiness**: Fails in >25% of comparable runs — prioritize a fix and treat the suite as unreliable/blocking
 - **Moderate flakiness**: Fails in 5–25% of runs — investigate and fix soon
 - **Low/suspected flakiness**: Fails in 1–5% of runs — monitor; may be
   genuinely rare failure
@@ -128,11 +130,8 @@ or equality comparisons on floats to narrow down the cause.
 
 For each flaky test:
 
-**Quarantine (High flakiness):**
-> "Quarantine this test immediately. Disable it in CI by adding
-> `@pytest.mark.skip` / `[Ignore]` / `GdUnitSkip` annotation. Log it in
-> `tests/regression-suite.md` quarantine section. The test is now opt-in only.
-> Fix the root cause before removing quarantine."
+**High flakiness:**
+> "Prioritize fixing this test and treat the affected suite as unreliable/blocking. Do not disable or skip it to make CI green. Record an isolation suggestion only if an existing project policy permits it and the user makes that separate decision."
 
 **Investigate and fix soon (Moderate):**
 > "This test is intermittently unreliable. Root cause appears to be [cause].
@@ -178,8 +177,7 @@ For each flaky test:
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
-Once the complete changeset is authorized, append entries to the Quarantined Tests table.
-Never remove existing quarantine entries — only add new ones.
+This workflow never modifies test files or applies skip annotations. Append to the existing Quarantined Tests table only when the test is already actually isolated by a separate, explicitly authorized user action. Otherwise keep the result as an in-conversation recommendation and do not claim quarantine has occurred. Never remove existing entries.
 
 Add the optional report file to the same complete changeset preview; do not request a separate approval.
 
@@ -188,18 +186,17 @@ engine-specific fix snippets.
 
 After writing:
 
-- For each quarantined test: "Add the engine-specific skip annotation to
-  disable this test in CI. Re-enable after the root cause is fixed."
+- For each suggested isolation: state that the test remains active unless the user separately changes it under an existing project policy.
 - For fix-eligible tests: "The fix for [test] is straightforward —
   change the equality comparison on line [N] to use `is_equal_approx`."
-- Summary: "Once all quarantine annotations are applied, CI should run green.
-  Schedule fix work for the [N] quarantined tests before the release gate."
+- Summary: do not promise green CI from annotations; schedule root-cause fixes before the release gate.
 
 ---
 
 ## Collaborative Protocol
 
 - **Never delete test files** — quarantine means annotate + list, not remove
+- **Never auto-disable or skip tests** — registry text is not proof that CI stopped running a test
 - **Statistical confidence matters** — with < 3 runs, flag findings as
   "suspected" not "confirmed"; ask if more run data is available
 - **Fix is always the goal** — quarantine is temporary; surface the fix

@@ -7,7 +7,7 @@ user input. The report is organized into four sections: Feel/Accessibility,
 Bugs Observed, Design Feedback, and Next Steps. When multiple testers participated,
 the skill aggregates feedback and distinguishes majority opinions from minority
 ones. The skill links to existing bug reports when a reported bug matches a file
-in `production/bugs/`.
+in `production/qa/bugs/`.
 
 Reports are written to `production/qa/playtest-[date].md` after a "May I apply the proposed changeset?"
 7. Report is written on approval; verdict is COMPLETE
@@ -23,10 +23,17 @@ Reports are written to `production/qa/playtest-[date].md` after a "May I apply t
 
 ---
 
+## P0 Regression Assertions
+
+- [ ] `new` creates only a blank template labelled `not a completed session`; it produces no findings, CD verdict, or playtest COMPLETE verdict
+- [ ] Analyze mode requires a session hypothesis in Test Focus; missing hypothesis is requested and never invented
+- [ ] Full analyze runs CD-PLAYTEST, lean/solo analyze skips it, and new mode never runs it
+- [ ] Design feedback first identifies a proposed GDD edit; `$propagate-design-change` is suggested only after that GDD is actually revised
+
 ## Coverage Notes
 
-- The CD-PLAYTEST director gate (creative director reviews playtest insights
-  for design implications) is a separate invocation and is not tested here.
+- CD-PLAYTEST is part of full analyze mode only; new mode and lean/solo analyze do
+  not invoke it.
 - Video recording or screenshot attachments are not tested; the report is a
   text-only document.
 - The case where a tester's identity is unknown (anonymous feedback) follows

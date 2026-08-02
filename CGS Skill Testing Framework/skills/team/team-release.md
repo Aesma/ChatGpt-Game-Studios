@@ -18,6 +18,13 @@ NO-GO. Closes with a post-release monitoring plan.
 - [ ] Has ≥2 phase headings
 - [ ] Contains verdict keywords: COMPLETE, BLOCKED
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] File approval does not authorize branch, tag, staging, production, or publish side effects
+- [ ] Phase 5 consumes scope-matched persisted release/launch checklist paths; only RELEASE READY plus persisted LAUNCH READY can GO
+- [ ] Dry-run launch output, CONCERNS, BLOCKED, missing, malformed, or mismatched checklist evidence is NO-GO
+- [ ] A written rationale cannot override NO-GO; corrected evidence must be re-evaluated
+- [ ] release-manager exclusively owns version/tag/changelog and devops-engineer exclusively owns build/deploy
+- [ ] Staging smoke must actually PASS before tag/production; FAIL or UNKNOWN blocks remaining irreversible actions
+- [ ] Community work before deploy is draft-only; publishing requires successful production plus an explicit publish instruction
 4. Proceeds as if `$team-release v1.1.0` was the input
 
 **Expected behavior (variant B):**
@@ -41,6 +48,7 @@ NO-GO. Closes with a post-release monitoring plan.
 - [ ] security-engineer is conditionally spawned based on game features — never silently skipped when features are present
 - [ ] File Write Protocol: orchestrator never calls file edits directly — all writes are delegated to sub-agents or sub-skills
 - [ ] Phase 6 Deployment is strictly conditional on a GO verdict from Phase 5 — never auto-triggered
+- [ ] Tag, staging target, and production target are displayed and explicitly authorized by action class
 - [ ] Error recovery: any BLOCKED agent is surfaced immediately before continuing to dependent phases
 - [ ] Partial reports are always produced if any phase fails or the pipeline is halted (Case 2)
 - [ ] Verdict: COMPLETE only when deployment completes; BLOCKED when go/no-go is NO or a hard blocker is unresolved
@@ -54,4 +62,12 @@ NO-GO. Closes with a post-release monitoring plan.
 - The "devops-engineer build fails" path is not separately tested — it would surface as a BLOCKED result in Phase 3 and follow the standard error recovery protocol (surface → assess → user-input request options). This is validated structurally by the Static Assertions error recovery check.
 - The parallel Phase 4 path (localization + performance + analytics simultaneously with Phase 3) is a documented option in the skill ("can run in parallel with Phase 3 if resources available"). Case 4 tests Phase 4 as a sequential gate; the parallel variant is left to the skill's implementation judgment.
 - The `network-programmer` sign-off path for multiplayer is validated as part of Case 3 rather than a separate case, as it follows the same parallel-spawn pattern as security-engineer.
-- The "override NO-GO with documented rationale" path in Case 2 is referenced but not exhaustively tested — it is an escape hatch that the skill must support, and its existence is validated by the user-input request options assertion in Case 2.
+- NO-GO has no rationale-only escape hatch. Additional text can supply evidence, but Phase 5 must be re-run and all hard blockers remain deterministic NO-GO.
+
+## P0 Behavioral Cases
+
+- Checklist gate: a matching `RELEASE READY` file plus a persisted matching `LAUNCH READY` file and all required sign-offs may GO; every other checklist state, including launch dry-run chat output, is NO-GO.
+- Staging failure: after authorized staging deploy, FAIL/UNKNOWN smoke produces BLOCKED; production and any not-yet-created tag are skipped.
+- External authorization: approving release files does not create a branch/tag, deploy, or publish; each existing phase decision is required.
+- Ownership: release-manager never deploys and devops-engineer never tags; one devops task owns production.
+- Messaging: community-manager may draft during deployment, but cannot publish before successful production and an explicit `publish` instruction.

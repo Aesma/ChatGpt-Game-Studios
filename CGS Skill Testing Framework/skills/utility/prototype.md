@@ -10,8 +10,9 @@ After implementation, the skill produces a findings document summarizing what
 was learned and recommending next steps.
 
 The skill asks "May I apply the proposed changeset?" before creating files. If a
-prototype already exists, the skill offers to extend, replace, or archive. No
-director gates apply. Verdicts: PROTOTYPE COMPLETE (prototype built and findings
+prototype already exists, the skill offers to extend, replace, or archive. Full
+concept mode uses CD-PLAYTEST to review the draft evidence; lean/solo and spike
+mode do not. Verdicts: PROTOTYPE COMPLETE (prototype built and findings
 documented) or PROTOTYPE ABANDONED (mechanic found to be unworkable).
 
 ---
@@ -116,7 +117,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ---
 
-### Case 5: Director Gate Check — No gate; prototypes are validation artifacts
+### Case 5: Director Gate Check — Standard verdicts, user owns recommendation
 
 **Fixture:**
 - Mechanic concept provided
@@ -124,14 +125,15 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Input:** `$prototype wall-jump`
 
 **Expected behavior:**
-1. Skill creates and documents the prototype
-2. No director agents are spawned
-3. No gate IDs appear in output
+1. Skill creates an in-memory report draft after real playtest observations
+2. In full mode CD-PLAYTEST reviews the draft and returns only APPROVE/CONCERNS/REJECT
+3. The gate cannot return or override PROCEED/PIVOT/KILL; concerns go back to the user
+4. REPORT/index/outcome files are previewed and written only after review is resolved
 
 **Assertions:**
-- [ ] No director gate is invoked
-- [ ] No gate skip messages appear
-- [ ] Verdict is PROTOTYPE COMPLETE or PROTOTYPE ABANDONED — no gate verdict
+- [ ] Full mode uses only the standard CD-PLAYTEST gate verdicts
+- [ ] The user, not the director, owns the final PROCEED/PIVOT/KILL recommendation
+- [ ] Lean/solo concept mode and spike mode do not invoke the gate
 
 ---
 
@@ -143,6 +145,11 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Notes that production coding standards are intentionally relaxed
 - [ ] Offers extend/replace/archive when prototype already exists
 - [ ] Verdict is PROTOTYPE COMPLETE or PROTOTYPE ABANDONED
+- [ ] `--spike` loads the continuation and reaches Spike Mode before any concept-phase write
+- [ ] HTML, Markdown, and engine files use legal format-specific prototype comments
+- [ ] Session state and initial build files are previewed together before their first write
+- [ ] The post-playtest REPORT/index/applicable outcome files form one second bounded write batch after CD review
+- [ ] A simulated Paper walkthrough is labelled non-player evidence and cannot produce a player-experience recommendation without real tester observations
 
 ---
 

@@ -5,8 +5,10 @@
 `$code-review` performs an architectural code review of source files in `src/`,
 checking coding standards from `AGENTS.md` (doc comments on public APIs,
 dependency injection over singletons, data-driven values, testability). Findings
-are advisory. No director gates are invoked. No code edits are made. Verdicts:
-APPROVED, CONCERNS, or NEEDS CHANGES.
+are read-only. Lead-programmer owns the overall review; configured engine
+specialists and qa-tester run automatically only when their file/story inputs
+apply. These are specialist reviews, not director gates. Verdicts are APPROVED,
+APPROVED WITH SUGGESTIONS, or CHANGES REQUIRED.
 
 ---
 
@@ -16,7 +18,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 - [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
 - [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: APPROVED, CONCERNS, NEEDS CHANGES
+- [ ] Contains verdict keywords: APPROVED, APPROVED WITH SUGGESTIONS, CHANGES REQUIRED
 - [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
 - [ ] Has a next-step handoff (what to do with findings)
 
@@ -73,12 +75,12 @@ None. Code review is a read-only advisory skill; no gates are invoked.
 2. Skill detects: 2 missing doc comments on public methods
 3. Skill detects: singleton usage at specific lines (e.g., line 42, line 87)
 4. Findings list the exact method names and line numbers
-5. Verdict is NEEDS CHANGES
+5. Verdict is CHANGES REQUIRED
 
 **Assertions:**
 - [ ] Missing doc comments are listed with method names
 - [ ] Singleton usage is flagged with file and line number
-- [ ] Verdict is NEEDS CHANGES when BLOCKING-level standard violations exist
+- [ ] Verdict is CHANGES REQUIRED when BLOCKING-level standard violations exist
 - [ ] Skill does not edit the file — findings are for the developer to act on
 - [ ] Output suggests replacing singleton with dependency injection
 
@@ -98,12 +100,12 @@ None. Code review is a read-only advisory skill; no gates are invoked.
 2. Skill reads referenced ADR — finds `Status: Proposed`
 3. Skill flags this as ARCHITECTURE RISK (code is implementing an unaccepted ADR)
 4. Other coding standard checks pass
-5. Verdict is CONCERNS (risk flag is advisory, not a hard NEEDS CHANGES)
+5. Verdict is APPROVED WITH SUGGESTIONS (risk flag is advisory)
 
 **Assertions:**
 - [ ] Skill reads referenced ADR file to check its status
 - [ ] ARCHITECTURE RISK is flagged when ADR status is Proposed
-- [ ] Verdict is CONCERNS (not NEEDS CHANGES) for ADR risk — advisory severity
+- [ ] Verdict is APPROVED WITH SUGGESTIONS for ADR risk — advisory severity
 - [ ] Output recommends resolving the ADR before the code goes to production
 
 ---
@@ -131,7 +133,7 @@ None. Code review is a read-only advisory skill; no gates are invoked.
 
 ---
 
-### Case 5: Gate Compliance — No gate; LP may be consulted separately
+### Case 5: Specialist Contract — Applicable reviewers run automatically
 
 **Fixture:**
 - Source file follows most standards but has 1 CONCERNS-level finding (a magic number)
@@ -141,26 +143,28 @@ None. Code review is a read-only advisory skill; no gates are invoked.
 
 **Expected behavior:**
 1. Skill reads and reviews the source file
-2. No director gate is invoked (code review findings are advisory)
-3. Skill presents findings with the CONCERNS verdict
-4. Output notes: "Consider requesting a Lead Programmer review for architecture concerns"
-5. Skill does not invoke any agent automatically
+2. Lead-programmer performs the overall review
+3. The configured language specialist runs for the target file
+4. qa-tester runs only when a supplied story provides the required QA context
+5. Skill presents findings with APPROVED WITH SUGGESTIONS
 
 **Assertions:**
-- [ ] No director gate is invoked in any review mode
-- [ ] LP consultation is suggested (not mandated) in the output
+- [ ] Lead-programmer review is automatic when available
+- [ ] Applicable engine/QA specialists are automatic and are not mislabeled as gates
 - [ ] No code edits are made
-- [ ] Verdict is CONCERNS for advisory-level findings
+- [ ] Verdict is APPROVED WITH SUGGESTIONS for advisory-only findings
 
 ---
 
 ## Protocol Compliance
 
 - [ ] Reads source file(s) and coding standards before reviewing
+- [ ] Reads the full root-to-target `AGENTS.md` chain for every target and lists the files used
 - [ ] Lists each coding standard check in findings output
 - [ ] Does not edit any source files (read-only skill)
-- [ ] No director gates are invoked
-- [ ] Verdict is one of: APPROVED, CONCERNS, NEEDS CHANGES
+- [ ] Specialist reviews do not introduce a director gate
+- [ ] Verdict is one of: APPROVED, APPROVED WITH SUGGESTIONS, CHANGES REQUIRED
+- [ ] Any blocker, ADR violation, or untestable required AC maps to CHANGES REQUIRED; advisory-only maps to APPROVED WITH SUGGESTIONS; no findings maps to APPROVED
 
 ---
 

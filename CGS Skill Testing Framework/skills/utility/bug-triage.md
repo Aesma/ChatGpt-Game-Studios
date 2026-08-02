@@ -2,173 +2,84 @@
 
 ## Skill Summary
 
-`$bug-triage` reads all open bug reports in `production/bugs/` and produces a
-prioritized triage table sorted by severity (CRITICAL → HIGH → MEDIUM → LOW).
-It is a read-only formatting and sorting task and produces no
-file writes — the triage output is conversational. The skill flags bugs missing
-reproduction steps and identifies possible duplicates by comparing titles and
-affected systems.
+`$bug-triage` reads the canonical backlog under
+`production/qa/bugs/`, produces a conversational triage report, and may persist
+that same report to `production/qa/bug-triage-[date].md` after one complete
+changeset authorization. It does not modify source bug files or sprint plans.
 
-The verdict is always TRIAGED — the skill is advisory and informational. No
-director gates apply. The output is intended to help a producer or QA lead
-prioritize which bugs to address next.
+The workflow uses the same literals as `$bug-report`:
+S1-Critical / S2-Major / S3-Minor / S4-Trivial and
+P1-Immediate / P2-Next Sprint / P3-Backlog / P4-Wishlist.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keyword: TRIAGED
-- [ ] Remains read-only; no authorization prompt appears because the workflow does not modify files
-- [ ] Has a next-step handoff (e.g., `$bug-report` to create new reports, `$hotfix` for critical bugs)
+- [ ] Reads `production/qa/bugs/`, not `production/bugs/`
+- [ ] Uses the shared S1–S4 and P1–P4 literals
+- [ ] Optional report persistence is documented and authorized
+- [ ] No TRIAGED-only/read-only contract contradicts the implementation
+- [ ] Full mode cannot bypass sprint capacity
 
 ---
 
-## Director Gate Checks
+## Case 1: Canonical backlog and report write
 
-None. `$bug-triage` is a read-only advisory skill. No director gates apply.
-
----
-
-## Test Cases
-
-### Case 1: Happy Path — 5 bugs of varying severity, sorted table produced
-
-**Fixture:**
-- `production/bugs/` contains 5 bug report files:
-  - bug-2026-03-10-audio-crash.md (CRITICAL)
-  - bug-2026-03-12-score-overflow.md (HIGH)
-  - bug-2026-03-14-ui-overlap.md (MEDIUM)
-  - bug-2026-03-15-typo-tutorial.md (LOW)
-  - bug-2026-03-16-vfx-flicker.md (HIGH)
-
-**Input:** `$bug-triage`
-
-**Expected behavior:**
-1. Skill reads all 5 bug report files
-2. Skill extracts severity, title, system, and repro status from each
-3. Skill produces a triage table sorted: CRITICAL first, then HIGH, MEDIUM, LOW
-4. Within the same severity, bugs are ordered by date (oldest first)
-5. Verdict is TRIAGED
+**Input:** `$bug-triage sprint`
 
 **Assertions:**
-- [ ] Triage table has exactly 5 rows
-- [ ] CRITICAL bug appears before both HIGH bugs
-- [ ] HIGH bugs appear before MEDIUM and LOW bugs
-- [ ] Verdict is TRIAGED
-- [ ] No files are written
+
+- [ ] Bug reports are read from `production/qa/bugs/`
+- [ ] The report is shown in conversation before any write
+- [ ] The only possible target is
+      `production/qa/bug-triage-[date].md`
+- [ ] One authorization is required before persistence
+- [ ] Declining leaves the file system unchanged
 
 ---
 
-### Case 2: No Bug Reports Found — Guidance to run $bug-report
-
-**Fixture:**
-- `production/bugs/` directory exists but is empty (or does not exist)
-
-**Input:** `$bug-triage`
-
-**Expected behavior:**
-1. Skill scans `production/bugs/` and finds no reports
-2. Skill outputs: "No open bug reports found in production/bugs/"
-3. Skill suggests running `$bug-report` to create a bug report
-4. No triage table is produced
+## Case 2: Enumerations match bug-report
 
 **Assertions:**
-- [ ] Output explicitly states no bugs were found
-- [ ] `$bug-report` is suggested as the next step
-- [ ] Skill does not error out — it handles empty directory gracefully
-- [ ] Verdict is TRIAGED (with "no bugs found" context)
+
+- [ ] Severity is one of S1-Critical, S2-Major, S3-Minor, S4-Trivial
+- [ ] Priority is one of P1-Immediate, P2-Next Sprint, P3-Backlog, P4-Wishlist
+- [ ] Sorting and report labels do not introduce CRITICAL/HIGH/MEDIUM/LOW
+      as a second enum
+- [ ] Existing bug-report values are not silently renamed during triage
 
 ---
 
-### Case 3: Bug Missing Reproduction Steps — Flagged as NEEDS REPRO INFO
+## Case 3: Full mode respects capacity
 
-**Fixture:**
-- `production/bugs/` contains 3 bug reports; one has an empty "Repro Steps" section
+**Fixture:** Current sprint has capacity for one comparable bug effort and there
+are three P1 bugs.
 
-**Input:** `$bug-triage`
-
-**Expected behavior:**
-1. Skill reads all 3 reports
-2. Skill detects the report with no repro steps
-3. That bug appears in the triage table with a `NEEDS REPRO INFO` tag
-4. Other bugs are triaged normally
-5. Verdict is TRIAGED
+**Input:** `$bug-triage full`
 
 **Assertions:**
-- [ ] `NEEDS REPRO INFO` tag appears next to the bug missing repro steps
-- [ ] The flagged bug is still included in the table (not excluded)
-- [ ] Other bugs are unaffected
-- [ ] Verdict is TRIAGED
+
+- [ ] At most one P1 is proposed for the current sprint
+- [ ] Remaining P1 items are shown as overflow/unassigned
+- [ ] P2 next-sprint proposals require known comparable capacity
+- [ ] Full mode never says all P1 items are assigned unconditionally
+- [ ] Source bug and sprint-plan files remain unchanged
 
 ---
 
-### Case 4: Possible Duplicate Bugs — Flagged in triage output
-
-**Fixture:**
-- `production/bugs/` contains 2 bug reports with similar titles:
-  - bug-2026-03-18-player-fall-through-floor.md
-  - bug-2026-03-20-player-clips-through-floor.md
-  - Both affect the "Physics" system with identical severity
-
-**Input:** `$bug-triage`
-
-**Expected behavior:**
-1. Skill reads both reports and detects similar title + same system + same severity
-2. Both bugs are included in the triage table
-3. Each is tagged with `POSSIBLE DUPLICATE` and cross-references the other report
-4. No bugs are merged or deleted — flagging is advisory
-5. Verdict is TRIAGED
+## Case 4: No capacity data
 
 **Assertions:**
-- [ ] Both bugs appear in the table (not merged)
-- [ ] Both are tagged `POSSIBLE DUPLICATE`
-- [ ] Each cross-references the other (by filename or title)
-- [ ] Verdict is TRIAGED
 
----
-
-### Case 5: Director Gate Check — No gate; triage is advisory
-
-**Fixture:**
-- `production/bugs/` contains any number of reports
-
-**Input:** `$bug-triage`
-
-**Expected behavior:**
-1. Skill produces the triage table
-2. No director agents are spawned
-3. No gate IDs appear in output
-4. No file modification occurs
-
-**Assertions:**
-- [ ] No director gate is invoked
-- [ ] No file modification occurs
-- [ ] No gate skip messages appear
-- [ ] Verdict is TRIAGED without any gate check
+- [ ] No current- or next-sprint assignment is claimed
+- [ ] The report clearly distinguishes a proposed assignment from persisted state
+- [ ] Optional report persistence still uses the single approval boundary
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Reads all files in `production/bugs/` before generating the table
-- [ ] Sorts by severity (CRITICAL → HIGH → MEDIUM → LOW)
-- [ ] Flags bugs missing repro steps
-- [ ] Flags possible duplicates by title/system similarity
-- [ ] Does not write any files
-- [ ] Verdict is TRIAGED in all cases (even empty)
-
----
-
-## Coverage Notes
-
-- The case where a bug report is malformed (missing severity field entirely)
-  is not fixture-tested; skill would flag it as `UNKNOWN SEVERITY` and sort it
-  last in the table.
-- Status transitions (marking bugs as resolved) are outside this skill's scope —
-  bug-triage is read-only.
-- The duplicate detection heuristic (title similarity + same system) is
-  approximate; exact matching logic is defined in the skill body.
+- [ ] No director gate is introduced
+- [ ] Triage output and optional report contain the same findings
+- [ ] Capacity rules apply to sprint and full modes
+- [ ] The workflow adds no new directory, status layer, or schema

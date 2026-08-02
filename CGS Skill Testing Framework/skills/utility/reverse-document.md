@@ -126,3 +126,15 @@ Verified automatically by `$skill-test static` — no fixture needed.
   a near-empty skeleton with a PARTIAL verdict.
 - C# and Blueprint source files follow the same inference pattern as GDScript;
   language-specific differences are handled in the skill body.
+
+## P0 Contract Coverage
+
+- [ ] Inputs must resolve to an existing project-contained file/directory;
+  generated output, binaries, denied/sensitive files, and empty valid input stop
+  with zero writes.
+- [ ] Design, architecture, and concept use the existing full `.codex/docs/templates/`
+  paths; a missing template stops instead of producing a guessed structure.
+- [ ] Observed implementation, user-stated intent, and gaps are distinct;
+  intended behavior is never marked implemented without code/test evidence.
+- [ ] A newly created design GDD updates the uniquely matching systems-index row
+  in the same changeset, and an existing output target is never overwritten silently.

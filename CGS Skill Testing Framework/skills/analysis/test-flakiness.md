@@ -22,8 +22,12 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Assertions:**
 - [ ] No director gate is invoked in any review mode
 - [ ] CONFIRMED FLAKY verdict requires history-based evidence (not just source patterns)
+- [ ] CONFIRMED FLAKY requires multiple runs whose logs identify the same build/version; unknown code equivalence remains SUSPECT
+- [ ] A single-run log is insufficient evidence, has no flakiness rate, and cannot update quarantine
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Flakiness report is advisory for qa-lead; skill does not auto-disable tests
+- [ ] High flakiness prioritizes a fix and blocks trust in the suite; it never instructs automatic skip-to-green
+- [ ] Quarantined Tests is updated only for a test already isolated by a separate user-authorized action
 
 ---
 
@@ -33,6 +37,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Notes clearly which analysis mode is being used (history vs. source-only)
 - [ ] Flakiness threshold (e.g., 95% pass rate) is used for SUSPECT classification
 - [ ] CONFIRMED FLAKY requires history evidence; SUSPECT covers source patterns only
+- [ ] Mixed outcomes with `code equivalence unknown` are SUSPECT, not CONFIRMED
 - [ ] Does not disable or modify any test files
 - [ ] No director gates are invoked
 - [ ] Verdict is one of: NO FLAKINESS, SUSPECT TESTS FOUND, CONFIRMED FLAKY

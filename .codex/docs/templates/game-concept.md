@@ -308,8 +308,8 @@ the combat-crafting loop engaging for 30+ minute sessions"]
 
 - [ ] Get concept approval from creative-director
 - [ ] Fill in AGENTS.md technology stack based on engine choice (`$setup-engine`)
-- [ ] Create game pillars document (`$design-review` to validate)
-- [ ] **Prototype core idea** (`$prototype [core-mechanic]`) — before applying a not-yet-authorized changeset GDDs, validate the concept is worth designing
+- [ ] Confirm concept readiness: resolve placeholders and record creative-director approval; `$design-review` is reserved for system GDDs
+- [ ] **Prototype core idea** (`$prototype [core-mechanic]`) — before committing to detailed GDD authoring, validate that the concept is worth designing
 - [ ] If prototype PROCEEDS: Decompose concept into systems (`$map-systems`)
 - [ ] Design each system (`$design-system [system-name]`) — use prototype learnings in Tuning Knobs and Formulas sections
 - [ ] Build vertical slice in Pre-Production (`$vertical-slice`) — validate full game loop before committing to Production

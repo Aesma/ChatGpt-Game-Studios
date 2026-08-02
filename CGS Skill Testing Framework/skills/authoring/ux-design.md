@@ -24,6 +24,11 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Has ≥2 phase headings
 - [ ] Contains verdict keyword: COMPLETE
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Screen/flow, HUD, and patterns modes instantiate the matching current `.codex/docs/templates/` file; no copied reduced skeleton is used
+- [ ] Retrofit inventories headings from the same current template and never treats short real content as a placeholder
+- [ ] Normal slugs are non-empty kebab-case segments inside `design/ux/` and cannot use separators, dot segments, absolute paths, `hud`, or `interaction-patterns`
+- [ ] One authorization covers the UX target, session state, and known current-spec pattern-library edit; section approval is not a second write prompt
+- [ ] Other specs are pattern sources only when persisted Approved/Implemented; a current-spec new pattern requires explicit user approval, the single library writer, and persistence before first review
 4. All approved sections are written in sequence within the single bounded document changeset
 5. After all sections are written, verdict is COMPLETE
 6. Skill suggests running `$ux-review` as the next step

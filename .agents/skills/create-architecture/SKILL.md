@@ -37,6 +37,21 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 - **`api-boundaries`**: Focus on API boundary definitions only
 - **`adr-audit`**: Audit existing ADRs for engine compatibility gaps only
 
+Reject an unknown or conflicting focus mode. Apply these guards throughout the
+existing phases:
+
+- `full`: execute Phases 0–8.
+- `layers`: load only the context needed for the System Layer Map and edit only
+  that existing section.
+- `data-flow`: load only module/dependency context and edit only Data Flow.
+- `api-boundaries`: load only module/API context and edit only API Boundaries.
+- `adr-audit`: run the existing ADR audit and output findings read-only. Edit
+  `architecture.md` only if that exact edit was included in the authorized
+  changeset.
+
+A focus run must not rewrite untouched sections or emit a full-mode completion
+handoff.
+
 ---
 
 ## Phase 0: Load All Context
@@ -68,7 +83,7 @@ Read all approved design documents and extract technical requirements from each:
 
 1. `design/gdd/game-concept.md` — game pillars, genre, core loop
 2. `design/gdd/systems-index.md` — all systems, dependencies, priority tiers
-3. `.codex/docs/technical-preferences.md` — naming conventions, performance budgets,
+3. `docs/technical-preferences.md` — naming conventions, performance budgets,
    allowed libraries, forbidden patterns
 4. **Every GDD in `design/gdd/`** — for each, extract technical requirements:
    - Data structures implied by the game rules
@@ -130,6 +145,21 @@ Ask the user directly:
   - `[A] Proceed — flag HIGH RISK domains throughout the output`
   - `[B] Let me check the engine reference first — pause here`
   - `[C] Show me which domains are HIGH RISK and why`
+
+### 0e. Authorize and create the architecture skeleton
+
+For a new full architecture, the first write is a complete heading skeleton for
+`docs/architecture/architecture.md` using the structure already defined in
+Phase 7. Before that write, show one complete changeset preview that includes:
+
+- creation and all later section/status edits to `architecture.md`;
+- the conditional final update to `production/session-state/active.md`.
+
+Obtain authorization once. Create the skeleton with Document Status set to
+`In Design`, then persist each subsequently approved section inside that same
+boundary. If the scope later adds a file, stop and preview only the expanded
+changeset. Focus modes use the same one-authorization rule for their selected
+section and must not recreate the skeleton.
 
 ---
 
@@ -292,16 +322,14 @@ but don't yet. Group by priority:
 
 ---
 
-## Phase 7: Write the Master Architecture Document
+## Phase 7: Finalize the Master Architecture Draft
 
-Once all sections are approved, write the complete document to
-`docs/architecture/architecture.md`.
-
-Display a one-paragraph summary of what the document will contain (layers, modules, data flows, ADR gaps). Then ask the user directly:
-- "All sections are ready. Should the proposed changeset include the master architecture document?"
-  - [A] Yes — include `docs/architecture/architecture.md` in the proposed changeset
-  - [B] Show me the full draft inline first, then ask again
-  - [C] Not yet — I have more changes to discuss
+The skeleton already exists and approved sections have been written
+incrementally. Assemble and display the complete final draft, verify every
+skeleton section is populated or explicitly deferred, and do not rewrite the
+whole file. Keep Document Status as `In Design` until Phase 7b returns gate
+results. The initial authorization already covered the final status edit, so do
+not request a second file authorization.
 
 The document structure:
 
@@ -309,6 +337,7 @@ The document structure:
 # [Game Name] — Master Architecture
 
 ## Document Status
+- Status: In Design
 - Version: [N]
 - Last Updated: [date]
 - Engine: [name + version]
@@ -348,54 +377,40 @@ derived from the game concept, GDDs, and technical preferences]
 
 ## Phase 7b: Technical Director Sign-Off + Lead Programmer Feasibility Review
 
-After writing the master architecture document, perform an explicit sign-off before handoff.
+Run this phase after the complete draft exists but before any Complete/Approved
+status or completion handoff is written.
 
-**Step 1 — Technical Director self-review** (this skill runs as technical-director):
+- In `full` mode, start independent TD-ARCHITECTURE and LP-FEASIBILITY reviews
+  concurrently against the same complete draft and Technical Requirements
+  Baseline. Neither verdict is input to the other.
+- The author must not self-sign as technical director. If either required role is
+  unavailable or fails, sign-off is blocked; do not fabricate a verdict.
+- In `lean` or `solo`, record that both gates were skipped according to review
+  mode and do not write director sign-off.
 
-Apply gate **TD-ARCHITECTURE** (`.codex/docs/director-gates.md`) as a self-review. Check all four criteria from that gate definition against the completed document.
-
-**Review mode check** — apply before spawning LP-FEASIBILITY:
-- `solo` → skip. Note: "LP-FEASIBILITY skipped — Solo mode." Proceed to Phase 8 handoff.
-- `lean` → skip (not a PHASE-GATE). Note: "LP-FEASIBILITY skipped — Lean mode." Proceed to Phase 8 handoff.
-- `full` → spawn as normal.
-
-**Step 2 — Spawn `lead-programmer` through Codex subagent delegation using gate LP-FEASIBILITY (`.codex/docs/director-gates.md`):**
-
-Pass: architecture document path, technical requirements baseline summary, ADR list.
-
-**Step 3 — Present both assessments to the user:**
-
-Show the Technical Director assessment and Lead Programmer verdict side by side.
-
-Ask the user directly — "Technical Director and Lead Programmer have reviewed the architecture. How would you like to proceed?"
-Options: `Accept — proceed to handoff` / `Revise flagged items first` / `Discuss specific concerns`
-
-**Step 4 — Record sign-off in the architecture document:**
-
-Update the Document Status section:
-```
-- Technical Director Sign-Off: [date] — APPROVED / APPROVED WITH CONDITIONS
-- Lead Programmer Feasibility: FEASIBLE / CONCERNS ACCEPTED / REVISED
-```
-
-Show the proposed Document Status block inline, then ask the user directly:
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-  - [A] Yes — apply to `docs/architecture/architecture.md`
-  - [B] Not yet — I want to revisit the concerns first
+Present the two real verdicts side by side. Handle the strictest result:
+REJECT or INFEASIBLE leaves the existing skeleton/approved sections `In Design`
+and forbids "Architecture Complete"; CONCERNS may be revised or explicitly
+accepted; only successful/accepted results allow the already-authorized Document
+Status edit. Record the gate's actual verdict vocabulary rather than inventing a
+replacement status.
 
 ---
 
 ## Phase 8: Handoff
 
-**Step 1 — Update session state**: Write a summary to `production/session-state/active.md` covering: artifact written, TD/LP sign-off verdicts, any blockers, required ADRs remaining, and next step.
+**Step 1 — Update session state**: Only when `active.md` was included in the
+initial authorized changeset, write a summary covering the architecture status,
+real TD/LP results or skips, blockers, required ADRs, and next step.
 
 **Step 2 — Output the handoff** using exactly this template (no freeform prose, no rephrasing of section titles):
 
 ---
 
-## Architecture Complete
+## Architecture [Complete | In Design — Blocked]
 
-`docs/architecture/architecture.md` v1.0 — [TD verdict: APPROVED / APPROVED WITH CONCERNS / CONCERNS]. [One sentence on what the architecture covers.]
+`docs/architecture/architecture.md` [version from Document Status] — [actual TD
+and LP verdicts, skips, or blocker]. [One sentence on what the architecture covers.]
 
 ---
 
@@ -416,16 +431,16 @@ List top 3 from Phase 6 in priority order. If fewer than 3 remain, list only wha
 
 ## Gate-Check Readiness
 
-> **Required before `$gate-check [stage]`:**
+> **Required before `$gate-check technical-setup`:**
 > - [ ] Accept ADRs: [list Proposed ADR IDs that must be Accepted]
 > - [ ] Write ADRs: [list ADR IDs that must still be written]
-> - [ ] Run `$test-setup` — scaffolds `tests/unit/`, `tests/integration/`, CI workflow, and an example test file
-> - [ ] Run `$ux-design` — creates `design/ux/interaction-patterns.md` and `design/accessibility-requirements.md`
+> - [ ] Run `$test-setup` — scaffolds the configured test directories and CI workflow; it does not claim an example test exists
+> - [ ] Run `$ux-design` separately for each required screen/HUD and with `patterns` when an interaction library is required; author `design/ux/accessibility-requirements.md` explicitly from its existing template
 >
-> Run `$gate-check [stage]` when all boxes are checked.
+> Run `$gate-check technical-setup` when all boxes are checked.
 
 If nothing is blocking, write instead:
-> No blockers — run `$gate-check [stage]` now.
+> No blockers — run `$gate-check technical-setup` now.
 
 ---
 
@@ -468,7 +483,7 @@ unsure, present 2-4 options with pros/cons before asking them to decide.
 
 - Run `$architecture-decision [title]` for each required ADR listed in Phase 6 — Foundation layer ADRs first
 - Run `$architecture-review` — bootstraps the Requirements Traceability Matrix and TR registry from the ADRs just written. Required before the Pre-Production gate.
-- Run `$test-setup` to scaffold `tests/unit/`, `tests/integration/`, CI workflow, and an example test (required for gate-check)
-- Run `$ux-design` to initialize `design/ux/interaction-patterns.md` and `design/accessibility-requirements.md` (required for gate-check)
+- Run `$test-setup` to scaffold the configured test directories and CI workflow; do not treat scaffolding as proof that an example test was created or passed
+- Run `$ux-design` separately for the required screens/HUD and `$ux-design patterns` for the interaction library; create `design/ux/accessibility-requirements.md` only through an explicit, authorized template-based edit
 - Run `$create-control-manifest` once the required ADRs are written to produce the layer rules manifest
-- Run `$gate-check pre-production` when all required ADRs, `$test-setup`, and `$ux-design` are complete
+- Run `$gate-check technical-setup` when all required ADRs and the applicable test/UX artifacts are complete

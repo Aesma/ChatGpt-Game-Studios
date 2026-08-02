@@ -129,6 +129,10 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] PR-MILESTONE gate only runs in full mode
 - [ ] Skip message appears in lean and solo output
 - [ ] Verdict is MILESTONE COMPLETE or MILESTONE INCOMPLETE, stated clearly
+- [ ] `current` follows a unique session/stage/sprint milestone reference or asks the user; file modification time is never the selector
+- [ ] Completion, bug, coverage, performance, debt, and velocity values cite milestone-attributable evidence; missing evidence is `unknown`
+- [ ] The evidence draft is compiled before PR-MILESTONE, but the final Go/No-Go recommendation is generated only after the gate/user risk decision
+- [ ] Report save approval or refusal does not change the evidence-based MILESTONE COMPLETE/INCOMPLETE verdict
 
 ---
 

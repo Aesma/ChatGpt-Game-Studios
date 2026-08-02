@@ -70,8 +70,8 @@ directly where possible.]
 > targeting feel specifically before committing to GDDs.
 
 **Next steps:**
-1. `$design-review design/gdd/game-concept.md`
-2. `$gate-check`
+1. Confirm concept readiness: resolve placeholders, incorporate prototype findings, and record creative-director approval
+2. `$gate-check concept`
 3. `$map-systems`
 4. `$design-system [mechanic]` (use learnings in Tuning Knobs and Formulas sections)
 

@@ -98,3 +98,15 @@ Verified automatically by `$skill-test static` — no fixture needed.
   separately tested here.
 - The case where session logs are empty is similar to Case 2 (no data);
   the skill falls back to manual input in both situations.
+
+## P0 Contract Coverage
+
+- [ ] A sprint-status file contributes metrics only when its identifier matches
+  the requested sprint; milestone retrospectives use only explicitly included
+  sprints/goals.
+- [ ] Missing actual effort, bug counts, estimation inputs, or prior velocity
+  are written as `N/A — source unavailable` and are not inferred from commits.
+- [ ] Start-fresh lists the archive source, archive target, and new retrospective
+  in one changeset and rechecks the baseline before moving anything.
+- [ ] Completion provides `$sprint-plan` / `$gate-check` only as later handoff
+  commands and never invokes either workflow automatically.

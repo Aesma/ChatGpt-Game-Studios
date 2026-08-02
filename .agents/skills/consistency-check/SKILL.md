@@ -29,7 +29,9 @@ catches too late.
 - Before `$create-architecture` (inconsistencies poison downstream ADRs)
 - On demand: `$consistency-check entity:[name]` to check one entity specifically
 
-**Output:** Conflict report + optional registry corrections
+**Output:** Read-only conflict report. An optional saved copy uses
+`design/consistency-report-[date].md` and is written only after the user approves
+the complete changeset preview.
 
 ---
 
@@ -47,11 +49,10 @@ catches too late.
 Read `design/registry/entities.yaml` in full.
 ```
 
-If the file does not exist or has no entries:
-> "Entity registry is empty. Run `$design-system` to write GDDs — the registry
-> is populated automatically after each GDD is completed. Nothing to check yet."
-
-Stop and exit.
+If the file does not exist or has no entries, report that registry comparisons
+are unavailable, initialize the four lookup tables as empty, and continue with
+the cross-GDD formula, ownership, and dependency checks in Phase 3. Registry
+absence is not a reason to skip GDD consistency analysis.
 
 Build four lookup tables from the registry:
 - **entity_map**: `{ name → { source, attributes, referenced_by } }`
@@ -77,9 +78,16 @@ Exclude: `game-concept.md`, `systems-index.md`, `game-pillars.md` — these are
 not system GDDs.
 
 For `since-last-review` mode:
-Run `git log --name-only --pretty=format: -- design/gdd/`, keep unique paths ending in `.md`, and ignore blank lines.
-Limit to GDDs modified since the most recent `design/gdd/gdd-cross-review-*.md`
-file's creation date.
+Find the most recent `design/gdd/gdd-cross-review-*.md`, then use the commit in
+which that file first appeared in Git history as the comparison anchor. Include
+both committed changes after that anchor and current working-tree modifications.
+If the review file has no discoverable first commit, no review exists, or the
+repository has no usable Git history, state that incremental scope cannot be
+proved and downgrade to `full`. Never infer a file creation date from the
+filesystem or return an incremental PASS from an unanchored scan.
+
+If no in-scope system GDD exists, stop with a clear error. Do not produce a
+verdict and do not write a report.
 
 Report the in-scope GDD list before scanning.
 
@@ -87,13 +95,19 @@ Report the in-scope GDD list before scanning.
 
 ## Phase 3: Search-First Conflict Scan
 
-For each registered entry, search every in-scope GDD for the entry's name.
-Do NOT do full reads — extract only the matching lines and their immediate
-context (-C 3 lines).
+For every in-scope GDD, first read its Summary or Overview, Dependencies,
+Formulas, and the sections that declare entity/system ownership. This baseline
+scan is mandatory even when the registry is empty and must check all four
+existing consistency classes: registry values (when available), formulas,
+ownership, and dependency targets. Search-first remains an optimization for
+locating registered names; it must not exclude unregistered formulas, competing
+owners, or missing explicit dependencies.
 
-This is the core optimization: instead of reading 10 GDDs × 400 lines each
-(4,000 lines), you search 50 entity names × 10 GDDs (50 targeted searches,
-each returning ~10 lines on a hit).
+For each registered entry, search every in-scope GDD for the literal escaped
+entry name. On a hit, read the complete containing Markdown section so that
+table headers, units, formulas, and values remain together; three context lines
+are not sufficient evidence. Expand beyond these sections only when a possible
+conflict needs investigation.
 
 ### 3a: Entity Scan
 
@@ -152,7 +166,7 @@ For each conflict found in Phase 3, do a targeted full-section read of the
 conflicting GDD to get precise context:
 
 ```
-Read `design/gdd/[conflicting_gdd].md` in full.
+Read the complete conflicting section in `design/gdd/[conflicting_gdd].md`.
 ```
 (Or search with wider context if the file is large)
 
@@ -226,66 +240,21 @@ Verdict: PASS | CONFLICTS FOUND
 
 ---
 
-## Phase 6: Registry Corrections
+## Phase 6: Suggested Corrections and Optional Report
 
-If stale registry entries were found, ask:
-> Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Remain read-only. List each proposed GDD or registry correction, its evidence,
+and the exact existing field or section that would need a later edit. Do not
+update the registry, create a failure log, or write session state.
 
-For each stale entry:
-- Update the `value` / attribute field
-- Set `revised:` to today's date
-- Add a YAML comment with the old value: `# was: [old_value] before [date]`
+Offer to save the report only as `design/consistency-report-[date].md`. Before
+writing it, show the complete file content/operation in one changeset preview
+and obtain explicit authorization. If the report is not actually written, do
+not cite that path as an artifact.
 
-If new entries were found in GDDs that are not in the registry, ask:
-> "Found [N] entities/items mentioned in GDDs that aren't in the registry yet.
-> "Should these new cross-system entries be included in the proposed update to `design/registry/entities.yaml`?"
+## Phase 7: Closing
 
-Only add entries that appear in more than one GDD (true cross-system facts).
-
-**Never delete registry entries.** Set `status: deprecated` if an entry is removed
-from all GDDs.
-
-After writing: Verdict: **COMPLETE** — consistency check finished.
-If conflicts remain unresolved: Verdict: **BLOCKED** — [N] conflicts need manual resolution before architecture begins.
-
-### 6b: Append to Reflexion Log
-
-If any 🔴 CONFLICT entries were found (regardless of whether they were resolved),
-append an entry to `docs/consistency-failures.md` for each conflict:
-
-```markdown
-### [YYYY-MM-DD] — $consistency-check — 🔴 CONFLICT
-**Domain**: [system domain(s) involved]
-**Documents involved**: [source GDD] vs [conflicting GDD]
-**What happened**: [specific conflict — entity name, attribute, differing values]
-**Resolution**: [how it was fixed, or "Unresolved — manual action needed"]
-**Pattern**: [generalised lesson, e.g. "Item values defined in combat GDD were not
-referenced in economy GDD before authoring — always check entities.yaml first"]
-```
-
-If `docs/consistency-failures.md` does not exist, create it with this header before appending:
-
-```markdown
-# Consistency Failure Log
-
-<!-- Auto-maintained by $consistency-check. Do not edit manually. -->
-<!-- One entry per detected conflict, in chronological order. -->
-
-| Date | GDD A | GDD B | Conflict Type | Status |
-|------|-------|-------|---------------|--------|
-```
-
-Then append the new conflict entries. Never skip logging — a missing file is not a reason to lose conflict history.
-
----
-
-## Phase 7: Session State and Closing
-
-Silently append to `production/session-state/active.md` (create the file if it does not exist):
-
-```
-<!-- CONSISTENCY-CHECK: [date] | GDDs checked: [N] | Conflicts found: [N] | Report: docs/consistency-report-[date].md -->
-```
+Do not append to `production/session-state/active.md` and do not claim a report
+file exists unless Phase 6 saved it successfully.
 
 Then close with an a structured choice prompt:
 
@@ -306,6 +275,7 @@ Never end the skill with plain text. Always close with this structured prompt.
   `$create-architecture` if all MVP GDDs are complete.
 - **If CONFLICTS FOUND**: Fix the flagged GDDs, then re-run
   `$consistency-check` to confirm resolution.
-- **If STALE REGISTRY**: Update the registry (Phase 6), then re-run to verify.
+- **If STALE REGISTRY**: Use the report's proposed correction in a separate
+  explicitly authorized edit, then re-run to verify.
 - Run `$consistency-check` after writing each new GDD to catch issues early,
   not at architecture time.

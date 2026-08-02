@@ -42,7 +42,7 @@ remediation plan.
 - `quick` — high-severity checks only (fastest, for iterative use)
 - No argument — run `full`
 
-Read `.codex/docs/technical-preferences.md` to determine:
+Read `docs/technical-preferences.md` to determine:
 - Engine and language (affects which patterns to search for)
 - Target platforms (affects which attack surfaces apply)
 - Whether multiplayer/networking is in scope
@@ -51,12 +51,11 @@ Read `.codex/docs/technical-preferences.md` to determine:
 
 ## Phase 2: Spawn Security Engineer
 
-Spawn `security-engineer` through Codex subagent delegation. Pass:
-- The audit scope/mode
-- Engine and language from technical preferences
-- A manifest of all source directories: `src/`, `assets/data/`, any config files
-
-The security-engineer runs the audit across 6 categories (see Phase 3). Collect their full findings before proceeding.
+If the `security-engineer` role is available, delegate once and pass the mode,
+engine/language, and source-directory manifest. Never pass a suspected secret's
+value. If the role is unavailable, the current agent follows the same six-category
+checklist. If delegation fails or times out, mark the affected categories as
+partial coverage and do not produce CLEAR TO SHIP.
 
 ---
 
@@ -67,8 +66,9 @@ The security-engineer evaluates each of the following. Skip categories not appli
 ### Category 1: Save File and Serialization Security
 - Are save files validated before loading? (no blind deserialization)
 - Are save file paths constructed from user input? (path traversal risk)
-- Are save files checksummed or signed? (tamper detection)
-- Does the game trust numeric values from save files without bounds checking?
+- Are save values parsed safely and bounds-checked before use?
+- Do competitive, monetised, or server-backed entitlements get validated at the
+  applicable authoritative trust boundary?
 - Are there any eval() or dynamic code execution calls near save loading?
 
 Content search patterns: `File.open`, `load`, `deserialize`, `JSON.parse`, `from_json`, `read_file` — check each for validation.
@@ -97,11 +97,17 @@ Search file contents for: `get_input`, `Input.get_`, `input_map`, user-facing te
 - Does the game log sensitive player data to disk or console?
 - Are any internal file paths or system information exposed to players?
 
-Search file contents for: `api_key`, `secret`, `password`, `token`, `private_key`, `DEBUG`, `print(` in release-facing code.
+Search file contents for candidate identifiers such as `api_key`, `secret`,
+`password`, `token`, and `private_key`, plus release-facing debug/logging calls.
+Obey denied-path rules, including never reading forbidden environment files.
+For a suspected secret, report only file, line, and identifier type with the
+value redacted; never echo it in conversation, delegation, or a report.
 
 ### Category 5: Cheat and Anti-Tamper Vectors
-- Are gameplay-critical values stored only in memory, not in easily-editable files?
-- Are any critical game progression flags (e.g., "has paid for DLC") validated server-side?
+- Are external data-driven gameplay values validated for type/range at their
+  trust boundary, without treating editable configuration itself as a flaw?
+- Are critical progression or entitlement flags (e.g., "has paid for DLC")
+  validated by the appropriate authoritative side?
 - Is there any protection against memory editing tools (Cheat Engine, etc.) for multiplayer?
 - Are leaderboard/score submissions validated before acceptance?
 
@@ -154,7 +160,12 @@ For each finding, assign:
 | MEDIUM | [N] | Recommended |
 | LOW | [N] | Optional |
 
-**Release recommendation**: [CLEAR TO SHIP / FIX CRITICALS FIRST / DO NOT SHIP]
+**Release recommendation**: [CLEAR TO SHIP / DO NOT SHIP / ASSESSMENT INCOMPLETE]
+
+- Any CRITICAL or HIGH finding → DO NOT SHIP.
+- Zero blockers and evidence for every selected category → CLEAR TO SHIP.
+- Any selected category with partial/missing evidence → ASSESSMENT INCOMPLETE;
+  list it under Data Limitations and do not issue CLEAR TO SHIP.
 
 ---
 
@@ -238,8 +249,11 @@ After remediating findings, re-run: `$security-audit quick` to confirm CRITICAL/
 If CRITICAL findings exist:
 > "⛔ CRITICAL security findings must be resolved before any public release. Do not proceed to `$launch-checklist` until these are addressed."
 
-If no CRITICAL/HIGH findings:
+If no CRITICAL/HIGH findings and every selected category has complete evidence:
 > "✅ No blocking security findings. Report written to `production/security/`. Include this path when running `$gate-check release`."
+
+If any selected category is incomplete, report **ASSESSMENT INCOMPLETE** and the
+missing coverage instead of a shipping clearance.
 
 ---
 

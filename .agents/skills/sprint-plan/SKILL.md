@@ -16,22 +16,27 @@ Before starting, list `production/sprints/` read-only and use the existing sprin
 
 ## Phase 0: Parse Arguments
 
-Extract the mode argument (`new`, `update`, or `status`) and resolve the review mode (once, store for all gate spawns this run):
+Extract the mode argument (`new`, `update`, or `status`). If omitted, use `new`.
+If any other mode or an invalid review value is supplied, show the legal usage
+and stop without writing. Resolve the review mode exactly once and store it for
+all gate spawns this run:
 1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
+2. Else read `production/review-mode.txt`; use it only when its trimmed value is
+   exactly `full`, `lean`, or `solo`
 3. Else → default to `lean`
 
 See `.codex/docs/director-gates.md` for the full check pattern.
 
-**Review mode check** (before gates run):
-- Read `production/review-mode.txt` if it exists. Use that mode.
+**Review mode initialization** (only when no valid flag or file value resolved a mode):
 - If the file doesn't exist and this is a `new` sprint: ask the user directly:
   - Prompt: "No review mode is set. Which review depth would you like for this sprint?"
   - Options:
     - `[A] full — spawn all director and lead gates`
     - `[B] lean — skip non-phase-gate director reviews (recommended for most sprints)`
     - `[C] solo — skip all gate spawning`
-  - After selection: write `production/review-mode.txt` with the chosen mode. Say: "Review mode set to [mode] and saved to production/review-mode.txt."
+  - After selection: keep the chosen value pending. Do not write it yet; include
+    `production/review-mode.txt` in the same final changeset as the sprint plan
+    and status YAML.
 - If the file doesn't exist and this is NOT a `new` sprint (e.g., updating an existing sprint): default to `lean` silently.
 
 ---
@@ -43,16 +48,33 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 2. **Read the previous sprint** (if any) from `production/sprints/` to
    understand velocity and carryover.
 
-3. **Scan design documents** in `design/gdd/` for features tagged as ready
-   for implementation.
+3. **Read the story backlog** from `production/epics/**/*.md`, excluding epic
+   indexes. Candidates are stories whose status is not started/backlog/ready-for-dev
+   and whose declared dependencies are complete or are ordered earlier in the
+   proposed sprint. If there are no eligible stories, return **BLOCKED**, recommend
+   `$create-stories`, and do not invoke a gate or write files.
 
-4. **Check the risk register** at `production/risk-register/`.
+4. **Resolve capacity** from the current milestone's existing capacity field,
+   falling back to the previous sprint's explicit capacity/velocity field. If
+   neither is present, ask the user for capacity; do not invent it. Reserve the
+   existing 20% buffer, then order candidates by the project's implementation
+   layer and existing priority before filling available capacity.
+
+5. **Scan design documents** in `design/gdd/` for features tagged as ready
+   for implementation, using them to validate rather than replace story candidates.
+
+6. **Check the risk register** at `production/risk-register/`.
 
 ---
 
 ## Phase 2: Generate Output
 
 For `new`:
+
+Determine the sprint number from valid files named `production/sprints/sprint-[NNN].md`:
+use one greater than the highest existing number, or 001 when none exist. The
+markdown target is exactly `production/sprints/sprint-[NNN].md`. If that target
+already exists, stop and ask the user to use `update`; never overwrite it.
 
 **Generate a sprint plan** following this format and present it to the user. Do NOT ask to write yet — the producer feasibility gate (Phase 4) runs first and may require revisions before the file is written.
 
@@ -109,7 +131,11 @@ For `update`:
 **Update an existing sprint plan**:
 
 1. Read the most recent sprint plan from `production/sprints/`.
-2. Present the current story list with their current statuses from `production/sprint-status.yaml`.
+2. Present the current story list with their current statuses from
+   `production/sprint-status.yaml`. If the YAML is missing, reconstruct pending
+   YAML from the selected sprint markdown and each referenced story's `Status:`
+   field. Show every status that cannot be determined; preserve confirmed
+   in-progress/done values and do not write until the final authorization.
 3. Ask the user what to change: stories to add, remove, reprioritize, or re-estimate. Ask the user directly to gather changes.
 4. Apply the changes and re-present the full revised plan for review.
 5. Re-run the producer feasibility gate (Phase 4) on the revised plan.
@@ -150,15 +176,22 @@ For `status`:
 - [Any new risks identified this sprint]
 ```
 
+After presenting this status report, stop. `status` is read-only: do not enter
+Phases 3–6, do not invoke PR-SPRINT, do not request authorization, and do not
+write any file.
+
 ---
 
 ## Phase 3: Prepare Sprint Status File
 
-After generating a new sprint plan, also prepare the `production/sprint-status.yaml` content.
+After generating a new sprint plan, or reconstructing a missing YAML in `update`
+mode, also prepare the `production/sprint-status.yaml` content.
 This is the machine-readable source of truth for story status — read by
 `$sprint-status`, `$story-done`, and `$help` without markdown parsing.
 
-**Do not write the yaml yet** — hold it in context. The producer feasibility gate (Phase 4) may revise the story list. Both files will be written together after Phase 4 in a single single changeset approval.
+**Do not write the yaml yet** — hold it in context. The producer feasibility
+gate (Phase 4) and QA plan gate (Phase 5) may revise the pending plan. All
+pending files are written together only after Phase 5 in one changeset approval.
 
 Format:
 
@@ -216,7 +249,7 @@ Pass: proposed story list (titles, estimates, dependencies), total team capacity
 
 Present the producer's assessment.
 
-If UNREALISTIC: revise the story selection (defer stories to Should Have or Nice to Have) and re-present the updated plan before asking for single changeset approval.
+If UNREALISTIC: revise the story selection (defer stories to Should Have or Nice to Have) and re-present the updated plan, then proceed to Phase 5.
 
 If CONCERNS, ask the user directly:
 - Prompt: "Producer flagged concerns with this sprint plan. How do you want to proceed?"
@@ -225,15 +258,13 @@ If CONCERNS, ask the user directly:
   - `[B] Adjust scope — defer some Should Have stories`
   - `[C] Extend the sprint timeline`
 
-If [A]: proceed to single changeset approval.
-If [B]: revise the story list, re-present the updated plan, then proceed to single changeset approval.
-If [C]: adjust sprint dates and capacity, re-present the updated plan, then proceed to single changeset approval.
+If [A]: proceed to Phase 5.
+If [B]: revise the story list, re-present the updated plan, then proceed to Phase 5.
+If [C]: adjust sprint dates and capacity, re-present the updated plan, then proceed to Phase 5.
 
-After handling the producer's verdict, include both files in the complete changeset preview before the first write. Once the complete changeset is authorized, write both files (creating directories as needed). Verdict: **COMPLETE** — sprint plan and status file created. If the changeset is not authorized: Verdict: **BLOCKED**.
-
-After writing, add:
-
-> **Scope check:** If this sprint includes stories added beyond the original epic scope, run `$scope-check [epic]` to detect scope creep before implementation begins.
+After handling the producer's verdict, keep the final sprint markdown, status
+YAML, and any pending review-mode value in memory and proceed to Phase 5. Do not
+write or announce COMPLETE yet.
 
 ---
 
@@ -257,14 +288,27 @@ Ask the user directly:
   - `[A] Run $qa-plan sprint now — I'll do that before starting implementation (Recommended)`
   - `[B] Skip for now — I understand QA sign-off will be blocked at the Production → Polish gate`
 
-If [A]: close with "Sprint plan written. Run `$qa-plan sprint` next — then begin implementation."
-If [B]: add a warning block to the sprint plan document:
+If [A]: keep the pending sprint unchanged and make `$qa-plan sprint` the first
+post-write instruction.
+If [B]: add this warning block to the pending sprint plan before any write:
 
 ```markdown
 > ⚠️ **No QA Plan**: This sprint was started without a QA plan. Run `$qa-plan sprint`
 > before the last story is implemented. The Production → Polish gate requires a QA
 > sign-off report, which requires a QA plan.
 ```
+
+After the QA choice is resolved, present the one complete changeset with exact
+paths: `production/sprints/sprint-[NNN].md`, `production/sprint-status.yaml`, and
+`production/review-mode.txt` only when a new value is pending. Verify that the
+markdown and YAML story IDs, paths, and statuses correspond one-to-one. Obtain
+one authorization, then write all pending files together. On success, verdict
+**COMPLETE**. If authorization is declined or any pending file cannot be prepared,
+write none and return **BLOCKED**.
+
+After writing, add:
+
+> **Scope check:** If this sprint includes stories added beyond the original epic scope, run `$scope-check [epic]` to detect scope creep before implementation begins.
 
 ---
 

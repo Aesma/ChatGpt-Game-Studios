@@ -15,6 +15,8 @@ Delegate substantive work to the `prototyper` Codex subagent role when it is ava
 
 Run implementation in an isolated Git worktree. If an isolated worktree is not available, ask the user before modifying the current workspace.
 
+At Phase 1, resolve and display the absolute project root and confirm whether the current cwd is already the user-provided isolated worktree. If it is not, stop before all writes and ask whether the user explicitly allows this current workspace. Without that permission, do not create, commit, merge, or move any slice content.
+
 
 ## Purpose
 
@@ -58,6 +60,8 @@ Read the following files to understand the full design intent:
 - `docs/architecture/control-manifest.md` — technical rules for implementation
 - Key GDDs for the systems being sliced
 
+Verify every required game concept, systems index, key GDD, architecture, and control-manifest file exists and contains approved, non-placeholder content. If any prerequisite is missing or still placeholder, list its exact path and return BLOCKED without writing a prototype or session checkpoint. This workflow does not invent replacement design/architecture content.
+
 ---
 
 ## Phase 2: Define the Slice Scope and Validation Question
@@ -88,6 +92,8 @@ to add "just one more system." Resist this. Cut, do not extend.
 
 Present scope to the user before building and get confirmation.
 
+Resolve a safe concept slug and set the sole slice root to `prototypes/[concept-slug]-vertical-slice/`. All slice code, assets, and `REPORT.md` stay inside this root; never write slice implementation into `src/`.
+
 ---
 
 ## Phase 3: Plan the Build
@@ -114,17 +120,11 @@ multi-week Engine builds will span many sessions.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
-Once the complete changeset is authorized, create the directory. Every file must begin with:
-
-```
-// VERTICAL SLICE - NOT FOR PRODUCTION
-// Validation Question: [What this build is proving]
-// Date: [Current date]
-```
+Once the complete changeset is authorized, create only the Phase 2 slice root. Add a "VERTICAL SLICE - NOT FOR PRODUCTION" header only to text source formats that support comments, using that language's existing legal comment syntax. Never inject `//` into GDScript, YAML, Markdown, JSON, Godot scene/resource files, or binary assets. Put the validation question and date in the existing `REPORT.md` rather than corrupting resource formats.
 
 **Quality standards** — higher than concept prototype, not full production:
 - Follow architecture layers from `docs/architecture/control-manifest.md`
-- Naming conventions from `.codex/docs/technical-preferences.md`
+- Naming conventions from `docs/technical-preferences.md`
 - No hardcoded gameplay values — use constants or config files
 - Basic error handling on critical paths
 - Placeholder art acceptable; representative art preferred
@@ -210,8 +210,10 @@ Once the user returns, ask these questions **one at a time**:
    > "As the developer — not the player — does this feel achievable at this quality
    > for the full game? What surprised you about how long things took to build?"
 
-6. **Verdict:**
-   > "PROCEED, PIVOT, or KILL — and the specific reason."
+6. **Additional observation:**
+   > "Is there any concrete observation not captured above that should affect the pre-confirmed success criteria?"
+
+Do not ask the playtester to choose PROCEED/PIVOT/KILL. Phase 5 collects observations; Phase 6 derives an evidence-based recommendation by comparing them with the success criteria confirmed before implementation. The user still decides project direction after seeing that recommendation.
 
 If any answer is vague, ask: "Can you give me the specific moment where that happened?"
 Precise observations populate the report. Vague ones produce a useless report.
@@ -240,6 +242,7 @@ If the template file is not found, use this fallback structure:
 - `### Recommended Next Steps`
 
 Fill in every section based on what was observed and built during this session.
+Compare each pre-confirmed experience, time, quality, and production-feasibility criterion with the observed result and use that comparison—not a user-provided label—to derive the report recommendation.
 The velocity log must reflect actual day-by-day progress, not estimates — this is
 the most honest production rate data you will ever have. Replace all placeholder
 text with real observations.
@@ -248,7 +251,6 @@ text with real observations.
 - What assumptions were broken by actually building to near-production quality?
 - What surprised us about the pipeline or architecture?
 - What would we change about the slice scope if we ran this again?
-```
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
@@ -268,12 +270,9 @@ the project — cross-reference it with sprint estimates.
 - `full` → spawn `creative-director` through Codex subagent delegation using gate **CD-PLAYTEST**
   (`.codex/docs/director-gates.md`).
 
-Pass: the full REPORT.md content, the validation question, game pillars and core
-fantasy from `design/gdd/game-concept.md`.
+Pass the persisted `prototypes/[concept-name]-vertical-slice/REPORT.md` path, the validation question/hypothesis, and game pillars/core fantasy, matching the existing CD-PLAYTEST contract.
 
-The creative director evaluates the vertical slice result against the game's
-creative vision and pillars, then confirms, modifies, or overrides the
-recommendation. Their verdict is final. Update REPORT.md if the verdict differs.
+Record the gate verdict separately from the slice recommendation. CD-PLAYTEST `APPROVE` may confirm the evidence-based recommendation. `CONCERNS` or `REJECT` lowers the result to at least PIVOT/needs re-review, but cannot invent a KILL verdict without the slice criteria and user decision. The user confirms the final project direction.
 
 ---
 
@@ -283,8 +282,7 @@ Output a summary: the validation question, velocity data, and final recommendati
 Link to `prototypes/[concept-name]-vertical-slice/REPORT.md`.
 
 **If PROCEED:**
-Your vertical slice validated the full game loop. The project is ready for
-Production.
+Your vertical slice provides positive evidence for the full game loop. It does not advance the project stage itself.
 
 Recommended next steps:
 - `$create-epics layer:foundation` — plan Foundation layer epics
@@ -293,10 +291,7 @@ Recommended next steps:
 - `$sprint-plan` — plan the first sprint using velocity data from the slice
 - `$gate-check pre-production` — formally advance the stage to Production
 
-**Playtest note:** `$gate-check` will look for documented playtest evidence.
-At minimum, 1 documented session with a REPORT.md showing PROCEED is required
-to pass the gate. More sessions give more reliable signal — 3+ is recommended
-before committing the full team to Production, but is not a hard gate.
+**Playtest note:** `$gate-check` owns the Pre-Production → Production transition. The vertical-slice report is recommended evidence under its current rules; absence may produce CONCERNS but this workflow never declares it a hard gate or updates the stage. Run `$gate-check pre-production` for the actual decision.
 
 **If PIVOT:**
 

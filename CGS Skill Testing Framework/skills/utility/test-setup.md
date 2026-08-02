@@ -17,14 +17,14 @@ Treat the complete described file set as one bounded changeset: use existing tas
 
 **Assertions:**
 - [ ] All 4 subdirectories (unit/, integration/, performance/, playtest/) are created
-- [ ] GdUnit4 runner config is generated
-- [ ] Runner script path matches coding-standards.md CI command
+- [ ] No unverified homemade GdUnit4 runner is generated; without a known API/failure contract the result is BLOCKED/partial
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 6. Verdict is COMPLETE
 
 **Assertions:**
 - [ ] Unity-specific `Tests/` structure is created (not the Godot structure)
 - [ ] `.asmdef` files are generated
+- [ ] Both asmdef files reference the uniquely resolved real runtime assembly; unknown references block without placeholder JSON
 - [ ] EditMode and PlayMode runner config is present
 - [ ] Verdict is COMPLETE
 
@@ -99,6 +99,10 @@ Treat the complete described file set as one bounded changeset: use existing tas
 - [ ] Reads engine from `technical-preferences.md` before generating any scaffold
 - [ ] Generates engine-appropriate test runner config (not generic)
 - [ ] Creates all 4 subdirectories from coding-standards.md
+- [ ] Visual/UI evidence points to `production/qa/evidence/`; `tests/evidence/` is not created
+- [ ] Unity CI is written only when existing runner/license prerequisites are already configured; no new secret is suggested
+- [ ] Unreal CI contains the actual uproject, test prefix, runner shell/command, and failure behavior, or is not written
+- [ ] COMPLETE is impossible when the selected engine's runner/assembly/workflow contract remains partial
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Detects existing framework and offers verification (not reinitialization)
 - [ ] Verdict is COMPLETE when scaffold is in place

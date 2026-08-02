@@ -33,7 +33,7 @@ If [C]: stop. Verdict: **REDIRECTED** — use the normal bug fix workflow for S3
 
 ---
 
-## Phase 2: Create Hotfix Record
+## Phase 2: Draft Hotfix Record In Memory
 
 Draft the hotfix record:
 
@@ -65,9 +65,7 @@ Status: IN PROGRESS
 [How to revert if the fix causes new issues]
 ```
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file, creating the directory if needed.
+Keep this record in memory. Do not create or update any workspace file in this phase. The record joins the complete changeset only after Phase 3 has established the confirmed hotfix branch (or the user has explicitly accepted a non-Git current workspace) and Phase 4 has identified every code, test, record, and bug-file edit.
 
 ---
 
@@ -75,9 +73,9 @@ Once the complete changeset is authorized, write the file, creating the director
 
 Check whether this is a git repository:
 
-Run `git rev-parse --is-inside-work-tree` as a read-only repository check.
+Run `git rev-parse --is-inside-work-tree` as a read-only repository check. Do not write any file before this check and the branch decision are complete.
 
-If this command fails or returns empty: note "Not a git repository — create the branch manually." and skip branch creation.
+If this is not a Git repository, state: "Not a Git repository; the hotfix can only be implemented in the current workspace." Ask the user to confirm current-workspace implementation before continuing. If they decline, output **HOTFIX BLOCKED** and stop.
 
 If the check passes, ask the user directly before creating the branch:
 - Prompt: "Ready to create hotfix branch 'hotfix/[short-name]' from [base-ref]?"
@@ -86,13 +84,15 @@ If the check passes, ask the user directly before creating the branch:
   - `[B] Use a different base ref — I'll specify it`
   - `[C] Skip — I'll create the branch myself`
 
-Only run `git checkout -b hotfix/[short-name] [base-ref]` if user selects [A]. If [B]: ask the user for the base ref, then run the command with that ref. If [C]: skip branch creation and proceed to Phase 4.
+Only run `git checkout -b hotfix/[short-name] [base-ref]` if user selects [A]. If [B], ask the user for the base ref, then run the command with that ref. If [C], do not proceed to workspace writes until the user confirms that the already-selected branch/workspace is the intended hotfix target; a declined confirmation ends with **HOTFIX BLOCKED**.
 
 ---
 
 ## Phase 4: Investigate and Implement
 
 Focus on the minimal change that resolves the issue. Do NOT refactor, clean up, or add features alongside the hotfix.
+
+Before authorization, perform only read-only root-cause investigation and caller discovery. Then present one complete changeset containing the hotfix record, all code and tests, and the uniquely resolved existing bug file when one exists. Only after that changeset is authorized may any of those files be written. If investigation expands the file set, stop and re-preview the expanded set.
 
 Validate the fix by running targeted tests for the affected system. Check for regressions in adjacent systems.
 
@@ -106,9 +106,7 @@ Use the Codex subagent delegation to request sign-off in parallel:
 
 - `subagent_type: lead-programmer` — Review the fix for correctness and side effects
 - `subagent_type: qa-tester` — Run targeted regression tests on the affected system
-- `subagent_type: producer` — Approve deployment timing and communication plan
-
-All three must return APPROVE before proceeding. If any returns CONCERNS or REJECT, do not deploy — surface the issue and resolve it first.
+Both reviews must return APPROVE before proceeding. If either returns CONCERNS or REJECT, output **HOTFIX BLOCKED** and do not deploy. Consult `producer` only when deployment timing requires a product decision and the user authorizes that consultation; it is not a fixed code-correctness gate. Do not invoke a director gate or automatically escalate to `technical-director` inside this time-sensitive workflow.
 
 ---
 
@@ -143,7 +141,9 @@ Update the original bug file if one exists:
 
 Set `**Status**: Fixed — Pending Verification` in the bug file header.
 
-Output a deployment summary:
+Resolve and show the actual release and development branch targets. After verification, report **ready for merge**, not deployed or complete. Merging is an external side effect and requires explicit user authorization. Merge the hotfix into both targets; if either target is missing, skipped, conflicts, or the command fails, output **HOTFIX BLOCKED** and do not claim that backporting finished.
+
+Only after both merges succeed, output a deployment summary:
 
 ```
 ## Hotfix Ready to Deploy: [short-name]
@@ -152,11 +152,12 @@ Output a deployment summary:
 **Root cause**: [one line]
 **Fix**: [one line]
 **QA gate**: [Smoke check PASS / Team-QA APPROVED]
-**Approvals**: lead-programmer ✓ / qa-tester ✓ / producer ✓
+**Approvals**: lead-programmer ✓ / qa-tester ✓
 **Rollback plan**: [from Phase 2 record]
 
 Merge to: release branch AND development branch
-Next: $bug-report verify [BUG-ID] after deploy to confirm resolution
+Status: merged to both targets; awaiting confirmed deployment
+Next: confirm the target build is deployed, then run $bug-report verify [BUG-ID]
 ```
 
 ### Rules
@@ -164,16 +165,18 @@ Next: $bug-report verify [BUG-ID] after deploy to confirm resolution
 - Every hotfix must have a rollback plan documented before deployment
 - Hotfix branches merge to BOTH the release branch AND the development branch
 - All hotfixes require a post-incident review within 48 hours
-- If the fix is complex enough to need more than 4 hours, escalate to `technical-director`
+- This workflow invokes no director gate; if scope is no longer suitable for a hotfix, stop with **HOTFIX BLOCKED** and return the decision to the user.
 
 ---
 
 ## Phase 7: Post-Deploy Verification
 
-After deploying, run `$bug-report verify [BUG-ID]` to confirm the fix resolved the issue in the deployed build.
+Enter this phase only after the user explicitly confirms that the build containing both successful merges has been deployed. Without that confirmation, stop at the ready/awaiting-deployment state: do not verify, close the bug, schedule a review, or output **HOTFIX COMPLETE**.
 
-If VERIFIED FIXED: run `$bug-report close [BUG-ID]` to formally close it.
-If STILL PRESENT: the hotfix failed — immediately re-open, assess rollback, and escalate.
+After confirmed deployment, run `$bug-report verify [BUG-ID]` to confirm the fix resolved the issue in the deployed build.
+
+If VERIFIED FIXED: run `$bug-report close [BUG-ID]` to formally close it, then output **HOTFIX COMPLETE**.
+If STILL PRESENT or verification/close fails: output **HOTFIX BLOCKED**; keep or re-open the bug and assess rollback.
 
 Schedule a post-incident review within 48 hours using `$retrospective hotfix`.
 

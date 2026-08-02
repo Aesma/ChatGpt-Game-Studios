@@ -2,19 +2,9 @@
 
 This file contains required phases of `$prototype`. Read it in full when the main `SKILL.md` reaches its Required continuation section, then execute the phases in order.
 
-## Phase 7: Generate Prototype Report
+## Phase 7: Draft Prototype Report In Memory
 
-Read `.codex/docs/templates/prototype-report.md` to get the report structure.
-Fill in every section based on what was observed during this session. Replace all
-placeholder text with real observations — no generic filler.
-
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file. Then update `prototypes/index.md` (create if it does not
-exist) — append one row to the concept prototype table: concept name, date, path
-used, verdict (PROCEED/PIVOT/KILL), and a link to the REPORT.md. If a PIVOT chain
-exists (prior PIVOT-NOTE.md in a related concept folder), note the chain. This file
-is the project's complete history of what was tried and what was learned.
+Read `.codex/docs/templates/prototype-report.md` and fill every section from actual observations. Keep REPORT.md and the corresponding `prototypes/index.md` row in memory; do not write them yet. Simulated Paper walkthroughs must be labelled non-player evidence and cannot support a player-experience recommendation.
 
 ---
 
@@ -23,23 +13,19 @@ is the project's complete history of what was tried and what was learned.
 **Review mode check:**
 - `solo` → skip. Note: "CD-PLAYTEST skipped — Solo mode."
 - `lean` → skip. Note: "CD-PLAYTEST skipped — Lean mode."
-- `full` → spawn `creative-director` through Codex subagent delegation using gate **CD-PLAYTEST** if
-  `design/gdd/game-concept.md` exists with game pillars defined. If pillars are
-  not yet defined, note: "CD-PLAYTEST skipped — game pillars not yet defined at
-  concept prototype stage."
+- `full` → spawn `creative-director` through Codex subagent delegation using gate **CD-PLAYTEST** if `design/gdd/game-concept.md` exists with game pillars defined. If pillars are absent, record the skip reason.
 
-Pass: the full REPORT.md content, the original hypothesis, and game pillars /
-core fantasy from `design/gdd/game-concept.md`.
+Pass the in-memory report draft, original hypothesis, and existing pillars/core fantasy. The gate returns only its standard **APPROVE / CONCERNS / REJECT** verdict about evidence support and pillar drift. It does not return, choose, modify, or override PROCEED/PIVOT/KILL.
 
-The creative director evaluates the result against the game's creative vision and
-confirms, modifies, or overrides the recommendation. Their verdict is final. Update
-REPORT.md if the verdict differs.
+APPROVE leaves the user's recommendation unchanged. For CONCERNS or REJECT, show the evidence and let the user re-decide among the existing recommendations or stop; the user owns that product decision. Resolve this before any report/index write.
 
 ---
 
-## Phase 9: Summary and Next Steps
+## Phase 9: Finalize, Write, and Hand Off
 
-Output a summary: the hypothesis, the result, and the final recommendation.
+After review and the user's final recommendation, assemble Batch 2: the actual REPORT.md, `prototypes/index.md`, and the applicable PIVOT-NOTE.md or GRAVEYARD.md edit. Show every exact path and modification together and obtain one authorization, then write them as one bounded batch. If the file set expands or any write fails, stop and do not claim completion. Do not update the verdict after this write.
+
+Output a summary: the hypothesis, the result, and the user-owned final recommendation.
 Link to `prototypes/[concept-name]-concept/REPORT.md`.
 
 **If PROCEED:**
@@ -47,7 +33,7 @@ Your concept prototype validated the core idea. Now design it properly, informed
 what you just learned.
 
 Recommended path (in order):
-1. `$design-review design/gdd/game-concept.md` — validate the concept doc against what the prototype revealed
+1. Reconcile the existing game-concept sections against what the prototype revealed; do not pass the concept document to the system-GDD-only `$design-review`
 2. `$gate-check` — confirm readiness to advance to Systems Design
 3. `$art-bible` — define visual identity (optional but worth doing before GDDs)
 4. `$map-systems` — decompose the concept into all game systems
@@ -66,10 +52,7 @@ two questions (plain text, one at a time):
 1. "What specifically worked in this prototype that we should preserve in the next version?"
 2. "What is the single most important thing to change?"
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file with: original hypothesis, what to keep, what to change, and
-the revised hypothesis for the next prototype. When `$prototype` is next run, check
+The PIVOT-NOTE.md content (original hypothesis, what to keep/change, and revised hypothesis) is part of the single Phase 9 Batch 2 preview and write; do not ask for a separate file authorization. When `$prototype` is next run, check
 `prototypes/` for any `PIVOT-NOTE.md` files — if found, read them and use the
 revised hypothesis as the starting point rather than forming one from scratch.
 
@@ -88,8 +71,7 @@ Before moving on, run this check to confirm the verdict is sound and not tempora
 
 If 2+ boxes apply → KILL verdict is sound. If 0–1 apply → consider one more focused PIVOT before killing.
 
-**Document the kill in `prototypes/GRAVEYARD.md`** (create if it doesn't exist).
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized. Once the complete changeset is authorized, add one entry:
+**Document the kill in `prototypes/GRAVEYARD.md`** only as part of the single Phase 9 Batch 2 preview and write. Add one entry:
 
 ```
 ## [Concept Name] — YYYY-MM-DD

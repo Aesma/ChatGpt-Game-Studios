@@ -2,191 +2,112 @@
 
 ## Skill Summary
 
-`$create-stories` breaks a single epic into developer-ready story files. It reads
-the EPIC.md, the corresponding GDD, governing ADRs, the control manifest, and the
-TR registry. Each story gets structured frontmatter including: Title, Epic, Layer,
-Priority, Status, TR-ID, ADR references, Acceptance Criteria, and Definition of
-Done. Stories are classified by type (Logic / Integration / Visual/Feel / UI /
-Config/Data) which determines the required test evidence path.
-
-In `full` review mode, a QL-STORY-READY check runs per story after creation. In
-`lean` or `solo` mode, QL-STORY-READY is skipped. The skill treats the complete
-story batch as one bounded changeset and uses existing task authorization or one
-confirmation before writing. Stories are written to
-`production/epics/[layer]/story-[name].md`.
+`$create-stories` writes the existing Markdown/header-and-sections story format
+to `production/epics/[epic-slug]/story-NNN-[slug].md`. The current Requirement
+line carries the TR-ID and Acceptance Criteria remain in their existing section;
+the workflow does not require frontmatter, Priority, or a separate Definition of
+Done field. ADR references are a non-empty list with exactly one explicit
+primary, except for the narrowly valid Config/Data N/A form.
 
 ---
 
-## Static Assertions (Structural)
+## Static Assertions
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keywords: COMPLETE, BLOCKED, NEEDS WORK
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Has a next-step handoff at the end (`$story-readiness`, `$dev-story`)
-- [ ] Documents story Status: Blocked when governing ADR is Proposed
-- [ ] Documents QL-STORY-READY gate: active in full mode, skipped in lean/solo
-
----
-
-## Director Gate Checks
-
-In `full` mode: QL-STORY-READY check runs per story after creation. Stories that
-fail the check are noted as NEEDS WORK before the "changeset authorization" ask.
-
-In `lean` mode: QL-STORY-READY is skipped. Output notes:
-"QL-STORY-READY skipped — lean mode" per story.
-
-In `solo` mode: QL-STORY-READY is skipped with equivalent notes.
+- [ ] Output path and naming match the existing epic-slug directory contract
+- [ ] Tests do not require fields absent from the current story template
+- [ ] Status is computed per story rather than hard-coded Ready
+- [ ] Full QL-STORY-READY receives planned path plus complete inline draft before writes
+- [ ] Lean and solo do not spawn qa-lead after recording a gate skip
 
 ---
 
 ## Test Cases
 
-### Case 1: Happy Path — Epic with 3 stories, all ADRs Accepted
+### Case 1: Happy Path — existing fields, Accepted ADR list
 
 **Fixture:**
-- `production/epics/[layer]/EPIC-[name].md` exists with 3 GDD requirements
-- Corresponding GDD exists with matching acceptance criteria
-- All governing ADRs have `Status: Accepted`
-- `docs/architecture/control-manifest.md` exists
-- `docs/architecture/tr-registry.yaml` has TR-IDs for all 3 requirements
-- `production/session-state/review-mode.txt` contains `lean`
-
-**Input:** `$create-stories [epic-name]`
-
-**Expected behavior:**
-1. Skill reads EPIC.md, GDD, governing ADRs, control manifest, and TR registry
-2. Classifies each requirement into a story type (Logic / Integration / Visual/Feel / UI / Config/Data)
-3. Drafts 3 story files with correct frontmatter schema
-4. QL-STORY-READY is skipped (lean mode) — noted in output
-5. Treat the complete described file set as one bounded changeset: use existing task authorization, or preview and confirm it once before the first write.
-6. Writes all 3 story files after approval
+- One epic decomposes into three stories
+- Each story has a stable TR-ID
+- All ADR references are Accepted and each list has exactly one explicit primary
+- Review mode resolves to lean
 
 **Assertions:**
-- [ ] Each story's frontmatter contains: Title, Epic, Layer, Priority, Status, TR-ID, ADR reference, Acceptance Criteria, DoD
-- [ ] Story types are correctly classified (at least one Logic type in fixture)
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] QL-STORY-READY skip is noted in output
-- [ ] All 3 story files are written with correct naming: `story-[name].md`
-- [ ] Skill does NOT start implementation
+- [ ] Files use `production/epics/[epic-slug]/story-NNN-[slug].md`
+- [ ] Requirement and Acceptance Criteria use their current locations
+- [ ] No Priority, independent DoD, or frontmatter field is invented
+- [ ] qa-lead is not spawned; any derived QA cases are marked unreviewed
+- [ ] All files and EPIC/index edits are included in one changeset authorization
 
 ---
 
-### Case 2: Failure Path — No epic file found
+### Case 2: Planned-path gate contract
 
-**Fixture:**
-- The epic path provided does not exist in `production/epics/`
-
-**Input:** `$create-stories nonexistent-epic`
-
-**Expected behavior:**
-1. Skill attempts to read the EPIC.md file
-2. File not found
-3. Skill outputs a clear error with the path it searched
-4. Skill suggests checking `production/epics/` or running `$create-epics` first
-5. No story files are created
+**Fixture:** review mode resolves to full
 
 **Assertions:**
-- [ ] Skill outputs a clear error naming the missing file path
-- [ ] No story files are written
-- [ ] Skill recommends the correct next action (`$create-epics`)
-- [ ] Skill does NOT create stories without a valid EPIC.md
+- [ ] QL-STORY-READY receives one complete inline draft and planned final path per story
+- [ ] Planned paths are not described as files already on disk
+- [ ] Per-story verdicts are returned before the write authorization
+- [ ] No story file is written before the gate resolves
 
 ---
 
-### Case 3: Blocked Story — ADR is Proposed
-
-**Fixture:**
-- EPIC.md exists with 2 requirements
-- Requirement 1 is covered by an Accepted ADR
-- Requirement 2 is covered by an ADR with `Status: Proposed`
-
-**Input:** `$create-stories [epic-name]`
-
-**Expected behavior:**
-1. Skill reads the ADR for Requirement 2 and finds Status: Proposed
-2. Story for Requirement 2 is drafted with `Status: Blocked`
-3. Blocking note references the specific ADR: "BLOCKED: ADR-NNN is Proposed"
-4. Story for Requirement 1 is drafted normally with `Status: Ready`
-5. Both stories are shown in the draft — user asked "changeset authorization" for both
+### Case 3: Proposed ADR and missing TR-ID compute Blocked
 
 **Assertions:**
-- [ ] Story 2 has `Status: Blocked` in its frontmatter
-- [ ] Blocking note names the specific ADR number and recommends `$architecture-decision`
-- [ ] Story 1 has `Status: Ready` — blocked status does not affect non-blocked stories
-- [ ] Blocked status is shown in the draft preview before applying a not-yet-authorized changeset
-- [ ] Both story files are written (blocked stories are still written — just flagged)
+- [ ] A Proposed ADR is shown with its actual Status and makes that story Blocked
+- [ ] A missing stable TR-ID makes that story Blocked
+- [ ] The workflow never writes `TR-[system]-???` as a developer-ready identifier
+- [ ] Other fully valid stories keep their independently computed status
 
 ---
 
-### Case 4: Edge Case — No argument provided
-
-**Fixture:**
-- `production/epics/` directory exists with ≥2 epic subdirectories
-
-**Input:** `$create-stories` (no argument)
-
-**Expected behavior:**
-1. Skill detects no argument is provided
-2. Outputs a usage error: "No epic specified. Usage: $create-stories [epic-name]"
-3. Skill lists available epics from `production/epics/`
-4. No story files are created
+### Case 4: Multiple ADR references require one explicit primary
 
 **Assertions:**
-- [ ] Skill outputs a usage error when no argument is given
-- [ ] Skill lists available epics to help the user choose
-- [ ] No story files are written
-- [ ] Skill does NOT silently pick an epic without user input
+- [ ] All applicable references are listed without duplicates
+- [ ] Exactly one item is explicitly marked primary; list order is not a substitute
+- [ ] Any non-Accepted secondary reference makes the story Blocked
+- [ ] The preview shows every reference and actual Status
 
 ---
 
-### Case 5: Director Gate — Full mode runs QL-STORY-READY; stories failing noted as NEEDS WORK
+### Case 5: Valid Config/Data N/A
 
-**Fixture:**
-- EPIC.md exists with 2 requirements
-- Both governing ADRs are Accepted
-- `production/session-state/review-mode.txt` contains `full`
-- QL-STORY-READY check finds one story has ambiguous acceptance criteria
-
-**Input:** `$create-stories [epic-name]`
-
-**Expected behavior:**
-1. Both stories are drafted
-2. QL-STORY-READY check runs for each story
-3. Story 1 passes QL-STORY-READY
-4. Story 2 fails QL-STORY-READY — noted as NEEDS WORK with specific feedback
-5. Both stories are shown to user with pass/fail status before "changeset authorization"
-6. User can proceed (story written as-is with NEEDS WORK note) or revise first
+**Fixture:** Type is exactly Config/Data and the only ADR reference is
+`N/A — balance table values only; no architectural pattern`.
 
 **Assertions:**
-- [ ] QL-STORY-READY results appear per story in the output
-- [ ] Story 2 is flagged as NEEDS WORK with the specific failing criteria
-- [ ] Story 1 shows as passing QL-STORY-READY
-- [ ] User is given the choice to proceed or revise before applying a not-yet-authorized changeset
-- [ ] Skill does NOT auto-block writing of stories that fail QL-STORY-READY without user input
+- [ ] The story may proceed without resolving an ADR file
+- [ ] The specific reason is preserved
+- [ ] N/A is not mixed with a real ADR
+
+---
+
+### Case 6: Invalid N/A forms
+
+**Assertions:**
+- [ ] Non-Config/Data N/A is Blocked
+- [ ] Empty, whitespace-only, TBD, or placeholder reason is Blocked
+- [ ] N/A mixed with a real ADR is Blocked
+- [ ] Missing ADR reference field is Blocked
+
+---
+
+### Case 7: No argument or missing epic
+
+**Assertions:**
+- [ ] No argument lists available EPIC.md files and waits for a choice
+- [ ] Missing epic path produces a clear error
+- [ ] EPIC.md and index files are excluded from story globs
+- [ ] No story is written without a valid selected epic
 
 ---
 
 ## Protocol Compliance
 
-- [ ] All context (EPIC, GDD, ADRs, manifest, TR registry) loaded before drafting stories
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Blocked stories flagged before write approval — not discovered after writing
-- [ ] TR-IDs reference the registry — requirement text is not embedded inline in story files
-- [ ] Control manifest rules quoted per-story from the manifest, not invented
-- [ ] Ends with next-step handoff: `$story-readiness` → `$dev-story`
-
----
-
-## Coverage Notes
-
-- Integration story test evidence (playtest doc alternative) follows the same
-  approval pattern as Logic stories — not independently fixture-tested.
-- Story ordering (foundational first, UI last) is validated implicitly via
-  Case 1's multi-story fixture.
-- The story sizing rule (splitting large requirement groups) is not tested here
-  — it is addressed in the `$create-stories` skill's internal logic.
+- [ ] Existing story field set is consistent with consumers
+- [ ] Validity and Blocked reasons are visible before authorization
+- [ ] Full gate is pre-write; lean/solo do not secretly delegate QA work
+- [ ] One complete changeset authorization covers the story batch and listed edits
+- [ ] Ends with the existing `$story-readiness` then `$dev-story` handoff

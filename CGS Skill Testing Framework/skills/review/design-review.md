@@ -152,6 +152,42 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ---
 
+### Case 6: Unsupported document types stop without a verdict
+
+**Inputs:** missing target; multiple targets; directory; non-Markdown file;
+project-external path; `game-concept.md`; `systems-index.md`; review report; or
+any Markdown file outside the supported `design/gdd/` system-GDD set.
+
+**Assertions:**
+- [ ] Each invalid input produces a clear error and no verdict
+- [ ] The eight-section system-GDD standard is not applied to concept, UX, narrative, level, or report documents
+- [ ] No file is modified and no authorization prompt appears
+
+---
+
+### Case 7: Full review respects capacity and reports specialist failure
+
+**Fixture:** more relevant specialist roles than available subagent slots, with
+one attempted specialist failing.
+
+**Assertions:**
+- [ ] Roles are deduplicated and run in bounded batches that leave space for the primary task
+- [ ] No unstarted or failed role is represented by a simulated result
+- [ ] Completed findings are still reported with the failed role and reason listed
+- [ ] If missing evidence prevents a clean conclusion, no APPROVED verdict is produced
+- [ ] If no required specialist succeeds, the workflow ends with an error and no verdict
+
+---
+
+### Case 8: Revision verdict remains read-only
+
+**Assertions:**
+- [ ] NEEDS REVISION and MAJOR REVISION NEEDED list exact sections to change
+- [ ] The workflow does not revise the GDD, update systems-index, or append a review log
+- [ ] No option can mark revised content Approved without a later re-review
+
+---
+
 ## Protocol Compliance
 
 - [ ] Does NOT use file-editing operations (read-only skill)

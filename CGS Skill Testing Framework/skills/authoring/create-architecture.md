@@ -23,15 +23,33 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Has ≥2 phase headings
 - [ ] Contains verdict keywords: APPROVED, NEEDS REVISION, MAJOR REVISION NEEDED
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+
+---
+
+## Test Cases
+
+### Case 1: Happy Path — skeleton first, parallel full-mode gates
+
+**Fixture:**
+- No existing `docs/architecture/architecture.md`
+- Required design and engine context is present
+- Review mode resolves to `full`
+
+**Input:** `$create-architecture`
+
+**Expected behavior:**
+1. The complete changeset names `architecture.md` and the conditional `active.md` update before the first write
+2. After that one authorization, the complete architecture skeleton is the first write
 3. After all sections are drafted: TD-ARCHITECTURE and LP-FEASIBILITY spawn in parallel
 4. Both gates return APPROVED
-5. Final "May I confirm architecture is complete?" asked
-6. Session state updated
+5. The already-authorized final status is written only after both results are available
+6. Session state is updated within the initial authorized boundary
 
 **Assertions:**
 - [ ] Skeleton file is created with all section headers before any content is written
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] TD-ARCHITECTURE and LP-FEASIBILITY spawn in parallel (not sequentially)
+- [ ] Both gates receive the same complete draft; neither gate result is input to the other
 - [ ] Both gates complete before the final completion confirmation
 - [ ] Verdict is APPROVED when both gates return APPROVED
 - [ ] Next-step handoff to `$architecture-review` or `$create-control-manifest` is present
@@ -59,6 +77,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Gate feedback is shown to the user with specific issue descriptions
 - [ ] User is given the option to revise specific sections
 - [ ] Skill does NOT auto-finalize despite MAJOR REVISION feedback
+- [ ] REJECT or INFEASIBLE leaves Document Status `In Design` and prevents an `Architecture Complete` handoff
 
 ---
 
@@ -128,6 +147,27 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Risk note is embedded in the architecture document section
 - [ ] TD-ARCHITECTURE and LP-FEASIBILITY still spawn (the risk does not block the gates)
 - [ ] Risk flag names the specific ADR number and title
+
+---
+
+### Case 6: Focus modes touch only their existing section
+
+**Assertions:**
+- [ ] `layers`, `data-flow`, and `api-boundaries` load only needed context and edit only the selected existing section
+- [ ] `adr-audit` is read-only unless an architecture edit is explicitly included in the authorized changeset
+- [ ] Unknown focus modes stop without writing
+- [ ] A focus run does not emit a full-mode completion handoff
+
+---
+
+### Case 7: Required reviewer unavailable
+
+**Fixture:** full review mode with either technical-director or lead-programmer unavailable
+
+**Assertions:**
+- [ ] The author does not self-sign for the missing technical-director
+- [ ] No fabricated verdict is recorded
+- [ ] Sign-off remains blocked and the architecture stays `In Design`
 
 ---
 

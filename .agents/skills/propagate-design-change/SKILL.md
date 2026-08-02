@@ -43,17 +43,13 @@ Read the current GDD in full.
 
 ## 3. Read the Previous Version
 
-Run git to get the previous committed version:
+Resolve the target project-relative path and inspect its Git status first.
 
-```bash
-git show HEAD:design/gdd/[filename].md
-```
+- If the working tree contains changes to the target, compare `HEAD:[path]` with the working-tree file.
+- If the target is clean and its change is already committed, find the most recent commit that modified that path and compare that commit's parent version with the version in that commit.
+- If two versions cannot be recovered, report **no comparison baseline** and stop change/impact classification. This is not NO IMPACT and must not be described as nothing to propagate.
 
-If the file has no git history (new file), report:
-> "No previous version in git — this appears to be a new GDD, not a revision.
-> Nothing to propagate."
-
-If git returns the previous version, do a conceptual diff:
+With the two verified versions, do a conceptual diff:
 - Identify sections that changed (new rules, removed rules, modified formulas,
   changed acceptance criteria, changed tuning knobs)
 - Identify sections that are unchanged
@@ -83,9 +79,9 @@ Read all ADRs in `docs/architecture/`:
 - Extract the "GDD Requirements Addressed" table
 - Note which GDD documents and requirement IDs each ADR references
 
-Read `docs/architecture/architecture-traceability.md` if it exists.
+Read `docs/architecture/architecture-traceability.md` and any existing TR registry if present. Also scan existing epic and story files for explicit references to the exact GDD path or requirement IDs from that GDD. Do not use fuzzy semantic matching.
 
-Report: "Loaded [N] ADRs. [M] reference [gdd filename]."
+Report counts by ADR, traceability/TR entry, epic, and story.
 
 ---
 
@@ -114,8 +110,8 @@ For each affected ADR, produce an impact entry:
 ### ADR-NNNN: [title]
 Status: [Still Valid / Needs Review / Likely Superseded]
 
-What the ADR assumed about this GDD:
-  "[relevant quote from the ADR's GDD Requirements Addressed section]"
+What the ADR recorded about this GDD:
+  [Quote only text actually stored in the ADR. If it stores only an ID/summary, show that and state that the historical requirement wording cannot be recovered from the ADR.]
 
 What the GDD now says:
   "[relevant quote from the current GDD]"
@@ -152,26 +148,9 @@ ADRs referencing this GDD: [M]
 
 ---
 
-## 6b. Director Gate — Technical Impact Review
+## 6b. Technical Review Boundary
 
-**Review mode check** — apply before spawning TD-CHANGE-IMPACT:
-- `solo` → skip. Note: "TD-CHANGE-IMPACT skipped — Solo mode." Proceed to Phase 7.
-- `lean` → skip. Note: "TD-CHANGE-IMPACT skipped — Lean mode." Proceed to Phase 7.
-- `full` → spawn as normal.
-
-Spawn `technical-director` through Codex subagent delegation using gate **TD-CHANGE-IMPACT** (`.codex/docs/director-gates.md`).
-
-Pass: the full Design Change Impact Report from Phase 6 (change summary, all affected ADRs with their Still Valid / Needs Review / Likely Superseded classifications, and recommended actions).
-
-The technical-director reviews whether:
-- The impact classifications are correct (no ADRs under-classified)
-- The recommended actions are architecturally sound
-- Any cascading effects on other ADRs or systems were missed
-
-Apply the verdict:
-- **APPROVE** → proceed to Phase 7 resolution workflow
-- **CONCERNS** → surface the specific ADRs or recommendations flagged; ask the user directly with options: `Revise the impact assessment` / `Accept with noted concerns` / `Discuss further`
-- **REJECT** → do not proceed to resolution; re-analyze the impact before continuing
+This workflow reads no review mode and invokes no director gate. The optional `technical-director` delegation named at the top may help perform the same analysis, but it supplies no gate ID or gate verdict.
 
 ---
 
@@ -182,14 +161,12 @@ For each ADR marked "Needs Review" or "Likely Superseded", ask the user what to 
 Ask for each ADR in turn:
 > "ADR-NNNN ([title]) — [status]. What would you like to do?"
 > Options:
-> - "Mark Superseded (I'll write a new ADR)" — updates the ADR status field to `Superseded by: [pending]`
+> - "Plan a replacement ADR" — record in the impact report that the user chose supersede and that the replacement has not been created; do not edit the original ADR's Superseded-by field yet
 > - "Update in place (minor revision)" — opens the ADR for editing; note what to revise
 > - "Keep as-is (the change doesn't actually affect this decision)"
 > - "Skip for now (revisit later)"
 
-For ADRs marked **Superseded**:
-- Update the ADR's Status field: `Superseded by ADR-[next number] (pending — see change-impact-[date]-[system].md)`
-- Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+For a supersede decision, do not pre-allocate an ADR number and do not create a pending `Superseded by` link. Record only the user's decision in the impact report. The original ADR may receive a real replacement reference only after `$architecture-decision` actually creates that ADR.
 
 ---
 
@@ -211,7 +188,7 @@ Add this proposed file or edit to the complete changeset preview; do not write i
 
 ## 9. Output Change Impact Document
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+After all per-artifact decisions, resolve one report path: `production/change-impact-[date]-[system].md`. Build one complete changeset containing that report and only the ADR, traceability/TR, epic, and story files that the user actually chose to edit. Preview the exact paths and modifications once, then write only after authorization. If the final result requires no file edit and the user does not want the report saved, finish read-only without requesting authorization. Any write failure prevents COMPLETE.
 
 The document contains:
 - The change summary from step 3

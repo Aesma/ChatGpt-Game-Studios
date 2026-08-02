@@ -15,7 +15,7 @@ PHASE 1: CONCEPT
   $prototype [core-mechanic] ───────────────────────────────────► prototypes/[name]-concept/REPORT.md
         │ PROCEED                                                  (validate idea BEFORE writing GDDs)
         ▼
-  $design-review [game-concept.md] ────────────────────────────► concept validated
+  concept readiness check (pillars, loop, audience, scope) ───► concept validated
   $gate-check ─────────────────────────────────────────────────► PASS → advance to systems-design
         │
         ▼

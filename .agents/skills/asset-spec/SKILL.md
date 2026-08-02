@@ -9,7 +9,7 @@ Invoke this workflow as `$asset-spec`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[system:<name> | level:<name> | character:<name>] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[system:<name> | level:<name> | character:<name> | entity:<name>] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 If no argument is provided, check whether `design/assets/entity-inventory.md` exists:
@@ -109,7 +109,7 @@ After writing, tell the user:
 ## Phase 0: Parse Arguments
 
 Extract:
-- **Target type**: `system`, `level`, or `character`
+- **Target type**: `system`, `level`, `character`, or `entity`
 - **Target name**: the name after the colon (normalize to kebab-case)
 - **Review mode**: `--review [full|lean|solo]` if present
 
@@ -129,7 +129,7 @@ Read all source material **before** asking the user anything.
   > "No art bible found. Run `$art-bible` first — asset specs are anchored to the art bible's visual rules and asset standards."
   Extract: Visual Identity Statement, Color System (semantic colors), Shape Language, Asset Standards (Section 8 — dimensions, formats, polycount budgets, texture resolution tiers).
 
-- **Technical preferences**: Read `.codex/docs/technical-preferences.md` — extract performance budgets and naming conventions.
+- **Technical preferences**: Read `docs/technical-preferences.md` — extract performance budgets and naming conventions.
 
 ### Source doc reads (by target type):
 - **system**: Read `design/gdd/[target-name].md`. Extract the **Visual/Audio Requirements** section. If it doesn't exist or reads `[To be designed]`:
@@ -235,7 +235,7 @@ Combine the agent outputs into a draft spec per asset. Present all specs in conv
 
 After presenting all specs, ask the user directly:
 - Prompt: "Asset specs for **[target]** — [N] assets. Review complete?"
-- Options: `[A] Approve all — write to file` / `[B] Revise a specific asset` / `[C] Regenerate with different direction`
+- Options: `[A] Approve all — include in the complete changeset preview` / `[B] Revise a specific asset` / `[C] Regenerate with different direction`
 
 If [B]: ask which asset and what to change. Revise inline and re-present. Do NOT re-spawn agents for minor text revisions — only re-spawn if the visual direction itself needs to change.
 
@@ -245,9 +245,8 @@ If [C]: ask what direction to change. Re-spawn the relevant agent with the updat
 
 ## Phase 5: Write Spec File
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write the file with:
+Prepare the complete content for
+`design/assets/specs/[target]-assets.md`, but do not write it yet:
 
 ```markdown
 # Asset Specs — [Target Type]: [Target Name]
@@ -260,7 +259,8 @@ Write the file with:
 [all asset specs in ASSET-NNN format]
 ```
 
-Then update `design/assets/asset-manifest.md`. If it doesn't exist, create it:
+Also prepare the exact update to `design/assets/asset-manifest.md`. If it does
+not exist, prepare this initial content, but do not create it yet:
 
 ```markdown
 # Asset Manifest
@@ -283,7 +283,11 @@ Then update `design/assets/asset-manifest.md`. If it doesn't exist, create it:
 
 If the manifest already exists, append the new context block and update the Progress Summary counts.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Present both the complete spec file and the exact manifest create/edit together
+in one changeset preview, listing both paths. Obtain one explicit authorization,
+then write both files continuously. If authorization is withheld, neither file
+changes. Never write the spec first and discover or preview the manifest edit
+afterward.
 
 ---
 

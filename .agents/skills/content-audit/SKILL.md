@@ -28,18 +28,15 @@ Parse the argument:
 1. **Read `design/gdd/systems-index.md`** for the full list of systems, their
    categories, and MVP/priority tier.
 
-2. **L0 pre-scan**: Before full-reading any GDDs, Search all GDD files for
-   `## Summary` sections plus common content-count keywords:
-   ```
-   Search files matching `design/gdd/*.md` for regex `(## Summary|N enemies|N levels|N items|N abilities|enemy types|item types)` and list the matching files.
-   ```
-   For a single-system audit: skip this step and go straight to full-read.
-   For a full audit: full-read only the GDDs that matched content-count keywords.
-   GDDs with no content-count language (pure mechanics GDDs) are noted as
-   "No auditable content counts" without a full read.
+2. **L0 pre-scan**: Search all GDD files for `## Summary`/`## Overview`
+   and common content-count phrases only to prioritize reading order. A missed
+   keyword never excludes a GDD and never proves that it has no auditable
+   content.
 
-3. **Full-read in-scope GDD files** (or the single system GDD if a system
-   name was given).
+3. **Read every in-scope GDD** (or the single system GDD if a system name was
+   given). At minimum read Summary/Overview, Detailed Rules, Visual and Audio
+   requirements, and every section containing an explicit list. If those
+   sections cannot be located reliably, read the full document.
 
 4. **For each GDD, extract explicit content counts or lists.** Look for patterns
    like:
@@ -63,8 +60,12 @@ Parse the argument:
 
 ## Phase 2 — Implementation Scan
 
-For each content type found in Phase 1, scan the relevant directories to count
-what has been implemented. Search file names and contents to locate files.
+For each content type found in Phase 1, scan the relevant directories and match
+implementation identity. When the GDD names content, match each name against
+stable existing file/data references and report the missing names; equal raw
+file counts do not prove completion. Treat same-named scene, data, and art files
+as one content item. Use approximate file counts only when the GDD gives a total
+without names, and label that row `Approximate`.
 
 **Levels / Areas / Maps:**
 - Find files matching `assets/**/*.tscn`, `assets/**/*.unity`, `assets/**/*.umap`
@@ -75,6 +76,7 @@ what has been implemented. Search file names and contents to locate files.
 
 **Enemies / Characters / NPCs:**
 - Find files matching `assets/data/**/enemies/**`, `assets/data/**/characters/**`
+- Find files matching `assets/art/characters/**`
 - Find files matching `src/**/enemies/**`, `src/**/characters/**`
 - Look for `.json`, `.tres`, `.asset`, `.yaml` data files defining entity stats
 - Look for scene/prefab files in character subdirectories
@@ -91,6 +93,7 @@ what has been implemented. Search file names and contents to locate files.
 
 **Dialogue / Conversations / Cutscenes:**
 - Find files matching `assets/**/*.dialogue`, `assets/**/*.csv`, `assets/**/*.ink`
+- Include ordinary resources under `assets/audio/**`
 - Search file contents for dialogue data files in `assets/data/`
 
 **Quests / Missions:**
@@ -98,10 +101,10 @@ what has been implemented. Search file names and contents to locate files.
 - Look for `.json`, `.yaml` definition files
 
 **Engine-specific notes (acknowledge in the report):**
-- Counts are approximations — the skill cannot perfectly parse every engine
-  format or distinguish editor-only files from shipped content
-- Scene files may include both gameplay content and system/UI scenes; the scan
-  counts all matches and notes this caveat
+- Total-only counts are approximations — the skill cannot perfectly parse every
+  engine format
+- Exclude files whose directory semantics identify UI, tests, editor examples,
+  or samples; do not count every scene match as a level
 
 ---
 
@@ -137,9 +140,10 @@ Flag a system as `HIGH PRIORITY` in the report if:
 
 ### Full audit and single-system modes
 
-Present the gap table and summary to the user. Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file:
+Present the gap table and summary to the user without writing a file. If the
+user explicitly chooses to save it, use the single existing path
+`docs/content-audit-[date].md`, show that complete file operation/content in
+one changeset preview, and write only after authorization:
 
 ```markdown
 # Content Audit — [Date]
@@ -194,7 +198,8 @@ to `$create-stories [epic-slug]` or `$quick-design` depending on the size of the
 ### --summary mode
 
 Print the Gap Table and Summary directly to conversation. Do not write a file.
-End with: "Run `$content-audit` without `--summary` to write the full report."
+End with: "You can choose to save the full report to
+`docs/content-audit-[date].md`."
 
 ---
 
@@ -206,6 +211,7 @@ After the audit, recommend the highest-value follow-up actions:
   add missing content counts to the GDD before implementation begins."
 - If total gap is >50% → "Run `$sprint-plan` to allocate content work across upcoming sprints."
 - If backlog stories are needed → "Run `$create-stories [epic-slug]` for each HIGH PRIORITY gap."
-- If `--summary` was used → "Run `$content-audit` (no flag) to write the full report to `docs/`."
+- If `--summary` was used → "Choose whether to save the full report to
+  `docs/content-audit-[date].md`."
 
 Verdict: **COMPLETE** — content audit finished.

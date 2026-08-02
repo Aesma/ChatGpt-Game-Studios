@@ -23,8 +23,8 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 
 Determine the mode:
 
-- `new` → generate a blank playtest report template
-- `analyze [path]` → read raw notes and fill in the template with structured findings
+- `new` → generate/save a blank playtest report template, label it `not a completed session`, then stop without Phase 3 findings, CD-PLAYTEST, or a playtest COMPLETE verdict
+- `analyze [path]` → read raw notes and fill in the template with structured findings; only this mode continues through Phases 3–5
 
 ---
 
@@ -46,6 +46,8 @@ Generate this template and output it to the user:
 
 ## Test Focus
 [What specific features or flows were being tested]
+
+State the session hypothesis and expected observable signal here. For analyze mode, if the notes do not contain a specific hypothesis, ask the user before any CD-PLAYTEST review. If it cannot be supplied, skip that review with the reason; never invent a hypothesis.
 
 ## First Impressions (First 5 minutes)
 - **Understood the goal?** [Yes/No/Partially]
@@ -113,7 +115,7 @@ Categorize all findings into four buckets:
 
 Present the categorized list, then route:
 
-- **Design changes:** "Run `$propagate-design-change [path]` on the affected design document to find downstream impacts before making changes."
+- **Design changes:** list the affected GDD and the proposed design edit first. Only after the user actually revises that GDD should the handoff suggest `$propagate-design-change [path]`; observations alone are not a completed design change and cannot claim downstream impact.
 - **Balance adjustments:** "Run `$balance-check [system]` to verify the full balance picture before tuning values."
 - **Bugs:** "Use `$bug-report` to formally track these."
 - **Polish items:** "Add to the polish backlog in `production/` when the team reaches that phase."
@@ -127,7 +129,7 @@ Present the categorized list, then route:
 - `lean` → skip (not a PHASE-GATE). Note: "CD-PLAYTEST skipped — Lean mode." Proceed to Phase 4 (save the report).
 - `full` → spawn as normal.
 
-After categorising findings, spawn `creative-director` through Codex subagent delegation using gate **CD-PLAYTEST** (`.codex/docs/director-gates.md`).
+Only in **full analyze mode**, after categorising findings and confirming the hypothesis, spawn `creative-director` through Codex subagent delegation using gate **CD-PLAYTEST** (`.codex/docs/director-gates.md`). New mode never runs this gate.
 
 Pass: the structured report content, game pillars and core fantasy (from `design/gdd/game-concept.md`), the specific hypothesis being tested.
 
@@ -145,7 +147,7 @@ Once the complete changeset is authorized, write the file, creating the director
 
 ## Phase 5: Next Steps
 
-Verdict: **COMPLETE** — playtest report generated.
+For analyze mode only, verdict: **COMPLETE** — completed playtest report generated. A new blank template is labelled generated/saved but is never called a completed playtest or accepted as playtest evidence.
 
 - Act on the highest-priority finding category first.
 - After addressing design changes: re-run `$design-review` on the updated GDD.

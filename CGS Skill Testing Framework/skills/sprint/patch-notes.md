@@ -6,7 +6,9 @@
 from existing changelog content, stripping internal task IDs and technical
 jargon in favor of plain language. It filters entries to only those relevant
 to players (visible features and bug fixes; internal refactors are excluded).
-No director gates are used. The skill asks "May I apply the proposed changeset?" before persisting. Verdict is always COMPLETE.
+No director gates are used. The skill asks "May I apply the proposed changeset?"
+before persisting. COMPLETE requires both output copies; range or save failures are
+BLOCKED.
 
 ---
 
@@ -125,6 +127,10 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] No director gates are invoked
 - [ ] Does not pin model or reasoning settings; inherits the parent Codex session
+- [ ] Git fallback uses one uniquely resolved target and its adjacent previous release ref; HEAD-only output is labelled unreleased draft
+- [ ] Internal technical changes are never translated into player benefits without explicit changelog/bug/test evidence
+- [ ] Full-style developer commentary is omitted or left for user input when no attributed source exists
+- [ ] Both output copies are previewed together, saved with identical content, and verified; either-path failure is BLOCKED
 
 ---
 

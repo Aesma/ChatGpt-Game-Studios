@@ -7,13 +7,13 @@ approved game concept and pillars, enumerates both explicit and implicit systems
 maps dependencies between systems, assigns priority tiers (MVP / Vertical Slice /
 Alpha / Full Vision), and organizes systems into a layered design order
 (Foundation → Core → Feature → Presentation). The output is written to
-`design/systems-index.md` after user approval.
+`design/gdd/systems-index.md` after user approval.
 
 This skill is required between game concept approval and per-system GDD creation
 — it is a mandatory gate in the pipeline. In `full` review mode, CD-SYSTEMS
 (creative-director) and TD-SYSTEM-BOUNDARY (technical-director) spawn in parallel
 after the decomposition is drafted. In `lean` or `solo` mode, both gates are
-skipped. The skill writes to `design/systems-index.md`.
+skipped. The skill writes to `design/gdd/systems-index.md`.
 
 ---
 
@@ -35,6 +35,9 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] systems-index.md is NOT written outside the authorized changeset
 - [ ] Session state is updated after writing
 - [ ] Verdict is COMPLETE
+- [ ] PR-SCOPE handles REALISTIC, OPTIMISTIC, and UNREALISTIC exactly; it does not invent a CONCERNS branch
+- [ ] The first complete changeset contains both `design/gdd/systems-index.md` and `production/session-state/active.md`
+- [ ] CD-SYSTEMS REJECT leaves the index as a draft and cannot write an Approved/COMPLETE session state
 
 ---
 

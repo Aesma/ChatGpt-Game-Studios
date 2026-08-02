@@ -30,6 +30,13 @@ Handing a broken build to QA wastes their time and demoralises the team.
 
 Arguments can be combined: `$smoke-check sprint --platform console`
 
+Validate the complete argument list before reading project files. Accept at most
+one base mode and at most one `--platform` value. If an unknown positional
+argument or flag is present, or `--platform` is missing a value or has a value
+outside `pc|console|mobile|all`, show the legal usage above and stop without
+asking questions or writing a report. In particular, a system name is not a
+supported positional argument.
+
 **Base mode** (first argument, default: `sprint`):
 - `sprint` — full smoke check against the current sprint's stories
 - `quick` — skip coverage scan (Phase 3) and Batch 3; use for rapid re-checks
@@ -59,7 +66,7 @@ Before running anything, understand the environment:
 2. **CI check**: check whether `.github/workflows/` contains a workflow file
    referencing tests. Note in the report whether CI is configured.
 
-3. **Engine detection**: read `.codex/docs/technical-preferences.md` and
+3. **Engine detection**: read `docs/technical-preferences.md` and
    extract the `Engine:` value. Store this for test command selection in
    Phase 2.
 
@@ -109,7 +116,7 @@ If no matching log found: "UE automation tests must be run via the Session
 Frontend or CI pipeline. Please confirm test status manually."
 
 **Unknown engine / not configured:**
-"Engine not configured in `.codex/docs/technical-preferences.md`. Run
+"Engine not configured in `docs/technical-preferences.md`. Run
 `$setup-engine` to specify the engine, then re-run `$smoke-check`."
 
 **If the test runner is not available in this environment** (engine binary not
@@ -181,6 +188,13 @@ plan. Replace bracketed placeholders with real mechanic names from the current
 sprint's stories.
 
 Ask the user directly to batch-verify. Keep to at most 3 calls.
+
+If Phase 2 recorded automated tests as `NOT RUN`, include a one-time automated
+test confirmation in the existing manual confirmation interaction and save the
+answer as one of: `CONFIRMED PASS`, `CONFIRMED FAIL`, or `UNCONFIRMED`. Do not
+infer an answer from the manual smoke batches. `CONFIRMED FAIL` is a failing
+check; `UNCONFIRMED` is a warning; `CONFIRMED PASS` allows the normal coverage
+and manual-check rules below to decide the verdict.
 
 **Batch 1 — Core stability (always run):**
 ```
@@ -284,13 +298,11 @@ Assemble the full smoke check report:
 
 **Status**: [PASS ([N] tests, [N] passing) | FAIL ([N] failures) |
 NOT RUN ([reason])]
+**Manual confirmation for NOT RUN**: [CONFIRMED PASS | CONFIRMED FAIL |
+UNCONFIRMED | N/A]
 
 [If FAIL, list failing tests:]
 - `[test name]` — [brief failure description from runner output]
-
-[If NOT RUN:]
-"Manual confirmation required: did tests pass in your local IDE or CI? This
-will determine whether the automated test row contributes to a FAIL verdict."
 
 ---
 
@@ -350,18 +362,24 @@ Any platform with one or more FAIL checks contributes to the overall FAIL verdic
 
 **FAIL** if ANY of:
 - Automated test suite ran and reported one or more test failures
-- Any Batch 1 (core stability) check returned FAIL
-- Any Batch 2 (primary sprint mechanic or regression check) returned FAIL
+- Automated tests were NOT RUN and the developer answered `CONFIRMED FAIL`
+- Any executed manual check is marked FAILED, including Batch 1, Batch 2,
+  Batch 3, or any requested platform batch
 
-**PASS WITH WARNINGS** if ALL of:
-- Automated tests PASS or NOT RUN (developer has not yet confirmed)
-- All Batch 1 and Batch 2 smoke checks PASS
+**PASS WITH WARNINGS** if there are no FAIL conditions and ANY of:
+- Automated tests are NOT RUN and remain `UNCONFIRMED`
 - One or more Logic/Integration stories have MISSING test evidence
+- Performance was not checked this session
 
 **PASS** if ALL of:
-- Automated tests PASS
-- All smoke checks in all batches PASS or N/A
+- Automated tests PASS, or NOT RUN with `CONFIRMED PASS`
+- All executed smoke checks in every base and platform batch PASS or N/A
 - No MISSING test evidence entries
+- No warning condition above applies
+
+`N/A` is not a failure. Apply these rules in the order shown; every combination
+of automated-test confirmation, coverage, and executed manual results must map
+to exactly one verdict.
 ````
 
 ---

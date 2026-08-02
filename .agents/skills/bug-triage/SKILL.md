@@ -80,18 +80,18 @@ For each bug, extract or infer:
 | Severity | Definition |
 |----------|-----------|
 | **S1 — Critical** | Game crashes, data loss, or complete feature failure. Cannot proceed past this point. |
-| **S2 — High** | Major feature broken but game is still playable. Significant wrong behaviour. |
-| **S3 — Medium** | Feature degraded but a workaround exists. Minor wrong behaviour. |
-| **S4 — Low** | Visual glitch, cosmetic issue, typo. No gameplay impact. |
+| **S2 — Major** | Major feature broken but game is still playable. Significant wrong behaviour. |
+| **S3 — Minor** | Feature degraded but a workaround exists. Minor wrong behaviour. |
+| **S4 — Trivial** | Visual glitch, cosmetic issue, typo. No gameplay impact. |
 
 ### Priority (urgency of the fix)
 
 | Priority | Definition |
 |----------|-----------|
-| **P1 — Fix this sprint** | Blocks QA, blocks release, or is regression from last sprint |
-| **P2 — Fix soon** | Should be resolved before the next major milestone |
+| **P1 — Immediate** | Blocks QA, blocks release, or is regression from last sprint |
+| **P2 — Next Sprint** | Should be resolved before the next major milestone |
 | **P3 — Backlog** | Would be good to fix, but no active blocking impact |
-| **P4 — Won't fix / Deferred** | Accepted risk or out of scope for current product scope |
+| **P4 — Wishlist** | Accepted risk or out of scope for current product scope |
 
 ### Assignment
 
@@ -101,8 +101,10 @@ For each P1/P2 bug in `sprint` mode:
 - If capacity exists: assign to sprint (`Sprint: [current]`)
 - If capacity is full: flag as `Priority overflow — consider pulling from sprint`
 
-For `full` mode: assign all P1 to current sprint, P2 to next sprint estimate,
-P3+ to backlog.
+For `full` mode, apply the same capacity rule as sprint mode. Propose P1 for
+the current sprint only while comparable remaining capacity exists; overflow stays
+unassigned in the report. Propose P2 for the next sprint only when its capacity is
+known. Never auto-assign merely because the mode is `full`.
 
 ### Deviation check
 
@@ -157,16 +159,16 @@ After classifying all bugs, generate trend metrics:
 
 | Priority | Count | Notes |
 |----------|-------|-------|
-| P1 — Fix this sprint | [N] | [N] assigned to sprint, [N] overflow |
-| P2 — Fix soon | [N] | Scheduled for next sprint |
+| P1 — Immediate | [N] | [N] assigned to sprint, [N] overflow |
+| P2 — Next Sprint | [N] | Scheduled for next sprint |
 | P3 — Backlog | [N] | Deferred |
-| P4 — Won't fix | [N] | Accepted risk |
+| P4 — Wishlist | [N] | Accepted risk |
 
 **Critical (S1/S2) unfixed count**: [N]
 
 ---
 
-## P1 Bugs — Fix This Sprint
+## P1 Bugs — Immediate
 
 | ID | System | Severity | Summary | Assigned to | Story |
 |----|--------|----------|---------|-------------|-------|
@@ -174,7 +176,7 @@ After classifying all bugs, generate trend metrics:
 
 ---
 
-## P2 Bugs — Fix Soon
+## P2 Bugs — Next Sprint
 
 | ID | System | Severity | Summary | Target Sprint |
 |----|--------|----------|---------|---------------|
@@ -182,7 +184,7 @@ After classifying all bugs, generate trend metrics:
 
 ---
 
-## P3/P4 Bugs — Backlog / Won't Fix
+## P3/P4 Bugs — Backlog / Wishlist
 
 | ID | System | Severity | Summary | Disposition |
 |----|--------|----------|---------|-------------|

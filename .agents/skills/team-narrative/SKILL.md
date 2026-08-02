@@ -54,6 +54,8 @@ Use the Codex subagent delegation to spawn each team member as a subagent:
 
 Always provide full context in each agent's prompt (narrative brief, lore dependencies, character profiles). Launch independent agents in parallel where the pipeline allows it (e.g., Phase 2 agents can run simultaneously).
 
+Before delegation, assign each writable file to exactly one subagent. Lore, voice-profile, and canon sources shared by multiple agents are read-only inputs; no two concurrently running agents may edit the same path.
+
 ## Pipeline
 
 ### Phase 1: Narrative Direction
@@ -64,11 +66,17 @@ Delegate to **narrative-director**:
 - Specify any lore dependencies or new lore this introduces
 - Output: narrative brief with story requirements
 
-### Phase 2: World Foundation (parallel)
-Delegate in parallel — issue all three subagent delegations simultaneously before waiting for any result:
-- **world-builder**: Create or update lore entries for factions, locations, and history relevant to this content. Cross-reference against existing lore for contradictions. Set canon level for new entries.
-- **writer**: Draft character dialogue using voice profiles. Ensure all lines are under 120 characters, use named placeholders for variables, and are localization-ready.
+After the brief is approved, resolve the concrete target paths for the brief, lore, dialogue, visual direction, and level integration. Present every existing or new file and its intended change as one changeset and obtain the single write approval before any subagent writes. Each path must have one owner. If later canon work requires an unlisted path, stop and revise this same changeset boundary before writing it.
+
+### Phase 2: World Foundation and Drafting
+
+Give the **world-builder**, **writer**, and **art-director** the same approved Phase 1 canon inputs and existing lore as read-only context. Independent work may start in parallel, but canon-dependent dialogue remains provisional until the world-builder completes the contradiction check:
+
+- **world-builder**: Create or update lore entries for factions, locations, and history relevant to this content. Cross-reference against existing lore for contradictions and propose canon levels for user confirmation.
+- **writer**: Draft character dialogue using voice profiles. Dialogue that depends on canon introduced or changed by the brief must be marked provisional. It may be finalized only after the world-builder's check has resolved that canon. Respect the project's dialogue-box and localization constraints; if they are absent, treat 120 characters only as a risk signal.
 - **art-director**: Define character visual design direction for key characters appearing in this content (silhouette, visual archetype, distinguishing features). Specify environmental visual storytelling elements for each key space (prop composition, lighting notes, spatial arrangement). Define tone palette and cinematic direction for any cutscenes or scripted sequences.
+
+If the world-builder reports a canon conflict, do not finalize writer output or enter Phase 3 until the conflict is resolved. Work that does not depend on the disputed fact may remain provisional in the partial report.
 
 ### Phase 3: Level Narrative Integration
 Delegate to **level-designer**:
@@ -85,10 +93,12 @@ Delegate to **narrative-director**:
 - Check that all mysteries have documented "true answers"
 
 ### Phase 5: Polish (parallel)
-Delegate in parallel:
-- **writer**: Final self-review — verify no line exceeds dialogue box constraints, all text uses string keys (not raw strings), placeholder variable names are consistent
-- **localization-lead**: Validate i18n compliance — check string key naming conventions, flag any strings with hardcoded formatting that won't survive translation, verify character limit headroom for languages that expand (German/Finnish typically +30%), confirm no cultural assumptions in text that would need locale-specific variants
-- **world-builder**: Finalize canon levels for all new lore entries
+Delegate read-only checks in parallel:
+- **writer**: Inspect the reviewed candidate for dialogue-box constraints, string keys, and placeholder consistency; return findings without changing reviewed files.
+- **localization-lead**: Inspect i18n compliance, hardcoded formatting, configured locale/layout constraints, and cultural assumptions; return findings without changing reviewed files.
+- **world-builder**: Verify that user-confirmed canon levels and lore facts are reflected consistently; do not silently finalize or change canon.
+
+Return each finding to the sole owner of the affected file. After any fix, send the corrected final candidate back through the existing Phase 4 narrative-director consistency review. COMPLETE is permitted only after that re-review passes. Nothing may change dialogue, lore, canon, or level integration after the final review.
 
 ## Error Recovery Protocol
 
@@ -97,7 +107,7 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip advisory work and note the gap in the partial report
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
@@ -111,13 +121,13 @@ Common blockers:
 ## File Write Protocol
 
 All file writes (narrative docs, dialogue files, lore entries) are delegated to
-sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+sub-agents spawned through Codex subagent delegation. After Phase 1 resolves the target paths, the orchestrator obtains one combined changeset approval before any write, and each sub-agent writes only its assigned, non-overlapping paths within that approved boundary without prompting again. This orchestrator does not write files directly.
 
 ## Output
 
 A summary report covering: narrative brief status, lore entries created/updated, dialogue lines written, level narrative integration points, consistency review results, and any unresolved contradictions.
 
-Verdict: **COMPLETE** — narrative content delivered.
+Verdict: **COMPLETE** — all required artifacts were delivered, the final candidate passed consistency review, and no unresolved canon, voice, localization, or prerequisite blocker remains.
 
 If the pipeline stops because a dependency is unresolved (e.g., lore contradiction or missing prerequisite not resolved by the user):
 
@@ -125,6 +135,5 @@ Verdict: **BLOCKED** — [reason]
 
 ## Next Steps
 
-- Run `$design-review` on the narrative documents for consistency validation.
 - Run `$localize extract` to extract new strings for translation after dialogue is finalized.
 - Run `$dev-story` to implement dialogue triggers and narrative events in-engine.

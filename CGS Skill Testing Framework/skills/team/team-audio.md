@@ -8,7 +8,7 @@ Orchestrates the audio team through a four-step pipeline: audio direction
 parallel (technical-artist + primary engine specialist) → code integration
 (gameplay-programmer). Reads relevant GDDs, the sound bible (if present), and
 existing audio asset lists before spawning agents. Compiles all outputs into an
-audio design document saved to `design/gdd/audio-[feature].md`. Uses
+audio design document saved to `design/audio/audio-[feature-slug].md`. Uses
 `user-input request` at each step transition. Verdict is COMPLETE when the audio
 design document is produced. Skips the engine specialist spawn gracefully when no
 engine is configured.
@@ -29,7 +29,8 @@ engine is configured.
 - [ ] Step 2 explicitly spawns sound-designer and accessibility-specialist in parallel
 - [ ] Step 3 explicitly spawns technical-artist and engine specialist in parallel (when engine is configured)
 - [ ] Skill reads `design/gdd/sound-bible.md` during context gathering if it exists
-- [ ] Output document is saved to `design/gdd/audio-[feature].md`
+- [ ] Output document is saved to `design/audio/audio-[feature-slug].md`
+- [ ] Arguments do not expose `--review`; all core domain roles always run
 
 ---
 
@@ -41,7 +42,7 @@ engine is configured.
 - GDD for the target feature exists at `design/gdd/combat.md`
 - Sound bible exists at `design/gdd/sound-bible.md`
 - Existing audio assets are listed in `assets/audio/`
-- Engine is configured in `.codex/docs/technical-preferences.md`
+- Engine is configured in `docs/technical-preferences.md`
 - No accessibility gaps exist in the planned audio event list
 
 **Input:** `$team-audio combat`
@@ -49,25 +50,26 @@ engine is configured.
 **Expected behavior:**
 1. Context gathering: orchestrator reads `design/gdd/combat.md`, `design/gdd/sound-bible.md`, and `assets/audio/` asset list before spawning any agent
 2. Step 1: audio-director is spawned; defines sonic identity, emotional tone, adaptive music direction, mix targets, and adaptive audio rules for combat
-3. `user-input request` presents audio direction; user approves before Step 2 begins
+3. Audio direction is returned in conversation without writing files
 4. Step 2: sound-designer and accessibility-specialist are spawned in parallel; sound-designer produces SFX specifications, audio event list with trigger conditions, and mixing groups; accessibility-specialist identifies critical gameplay audio events and specifies visual fallback and subtitle requirements
-5. `user-input request` presents SFX spec and accessibility requirements; user approves before Step 3 begins
+5. SFX and accessibility outputs are returned in conversation without writing files
 6. Step 3: technical-artist and primary engine specialist are spawned in parallel; technical-artist designs bus structure, middleware integration, memory budgets, and streaming strategy; engine specialist validates that the integration approach is idiomatic for the configured engine
-7. `user-input request` presents technical plan; user approves before Step 4 begins
-8. Step 4: gameplay-programmer is spawned; wires up audio events to gameplay triggers, implements adaptive music, sets up occlusion zones, writes unit tests for audio event triggers
-9. Orchestrator compiles all outputs into a single audio design document
-10. Subagent asks "May I apply the proposed changeset?" before applying a not-yet-authorized changeset
+7. The consolidated plan identifies exact document, implementation, and test paths
+8. Orchestrator obtains one complete changeset authorization before any writer is delegated
+9. Step 4: gameplay-programmer writes only approved code/test paths
+10. audio-director alone compiles and writes the approved audio design document
 11. Summary output lists: audio event count, estimated asset count, implementation tasks, and any open questions
 12. Verdict: COMPLETE
 
 **Assertions:**
 - [ ] Sound bible is read during context gathering (before Step 1) when it exists
 - [ ] audio-director is spawned before sound-designer or accessibility-specialist
-- [ ] `user-input request` appears after Step 1 output and before Step 2 launch
+- [ ] Steps 1–3 perform no file writes
 - [ ] sound-designer and accessibility-specialist Codex subagent delegations are issued simultaneously in Step 2
 - [ ] technical-artist and engine specialist Codex subagent delegations are issued simultaneously in Step 3
-- [ ] gameplay-programmer is not launched until Step 3 `user-input request` is approved
-- [ ] Audio design document is written to `design/gdd/audio-combat.md` (not another path)
+- [ ] gameplay-programmer is not launched until the exact complete changeset is approved
+- [ ] Audio design document is written to `design/audio/audio-combat.md` (not another path)
+- [ ] audio-director is the sole audio-document writer; gameplay-programmer owns only listed code/tests
 - [ ] Summary includes audio event count and estimated asset count
 - [ ] No files are written by the orchestrator directly
 - [ ] Verdict is COMPLETE after document delivery
@@ -92,16 +94,17 @@ engine is configured.
    - Add a visual indicator for EnemyNearbyAlert (e.g., directional arrow on HUD) and continue
    - Add controller haptic feedback as the fallback and continue
    - Stop here and resolve all accessibility gaps before proceeding to Step 3
-5. Step 3 (technical-artist + engine specialist) is not launched until the user resolves or explicitly accepts the gap
-6. The accessibility gap is included in the final audio design document under "Open Accessibility Issues" if unresolved
+5. Step 3 may continue as analysis, but Step 4 and all writes remain blocked until a revision is reviewed as non-blocking
+6. If unresolved, the run ends BLOCKED with a partial conversational report and no output file
 
 **Assertions:**
 - [ ] Accessibility gap is labeled BLOCKING (not advisory) in the report
 - [ ] The specific event name ("EnemyNearbyAlert") and the nature of the gap are stated
 - [ ] `user-input request` surfaces the gap before Step 3 is launched
 - [ ] At least one resolution option is offered (add visual fallback, add haptic fallback)
-- [ ] Step 3 is not launched while the gap is unresolved without explicit user authorization
-- [ ] If the gap is carried forward unresolved, it is documented in the audio design doc as an open issue
+- [ ] Step 4 is not launched while the gap is unresolved
+- [ ] User acceptance cannot downgrade the blocker or permit COMPLETE
+- [ ] No output document or implementation file is written while it remains unresolved
 
 ---
 
@@ -154,14 +157,14 @@ engine is configured.
 ### Case 5: Engine Not Configured — Engine specialist step skipped gracefully
 
 **Fixture:**
-- Engine is NOT configured in `.codex/docs/technical-preferences.md` (shows `[TO BE CONFIGURED]`)
+- Engine is NOT configured in `docs/technical-preferences.md` (shows `[TO BE CONFIGURED]`)
 - GDD for the target feature exists
 - Sound bible may or may not exist
 
 **Input:** `$team-audio boss encounter`
 
 **Expected behavior:**
-1. Context gathering: orchestrator reads `.codex/docs/technical-preferences.md` and detects no engine is configured
+1. Context gathering: orchestrator reads `docs/technical-preferences.md` and detects no engine is configured
 2. Steps 1–2 proceed normally (audio-director, sound-designer, accessibility-specialist)
 3. Step 3: technical-artist is spawned normally; engine specialist spawn is SKIPPED
 4. Orchestrator notes in conversation: "Engine specialist not spawned — no engine configured in technical-preferences.md. Engine integration validation will be deferred until an engine is selected."
@@ -183,13 +186,15 @@ engine is configured.
 ## Protocol Compliance
 
 - [ ] Context gathering (GDDs, sound bible, asset list) runs before any agent is spawned
-- [ ] `user-input request` is used after every step output before the next step launches
+- [ ] Meaningful user decisions are captured, while Steps 1–3 remain analysis-only
 - [ ] Parallel spawning: Step 2 (sound-designer + accessibility-specialist) and Step 3 (technical-artist + engine specialist) issue all Codex subagent delegations before waiting for results
 - [ ] No files are written by the orchestrator directly — all writes are delegated to sub-agents
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] BLOCKED status from any agent is surfaced immediately — not silently skipped
 - [ ] A partial report is always produced when some agents complete and others block
-- [ ] Audio design document path follows the pattern `design/gdd/audio-[feature].md`
+- [ ] Audio design document path follows the pattern `design/audio/audio-[feature-slug].md`
+- [ ] Exact implementation/test paths are known and approved after Step 3
+- [ ] audio-director and gameplay-programmer have non-overlapping write ownership
 - [ ] Verdict is exactly COMPLETE or BLOCKED — no other verdict values used
 - [ ] Next Steps handoff references `$dev-story` and `$asset-audit`
 

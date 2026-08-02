@@ -102,3 +102,16 @@ Verified automatically by `$skill-test static` — no fixture needed.
   for one sprint at a time.
 - Config/data story type (balance tuning → smoke check) follows the same
   assignment pattern as other types in Case 1 and is not separately tested.
+
+## P0 Contract Coverage
+
+- [ ] `epic: [path]`, explicit `sprint-N`, feature, story, and no-argument
+  selections resolve deterministically; unknown input and zero valid stories
+  stop with no write request.
+- [ ] The Testing Standards are read before classification. A declared `Type:`
+  is retained but checked against acceptance criteria, and conflicts are
+  reported without silently editing the story.
+- [ ] Gate level is derived from existing Type/DoD/standards and recorded in
+  ordinary plan notes or subsection text without adding a schema column.
+- [ ] The complete changeset lists every plan/story target. The workflow never
+  creates or appends `production/session-state/active.md`.

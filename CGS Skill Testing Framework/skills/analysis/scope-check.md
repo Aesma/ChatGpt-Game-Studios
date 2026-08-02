@@ -166,3 +166,15 @@ None. Scope check is a read-only advisory skill; no gates are invoked.
 - Partial scope overlap (story touches a milestone goal but also introduces
   new scope) is not explicitly tested; implementation may classify this as
   CONCERNS rather than SCOPE CREEP DETECTED.
+
+## P0 Contract Coverage
+
+- [ ] No-argument active scope, feature, sprint, milestone, and project-contained
+  story path resolve deterministically; ambiguous baselines stop without guessing.
+- [ ] Baseline and current scope compare only same-level stories, goals, or
+  deliverables. Files, commits, and TODOs are evidence rather than counted items.
+- [ ] Each addition is mapped to a comparable documented cut or explicit timeline
+  extension. Small removals cannot numerically cancel a materially larger addition.
+- [ ] When comparable effort data is absent, no bloat percentage is emitted.
+- [ ] A current GDD is labeled as the selected baseline at audit time and is not
+  presented as proof of original historical scope.

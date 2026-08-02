@@ -147,7 +147,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Expected behavior:**
 1. Skill reads review mode — determines `full`
-2. After completing its own 4-dimension check, skill invokes QL-STORY-READY gate
+2. After completing its own 4-dimension check and before final output, skill invokes QL-STORY-READY gate
 3. QA lead reviews the story for readiness
 4. If QA lead verdict is INADEQUATE → story verdict is BLOCKED regardless of 4-dimension result
 5. If QA lead verdict is ADEQUATE → verdict proceeds normally
@@ -156,6 +156,8 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Skill reads review mode before deciding whether to invoke QL-STORY-READY
 - [ ] QL-STORY-READY gate is invoked in full mode after the 4-dimension check completes
 - [ ] A QA lead INADEQUATE verdict overrides a READY 4-dimension result → final verdict BLOCKED
+- [ ] A QA lead GAPS verdict makes the final verdict at least NEEDS WORK
+- [ ] Neither GAPS nor INADEQUATE offers an accept-and-proceed override
 - [ ] Gate invocation is noted in output: "Gate: QL-STORY-READY — [result]"
 
 **Case 5b — lean or solo mode:**
@@ -181,15 +183,47 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Does not ask for approval (no file writes)
 - [ ] Ends with recommended next step (fix issues or proceed to implementation)
 - [ ] Distinguishes three verdict levels clearly (READY vs NEEDS WORK vs BLOCKED)
+- [ ] Final verdict and aggregate counts are emitted only after every required gate result
+- [ ] Every referenced ADR is read and must be Accepted
+- [ ] Multiple ADRs have exactly one explicit primary marker; order never implies primary
+- [ ] ADR N/A is accepted only for Config/Data with a non-empty reason
+- [ ] Declared TR-ID plus missing/unparseable registry is BLOCKED
+- [ ] Existing manifest plus missing story Manifest Version is NEEDS WORK
+
+---
+
+### Case 6: Multiple ADRs require explicit primary and all Accepted
+
+**Assertions:**
+- [ ] Each ADR file is read, including secondary ADRs
+- [ ] Proposed, missing, or other non-Accepted status on any ADR produces BLOCKED
+- [ ] With multiple ADRs, zero or multiple primary markers produce BLOCKED
+- [ ] Reordering the ADR list does not change which ADR is primary
+- [ ] `ADR: N/A — reason` passes only for Config/Data; other types are BLOCKED
+
+### Case 7: Registry and manifest omissions do not auto-pass
+
+**Assertions:**
+- [ ] A story with TR-ID is BLOCKED when tr-registry is missing or unparseable
+- [ ] A story with no TR-ID is checked against its specific GDD/quick spec reference
+- [ ] When control-manifest exists, missing Manifest Version produces NEEDS WORK
+- [ ] A missing control manifest is noted once and not reported as a successful version match
+
+### Case 8: Multi-story full mode gates every story
+
+**Input:** `$story-readiness sprint --review full`
+
+**Assertions:**
+- [ ] QL-STORY-READY runs sequentially once per story
+- [ ] Each gate receives only that story's criteria, dependencies, and provisional verdict
+- [ ] A gate failure/no verdict prevents that story from READY
+- [ ] Aggregate counts are calculated after all completed gate results and list incomplete items
+- [ ] No singular result is copied across the scope
 
 ---
 
 ## Coverage Notes
 
-- Case where TR-ID is missing from the registry entirely is not explicitly
-  tested here; it follows the same NEEDS WORK pattern as Case 3.
 - The "no argument" path (skill auto-detecting the current story) is not
   tested because it depends on `production/session-state/active.md` content,
   which is hard to fixture reliably.
-- Stories with multiple ADR references are not tested; behavior is assumed to
-  be additive (all ADRs must be Accepted for READY verdict).

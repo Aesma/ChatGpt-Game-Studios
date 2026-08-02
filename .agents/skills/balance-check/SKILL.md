@@ -83,11 +83,15 @@ Run domain-specific checks:
 ### Data Sources Analyzed
 - [List of files read]
 
-### Health Summary: [HEALTHY / CONCERNS / CRITICAL ISSUES]
+### Verdict: [BALANCED / CONCERNS / OUT OF BALANCE]
 
-### Outliers Detected
-| Item/Value | Expected Range | Actual | Issue |
-|-----------|---------------|--------|-------|
+- BALANCED: every applicable calculation is supported by a design baseline and no material deviation is found.
+- CONCERNS: one or more non-blocking deviations or unevaluated items require review.
+- OUT OF BALANCE: at least one critical deviation or degenerate strategy is supported by the cited formula and values.
+
+### Findings
+| Value | Formula or Source | Expected | Actual | Deviation | Severity |
+|-------|-------------------|----------|--------|-----------|----------|
 
 ### Degenerate Strategies Found
 - [Strategy description and why it is problematic]
@@ -116,10 +120,15 @@ After presenting the report, ask the user directly:
 
 If [A]:
 - Ask which issue to address first (refer to the Recommendations table by priority row)
-- Guide the user to update the relevant data file in `assets/data/` or formula in `design/balance/`
+- Show the current value, proposed value, exact target file, and the complete
+  resulting edit for every affected data, formula, GDD, or ADR file. Obtain the
+  single changeset authorization before changing any of them. If another file is
+  discovered afterward, stop and present a revised complete changeset instead of
+  editing outside the approved boundary.
+- After authorization, apply only the previewed edits.
 - After each fix, offer to re-run the relevant balance checks to verify no new outliers were introduced
 - If the fix changes a tuning knob defined in a GDD or referenced by an ADR, remind the user:
-  > "This value is defined in a design document. Run `$propagate-design-change [path]` on the affected GDD to find downstream impacts before committing."
+  > "This value is defined in a design document. After the approved GDD edit has actually been written, run `$propagate-design-change [path]` on that changed GDD to find downstream impacts. Do not propagate a proposed value that is not yet in the document."
 
 If [B]:
 - Write the report to `design/balance/balance-check-[system]-[date].md` (create the directory if needed). Use the current date for [date] in YYYY-MM-DD format.

@@ -73,7 +73,8 @@ Prompt the qa-lead to:
 - Identify which stories require automated test evidence vs. manual QA
 - Flag any stories with missing acceptance criteria or missing test evidence that would block QA
 - Estimate manual QA effort (number of test sessions needed)
-- **Before assessing smoke status, check for an existing smoke check report**: Find files matching `production/qa/smoke-*.md` and read the most recently modified file (if found). If a report exists, use its verdict and findings directly — do not re-interview the user. If no report exists, note: "No prior smoke check report found — run `$smoke-check sprint` before proceeding." and set smoke check status to UNKNOWN (treat as PASS WITH WARNINGS for the purpose of continuing). Produce a smoke check verdict: **PASS** / **PASS WITH WARNINGS [list]** / **FAIL [list of failures]** / **UNKNOWN (no report found)**
+- **Before assessing smoke status, validate an existing persistent smoke report**: accept only a report whose body identifies the current sprint/build, base mode `sprint`, coverage as checked (not `NOT CHECKED`), and verdict PASS or PASS WITH WARNINGS. Prefer the exact report path returned by the current handoff; otherwise require the user to identify the matching report. A quick-mode, missing, malformed, scope-mismatched, or coverage-NOT-CHECKED report does not satisfy entry. Mark it UNKNOWN/not run and stop Phase 2 with guidance to run `$smoke-check sprint`; never map UNKNOWN to a pass.
+- For every Logic/Integration story requiring automated evidence, locate a current result source for this scope and record the test command/result identity. Only an actually observed current PASS may be written as PASS. Missing or unexecutable results are UNKNOWN/BLOCKED, not inferred from the existence of a test file.
 - Produce a strategy summary table and smoke check result:
 
   | Story | Type | Automated Required | Manual Required | Blocker? |
@@ -90,36 +91,34 @@ question: "QA Strategy Review"
 options:
   - "Looks good — proceed to test plan"
   - "Adjust story types before proceeding"
-  - "Skip blocked stories and proceed with the rest"
+  - "Move explicitly out-of-scope stories out of this QA cycle"
   - "Smoke check failed — fix issues and re-run $team-qa"
   - "Cancel — resolve blockers first"
 ```
 
 If smoke check **FAIL**: do not proceed to Phase 3. Surface the failures from the smoke check report and stop. The user must fix them, re-run `$smoke-check sprint`, and then re-run `$team-qa`.
-If smoke check **UNKNOWN**: surface a warning — "No smoke check report found. Recommend running `$smoke-check sprint` before QA. Proceeding with caution."
+If smoke check **UNKNOWN**: stop at Phase 2, report the missing/ineligible evidence and point to `$smoke-check sprint`. Do not produce a sign-off report.
 If smoke check **PASS WITH WARNINGS**: note the warnings for the sign-off report and continue.
-If blockers are present: list them explicitly. The user may choose to skip blocked stories or cancel the cycle.
+If blockers are present: list them explicitly. An in-scope Must Have story cannot be skipped into approval. Only an item explicitly marked out of scope and confirmed during planning is excluded from the verdict denominator.
 
 ### Phase 3: Test Plan Generation
 
-Using the strategy from Phase 2, produce a structured test plan document.
+Using the strategy from Phase 2, have **qa-lead** be the sole writer of `production/qa/qa-plan-[sprint-slug]-[date].md`. The qa-tester and orchestrator must not also generate or edit this plan.
 
 The test plan should cover:
 - **Scope**: sprint/feature name, story count, dates
 - **Story Classification Table**: from Phase 2 strategy
-- **Automated Test Requirements**: which stories need test files, expected paths in `tests/`
+- **Automated Test Requirements**: which stories need test files, expected paths in `tests/`, and the current run-result source or UNKNOWN/not-run reason
 - **Manual QA Scope**: which stories need manual walkthrough and what to validate
 - **Out of Scope**: what is explicitly not being tested this cycle and why
-- **Entry Criteria**: what must be true before QA can begin. Always include: (1) Smoke check PASS or PASS WITH WARNINGS report exists at `production/qa/smoke-*.md`, (2) build is stable (no crashes on launch), (3) all Must Have stories have Status: in-progress or done in `production/sprint-status.yaml`. Add any sprint-specific criteria beyond these.
+- **Entry Criteria**: what must be true before QA can begin. Always include: (1) the validated current sprint-mode smoke report from Phase 2, (2) build is stable, and (3) every in-scope Must Have implementation is complete and its required evidence is runnable. Add sprint-specific criteria beyond these.
 - **Exit Criteria**: what constitutes a completed QA cycle (all stories PASS or FAIL with bugs filed)
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write only after receiving approval.
+Before the first write, preview one changeset containing this exact plan path, each known manual-case file, the conditional `production/qa/bugs/` targets, `production/qa/qa-[date].md`, and any session-state edit. If a same sprint/date target exists, preview a directed update that preserves out-of-scope content; if its sprint identity differs or the target is ambiguous, stop for user selection. Obtain the single authorization, then write only within that boundary. Bug slugs may be resolved later inside the authorized bug-directory boundary; any path outside it uses the existing material-scope-expansion rule.
 
 ### Phase 4: Test Case Writing (qa-tester)
 
-> **Smoke check** is performed as part of Phase 2 (QA Strategy). If the smoke check returned FAIL in Phase 2, the cycle was stopped there. This phase only runs when the Phase 2 smoke check was PASS, PASS WITH WARNINGS, or UNKNOWN.
+> **Smoke check** is performed as part of Phase 2 (QA Strategy). This phase runs only when a valid current sprint-mode report returned PASS or PASS WITH WARNINGS; FAIL and UNKNOWN both stop the cycle.
 
 For each story requiring manual QA (Visual/Feel, UI, Integration without automated tests):
 
@@ -175,7 +174,7 @@ After collecting all results, summarize:
 
 ### Phase 6: QA Sign-Off Report
 
-Spawn `qa-lead` through Codex subagent delegation to produce the sign-off report using all results from Phases 4–6.
+Spawn `qa-lead` through Codex subagent delegation to produce the sign-off report using all results from Phases 4–6. Write it to `production/qa/qa-[date].md`. If that same-day file already exists, stop and ask whether to update that exact file; never silently overwrite or invent another naming scheme. Session State must reference the actual written path.
 
 The sign-off report format:
 
@@ -206,15 +205,14 @@ Verdict rules:
 - **APPROVED**: All stories PASS or PASS WITH NOTES; no S1/S2 bugs open
 - **APPROVED WITH CONDITIONS**: S3/S4 bugs open, or PASS WITH NOTES issues documented; no S1/S2 bugs
 - **NOT APPROVED**: Any S1/S2 bugs open; or stories FAIL without documented workaround
+- **NOT APPROVED**: also required whenever any in-scope Must Have story is BLOCKED, Skipped, lacks required automated/manual evidence, or has a required test marked UNKNOWN/not run. Only Phase 3 user-confirmed out-of-scope items are excluded.
 
 Next step guidance by verdict:
 - APPROVED: "Build is ready for the next phase. Run `$gate-check` to validate advancement."
 - APPROVED WITH CONDITIONS: "Resolve conditions before advancing. S3/S4 bugs may be deferred to polish."
 - NOT APPROVED: "Resolve S1/S2 bugs and re-run `$team-qa` or targeted manual QA before advancing."
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write only after receiving approval.
+This report path was included in the single Phase 3 changeset. Do not request a second write authorization here.
 
 ## Error Recovery Protocol
 
@@ -238,7 +236,7 @@ Common blockers:
 
 A summary covering: stories in scope, smoke check result, manual QA results, bugs filed (with IDs and severities), and the final APPROVED / APPROVED WITH CONDITIONS / NOT APPROVED verdict.
 
-Verdict: **COMPLETE** — QA cycle finished.
+Verdict: **COMPLETE** — QA cycle finished; this does not mean the sign-off verdict is APPROVED.
 Verdict: **BLOCKED** — smoke check failed or critical blocker prevented cycle completion; partial report produced.
 
 ## Session State Update

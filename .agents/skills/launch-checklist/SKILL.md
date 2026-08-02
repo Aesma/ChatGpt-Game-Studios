@@ -24,8 +24,12 @@ Read the argument for the launch date or `dry-run` mode. Dry-run mode generates 
 
 - Read `AGENTS.md` for tech stack, target platforms, and team structure
 - Read the latest milestone in `production/milestones/`
+- Read the most recent earlier-dated launch checklist matching `production/launch/launch-checklist-[date].md`, if one exists
 - Read any existing release checklist in `production/releases/`
 - Read the content calendar in `design/live-ops/content-calendar.md` if it exists
+- Read already-existing build, test, performance, bug, security, localization, certification, legal, store, infrastructure, operations, and community artifacts that directly correspond to checklist sections
+
+A missing repository artifact proves only that repository evidence is unavailable; it does not prove completion or failure of an external fact. Keep such items for human confirmation.
 
 ---
 
@@ -39,6 +43,8 @@ Read the argument for the launch date or `dry-run` mode. Dry-run mode generates 
 ---
 
 ## Phase 4: Generate the Launch Checklist
+
+Preserve the checklist structure below. For each existing checkbox, append only a short ordinary-text note such as `— evidenced by [existing path]`, `— manual confirmation required`, or `— not applicable because [reason]`. Do not add fields, columns, tables, or sections. If a claim cannot be represented accurately in the existing checkbox text, ordinary explanations, Blocking Items, or Conditional Items, remove the unsupported claim. Never check an item solely because no contrary evidence was found.
 
 ```markdown
 # Launch Checklist: [Game Title]
@@ -211,7 +217,7 @@ Generated: [Date]
 
 ## Go / No-Go Decision
 
-**Overall Status**: [READY / NOT READY / CONDITIONAL]
+**Overall Status**: [LAUNCH READY / LAUNCH BLOCKED / CONCERNS]
 
 ### Blocking Items
 [List any items that must be resolved before launch]
@@ -231,11 +237,16 @@ Generated: [Date]
 
 ## Phase 5: Save Checklist
 
-Present the completed checklist and summary to the user (total items, blocking items count, conditional items count, departments with incomplete sections).
+Compare the current result with the most recent earlier-dated file of the same kind, item by item, and summarize resolved, still-open, and newly identified issues without introducing a new history format.
 
-If not in dry-run mode, add the proposed checklist file to the complete changeset preview; do not write it until that changeset is authorized.
+Map the final result deterministically:
+- Any incomplete required platform certification, required legal document, open S1, or hard failure of a target-platform build is **LAUNCH BLOCKED**.
+- With no hard blocker, any unresolved manual confirmation or conditional item is **CONCERNS**.
+- Only when every applicable item has evidence and no open issue remains is the result **LAUNCH READY**.
 
-Once the complete changeset is authorized, write the file, creating directories as needed.
+Use the same canonical value in Overall Status and the terminal verdict. Present the completed checklist and summary to the user (total items, blocking items count, conditional items count, departments with incomplete sections).
+
+If not in dry-run mode, use the single path `production/launch/launch-checklist-[date].md`. If that date already exists, preview it as an update rather than silently overwriting it. Add that exact file to the complete changeset preview; do not write it until authorized. Once authorized, write it and report the same canonical verdict.
 
 ---
 

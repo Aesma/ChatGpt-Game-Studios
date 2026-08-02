@@ -48,6 +48,8 @@ Categorize each finding:
 
 Present the findings to the user.
 
+Before appending, compare every candidate with `docs/tech-debt-register.md` by affected Files plus Description and, for code markers, the recorded marker location. If the same debt is already registered, report `already registered` in the session and do not append another TD row. If the original marker text or location changed, report that its state cannot be confirmed; do not infer resolution or create a replacement row automatically.
+
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
 Once the complete changeset is authorized, update the register (append new entries, do not overwrite existing ones). Verdict: **COMPLETE** — scan findings written to register.
@@ -92,9 +94,9 @@ If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** —
 
 Read the debt register at `docs/tech-debt-register.md`.
 
-Score each item by: `(impact_if_unfixed × frequency_of_encounter) / fix_effort`
+Use only the fields already present in the register. Sort deterministically by Impact (`Critical` > `High` > `Med` > `Low`), then by lower Effort (`S` < `M` < `L` < `XL`), then by ID ascending. Update the existing Priority cells to reflect that ordering; do not invent frequency values, numeric mappings, or new fields.
 
-Re-sort the register by priority score and recommend which items to include in the next sprint.
+Re-sort only the existing table rows by this rule and recommend which items to include in the next sprint.
 
 Present the re-prioritized register to the user.
 
@@ -108,14 +110,15 @@ If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** —
 
 ## Phase 2D: Report Mode
 
-Read the debt register. Generate summary statistics:
+Read the debt register. Generate only statistics directly supported by its current columns:
 
 - Total items by category
-- Total estimated fix effort
-- Items added vs resolved since last report
-- Trending direction (growing / stable / shrinking)
+- Effort distribution (counts of S/M/L/XL)
+- Impact distribution
+- Count assigned to Backlog versus an explicitly named sprint
+- Age hints only where Added/Sprint values are directly comparable
 
-Flag any items that have been in the register for more than 3 sprints.
+The register has no resolution status or prior-report baseline. Do not claim items-resolved counts or a growing/stable/shrinking trend. If age cannot be established from existing values, state `age unknown` rather than guessing.
 
 Output the report to the user. This mode is read-only — no files are written. Verdict: **COMPLETE** — debt report generated.
 

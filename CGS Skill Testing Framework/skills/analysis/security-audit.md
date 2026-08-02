@@ -31,10 +31,11 @@ None. Security audit is a read-only advisory skill; no gates are invoked.
 
 ## Test Cases
 
-### Case 1: Happy Path — Save data encrypted, no hardcoded credentials
+### Case 1: Happy Path — Save data validated, no hardcoded credentials
 
 **Fixture:**
-- `src/core/save_system.gd` uses `Crypto` class to encrypt save data before applying a not-yet-authorized changeset
+- `src/core/save_system.gd` safely parses save data, bounds-checks gameplay
+  values, confines paths, and does not grant server-backed entitlements locally
 - No hardcoded API keys, passwords, or credentials in any `src/` file
 - No version numbers or internal build IDs exposed in client-facing output
 
@@ -42,12 +43,14 @@ None. Security audit is a read-only advisory skill; no gates are invoked.
 
 **Expected behavior:**
 1. Skill scans `src/` for security patterns: encryption usage, hardcoded credentials, exposed internals
-2. All checks pass: save data encrypted, no credentials found, no exposed internals
+2. All checks pass: save input is safely parsed/validated, no credentials found,
+   no exposed internals
 3. Findings report shows all checks PASS
 4. Verdict is SECURE
 
 **Assertions:**
-- [ ] Skill checks save data handling for encryption usage
+- [ ] Skill checks save parsing, bounds, paths, and applicable trust boundaries;
+      encryption alone is neither required nor sufficient
 - [ ] Skill scans for hardcoded credentials (API keys, passwords, tokens)
 - [ ] Skill checks for version/build numbers exposed to players
 - [ ] All checks shown in findings report
@@ -55,25 +58,25 @@ None. Security audit is a read-only advisory skill; no gates are invoked.
 
 ---
 
-### Case 2: Vulnerabilities Found — Unencrypted save data and exposed version
+### Case 2: Vulnerabilities Found — Unsafe save trust boundary
 
 **Fixture:**
-- `src/core/save_system.gd` writes save data as plain JSON (no encryption)
-- `src/ui/debug_overlay.gd` contains: `label.text = "Build: " + ProjectSettings.get("application/config/version")`
-  (exposes internal build version to player)
+- `src/core/save_system.gd` parses plain JSON, accepts an unbounded paid-currency
+  value, and applies it to a server-backed account without authoritative validation
 
 **Input:** `$security-audit`
 
 **Expected behavior:**
-1. Skill scans `src/` — finds unencrypted save write in `save_system.gd`
-2. Skill finds exposed version string in `debug_overlay.gd`
-3. Both findings are flagged as VULNERABILITIES
+1. Skill scans `src/` and traces the save value to the privileged account update
+2. The missing bounds and authoritative validation are reported with call-site evidence
+3. Plain JSON is not independently reported as a vulnerability
 4. Verdict is VULNERABILITIES FOUND
-5. Skill provides remediation recommendations for each vulnerability
+5. Skill recommends validation at the trust boundary without inventing a new
+   checksum, signature, or encryption mechanism
 
 **Assertions:**
-- [ ] Unencrypted save data is flagged as a vulnerability with file and approximate line
-- [ ] Exposed version string is flagged as a vulnerability
+- [ ] The unsafe privileged data flow is flagged with file and approximate line
+- [ ] Plain JSON / lack of encryption is not independently treated as a finding
 - [ ] Remediation suggestion is given for each vulnerability
 - [ ] Verdict is VULNERABILITIES FOUND when any vulnerability is detected
 - [ ] No files are written or modified
@@ -165,3 +168,14 @@ None. Security audit is a read-only advisory skill; no gates are invoked.
   depending on severity.
 - Data privacy compliance (GDPR, COPPA) is out of scope for this spec; those
   require legal review beyond code scanning.
+
+## P0 Contract Coverage
+
+- [ ] Editable data-driven configuration is checked for trust-boundary validation
+  and is not itself a cheat finding.
+- [ ] Suspected secret values are never read from denied files or reproduced in
+  conversation, delegation, or reports; only redacted location/type evidence appears.
+- [ ] An unavailable security role falls back to the same checklist. Failed or
+  partial delegation marks incomplete coverage and cannot yield CLEAR TO SHIP.
+- [ ] CRITICAL/HIGH means DO NOT SHIP; CLEAR TO SHIP requires complete evidence
+  for every selected category; otherwise the result is ASSESSMENT INCOMPLETE.

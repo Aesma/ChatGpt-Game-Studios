@@ -24,6 +24,10 @@ a balance report but asks "May I apply the proposed changeset?"
 - [ ] Does not write any files without explicit user approval
 - [ ] No director gates are invoked
 - [ ] Verdict is one of: BALANCED, CONCERNS, OUT OF BALANCE
+- [ ] BALANCED requires all applicable checks to be evaluated with no material deviation
+- [ ] CONCERNS covers non-blocking deviations or unevaluated items; OUT OF BALANCE requires a cited critical deviation or degenerate strategy
+- [ ] Fix mode previews every exact file, current value, proposed value, and edit before one authorization
+- [ ] Fix mode never changes a newly discovered file outside the authorized changeset
 
 ---
 

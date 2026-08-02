@@ -128,12 +128,12 @@ Coordinate multiple agents on a single feature area:
 
 | Command | Coordinates |
 |---------|-------------|
-| `$team-combat` | game-designer + gameplay-programmer + ai-programmer + technical-artist + sound-designer + qa-tester |
+| `$team-combat` | game-designer + gameplay-programmer + ai-programmer + technical-artist + sound-designer + qa-tester + configured primary engine specialist (implementation blocks when unconfigured) |
 | `$team-narrative` | narrative-director + writer + world-builder + level-designer |
 | `$team-ui` | ux-designer + ui-programmer + art-director + accessibility-specialist |
 | `$team-release` | release-manager + qa-lead + devops-engineer + producer |
 | `$team-polish` | performance-analyst + technical-artist + sound-designer + qa-tester |
-| `$team-audio` | audio-director + sound-designer + technical-artist + gameplay-programmer |
-| `$team-level` | level-designer + narrative-director + world-builder + art-director + systems-designer + qa-tester |
-| `$team-live-ops` | live-ops-designer + economy-designer + community-manager + analytics-engineer |
+| `$team-audio` | audio-director + sound-designer + accessibility-specialist + technical-artist + gameplay-programmer + configured primary engine specialist; output: `design/audio/audio-[feature-slug].md` |
+| `$team-level` | level-designer + narrative-director + world-builder + art-director + systems-designer + accessibility-specialist + qa-tester; output: `design/levels/[level-name-slug].md` |
+| `$team-live-ops` | live-ops-designer + economy-designer + analytics-engineer + community-manager + narrative-director + writer |
 | `$team-qa` | qa-lead + qa-tester + gameplay-programmer + producer |

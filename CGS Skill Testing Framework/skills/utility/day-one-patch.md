@@ -2,67 +2,84 @@
 
 ## Skill Summary
 
-`$day-one-patch` prepares a day-one patch plan for issues that are known at
-launch but deferred from the v1.0 release. It reads open bug reports in
-`production/bugs/`, deferred acceptance criteria from story files (stories
-marked `Status: Done` but with noted deferred ACs), and produces a prioritized
-patch plan with estimated fix timelines per issue.
-
-The patch plan is written to `production/releases/day-one-patch.md` after a
-"May I apply the proposed changeset?"
-6. File written; verdict is COMPLETE
-
-**Assertions:**
-- [ ] All 3 bugs appear in the plan
-- [ ] Bugs are prioritized by severity (MEDIUM before LOW)
-- [ ] Fix estimates are provided per issue
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-6. File written; verdict is COMPLETE
-
-**Assertions:**
-- [ ] "No known issues at launch" note appears in the written file
-- [ ] Template headers are present in the empty plan
-- [ ] Skill does NOT error out when there are no issues to plan
-- [ ] Verdict is COMPLETE
+`$day-one-patch` is an execution-oriented mini-sprint for safe P1/P2 launch
+fixes. It scopes, locates, authorizes, implements, verifies, and records the
+patch. Canonical bugs live in `production/qa/bugs/`. It is not a read-only
+planning utility.
 
 ---
 
-### Case 5: Director Gate Check — No gate; day-one-patch is a planning utility
+## Static Assertions
 
-**Fixture:**
-- Known issues present in production/bugs/
+- [ ] Missing/invalid/non-Release-or-Polish stage stops before spawn or write
+- [ ] No required input references `production/gate-checks/`
+- [ ] One complete changeset includes rollback, source/config, tests, and record
+- [ ] P0/CRITICAL issues stop ordinary patch execution and point to `$hotfix`
+- [ ] QA FAIL cannot produce a PASS patch record
 
-**Input:** `$day-one-patch`
+---
 
-**Expected behavior:**
-1. Skill generates and writes the patch plan
-2. No director agents are spawned
-3. No gate IDs appear in output
+## Test Cases
+
+### Case 1: Scope-only stop outside Release/Polish
 
 **Assertions:**
-- [ ] No director gate is invoked
-- [ ] No gate skip messages appear
-- [ ] Verdict is COMPLETE without any gate check
+- [ ] Missing, invalid, Concept, Systems Design, Technical Setup, Pre-Production, or Production stage stops
+- [ ] No role is spawned
+- [ ] No file is written
+- [ ] No patch-complete result is emitted
+
+---
+
+### Case 2: Full execution after exact read-only location
+
+**Fixture:**
+- Stage is Release or Polish
+- Safe P1/P2 bugs exist under `production/qa/bugs/`
+- Existing release/launch checklist and QA sign-off artifacts cover the build
+
+**Assertions:**
+- [ ] lead-programmer first identifies exact candidate source/config and test files read-only
+- [ ] release-manager first drafts rollback read-only
+- [ ] Rollback, source/config, tests, and final patch record are shown in one changeset before the first write
+- [ ] Implementation and verification happen only after that authorization
+- [ ] A newly discovered file pauses execution for an expanded preview
+
+---
+
+### Case 3: Locator or implementation agent failure
+
+**Assertions:**
+- [ ] Failure is surfaced with the affected fix and partial evidence
+- [ ] Unknown source/test files are not guessed into an authorized write
+- [ ] The workflow does not silently continue to a complete patch record
+
+---
+
+### Case 4: QA FAIL after implementation
+
+**Assertions:**
+- [ ] The failing fix and all files it changed are listed
+- [ ] User chooses a within-boundary fix or a specific revert
+- [ ] Remaining changes are retested as a combination
+- [ ] Until restoration/fix and verification pass, no Phase 6 PASS record is written
+
+---
+
+### Case 5: P0/CRITICAL issue
+
+**Assertions:**
+- [ ] The issue is excluded from ordinary day-one scope
+- [ ] Execution stops before patch writes
+- [ ] Output gives explicit existing `$hotfix` guidance
+- [ ] P0 is not treated as a four-hour ordinary patch candidate
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Reads open bugs from `production/bugs/` before generating the plan
-- [ ] Scans story files for deferred AC notes
-- [ ] Escalates CRITICAL (P0) bugs with explicit `$hotfix` guidance
-- [ ] Produces an empty plan with note when no issues exist (not an error)
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Verdict is COMPLETE in all paths
-
----
-
-## Coverage Notes
-
-- The case where multiple CRITICAL bugs exist is handled the same as Case 2;
-  all P0 issues are escalated together.
-- Timeline estimation for the patch (e.g., "patch available in 3 days")
-  requires manual QA and build time estimates; the skill uses rough estimates
-  based on severity, not actual team velocity.
-- The patch notes player communication document (`$patch-notes`) is a separate
-  skill invoked after the patch plan is executed.
+- [ ] Uses canonical `production/qa/bugs/`
+- [ ] Reads real stage/checklist/QA artifacts rather than a nonexistent gate report
+- [ ] Exact write ownership is known before authorization
+- [ ] One complete changeset authorization covers the mini-sprint
+- [ ] Verification results control whether a final patch record may claim PASS

@@ -24,7 +24,7 @@ after a "May I apply the proposed changeset?"
 
 **Fixture:**
 - All sprint stories are Done
-- `production/bugs/` contains 2 open bugs with severity HIGH
+- `production/qa/bugs/` contains 2 open bugs with severity HIGH
 
 **Input:** `$release-checklist`
 
@@ -132,3 +132,17 @@ after a "May I apply the proposed changeset?"
 - Stories with `Status: In Review` (not Done) are treated as incomplete
   and result in RELEASE BLOCKED; this edge case follows the same pattern
   as the HIGH bug case.
+
+## P0 Contract Coverage
+
+- [ ] The workflow evaluates internal release readiness only; platform,
+  certification, store, distribution, and launch work is handed to
+  `$launch-checklist`.
+- [ ] Release-scope stories, open bugs, QA evidence, build evidence, and
+  changelog status are all loaded before a verdict. Missing evidence is
+  `NOT VERIFIED`, never an implicit pass.
+- [ ] CRITICAL/HIGH bugs, incomplete release-scope stories, or blocking QA
+  failures produce RELEASE BLOCKED; advisory or unverified-only gaps produce
+  CONCERNS; RELEASE READY requires evidence for every blocking item.
+- [ ] The target is `production/releases/release-checklist-[date].md`; an
+  existing target is read and updated deliberately, never overwritten silently.

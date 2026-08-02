@@ -7,7 +7,7 @@ description: "Structured performance profiling workflow. Identifies bottlenecks,
 
 Invoke this workflow as `$perf-profile`.
 
-Arguments: `[system-name or 'full']`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[system-name | full | path/to/existing-profiler-data]`. A data path is a single existing profiler or benchmark file.
 
 Delegate substantive work to the `performance-analyst` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
@@ -16,8 +16,11 @@ Delegate substantive work to the `performance-analyst` Codex subagent role when 
 
 Read the argument:
 
-- System name → focus profiling on that specific system
-- `full` → run a comprehensive profile across all systems
+- System name → perform a static candidate scan for that specific system
+- `full` → perform a static candidate scan across all systems
+- Existing profiler/benchmark path → parse that file and perform measured budget analysis
+
+With no argument, look only for an explicitly identified existing profiler data artifact. If none is available, output the target-engine/platform data-capture checklist and stop without a budget verdict. If a supplied data file cannot be parsed, report the file/error and stop; never fall back to estimated measurements.
 
 ---
 
@@ -31,12 +34,16 @@ Check for existing performance targets in design docs or AGENTS.md:
 - Draw call budgets
 - Network bandwidth limits (if multiplayer)
 
+Treat missing values and placeholders such as `[TO BE CONFIGURED]` as unconfigured. Ask for a target or report raw measurements only. Never substitute example values such as 16.67ms, and do not issue WITHIN BUDGET/CONCERNS/OVER BUDGET without a configured budget.
+
 ---
 
-## Phase 3: Analyze Codebase
+## Phase 3: Analyze Evidence
 
-**CPU Profiling Targets:**
-- `_process()` / `Update()` / `Tick()` functions — list all and estimate cost
+When profiler/benchmark data is present, derive every quantitative metric from that file and compare it only with configured project budgets. When no runtime data is present, the checks below are a static candidate scan only: report file:line candidates and a capture checklist; do not fill runtime values, Status, Estimated Current, or Expected gain, and do not issue a budget verdict.
+
+**CPU Profiling Candidates:**
+- `_process()` / `Update()` / `Tick()` functions — list locations and flag them for measurement; do not estimate cost
 - Nested loops over large collections
 - String operations in hot paths
 - Allocation patterns in per-frame code
@@ -45,13 +52,13 @@ Check for existing performance targets in design docs or AGENTS.md:
 
 **Memory Profiling Targets:**
 - Large data structures and their growth patterns
-- Texture/asset memory footprint estimates
+- Large texture/asset files to measure in the target runtime; do not infer resident memory
 - Object pool vs instantiate/destroy patterns
 - Leaked references (objects that should be freed but aren't)
 - Cache sizes and eviction policies
 
 **Rendering Targets (if applicable):**
-- Draw call estimates
+- Rendering patterns whose draw calls must be measured
 - Overdraw from overlapping transparent objects
 - Shader complexity
 - Unoptimized particle systems
@@ -71,12 +78,12 @@ Check for existing performance targets in design docs or AGENTS.md:
 Generated: [Date]
 
 ### Performance Budgets
-| Metric | Budget | Estimated Current | Status |
-|--------|--------|-------------------|--------|
-| Frame time | [16.67ms] | [estimate] | [OK/WARNING/OVER] |
-| Memory | [target] | [estimate] | [OK/WARNING/OVER] |
-| Load time | [target] | [estimate] | [OK/WARNING/OVER] |
-| Draw calls | [target] | [estimate] | [OK/WARNING/OVER] |
+| Metric | Project Budget | Measured Current | Status |
+|--------|----------------|------------------|--------|
+| Frame time | [configured budget or unknown] | [from profiler data only] | [measured result or unavailable] |
+| Memory | [configured budget or unknown] | [from profiler data only] | [measured result or unavailable] |
+| Load time | [configured budget or unknown] | [from profiler data only] | [measured result or unavailable] |
+| Draw calls | [configured budget or unknown] | [from profiler data only] | [measured result or unavailable] |
 
 ### Hotspots Identified
 | # | Location | Issue | Estimated Impact | Fix Effort |
@@ -85,7 +92,7 @@ Generated: [Date]
 ### Optimization Recommendations (Priority Order)
 1. **[Title]** — [Description]
    - Location: [file:line]
-   - Expected gain: [estimate]
+   - Expected direction: [non-numeric until verified with the same scenario]
    - Risk: [Low/Med/High]
    - Approach: [How to implement]
 
@@ -96,7 +103,7 @@ Generated: [Date]
 - [Area that needs actual runtime profiling to confirm impact]
 ```
 
-Output the report with a summary: top 3 hotspots, estimated headroom vs budget, and recommended next action.
+With runtime data and configured budgets, output measured headroom and exactly one verdict: **WITHIN BUDGET**, **CONCERNS**, or **OVER BUDGET**. Without both, output only candidates/raw measurements, limitations, and the next data-capture action; no budget verdict.
 
 ---
 
@@ -104,16 +111,9 @@ Output the report with a summary: top 3 hotspots, estimated headroom vs budget, 
 
 Activate this phase only if any hotspot has Fix Effort rated M or L.
 
-Present significant-effort items and ask the user to choose for each:
+Present significant-effort items as non-executing next-step options only: investigate with a measured follow-up, consider `$scope-check [feature]`, or separately request an architectural decision. This workflow does not implement, schedule, write a backlog/known issue, or start another write workflow.
 
-- **A) Implement the optimization** (proceed with fix now or schedule it)
-- **B) Reduce feature scope** (run `$scope-check [feature]` to analyze trade-offs)
-- **C) Accept the performance hit and defer to Polish phase** (log as known issue)
-- **D) Escalate to technical-director for an architectural decision** (run `$architecture-decision`)
-
-If multiple items are deferred to Polish (choice C), record them under `### Deferred to Polish`.
-
-This skill is read-only — no files are written. Verdict: **COMPLETE** — performance profile generated.
+This skill is read-only — no files are written. A measured run uses the Phase 4 budget verdict; a static/no-budget run ends without one.
 
 ---
 

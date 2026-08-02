@@ -59,7 +59,9 @@ Read `tests/regression-suite.md` if it exists. Extract:
 - Last updated date
 - Any tests flagged as `STALE` or `QUARANTINED`
 
-If it does not exist: note "No regression suite found — will create one."
+If it does not exist: in `report` mode note "No regression suite found" and
+continue read-only; in `update` or `audit` mode note that creation is a proposed
+write which still requires authorization.
 
 ### Step 2b — Load test inventory
 
@@ -70,8 +72,9 @@ tests/integration/**/*_test.*
 tests/regression/**/*
 ```
 
-For each file, note the system (from directory path) and file name.
-Do not read test file contents unless needed for name-to-test mapping.
+For each file, note the system (from directory path) and file name. A name match
+only identifies a candidate; read each relevant candidate test function and its
+assertions before assigning coverage.
 
 ### Step 2c — Load GDD critical paths
 
@@ -99,14 +102,15 @@ For `audit` mode only:
 
 For each GDD acceptance criterion, determine whether a test exists:
 
-1. Search `tests/unit/[system]/` and `tests/integration/[system]/` for file names
-   and function names related to the criterion's key noun/verb
-2. Assign coverage:
+1. Search `tests/unit/[system]/` and `tests/integration/[system]/` for candidate
+   file/function names, then read the relevant test functions.
+2. Match the criterion's scenario and expected result to a concrete assertion.
+3. Assign coverage:
 
 | Status | Meaning |
 |--------|---------|
-| **COVERED** | A test file exists that targets this criterion's logic |
-| **PARTIAL** | A test exists but doesn't cover all cases (e.g. happy path only) |
+| **COVERED** | A relevant assertion verifies the criterion's scenario and expected result |
+| **PARTIAL** | A candidate exists but lacks the matching assertion or covers only part of the scenario |
 | **MISSING** | No test found for this critical path |
 | **EXEMPT** | Visual/Feel or UI criterion — not automatable by design |
 
@@ -216,7 +220,7 @@ Tests that should exist but don't yet:
 
 ## Quarantined Tests
 
-Tests that are flaky or disabled (do not run in CI):
+Tests suspected or confirmed flaky; they remain enabled in CI while awaiting a fix:
 
 | Test File | Function | Reason | Quarantined Since |
 |-----------|----------|--------|-------------------|
@@ -243,7 +247,11 @@ After writing the authorized changeset:
 - If coverage drift detected: "Regression suite may be drifting. Consider
   running `$regression-suite audit` at the next sprint boundary."
 
-Verdict: **COMPLETE** — regression suite updated. (If user declined write: Verdict: **BLOCKED**.)
+For `report`, finish with **COMPLETE** — read-only status reported, regardless of
+whether a manifest exists. For `update` or `audit`, say the suite was updated
+only after the authorized manifest write. If the user chooses not to write,
+report **COMPLETE — analysis finished; manifest not written** rather than
+misrepresenting that choice as a runtime blocker.
 
 ---
 
@@ -254,7 +262,7 @@ Verdict: **COMPLETE** — regression suite updated. (If user declined write: Ver
   regression risk itself
 - **Gaps are advisory, not blocking** — surface them clearly but do not prevent
   other work from proceeding (except at release gate where regression suite is required)
-- **Quarantine is not deletion** — tests with intermittent failures should be
-  quarantined (noted in manifest) but not removed; they should be fixed by
-  `$test-flakiness`
+- **Quarantine is not disabling** — suspected or confirmed flaky tests remain
+  in CI, are noted in the existing table, and should be fixed by
+  `$test-flakiness`; never add skip/disable instructions to make CI pass
 - **Single changeset approval** — include the manifest in the complete preview before creating or updating it

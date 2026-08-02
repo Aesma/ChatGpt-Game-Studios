@@ -7,9 +7,15 @@ description: "Concept prototype — validate the core idea is worth designing be
 
 Invoke this workflow as `$prototype`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+This workflow has two bounded write batches because report content does not exist
+until after playtesting. Before each batch's first write, present every exact file
+and intended modification in that batch and obtain one approval. Do not re-prompt
+file by file inside a batch. If a batch's file set expands, stop and re-preview
+that batch; never treat the first batch as authorization for unknown report data.
 
 Arguments: `[concept-description] [--path html|engine|paper] [--review full|lean|solo] [--spike]`. Treat bracketed values as optional unless the workflow says otherwise.
+
+Before parsing arguments, read `references/continued-workflow.md` in full, including its Spike Mode section.
 
 Delegate substantive work to the `prototyper` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
@@ -41,8 +47,7 @@ Resolve the review mode (once, store for all gate spawns this run):
 2. Else read `production/review-mode.txt` → use that value
 3. Else → default to `lean`
 
-**Check for spike mode:** If `--spike` was passed, skip to the **Spike Mode** section
-at the bottom of this skill.
+**Check for spike mode:** If `--spike` was passed, jump to `references/continued-workflow.md#spike-mode`, already loaded above. Do not enter any concept-prototype phase first.
 
 Otherwise, ask the user directly to confirm intent before proceeding:
 
@@ -57,7 +62,7 @@ Ask (an open-ended question): "What evidence do you have that the concept works?
 Record the one-line answer, then stop. Note: "Concept prototype skipped — evidence:
 [answer]." Suggest next step: `$map-systems` or `$design-system [mechanic]`.
 
-**If "Mid-production spike"**: skip to the **Spike Mode** section below.
+**If "Mid-production spike"**: jump to the Spike Mode section in the required continuation.
 
 **If "Prototype this concept"**: continue with Phase 1 below.
 
@@ -101,7 +106,7 @@ Read `design/gdd/game-concept.md` if it exists. Extract:
 - Core fantasy (what the player is supposed to feel)
 - Core loop (the moment-to-moment action being tested)
 
-Read `AGENTS.md` and `.codex/docs/technical-preferences.md` for the engine and
+Read `AGENTS.md` and `docs/technical-preferences.md` for the engine and
 language in use.
 
 ---
@@ -204,11 +209,9 @@ significant time to configure.
 systems, progression loops, any game where the logic can be simulated by hand.
 Works for any genre when you need to validate rules, not feel.
 
-**Reliability:** 100%. No code, no engine, no install.
+**Evidence boundary:** No code, engine, or install is required, but a simulated paper session proves only that the rules can be walked through; it does not prove fun, comprehension, or reliability.
 
-**Limitation — cannot validate moment-to-moment feel.** Paper prototypes prove
-that the rules are internally consistent and the decisions are interesting. They
-cannot tell you whether jumping feels right or whether explosions feel satisfying.
+**Limitation — cannot validate moment-to-moment feel.** A simulated paper run can check that rules are executable. Only observations from real testers can support claims about comprehension, interesting decisions, fun, or a PROCEED/PIVOT/KILL recommendation.
 
 **Paper playtest observation protocol (run this with 5+ people):**
 1. Brief the rules once. Hand them the rule summary sheet. Then step back.
@@ -218,7 +221,7 @@ cannot tell you whether jumping feels right or whether explosions feel satisfyin
 5. Use fresh testers for each iteration. The same person cannot give new first-impression data.
 6. If 3+ testers hit the same confusion point, that rule is broken — redesign it before re-testing.
 
-**Output:** A printable rules document + a completed play log showing one simulated session.
+**Output:** A printable rules document plus a simulated rules-walkthrough log, explicitly labelled as non-player evidence.
 
 **Narrative tools for this path:** For dialogue-heavy and story-driven games, skip the
 generic rules doc — use a dedicated narrative scripting tool instead:
@@ -239,7 +242,7 @@ recommendation pre-stated:
 - **Options**:
   - `HTML — browser prototype` — puzzle, card, turn-based, strategy, idle. Opens by double-clicking, no install. 85–90% reliable. **Not suitable for action games** — browser latency lies about feel.
   - `Engine — native prototype` — action, platformer, physics, or anything where feel IS the hypothesis. 50–60% one-shot; 2–4 iteration rounds are normal. Requires engine installed.
-  - `Paper — rules document + play log` — strategy, economy, logic, board-game-style mechanics. 100% reliable. Cannot validate feel.
+  - `Paper — rules document + play log` — strategy, economy, logic, board-game-style mechanics. A simulated run checks rule executability only; real testers are required for experience conclusions.
 
 ---
 
@@ -257,25 +260,20 @@ If scope covers more than one mechanic, cut it down. When in doubt, cut more.
 
 Present this plan to the user before building. Get confirmation before proceeding.
 
-Once confirmed, write a session checkpoint to `production/session-state/active.md`
-(create `production/session-state/` if it does not exist). Include: concept name,
-hypothesis, path chosen, scope bullet points, and current phase ("Phase 5 —
-Implement"). This lets the next session resume without starting over if the session
-ends mid-build — especially important for multi-day Engine path work.
+Once confirmed, draft (but do not write) the session checkpoint for `production/session-state/active.md`. Include concept name, hypothesis, path, scope, and current phase. The initial-build changeset in Phase 5 must preview this checkpoint together with every initial file for the selected path before either is written.
 
 ---
 
 ## Phase 5: Implement
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Use two bounded write batches. Batch 1 is the initial build: preview the session checkpoint and every initial prototype file with exact paths, then obtain one authorization before writing. Batch 2 occurs after playtest/review: preview the actual REPORT, index, and applicable PIVOT/GRAVEYARD outcome files together, then obtain one authorization. If either batch gains an unlisted file, re-preview that batch; never authorize unknown content or ask file by file.
 
-Once the complete changeset is authorized, create the directory. Every file must begin with:
+Use the same three marker lines in syntax valid for each format:
+- HTML: `<!-- PROTOTYPE - NOT FOR PRODUCTION | Question: ... | Date: ... -->`
+- Markdown: an HTML comment or blockquote carrying those three lines
+- Engine code: that language's line/block comment syntax
 
-```
-// PROTOTYPE - NOT FOR PRODUCTION
-// Question: [Core question being tested]
-// Date: [Current date]
-```
+After the initial-build batch is authorized, create/write its files.
 
 Standards are intentionally relaxed:
 
@@ -343,10 +341,7 @@ with no server required.
 
 ### Paper path: document + log
 
-Write `prototypes/[concept-name]-concept/rules.md` (the game rules) and
-`prototypes/[concept-name]-concept/play-log.md` (a simulated session walking
-through one complete play cycle step by step with dice rolls, decisions, and
-outcomes narrated).
+Write `prototypes/[concept-name]-concept/rules.md` and `play-log.md`. Label the latter `simulated rules walkthrough — not player evidence`; it may record dice rolls, decisions, and outcomes only to test rule executability.
 
 ---
 
@@ -367,10 +362,7 @@ behavior. Now ask for the overall assessment:
 > not the developer. Come back when you have a feel for it."
 
 **For Paper path:** Say exactly this:
-> "Read through `prototypes/[name]-concept/rules.md` and walk through the
-> `play-log.md` as if you're playing it for the first time. If you have someone
-> nearby, try running the rules with them. Come back when you've seen at least one
-> full play cycle."
+> "The simulated play log checks only whether the rules can be walked through. It cannot answer the experience hypothesis. Run the rules with at least one real tester and return with their observations; without that evidence the recommendation remains needs-more-validation."
 
 Once the user returns, ask these questions **one at a time** — wait for each answer
 before asking the next:
@@ -402,4 +394,4 @@ Vague ones make it useless.
 
 ## Required continuation
 
-Before continuing, read [references/continued-workflow.md](references/continued-workflow.md) in full. It contains the remaining required phases, output formats, recovery rules, and handoff instructions; execute them in order.
+Continue with the already-loaded [references/continued-workflow.md](references/continued-workflow.md). It contains the remaining required phases, output formats, recovery rules, and handoff instructions; execute them in order.

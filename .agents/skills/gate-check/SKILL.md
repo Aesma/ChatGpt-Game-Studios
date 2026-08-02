@@ -9,7 +9,7 @@ Invoke this workflow as `$gate-check`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[target-phase: systems-design | technical-setup | pre-production | production | polish | release] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[source-phase: concept | systems-design | technical-setup | pre-production | production | polish] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 # Phase Gate Validation
@@ -39,7 +39,17 @@ The project progresses through these stages:
 
 ## 1. Parse Arguments
 
-**Target phase:** the first provided argument (blank = auto-detect current stage, then validate next transition)
+**Source phase:** the first provided argument names the current/source stage.
+The six canonical mappings are: `concept` → Concept to Systems Design,
+`systems-design` → Systems Design to Technical Setup, `technical-setup` →
+Technical Setup to Pre-Production, `pre-production` → Pre-Production to
+Production, `production` → Production to Polish, and `polish` → Polish to
+Release. Unknown tokens are errors; do not infer aliases.
+
+For every invocation, first read or infer the current stage and compare it with
+the requested source phase. On mismatch, show both pieces of evidence and stop
+without checking or writing the stage. A no-argument run detects the source
+phase, then confirms it with the user.
 
 Also resolve the review mode (once, store for all gate spawns this run):
 1. If `--review [full|lean|solo]` was passed → use that
@@ -48,7 +58,9 @@ Also resolve the review mode (once, store for all gate spawns this run):
 
 Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE) are skipped — gate-check becomes artifact-existence checks only. In `lean` mode, all four directors still run (phase gates are the purpose of lean mode).
 
-- **With argument**: `$gate-check production` — validate readiness for that specific phase
+- **With argument**: `$gate-check pre-production` — validate the
+  Pre-Production to Production transition, after confirming the current stage is
+  Pre-Production
 - **No argument**: Auto-detect current stage using the same heuristics as
   `$project-stage-detect`, then **confirm with the user before running**:
 
@@ -72,12 +84,12 @@ Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GA
 - [ ] Visual Identity Anchor section exists in `design/gdd/game-concept.md` (from brainstorm Phase 4 art-director output)
 
 **Recommended (not blocking):**
-- [ ] Concept prototype exists in `prototypes/` with a REPORT.md showing PROCEED verdict
+- [ ] Concept prototype exists in `prototypes/` with a REPORT.md showing PROCEED from an executed playable/interactive prototype; a Paper-mode or purely simulated log is not PROCEED evidence
       (`$prototype [core-mechanic]`) — skipping this means GDDs may be written for an
       idea that hasn't been played. Acceptable if the concept is proven by other means.
 
 **Quality Checks:**
-- [ ] Game concept has been reviewed (`$design-review` verdict not MAJOR REVISION NEEDED)
+- [ ] Game concept directly contains a coherent core loop, target audience, and Visual Identity Anchor required by this gate
 - [ ] Core loop is described and understood
 - [ ] Target audience is identified
 - [ ] Visual Identity Anchor contains a one-line visual rule and at least 2 supporting visual principles
@@ -88,11 +100,11 @@ Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GA
 
 **Required Artifacts:**
 - [ ] Systems index exists at `design/gdd/systems-index.md` with at least MVP systems enumerated
-- [ ] All MVP-tier GDDs exist in `design/gdd/` and individually pass `$design-review`
+- [ ] All MVP-tier GDDs exist with substantive eight-section content and their systems-index rows are `Approved`
 - [ ] A cross-GDD review report exists in `design/gdd/` (from `$review-all-gdds`)
 
 **Quality Checks:**
-- [ ] All MVP GDDs pass individual design review (8 required sections, no MAJOR REVISION NEEDED verdict)
+- [ ] Every MVP GDD has substantive Overview, Player Fantasy, Detailed Rules, Formulas, Edge Cases, Dependencies, Tuning Knobs, and Acceptance Criteria; each systems-index status is `Approved`
 - [ ] `$review-all-gdds` verdict is not FAIL (cross-GDD consistency and design theory checks pass)
 - [ ] All cross-GDD consistency issues flagged by `$review-all-gdds` are resolved or explicitly accepted
 - [ ] System dependencies are mapped in the systems index and are bidirectionally consistent
@@ -105,7 +117,7 @@ Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GA
 
 **Required Artifacts:**
 - [ ] Engine chosen (AGENTS.md Technology Stack is not `[CHOOSE]`)
-- [ ] Technical preferences configured (`.codex/docs/technical-preferences.md` populated)
+- [ ] Technical preferences configured (`docs/technical-preferences.md` populated)
 - [ ] Art bible exists at `design/art/art-bible.md` with at least Sections 1–4 (Visual Identity Foundation)
 - [ ] At least 3 Architecture Decision Records in `docs/architecture/` covering
       Foundation-layer systems (scene management, event architecture, save/load)
@@ -149,10 +161,8 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 ### Gate: Pre-Production → Production
 
 **Required Artifacts:**
-- [ ] Vertical slice exists in `prototypes/` with a REPORT.md (run `$vertical-slice`) — **recommended, not blocking**; if absent, surface as CONCERNS
 - [ ] First sprint plan exists in `production/sprints/`
 - [ ] Art bible is complete (all 9 sections) and AD-ART-BIBLE sign-off verdict is recorded in `design/art/art-bible.md`
-- [ ] Entity inventory exists at `design/assets/entity-inventory.md` (recommended — run `$asset-spec` with no arguments to generate collaboratively from GDDs + art bible)
 - [ ] All MVP-tier GDDs from systems index are complete
 - [ ] Master architecture document exists at `docs/architecture/architecture.md`
 - [ ] At least 3 ADRs covering Foundation-layer decisions exist in `docs/architecture/`
@@ -163,18 +173,20 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
       layer epics present (use `$create-epics layer: foundation` and
       `$create-epics layer: core` to create them, then `$create-stories [epic-slug]`
       for each epic)
-- [ ] Vertical Slice build exists and is playable (not just scope-defined) — **recommended, not blocking**; if absent, surface as CONCERNS
-- [ ] Vertical Slice has been playtested with at least 1 documented session — **recommended, not blocking**; if absent, surface as CONCERNS
-- [ ] Vertical Slice playtest report exists at `production/playtests/` or equivalent — **recommended, not blocking**; if absent, surface as CONCERNS
 - [ ] UX specs exist for key screens: main menu, core gameplay HUD (at `design/ux/`), pause menu
 - [ ] HUD design document exists at `design/ux/hud.md` (if game has in-game HUD)
-- [ ] All key screen UX specs have passed `$ux-review` (verdict APPROVED or NEEDS REVISION accepted)
+- [ ] All key screen UX specs have passed `$ux-review` with verdict APPROVED; NEEDS REVISION cannot be accepted as implementation-ready
+
+**Recommended (not blocking; missing items produce CONCERNS):**
+- [ ] Vertical slice exists and is playable, with REPORT.md
+- [ ] Vertical slice has at least one documented playtest session/report
+- [ ] Entity inventory exists at `design/assets/entity-inventory.md`
 
 **Quality Checks:**
 - [ ] **Core loop fun is validated** — playtest data confirms the central mechanic is enjoyable, not just functional. Explicitly check the Vertical Slice playtest report.
 - [ ] UX specs cover all UI Requirements sections from MVP-tier GDDs
 - [ ] Interaction pattern library documents patterns used in key screens
-- [ ] Accessibility tier from `design/accessibility-requirements.md` is addressed in all key screen UX specs
+- [ ] Accessibility tier from `design/ux/accessibility-requirements.md` is addressed in all key screen UX specs
 - [ ] Sprint plan references real story file paths from `production/epics/`
       (not just GDDs — stories must embed GDD req ID + ADR reference)
 - [ ] **Vertical Slice is COMPLETE**, not just scoped — the build demonstrates the full core loop end-to-end. At least one complete [start → challenge → resolution] cycle works.
@@ -209,19 +221,20 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] Main gameplay path is playable end-to-end
 - [ ] Test files exist in `tests/unit/` and `tests/integration/` covering Logic and Integration stories
 - [ ] All Logic stories from this sprint have corresponding unit test files in `tests/unit/`
-- [ ] Smoke check has been run with a PASS or PASS WITH WARNINGS verdict — report exists in `production/qa/`
-- [ ] QA plan exists in `production/qa/` (generated by `$qa-plan`) covering this sprint or final production sprint
-- [ ] At least one QA plan exists in `production/qa/` covering this production phase — run `$qa-plan` if missing (CONCERNS — advisory, not blocking)
+- [ ] Smoke check has been run in base mode (not quick) with a PASS or PASS WITH WARNINGS verdict — report exists in `production/qa/` and records checked coverage
 - [ ] QA sign-off report exists in `production/qa/` (generated by `$team-qa`) with verdict APPROVED or APPROVED WITH CONDITIONS
-- [ ] At least 3 distinct playtest sessions documented in `production/playtests/`
+- [ ] At least 3 distinct completed playtest sessions are documented in `production/playtests/`; each must contain analyzed source notes/observations, not an empty `$playtest-report new` template
 - [ ] Playtest reports cover: new player experience, mid-game systems, and difficulty curve
 - [ ] Fun hypothesis from Game Concept has been explicitly validated or revised
+
+**Recommended (not blocking):**
+- [ ] At least one QA plan exists in `production/qa/` covering this production phase — run `$qa-plan` if missing (CONCERNS)
 
 **Quality Checks:**
 - [ ] Tests are passing (run test suite through the configured shell)
 - [ ] No critical/blocker bugs in any bug tracker or known issues
 - [ ] Core loop plays as designed (compare to GDD acceptance criteria)
-- [ ] Performance is within budget (check technical-preferences.md targets)
+- [ ] Performance is within an explicitly configured budget and supported by actual profiler measurements; a report without measurements or a project without configured targets cannot pass this item
 - [ ] Playtest findings have been reviewed and critical fun issues addressed (not just documented)
 - [ ] No "confusion loops" identified — no point in the game where >50% of playtesters got stuck without knowing why
 - [ ] Difficulty curve matches the Difficulty Curve design doc (if one exists at `design/difficulty-curve.md`)
@@ -243,7 +256,7 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] Smoke check passes cleanly (PASS verdict) on the release candidate build
 - [ ] No test regressions from previous sprint (test suite passes fully)
 - [ ] Balance data has been reviewed (`$balance-check` run)
-- [ ] Release checklist completed (`$release-checklist` or `$launch-checklist` run)
+- [ ] Latest `production/launch/launch-checklist-[date].md` exists and records canonical verdict `LAUNCH READY`; `LAUNCH BLOCKED` is FAIL and `CONCERNS` remains a gate concern
 - [ ] Store metadata prepared (if applicable)
 - [ ] Changelog / patch notes drafted
 
@@ -286,8 +299,10 @@ cross-GDD consistency check failed and must be resolved before advancing.
 ### Quality Checks
 - For test checks: Run the test suite through the configured shell if a test runner is configured
 - For design review checks: read the GDD and check for the 8 required sections
-- For performance checks: read `technical-preferences.md` and compare against any
-  profiling data in `tests/performance/` or recent `$perf-profile` output
+- For performance checks: read `docs/technical-preferences.md` and require both
+  explicit configured budgets and actual profiler measurements in `tests/performance/`
+  or a `$perf-profile` output that contains those measurements. Missing measurements
+  or placeholder budgets are MANUAL CHECK NEEDED and cannot be reported as within budget.
 - For localization checks: `Search` for hardcoded strings in `src/`
 
 ### Cross-Reference Checks
@@ -348,7 +363,7 @@ Art Director:       [READY / CONCERNS / NOT READY]
 ```
 
 **Apply to the verdict:**
-- Any director returns NOT READY → verdict is minimum FAIL (user may override with explicit acknowledgement)
+- Any director returns NOT READY → verdict is FAIL and cannot advance the stage
 - Any director returns CONCERNS → verdict is minimum CONCERNS
 - All four READY → eligible for PASS (still subject to artifact and quality checks from Section 3)
 

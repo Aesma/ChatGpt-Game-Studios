@@ -47,12 +47,12 @@ completeness. This skill reviews the *relationships* between all GDDs.
 
 ### Phase 1a — L0: Summary Scan (fast, low tokens)
 
-Before reading any full document, search to extract `## Summary` sections
-from all GDD files:
-
-```
-Search files matching `design/gdd/*.md` for `## Summary` and include 5 following lines of context.
-```
+Read `design/gdd/systems-index.md` first. Build the system-GDD manifest only
+from its explicit Design Doc paths whose files exist. `game-concept.md`,
+`game-pillars.md`, and `systems-index.md` are context rather than system GDDs;
+exclude all `gdd-cross-review-*` reports. Extract a `## Summary` when present,
+otherwise summarize from the title and `## Overview` without treating the
+missing Summary as a defect.
 
 Display a manifest to the user:
 ```
@@ -92,8 +92,9 @@ Full-read the in-scope documents:
 1. `design/gdd/game-concept.md` — game vision, core loop, MVP definition
 2. `design/gdd/game-pillars.md` if it exists — design pillars and anti-pillars
 3. `design/gdd/systems-index.md` — authoritative system list, layers, dependencies, status
-4. **Every in-scope system GDD in `design/gdd/`** — read completely (skip
-   game-concept.md and systems-index.md — those are read above)
+4. **Every in-scope system GDD explicitly listed by systems-index** — read each
+   existing path completely. Do not absorb other Markdown files or prior review
+   reports into the system set.
 
 Report: "Loaded [N] system GDDs covering [M] systems. Pillars: [list]. Anti-pillars: [list]."
 
@@ -105,15 +106,17 @@ If fewer than 2 system GDDs exist, stop:
 
 ### Parallel Execution
 
-Phase 2 (Consistency) and Phase 3 (Design Theory) are independent — they read
-the same GDD inputs but produce separate reports. Delegate both phases to parallel Codex sub-agents simultaneously rather than waiting for Phase 2 to complete before
-starting Phase 3. Collect both results before writing the combined report.
+Respect the selected focus. In `full` mode, Phase 2 (Consistency) and Phase 3
+(Design Theory) are independent and may run in parallel; in `consistency` or
+`design-theory` mode, run only the selected phase. `since-last-review` applies a
+full check to its selected GDD set. Collect every started phase before writing
+the combined report.
 
 **When spawning parallel Codex subagents for Phase 2 and Phase 3, always pass:**
 - The complete list of GDD file paths loaded in Phase 1 (explicit paths, not just counts)
 - The full TR registry contents if loaded in Phase 1b (paste the registry text, not just a file path)
 - The specific checklist items assigned to that agent's phase (Phase 2 gets 2a–2f; Phase 3 gets 3a–3g)
-- The engine name and version from `.codex/docs/technical-preferences.md` and `docs/engine-reference/[engine]/VERSION.md`
+- The engine name and version from `docs/technical-preferences.md` and `docs/engine-reference/[engine]/VERSION.md`
 
 Do not rely on the subagent to re-read these files — it has its own context window and cannot access Phase 1 results unless they are explicitly passed in the delegation prompt.
 
@@ -123,21 +126,17 @@ Do not rely on the subagent to re-read these files — it has its own context wi
 
 Work through every pair and group of GDDs to find contradictions and gaps.
 
-### 2a: Dependency Bidirectionality
+### 2a: Dependency References
 
-For every GDD's Dependencies section, check that every listed dependency is
-reciprocal:
-- If GDD-A lists "depends on GDD-B", check that GDD-B lists GDD-A as a dependent
-- If GDD-A lists "depended on by GDD-C", check that GDD-C lists GDD-A as a dependency
-- Flag any one-directional dependency as a consistency issue
+For every GDD's standard `Dependencies` / `Depends On` entries:
 
-```
-⚠️  Dependency Asymmetry
-[system-a].md lists: Depends On → [system-b].md
-[system-b].md does NOT list [system-a].md as a dependent
-→ One of these documents has a stale dependency section
-```
+- verify each referenced target exists;
+- verify the source GDD's forward dependency agrees with systems-index;
+- if a document explicitly states a reverse relationship, verify that claim is
+  not contradictory.
 
+Do not require the depended-on GDD to maintain a reciprocal `dependents` list;
+the current GDD and systems-index schemas define forward dependencies only.
 ### 2b: Rule Contradictions
 
 For each game rule, mechanic, or constraint defined in any GDD, check whether

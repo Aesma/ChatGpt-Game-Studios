@@ -152,11 +152,44 @@ None. `$help` is a read-only navigation skill. No director gates apply.
 
 ---
 
+### Case 6: Invalid stage falls back to artifacts
+
+**Fixture:** `production/stage.txt` is empty or contains an unknown/legacy value.
+
+**Assertions:**
+- [ ] The trimmed value is rejected with a warning
+- [ ] Artifact inference runs instead of using an undefined phase key
+- [ ] The unknown text is not presented as authoritative stage
+
+---
+
+### Case 7: Topic and completion claim are distinct
+
+**Assertions:**
+- [ ] `$help testing` filters by topic and does not advance a catalog step
+- [ ] Only explicit finished/completed wording plus an exact catalog command/id is treated as a completion claim
+- [ ] A completion claim can confirm MANUAL/UNKNOWN, but cannot satisfy a missing required artifact
+
+---
+
+### Case 8: Production status normalization is read-only
+
+**Fixture:** canonical YAML uses `in_progress`, `ready`, `done`, and `blocked`,
+with some legacy hyphenated or title-case fixtures.
+
+**Assertions:**
+- [ ] Canonical active/next/complete/blocker stories are recognized
+- [ ] Legacy spellings are normalized for reading only
+- [ ] No status file is rewritten by help
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads stage, sprint, and session state before generating suggestions
 - [ ] Suggestions are specific to the current project state (not generic)
 - [ ] Context query (if provided) narrows the suggestion set
+- [ ] A fresh project with no artifacts and placeholder preferences is reported as not configured with `$start` primary
 - [ ] Does not write any files
 - [ ] Verdict is HELP COMPLETE in all cases
 

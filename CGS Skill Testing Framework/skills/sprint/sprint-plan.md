@@ -10,6 +10,10 @@ the gate is skipped. The skill asks "May I apply the proposed changeset?"
 before persisting. Verdicts: COMPLETE (sprint generated and written) or
 BLOCKED (cannot proceed due to missing data or gate failure).
 
+Blank invocation is `new`. `status` is a read-only terminal mode. New/update
+writes the sprint markdown, singleton YAML, and a newly selected review mode in
+one final authorized changeset after both producer and QA-plan checks.
+
 ---
 
 ## Static Assertions (Structural)
@@ -132,6 +136,53 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] PR-SPRINT gate only runs in full mode
 - [ ] Skip message appears in lean and solo mode output
 - [ ] Verdict is clearly stated at the end of the skill output
+- [ ] Blank mode is `new`; unknown modes stop without writes
+- [ ] `status` returns immediately after its report with no gate, authorization, or write
+- [ ] Eligible stories come from `production/epics/**/*.md` and have satisfiable dependencies
+- [ ] Capacity comes from an existing milestone/previous-sprint field or an explicit user answer, with 20% buffer
+- [ ] Sprint number is max existing valid number plus one and target is `production/sprints/sprint-[NNN].md`
+- [ ] A per-run `--review` value is resolved once and cannot be overwritten by the global file
+- [ ] QA-plan handling finishes before the single changeset and COMPLETE verdict
+- [ ] Missing `sprint-status.yaml` in update mode is reconstructed without resetting confirmed progress
+
+---
+
+### Case 6: Status mode is terminal and read-only
+
+**Input:** `$sprint-plan status`
+
+**Assertions:**
+- [ ] The status report is shown and the workflow stops
+- [ ] PR-SPRINT and the QA-plan write path are not entered
+- [ ] No changeset authorization is requested and no file changes
+
+### Case 7: Review override and first-run mode stay pending
+
+**Fixture:** global mode is `lean`; invocation is `$sprint-plan new --review full`.
+
+**Assertions:**
+- [ ] Resolved mode remains `full` and PR-SPRINT runs
+- [ ] The global file is not re-read to overwrite the per-run value
+- [ ] When review-mode is initially absent, the selected value is not written early
+- [ ] Any pending review-mode value is listed with markdown and YAML in the final changeset
+
+### Case 8: QA decision precedes the only write
+
+**Fixture:** no matching QA plan exists and the user chooses Skip.
+
+**Assertions:**
+- [ ] The warning block is merged into the pending sprint plan
+- [ ] The final preview shows the warning and both sprint output paths
+- [ ] COMPLETE appears only after the authorized writes succeed
+
+### Case 9: Legacy update restores pending YAML
+
+**Fixture:** sprint markdown and referenced stories exist; `sprint-status.yaml` does not.
+
+**Assertions:**
+- [ ] Pending YAML is reconstructed from markdown and story header statuses
+- [ ] Confirmed in-progress and done states are preserved
+- [ ] Unknown states are surfaced before authorization and are not guessed
 
 ---
 

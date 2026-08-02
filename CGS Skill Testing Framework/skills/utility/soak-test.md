@@ -2,111 +2,106 @@
 
 ## Skill Summary
 
-`$soak-test` generates a structured soak test protocol — an extended runtime
-test plan designed to surface memory leaks, performance drift, and stability
-issues that only appear under sustained gameplay. The skill produces a document
-specifying the test duration, system under test, monitoring checkpoints (e.g.,
-memory sample every 30 minutes), pass/fail thresholds, and conditions for early
-termination.
+`$soak-test` generates a human-executed endurance-test protocol for a named
+target. Invocation is `$soak-test [target] [duration] [focus]`. The protocol
+uses the existing memory, stability, and balance observations, reads configured
+project budgets/platforms when present, and defines early-stop conditions. It
+does not run the soak and does not claim the future soak has passed.
 
-The skill asks "May I apply the proposed changeset?" before
-persisting. If a previous soak test for the same system exists, the skill offers
-to extend the duration or add new conditions. No director gates apply. The verdict
-is COMPLETE when the soak test protocol is written.
+The only result of this workflow run is reported in ordinary language as
+`Protocol written: [path]` or `Protocol not written: [reason]`. The protocol's
+future PASS / PASS WITH CONCERNS / FAIL field is the sole test verdict.
 
 ---
 
 ## Static Assertions (Structural)
 
-Verified automatically by `$skill-test static` — no fixture needed.
-
-- [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
-- [ ] Has ≥2 phase headings
-- [ ] Contains verdict keyword: COMPLETE
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-5. File is written on approval; verdict is COMPLETE
-
-**Assertions:**
-- [ ] Protocol duration matches the requested 2 hours
-- [ ] Monitoring checkpoints are at reasonable intervals (e.g., every 30 minutes)
-- [ ] Network-specific checks are included (not just generic memory checks)
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-3. After user responds with system: Skill asks: "What duration? (e.g., 1h, 4h, 8h)"
-4. After user responds with duration: Skill asks for specific conditions or
-   uses defaults (normal gameplay loop, default player count)
-5. Skill generates protocol from collected inputs and asks "May I apply the proposed changeset?"
-   (new file, not overwriting old one)
-
-**Assertions:**
-- [ ] Existing soak test is surfaced and referenced
-- [ ] User is offered extend vs. new options
-- [ ] New file is created (old file is not overwritten)
-- [ ] Extended protocol includes both old and new checkpoints
-- [ ] Verdict is COMPLETE
+- [ ] YAML frontmatter contains only `name` and non-empty `description`
+- [ ] Invocation declares `[target] [duration] [focus]`
+- [ ] Protocol header records the target, duration, focus, and engine
+- [ ] Protocol contains PASS / PASS WITH CONCERNS / FAIL for the future soak
+- [ ] Workflow output does not use COMPLETE as a file-write verdict
+- [ ] One complete changeset is authorized before the protocol file is written
+- [ ] No director gate is invoked
 
 ---
 
-### Case 4: Mobile Target Platform — Memory-specific checkpoints added
+## Test Cases
 
-**Fixture:**
-- `technical-preferences.md` specifies target platform: Mobile
-- User requests soak test for "gameplay session" at 30 minutes
+### Case 1: Target and duration parse correctly
 
 **Input:** `$soak-test gameplay 30m`
 
-**Expected behavior:**
-1. Skill reads `technical-preferences.md` and detects mobile target platform
-2. Soak test protocol includes mobile-specific memory checkpoints:
-   - Check heap memory growth vs. device baseline
-   - Check texture memory at checkpoint intervals
-   - Add warning threshold at 300MB (mobile ceiling)
-3. Protocol also includes thermal/battery drain advisory notes
-4. Skill asks "May I apply the proposed changeset?" and writes on approval; verdict is COMPLETE
+**Expected behavior and assertions:**
+
+- [ ] Target is `gameplay`
+- [ ] Duration is `30m`; focus defaults to `all`
+- [ ] Checkpoints are T+0, T+10, T+20, and T+30
+- [ ] The written protocol header identifies the gameplay target
+- [ ] Successful persistence says `Protocol written: production/qa/soak-test-[date]-30m.md`
+- [ ] No COMPLETE verdict is emitted
+
+### Case 2: Missing target is collected once
+
+**Input:** `$soak-test`
+
+**Expected behavior and assertions:**
+
+- [ ] The skill asks once for the gameplay loop, system, or scenario under test
+- [ ] Duration and focus retain their existing defaults
+- [ ] No protocol is generated until the target is known
+
+### Case 3: Early termination is explicit
+
+**Fixture:** a normal all-focus protocol.
 
 **Assertions:**
-- [ ] Mobile platform is detected from technical-preferences.md
-- [ ] Memory checkpoints include mobile-appropriate thresholds (not desktop)
-- [ ] Thermal/battery notes are present in the protocol
-- [ ] Verdict is COMPLETE
 
----
+- [ ] Pre-session instructions require the tester to review stop rules
+- [ ] Crash or hang stops the session and records the occurrence time
+- [ ] Data corruption stops the session
+- [ ] A sustained breach of the configured budget stops the session
+- [ ] An operating-system or device safety warning stops the session
+- [ ] Any early-stop condition contributes to the protocol's future FAIL verdict
 
-### Case 5: Director Gate Check — No gate; soak-test is a planning utility
+### Case 4: Platform adaptation stays within configured evidence
 
-**Fixture:**
-- Valid system and duration provided
-
-**Input:** `$soak-test combat 1h`
-
-**Expected behavior:**
-1. Skill generates and writes the soak test protocol
-2. No director agents are spawned
-3. No gate IDs appear in output
+**Fixture:** `technical-preferences.md` declares a target platform and a memory
+ceiling.
 
 **Assertions:**
-- [ ] No director gate is invoked
-- [ ] No gate skip messages appear
-- [ ] Skill reaches COMPLETE without any gate check
+
+- [ ] The protocol may use the declared platform and configured memory ceiling
+- [ ] It does not invent a hard-coded 300 MB mobile threshold
+- [ ] It does not add network checks unless those are already part of the target/context
+- [ ] It does not promise thermal/battery instrumentation not declared by the workflow
+
+### Case 5: Existing output is not silently overwritten
+
+**Fixture:** `production/qa/soak-test-[date]-1h.md` already exists.
+
+**Assertions:**
+
+- [ ] The existing path is detected before writing
+- [ ] Updating that exact file and its intended changes are shown in the one changeset
+- [ ] Declined or failed authorization reports `Protocol not written: [reason]`
+- [ ] No extend/new mode is invented and the old file is not silently replaced
+
+### Case 6: Protocol verdict remains distinct from generation
+
+**Assertions:**
+
+- [ ] PASS / PASS WITH CONCERNS / FAIL appear only as fields for the future executed soak
+- [ ] Generating or writing the template does not set that future verdict
+- [ ] Instructions to file bugs apply only after a human completes the protocol and records issues
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Collects system, duration, and conditions before generating protocol
-- [ ] Includes monitoring checkpoints at regular intervals
-- [ ] Includes pass/fail thresholds and early termination conditions
-- [ ] Adapts checkpoints to target platform (mobile vs. desktop)
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Verdict is COMPLETE when file is written
-
----
-
-## Coverage Notes
-
-- Soak tests for specific engine subsystems (rendering pipeline, physics
-  simulation) follow the same protocol structure and are not separately tested.
-- The case where the user provides a duration shorter than the minimum useful
-  soak period (e.g., 5 minutes) is not tested; the skill would note this is
-  too short for meaningful results.
-- Automated execution of the soak test protocol is outside this skill's scope —
-  this skill generates the plan, not the runner.
+- [ ] Collects target and applies existing duration/focus defaults
+- [ ] Includes regular checkpoints and early-stop conditions
+- [ ] Uses project-configured thresholds where available
+- [ ] Requires one complete changeset authorization before writing
+- [ ] Uses ordinary written/not-written statements, not a second verdict
+- [ ] Remains a protocol generator; it never runs the endurance session

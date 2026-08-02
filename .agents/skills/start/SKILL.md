@@ -25,7 +25,13 @@ This skill is the entry point for new users. It does NOT assume you have a game 
 Before asking anything, silently gather context so you can tailor your guidance. Do NOT show these results unprompted — they inform your recommendations, not the conversation opener.
 
 Check:
-- **Engine configured?** Read `.codex/docs/technical-preferences.md`. If the Engine field contains `[TO BE CONFIGURED]`, the engine is not set.
+- **Existing stage?** Read the first line of `production/stage.txt`. The legal
+  values are `Concept`, `Systems Design`, `Technical Setup`, `Pre-Production`,
+  `Production`, `Polish`, and `Release`. Preserve a legal value by default.
+  Record missing, empty, or unrecognized content separately.
+- **Review mode configured?** Read `production/review-mode.txt`; valid values are
+  `full`, `lean`, and `solo`.
+- **Engine configured?** Read `docs/technical-preferences.md`. If the Engine field contains `[TO BE CONFIGURED]`, the engine is not set.
 - **Game concept exists?** Check for `design/gdd/game-concept.md`.
 - **Source code exists?** Search `src/` for files ending in `.gd`, `.cs`, `.cpp`, `.h`, `.rs`, `.py`, `.js`, or `.ts`.
 - **Prototypes exist?** Check for subdirectories in `prototypes/`.
@@ -34,11 +40,19 @@ Check:
 
 Store these findings internally to validate the user's self-assessment and tailor recommendations.
 
+If the engine is configured and a game concept exists, treat the user as
+returning: skip the A–D creative questionnaire, but do not skip configuration
+checks. If both stage and review-mode values are valid, provide continuation
+guidance without proposing a write. If either is missing, prepare only the
+missing configuration in Phases 3a–3c. An invalid stage is never silently
+replaced; show the detected recommendation and ask whether to replace it.
+
 ---
 
 ## Phase 2: Ask Where the User Is
 
-This is the first thing the user sees. Ask the user directly with these exact options and wait for the user's choice:
+For a non-returning user, this is the first thing they see. Ask directly with
+these exact options and wait for the user's choice:
 
 - **Prompt**: "Welcome to ChatGPT Game Studios! Before I suggest anything, I'd like to understand where you're starting from. Where are you at with your game idea right now?"
 - **Options**:
@@ -126,7 +140,7 @@ The user needs creative exploration before anything else.
    - `$brainstorm` or `$setup-engine` — (their pick from step 2)
    - `$prototype` — throwaway concept build: validate the core idea is fun before designing (1–3 days)
    - `$art-bible` — define visual identity (after brainstorm if run, or after concept doc exists)
-   - `$design-review` — validate the concept doc
+   - Inspect the concept document's existing acceptance sections; `$design-review` is reserved for system GDDs
    - `$map-systems` — decompose the concept into individual systems
    - `$design-system` — author a GDD for each MVP system
    - `$review-all-gdds` — cross-system consistency check
@@ -174,17 +188,29 @@ The user needs creative exploration before anything else.
 
 ## Phase 3a: Prepare the Initial Stage
 
-After confirming the starting path, determine the initial stage value and hold it in the pending changeset. Do not write yet.
+First apply the existing-stage result from Phase 1:
 
-Stage mapping:
-- **Path A, B, or C (starting from scratch)**: write `Concept`
-- **Path D, existing project, engine not configured or only a game concept exists**: write `Concept`
-- **Path D, existing project with GDDs but no architecture documents**: write `Systems Design`
-- **Path D, existing project with full architecture (ADRs, architecture doc)**: write `Technical Setup`
+- A legal existing value is authoritative. Preserve it and do not include
+  `production/stage.txt` in the changeset.
+- If the file is missing, infer the most advanced supported stage below and hold
+  it pending.
+- If the first line is empty or unrecognized, report it, show the inferred value,
+  and ask whether to replace it. Only a user-confirmed replacement is pending.
 
-Keep this value pending until the review mode is selected.
+Use the same evidence order as `$studio-status`/`$project-stage-detect`:
+- at least 10 recognized source files, or production sprint/milestone planning → at least `Production`
+- architecture document or any ADR → at least `Pre-Production`
+- configured engine → at least `Technical Setup`
+- systems index or system GDDs → at least `Systems Design`
+- game concept or no stronger evidence → `Concept`
 
-Say: "The proposed initial stage is `[stage]`; it will anchor studio status and stage detection."
+Evidence only promotes the recommendation; an unconfigured engine never lowers
+an existing project that has architecture, production planning, or source. If
+signals conflict, show the evidence and let the user choose before placing a
+stage replacement in the pending changeset.
+
+When a stage value is pending, say: "The proposed initial stage is `[stage]`; it
+will anchor studio status and stage detection."
 
 ---
 
@@ -192,7 +218,8 @@ Say: "The proposed initial stage is `[stage]`; it will anchor studio status and 
 
 Check if `production/review-mode.txt` already exists.
 
-**If it exists**: Read it and show the current mode. Include only `production/stage.txt` in the pending changeset, then continue to Phase 3c.
+**If it exists and contains `full`, `lean`, or `solo`**: Read it and show the
+current mode. Keep it unchanged, then continue to Phase 3c.
 
 **If it does not exist**: Ask the user directly:
 
@@ -215,9 +242,12 @@ Create the `production/` directory if it does not exist.
 
 Present one complete changeset preview:
 
-- `production/stage.txt` with the proposed stage;
-- `production/review-mode.txt` with the selected mode, unless that file already exists unchanged;
-- creation of `production/` if needed.
+- `production/stage.txt` only when it is missing or the user approved replacing
+  an invalid value;
+- `production/review-mode.txt` only when a new valid mode was selected;
+- creation of `production/` if needed for one of those pending files.
+
+If neither file is pending, do not request changeset approval and do not write.
 
 Obtain one explicit approval. On approval, write the complete changeset without further prompts. If declined, leave both files unchanged and continue with guidance only.
 
@@ -246,7 +276,10 @@ Verdict: **COMPLETE** — user oriented and handed off to next step.
 
 - **User picks D but project is empty**: Gently redirect — "It looks like the project is a fresh template with no artifacts yet. Would Path A or B be a better fit?"
 - **User picks A but project has code**: Mention what you found — "I noticed there's already code in `src/`. Did you mean to pick D (existing work)?"
-- **User is returning (engine configured, concept exists)**: Skip onboarding entirely — "It looks like you're already set up! Your engine is [X] and you have a game concept at `design/gdd/game-concept.md`. Review mode: `[read from production/review-mode.txt, or 'lean (default)' if missing]`. Want to pick up where you left off? Try `$sprint-plan` or just tell me what you'd like to work on."
+- **User is returning (engine configured, concept exists)**: Skip only the A–D
+  creative questionnaire. Still validate `production/stage.txt` and
+  `production/review-mode.txt`; if both are valid, give continuation guidance
+  with no write. If either is missing, prepare only that file through Phase 3c.
 - **User doesn't fit any option**: Let them describe their situation in their own words and adapt.
 
 ---

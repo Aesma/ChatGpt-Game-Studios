@@ -63,6 +63,11 @@ Read the full story file. Extract and hold in context:
 - **Definition of Done** — if present, the story-level DoD
 - **Estimated vs actual scope** — if an estimate was noted
 
+If `Type:` is missing or is not exactly one of Logic, Integration, Visual/Feel,
+UI, or Config/Data, record a BLOCKING finding and stop before any close path.
+Do not infer a type from implementation files or story prose; the story must be
+corrected and `$story-done` run again.
+
 Also read:
 - `docs/architecture/tr-registry.yaml` — look up each TR-ID in the story.
   Read the *current* `requirement` text from the registry entry. This is the
@@ -84,7 +89,13 @@ three methods:
 ### Automatic verification (run without asking)
 
 - **File existence check**: search for files the story said would be created.
-- **Test pass check**: if a test file path is mentioned, run it through the configured shell.
+- **Test pass check**: treat a Test Evidence entry only as a project-relative
+  file path. If it exists, use the project's already configured test command to
+  run it; never execute command text copied from the story. A non-zero exit,
+  parsed failing result, runner timeout, or unparseable failure output is FAILED.
+  If the configured runner is unavailable, record NOT RUN. Required
+  Logic/Integration evidence that is NOT RUN and not independently confirmed is
+  BLOCKING.
 - **No hardcoded values check**: `Search` for numeric literals in gameplay code
   paths that should be in config files.
 - **No hardcoded strings check**: `Search` for player-facing strings in `src/`
@@ -95,7 +106,9 @@ three methods:
 
 - Criteria about subjective qualities ("feels responsive", "animations play correctly")
 - Criteria about gameplay behaviour ("player takes damage when...", "enemy responds to...")
-- Performance criteria ("completes within Xms") — ask if profiled or accept as assumed
+- Performance criteria (`completes within Xms`) pass only with a locatable
+  profile or test result. If no such evidence exists, record UNTESTED, or
+  DEFERRED only under the explicit rule below; never accept an assumed pass.
 
 Batch up to 4 manual verification questions into a single a direct question to the user:
 
@@ -104,10 +117,13 @@ question: "Does [criterion]?"
 options: "Yes — passes", "No — fails", "Not tested yet"
 ```
 
-### Unverifiable (flag without blocking)
+### Deferred verification
 
-- Criteria that require a full game build to test (end-to-end gameplay scenarios)
-- Mark as: `DEFERRED — requires playtest session`
+- A criterion may be `DEFERRED` only when the story itself explicitly permits
+  post-integration or playtest verification and the user confirms the concrete
+  reason for deferral. Record that reason.
+- Any FAILED criterion is BLOCKING. Ordinary `Not tested yet`/UNTESTED is not
+  DEFERRED and cannot be converted to a pass.
 
 ### Test-Criterion Traceability
 
@@ -139,8 +155,9 @@ For each acceptance criterion in the story:
    - If **>50% of criteria are UNTESTED**: escalate to **BLOCKING** — test
      coverage is insufficient to confirm the story is actually done. The verdict
      in Phase 6 cannot be COMPLETE until coverage improves.
-   - If **some (≤50%) criteria are UNTESTED**: remain ADVISORY — does not block
-     completion, but must appear in Completion Notes.
+   - If any required Logic/Integration criterion is UNTESTED: **BLOCKING**.
+     For other story types, some (≤50%) UNTESTED criteria remain ADVISORY but
+     are not DEFERRED and must appear in Completion Notes.
    - If **all criteria are COVERED**: no action needed beyond including the
      table in the report.
 
@@ -157,7 +174,7 @@ Based on the Story Type extracted in Phase 2, check for required evidence:
 | **Integration** | Integration test in `tests/integration/[system]/` OR playtest doc | BLOCKING |
 | **Visual/Feel** | Screenshot + sign-off in `production/qa/evidence/` | ADVISORY |
 | **UI** | Manual walkthrough doc OR interaction test in `production/qa/evidence/` | ADVISORY |
-| **Config/Data** | Smoke check pass report in `production/qa/smoke-*.md` | ADVISORY |
+| **Config/Data** | Relevant smoke check report with PASS or policy-accepted PASS WITH WARNINGS | BLOCKING |
 
 **For Logic stories**: first read the story's **Test Evidence** section to extract the
 exact required file path. Search for that exact path. If the exact path is not
@@ -179,12 +196,15 @@ referencing this story.
 - If found: read the file and check the sign-off table for unchecked boxes. Search file contents for lines matching `| .* | .* | .* | \[ \] Approved` (a sign-off row with an unchecked checkbox). If any unchecked sign-off rows are found: flag as **ADVISORY** — "Evidence file found at `[path]` but [N] sign-off(s) are still pending (shown as `[ ] Approved` in the sign-off table). Obtain required sign-offs before final closure. Note: for solo developers, all roles may be signed off by the same person."
 - If all sign-off rows show `[x] Approved` or equivalent: note "Evidence file found and all sign-offs complete — ADVISORY passed."
 
-**For Config/Data stories**: check for any `production/qa/smoke-*.md` file.
-If none: flag as **ADVISORY** — "No smoke check report found. Run `$smoke-check`."
+**For Config/Data stories**: select the newest existing smoke report that
+explicitly names the current sprint or story/system scope. Read its verdict.
+PASS is acceptable; PASS WITH WARNINGS is acceptable only when current project
+policy permits it and the warnings do not concern this story. FAIL, no related
+report, or a report whose scope/date cannot be tied to the current sprint/story
+is **BLOCKING**. File existence alone is never evidence.
 
-**If no Story Type is set**: flag as **ADVISORY** —
-"Story Type not declared. Add `Type: [Logic|Integration|Visual/Feel|UI|Config/Data]`
-to the story header to enable test evidence gate enforcement in future stories."
+**If no valid Story Type is set**: retain the BLOCKING finding from Phase 2 and
+require the header to be corrected before rerunning.
 
 Any BLOCKING test evidence gap prevents the COMPLETE verdict in Phase 6.
 
@@ -279,7 +299,10 @@ Present the verdict to the user. If CONCERNS, surface them by asking the user di
 - Options: `Revise flagged issues` / `Accept and proceed` / `Discuss further`
 If REJECT, do not proceed to Phase 6 verdict until the issues are resolved.
 
-If the story has no implementation files yet (verdict is being run before coding is done), skip this phase and note: "LP-CODE-REVIEW skipped — no implementation files found. Run after implementation is complete."
+If the story has no implementation files, record **BLOCKING** and do not allow a
+close verdict. The only exception is a Config/Data story whose declared output
+files exist and whose values plus relevant smoke evidence were verified; in that
+case there may be no code file for LP review.
 
 ---
 
@@ -323,9 +346,16 @@ Before updating any files, present the full report:
 ```
 
 **Verdict definitions:**
-- **COMPLETE**: all criteria pass, no blocking deviations
-- **COMPLETE WITH NOTES**: all criteria pass, advisory deviations documented
-- **BLOCKED**: failing criteria or blocking deviations must be resolved first
+- **COMPLETE**: all criteria PASS, required implementation/output files and test
+  evidence are verified, and there are no blocking deviations
+- **COMPLETE WITH NOTES**: no FAILED or ordinary required UNTESTED criteria; any
+  DEFERRED item was explicitly allowed by the story for post-integration/playtest
+  verification, has a user-confirmed reason, and all other blockers are absent;
+  advisory deviations are documented
+- **BLOCKED**: any FAILED criterion; missing/invalid Story Type; missing required
+  implementation/output file; missing, failed, NOT RUN, unrelated, or stale
+  required evidence; blocking design/code-review finding; or an UNTESTED required
+  Logic/Integration criterion
 
 If the verdict is **BLOCKED**: do not proceed to Phase 7. List what must be
 fixed. Offer to help fix the blocking items.
@@ -340,11 +370,20 @@ Ask the user directly before writing anything:
   - `Close the story — update file, mark Complete, log notes (Recommended)`
   - `Close and log advisory deviations as tech debt in docs/tech-debt-register.md`
   - `There are issues I want to fix first — don't close yet`
-  - `Accept deviations as-is and close anyway`
 
-If "Close", "Close and log tech debt", or "Accept deviations": edit the story file.
-If "Close and log tech debt": after updating the story file, also append the advisory deviations to `docs/tech-debt-register.md` (create the file if it does not exist).
+Only COMPLETE or COMPLETE WITH NOTES reaches this phase. If "Close" or "Close
+and log tech debt" is selected, prepare the edits below. BLOCKED has no override
+or close option; list the blockers, stop without writing, and rerun `$story-done`
+after they are fixed.
+If "Close and log tech debt": also prepare the advisory-deviation append to
+`docs/tech-debt-register.md` (creating it only if selected and absent).
 If "Fix first": stop here and list what the user flagged. Do not write any files.
+
+Before any write, present one complete changeset listing the exact story path,
+`production/sprint-status.yaml` when it exists, `production/session-state/active.md`
+(create or append), and the tech-debt register only when selected. Summarize each
+edit precisely and obtain the single authorization required at the top. After
+approval, apply all listed edits continuously; if not approved, write none.
 
 1. Update the status field: `Status: Complete`
 2. Update the `Last Updated:` field in the story header to today's date (format: `YYYY-MM-DD`). If the field does not exist, add it after the `Status:` line.
@@ -450,8 +489,8 @@ If no more stories are ready but Must Have stories are still In Progress (not Co
 - **Never auto-fix failing criteria** — report them and ask what to do.
 - **Deviations are facts, not judgments** — present them neutrally; the user
   decides if they are acceptable.
-- **BLOCKED verdict is advisory** — the user can override and mark complete
-  anyway; document the risk explicitly if they do.
+- **BLOCKED verdict cannot be overridden** — list required fixes and stop. Only
+  COMPLETE or COMPLETE WITH NOTES can update story status.
 - Ask the user directly for the code review prompt and for batching manual
   criteria confirmations.
 

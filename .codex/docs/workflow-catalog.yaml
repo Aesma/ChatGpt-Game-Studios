@@ -11,8 +11,8 @@
 # required: false → optional enhancement (shown as OPTIONAL)
 # repeatable: true → runs multiple times (one per system, story, etc.)
 #
-# Phase gates ($gate-check): verdicts are ADVISORY — they guide the decision
-# but never hard-block advancement. The user always decides whether to proceed.
+# Phase gates ($gate-check): FAIL / NOT READY blocks stage advancement until its
+# blockers are resolved. CONCERNS requires an explicit user risk decision; PASS may advance.
 
 phases:
 
@@ -32,7 +32,7 @@ phases:
         command: $setup-engine
         required: true
         artifact:
-          glob: ".codex/docs/technical-preferences.md"
+          glob: "docs/technical-preferences.md"
           pattern: "Engine: [^[]"
         description: "Configure engine, pin version, set naming conventions and performance budgets"
 
@@ -43,12 +43,6 @@ phases:
         artifact:
           glob: "design/gdd/game-concept.md"
         description: "Formalize concept with pillars, MDA analysis, and scope tiers"
-
-      - id: design-review-concept
-        name: "Concept Review"
-        command: $design-review
-        required: false
-        description: "Validate the game concept (recommended before proceeding)"
 
       - id: art-bible
         name: "Art Bible"

@@ -24,6 +24,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Assertions:**
 - [ ] Inline comments are found by scanning `src/` recursively
 - [ ] Existing register items are not duplicated
+- [ ] Deduplication uses affected Files plus Description/code-marker location; changed marker text is reported as uncertain rather than resolved or appended
 - [ ] Combined list is sorted by severity
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 5. User approves; register created with 4 items; verdict REGISTER UPDATED
@@ -46,7 +47,8 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 - [ ] Reads `docs/tech-debt-register.md` and scans `src/` before compiling
 - [ ] Deduplicates inline comments against existing register items
-- [ ] Sorts combined list by severity
+- [ ] Prioritize uses only Impact, Effort, and ID with stable order: Critical>High>Med>Low, S<M<L<XL, then ID
+- [ ] Report emits category/effort/impact/backlog counts supported by current columns and never invents resolved counts or growth trends
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] No director gates are invoked
 - [ ] Verdict is REGISTER UPDATED or NO NEW DEBT FOUND

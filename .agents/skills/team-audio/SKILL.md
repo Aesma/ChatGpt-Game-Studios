@@ -9,7 +9,7 @@ Invoke this workflow as `$team-audio`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[feature or area to design audio for] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[feature or area to design audio for]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 If no argument is provided, output usage guidance and exit without spawning any agents:
@@ -21,19 +21,6 @@ When this skill is invoked with an argument, orchestrate the audio team through 
 the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next step.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
 
 1. **Read the argument** for the target feature or area (e.g., `combat`,
    `main menu`, `forest biome`, `boss encounter`).
@@ -56,6 +43,10 @@ Use the Codex subagent delegation to spawn each team member as a subagent:
 Always provide full context in each agent's prompt (feature description, existing audio assets, design doc references).
 
 3. **Orchestrate the audio team** in sequence:
+
+Steps 1–3 are analysis-only. Every subagent returns its direction, event list,
+accessibility findings, and technical plan in conversation and must not create or
+edit files. This makes the complete Step 4 changeset knowable before delegation.
 
 ### Step 1: Audio Direction (audio-director)
 Spawn the `audio-director` agent to:
@@ -80,6 +71,11 @@ Spawn the `accessibility-specialist` agent in parallel to:
 - Review the audio event list for any that could cause issues for players with auditory sensitivities (high-frequency alerts, sudden loud events)
 - Output: audio accessibility requirements list integrated into the audio event spec
 
+If any critical gameplay cue lacks a visual, haptic, or text alternative, the
+pipeline is **BLOCKED**. Step 3 may continue as analysis, but do not enter Step 4,
+write a document, or allow COMPLETE until the sound/accessibility design is
+revised and the accessibility-specialist confirms the gap is no longer blocking.
+
 ### Step 3: Technical Implementation (parallel)
 Spawn the `technical-artist` agent to:
 - Design the audio middleware integration (Wwise/FMOD/native)
@@ -88,7 +84,7 @@ Spawn the `technical-artist` agent to:
 - Plan streaming vs preloaded asset strategy
 - Design any audio-reactive visual effects
 
-Spawn the **primary engine specialist** in parallel (from `.codex/docs/technical-preferences.md` Engine Specialists) to validate the integration approach:
+Spawn the **primary engine specialist** in parallel (from `docs/technical-preferences.md` Engine Specialists) to validate the integration approach:
 - Is the proposed audio middleware integration idiomatic for the engine? (e.g., Godot's built-in AudioStreamPlayer vs FMOD, Unity's Audio Mixer vs Wwise, Unreal's MetaSounds vs FMOD)
 - Any engine-specific audio node/component patterns that should be used?
 - Known audio system changes in the pinned engine version that affect the integration plan?
@@ -96,19 +92,31 @@ Spawn the **primary engine specialist** in parallel (from `.codex/docs/technical
 
 If no engine is configured, skip the specialist spawn.
 
-### Step 4: Code Integration (gameplay-programmer)
-Spawn the `gameplay-programmer` agent to:
+### Step 4: Authorized Code and Document Integration
+
+After Step 3 is consolidated, identify the exact final
+`design/audio/audio-[feature-slug].md` path plus every implementation and test
+path needed below. Present their intended edits as one complete changeset and
+obtain authorization. Do not use directory globs or allow a subagent to add an
+unlisted file; material expansion requires the existing reauthorization rule.
+
+After authorization, spawn the `gameplay-programmer` as the sole owner of the
+listed code/test paths to:
 - Implement audio manager system or review existing
 - Wire up audio events to gameplay triggers
 - Implement adaptive music system (if specified)
 - Set up audio occlusion/reverb zones
 - Write unit tests for audio event triggers
 
-4. **Compile the audio design document** combining all team outputs.
+4. After code integration, spawn the existing `audio-director` as the sole owner
+of the approved `design/audio/audio-[feature-slug].md` path. It compiles all
+confirmed team outputs and implementation references into that document and
+writes no other file. The gameplay-programmer does not edit the audio document.
 
-5. **Save to** `design/audio/audio-[feature].md`.
+5. **Save only to** `design/audio/audio-[feature-slug].md`.
 
-   Note: If `design/audio/` does not exist, the sub-agent writing the document should create it (the directory will be created automatically when the file is written).
+   Note: If `design/audio/` does not exist, the audio-director may create it as
+   part of writing the already approved exact document path.
 
 6. **Output a summary** with: audio event count, estimated asset count,
    implementation tasks, and any open questions between team members.
@@ -121,8 +129,12 @@ Verdict: **BLOCKED** — [reason]
 
 ## File Write Protocol
 
-All file writes (audio design docs, SFX specs, implementation files) are delegated
-to sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+Steps 1–3 are analysis-only and perform no writes. After their results determine
+exact paths, the orchestrator obtains one combined changeset approval. The
+gameplay-programmer writes only the approved implementation/test paths, and the
+audio-director alone writes the approved audio document. This orchestrator does
+not write files directly; neither writer may expand its boundary without the
+existing reauthorization rule.
 
 ## Next Steps
 
@@ -137,7 +149,8 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip this agent and note the gap in the partial report (not available for a
+     blocking critical-gameplay accessibility gap)
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.

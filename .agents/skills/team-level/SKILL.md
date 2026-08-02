@@ -9,28 +9,18 @@ Invoke this workflow as `$team-level`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[level name or area to design] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[level name or area to design]`. The target is required.
 
 
-When this skill is invoked:
+Before any file read, verify that a non-flag target is present. If absent,
+output usage plus examples (`$team-level tutorial`, `$team-level forest dungeon`,
+`$team-level final boss arena`) and stop with no verdict, authorization, or
+subagent spawn.
 
-**Decision Points:** At each step transition, ask the user directly to present
-the user with the subagent's proposals as selectable options. Write the agent's
-full analysis in conversation, then capture the decision with concise labels.
-The user must approve before moving to the next step.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
+**Decision Points:** Ask for user input only at genuine branches: the Step 1
+direction choice, a Step 2 adjacent-area dependency choice, and a Step 4
+blocking-accessibility revision choice. Within an accepted direction, routine
+dependent steps continue without transition re-prompts.
 
 1. **Read the argument** for the target level or area (e.g., `tutorial`,
    `forest dungeon`, `hub town`, `final boss arena`).
@@ -57,6 +47,10 @@ Always provide full context in each agent's prompt (game concept, pillars, exist
 
 3. **Orchestrate the level design team** in sequence:
 
+Steps 1–5 are analysis-only: every professional subagent returns content in
+conversation and must not create or edit a level, narrative, or test-checklist
+file. The outputs will be compiled into one final level document.
+
 ### Step 1: Narrative + Visual Direction (narrative-director + world-builder + art-director, parallel)
 
 Spawn all three agents simultaneously — issue all three subagent delegations before waiting for any result.
@@ -80,7 +74,9 @@ Spawn the `art-director` agent to:
 
 **The art-director's visual targets from Step 1 must be passed to the level-designer in Step 2** as explicit constraints. Layout decisions happen within the visual direction, not before it.
 
-**Gate**: Ask the user directly to present all three Step 1 outputs (narrative brief, lore foundation, visual direction targets) and confirm before proceeding to Step 2.
+**Direction decision**: Present the three Step 1 outputs together. Ask only
+when they offer materially different narrative/visual directions; record the
+selected direction before Step 2. If no meaningful alternative exists, continue.
 
 ### Step 2: Layout and Encounter Design (level-designer)
 Spawn the `level-designer` agent with the full Step 1 output as context:
@@ -105,7 +101,8 @@ Ask the user directly with options:
 
 Do NOT invent content for the missing adjacent area.
 
-**Gate**: Ask the user directly to present Step 2 layout (including any unresolved adjacent area dependencies) and confirm before proceeding to Step 3.
+After resolving any adjacent-area dependency choice, continue to Step 3 without
+a routine transition approval.
 
 ### Step 3: Systems Integration (systems-designer)
 Spawn the `systems-designer` agent to:
@@ -115,7 +112,8 @@ Spawn the `systems-designer` agent to:
 - Design any area-specific mechanics or environmental hazards
 - Specify resource distribution (health pickups, save points, shops)
 
-**Gate**: Ask the user directly to present Step 3 outputs and confirm before proceeding to Step 4.
+Present Step 3 results in conversation and continue to Step 4 within the
+accepted direction; do not add a routine transition approval.
 
 ### Step 4: Production Concepts + Accessibility (art-director + accessibility-specialist, parallel)
 
@@ -137,11 +135,12 @@ Spawn the `accessibility-specialist` agent in parallel to:
 
 Wait for both agents to return before proceeding.
 
-**Gate**: Ask the user directly to present both Step 4 results. If the accessibility-specialist returned any BLOCKING concerns, highlight them prominently and offer:
-- (a) Return to level-designer and art-director to redesign the flagged elements before Step 5
-- (b) Document as a known accessibility gap and proceed to Step 5 with the concern explicitly logged in the final report
-
-Do NOT proceed to Step 5 without the user acknowledging any BLOCKING accessibility concerns.
+Present both Step 4 results. If the accessibility-specialist returned a BLOCKING
+concern, the only completion path is to return to level-designer and art-director,
+revise the flagged elements, and have accessibility-specialist re-check them as
+non-blocking. The user may stop, but cannot accept/document a blocker as complete.
+Do not enter Step 5 or permit COMPLETE while a BLOCKING concern remains.
+RECOMMENDED and NICE TO HAVE concerns may be recorded without blocking.
 
 ### Step 5: QA Planning (qa-tester)
 Spawn the `qa-tester` agent to:
@@ -153,12 +152,18 @@ Spawn the `qa-tester` agent to:
 4. **Compile the level design document** combining all team outputs into the
    level design template format.
 
-After all subagent outputs are collected, spawn `level-designer` through Codex subagent delegation to compile and write the final document:
-- Pass: all subagent outputs (verbatim), the level brief, game pillars, relevant GDD sections
-- Ask level-designer to compile the level design document inside the orchestrator's already authorized changeset boundary; it must not request a separate file approval.
-- The orchestrator does not write files directly for the final document.
+After all analysis outputs are collected and no accessibility blocker remains,
+present one changeset containing the exact final path
+`design/levels/[level-name-slug].md` and the intended compiled sections. Obtain
+one authorization, then spawn `level-designer` as the sole writer:
+- Pass all subagent outputs, the level brief, game pillars, and relevant GDD sections
+- Compile Step 5 test cases/checklist and narrative/world/art material into the
+  one level document; do not create separate narrative or test-checklist files
+- Write only the approved final path and request no separate approval
+- The orchestrator does not write files directly
 
-5. **Save to** `design/levels/[level-name].md` (handled by the level-designer subagent inside the orchestrator's authorized changeset boundary).
+5. **Save to** `design/levels/[level-name-slug].md` (handled only by the
+level-designer after authorization).
 
 6. **Output a summary** with: area overview, encounter count, estimated asset
    list, narrative beats, any cross-team dependencies or open questions, open
@@ -167,15 +172,17 @@ After all subagent outputs are collected, spawn `level-designer` through Codex s
 
 ## File Write Protocol
 
-All file writes (level design docs, narrative docs, test checklists) are delegated
-to sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+Steps 1–5 perform no writes. The current workflow has one concrete output, the
+final level document. After all content and its exact slugged path are known,
+the orchestrator obtains one changeset authorization and delegates that single
+file to level-designer. Narrative content and QA checklists are sections of the
+final document, not independent files. The orchestrator does not write directly.
 
 Verdict: **COMPLETE** — level design document produced and all team outputs compiled.
 Verdict: **BLOCKED** — one or more agents blocked; partial report produced with unresolved items listed.
 
 ## Next Steps
 
-- Run `$design-review design/levels/[level-name].md` to validate the completed level design doc.
 - Run `$dev-story` to implement level content once the design is approved.
 - Run `$qa-plan` to generate a QA test plan for this level.
 
@@ -186,7 +193,8 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip this agent and note the gap in the partial report (not available for a
+     BLOCKING accessibility finding)
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.

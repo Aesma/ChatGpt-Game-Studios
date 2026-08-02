@@ -91,6 +91,9 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Requires explicit user confirmation before merging
 - [ ] HOTFIX BLOCKED when smoke check fails — no automatic merge
 - [ ] Verdict is HOTFIX COMPLETE or HOTFIX BLOCKED
+- [ ] No workspace file is written before the hotfix branch/current-workspace target is explicitly confirmed
+- [ ] Both the actual release and development targets must merge successfully; a skipped, missing, conflicted, or failed target is HOTFIX BLOCKED
+- [ ] Post-deploy verify/close and HOTFIX COMPLETE occur only after the user confirms deployment of the merged build
 
 ---
 

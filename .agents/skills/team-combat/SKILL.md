@@ -41,7 +41,7 @@ Store the resolved mode for use in all subsequent phases.
 - **ai-programmer** — Implement NPC/enemy AI behavior for the feature
 - **technical-artist** — Create VFX, shader effects, and visual feedback
 - **sound-designer** — Define audio events, impact sounds, and ambient combat audio
-- **engine specialist** (primary) — Validate architecture and implementation patterns are idiomatic for the engine (read from `.codex/docs/technical-preferences.md` Engine Specialists section)
+- **engine specialist** (primary) — Validate architecture and implementation patterns are idiomatic for the engine (read from `docs/technical-preferences.md` Engine Specialists section)
 - **qa-tester** — Write test cases and validate the implementation
 
 ## How to Delegate
@@ -60,18 +60,24 @@ Always provide full context in each agent's prompt (design doc path, relevant co
 ## Pipeline
 
 ### Phase 1: Design
-Delegate to **game-designer**:
-- Create or update the design document in `design/gdd/` covering: mechanic overview, player fantasy, detailed rules, formulas with variable definitions, edge cases, dependencies, tuning knobs with safe ranges, and acceptance criteria
-- Output: completed design document
+Delegate to **game-designer** as analysis-only. It returns a complete GDD draft
+in conversation and must not create/update files yet. The draft covers: mechanic overview, player fantasy, detailed rules, formulas with variable definitions, edge cases, dependencies, tuning knobs with safe ranges, and acceptance criteria
+- Output: completed design-document draft
 
 ### Phase 2: Architecture
-Delegate to **gameplay-programmer** (with **ai-programmer** if AI is involved):
+Delegate to **gameplay-programmer** (with **ai-programmer** if AI is involved)
+as analysis-only; neither writes files:
 - Review the design document
 - Design the code architecture: class structure, interfaces, data flow
 - Identify integration points with existing systems
 - Output: architecture sketch with file list and interface definitions
 
-Then spawn the **primary engine specialist** to validate the proposed architecture:
+Read the configured engine before specialist delegation. If no real engine and
+specialist are configured, do not spawn a placeholder. Keep the architecture
+engine-agnostic, report **BLOCKED** for implementation, recommend `$setup-engine`,
+and stop before Phase 3.
+
+When configured, spawn the **primary engine specialist** to validate the proposed architecture:
 - Is the class/node/component structure idiomatic for the pinned engine? (e.g., Godot node hierarchy, Unity MonoBehaviour vs DOTS, Unreal Actor/Component design)
 - Are there engine-native systems that should be used instead of custom implementations?
 - Any proposed APIs that are deprecated or changed in the pinned engine version?
@@ -84,19 +90,37 @@ Ask the user directly:
   - `[B] Revise the architecture first — I'll describe what needs to change`
   - `[C] Stop here — I'll continue later`
 
-Only spawn implementation agents if user selects [A].
+Before offering [A], the Phase 2 file list must assign every proposed GDD,
+implementation asset/code path, and test path to exactly one writer. Parallel
+owners must be non-overlapping; shared integration paths are reserved for the
+Phase 4 gameplay-programmer and assigned to no Phase 3 writer. Present every
+exact path and intended modification as the complete changeset. Only after the
+user approves that architecture and authorizes this changeset may Phase 1's
+GDD draft be written by game-designer and implementation agents spawn.
+
+Only spawn implementation agents if user selects [A] and the complete changeset
+is authorized.
 
 ### Phase 3: Implementation (parallel where possible)
-Delegate in parallel:
-- **gameplay-programmer**: Implement core combat mechanic code
-- **ai-programmer**: Implement AI behaviors (if the feature involves NPC reactions)
-- **technical-artist**: Create VFX and shader effects
-- **sound-designer**: Define audio event list and mixing notes
+Delegate in parallel using the exact, mutually exclusive paths assigned in
+Phase 2:
+- **gameplay-programmer**: Implement core combat mechanic code in its paths only
+- **ai-programmer**: Implement AI behaviors in its paths only (if applicable)
+- **technical-artist**: Create VFX/shader assets in its paths only
+- **sound-designer**: Define audio events/mixing assets in its paths only
+
+No Phase 3 agent may edit a shared integration path. If a new path is required,
+stop and use the existing scope-expansion reauthorization rule.
 
 ### Phase 4: Integration
+Delegate the existing **gameplay-programmer** as the single integration owner.
+It receives all Phase 3 results and may edit only the shared integration paths
+reserved and approved in Phase 2:
 - Wire together gameplay code, AI, VFX, and audio
 - Ensure all tuning knobs are exposed and data-driven
 - Verify the feature works with existing combat systems
+
+Other Phase 3 agents may review their interfaces but must not write shared files.
 
 ### Phase 5: Validation
 Delegate to **qa-tester**:
@@ -107,8 +131,14 @@ Delegate to **qa-tester**:
 
 ### Phase 6: Sign-off
 - Collect results from all team members
-- Report feature status: COMPLETE / NEEDS WORK / BLOCKED
-- List any outstanding issues and their assigned owners
+- Report feature status using these exhaustive rules:
+  - **COMPLETE**: every required phase completed and all required tests and
+    acceptance criteria passed
+  - **NEEDS WORK**: implementation is present and required verification ran,
+    with only fixable non-blocking defects remaining
+  - **BLOCKED**: a required phase failed; engine/ADR dependency is unresolved;
+    critical tests could not run; or any required test/acceptance criterion failed
+- List every outstanding issue and its assigned owner
 
 ## Error Recovery Protocol
 
@@ -130,15 +160,20 @@ Common blockers:
 
 ## File Write Protocol
 
-All file writes (design documents, implementation files, test cases) are
-delegated to sub-agents spawned through Codex subagent delegation. The orchestrator obtains one combined changeset approval before delegation, and each sub-agent writes only within that approved boundary without prompting again. This orchestrator does not write files directly.
+Phase 1–2 subagents are analysis-only. Once architecture defines exact,
+non-overlapping paths, the orchestrator obtains one combined changeset approval.
+The game-designer then writes only the approved GDD, each Phase 3 agent writes
+only its assigned paths, the gameplay-programmer alone writes reserved shared
+integration paths, and qa-tester writes only approved test paths. This
+orchestrator does not write files directly.
 
 ## Output
 
 A summary report covering: design completion status, implementation status per team member, test results, and any open issues.
 
 Verdict: **COMPLETE** — combat feature designed, implemented, and validated.
-Verdict: **BLOCKED** — one or more phases could not complete; partial report produced with unresolved items listed.
+Verdict: **NEEDS WORK** — implementation exists with only fixable non-blocking defects.
+Verdict: **BLOCKED** — a required phase/dependency/test could not pass; partial report produced with unresolved items listed.
 
 ## Next Steps
 

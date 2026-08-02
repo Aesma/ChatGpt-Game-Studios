@@ -37,7 +37,7 @@ Store the resolved mode for use in all subsequent phases.
 - **ux-designer** — User flows, wireframes, accessibility, input handling
 - **ui-programmer** — UI framework, screens, structured prompts, data binding, implementation
 - **art-director** — Visual style, layout polish, consistency with art bible
-- **engine UI specialist** — Validates UI implementation patterns against engine-specific best practices (read from `.codex/docs/technical-preferences.md` Engine Specialists → UI Specialist)
+- **engine UI specialist** — Validates UI implementation patterns against engine-specific best practices (read from `docs/technical-preferences.md` Engine Specialists → UI Specialist)
 - **accessibility-specialist** — Audits accessibility compliance at Phase 4
 
 **Templates used by this pipeline:**
@@ -71,17 +71,15 @@ Before designing anything, read and synthesize:
 **If `design/ux/interaction-patterns.md` does not exist**, surface the gap immediately:
 > "interaction-patterns.md does not exist — no existing patterns to reuse."
 
-Then ask the user directly with options:
-- (a) Run `$ux-design patterns` first to establish the pattern library, then continue
-- (b) Proceed without the pattern library — ui-programmer will treat all patterns created as new and add each to a new `design/ux/interaction-patterns.md` at completion
+Then keep the bootstrap inside Phase 1 authoring: present meaningful behavior options for every pattern the current spec requires, record the user's design decision, and use the existing `$ux-design patterns` pattern-library writer as the only writer for `design/ux/interaction-patterns.md`. The approved pattern entry must be persisted before the current spec cites it and before the first `$ux-review`.
 
-Do NOT invent or assume patterns from the feature name or GDD alone. If the user chooses (b), explicitly instruct ui-programmer in Phase 3 to treat all patterns as new and document them in `design/ux/interaction-patterns.md` when implementation is complete. Note the pattern library status (created / absent / updated) in the final summary report.
+Do NOT invent patterns or defer authority until implementation. If the pattern decision is not approved, the library path was not included in the authorized changeset, or persistence fails, produce a BLOCKED/partial UX spec and do not enter Phase 1c, 2, or 3.
 
 Summarize the context in a brief for the ux-designer: what the player is doing, what they need, what constraints apply, and which existing patterns are relevant.
 
 ### Phase 1b: UX Spec Authoring
 
-Invoke `$ux-design [feature name]` skill OR delegate directly to ux-designer to produce `design/ux/[feature-name].md` following the `ux-spec.md` template.
+Choose one authoring route before work starts: use `$ux-design [feature name]`, or use ux-designer only when that entry is unavailable, with the same template and path contract. Do not switch routes mid-run.
 
 If designing the HUD, use the `hud-design.md` template instead of `ux-spec.md`.
 
@@ -91,11 +89,13 @@ If designing the HUD, use the `hud-design.md` template instead of `ux-spec.md`.
 
 Output: `design/ux/[feature-name].md` with all required spec sections filled.
 
+Before the first write, resolve and preview one changeset containing the concrete UX spec, visual spec, implementation targets, session-state target, and `design/ux/interaction-patterns.md` whenever the current spec is known to require a new or revised pattern. Assign the pattern library to its single writer and each other path to one owner. Nested authoring inherits this boundary and does not request another authorization; newly discovered paths use the existing material-scope-expansion rule.
+
 ### Phase 1c: UX Review
 
 After the spec is complete, invoke `$ux-review design/ux/[feature-name].md`.
 
-**Gate**: Do not proceed to Phase 2 until the verdict is APPROVED. If the verdict is NEEDS REVISION, the ux-designer must address the flagged issues and re-run the review. The user may explicitly accept a NEEDS REVISION risk and proceed, but this must be a conscious decision — present the specific concerns by asking the user directly before asking whether to proceed.
+**Gate**: Do not proceed to Phase 2 until the verdict is APPROVED. If the verdict is NEEDS REVISION or MAJOR, the ux-designer must address the flagged issues and re-run the existing Phase 1c review. The user may stop this workflow and make a separate product decision, but this workflow never relabels that verdict as implementation-ready.
 
 ### Phase 2: Visual Design
 
@@ -109,13 +109,13 @@ Delegate to **art-director**:
 
 ### Phase 3: Implementation
 
-Before implementation begins, spawn the **engine UI specialist** (from `.codex/docs/technical-preferences.md` Engine Specialists → UI Specialist) to review the UX spec and visual design spec for engine-specific implementation guidance:
+Before implementation begins, spawn the **engine UI specialist** (from `docs/technical-preferences.md` Engine Specialists → UI Specialist) to review the UX spec and visual design spec for engine-specific implementation guidance:
 - Which engine UI framework should be used for this screen? (e.g., UI Toolkit vs UGUI in Unity, Control nodes vs CanvasLayer in Godot, UMG vs CommonUI in Unreal)
 - Any engine-specific gotchas for the proposed layout or interaction patterns?
 - Recommended structured prompt/node structure for the engine?
 - Output: engine UI implementation notes to hand off to ui-programmer before they begin
 
-If no engine is configured, skip this step.
+If no engine is configured, Phase 1 design artifacts may be completed, but stop BLOCKED before Phase 3. Do not ask ui-programmer to guess an engine framework and do not spawn multiple engine specialists.
 
 Delegate to **ui-programmer**:
 - Implement the UI following the UX spec and visual design spec
@@ -125,7 +125,7 @@ Delegate to **ui-programmer**:
 - Support both input methods (keyboard/mouse AND gamepad)
 - Implement accessibility features per the committed tier in `design/accessibility-requirements.md`
 - Wire up data binding to game state
-- **If any new interaction pattern is created during implementation** (i.e., something not already in the pattern library), add it to `design/ux/interaction-patterns.md` before marking implementation complete
+- Do not create an authoritative pattern during implementation. A newly discovered pattern requirement returns to Phase 1's user decision, single pattern-library writer, authorized edit, and review before implementation resumes.
 - Output: implemented UI feature
 
 ### Phase 4: Review (parallel)
@@ -139,12 +139,14 @@ All three review streams must report before proceeding to Phase 5.
 
 ### Phase 5: Polish
 
-- Address all review feedback
+- Assign every finding to the existing owner of the affected file and address all review feedback without concurrent edits to one path
 - Verify animations are skippable and respect the player's motion reduction preferences
 - Confirm UI sounds trigger through the audio event system (no direct audio calls)
 - Test at all supported resolutions and aspect ratios
 - **Verify `design/ux/interaction-patterns.md` is up to date** — if any new patterns were introduced during this feature's implementation, confirm they have been added to the library
 - **Confirm all HUD elements respect the visual budget** defined in `design/ux/hud.md` (element count, screen region allocations, maximum opacity values)
+
+After each fix, return the affected file to the same Phase 4 reviewer that raised the finding for a targeted re-check. COMPLETE requires all blockers to be closed, all three required reviewers to have confirmed their findings, and no change to reviewed content after the last re-check.
 
 ## Quick Reference — When to Use Which Skill
 
@@ -175,7 +177,7 @@ Common blockers:
 
 All file writes (UX specs, interaction pattern library updates, implementation files) are
 delegated to sub-agents and sub-skills (`$ux-design`, `ui-programmer`). Each enforces the
-single changeset approval protocol. This orchestrator does not write files directly.
+single Phase 1 changeset boundary and does not re-prompt. Each target has one writer. This orchestrator does not write files directly.
 
 ## Output
 

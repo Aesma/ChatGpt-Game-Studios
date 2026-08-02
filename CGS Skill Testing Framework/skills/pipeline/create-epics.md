@@ -2,66 +2,94 @@
 
 ## Skill Summary
 
-`$create-epics` reads all approved GDDs and translates them into EPIC.md files,
-one per system. Epics are organized by layer (Foundation → Core → Feature →
-Presentation) and processed in priority order within each layer. Each EPIC.md
-includes scope, governing ADRs, GDD requirements, engine risk level, and a
-Definition of Done. The skill asks "May I apply the proposed changeset?"
-5. After approval: writes both EPIC files
-6. Creates or updates `production/epics/index.md`
-
-**Assertions:**
-- [ ] Epic summary is shown before any write ask
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-3. For the second system (no existing file): proceeds normally with "changeset authorization"
-
-**Assertions:**
-- [ ] Skill detects existing EPIC files before applying a not-yet-authorized changeset
-- [ ] User is offered "update" or "skip" options — not auto-overwritten
-- [ ] The new system's EPIC is created normally without conflict
+`$create-epics` maps approved in-scope systems to architectural modules and
+produces one EPIC per module plus the existing epic index. Scope comes from
+`systems-index.md`; a Summary heading is optional. In full mode PR-EPIC reviews
+complete inline drafts and planned paths before any write.
 
 ---
 
-### Case 5: Director Gate — PR-EPIC returns CONCERNS
+## Static Assertions (Structural)
+
+- [ ] YAML frontmatter contains only `name` and non-empty `description`
+- [ ] Output path remains `production/epics/[epic-slug]/EPIC.md`
+- [ ] Epic identity is an architecture module, not automatically one system
+- [ ] Full gate receives complete inline drafts and planned edits before writes
+- [ ] Uses one complete changeset authorization
+
+---
+
+## Test Cases
+
+### Case 1: Approved standard GDD without Summary
 
 **Fixture:**
-- 2 approved GDDs exist
-- `production/session-state/review-mode.txt` contains `full`
-- PR-EPIC gate returns CONCERNS (e.g., scope of one epic is too large)
-
-**Input:** `$create-epics`
-
-**Expected behavior:**
-1. PR-EPIC gate spawns and returns CONCERNS with specific feedback
-2. Skill surfaces the concerns to the user before any write ask
-3. User is given options: revise epics, accept concerns and proceed, or stop
-4. If user revises: updated epic drafts are shown before the "changeset authorization" ask
-5. Skill does NOT write epics while CONCERNS are unaddressed
+- `systems-index.md` maps an Approved system to `combat.md`
+- `combat.md` has Overview but no Summary
+- Architecture maps the system to Combat Runtime
 
 **Assertions:**
-- [ ] CONCERNS from PR-EPIC are shown to the user before applying a not-yet-authorized changeset
-- [ ] Skill does NOT auto-write epics when CONCERNS are returned
-- [ ] User is given a clear choice to revise, proceed, or stop
-- [ ] Revised epic drafts are re-shown after revision before final approval
+- [ ] The system is in scope because of the systems index
+- [ ] Overview is read when Summary is absent
+- [ ] The valid GDD is not reported as ineligible
+
+---
+
+### Case 2: Two systems share one module
+
+**Fixture:**
+- Two in-scope systems map to the same architecture module
+- Their TR requirements are distinct
+
+**Assertions:**
+- [ ] Exactly one EPIC draft is produced for the module
+- [ ] Both systems/GDDs are represented
+- [ ] Requirements are allocated once and not duplicated wholesale
+- [ ] No path or slug collision is produced
+
+---
+
+### Case 3: Untraced Foundation/Core requirement blocks readiness
+
+**Fixture:**
+- A Foundation or Core epic contains an untraced requirement
+
+**Assertions:**
+- [ ] No placeholder ADR coverage is invented
+- [ ] The EPIC draft status is Blocked, not Ready
+- [ ] The blocking requirement is visible in the requirement table and preview
+
+---
+
+### Case 4: PR-EPIC receives exact pre-write candidates
+
+**Fixture:**
+- Review mode resolves to full
+- Two epic drafts and one index edit are planned
+
+**Assertions:**
+- [ ] PR-EPIC receives each complete inline draft, planned final path, and complete planned index edit
+- [ ] Planned paths are not described as existing files
+- [ ] No skeleton, temporary epic, index edit, or other file is written before the gate
+- [ ] Gate verdict is resolved before the one changeset authorization
+
+---
+
+### Case 5: PR-EPIC returns CONCERNS
+
+**Assertions:**
+- [ ] Specific concerns are shown before authorization
+- [ ] User may revise, accept concerns, or stop
+- [ ] Revised complete drafts are re-reviewed before writing
+- [ ] Epics are not auto-written while the gate is unresolved
 
 ---
 
 ## Protocol Compliance
 
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
-- [ ] PR-EPIC gate (if active) runs before write asks — not after
-- [ ] Skipped gates noted by name and mode in output
-- [ ] EPIC.md content sourced only from GDDs, ADRs, and architecture docs — nothing invented
-- [ ] Ends with next-step handoff: `$create-stories [epic-slug]` per created epic
-
----
-
-## Coverage Notes
-
-- Processing of Core, Feature, and Presentation layers follows the same per-epic
-  pattern as Foundation — layer-specific ordering is not independently tested.
-- Engine risk level assignment (LOW/MEDIUM/HIGH) from governing ADRs is
-  validated implicitly via Case 1's fixture structure.
-- The `layer: [name]` and `[system-name]` argument modes follow the same approval
-  pattern as the default (all systems) mode.
+- [ ] systems-index mapping and GDD status determine scope
+- [ ] One module produces one epic
+- [ ] Untraced Foundation/Core requirements cannot produce Ready
+- [ ] PR-EPIC is a write-before gate over exact inline candidates
+- [ ] The complete file set is authorized once
+- [ ] Ends with the existing `$create-stories [epic-slug]` handoff

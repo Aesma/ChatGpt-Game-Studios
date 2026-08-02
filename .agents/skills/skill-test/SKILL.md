@@ -11,7 +11,8 @@ Invoke this workflow as `$skill-test`.
 
 Arguments: `static [skill-name | all] | spec [skill-name] | category [skill-name | all] | audit`.
 
-Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
+All four modes are read-only. Present results in conversation and do not create
+result files or update catalog fields.
 
 Use `CGS Skill Testing Framework/catalog.yaml`, `CGS Skill Testing Framework/quality-rubric.md`, and the registered spec paths as the testing authority. Do not guess spec paths.
 
@@ -39,20 +40,25 @@ Run the installed `skill-creator/scripts/quick_validate.py` against each selecte
 
 Classify each check as `PASS`, `WARN`, or `FAIL`, cite the exact file and line for every issue, and aggregate results without hiding partial failures.
 
-## Phase 3: Behavioral spec validation
+## Phase 3: Static behavioral-contract validation
 
 1. Locate the skill at `.agents/skills/[name]/SKILL.md`.
 2. Read its entry from `CGS Skill Testing Framework/catalog.yaml`.
 3. Read the registered spec completely.
-4. Evaluate each fixture, expected behavior, and assertion against the written workflow.
+4. Compare each fixture, expected behavior, and assertion with the written workflow.
 5. Mark assertions `PASS`, `PARTIAL`, or `FAIL` and explain non-passing results with direct evidence.
-6. Check that all file writes are collected into one changeset approval before the first write.
+6. State explicitly that PASS means written-contract coverage only; this mode
+   does not execute the fixture or target skill.
 
 If the skill, catalog entry, or spec is missing, report the missing artifact and stop that case without inventing it.
 
 ## Phase 4: Category validation
 
-Read the skill's `category` from the catalog and the matching section of `CGS Skill Testing Framework/quality-rubric.md`. Evaluate every category metric independently. For `category all`, continue after individual failures and provide a complete summary.
+Read the skill's `category` from the catalog and the matching section of
+`CGS Skill Testing Framework/quality-rubric.md`. Evaluate every category metric
+independently. If the category has no matching section or no defined metrics,
+report a NON-COMPLIANT authority error; do not invent rules. For `category all`,
+continue after individual failures and provide a complete summary.
 
 ## Phase 5: Audit coverage
 
@@ -63,10 +69,15 @@ Compare:
 - skill and agent entries in `CGS Skill Testing Framework/catalog.yaml`
 - registered spec files
 
-Report unregistered skills, missing or orphaned specs, missing UI metadata, and stale test dates. Treat `$studio-status` like every other project skill.
+Report unregistered skills, missing or orphaned specs, and missing UI metadata.
+For each existing catalog `last_*` result/date field, report whether it is
+missing, present, and parseable. Do not call a date stale because no repository
+policy defines a staleness threshold. Treat `$studio-status` like every other
+project skill.
 
-## Phase 6: Present and optionally save results
+## Phase 6: Present Results
 
-Present the complete result first. If the user wants persisted results, include the result file and all catalog date/result updates in one changeset preview and obtain the single approval before writing. Write only inside the approved boundary, then report the exact files changed.
+Present the complete result in conversation and make no file changes. Do not
+persist results and do not update catalog `last_*` fields.
 
 Verdict: `COMPLIANT`, `WARNINGS`, or `NON-COMPLIANT`.

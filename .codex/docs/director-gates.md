@@ -325,11 +325,11 @@ sound before teams invest in writing GDDs against it
 
 ### TD-ARCHITECTURE — Architecture Sign-Off
 
-**Trigger**: After the master architecture document is drafted (`$create-architecture`
-Phase 7), and after any major architecture revision
+**Trigger**: During `$create-architecture` after the complete architecture draft exists in memory but before any final-status update, handoff, or architecture-file write. Run in parallel with LP-FEASIBILITY against the exact same draft. Also run before writing any major architecture revision.
 
 **Context to pass**:
-- Architecture document path (`docs/architecture/architecture.md`)
+- Planned architecture path (`docs/architecture/architecture.md`); the file may not exist yet
+- Complete inline architecture draft to be written (not a summary or partial excerpt)
 - Technical requirements baseline (TR-IDs and count)
 - ADR list with statuses
 - Engine knowledge gap inventory
@@ -488,13 +488,11 @@ or when a scope change is proposed that affects the milestone
 
 ### PR-EPIC — Epic Structure Feasibility Review
 
-**Trigger**: After epics are defined by `$create-epics`, before stories are
-broken out — validates the epic structure is producible before `$create-stories`
-is invoked
+**Trigger**: During `$create-epics` after all epic drafts and the planned index update are complete in memory, but before any epic file or index write. This validates the proposed epic structure before it becomes project state or `$create-stories` is invoked.
 
 **Context to pass**:
-- Epic definition file paths (all epics just created)
-- Epic index path (`production/epics/index.md`)
+- Planned epic file paths plus the complete inline draft for every proposed epic
+- Planned epic index path (`production/epics/index.md`) and the complete planned index edit
 - Milestone timeline and target dates
 - Team capacity (solo / small team / size)
 - Layer being epiced (Foundation / Core / Feature / etc.)
@@ -573,7 +571,7 @@ Agent: `art-director` | Role complexity: standard-complexity | Domain: Visual id
 **Context to pass**:
 - Art bible path (`design/art/art-bible.md`)
 - Game pillars and core fantasy
-- Platform and performance constraints (from `.codex/docs/technical-preferences.md` if configured)
+- Platform and performance constraints (from `docs/technical-preferences.md` if configured)
 - Visual identity anchor chosen during brainstorm (from `design/gdd/game-concept.md`)
 
 **Prompt**:
@@ -625,11 +623,11 @@ specialist's feasibility sign-off is needed. Tier 2 leads use standard-complexit
 
 ### LP-FEASIBILITY — Lead Programmer Implementation Feasibility
 
-**Trigger**: After the master architecture document is written (`$create-architecture`
-Phase 7b), or when a new architectural pattern is proposed
+**Trigger**: During `$create-architecture` after the complete architecture draft exists in memory but before any final-status update, handoff, or architecture-file write. Run in parallel with TD-ARCHITECTURE against the exact same draft. Also run before writing a newly proposed architectural pattern.
 
 **Context to pass**:
-- Architecture document path
+- Planned architecture path; the file may not exist yet
+- Complete inline architecture draft to be written (the same draft sent to TD-ARCHITECTURE)
 - Technical requirements baseline summary
 - ADR list with statuses
 
@@ -647,8 +645,7 @@ Phase 7b), or when a new architectural pattern is proposed
 
 ### LP-CODE-REVIEW — Lead Programmer Code Review
 
-**Trigger**: After a dev story is implemented (`$dev-story`, `$story-done`), or
-as part of `$code-review`
+**Trigger**: During completion review by `$story-done`, or as part of `$code-review`. `$dev-story` does not embed this director gate
 
 **Context to pass**:
 - Implementation file paths
@@ -673,9 +670,9 @@ as part of `$code-review`
 `$story-readiness`, and `$sprint-plan` during story selection
 
 **Context to pass**:
-- Story file path
+- Existing story file path, or for `$create-stories` pre-write review: the planned path plus the complete inline story draft
 - Story type (Logic / Integration / Visual/Feel / UI / Config/Data)
-- Acceptance criteria list (verbatim from the story)
+- Acceptance criteria list (verbatim from the story or proposed draft)
 - The GDD requirement (TR-ID and text) the story covers
 
 **Prompt**:

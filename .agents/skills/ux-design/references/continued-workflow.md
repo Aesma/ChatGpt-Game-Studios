@@ -21,11 +21,9 @@ Context  ->  Questions  ->  Options  ->  Decision  ->  Draft  ->  Approval  ->  
    assumptions explicitly.
 6. **Approval**: Ask the user directly:
    - "Does this capture the [section name] correctly?"
-   - Options: "Yes — write it to the file", "Small changes needed (describe below)", "Major rethink needed"
+   - Options: "Yes — content approved", "Small changes needed (describe below)", "Major rethink needed"
    Do not proceed to step 7 until the user selects "Yes".
-7. **Write**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-   - Options: "Yes, write it", "Wait — one more change"
-   Once confirmed, edit the file to replace the `[To be designed]` placeholder with approved content.
+7. **Write**: Inside the single changeset boundary already authorized in Phase 3, replace the template placeholder with the approved content. Do not ask for another file-write confirmation.
 
 After writing each section, update `production/session-state/active.md`.
 
@@ -385,9 +383,7 @@ Pattern library authoring is additive and catalog-driven, not linear.
 
 #### Phase 1: Catalog Existing Patterns
 
-Find files matching `design/ux/*.md` (excluding `interaction-patterns.md`) and read the Component
-Inventory and Interaction Map sections of each spec. Extract every interaction
-pattern used.
+Find files matching `design/ux/*.md` (excluding `interaction-patterns.md`) and consider only specs whose persisted Status is Approved or Implemented. Read their Component Inventory and Interaction Map sections and extract the patterns used. Draft, unknown-status, and one-off implementations are gaps, not authoritative pattern sources.
 
 Present the extracted list: "Based on existing UX specs, these patterns are already
 in use in the game:"
@@ -401,7 +397,9 @@ additional ones now."
 
 #### Phase 2: Formalize Each Pattern
 
-For each pattern (existing or new), document:
+For a pattern reused from another spec, formalize it only from an Approved/Implemented source. For a new pattern required by the current spec, present behavior options and their impact through the existing Question → Options → Decision → Draft → Approval cycle. Only an explicit user approval permits the pattern-library writer to persist it; the current Draft alone is not a source of authority.
+
+For each eligible pattern, document:
 
 ```markdown
 ### [Pattern Name]
@@ -448,12 +446,12 @@ Before marking the spec as ready for review, run these checks:
 **1. GDD requirement coverage**: Does every GDD UI Requirement that references
 this screen have a corresponding element in this spec? Present any gaps.
 
-**2. Pattern library alignment**: Are all interaction patterns used in this spec
-referenced by name? If a new pattern was invented during this spec session, flag
-it for addition to the pattern library:
+**2. Pattern library alignment**: Are all interaction patterns used in this spec referenced by name and already present as complete persisted entries? If a new pattern is required by the current spec, it must have been included in the Phase 3 changeset boundary. After user approval, the single pattern-library writer writes it before the first review; the current spec then references that persisted entry.
 Ask the user directly:
 - "This spec uses [pattern name], which isn't in the pattern library yet. What should we do?"
-- Options: "Add it to the pattern library now", "Flag it as a gap and continue", "Skip — this pattern is one-off"
+- Options: "Approve this behavior and persist it in the authorized library edit", "Revise the behavior", "Leave it unresolved and stop with a BLOCKED/partial spec"
+
+Do not mark the spec ready for review while a required pattern is only approved in conversation, unpreviewed, unwritten, failed to persist, or still a placeholder.
 
 **3. Navigation consistency**: Do the entry/exit points in this spec match the
 navigation map in any related specs? Flag mismatches.
@@ -560,7 +558,7 @@ This skill follows the collaborative design principle at every step:
    - Phase 3: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
    - Phase 4 (each section): design questions, approach options, draft approval
    - Phase 5: "Run cross-reference check? What's next?"
-3. **Single changeset authorization**: preview the skeleton and every anticipated edit before the first file write
+3. **Single changeset authorization**: preview the UX target, session-state target, and any known pattern-library edit plus the complete intended placeholder-replacement/update actions before the first file write
 4. **Incremental writing inside the authorized boundary**: write approved section content without new file-by-file prompts
 5. **Session state updates**: After every section write
 

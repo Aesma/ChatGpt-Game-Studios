@@ -11,8 +11,6 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `[focus: full | gdds | adrs | stories | infra]`. Treat bracketed values as optional unless the workflow says otherwise.
 
-Delegate substantive work to the `technical-director` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
-
 
 # Adopt — Brownfield Template Adoption
 
@@ -49,24 +47,28 @@ skill is running during the silent read phase.
 Then read silently before presenting anything else.
 
 ### Existence check
-- `production/stage.txt` — if present, read it (authoritative phase)
+- `production/stage.txt` — if present, accept only the seven exact project stage values and cross-check it against artifact evidence; invalid or materially contradictory content is not authoritative
 - `design/gdd/game-concept.md` — concept exists?
 - `design/gdd/systems-index.md` — systems index exists?
 - Count GDD files: `design/gdd/*.md` (excluding game-concept.md and systems-index.md)
 - Count ADR files: `docs/architecture/adr-*.md`
 - Count story files: `production/epics/**/*.md` (excluding EPIC.md)
-- `.codex/docs/technical-preferences.md` — engine configured?
+- `docs/technical-preferences.md` — engine configured?
 - `docs/engine-reference/` — engine reference docs present?
 - Find files matching `docs/adoption-plan-*.md` — note the filename of the most recent prior plan if any exist
 
 ### Infer phase (if no stage.txt)
-Use the same heuristic as `$project-stage-detect`:
-- 10+ source files in `src/` → Production
-- Stories in `production/epics/` → Pre-Production
-- ADRs exist → Technical Setup
-- systems-index.md exists → Systems Design
-- game-concept.md exists → Concept
-- Nothing → Fresh (not a brownfield project — suggest `$start`)
+Use the same prerequisite-aware heuristic as `$project-stage-detect`, selecting the
+most advanced stage whose own evidence and all preceding evidence are present:
+- Production requires implementation code aligned with an active sprint and epic, plus preceding design/setup evidence; a source-file count alone is never sufficient.
+- Pre-Production requires completed system-design evidence, configured engine data, and architecture or epic work started.
+- Technical Setup requires a systems index while engine setup is still incomplete, or a configured engine whose later prerequisites are not yet evidenced.
+- Systems Design requires a game concept while the systems index is missing or incomplete.
+- Concept applies when brainstorming/concept work has started but no complete game concept exists.
+- Polish and Release are accepted only from a valid explicit stage file written by the corresponding gate.
+- No artifacts → Fresh (not a brownfield project — suggest `$start`).
+
+When signals conflict, retain the lower fully evidenced stage and explain the missing prerequisite.
 
 If the project appears fresh (no artifacts at all), ask the user directly:
 - "This looks like a fresh project — no existing artifacts found. `$adopt` is for
@@ -95,12 +97,12 @@ For each GDD file found, check for the 8 required sections by scanning headings:
 |---|---|
 | Overview | `## Overview` |
 | Player Fantasy | `## Player Fantasy` |
-| Detailed Rules / Design | `## Detailed` or `## Core Rules` or `## Detailed Design` |
-| Formulas | `## Formulas` or `## Formula` |
+| Detailed Design | `## Detailed Design` |
+| Formulas | `## Formulas` |
 | Edge Cases | `## Edge Cases` |
-| Dependencies | `## Dependencies` or `## Depends` |
-| Tuning Knobs | `## Tuning` |
-| Acceptance Criteria | `## Acceptance` |
+| Dependencies | `## Dependencies` |
+| Tuning Knobs | `## Tuning Knobs` |
+| Acceptance Criteria | `## Acceptance Criteria` |
 
 For each GDD, record:
 - Which sections are present
@@ -113,15 +115,18 @@ Valid values: `In Design`, `Designed`, `In Review`, `Approved`, `Needs Revision`
 
 ### 2b: ADR Format Audit
 
-For each ADR file found, check for these critical sections:
+For each ADR file found, check every section required by `docs/AGENTS.md`:
 
 | Section | Impact if missing |
 |---|---|
+| `# ADR-[NNNN]: [Title]` | **BLOCKING** — the decision has no valid title/identity |
 | `## Status` | **BLOCKING** — `$story-readiness` ADR status check silently passes everything |
+| `## Context` | **BLOCKING** — the decision has no documented problem or constraints |
+| `## Decision` | **BLOCKING** — the chosen architecture is not defined |
+| `## Consequences` | **BLOCKING** — accepted trade-offs are not documented |
 | `## ADR Dependencies` | HIGH — dependency ordering in `$architecture-review` breaks |
 | `## Engine Compatibility` | HIGH — post-cutoff API risk is unknown |
 | `## GDD Requirements Addressed` | MEDIUM — traceability matrix loses coverage |
-| `## Performance Implications` | LOW — not pipeline-critical |
 
 For each ADR, record: which sections present, which missing, current Status value
 if the Status section exists.
@@ -166,7 +171,7 @@ For each story file found:
 
 ### 2f: Technical Preferences Audit
 
-Read `.codex/docs/technical-preferences.md`. Check each field for `[TO BE CONFIGURED]`:
+Read `docs/technical-preferences.md`. Check each field for `[TO BE CONFIGURED]`:
 - Engine, Language, Rendering, Physics → HIGH if unconfigured (ADR skills fail)
 - Naming conventions → MEDIUM
 - Performance budgets → MEDIUM
@@ -271,6 +276,12 @@ Before asking to write, show a **Gap Preview**:
 
 This gives the user enough context to judge scope before committing to writing the file.
 
+If `production/review-mode.txt` does not exist, collect the desired review mode
+before presenting the complete changeset. The complete changeset preview must list
+both `docs/adoption-plan-[date].md` and `production/review-mode.txt`, including the
+exact value (`full`, `lean`, or `solo`) that would be written. If the review-mode
+file already exists, list only the adoption plan and note the existing mode.
+
 If a prior adoption plan was detected in Phase 1, add a note:
 > "A previous plan exists at `docs/adoption-plan-[prior-date].md`. The new plan will
 > reflect current project state — it does not diff against the prior run."
@@ -371,12 +382,15 @@ are resolved. The new run will reflect the current state of the project.
 
 ## Phase 6b: Set Review Mode
 
-After writing the adoption plan (or if the user cancels writing), check whether
-`production/review-mode.txt` exists.
+This phase runs only as part of the already-authorized changeset. If the user
+cancels the changeset, stop without creating or modifying either the adoption plan
+or `production/review-mode.txt`.
+
+Check whether `production/review-mode.txt` exists.
 
 **If it exists**: Read it and note the current mode — "Review mode is already set to `[current]`." — skip the prompt.
 
-**If it does not exist**: Ask the user directly:
+**If it does not exist**: use the choice collected before the changeset preview:
 
 - **Prompt**: "One more setup step: how much design review would you like as you work through the workflow?"
 - **Options**:
@@ -384,7 +398,8 @@ After writing the adoption plan (or if the user cancels writing), check whether
   - `Lean (recommended)` — Directors only at phase gate transitions ($gate-check). Skips per-skill reviews. Balanced for solo devs and small teams.
   - `Solo` — No director reviews at all. Maximum speed. Best for game jams, prototypes, or if reviews feel like overhead.
 
-Write the choice to `production/review-mode.txt` immediately after selection — without requesting a second approval:
+After the single changeset is authorized, write the selected value to
+`production/review-mode.txt` without requesting a second approval:
 - `Full` → write `full`
 - `Lean (recommended)` → write `lean`
 - `Solo` → write `solo`

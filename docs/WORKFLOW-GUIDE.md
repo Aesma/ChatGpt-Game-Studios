@@ -151,12 +151,12 @@ with defined pillars and a player journey. This is where you figure out
 ### Phase 1 Pipeline
 
 ```
-$brainstorm  -->  game-concept.md  -->  $design-review  -->  $setup-engine
-     |                                        |                    |
-     v                                        v                    v
-  10 concepts     Concept doc with       Validation          Engine pinned in
-  MDA analysis    pillars, MDA,          of concept          technical-preferences.md
-  Player motiv.   core loop, USP         document
+$brainstorm  -->  game-concept.md  -->  $setup-engine
+     |                                      |
+     v                                      v
+  10 concepts     Concept doc with    Engine pinned in
+  MDA analysis    pillars, MDA,       technical-preferences.md
+  Player motiv.   core loop, USP
                                                                    |
                                                                    v
                                                              $prototype
@@ -208,13 +208,11 @@ The concept document includes:
 - Game pillars (3-5 non-negotiable design values)
 - Anti-pillars (things the game intentionally avoids)
 
-### Step 1.2: Review the Concept (Optional but Recommended)
+### Step 1.2: Check Concept Readiness (Optional but Recommended)
 
-```
-$design-review design/gdd/game-concept.md
-```
-
-Validates structure and completeness before you proceed.
+Check the concept's existing pillars, core-loop hypothesis, audience, scope, and
+visual anchor before proceeding. `$design-review` is reserved for system GDDs
+under `design/gdd/` and does not accept `game-concept.md`.
 
 ### Step 1.3: Choose Your Engine
 
@@ -230,7 +228,7 @@ $setup-engine godot 4.6
 
 **What $setup-engine does:**
 
-- Populates `.codex/docs/technical-preferences.md` with naming conventions,
+- Populates `docs/technical-preferences.md` with naming conventions,
   performance budgets, and engine-specific defaults
 - Detects knowledge gaps (engine version newer than LLM training data) and
   advises cross-referencing `docs/engine-reference/`
@@ -1479,7 +1477,7 @@ conflicts go to `producer`.
 | `$sprint-status` | Quick 30-line sprint snapshot | 5 |
 | `$story-readiness` | Validate story is implementation-ready | 4-5 |
 | `$story-done` | 8-phase story completion review | 5 |
-| `$estimate` | Effort estimation with risk assessment | 4-5 |
+| `$estimate` | S/M/L/XL effort estimate with optimistic/expected/pessimistic day range and risk assessment | 4-5 |
 
 #### Reviews and Analysis (13)
 
@@ -1568,7 +1566,7 @@ conflicts go to `producer`.
 1. $start (routes you based on where you are)
 2. $brainstorm (collaborative ideation, pick a concept)
 3. $setup-engine (pin engine and version)
-4. $design-review on concept doc (optional, recommended)
+4. Check the concept's own readiness sections (pillars, loop, audience, scope, visual anchor)
 5. $map-systems (decompose concept into systems with deps and priorities)
 6. $gate-check concept (verify you're ready for Systems Design)
 7. $design-system per system (guided GDD authoring)

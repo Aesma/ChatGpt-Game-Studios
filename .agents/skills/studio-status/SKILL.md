@@ -17,11 +17,13 @@ Use the current workspace root. Normalize path separators only for display. Trea
 
 ## Determine the stage
 
-1. If `production/stage.txt` exists and its first line is non-empty, use that value exactly.
-2. Otherwise inspect the following evidence:
+1. Read the first line of `production/stage.txt` when present. A non-empty
+   explicit value remains the Stage field exactly as stored.
+2. Regardless of whether an explicit value exists, inspect the following
+   evidence to calculate an inference for Evidence/Warning only:
    - `design/gdd/game-concept.md`
    - `design/gdd/systems-index.md`
-   - `.codex/docs/technical-preferences.md`
+   - `docs/technical-preferences.md`
    - `docs/architecture/adr-*.md`
    - source files under `src/` with extensions `.gd`, `.cs`, `.cpp`, `.h`, `.py`, `.rs`, `.lua`, `.tscn`, or `.tres`
 3. For technical preferences, consider the engine configured only when the first `**Engine**:` or `- **Engine**:` entry exists and does not contain `TO BE CONFIGURED`.
@@ -34,17 +36,27 @@ Use the current workspace root. Normalize path separators only for display. Trea
    - No evidence: `Concept`
 
 Only an explicit `production/stage.txt` may select later stages such as `Polish` or `Release`.
+If the explicit value is missing/empty, use the inference as Stage. If it is
+non-empty, never replace it with the inference; report contradictory evidence
+as a warning. Also warn when the explicit value is outside Concept, Systems
+Design, Technical Setup, Pre-Production, Production, Polish, or Release.
 
 ## Build the active breadcrumb
 
-For `Production`, `Polish`, or `Release`, inspect `production/session-state/active.md` when it exists.
+Whenever `production/session-state/active.md` exists, verify that exactly paired
+`<!-- STATUS -->` and `<!-- /STATUS -->` markers bound the status block. Report
+missing, duplicate, reversed, or otherwise malformed markers for every stage,
+including an unrecognized explicit stage.
 
-1. Read only the block between `<!-- STATUS -->` and `<!-- /STATUS -->`.
+For a valid `Production`, `Polish`, or `Release` stage and valid paired markers:
+
+1. Read only the bounded status block.
 2. Extract optional `Epic:`, `Feature:`, and `Task:` values.
 3. Join non-empty values in that order with ` > `.
 4. If the block or all values are absent, report that no active focus is recorded.
 
-For earlier stages, omit the breadcrumb unless the user explicitly asks to see the stored session focus.
+For earlier or unrecognized stages, omit the breadcrumb unless the user
+explicitly asks to see it. Never extract focus from unbounded/malformed text.
 
 ## Report
 

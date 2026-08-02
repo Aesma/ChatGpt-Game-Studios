@@ -9,7 +9,7 @@ Invoke this workflow as `$soak-test`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[duration: 30m | 1h | 2h | 4h] [focus: memory | stability | balance | all]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[target] [duration: 30m | 1h | 2h | 4h] [focus: memory | stability | balance | all]`. Treat bracketed values as optional unless the workflow says otherwise.
 
 
 # Soak Test
@@ -41,6 +41,10 @@ human does the actual playing.**
 
 ## 1. Parse Arguments
 
+**Target**: the gameplay loop, system, or scenario under test. If it is omitted,
+ask once for a target before generating the protocol. Do not treat a duration or
+focus token as the target.
+
 **Duration** (default: `1h`):
 - `30m` — short soak; suitable for testing a single mechanic or scene
 - `1h` — standard soak; covers most common leak categories
@@ -58,7 +62,7 @@ human does the actual playing.**
 ## 2. Load Context
 
 Read:
-- `.codex/docs/technical-preferences.md` — engine (for engine-specific memory
+- `docs/technical-preferences.md` — engine (for engine-specific memory
   monitoring guidance), performance budgets (memory ceiling, target FPS)
 - `design/gdd/game-concept.md` — intended session length (for comparison against
   soak duration), core loop description
@@ -139,6 +143,7 @@ Collect subjective observations at each checkpoint:
 # Soak Test Protocol
 
 > **Date**: [date]
+> **Target**: [target]
 > **Duration**: [duration]
 > **Focus**: [memory | stability | balance | all]
 > **Engine**: [engine]
@@ -158,6 +163,9 @@ Before starting the soak:
   - **Unreal**: `stat memory` ready in console
 - [ ] Soak target confirmed: [session design intent from game concept]
 - [ ] Prior known issues to watch for: [from most recent playtest / qa-plan]
+- [ ] Early-stop rules reviewed: stop immediately on crash/hang, data corruption,
+      sustained breach of the configured performance or memory budget, or an
+      operating-system/device safety warning; record the exact time and last action
 
 ---
 
@@ -200,6 +208,10 @@ Before starting the soak:
 
 **Free observations**:
 *(Note anything unexpected observed since the last checkpoint)*
+
+**Stop check**: if a crash/hang, data corruption, sustained configured-budget
+breach, or device safety warning occurred, stop the session now and record the
+occurrence time. Do not continue to the next checkpoint.
 
 ---
 
@@ -244,7 +256,8 @@ Difficulty arc: [appropriate / too easy throughout / difficulty spike at T+N]
 
 **PASS**: No leaks detected, stability maintained, fun factor consistent
 **PASS WITH CONCERNS**: Minor drift or fatigue noted; addressable in Polish
-**FAIL**: Memory leak confirmed, stability breach, or severe fun fatigue
+**FAIL**: Memory leak confirmed, stability breach, severe fun fatigue, or any
+early-stop condition. An early stop must record when it occurred.
 
 ---
 
@@ -258,13 +271,20 @@ Difficulty arc: [appropriate / too easy throughout / difficulty spike at T+N]
 
 ## 6. Write Output
 
+Before presenting the changeset, check the existing output path. If it already
+exists, describe the exact update in the same preview and do not overwrite it
+silently. This is not an extend/new mode; it is the existing bounded update.
+
 Present the protocol summary in conversation, then add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
 Write only after the single changeset approval, without re-prompting within its boundary.
 
-After writing:
+After writing, report `Protocol written: production/qa/soak-test-[date]-[duration].md`.
+If the authorized write cannot be completed, report `Protocol not written: [reason]`.
+These are file-operation statements, not workflow verdicts. Do not describe the
+unexecuted protocol as PASS, FAIL, or COMPLETE.
 
-"Protocol written. To run the soak:
+"To run the soak:
 1. Open the file and follow the Pre-Session Setup checklist
 2. Record each checkpoint as you play
 3. Complete the Post-Session Analysis section when done

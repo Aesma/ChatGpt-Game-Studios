@@ -40,23 +40,44 @@ Extract from game-concept.md:
 Section | Status
 --------|--------
 1. Visual Identity Statement | [Complete / Empty / Placeholder]
-2. Color Palette | ...
-3. Lighting & Atmosphere | ...
-4. Character Art Direction | ...
-5. Environment & Level Art | ...
-6. UI Visual Language | ...
-7. VFX & Particle Style | ...
+2. Mood & Atmosphere | ...
+3. Shape Language | ...
+4. Color System | ...
+5. Character Design Direction | ...
+6. Environment Design Language | ...
+7. UI/HUD Visual Direction | ...
 8. Asset Standards | ...
-9. Style Prohibitions | ...
+9. Reference Direction | ...
 ```
 
 - Present this table to the user:
   > "Found existing art bible at `design/art/art-bible.md`. [N] sections are complete, [M] need content. I'll work on the incomplete sections only — existing content will not be touched."
 - Only work on sections with Status: Empty or Placeholder. Do not re-author sections that are already complete.
 
-If the file does not exist, this is a fresh authoring session — proceed normally.
+If the file does not exist, this is a fresh authoring session. Before any file
+change, show `design/art/art-bible.md` and this exact skeleton as the complete
+initial changeset:
 
-Read `.codex/docs/technical-preferences.md` if it exists — extract performance budgets and engine for asset standard constraints.
+```markdown
+# Art Bible
+
+## 1. Visual Identity Statement
+## 2. Mood & Atmosphere
+## 3. Shape Language
+## 4. Color System
+## 5. Character Design Direction
+## 6. Environment Design Language
+## 7. UI/HUD Visual Direction
+## 8. Asset Standards
+## 9. Reference Direction
+```
+
+Obtain the single changeset authorization, including creation of `design/art/`
+when needed, before creating the skeleton. If authorization is withheld, do not
+create the directory or file. Section approvals later decide content; they are
+not additional file-write authorizations.
+
+Read `docs/technical-preferences.md` if it exists — extract performance budgets and engine for asset standard constraints.
 
 ---
 
@@ -172,7 +193,7 @@ Write the approved section to file.
 
 **Agent delegation**: Spawn in parallel:
 - **`art-director`**: File format preferences, naming convention direction, texture resolution tiers, LOD level expectations, export settings philosophy
-- **`technical-artist`**: Engine-specific hard constraints — poly count budgets per asset category, texture memory limits, material slot counts, importer constraints, anything from the performance budgets in `.codex/docs/technical-preferences.md`
+- **`technical-artist`**: Engine-specific hard constraints — poly count budgets per asset category, texture memory limits, material slot counts, importer constraints, anything from the performance budgets in `docs/technical-preferences.md`
 
 If any art preference conflicts with a technical constraint (e.g., art-director wants 4K textures but performance budget requires 2K for mobile), resolve the conflict explicitly — note both the ideal and the constrained standard, and explain the tradeoff. Ambiguity in asset standards is where production costs are born.
 
@@ -197,7 +218,7 @@ Write the approved section to file.
 - `lean` → skip (not a PHASE-GATE). Note: "AD-ART-BIBLE skipped — Lean mode." Proceed to Phase 6.
 - `full` → spawn as normal.
 
-After all sections are complete (or the scoped set from Phase 1 is complete), spawn `creative-director` through Codex subagent delegation using gate **AD-ART-BIBLE** (`.codex/docs/director-gates.md`).
+After all sections are complete (or the scoped set from Phase 1 is complete), spawn `art-director` through Codex subagent delegation using gate **AD-ART-BIBLE** (`.codex/docs/director-gates.md`).
 
 Pass: art bible file path, game pillars, visual identity anchor.
 
@@ -210,7 +231,7 @@ Handle verdict per standard rules in `director-gates.md`. Record the verdict in 
 
 Before presenting next steps, check project state:
 - Does `design/gdd/systems-index.md` exist? → map-systems is done, skip that option
-- Does `.codex/docs/technical-preferences.md` contain a configured engine (not `[TO BE CONFIGURED]`)? → setup-engine is done, skip that option
+- Does `docs/technical-preferences.md` contain a configured engine (not `[TO BE CONFIGURED]`)? → setup-engine is done, skip that option
 - Does `design/gdd/` contain any `*.md` files? → design-system has been run, skip that option
 - Does `design/gdd/gdd-cross-review-*.md` exist? → review-all-gdds is done
 - Do GDDs exist (check above)? → include $consistency-check option

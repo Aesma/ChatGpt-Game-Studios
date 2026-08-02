@@ -35,9 +35,12 @@ A system name or retrofit path is **required**. If missing:
    > Or to fill gaps in an existing GDD: `$design-system retrofit design/gdd/[system-name].md`
    > No systems index found. Run `$map-systems` first to map your systems and get the design order."
 
-**Detect retrofit mode:**
-If the argument starts with `retrofit` or the argument is a file path to an
-existing `.md` file in `design/gdd/`, enter **retrofit mode**:
+**Detect retrofit/resume mode:**
+Resolve the target `design/gdd/[system-name].md` before choosing a write path.
+If that target already exists for any invocation form, including a plain system
+name, automatically enter **retrofit/resume mode**. An explicit `retrofit` or
+existing project-local GDD path does the same. Never create a new skeleton over
+an existing target.
 
 1. Read the existing GDD file.
 2. Identify which of the 8 required sections are present (scan for section headings).
@@ -58,13 +61,17 @@ existing `.md` file in `design/gdd/`, enter **retrofit mode**:
    ✗ [section name] — missing
    ✗ [section name] — placeholder only
    ```
-5. Ask: "Should the revised draft fill the [N] missing sections? Existing content will remain unchanged."
-6. If the user includes them in scope: proceed to **Phase 2 (Gather Context)** as normal, but in **Phase 3**
-   skip creating the skeleton (file already exists) and in **Phase 4** skip
-   sections that are already complete. Only run the section cycle for missing/
-   incomplete sections.
-7. **Never overwrite existing section content.** Use targeted file edit to replace only
-   `[To be designed]` placeholders or empty section bodies.
+5. Show the complete existing body of every missing or incomplete candidate
+   section and ask which exact section bodies belong in this changeset. Before
+   the first selected edit, preview the GDD plus conditional registry,
+   systems-index, and active-session edits and obtain the same one complete
+   authorization used by the new-file path.
+6. For selected sections, proceed to Phase 2, skip skeleton creation, and run
+   the section cycle only for those selected bodies. All unselected sections
+   remain byte-for-byte unchanged.
+7. A selected incomplete non-placeholder body may be replaced by a targeted
+   section-body edit after its full replacement draft is approved. Never
+   overwrite a complete or unselected section.
 
 If NOT in retrofit mode, normalize the system name to kebab-case for the
 filename (e.g., "combat system" becomes `combat-system`).
@@ -166,7 +173,7 @@ Map the system's category (from systems-index.md) to an engine domain:
 | Dialogue, quests, narrative | Scripting |
 
 **Step 2 — Read engine context (if available):**
-- Read `.codex/docs/technical-preferences.md` to identify the engine and version
+- Read `docs/technical-preferences.md` to identify the engine and version
 - If engine is configured, read `docs/engine-reference/[engine]/VERSION.md`
 - Read `docs/engine-reference/[engine]/modules/[domain].md` if it exists
 - Read `docs/engine-reference/[engine]/breaking-changes.md` for domain-relevant entries
@@ -285,16 +292,21 @@ Use the template structure from `.codex/docs/templates/game-design-document.md`:
 [To be designed]
 ```
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Before the skeleton write, present one complete changeset preview containing
+the GDD plus the conditional edits to `design/registry/entities.yaml`,
+`design/gdd/systems-index.md`, and
+`production/session-state/active.md`. Describe the condition and intended
+operation for each. Obtain authorization once; later section content approvals
+are design decisions inside that boundary, not new file authorizations.
 
 If the user declines: Stop with the following message:
 > "Verdict: **BLOCKED** — skeleton creation declined. The design session cannot proceed without the skeleton file, as all subsequent phases use it as the base. Re-run `$design-system [system]` when ready to create the file."
 Do not proceed to Section A.
 
-After writing, update `production/session-state/active.md`:
-- Search matching files to check if the file exists.
-- If it **does not exist**: use the **Write** tool to create it. Never attempt Edit on a file that may not exist.
-- If it **already exists**: use the **Edit** tool to update the relevant fields.
+After writing, update `production/session-state/active.md` only because that
+conditional operation was included in the authorized initial changeset. Preserve
+unrelated session content and update the current task area rather than replacing
+the file.
 
 File content:
 - Task: Designing [system-name] GDD

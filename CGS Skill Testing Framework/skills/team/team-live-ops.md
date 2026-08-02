@@ -26,6 +26,8 @@ season plan requiring user approval before handoff to production.
 - [ ] File writes are delegated to sub-agents — orchestrator does not write directly
 - [ ] Verdict: COMPLETE appears in final output
 - [ ] Next steps reference `$design-review`, `$sprint-plan`, and `$team-release`
+- [ ] Arguments expose no `--review`; all six core roles always run
+- [ ] Phases 1–6 are analysis-only and write no output documents
 
 ---
 
@@ -43,15 +45,16 @@ season plan requiring user approval before handoff to production.
 2. Phase 7: Orchestrator reviews Phase 3 output against ethics policy; identifies Mystery Chest as a violation of the "no untransparent random premium rewards" rule in the ethics policy
 3. Ethics review section of the Phase 7 summary flags the violation explicitly: "ETHICS FLAG: Mystery Chest mechanic in Phase 3 economy design violates [policy rule]. Approval is blocked until this is resolved."
 4. user-input request presented with resolution options before season plan approval is offered
-5. Skill does NOT issue a COMPLETE verdict or write output documents until the ethics violation is resolved or explicitly waived by the user
+5. Skill does NOT issue COMPLETE or write output documents until a revision clears the ethics violation
 
 **Assertions:**
 - [ ] Phase 7 ethics review section explicitly names the violating element and the policy rule it breaks
 - [ ] Skill does not auto-approve the season plan when an ethics violation is present
-- [ ] user-input request is used to surface the violation and offer resolution options (revise economy design, override with documented rationale, cancel)
+- [ ] user-input request offers only revise economy design or cancel
 - [ ] Output documents are NOT written while the violation is unresolved
 - [ ] If user chooses to revise: skill re-spawns economy-designer to produce a corrected design before returning to Phase 7 review
 - [ ] Verdict: COMPLETE is only issued after the ethics flag is cleared
+- [ ] An explicit policy violation cannot be overridden or waived
 
 ---
 
@@ -127,7 +130,7 @@ season plan requiring user approval before handoff to production.
 
 ## Protocol Compliance
 
-- [ ] `user-input request` used at every phase transition — user approves before the next phase begins
+- [ ] User decisions occur at Phase 1 scope, Phase 3 economy/rewards, and Phase 7 consolidated approval; routine transitions do not re-prompt
 - [ ] Phases 3 and 4 are always spawned in parallel, not sequentially
 - [ ] File Write Protocol: orchestrator never calls file edits directly — all writes are delegated to sub-agents
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
@@ -136,6 +139,32 @@ season plan requiring user approval before handoff to production.
 - [ ] Partial reports are produced if any phase blocks — work is never discarded
 - [ ] Verdict: COMPLETE only after user approves the consolidated season plan; BLOCKED if any unresolved ethics violation exists
 - [ ] Next steps always include `$design-review`, `$sprint-plan`, and `$team-release`
+- [ ] Phase 7 ethics clearance happens before the only changeset authorization and all writes
+- [ ] Unresolved policy violation means BLOCKED and zero output files
+- [ ] Season number comes from explicit `Season N` or max existing valid N + 1
+- [ ] Name is normalized to a safe slug and collisions never overwrite silently
+- [ ] live-ops-designer, analytics-engineer, and community-manager each own one exact output path
+
+---
+
+### Case 6: Output identity and ownership are deterministic
+
+**Fixture:** existing S01/S02 files; input does not contain an explicit season number.
+
+**Assertions:**
+- [ ] Proposed number is 3 and is shown before approval
+- [ ] Unsafe name punctuation is normalized to a safe lowercase hyphenated slug
+- [ ] Existing target collision stops or requires explicit update intent; no silent overwrite
+- [ ] The final changeset lists exactly the season, analytics, and comms paths
+- [ ] live-ops-designer writes season only, analytics-engineer analytics only, community-manager comms only
+
+### Case 7: No early writes before ethics review
+
+**Assertions:**
+- [ ] Phase 1–6 agents return content in conversation only
+- [ ] No output document exists before Phase 7 ethics clearance and final approval
+- [ ] A violation followed by cancel yields BLOCKED and zero written files
+- [ ] A revision must pass the same ethics check before the changeset can be authorized
 
 ---
 

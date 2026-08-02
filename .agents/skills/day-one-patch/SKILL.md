@@ -38,14 +38,17 @@ ships. It is a mini-sprint — not a hotfix, not a full sprint.
 ## Phase 1: Load Release Context
 
 Read:
-- `production/stage.txt` — confirm project is in Release stage
-- The most recent file in `production/gate-checks/` — read the release gate verdict
+- `production/stage.txt` — confirm project is in Release or Polish
+- Existing release/launch checklist and QA sign-off artifacts that cover the
+  current build, when present; do not require a `production/gate-checks/`
+  report because the gate workflow does not create one
 - `production/qa/bugs/*.md` — load all bugs with Status: Open or Fixed — Pending Verification
 - `production/sprints/` most recent — understand what shipped
 - `production/security/security-audit-*.md` most recent — check for any open security items
 
-If `production/stage.txt` is not `Release` or `Polish`:
-> "Day-one patch prep is for Release-stage projects. Current stage: [stage]. This skill is not appropriate until you are approaching launch."
+If `production/stage.txt` is missing, invalid, or not `Release`/`Polish`,
+display the current evidence and stop immediately. Do not spawn any role, write
+any file, or emit "patch complete".
 
 ---
 
@@ -66,7 +69,13 @@ For each open bug, evaluate:
 | Cert feedback requirement | Yes — required for platform approval |
 | S3/S4 severity | Only if trivial config fix; otherwise defer |
 
-### Step 2b — Present patch scope to user
+### Step 2b — Exclude emergency issues
+
+If any candidate is P0/CRITICAL, exclude it from ordinary day-one scope and stop
+execution with an explicit handoff to the existing `$hotfix` workflow. Do not
+treat it as a four-hour patch item.
+
+### Step 2c — Present patch scope to user
 
 Ask the user directly:
 - Prompt: "Based on open bugs and cert feedback, here is the proposed day-one patch scope. Does this look right?"
@@ -76,7 +85,7 @@ Ask the user directly:
 
 If [C]: output "No day-one patch required. Proceed to `$launch-checklist`." Stop.
 
-### Step 2c — Check total scope
+### Step 2d — Check total scope
 
 Sum estimated effort. If total exceeds 1 day of work:
 > "⚠️ Patch scope is [N hours] — this exceeds a safe day-one window. Consider deferring lower-priority items to patch 1.1. A bloated day-one patch introduces more risk than it removes."
@@ -85,25 +94,29 @@ Ask the user directly to confirm proceeding or reduce scope.
 
 ---
 
-## Phase 3: Rollback Plan
+## Phase 3: Read-Only Fix Location, Rollback Draft, and Authorization
 
-Before any code is written, define the rollback procedure. This is non-negotiable.
+Before any code is written:
 
-Spawn `release-manager` through Codex subagent delegation. Ask them to produce a rollback plan covering:
-- How to revert to the gold master build on each target platform
-- Platform-specific rollback constraints (some platforms cannot roll back cert builds)
-- Who is responsible for triggering the rollback
-- What player communication is required if a rollback occurs
+1. Have lead-programmer inspect each approved bug read-only and identify the
+   exact candidate source/config files, targeted test files, and intended minimal
+   operation.
+2. Have release-manager draft the rollback procedure read-only, including
+   platform constraints, owner, and player communication.
+3. Present one complete changeset containing the rollback-plan file, every
+   identified source/config and test file, and the final day-one patch record.
+   Obtain one authorization before any of those files is written.
 
-Present the rollback plan. Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Do not proceed to Phase 4 until the rollback plan is written.
+If implementation later discovers an unlisted file, pause and expand the
+changeset before touching it. Do not write the rollback plan as a separate early
+authorization.
 
 ---
 
 ## Phase 4: Implement Fixes
 
-For each bug in the approved scope, spawn a focused implementation loop:
+For each bug in the approved and authorized scope, run the focused
+implementation loop using only the files owned in Phase 3:
 
 1. Spawn `lead-programmer` through Codex subagent delegation with:
    - The bug report (exact reproduction steps and root cause if known)
@@ -130,10 +143,15 @@ Spawn `qa-lead` through Codex subagent delegation with:
 Ask qa-lead to determine: **Is a targeted smoke check sufficient, or do any fixes touch systems that require a broader regression?**
 
 Run the required QA scope:
-- **Targeted smoke check** — run `$smoke-check [affected-systems]`
+- **Targeted smoke check** — run `$smoke-check quick` and pass the affected systems as hand-off context, not as a positional mode
 - **Broader regression** — run targeted tests in `tests/unit/` and `tests/integration/` for affected systems
 
-QA verdict must be PASS or PASS WITH WARNINGS before proceeding. If FAIL: scope the failing fix out of the day-one patch and defer to 1.1.
+QA verdict must be PASS or PASS WITH WARNINGS before proceeding. On FAIL, stop
+and list the failing fix plus every file it changed. Ask the user whether to fix
+it within the already authorized boundary or revert that fix's specific edits.
+Then rerun the existing targeted tests against the remaining combination. Until
+the failed change is restored or fixed and verification passes, do not enter
+Phase 6 and do not produce a PASS patch record.
 
 ---
 
@@ -198,7 +216,8 @@ See: `production/releases/rollback-plan-[version].md`
 [list player-facing changes in plain language]
 ```
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Write this record only as the final operation already listed and authorized in
+Phase 3. Do not request a second changeset authorization.
 
 ---
 

@@ -14,118 +14,95 @@ Arguments: `[feature-name or sprint-N]`. Treat bracketed values as optional unle
 
 This skill is read-only — it reports findings but writes no files.
 
-Compares original planned scope against current state to detect, quantify, and triage
-scope creep.
-
-**Argument:** the first provided argument — feature name, sprint number, or milestone name.
-
----
-
-## Phase 1: Find the Original Plan
-
-Locate the baseline scope document for the given argument:
-
-- **Feature name** → read `design/gdd/[feature].md` or matching file in `design/`
-- **Sprint number** (e.g., `sprint-3`) → read `production/sprints/sprint-03.md` or similar
-- **Milestone** → read `production/milestones/[name].md`
-
-If the document is not found, report the missing file and stop. Do not proceed without
-a baseline to compare against.
+Compare a selected baseline document with current story/goal/deliverable scope.
+Code files, commits, and TODOs are supporting evidence only; they are never
+counted as scope items.
 
 ---
 
-## Phase 2: Read the Current State
+## Phase 1: Resolve Target and Baseline
 
-Check what has actually been implemented or is in progress:
+Accept a feature name, `sprint-N`, milestone name, or a project-contained story
+path. With no argument, read existing active milestone/sprint references and
+resolve the current sprint against that milestone. If there are multiple
+candidates or no unique baseline, list the candidates and stop rather than guess.
 
-- Scan the codebase for files related to the feature/sprint
-- Read git log for commits related to this work (`git log --oneline --since=[start-date]`)
-- Check for TODO/FIXME comments that indicate unfinished scope additions
-- Check active sprint plan if the feature is mid-sprint
+- Feature: use an explicitly referenced or uniquely matching design/plan artifact.
+- Sprint: use its exact sprint plan as the baseline.
+- Milestone: use its exact milestone goals/deliverables.
+- Story path: read the story and its explicitly referenced parent epic as baseline.
+
+Label the result **selected baseline document at audit time**, and cite its path
+and available date. A current GDD is not proof of the original historical scope.
+If no earlier existing plan artifact is available, state that historical creep
+cannot be proven and do not attribute when the change occurred.
 
 ---
 
-## Phase 3: Compare Original vs Current Scope
+## Phase 2: Build a Comparable Current Scope
 
-Produce the comparison report:
+Extract baseline items at one level: stories, goals, or deliverables. Build the
+current set from existing artifacts at the same level. Use related source files,
+commits, and TODO/FIXME references only as evidence that a particular item exists
+or changed; never count them as additional scope items.
+
+---
+
+## Phase 3: Compare Item by Item
+
+For each addition, locate an existing change record that documents either a
+comparable cut or an explicit timeline extension. Report additions, removals,
+and their mappings separately. Do not let the number of small removals cancel a
+larger addition.
+
+If comparable effort exists, report the evidence-backed effort delta. If it does
+not, omit a percentage and state that item counts cannot establish bloat because
+the items may differ in size.
 
 ```markdown
-## Scope Check: [Feature/Sprint Name]
-Generated: [Date]
+## Scope Check: [Target]
+**Baseline at audit time**: [path and date]
+**Historical limitation**: [earlier artifact path or cannot prove historical creep]
 
-### Original Scope
-[List of items from the original plan]
+### Comparable Scope
+| Item | Baseline | Current | Evidence |
+|------|----------|---------|----------|
+| [story/goal/deliverable] | [yes/no] | [yes/no] | [artifact path] |
 
-### Current Scope
-[List of items currently implemented or in progress]
+### Additions
+| Addition | Matching Cut / Timeline Extension | Evidence | Status |
+|----------|-----------------------------------|----------|--------|
+| [item] | [mapped item/extension or none] | [path] | [accounted/unmapped] |
 
-### Scope Additions (not in original plan)
-| Addition | Source | When | Justified? | Effort |
-|----------|--------|------|------------|--------|
-| [item] | [commit/person] | [date] | [Yes/No/Unclear] | [S/M/L] |
+### Removals
+| Removal | Evidence |
+|---------|----------|
+| [item] | [path] |
 
-### Scope Removals (in original but dropped)
-| Removed Item | Reason | Impact |
-|-------------|--------|--------|
-| [item] | [why removed] | [what's affected] |
+### Quantification
+[Comparable effort delta, or: percentage unavailable — comparable effort data absent]
 
-### Bloat Score
-- Original items: [N]
-- Current items: [N]
-- Items added: [N] (+[X]%)
-- Items removed: [N]
-- Net scope change: [+/-N] ([X]%)
-
-### Risk Assessment
-- **Schedule Risk**: [Low/Medium/High] — [explanation]
-- **Quality Risk**: [Low/Medium/High] — [explanation]
-- **Integration Risk**: [Low/Medium/High] — [explanation]
-
-### Recommendations
-1. **Cut**: [Items that should be removed to stay on schedule]
-2. **Defer**: [Items that can move to a future sprint/version]
-3. **Keep**: [Additions that are genuinely necessary]
-4. **Flag**: [Items that need a decision from producer/creative-director]
+### Risks and Recommendations
+[Evidence-backed schedule, quality, and integration risks; user decision points]
 ```
 
 ---
 
 ## Phase 4: Verdict
 
-Assign a canonical verdict based on net scope change:
+- **PASS**: no unmapped additions are evidenced.
+- **CONCERNS**: unmapped additions exist but their effort/impact is incomplete
+  or plausibly manageable.
+- **FAIL**: evidence shows one or more unmapped additions materially exceed the
+  selected baseline without an equivalent cut or explicit timeline extension.
 
-| Net Change | Verdict | Meaning |
-|-----------|---------|---------|
-| ≤10% | **PASS** | On Track — within acceptable variance |
-| 10–25% | **CONCERNS** | Minor Creep — manageable with targeted cuts |
-| 25–50% | **FAIL** | Significant Creep — must cut or formally extend timeline |
-| >50% | **FAIL** | Out of Control — stop, re-plan, escalate to producer |
-
-Output the verdict prominently:
-
-```
-**Scope Verdict: [PASS / CONCERNS / FAIL]**
-Net change: [+X%] — [On Track / Minor Creep / Significant Creep / Out of Control]
-```
+Do not derive a verdict from a net item-count percentage. Present descoped items
+separately so they cannot mask additions.
 
 ---
 
-## Phase 5: Next Steps
+## Phase 5: Handoff
 
-After presenting the report, offer concrete follow-up:
-
-- **PASS** → no action required. Suggest re-running before next milestone.
-- **CONCERNS** → offer to identify the 2–3 additions with best cut ratio. Reference `$sprint-plan update` to formally re-scope.
-- **FAIL** → recommend escalating to producer. Reference `$sprint-plan update` for re-planning or `$estimate` to re-baseline timeline.
-
-Always end with:
-> "Run `$scope-check [name]` again after cuts are made to verify the verdict improves."
-
----
-
-### Rules
-
-- Scope creep is additions without corresponding cuts or timeline extensions
-- Not all additions are bad — some are discovered requirements. But they must be acknowledged and accounted for
-- When recommending cuts, prioritize preserving the core player experience over nice-to-haves
-- Always quantify scope changes — "it feels bigger" is not actionable, "+35% items" is
+Remain read-only. Cite the exact unresolved additions and the existing planning
+artifact that would need a user-authorized update. Do not invoke a gate or write
+a new baseline.

@@ -168,6 +168,17 @@ and routes the result through the configured review mode.
 
 ## Coverage Notes
 
+### P0 Contract Coverage
+
+- [ ] Missing/placeholder game concept, systems index, key GDD, architecture, or control manifest returns BLOCKED with no prototype/session write and no PROCEED
+- [ ] The absolute project root is shown and a non-isolated cwd requires explicit permission before any write; the workflow never commits/merges by itself
+- [ ] All implementation/assets/report stay in `prototypes/[concept-slug]-vertical-slice/`, never `src/`
+- [ ] Source headers use legal language comments only; JSON/scenes/resources/binaries receive no injected `//`
+- [ ] Phase 5 asks for observations, not a verdict; Phase 6 compares pre-confirmed criteria to evidence
+- [ ] CD-PLAYTEST receives the persisted REPORT path and records APPROVE/CONCERNS/REJECT separately from PROCEED/PIVOT/KILL
+- [ ] APPROVE can confirm; CONCERNS/REJECT lowers to at least PIVOT/re-review but never invents KILL
+- [ ] Vertical slice produces evidence/recommendation only; `$gate-check pre-production` owns stage advancement and slice absence is not declared a hard gate here
+
 This spec tests the workflow contract, not game-specific playability. Engine build
 commands and real multiplayer latency require live project execution. The catalog
 and coverage audit must discover this file recursively; no hard-coded skill total

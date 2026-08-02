@@ -40,7 +40,7 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 - `design/player-journey.md` exists
 - `design/ux/interaction-patterns.md` exists with relevant patterns
 - `design/accessibility-requirements.md` exists with committed tier (e.g., Enhanced)
-- Engine UI specialist configured in `.codex/docs/technical-preferences.md`
+- Engine UI specialist configured in `docs/technical-preferences.md`
 
 **Input:** `$team-ui inventory screen`
 
@@ -49,9 +49,9 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 2. Phase 1b — `$ux-design inventory-screen` invoked (or ux-designer spawned directly); produces `design/ux/inventory-screen.md` using `ux-spec.md` template; `user-input request` confirms spec before review
 3. Phase 1c — `$ux-review design/ux/inventory-screen.md` invoked; returns APPROVED; gate passed, proceed to Phase 2
 4. Phase 2 — art-director spawned; reviews full UX spec (not only wireframes); applies visual treatment; verifies color contrast; produces visual design spec with asset manifest; `user-input request` confirms before Phase 3
-5. Phase 3 — engine UI specialist spawned first (read from technical-preferences.md); produces implementation notes for ui-programmer; ui-programmer spawned with UX spec + visual spec + engine notes; implementation produced; interaction-patterns.md updated if new patterns introduced
+5. Phase 3 — engine UI specialist is spawned first; implementation starts only with a configured engine and an APPROVED spec. Patterns are user-approved and persisted before first review, not created during implementation
 6. Phase 4 — ux-designer, art-director, accessibility-specialist spawned in parallel; all three return results before Phase 5
-7. Phase 5 — review feedback addressed; animations verified skippable; UI sounds confirmed through audio event system; interaction-patterns.md final check; verdict: COMPLETE
+7. Phase 5 — each finding is fixed by the path owner and targeted re-checked by the reviewer who raised it; only then is verdict COMPLETE
 8. Summary report: UX spec APPROVED, visual design COMPLETE, implementation COMPLETE, accessibility COMPLIANT, all input methods supported, pattern library updated, verdict: COMPLETE
 
 **Assertions:**
@@ -80,16 +80,16 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 3. Skill does NOT advance to Phase 2
 4. `user-input request` presented with the specific flagged concerns and options:
    - (a) Return to ux-designer to address the issues and re-review
-   - (b) Accept the risk and proceed to Phase 2 anyway (conscious decision)
+   - (b) Stop this workflow and make a separate product decision; the verdict remains NEEDS REVISION
 5. If user chooses (a): ux-designer revises spec, `$ux-review` re-run; loop continues until APPROVED or user overrides
-6. If user chooses (b): skill proceeds with an explicit NEEDS REVISION note in the final report
+6. If user chooses (b), the workflow stops without implementation or COMPLETE
 7. Skill does NOT silently proceed past the gate
 
 **Assertions:**
 - [ ] Phase 2 does NOT begin while UX review verdict is NEEDS REVISION
 - [ ] `user-input request` presents the specific flagged concerns before offering options
 - [ ] User must make a conscious choice to override — skill does not assume override
-- [ ] If user accepts risk, NEEDS REVISION concern is documented in the final report
+- [ ] NEEDS REVISION/MAJOR is never treated as implementation-ready or COMPLETE
 - [ ] Revision-and-re-review loop is offered (not just a one-shot failure)
 - [ ] Skill does NOT discard the produced UX spec on review failure
 
@@ -159,17 +159,17 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 1. Phase 1a — orchestrator attempts to read `design/ux/interaction-patterns.md`; file not found
 2. Skill surfaces the gap: "interaction-patterns.md does not exist — no existing patterns to reuse"
 3. `user-input request` presented with options:
-   - (a) Run `$ux-design patterns` first to establish the pattern library, then continue
-   - (b) Proceed without the pattern library — ux-designer will document new patterns as they are created
+   - (a) Approve the required pattern behavior and persist it through the single pattern-library writer inside Phase 1
+   - (b) Leave the pattern unresolved and stop with BLOCKED/partial design output
 4. Skill does NOT invent or assume patterns from other sources
-5. If user chooses (b): ui-programmer is explicitly instructed to treat all patterns created as new and to add each to a new `design/ux/interaction-patterns.md` at completion
-6. Final report notes that interaction-patterns.md was created (or is still absent if user skipped)
+5. The library edit and current spec are in the same pre-authorized changeset; the entry is written before the spec's first review
+6. If approval, authorization, or persistence is missing, Phase 1c/2/3 do not run
 
 **Assertions:**
 - [ ] Skill does NOT silently ignore the missing pattern library
 - [ ] Skill does NOT invent patterns by guessing from the feature name or GDD alone
-- [ ] `user-input request` offers a "create pattern library first" option (referencing `$ux-design patterns`)
-- [ ] If user proceeds without the library, ui-programmer is told to treat all patterns as new
+- [ ] User approves behavior before the pattern-library writer persists it
+- [ ] ui-programmer never backfills an authoritative pattern after implementation
 - [ ] Final report documents pattern library status (created / absent / updated)
 - [ ] Skill does NOT fail entirely — the gap is noted and user is given a choice
 
@@ -184,6 +184,9 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 - [ ] Error Recovery Protocol followed: surface → assess → offer options → partial report
 - [ ] Partial report always produced even when agents are BLOCKED
 - [ ] Verdict is one of COMPLETE / BLOCKED
+- [ ] No configured engine stops before Phase 3 and produces no engine implementation
+- [ ] One Phase 1 changeset covers known spec, visual, implementation, conditional pattern-library, and session-state targets
+- [ ] Every Phase 5 blocker fix receives a targeted re-check before COMPLETE
 - [ ] Next steps present at end: `$ux-review`, `$code-review`, `$team-polish`
 
 ---

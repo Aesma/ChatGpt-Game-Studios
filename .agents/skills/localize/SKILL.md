@@ -9,7 +9,7 @@ Invoke this workflow as `$localize`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[scan|extract|validate|status|brief|cultural-review|vo-pipeline|rtl-check|freeze|qa]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `scan | extract | validate | status | brief <locale> | cultural-review <locale...> | vo-pipeline <scan|script|validate|integrate> [locale] | rtl-check <locale...> | freeze [call|lift] | qa <locale...>`. Exactly one mode is required. Reject missing required locale/subcommand, unknown values, and repeated/conflicting arguments with **FAIL** and no writes.
 
 Delegate substantive work to the `localization-lead` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
@@ -35,6 +35,10 @@ RTL layout testing, and localization QA sign-off.
 - `qa` — Run the full localization QA cycle before release
 
 If no subcommand is provided, output usage and stop. Verdict: **FAIL** — missing required subcommand.
+
+Before any mode reads tables, resolve exactly one existing project source table and its format. If multiple candidates exist, ask the user to choose and stop until one is selected. If none exists, use the already-defined default `assets/data/strings/strings-en.json`. Every locale table in the run must use that same location/format; never maintain a parallel CSV/JSON source of truth or introduce conversion.
+
+For any write-capable mode, compute every affected file before writing, including the primary table/output and any active-freeze update. Present all paths and exact modifications in one complete changeset. A freeze checklist/content decision does not authorize writes. If another affected file is discovered after preview, stop and re-preview the expanded set.
 
 ---
 
@@ -63,7 +67,7 @@ Report all findings with file paths and line numbers. This mode is read-only —
 ## Phase 2B: Extract Mode
 
 - Scan all source files for localized string references
-- Compare against the existing string table in `assets/data/strings/`
+- Compare against the uniquely resolved source table
 - Generate new entries for strings not yet keyed
 - Suggest key names following the convention: `[category].[subcategory].[description]`
   - Example: `ui.hud.health_label`, `dialogue.npc.merchant.greeting`, `menu.main.play_button`
@@ -73,9 +77,9 @@ Report all findings with file paths and line numbers. This mode is read-only —
   - Any placeholder meaning (`{playerName}` = the player's chosen display name)
   - Gender/plurality context if applicable
 
-Output a diff of new strings to add to the string table.
+Output a diff of new strings to add to the source table. If string freeze is ACTIVE, compute the corresponding `production/localization/freeze-status.md` Post-Freeze Changes edit now and include both files in the same preview.
 
-Present the diff to the user. Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Present the complete diff to the user. Do not write until the entire changeset is authorized.
 
 Once the complete changeset is authorized, write only the diff (new entries), not a full replacement. Verdict: **COMPLETE** — strings extracted and written.
 
@@ -83,15 +87,17 @@ Once the complete changeset is authorized, write only the diff (new entries), no
 
 ## Phase 2C: Validate Mode
 
-Read all string table files in `assets/data/strings/`. For each locale, check:
+Read the uniquely resolved source and locale tables. For each locale, check:
 
 - **Completeness** — key exists in source (en) but no translation for this locale
 - **Placeholder mismatches** — source has `{name}` but translation omits it or adds extras
 - **String length violations** — translation exceeds the character limit recorded in the source `context` field
 - **Plural form count** — locale requires N plural forms; translation provides fewer
 - **Orphaned keys** — translation exists but nothing in `src/` references the key
-- **Stale translations** — source string changed after translation was written (flag for re-translation)
-- **Encoding** — non-ASCII characters present and font atlas supports them (flag if uncertain)
+- **Stale translations** — only when an existing recorded prior source value proves that the source changed; otherwise report `unknown — no stale baseline`
+- **Encoding/font coverage** — validate syntax and encoding directly; without an explicit atlas/font coverage artifact report `manual verification required`
+
+For orphan candidates, state the searched paths and the limits of detecting dynamic references. Never auto-delete an orphan from this result. Only key presence, placeholders, empty values, recorded limits, and parseable format receive definite conclusions without further evidence.
 
 Report validation results grouped by locale and severity. This mode is read-only — no files are written.
 
@@ -132,7 +138,7 @@ external translation team or localisation vendor alongside the string table expo
 
 Read:
 - `design/gdd/` — extract game genre, tone, setting, character names
-- `assets/data/strings/strings-en.json` — the source string table
+- The uniquely resolved source string table (default `assets/data/strings/strings-en.json`)
 - Any existing lore or narrative documents in `design/narrative/`
 
 Generate `production/localization/translator-brief-[locale]-[date].md`:
@@ -238,7 +244,7 @@ Manage the voice-over localization process. Determine the sub-task from the argu
 
 ### VO Pipeline: Scan
 
-Read `assets/data/strings/` and `design/narrative/`. Identify:
+Read the uniquely resolved string tables and `design/narrative/`. Identify:
 - All dialogue lines (keys matching `dialogue.*`) with source text
 - Lines already recorded (audio file exists in `assets/audio/vo/`)
 - Lines not yet recorded
@@ -283,7 +289,7 @@ Search `src/` for VO audio references. Verify each referenced path exists in `as
 Right-to-left languages (Arabic, Hebrew, Persian, Urdu) require layout mirroring beyond
 just translating text. This mode validates the implementation.
 
-Read `.codex/docs/technical-preferences.md` to determine the engine. Then check:
+Read `docs/technical-preferences.md` to determine the engine. Then check:
 
 **Layout mirroring**
 - Is RTL layout enabled in the engine? (Godot: `Control.layout_direction`, Unity: `RTL Support` package, Unreal: text direction flags)
@@ -342,7 +348,7 @@ Ask the user directly:
 - Prompt: "Are all items above confirmed? Calling string freeze locks the source table."
 - Options: `[A] Yes — call string freeze now` / `[B] No — I still have strings to add`
 
-If [A]: Write `production/localization/freeze-status.md`:
+If [A], draft `production/localization/freeze-status.md` and include it in the complete changeset preview before writing:
 
 ```markdown
 # String Freeze Status
@@ -358,11 +364,11 @@ If [A]: Write `production/localization/freeze-status.md`:
 
 ### freeze lift
 
-If argument includes `lift`: update `freeze-status.md` Status to `LIFTED`, record the reason and date. Warn: "Lifting the freeze requires re-translation of all modified strings. Notify the translation team."
+For `freeze lift`, draft the `freeze-status.md` Status change to `LIFTED` with reason and date, include it in the complete changeset preview, and write only after authorization. Warn: "Lifting the freeze requires re-translation of all modified strings. Notify the translation team."
 
 ### freeze check (auto-integrated into extract)
 
-When `extract` mode finds new or modified strings and `freeze-status.md` shows Status: ACTIVE — append the new keys to `## Post-Freeze Changes` and warn:
+When `extract` mode finds new or modified strings and `freeze-status.md` shows Status: ACTIVE, the source diff and Post-Freeze Changes edit are one changeset; after that combined preview is authorized, apply both and warn:
 > "⚠️ String freeze is active. [N] new/modified strings have been added. These are freeze violations. Notify your localization vendor before proceeding."
 
 ---
@@ -379,7 +385,7 @@ Spawn `localization-lead` through Codex subagent delegation with:
 - The current `$localize validate` report
 - The cultural review report (if it exists)
 
-Ask the localization-lead to produce a QA plan covering:
+Ask the localization-lead to produce a QA plan, and separately collect any existing executed results, covering:
 
 1. **Functional string check** — every string displays in-game without truncation, placeholder errors, or encoding corruption
 2. **UI overflow check** — translated strings that exceed UI bounds (even if within character limits, some languages expand)
@@ -388,7 +394,7 @@ Ask the localization-lead to produce a QA plan covering:
 5. **VO sync check** — if VO exists, verify lip sync or subtitle timing is acceptable after translation
 6. **Platform cert requirements** — check platform-specific localization requirements (age ratings text, legal notices, ESRB/PEGI/CERO text)
 
-Output a QA verdict per locale:
+Output the template below as a **QA plan** when executed evidence is missing; in that case state `verdict unavailable — QA has not been executed` and do not mark producer sign-off. Only output a QA verdict per locale when every listed check has actual results:
 
 ```
 ## Localization QA Verdict — [Locale]
@@ -413,7 +419,7 @@ Output a QA verdict per locale:
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
-**Gate integration**: The Polish → Release gate requires a PASS or PASS WITH CONDITIONS verdict for every locale being shipped. A FAIL blocks release for that locale only — other locales may still proceed if their QA passes.
+**Gate integration**: PASS requires executed evidence for every applicable check and no open BLOCKING finding. PASS WITH CONDITIONS requires executed evidence plus only explicitly listed non-blocking conditions. Missing execution evidence has no release verdict and no sign-off. FAIL blocks release for that locale only; other locales may proceed only from their own evidence-backed verdicts.
 
 ---
 

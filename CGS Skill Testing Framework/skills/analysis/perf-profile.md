@@ -5,8 +5,8 @@
 `$perf-profile` is a structured performance profiling workflow that identifies
 bottlenecks and recommends optimizations. If profiler data or performance logs
 are provided, it analyzes them directly. If not, it guides the user through a
-manual profiling checklist. No director gates are invoked. The skill asks
-"May I apply the proposed changeset?" before persisting a report.
+manual profiling checklist. No director gates are invoked. The skill is read-only
+and never persists a report or asks for changeset authorization.
 Verdicts: WITHIN BUDGET, CONCERNS, or OVER BUDGET.
 
 ---
@@ -18,14 +18,14 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] YAML frontmatter contains only the required `name` and non-empty `description`; `name` matches the skill directory
 - [ ] Has ≥2 phase headings
 - [ ] Contains verdict keywords: WITHIN BUDGET, CONCERNS, OVER BUDGET
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Remains read-only; no authorization prompt appears and no file is written
 
 **Assertions:**
 - [ ] Spike frames are identified by frame number
 - [ ] Draw call count and budget are compared explicitly
 - [ ] Verdict is CONCERNS when spikes exceed budget even if average is OK
 - [ ] At least one specific optimization recommendation is given
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Every number comes from profiler input; static findings contain only file:line candidates and validation guidance
 
 ---
 
@@ -68,13 +68,13 @@ Verified automatically by `$skill-test static` — no fixture needed.
 2. All frames are over the 16.6ms budget
 3. Verdict is OVER BUDGET
 4. Skill outputs a prioritized optimization list (e.g., LOD system, shader complexity, physics tick rate)
-5. Skill asks "changeset authorization" before applying a not-yet-authorized changeset report
+5. Skill returns the measured report in the conversation without a write prompt
 
 **Assertions:**
 - [ ] Verdict is OVER BUDGET when all or most frames exceed budget
 - [ ] Target frame budget is read from `technical-preferences.md` (not hardcoded)
 - [ ] Optimization priority list is provided, not just the raw verdict
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] No report file is written
 
 ---
 
@@ -95,7 +95,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 5. Verdict is WITHIN BUDGET; report notes improvement since last profile
 
 **Assertions:**
-- [ ] Skill checks `production/qa/` for prior perf reports before applying a not-yet-authorized changeset
+- [ ] Skill checks `production/qa/` for prior comparable perf reports
 - [ ] Delta comparison is shown (prior vs. current for key metrics)
 - [ ] Verdict is WITHIN BUDGET when current metrics are within budget
 - [ ] Improvement trend is noted positively in the report
@@ -114,12 +114,12 @@ Verified automatically by `$skill-test static` — no fixture needed.
 1. Skill analyzes profiler data; verdict is CONCERNS
 2. No director gate is invoked regardless of review mode
 3. Output notes: "For in-depth analysis, consider running `$perf-profile` with the performance-analyst agent"
-4. Skill asks "changeset authorization" and writes report on user approval
+4. Skill returns the measured analysis in the conversation and writes nothing
 
 **Assertions:**
 - [ ] No director gate is invoked in any review mode
 - [ ] Performance-analyst consultation is suggested (not mandated)
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] No authorization prompt appears and no file is written
 - [ ] Verdict is CONCERNS for spike-based findings
 
 ---
@@ -129,9 +129,10 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Reads profiler data when provided; outputs checklist when not
 - [ ] Reads `technical-preferences.md` for target platform frame budget
 - [ ] Checks for prior perf reports to enable delta comparison
-- [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
+- [ ] Remains read-only in static and measured modes
 - [ ] No director gates are invoked
 - [ ] Verdict is one of: WITHIN BUDGET, CONCERNS, OVER BUDGET
+- [ ] No budget verdict is emitted when profiler data is absent, unparsable, or the project budget is missing/placeholder
 
 ---
 

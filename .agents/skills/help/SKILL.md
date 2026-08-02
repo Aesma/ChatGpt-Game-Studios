@@ -36,8 +36,9 @@ the artifact globs that indicate completion.
 
 ## Step 1b: Find Skills Not in the Catalog
 
-After reading the catalog, Find files matching `.agents/skills/*/SKILL.md` to get the full list
-of installed skills. For each file, extract the `name:` field from its frontmatter.
+Only when the user supplied a help topic, or when the catalog has no relevant
+match, find `.agents/skills/*/SKILL.md` and read frontmatter only. Do not scan
+every skill on an ordinary catalog-driven "what next?" request.
 
 Compare against the `command:` values in the catalog. Any skill whose name does
 not appear as a catalog command is an **uncataloged skill** — still usable but not
@@ -61,8 +62,11 @@ skills in production/polish, etc.).
 
 Check in this order:
 
-1. **Read `production/stage.txt`** — if it exists and has content, this is the
-   authoritative phase name. Map it to a catalog phase key:
+1. **Read `production/stage.txt`** — trim its first non-empty line and accept
+   it as authoritative only when it is one of the seven existing values below.
+   If the file is empty or contains another value, show a warning and continue
+   to artifact inference instead of using an undefined phase key. Map valid
+   values to:
    - "Concept" → `concept`
    - "Systems Design" → `systems-design`
    - "Technical Setup" → `technical-setup`
@@ -77,7 +81,12 @@ Check in this order:
    - `docs/architecture/adr-*.md` exists → `technical-setup`
    - `design/gdd/systems-index.md` exists → `systems-design`
    - `design/gdd/game-concept.md` exists → `concept`
-   - Nothing → `concept` (fresh project)
+   - Nothing, while technical preferences still contain engine/language
+     placeholders → `not configured`
+
+For `not configured`, show a short catalog-driven overview of the full
+workflow and make `$start` the primary recommendation. Infer Concept only when
+a concept artifact or another concrete Concept signal exists.
 
 ---
 
@@ -117,10 +126,12 @@ If the step has no `artifact` field:
 When the current phase is `production`, check for `production/sprint-status.yaml`
 before doing any pattern-based story checks. If it exists, read it directly:
 
-- Stories with `status: in-progress` → surface as "currently active"
-- Stories with `status: ready-for-dev` → surface as "next up"
-- Stories with `status: done` → count as complete
-- Stories with `status: blocked` → surface as blocker with the `blocker` field
+- Canonical `status: in_progress` → surface as "currently active"
+- Canonical `status: ready` → surface as "next up"
+- Canonical `status: done` → count as complete
+- Canonical `status: blocked` → surface as blocker with the `blocker` field
+- For read-only backward compatibility, normalize legacy hyphenated or
+  space/title-case spellings to those values; never write them back
 
 This gives precise per-story status without Markdown scanning. Skip the pattern
 artifact check for the `implement` and `story-done` steps — the YAML is authoritative.
@@ -145,8 +156,16 @@ From the completion data, determine:
 4. **Upcoming required steps** — required steps after the current blocker
    (show as "coming up" so user can plan ahead)
 
-If the user provided an argument (e.g. "just finished design-review"), use that
-to advance past the step they named even if the artifact check is ambiguous.
+Classify a user argument before using it:
+- Treat it as a completion claim only when it contains explicit
+  finished/completed semantics and the named token exactly matches a catalog
+  command or step ID.
+- Treat all other arguments (for example `testing`) as help topics and filter
+  catalog/installed descriptions without advancing project state.
+
+A completion claim may confirm a MANUAL/UNKNOWN item. It may not override a
+required step whose catalog entry names a concrete artifact: if that artifact is
+absent, keep it as the blocker and explain the evidence mismatch.
 
 ---
 
@@ -173,14 +192,14 @@ Keep it **short and direct**. This is a quick orientation, not a report.
 
 ### → Next up (REQUIRED)
 **[Step name]** — [description]
-Command: `[/command]`
+Command: `[$command]`
 
 ### ~ Also available (OPTIONAL)
-- **[Step name]** — [description] → `/command`
+- **[Step name]** — [description] → `$command`
 - **[Step name]** — [description] → `/command`
 
 ### Coming up after that
-- [Next required step name] (`/command`)
+- [Next required step name] (`$command`)
 - [Next required step name] (`/command`)
 
 ---
@@ -192,7 +211,7 @@ Approaching **[next phase]** gate → run `$gate-check` when ready.
 - `→` for the current required next step (only one — the first blocker)
 - `~` for optional steps available now
 - Show commands inline as backtick code
-- If a step has no command (e.g. "Implement Stories"), explain what to do instead of showing a slash command
+- If a step has no command (e.g. "Implement Stories"), explain what to do instead of inventing a command
 - For MANUAL steps, ask the user: "I can't tell if [step] is done — has it been completed?"
 
 Verdict: **COMPLETE** — next steps identified.

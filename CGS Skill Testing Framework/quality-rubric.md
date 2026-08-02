@@ -25,6 +25,22 @@ auto-advancing stage and must respect the three review modes.
 | **G3 — Lean mode: PHASE-GATE only** | In `lean` mode, only `*-PHASE-GATE` gates run; inline gates (CD-PILLARS, TD-ARCHITECTURE, etc.) are skipped |
 | **G4 — Solo mode: no directors** | In `solo` mode, no director gates spawn; each is noted as "skipped — Solo mode" |
 | **G5 — No auto-advance** | Skill never writes `production/stage.txt` unless the bounded task already authorizes that update or the skill previews the complete changeset and obtains one explicit confirmation. |
+
+---
+
+### `authoring`
+
+**Skills**: design-system, ux-design, art-bible, quick-design,
+architecture-decision, create-architecture
+
+Authoring skills create or revise an existing project document. They must follow
+the applicable project template, keep user-owned decisions explicit, and place
+every planned write inside one bounded changeset.
+
+| Metric | PASS criteria |
+|---|---|
+| **A1 — Template fidelity** | The workflow reads and follows the applicable existing project template or directory contract; it does not substitute a reduced, incompatible schema. |
+| **A2 — Bounded authoring decision** | Draft content is based on explicit user decisions, and every planned file edit is included in one complete changeset authorization before the first write. |
 | **A3 — Retrofit mode** | Skill detects if the target file already exists and offers to update specific sections rather than overwriting the whole document. Lightweight skills (quick-design) that always create new files are exempt. |
 | **A4 — Director gate at correct tier** | If a director gate is defined for this skill (e.g., CD-GDD-ALIGN, TD-ADR), it runs at the correct mode threshold (full/lean) — NOT in solo |
 | **A5 — Skeleton-first** | Full authoring skills create a file skeleton with all section headers before filling content, to preserve progress on session interruption. Lightweight skills are exempt. |
@@ -32,6 +48,24 @@ auto-advancing stage and must respect the three review modes.
 > **Full authoring skills** (must pass all 5 metrics): `design-system`, `ux-design`, `art-bible`
 > **Lightweight authoring skills** (A1, A2, A5 use single-draft pattern; A3 exempt for new-file-only skills): `quick-design`, `architecture-decision`, `create-architecture`
 > **Review-mode skill** (evaluated against review metrics): `ux-review`
+
+---
+
+### `review`
+
+**Skills**: design-review, review-all-gdds, architecture-review, ux-review
+
+Review skills evaluate existing artifacts against their declared contract. They
+must route only supported artifact types, distinguish observed evidence from
+claims, and never report a passing verdict for incomplete coverage.
+
+| Metric | PASS criteria |
+|---|---|
+| **R1 — Supported target routing** | The workflow validates its input path/type and applies only the checklist defined for that artifact; unsupported inputs stop without a verdict. |
+| **R2 — Evidence-backed findings** | Every finding and coverage claim identifies observable document, code, test, or user-confirmed evidence; existence alone is not reported as execution or passing. |
+| **R3 — Deterministic verdict** | Blocking, advisory, missing-evidence, and partial-review conditions map explicitly to the workflow's existing verdict vocabulary. |
+| **R4 — Partial coverage cannot pass** | Missing required inputs, failed reviewers, or incomplete required checks are surfaced and cannot produce the highest/passing verdict. |
+| **R5 — Safe handoff** | The review reports exact remediation/re-review steps and does not silently rewrite the reviewed artifact or self-approve an unreviewed revision. |
 
 ---
 

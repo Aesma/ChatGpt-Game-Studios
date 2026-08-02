@@ -170,6 +170,11 @@ gates apply.
 - [ ] Cross-checks stage.txt against artifacts and flags discrepancies
 - [ ] Does not write stage.txt (that is `$gate-check`'s responsibility)
 - [ ] Ends with a next-step recommendation appropriate to the detected stage
+- [ ] An invalid `stage.txt` value is reported and ignored for inference; every valid explicit value is still cross-checked against artifacts
+- [ ] Engine configuration or a source-file count cannot advance a project without preceding design/setup evidence
+- [ ] Production requires aligned implementation code plus active sprint/epic signals; conflicting signals retain the lower fully evidenced stage
+- [ ] Completion percentages require an explicit plan denominator and test coverage requires an actual coverage report; otherwise counts/present/missing/unknown are used
+- [ ] No project-stage report file is written and no changeset authorization is requested
 
 ---
 

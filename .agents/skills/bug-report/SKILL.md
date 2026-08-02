@@ -97,27 +97,36 @@ If no argument is provided, ask the user for a bug description before proceeding
 
 ## Phase 2C: Verify Mode
 
-Read `production/qa/bugs/[BUG-ID].md`. Extract the reproduction steps and expected result.
+Resolve exactly one file matching `production/qa/bugs/[BUG-ID]-*.md` and read it. Extract the reproduction steps and expected result.
 
-1. **Re-run reproduction steps** — search file names and contents to check whether the root-cause code path still exists as described. If the fix removed or changed it, note the change.
-2. **Run the related test** — if the bug's system has a test file in `tests/`, run it through the configured shell and report pass/fail.
-3. **Check for regression** — search the codebase for any new occurrence of the pattern that caused the bug.
+1. Treat code search only as supporting evidence; it never counts as reproducing
+   or clearing a runtime bug.
+2. If an executable automated reproduction or related test is available, run the
+   documented reproduction and compare the observed result with Expected Result.
+3. Run any related regression tests and record the actual command/result. If the
+   reproduction cannot be executed, required tests cannot run, or results are
+   inconclusive, the verdict must be CANNOT VERIFY.
 
 Produce a verification verdict:
 
-- **VERIFIED FIXED** — reproduction steps no longer produce the bug; related tests pass
+- **VERIFIED FIXED** — an actual executable reproduction no longer produces the bug and related tests pass
 - **STILL PRESENT** — bug reproduces as described; fix did not resolve the issue
 - **CANNOT VERIFY** — automated checks inconclusive; manual playtest required
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Prepare the exact existing-file edit and include it in the complete changeset preview:
+- VERIFIED FIXED: set the top-level Status to `Verified Fixed` and append the
+  actual verification command/results.
+- STILL PRESENT: keep or set top-level Status to `Open` and append the observed failure.
+- CANNOT VERIFY: append the limitation only; do not change top-level Status.
 
-If STILL PRESENT: reopen the bug, set Status back to Open, and suggest re-running `$hotfix [BUG-ID]`.
+Write only after the single authorization. If STILL PRESENT, suggest re-running
+`$hotfix [BUG-ID]`. Then end the Verify run; do not enter Phase 3.
 
 ---
 
 ## Phase 2D: Close Mode
 
-Read `production/qa/bugs/[BUG-ID].md`. Confirm Status is `Verified Fixed` before closing. If status is anything else, stop: "Bug [ID] must be Verified Fixed before it can be closed. Run `$bug-report verify [BUG-ID]` first."
+Resolve exactly one file matching `production/qa/bugs/[BUG-ID]-*.md` and read it. Confirm Status is `Verified Fixed` before closing. If status is anything else, stop: "Bug [ID] must be Verified Fixed before it can be closed. Run `$bug-report verify [BUG-ID]` first."
 
 Append a closure record to the bug file:
 
@@ -136,13 +145,16 @@ Update the top-level `**Status**: Open` field to `**Status**: Closed`.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
-After closing, check `production/qa/bug-triage-*.md` — if the bug appears in an open triage report, note: "Bug [ID] is referenced in the triage report. Run `$bug-triage` to refresh the open bug count."
+After closing, check `production/qa/bug-triage-*.md` — if the bug appears in an open triage report, note: "Bug [ID] is referenced in the triage report. Run `$bug-triage` to refresh the open bug count." Then end the Close run; do not enter Phase 3.
 
 ---
 
-## Phase 3: Save Report
+## Phase 3: Save Report (Description and Analyze modes only)
 
-Present the completed bug report(s) to the user.
+Verify and Close modes have already ended and must never enter this phase.
+
+Present the completed bug report(s) to the user and show the exact target path:
+`production/qa/bugs/BUG-[NNNN]-[slug].md`.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 

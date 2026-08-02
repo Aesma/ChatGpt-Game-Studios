@@ -4,14 +4,14 @@
 
 `$skill-improve` runs an automated test-fix-retest improvement loop on a skill
 file. It invokes `$skill-test static` (and optionally `$skill-test category`) to
-establish a baseline score, diagnoses the failing checks, proposes targeted fixes
+establish per-check baseline statuses, diagnoses the failing checks, proposes targeted fixes
 to the SKILL.md file, asks "May I apply the proposed changeset?", applies
 the fixes, and re-runs the tests to confirm improvement.
 
 If the proposed fix makes the skill worse (regression), the fix is reverted (with
 user confirmation) rather than applied. If the skill is already perfect (0 failures),
 the skill exits immediately without making changes. No director gates apply. Verdicts:
-IMPROVED (score went up), NO CHANGE (no improvements possible or user declined), or
+IMPROVED (target checks improved without any new warning/failure or downgrade), NO CHANGE (no improvements possible or user declined), or
 REVERTED (fix was applied but caused regression and was reverted).
 
 ---
@@ -68,7 +68,8 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Assertions:**
 - [ ] Both static and category scores are captured in the baseline
-- [ ] Combined score is used for comparison (not just one type)
+- [ ] Static and category checks are compared by stable assertion identity;
+      combined score is summary only and cannot hide a downgrade
 - [ ] All 3 failures are addressed in the proposed fix
 - [ ] Re-test confirms improvement in both score types
 - [ ] Verdict is IMPROVED with combined before/after
@@ -121,8 +122,8 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ## Protocol Compliance
 
-- [ ] Always establishes a baseline score before proposing any changes
-- [ ] Shows before/after score comparison in the output
+- [ ] Always establishes per-check baseline statuses before proposing changes
+- [ ] Shows before/after assertion comparison; counts are summary only
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Detects regressions by comparing re-test score to baseline
 - [ ] Asks for user confirmation before reverting (not automatic)
@@ -138,3 +139,14 @@ Verified automatically by `$skill-test static` — no fixture needed.
   improvement loop — only structural (static) and category scores are automated.
 - The case where the skill file cannot be read (permissions error or missing file)
   is not tested; this would result in an error before the baseline is established.
+
+## P0 Contract Coverage
+
+- [ ] IMPROVED requires the target issue to improve with no new FAIL/WARN and
+  no existing assertion downgrade, regardless of aggregate score.
+- [ ] Spec/catalog edits require independent evidence of a stale authority and
+  never delete, weaken, recategorize, or lower an assertion to gain a pass.
+- [ ] Apply checks that targets still equal the previewed baseline; restore checks
+  that targets still equal this run's result. Concurrent edits are never overwritten.
+- [ ] If a previously successful validation cannot be re-run, the result is
+  unverified and the conditional restore runs; a restore conflict reports BLOCKED.

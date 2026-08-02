@@ -22,6 +22,9 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Assertions:**
 - [ ] Changelog covers commits since the most recent git tag
+- [ ] A specified historical tag uses the previous tag through that tag, never latest-tag..HEAD
+- [ ] A missing target boundary stops instead of silently substituting another range
+- [ ] Internal output omits unsupported owner, commit hash/range, file-count, and line-count fields
 - [ ] Entries are organized into Features / Fixes / Known Issues sections
 - [ ] Sprint story references are used to enrich commit descriptions
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
@@ -31,6 +34,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Skill reads existing changelog before applying a not-yet-authorized changeset to detect prior content
 - [ ] New section is prepended (not appended or overwriting) existing entries
 - [ ] Old changelog entries for v0.2.0 and v0.3.0 are preserved in the written file
+- [ ] No whole-file overwrite option is offered
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 
 ---

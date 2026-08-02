@@ -14,7 +14,7 @@ Arguments: `[sprint-N|milestone-name]`. Treat bracketed values as optional unles
 
 ## Phase 1: Parse Arguments
 
-Determine whether this is a sprint retrospective (`sprint-N`) or a milestone retrospective (`milestone-name`).
+Determine whether this is a sprint retrospective (`sprint-N`) or a milestone retrospective (`milestone-name`). Resolve one exact existing target and retain its identifier for every later data-source check. Do not allow a current status file to substitute for a different or historical target.
 
 ---
 
@@ -33,7 +33,11 @@ If a matching file is found, ask the user directly:
   - `[B] Start fresh — generate a new retrospective (archive the old one)`
 
 If [A]: read the existing file and carry its content forward, revising sections with new data.
-If [B]: continue to Phase 2 with a blank slate. Before writing the new file, rename the existing one with a `-archived-[date]` suffix.
+If [B]: continue to Phase 2 with a blank slate. Do not rename anything yet.
+The source path, archived target path, and new retrospective path must appear
+in the same complete changeset preview. Immediately before applying it, verify
+the existing file still matches the previewed baseline; on any conflict, stop
+without moving or overwriting either version.
 
 ---
 
@@ -44,7 +48,13 @@ Read the sprint or milestone plan from the appropriate location:
 - Sprint plans: `production/sprints/`
 - Milestone definitions: `production/milestones/`
 
-**Also check for `production/sprint-status.yaml`**: if it exists, read it alongside the sprint plan. It is the authoritative source for actual story completion status (status: done, completed dates, blockers). Use it as the primary source for completion metrics in Phase 3. Fall back to markdown scanning only if the yaml does not exist. Note discrepancies between the yaml and the sprint plan (e.g., stories in yaml not in plan, or vice versa).
+**Also check for `production/sprint-status.yaml`**: use it only when its sprint
+identifier matches the exact retrospective target. For a matching sprint it is
+the primary source for actual story completion status; otherwise report it as
+unrelated and do not use it. A milestone retrospective aggregates only the
+sprints/goals explicitly included by the milestone artifact and never imports
+an unrelated current sprint status. Note discrepancies between matching status
+and plan sources.
 
 **If the file does not exist or is empty**, output:
 
@@ -61,6 +71,11 @@ If the user chooses [A], collect the data and continue to Phase 3 using what the
 If the user chooses [B], stop here.
 
 Extract: planned tasks, estimated effort, owners, and goals.
+
+Actual effort, bug counts, estimation accuracy, and historical velocity may be
+calculated only when existing sprint/status/bug/retrospective artifacts explicitly
+provide the required values. Missing inputs must be written as
+`N/A — source unavailable`; do not infer time spent from commits or completion dates.
 
 Run Git history read-only for the sprint period to understand what was actually committed and when:
 
@@ -97,6 +112,10 @@ Read previous retrospectives (if any) from `production/retrospectives/` to check
 ---
 
 ## Phase 4: Generate the Retrospective
+
+Keep every metric source-traceable. Use `N/A — source unavailable` for any
+actual effort, bug count, estimation accuracy, or velocity input not explicitly
+present in an existing artifact.
 
 ```markdown
 ## Retrospective: [Sprint N / Milestone Name]
@@ -196,7 +215,12 @@ the single most important thing to change going forward?]
 
 Present the retrospective and top findings to the user (completion rate, velocity trend, top blocker, most important action item).
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized. (or `production/retrospectives/retro-[milestone-name]-[date].md` for milestone retrospectives)
+Add this proposed file or edit to the complete changeset preview; do not write
+it until that changeset is authorized. Use
+`production/retrospectives/retro-[sprint-slug]-[date].md` for a sprint or
+`production/retrospectives/retro-[milestone-name]-[date].md` for a milestone.
+If Start fresh was selected, the archive move and new file are part of this
+same changeset.
 
 Once the complete changeset is authorized, write the file, creating the `production/retrospectives/` directory if needed. Verdict: **COMPLETE** — retrospective saved.
 
@@ -206,21 +230,18 @@ If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** —
 
 ## Phase 6: Next Steps
 
-Ask the user directly:
-- Prompt: "Retrospective complete. The action items and velocity data are ready. Would you like to start sprint planning now with this data pre-loaded?"
-- Options:
-  - `[A] Yes — open sprint planning with retro action items and velocity delta pre-populated`
-  - `[B] No — I'll reference the retrospective file manually when I'm ready`
+End after saving or declining the retrospective. Provide the generated file
+path and relevant existing commands as optional handoffs:
 
-If the user selects [A]: Proceed to invoke `$sprint-plan new`, passing the retrospective file path and a summary of the action items and velocity change so the sprint planner can reference them.
+- `$sprint-plan new` may consume the retrospective when the user invokes it later.
+- For a milestone, `$gate-check` may be run later as a separate explicit workflow.
 
-- If this was a milestone retrospective, run `$gate-check` to formally assess readiness for the next phase.
+Do not invoke either workflow from this retrospective run.
 
 ### Guidelines
 
-- Be honest and specific. Vague retrospectives ("communication could be better") produce vague improvements. Use data and examples.
+- Be honest and specific. Vague retrospectives produce vague improvements.
 - Focus on systemic issues, not individual blame.
-- Limit action items to 3-5. More than that dilutes focus.
-- Every action item must have an owner and a deadline.
-- Check whether previous action items were completed. Recurring unaddressed items are a process smell.
-- If this is a milestone retrospective, also evaluate whether the milestone goals were achieved and what that means for the overall project timeline.
+- Limit action items to 3-5.
+- Do not assign an owner, deadline, or cause unless an artifact or the user supplies it.
+- For milestone retrospectives, evaluate only explicitly included goals and sprints.

@@ -12,7 +12,16 @@ Arguments: `[category|all]`. Treat bracketed values as optional unless the workf
 
 ## Phase 1: Read Standards
 
-Read the art bible or asset standards from the relevant design docs and the AGENTS.md naming conventions.
+For every target asset, read the complete applicable standards chain:
+
+1. `design/art/art-bible.md`, section `Asset Standards`, when present.
+2. `docs/technical-preferences.md`, when present.
+3. Every `AGENTS.md` from the repository root down to the asset's parent
+   directory. The closest directory rule wins when rules conflict.
+
+The examples in Phase 3 are defaults only when none of those project sources
+defines the check. Never use a default to override a closer `AGENTS.md`, the art
+bible, or technical preferences.
 
 ---
 
@@ -30,7 +39,12 @@ Scan the target asset directory using a file search:
 
 ## Phase 3: Run Compliance Checks
 
-**Naming conventions:**
+For every applicable check, record one of `PASS`, `FAIL`, or `NOT CHECKED` plus
+the evidence used. If a binary property cannot be read, a file cannot be parsed,
+or a referenced schema does not exist, record `NOT CHECKED` and the reason; never
+infer that the asset passed.
+
+**Default naming examples (only when no project rule applies):**
 - Art: `[category]_[name]_[variant]_[size].[ext]`
 - Audio: `[category]_[context]_[name]_[variant].[ext]`
 - All files must be lowercase with underscores
@@ -85,6 +99,10 @@ Scan the target asset directory using a file search:
 
 ## Verdict: [COMPLIANT / WARNINGS / NON-COMPLIANT]
 ```
+
+`COMPLIANT` is allowed only when every applicable check was actually performed
+and passed. Any `NOT CHECKED` result forces at least `WARNINGS`; a failed blocking
+format or reference check produces `NON-COMPLIANT`.
 
 This skill is read-only — it produces a report but does not write files.
 

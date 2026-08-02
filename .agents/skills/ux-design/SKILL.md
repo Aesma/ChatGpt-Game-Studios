@@ -31,8 +31,7 @@ Three authoring modes exist based on the argument:
 - "What are we designing today?"
   - Options: "A specific screen or flow (I'll name it)", "The game HUD", "The interaction pattern library", "I'm not sure — help me figure it out"
 
-If the user selects "I'll name it" or types a screen name, normalize it to kebab-case
-for the filename (e.g., "Main Menu" becomes `main-menu`).
+If the user selects "I'll name it" or types a screen name, normalize it to a non-empty kebab-case filename segment. Reject `/`, `\\`, absolute paths, `.`, `..`, empty slugs, and the reserved slugs `hud` and `interaction-patterns`. Resolve the final path and verify it remains directly inside `design/ux/` before any read or write.
 
 ---
 
@@ -100,7 +99,7 @@ must satisfy the accessibility tier committed to there.
 
 ### 2h: Input Method (from Project Config)
 
-Read `.codex/docs/technical-preferences.md` and extract the `## Input & Platform`
+Read `docs/technical-preferences.md` and extract the `## Input & Platform`
 section. Store these values for use throughout the skill — they drive the
 Interaction Map and inform accessibility requirements:
 
@@ -143,22 +142,16 @@ Before creating a skeleton, check if the target output file already exists.
 Find files matching `design/ux/[filename].md` (where `[filename]` is the resolved output path from Phase 1).
 
 **If the file exists — retrofit mode:**
-- Read the file in full
-- For each expected section, check whether the body has real content (more than a `[To be designed]` placeholder) or is empty/placeholder
+- Read the mode's current authoritative template, then read the target file in full
+- Derive the expected section headings from that template and match them exactly. Treat only explicit template placeholders as placeholders; short but real content is not empty, and existing real sections are never renamed or reordered
 - Present a section status summary to the user:
 
 > "Found existing UX spec at `design/ux/[filename].md`. Here's what's already done:
 >
 > | Section | Status |
 > |---------|--------|
-> | Overview & Context | [Complete / Empty / Placeholder] |
-> | Player Journey Integration | ... |
-> | Screen Layout & Information Architecture | ... |
-> | Interaction Model | ... |
-> | Feedback & State Communication | ... |
-> | Accessibility | ... |
-> | Edge Cases & Error States | ... |
-> | Open Questions | ... |
+> | [section heading read from the current authoritative template] | [Complete / Empty / Placeholder] |
+> | ... | ... |
 >
 > I'll work on the [N] incomplete sections only — existing content will not be overwritten."
 
@@ -173,233 +166,19 @@ Proceed to Phase 3 (Create File Skeleton) as normal.
 
 ## 3. Create File Skeleton
 
-Once the user confirms, **immediately** create the output file with empty section
-headers. This ensures incremental writes have a target and work survives interruptions.
+Select the existing authoritative template for the mode: `.codex/docs/templates/ux-spec.md`, `.codex/docs/templates/hud-design.md`, or `.codex/docs/templates/interaction-pattern-library.md`. Read it at runtime and instantiate that complete template by replacing only its placeholders; do not maintain or use a copied section skeleton.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
----
-
-### Skeleton for UX Spec (screen or flow)
-
-```markdown
-# UX Spec: [Screen/Flow Name]
-
-> **Status**: In Design
-> **Author**: [user + ux-designer]
-> **Last Updated**: [today's date]
-> **Journey Phase(s)**: [from context]
-> **Template**: UX Spec
+Before the first write, preview the concrete UX target, `production/session-state/active.md`, and—when the current spec is already known to require a new/revised pattern—`design/ux/interaction-patterns.md`. State the full intent: create the template skeleton, replace placeholders section by section, persist user-approved pattern entries before first review, and update this task's session state while preserving unrelated content. Obtain one boundary authorization; later section Approval is design-content approval, not another file-write approval. An unpreviewed pattern-library path uses the existing scope-expansion rule.
 
 ---
 
-## Purpose & Player Need
+### Template instantiation by mode
 
-[To be designed]
+- Screen/flow: read and instantiate `.codex/docs/templates/ux-spec.md` in full.
+- HUD: read and instantiate `.codex/docs/templates/hud-design.md` in full.
+- Patterns: read and instantiate `.codex/docs/templates/interaction-pattern-library.md` in full.
 
----
-
-## Player Context on Arrival
-
-[To be designed]
-
----
-
-## Navigation Position
-
-[To be designed]
-
----
-
-## Entry & Exit Points
-
-[To be designed]
-
----
-
-## Layout Specification
-
-### Information Hierarchy
-
-[To be designed]
-
-### Layout Zones
-
-[To be designed]
-
-### Component Inventory
-
-[To be designed]
-
-### ASCII Wireframe
-
-[To be designed]
-
----
-
-## States & Variants
-
-[To be designed]
-
----
-
-## Interaction Map
-
-[To be designed]
-
----
-
-## Events Fired
-
-[To be designed]
-
----
-
-## Transitions & Animations
-
-[To be designed]
-
----
-
-## Data Requirements
-
-[To be designed]
-
----
-
-## Accessibility
-
-[To be designed]
-
----
-
-## Localization Considerations
-
-[To be designed]
-
----
-
-## Acceptance Criteria
-
-[To be designed]
-
----
-
-## Open Questions
-
-[To be designed]
-```
-
----
-
-### Skeleton for HUD Design
-
-```markdown
-# HUD Design
-
-> **Status**: In Design
-> **Author**: [user + ux-designer]
-> **Last Updated**: [today's date]
-> **Template**: HUD Design
-
----
-
-## HUD Philosophy
-
-[To be designed]
-
----
-
-## Information Architecture
-
-### Full Information Inventory
-
-[To be designed]
-
-### Categorization
-
-[To be designed]
-
----
-
-## Layout Zones
-
-[To be designed]
-
----
-
-## HUD Elements
-
-[To be designed]
-
----
-
-## Dynamic Behaviors
-
-[To be designed]
-
----
-
-## Platform & Input Variants
-
-[To be designed]
-
----
-
-## Accessibility
-
-[To be designed]
-
----
-
-## Open Questions
-
-[To be designed]
-```
-
----
-
-### Skeleton for Interaction Pattern Library
-
-```markdown
-# Interaction Pattern Library
-
-> **Status**: In Design
-> **Author**: [user + ux-designer]
-> **Last Updated**: [today's date]
-> **Template**: Interaction Pattern Library
-
----
-
-## Overview
-
-[To be designed]
-
----
-
-## Pattern Catalog
-
-[To be designed]
-
----
-
-## Patterns
-
-[Individual pattern entries added here as they are defined]
-
----
-
-## Gaps & Patterns Needed
-
-[To be designed]
-
----
-
-## Open Questions
-
-[To be designed]
-```
-
+Keep every required heading and instruction from the selected template. Replace placeholders only as sections are approved; never copy a reduced heading list into this workflow.
 ---
 
 After writing the skeleton, update `production/session-state/active.md` with:

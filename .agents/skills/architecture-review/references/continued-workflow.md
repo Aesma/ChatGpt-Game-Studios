@@ -75,11 +75,20 @@ FAIL: Critical gaps (Foundation/Core layer requirements uncovered),
 
 ## Phase 8: Write and Update Traceability Index
 
-Ask the user directly for the single changeset approval:
+Before asking, assemble the complete mode-eligible changeset. It may include the
+review report, traceability index, TR registry, RTM, selected systems-index edits,
+a consistency-failures append, and the session-state edit. Show every selected
+file and its exact proposed content or diff before the first write.
+
+Ask the user directly for one authorization:
 - "Review complete. What would you like to write?"
-  - [A] Write all three files (review report + traceability index + TR registry)
-  - [B] Write review report only — `docs/architecture/architecture-review-[date].md`
+  - [A] Authorize the complete displayed changeset
+  - [B] Authorize the displayed review-report file only
   - [C] Don't write anything yet — I need to review the findings first
+
+Option [B] writes only the report: it does not update the index, registry, RTM,
+systems index, consistency failures, or session state. If any selected edit is
+added or changed after this preview, stop and obtain a revised complete approval.
 
 ### RTM Output (rtm mode only)
 
@@ -95,7 +104,7 @@ RTM file format:
 
 > Last Updated: [date]
 > Mode: $architecture-review rtm
-> Coverage: [N]% full chain complete (GDD → ADR → Story → Test)
+> Linkage: [N]% have GDD → ADR → Story → existing test-file path; test execution is not verified
 
 ## How to read this matrix
 
@@ -106,7 +115,7 @@ RTM file format:
 | ADR | Architectural decision governing implementation |
 | Story | Story file that implements this requirement |
 | Test File | Automated test file path |
-| Test Status | COVERED / MISSING / NONE / NO STORY |
+| Test Status | FILE EXISTS (not executed) / FILE MISSING / NONE / NO STORY |
 
 ## Full Traceability Matrix
 
@@ -118,8 +127,8 @@ RTM file format:
 
 | Status | Count | % |
 |--------|-------|---|
-| COVERED — full chain complete | [N] | [%] |
-| MISSING test — story exists, no test | [N] | [%] |
+| FILE EXISTS — path exists, test result unknown | [N] | [%] |
+| FILE MISSING — story states a path that is absent | [N] | [%] |
 | NO STORY — ADR exists, not yet implemented | [N] | [%] |
 | NO ADR — architectural gap | [N] | [%] |
 | **Total requirements** | **[N]** | **100%** |
@@ -162,8 +171,9 @@ across every subsequent architecture review.
 
 ### Reflexion Log Update
 
-After writing the review report, append any 🔴 CONFLICT entries found in Phase 4
-to `docs/consistency-failures.md` (if the file exists):
+Only when the consistency-failures append was explicitly selected and shown in
+the authorized changeset, append any 🔴 CONFLICT entries found in Phase 4 to
+`docs/consistency-failures.md` (if the file exists):
 
 ```markdown
 ### [YYYY-MM-DD] — $architecture-review — 🔴 CONFLICT
@@ -180,8 +190,8 @@ append when it already exists.
 
 ### Session State Update
 
-After writing all approved files, silently append to
-`production/session-state/active.md`:
+Only when the session-state edit was explicitly selected and shown in the
+authorized changeset, append to `production/session-state/active.md`:
 
     ## Session Extract — $architecture-review [date]
     - Verdict: [PASS / CONCERNS / FAIL]
@@ -191,8 +201,8 @@ After writing all approved files, silently append to
     - Top ADR gaps: [top 3 gap titles from the report, or "None"]
     - Report: docs/architecture/architecture-review-[date].md
 
-If `active.md` does not exist, create it with this block as the initial content.
-Confirm in conversation: "Session state updated."
+If `active.md` does not exist, its creation and initial content must already have
+been in the authorized preview. Confirm only after that selected edit is written.
 
 The traceability index format:
 

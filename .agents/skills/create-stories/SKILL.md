@@ -98,12 +98,18 @@ group of criteria would take longer, split into two stories.
 
 For each story, determine:
 - **GDD requirement**: which acceptance criterion(ia) does this satisfy?
-- **TR-ID**: look up in `tr-registry.yaml`. Use the stable ID. If no match, use `TR-[system]-???` and warn.
-- **Governing ADR**: which ADR governs how to implement this?
-  - `Status: Accepted` → embed normally
-  - `Status: Proposed` → set story `Status: Blocked` with note: "BLOCKED: ADR-NNNN is Proposed — run `$architecture-decision` to advance it"
-  - **Multiple ADRs apply**: List all governing ADRs in the story's `Governing ADRs:` field. Designate the one most directly controlling the implementation pattern as primary (first in the list). Others are listed as secondary references.
-  - **No ADR applies at all**: Write `ADR: N/A — [brief reason, e.g. "pure data configuration, no architectural pattern required"]` in the story's ADR field. Do NOT leave the field blank — a blank ADR field means "not checked", not "not applicable".
+- **TR-ID**: look up the stable ID in `tr-registry.yaml`. If no stable
+  match exists, set the story Status to `Blocked`, report the missing trace in
+  the pre-write preview, and do not write a `???` identifier.
+- **ADR references / Governing ADRs**:
+  - List every applicable real ADR exactly once and mark exactly one item
+    explicitly `primary`; do not use list order as an implicit primary marker.
+  - Record each referenced ADR's actual Status. Any Proposed or otherwise
+    non-Accepted reference makes the story `Blocked` with the specific reason.
+  - The only valid N/A form is a Config/Data story whose reference list contains
+    exactly one `N/A — [specific reason]` item. The reason must be non-empty,
+    non-blank, and not `TBD` or another placeholder. N/A may not be mixed with
+    a real ADR. Any invalid N/A form makes the story Blocked before writing.
 - **Story Type**: from Step 3 classification
 - **Engine risk**: from the ADR's Knowledge Risk field
 
@@ -118,7 +124,11 @@ For each story, determine:
 
 After decomposing all stories (Step 4 complete) but before presenting them for single changeset approval, spawn `qa-lead` through Codex subagent delegation using gate **QL-STORY-READY** (`.codex/docs/director-gates.md`).
 
-Pass: the full story list with acceptance criteria, story types, and TR-IDs; the epic's GDD acceptance criteria for reference.
+For each story, pass its planned final path and complete inline story draft,
+including its current Status, acceptance criteria, type, TR-ID, ADR reference
+list with explicit primary, QA cases, and evidence path. Also pass the epic GDD
+criteria. The planned path is not an existing file; no story may be written
+before this gate returns a per-story verdict.
 
 Present the QA lead's assessment. For each story flagged as GAPS or INADEQUATE, revise the acceptance criteria before proceeding — stories with untestable criteria cannot be implemented correctly. Once all stories reach ADEQUATE, proceed.
 
@@ -127,13 +137,17 @@ Present the QA lead's assessment. For each story flagged as GAPS or INADEQUATE, 
   - Prompt: "A QA plan exists at [path] with test specs for some of these stories. How do you want to proceed?"
   - Options:
     - `Use existing specs from the QA plan — embed them into the story files (Recommended)`
-    - `Ask qa-lead to generate fresh specs — override the QA plan`
+    - `Generate fresh specs under the resolved review mode — full may use qa-lead; lean/solo use an unreviewed current-agent draft`
     - `Skip test spec generation — I'll fill in ## QA Test Cases manually`
-- If "Use existing specs": extract the test case specs from the qa-plan for each matching story and embed them directly into the `## QA Test Cases` section. No qa-lead spawn needed for those stories. Only spawn qa-lead for stories with no coverage in the qa-plan.
-- If "Generate fresh": proceed with the qa-lead spawn below as normal.
+- If "Use existing specs": extract the test case specs from the qa-plan for each matching story and embed them directly into the `## QA Test Cases` section. No qa-lead spawn is needed for covered stories; uncovered stories follow the resolved mode below.
+- If "Generate fresh": follow the resolved-mode behavior below; do not bypass it.
 - If "Skip": leave `## QA Test Cases` with a placeholder: `*Test cases not yet defined — run $qa-plan to generate them.*`
 
-**After ADEQUATE** (or after qa-plan import): for every Logic and Integration story, ask the qa-lead to produce concrete test case specifications — one per acceptance criterion — in this format:
+**After ADEQUATE** (or after qa-plan import): in full mode, qa-lead may produce
+the concrete test cases. In lean or solo, do not spawn qa-lead after claiming
+the gate was skipped; reuse existing QA-plan content first, then have the current
+agent derive an explicitly unreviewed draft from approved GDD acceptance
+criteria. For every Logic and Integration story, use this format:
 
 ```
 Test: [criterion text]
@@ -191,7 +205,7 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 # Story [NNN]: [title]
 
 > **Epic**: [epic name]
-> **Status**: Ready
+> **Status**: [computed Ready or Blocked — never hard-code Ready]
 > **Layer**: [Foundation / Core / Feature / Presentation]
 > **Type**: [Logic | Integration | Visual/Feel | UI | Config/Data]
 > **Estimate**: [hours or t-shirt size — fill before sprint planning]
@@ -204,8 +218,13 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 **Requirement**: `TR-[system]-NNN`
 *(Requirement text lives in `docs/architecture/tr-registry.yaml` — read fresh at review time)*
 
-**ADR Governing Implementation**: [ADR-NNNN: title]
-**ADR Decision Summary**: [1-2 sentence summary of what the ADR decided]
+**ADR references / Governing ADRs**:
+- `ADR-NNNN: title` — **primary** — Status: [Accepted/Proposed/...]
+- `ADR-MMMM: title` — secondary — Status: [Accepted/Proposed/...]
+- or, for the sole valid exception: `N/A — [specific non-placeholder reason]`
+
+**Primary ADR Decision Summary**: [1-2 sentence summary]
+**Secondary ADR Constraints**: [meaning-preserving constraints from each secondary reference]
 
 **Engine**: [name + version] | **Risk**: [LOW / MEDIUM / HIGH]
 **Engine Notes**: [from ADR Engine Compatibility section — post-cutoff APIs, verification required]

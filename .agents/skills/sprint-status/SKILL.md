@@ -1,6 +1,6 @@
 ---
 name: sprint-status
-description: "Fast sprint status check. Reads the current sprint plan, scans story files for status, and produces a concise progress snapshot with burndown assessment and emerging risks. Run at any time during a sprint for quick situational awareness. Use when user asks 'how is the sprint going', 'sprint update', 'show sprint progress'."
+description: "Fast sprint status check. Resolves the active sprint from session state, sprint-status YAML, or numbered sprint files, then scans story status and produces a concise progress snapshot with burndown assessment and emerging risks. Run at any time during a sprint for quick situational awareness. Use when user asks 'how is the sprint going', 'sprint update', 'show sprint progress'."
 ---
 
 ## Invocation and execution
@@ -29,8 +29,12 @@ files, and makes at most one concrete recommendation.
 - If an argument is given (e.g., `$sprint-status 3`), search
   `production/sprints/` for a file matching `sprint-03.md`, `sprint-3.md`,
   or similar. Report which file was found.
-- If no argument is given, find the most recently modified file in
-  `production/sprints/` and treat it as the current sprint.
+- If no argument is given, first read `production/session-state/active.md` and
+  use an explicit sprint path or number recorded there. If that reference is
+  absent or invalid, use the `sprint` value in `production/sprint-status.yaml`.
+  If neither source resolves a sprint, choose the highest valid sprint number
+  in `production/sprints/` (never modification time) and report why fallback was
+  required.
 - If `production/sprints/` does not exist or is empty, report: "No sprint
   files found. Start a sprint with `$sprint-plan new`." Then stop.
 
@@ -59,12 +63,23 @@ found — burndown assessment skipped."
 
 **First: check for `production/sprint-status.yaml`.**
 
-If it exists, read it directly — it is the authoritative source of truth.
-Extract status for each story from the `status` field. No markdown scanning needed.
-Use its `sprint`, `goal`, `start`, `end` fields instead of re-parsing the sprint plan.
+Parse it only if its `sprint` value equals the target sprint number. When it
+matches, it is authoritative: extract each story's status plus `goal`, `start`,
+and `end`. When it belongs to another sprint, state that fact and ignore it for
+the requested target; use the markdown/story fallback below. This prevents an
+explicit historical request from being replaced by current singleton state.
 
-**If `sprint-status.yaml` does not exist** (legacy sprint or first-time setup),
-fall back to markdown scanning:
+Map existing YAML values to report labels as follows:
+- `backlog` and `ready-for-dev` → `NOT STARTED`
+- `in-progress` and historical `in_progress` → `IN PROGRESS`
+- `review` → `IN REVIEW`
+- `done` → `DONE`
+- `blocked` → `BLOCKED`
+Any future writer must use canonical `in-progress`; the underscore spelling is
+read compatibility only.
+
+**If `sprint-status.yaml` is missing or belongs to another sprint** (legacy or
+historical sprint), fall back to markdown scanning:
 
 1. If the entry references a story file path, check if the file exists.
    Read the file and scan for status markers: DONE, COMPLETE, IN PROGRESS,
@@ -91,15 +106,17 @@ After collecting status for all stories, check each IN PROGRESS story for stalen
   `Updated`, `last-updated`, `updated_at`.
 - Calculate days since that date using today's date.
 - If the date is more than 4 days ago, flag the story as **STALE**. (4-day threshold accounts for weekends — a story last touched on Friday won't appear stale until Wednesday.)
-- If no date field is found in the story file, note "no timestamp — cannot check staleness."
+- If no date field is found in the story file, use a `Last Updated` value from
+  `active.md` only when it explicitly identifies the same story. Otherwise note
+  "no timestamp — cannot check staleness." Story-file evidence always wins.
 - If the story has no referenced file (inline task), note "inline task — cannot check staleness."
 
 STALE stories are included in the output table and collected into an "Attention Needed"
 section (see Phase 5 output format).
 
 **Stale story escalation**: If any IN PROGRESS story is flagged STALE (no progress in 4+ days), the burndown verdict
-is upgraded to at least **At Risk** — even if the completion percentage is within the normal
-On Track window. Record this escalation reason: "At Risk — [N] story(ies) with no progress in
+is upgraded to at least **AT RISK** — even if the completion percentage is within the normal
+ON TRACK window. Record this escalation reason: "AT RISK — [N] story(ies) with no progress in
 [N] days."
 
 ---
@@ -115,12 +132,16 @@ Calculate:
 
 Assess burndown by comparing completion percentage to time consumed percentage:
 
-- **On Track**: completion % is within 10 points of time consumed % or ahead
-- **At Risk**: completion % is 10-25 points behind time consumed %
-- **Behind**: completion % is more than 25 points behind time consumed %
+- **ON TRACK**: completion % is within 10 points of time consumed % or ahead
+- **AT RISK**: completion % is 10-25 points behind time consumed %
+- **BEHIND**: completion % is more than 25 points behind time consumed %
 
-If dates are unavailable, skip the burndown assessment and report "On Track /
-At Risk / Behind: unknown — sprint dates not found."
+These are the only sprint-health verdicts. A story-level `BLOCKED` status is a
+risk reason, never a sprint-health verdict. If all Must Haves are done, health is
+still ON TRACK and the completion flag below is added.
+
+If dates are unavailable, skip the burndown assessment and report "ON TRACK /
+AT RISK / BEHIND: unknown — sprint dates not found."
 
 ---
 
@@ -149,7 +170,7 @@ Keep the output concise. The story status table is mandatory — do not truncate
 
 *(Omit this section entirely if no IN PROGRESS stories are stale or have timestamp concerns.)*
 
-### Burndown: [On Track / At Risk / Behind]
+### Burndown: [ON TRACK / AT RISK / BEHIND]
 [1-2 sentences. If behind: which Must Haves are at risk. If on track: confirm
 and note any Should Haves the team could pull.]
 
@@ -183,7 +204,7 @@ time remaining. Recommend replanning with `$sprint-plan update`.
 **Completion flag** — if all Must Have stories are DONE:
 
 ```
-All Must Haves complete. Team can pull from Should Have backlog.
+ON TRACK — all Must Haves complete. Team can pull from Should Have backlog.
 ```
 
 **Missing stories flag** — if any referenced story files do not exist:

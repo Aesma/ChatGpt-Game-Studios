@@ -150,6 +150,10 @@ advance the production stage.
 - [ ] Uses exact project evidence and calls out uncertainty
 - [ ] Does not claim to be a continuously updating status line
 - [ ] Returns a compact report without requiring user interaction
+- [ ] Inference evidence is collected even when a non-empty explicit stage exists
+- [ ] Inference can warn but never replaces the explicit Stage field
+- [ ] active.md marker pairing is validated for every stage, including unrecognized values
+- [ ] Breadcrumb fields are extracted only from a valid bounded block for Production/Polish/Release
 
 ---
 

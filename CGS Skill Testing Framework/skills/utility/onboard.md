@@ -10,8 +10,9 @@ output is conversational.
 
 The skill optionally accepts a role argument (e.g., `$onboard artist`) to tailor
 the summary to a specific discipline. When the project is in an early stage or
-unconfigured, the output adapts to reflect what little is known. The verdict is
-always ONBOARDING COMPLETE — the skill is purely informational.
+unconfigured, the output adapts to reflect what little is known. Normal
+completion uses ONBOARDING COMPLETE; a missing root AGENTS.md is a blocking
+input error and is not reported as successful onboarding.
 
 ---
 
@@ -107,7 +108,7 @@ None. `$onboard` is a read-only orientation skill. No director gates apply.
 - [ ] Error message clearly identifies the missing file as AGENTS.md
 - [ ] Remediation step (`$start`) is explicitly named
 - [ ] Skill does NOT produce a partial output when the root config is missing
-- [ ] Verdict is ONBOARDING COMPLETE (with error context, not a crash)
+- [ ] No ONBOARDING COMPLETE success verdict is emitted for this input error
 
 ---
 
@@ -164,7 +165,7 @@ None. `$onboard` is a read-only orientation skill. No director gates apply.
 - [ ] Adapts output to project stage (Production ≠ Concept)
 - [ ] Respects role argument when provided
 - [ ] Does not write any files
-- [ ] Ends with ONBOARDING COMPLETE verdict in all paths
+- [ ] Ends with ONBOARDING COMPLETE only after a complete evidence-based orientation; blocking input errors do not use the success verdict
 
 ---
 

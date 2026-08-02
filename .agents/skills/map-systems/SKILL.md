@@ -203,7 +203,7 @@ Pure technical necessity ("X depends on Y") is insufficient alone when the syste
 
 Pass: total system count per milestone tier, estimated implementation volume per tier (system count × average complexity), team size, stated project timeline.
 
-Present the assessment. If UNREALISTIC, offer to revise priority tier assignments before writing the index. If CONCERNS, note them and continue.
+Apply the exact PR-SCOPE contract: **REALISTIC** continues; **OPTIMISTIC** shows the specific schedule/scope adjustments and asks the user to revise or explicitly accept them; **UNREALISTIC** does not write and requires scope revision or stop. Do not handle a nonexistent CONCERNS result.
 
 ### Step 4c: Determine Design Order
 
@@ -238,9 +238,7 @@ Present a summary of the document:
 - First 3 systems in the design order
 - Any high-risk items
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write the file only after the complete changeset has received its one authorization.
+The complete changeset preview must show both the concrete `design/gdd/systems-index.md` edit and the concrete `production/session-state/active.md` edit. Do not write either file until that combined changeset has received its one authorization. Do not pre-author a Creative Director note whose content is not yet known.
 
 **Review mode check** — apply before spawning CD-SYSTEMS:
 - `solo` → skip. Note: "CD-SYSTEMS skipped — Solo mode." Proceed to Phase 7 next steps.
@@ -251,18 +249,18 @@ Write the file only after the complete changeset has received its one authorizat
 
 Pass: systems index path, game pillars and core fantasy (from `design/gdd/game-concept.md`), MVP priority tier system list.
 
-Present the assessment. If REJECT, revise the system set with the user before GDD authoring begins. If CONCERNS, record them in the systems index as a `> **Creative Director Note**` at the top of the relevant tier section.
+Present the assessment. If REJECT, keep any already-written index only as a draft, do not update session state to created/COMPLETE, show the blocker, and stop until the user authorizes a revision and CD-SYSTEMS is run again. If CONCERNS, ask the user whether to revise or explicitly accept them. Any resulting index note or system-set change was not in the initial content preview, so show the revised same-file changeset and obtain a new authorization before writing it.
 
 ### Step 5c: Update Session State
 
-After writing, create `production/session-state/active.md` if it does not exist, then update it with:
+Only after CD-SYSTEMS returns APPROVE, or the user explicitly accepts CONCERNS (and any newly previewed edit is authorized), create/update `production/session-state/active.md` with:
 - Task: Systems decomposition
 - Status: Systems index created
 - File: design/gdd/systems-index.md
 - Next: Design individual system GDDs
 
-**Verdict: COMPLETE** — systems index written to `design/gdd/systems-index.md`.
-If the user declined: **Verdict: BLOCKED** — user did not approve the write.
+**Verdict: COMPLETE** — the systems index is written and the applicable CD-SYSTEMS outcome is resolved.
+If the user declined, CD-SYSTEMS rejected, or a required post-gate revision was not authorized: **Verdict: BLOCKED**. Never mark the index Approved or the session COMPLETE before that point.
 
 ---
 

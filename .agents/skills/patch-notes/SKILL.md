@@ -19,7 +19,7 @@ Delegate substantive work to the `community-manager` Codex subagent role when it
 - `version`: the release version to generate notes for (e.g., `1.2.0`)
 - `--style`: output style — `brief` (bullet points), `detailed` (with context), `full` (with developer commentary). Default: `detailed`.
 
-If no version is provided, ask the user before proceeding.
+If no version is provided, ask the user before proceeding. Resolve exactly one release target for that version. Use a Git range only when both that target and its immediately preceding release ref are unique. If the target tag does not exist, label the result throughout as an **unreleased draft at current HEAD**. If the preceding ref is ambiguous, ask the user; never guess the range.
 
 ---
 
@@ -27,7 +27,7 @@ If no version is provided, ask the user before proceeding.
 
 - Read the internal changelog at `production/releases/[version]/changelog.md` if it exists
 - Also check `docs/CHANGELOG.md` for the relevant version entry
-- Run `git log` between the previous release tag and current tag/HEAD as a fallback
+- As a fallback only, run `git log` over the uniquely resolved immediately-previous-release ref through the uniquely resolved target; current HEAD is permitted only for an explicitly labelled unreleased draft
 - Read sprint retrospectives in `production/sprints/` for context
 - Read any balance change documents in `design/balance/`
 - Read bug fix records from QA if available
@@ -46,7 +46,7 @@ Verdict: **BLOCKED** — stop here without generating notes.
 
 **Tone guide detection** — before drafting notes, check for writing style guidance:
 
-1. Check `.codex/docs/technical-preferences.md` for any "tone", "voice", or "style"
+1. Check `docs/technical-preferences.md` for any "tone", "voice", or "style"
    fields or sections.
 2. Check `docs/PATCH-NOTES-STYLE.md` if it exists.
 3. Check `design/community/tone-guide.md` if it exists.
@@ -77,13 +77,12 @@ Categorize all changes into player-facing categories:
 - **Performance**: optimization improvements players might notice
 - **Known Issues**: transparency about unresolved problems
 
-Translate developer language to player language:
+Translate developer language to player language without inventing effects:
 
-- "Refactored damage calculation pipeline" → "Improved hit detection accuracy"
-- "Fixed null reference in inventory manager" → "Fixed a crash when opening inventory"
-- "Reduced GC allocations in combat loop" → "Improved combat performance"
-- Remove purely internal changes that don't affect players
-- Preserve specific numbers for balance changes (damage: 50 → 45)
+- Use a player-observable result only when changelog, bug, or test evidence explicitly states it.
+- Pure refactors, allocation changes, and other internal work are excluded by default.
+- If an internal change may affect players but the evidence does not say how, list it under excluded/needs clarification for the user; do not supply a benefit.
+- Preserve specific numbers for balance changes only when the source provides them.
 
 ---
 
@@ -150,13 +149,7 @@ Translate developer language to player language:
 ```
 
 ### Full Style
-Includes everything from Detailed, plus:
-```markdown
-## Developer Commentary
-### [Topic]
-> [Developer insight into a major change — why it was made, what was considered,
-> what the team learned. Written in first-person team voice.]
-```
+Includes everything from Detailed. Add Developer Commentary only by editing commentary already present in a changelog, retrospective, or supplied by the user. Preserve its attribution. If no source exists, omit that section or leave an explicit user-fill placeholder; never invent first-person team statements, motives, tradeoffs, or quotations.
 
 ---
 
@@ -176,17 +169,13 @@ Check the generated notes for:
 
 Present the completed patch notes to the user along with: a count of changes by category, and any internal changes that were excluded (for review).
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file to `docs/patch-notes/[version].md`, creating the directory
-if needed. Also write to `production/releases/[version]/patch-notes.md` as the
-internal archive copy.
+The complete changeset must list both `docs/patch-notes/[version].md` and `production/releases/[version]/patch-notes.md`, with identical content. Do not write either until the two-file changeset is authorized. Attempt the two writes as one bounded save operation and verify both contents. If either write fails or differs, report the exact path and output **BLOCKED**; one successful copy is not completion.
 
 ---
 
 ## Phase 7: Next Steps
 
-Verdict: **COMPLETE** — patch notes generated and saved.
+Verdict: **COMPLETE** only after both copies are saved and verified identical. Otherwise the verdict is **BLOCKED**.
 
 - Run `$release-checklist` to verify all other release gates are met before publishing.
 - Share the patch notes draft with the community-manager for tone review before posting publicly.
