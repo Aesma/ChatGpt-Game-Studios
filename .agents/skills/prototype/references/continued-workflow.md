@@ -52,9 +52,7 @@ two questions (plain text, one at a time):
 1. "What specifically worked in this prototype that we should preserve in the next version?"
 2. "What is the single most important thing to change?"
 
-The PIVOT-NOTE.md content (original hypothesis, what to keep/change, and revised hypothesis) is part of the single Phase 9 Batch 2 preview and write; do not ask for a separate file authorization. When `$prototype` is next run, check
-`prototypes/` for any `PIVOT-NOTE.md` files — if found, read them and use the
-revised hypothesis as the starting point rather than forming one from scratch.
+The PIVOT-NOTE.md content (original hypothesis, what to keep/change, and revised hypothesis) is part of the single Phase 9 Batch 2 preview and write; do not ask for a separate file authorization. When `$prototype` is next run, read only PIVOT notes linked from this concept's REPORT/index row or located in its explicitly related concept directory. Do not chain unrelated notes merely because they exist elsewhere under `prototypes/`. Use the linked revised hypothesis as the starting point.
 
 - Run `$prototype [revised-concept]` to test the adjusted direction
 - Or `$brainstorm [hint]` if the concept needs more fundamental rethinking
@@ -69,7 +67,7 @@ Before moving on, run this check to confirm the verdict is sound and not tempora
 - [ ] Concept only works when heavily explained or when the dev guides the player?
 - [ ] Building this feels like obligation, not excitement?
 
-If 2+ boxes apply → KILL verdict is sound. If 0–1 apply → consider one more focused PIVOT before killing.
+Check a box only when an existing REPORT/index entry provides the supporting playtest or pivot evidence. If the thresholds are not evidenced, recommend another focused test or PIVOT rather than forcing KILL. The checklist informs the user's decision; it never auto-selects KILL.
 
 **Document the kill in `prototypes/GRAVEYARD.md`** only as part of the single Phase 9 Batch 2 preview and write. Add one entry:
 
@@ -113,16 +111,16 @@ gate implications. Hard cap: ~4 hours.
 
 3. **Scope** — maximum 2-3 bullet points. One mechanic, one technical question, nothing else.
 
-4. **Build** — same relaxed standards as concept prototype. Hard cap: 4 hours. If not demonstrable in 4 hours, the question is too large. Split it.
+4. **Build** — same relaxed standards as concept prototype. Before writing, show the spike worktree/current-workspace path plus all initial build files as Batch 1 and obtain one authorization. Ask the user to report elapsed time at checkpoints; if they report 4 hours without a demonstrable result, the question is too large. Split it. Do not pretend to time the work automatically.
 
 5. **Observe and decide** — no formal playtest debrief. Ask: "Did the spike answer the question? YES or NO, and why in one sentence."
 
-6. **Write a spike note** (not a full report) to `prototypes/[concept-name]-spike-[date]/SPIKE-NOTE.md`:
+6. **Write a spike note** (not a full report) to `prototypes/[concept-name]-spike-[date]/SPIKE-NOTE.md`. Preview it together with the exact `production/session-state/active.md` restoration as Batch 2 and obtain one authorization:
    - Question tested
    - Result (YES it works / NO it doesn't / PARTIAL — needs more investigation)
    - What to do next (add to current sprint / investigate further / abandon the idea)
 
-7. **Update `production/session-state/active.md`** to clear the spike and return to the current sprint state.
+7. **Update `production/session-state/active.md`** only after the spike note is ready and Batch 2 is authorized. If the build fails or Batch 2 is declined/fails, retain the prior active-sprint state, report the incomplete spike, and never clear it as though the spike completed.
 
 **No CD gate. No phase gate. No PROCEED/PIVOT/KILL.** Spike results inform decisions; they don't make them. The developer decides whether to add the mechanic/approach to the sprint backlog based on what the spike revealed.
 
@@ -153,10 +151,10 @@ spikes in two ways:
 - Test ONE mechanic — if scope grows, stop and simplify the question
 - No polish. No menus, no game over, no music, no UI unless it IS the mechanic
 - If stuck after 2 hours of engine iteration, reframe the question or switch paths
-- **3 PIVOT iterations → force a KILL decision.** If this is the third time the
-  same concept has produced a PIVOT verdict, the concept likely doesn't work.
-  Ask: "Is this the right idea, or am I in the sunk cost trap?" A new concept
-  prototyped fresh will almost always beat a fourth iteration of a struggling one.
+- **Three evidenced PIVOT iterations trigger a user decision, not an automatic KILL.**
+  Count only related REPORT/index-linked iterations. Ask: "Is this the right idea,
+  or am I in the sunk cost trap?" If the evidence is incomplete, recommend another
+  focused test; the user still chooses PIVOT or KILL.
 - Building 2-3 different concept variants and picking the best one is a healthier
   strategy than iterating one concept to death. Natural selection between prototypes
   beats willpower.

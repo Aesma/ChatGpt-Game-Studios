@@ -78,3 +78,13 @@ related tests pass.
 - [ ] VERIFIED FIXED requires executed reproduction plus passing related tests
 - [ ] The status chain is Open → Verified Fixed → Closed
 - [ ] No new workflow, state layer, schema, or identifier type is introduced
+
+## P1 Regression Assertions
+
+- [ ] Invocation declares Description, Analyze, Verify, and Close and rejects invalid modes/BUG IDs
+- [ ] New IDs are allocated from and rechecked against the canonical directory before writing
+- [ ] Missing Reporter/Build/Platform/Repro facts are asked for or recorded Unknown, never guessed
+- [ ] Likely duplicate symptoms/system/title are shown before filing and user selection controls update versus new report
+- [ ] Analyze accepts bounded project-local text targets and cites file/line, trigger evidence, and uncertainty
+- [ ] Unconfirmed static potentials remain conversational and are not auto-filed
+- [ ] Severity/priority literals exactly match bug-triage

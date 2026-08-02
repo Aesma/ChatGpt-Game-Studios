@@ -33,12 +33,17 @@ and Pre-Production.
   GDD requirement → ADR → Story → Test chain. Use in Production phase when
   stories and tests exist.
 
+Accept no other mode or flag. `single-gdd` requires exactly one normalized,
+existing project-local Markdown file directly under `design/gdd/`; reject a
+missing path, multiple paths, directory, project-external path, or unsupported
+file without analysis or verdict.
+
 Execute only the phases listed for the selected mode; every unlisted phase is
 skipped, and report counts/sections cover only the selected scope:
 
 | Mode | Reads and analysis | Eligible outputs |
 |---|---|---|
-| `full` | Phases 1–6, including Phase 3b only when stories exist | report, traceability index, TR registry, and explicitly selected ancillary edits |
+| `full` | Phases 1–6 except Phase 3b | report, traceability index, TR registry, and explicitly selected ancillary edits |
 | `coverage` | GDD/ADR/TR reads; Phases 2–3 | scoped report, traceability index, TR registry |
 | `consistency` | ADR and known-failure reads; Phase 4 only | scoped report and explicitly selected consistency-failure append |
 | `engine` | ADR and engine-reference reads; Phase 5 only | scoped report only |
@@ -62,9 +67,10 @@ Search files matching `design/gdd/*.md` for `## Summary` and include 4 following
 Search files matching `docs/architecture/adr-*.md` for `## Summary` and include 3 following lines of context.
 ```
 
-For `single-gdd [path]` mode: use the target GDD's summary to identify which
-ADRs reference the same system (Search ADRs for the system name), then full-read
-only those ADRs. Skip full-reading unrelated GDDs entirely.
+For `single-gdd [path]` mode: scan every ADR's Summary and
+`GDD Requirements Addressed` section first. Full-read ADRs whose explicit GDD
+linkage or Summary matches the target; do not rely on the ADR title containing
+the system name. Skip full-reading unrelated GDDs entirely.
 
 For `engine` mode: only full-read ADRs — GDDs are not needed for engine checks.
 
@@ -86,7 +92,8 @@ Read all inputs appropriate to the mode:
 - `docs/engine-reference/[engine]/VERSION.md`
 - `docs/engine-reference/[engine]/breaking-changes.md`
 - `docs/engine-reference/[engine]/deprecated-apis.md`
-- All files in `docs/engine-reference/[engine]/modules/`
+- Only module files for domains explicitly named by the in-scope ADRs; do not
+  load unrelated engine modules
 
 ### Project Standards
 - `docs/technical-preferences.md`
@@ -109,12 +116,12 @@ if it exists. Index existing entries by `id` and by normalized `requirement`
 text (lowercase, trimmed). This prevents ID renumbering across review runs.
 
 For each requirement you extract, the matching rule is:
-1. **Exact/near match** to an existing registry entry for the same system →
-   reuse that entry's TR-ID unchanged. Update the `requirement` text in the
-   registry only if the GDD wording changed (same intent, clearer phrasing) —
-   add a `revised: [date]` field.
-2. **No match** → assign a new ID: next available `TR-[system]-NNN` for that
-   system, starting from the highest existing sequence + 1.
+1. **Same-system semantic match supported by explicit wording evidence** → reuse
+   that entry's TR-ID unchanged. Mere normalized-text similarity is not enough.
+   Update the `requirement` text only when the evidence shows unchanged intent
+   with clearer wording, and add a `revised: [date]` field.
+2. **No match** → assign a provisional new ID in lowercase-slug form:
+   `TR-[system-slug]-NNN`, starting from the highest existing sequence + 1.
 3. **Ambiguous** (partial match, intent unclear) → ask the user:
    > "Does '[new requirement text]' refer to the same requirement as
    > `TR-[system]-NNN: [existing text]'`, or is it a new requirement?"
@@ -160,7 +167,8 @@ For each technical requirement extracted in Phase 2, search the ADRs:
 
 1. Read every ADR's "GDD Requirements Addressed" section
 2. Check if it explicitly references the requirement or its GDD
-3. Check if the ADR's decision text implicitly covers the requirement
+3. Treat an implicit decision-text match only as evidence for `Partial`; it can
+   never satisfy `Covered` without an explicit requirement or GDD reference
 4. Mark coverage status:
 
 | Status | Meaning |
@@ -187,7 +195,8 @@ Count the totals: X covered, Y partial, Z gaps.
 
 ## Phase 3b: Story and Test Linkage (RTM mode only)
 
-*Skip this phase unless the argument is `rtm` or `full` with stories present.*
+*Skip this phase unless the argument is exactly `rtm`. Repository state must not
+silently expand `full` mode into story/test analysis.*
 
 This phase extends the Phase 3 matrix to include the story that implements
 each requirement and the test that verifies it — producing the full
@@ -344,6 +353,10 @@ Post-Cutoff API Conflicts:
 
 ### Engine Specialist Consultation
 
+If this specialist is unavailable, blocked, or fails, record the omitted domains
+and reason. A partial `full` review may not receive PASS; existing static evidence
+may still support FAIL. Never fabricate specialist findings.
+
 After completing the engine audit above, spawn the **primary engine specialist** through Codex subagent delegation for a domain-expert second opinion:
 - Read `docs/technical-preferences.md` `Engine Specialists` section to get the primary specialist
 - If no engine is configured, skip this consultation
@@ -391,6 +404,10 @@ If no revision flags are found, write: "No GDD revision flags — all GDD assump
 are consistent with verified engine behaviour."
 
 Before asking, display the proposed change inline — show the current systems-index row for each flagged GDD and the proposed updated row side by side so the user can see exactly what will change.
+
+Before any authorized TR-registry write, re-read the current registry, re-run the
+same-system match, and recalculate every provisional new sequence. If another run
+claimed an ID, update all affected previews and do not overwrite or duplicate it.
 
 Then ask the user directly:
 - Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.

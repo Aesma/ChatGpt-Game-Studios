@@ -76,3 +76,14 @@ at `design/assets/specs/[target]-assets.md` and updates
 - [ ] Director gates are not introduced; configured specialist behavior remains unchanged
 - [ ] Existing ASSET fields and manifest schema remain unchanged
 - [ ] The workflow adds no second output hierarchy or placeholder dependency mode
+
+## P1 Regression Assertions
+
+- [ ] No-argument inventory creation ends that run and never falls through with an empty target
+- [ ] Empty review mode reads `production/review-mode.txt`; full/lean/solo controls specialist depth only
+- [ ] Invalid target/source paths, missing source, and ambiguous candidates stop before generation
+- [ ] A non-Approved source cannot produce a production-ready spec
+- [ ] Reruns update the existing target spec/manifest block, preserve IDs, and add no duplicate block when unchanged
+- [ ] The manifest is re-read before writing and changed ID allocation is re-previewed
+- [ ] Animation and technical limits map only into existing fields
+- [ ] Partial specialist output is visibly unverified and cannot be approved as production-ready

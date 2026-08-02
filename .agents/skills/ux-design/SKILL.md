@@ -37,8 +37,10 @@ If the user selects "I'll name it" or types a screen name, normalize it to a non
 
 ## 2. Gather Context (Read Phase)
 
-Read all relevant context **before** asking the user anything. The skill's value
-comes from arriving informed.
+First resolve the mode as Phase 1 describes; if no mode is known, ask that single
+mode question before project reads. Once the target is resolved, read all relevant
+context before design questions. Ask about missing input configuration only after
+the relevant context read identifies the gap.
 
 ### 2a: Required Reads
 
@@ -65,8 +67,10 @@ Also add to the UX spec's Open Questions section:
 
 ### 2c: GDD UI Requirements
 
-Find files matching `design/gdd/*.md` and search for `UI Requirements` sections. Read any GDD whose
-UI Requirements section references this screen by name or category.
+Prefer explicit GDD links in an existing spec header and the systems index, then
+read direct UI Requirements references for this screen. If name/category matching
+is ambiguous, list candidate GDDs for user confirmation rather than scanning or
+guessing all documents. HUD remains the exception and reads all GDD UI Requirements.
 
 These GDD UI Requirements are the **requirements input** to this spec. Collect them
 as a list of constraints the spec must satisfy.
@@ -82,10 +86,9 @@ find the entry and exit points this spec must match.
 
 ### 2e: Interaction Pattern Library
 
-If `design/ux/interaction-patterns.md` exists, read the pattern catalog index
-(the list of pattern names and their one-line descriptions). Do not read full
-pattern details — just the catalog. This tells you which patterns already exist
-so you can reference them rather than reinvent them.
+If `design/ux/interaction-patterns.md` exists, first read only its catalog index.
+When the current spec selects a pattern, then read that pattern's complete existing
+section before reusing its behavior. Do not load unrelated pattern bodies.
 
 ### 2f: Art Bible
 
@@ -181,7 +184,10 @@ Before the first write, preview the concrete UX target, `production/session-stat
 Keep every required heading and instruction from the selected template. Replace placeholders only as sections are approved; never copy a reduced heading list into this workflow.
 ---
 
-After writing the skeleton, update `production/session-state/active.md` with:
+After writing the skeleton, update only this UX task's existing fields/section in
+`production/session-state/active.md` and preserve all unrelated task content. If
+the active state points to another task, surface that fact and ensure the directed
+update is covered by the existing changeset boundary before writing:
 - Task: Designing [screen/flow name] UX spec
 - Current section: Starting (skeleton created)
 - File: design/ux/[filename].md

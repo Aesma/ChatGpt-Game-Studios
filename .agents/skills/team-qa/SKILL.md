@@ -9,7 +9,7 @@ Invoke this workflow as `$team-qa`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[sprint | feature: system-name] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[sprint | feature: system-name]`. Reject unknown flags or malformed feature arguments before delegation.
 
 Delegate substantive work to the `qa-lead` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
@@ -20,19 +20,6 @@ When this skill is invoked, orchestrate the QA team through a structured testing
 the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next phase.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
 
 ## Team Composition
 
@@ -47,6 +34,10 @@ Use the Codex subagent delegation to spawn each team member as a subagent:
 
 Always provide full context in each agent's prompt (story file paths, QA plan path, scope constraints). Launch independent qa-tester tasks in parallel where possible (e.g., multiple stories in Phase 5 can be scaffolded simultaneously).
 
+At every qa-lead delegation point, use the same rule: spawn the role when it is
+available; otherwise the current agent performs the qa-lead responsibility and the
+report names the actual executor. Never claim a spawn that did not occur.
+
 ## Pipeline
 
 ### Phase 1: Load Context
@@ -54,9 +45,9 @@ Always provide full context in each agent's prompt (story file paths, QA plan pa
 Before doing anything else, gather the full scope:
 
 1. Detect the current sprint or feature scope from the argument:
-   - If argument is a sprint identifier (e.g., `sprint-03`): Find files matching `production/sprints/` for files matching `*[sprint-identifier]*.md`. Read the matched file. If multiple match, use the most recently modified.
+   - If argument is a sprint identifier (e.g., `sprint-03`): Find files matching `production/sprints/` for files matching `*[sprint-identifier]*.md`. If exactly one matches, read it; if multiple match, list the candidates and wait for the user to choose. Never select by modification time.
    - If argument is `feature: [system-name]`: find story files tagged for that system
-   - If no argument: read `production/session-state/active.md` and `production/sprint-status.yaml` (if present) to infer the active sprint
+   - If no argument: read `production/session-state/active.md` and `production/sprint-status.yaml` (if present) to infer the active sprint. If they disagree, list both values and wait for the user to choose; if neither identifies a scope, ask for one. Do not guess.
 
 2. Read `production/stage.txt` to confirm the current project phase.
 
@@ -151,6 +142,11 @@ options:
 
 Walk through each story in the approved manual QA list.
 
+For every case actually executed, record the observed outcome and any necessary
+observation in the case's existing `Actual Result` and `Notes` text. A user who
+has not run the build/test cannot select PASS; record BLOCKED/not run and the
+reason instead.
+
 Batch stories into groups of 3-4 and ask the user directly for each:
 
 ```
@@ -164,7 +160,10 @@ options:
 
 After each FAIL result: ask the user directly to collect the failure description, then spawn `qa-tester` through Codex subagent delegation to write a formal bug report in `production/qa/bugs/`.
 
-Bug report naming: `BUG-[NNN]-[short-slug].md` (increment NNN from existing bugs in the directory).
+Bug report naming: `BUG-[NNN]-[short-slug].md`. Read all existing well-formed bug
+IDs before allocation. The orchestrator reserves the next unused IDs for every
+bug in this run before parallel writers start; each qa-tester receives one unique
+reserved ID and may not recompute or reuse it.
 
 After collecting all results, summarize:
 - Stories PASS: [count]
@@ -212,6 +211,10 @@ Next step guidance by verdict:
 - APPROVED WITH CONDITIONS: "Resolve conditions before advancing. S3/S4 bugs may be deferred to polish."
 - NOT APPROVED: "Resolve S1/S2 bugs and re-run `$team-qa` or targeted manual QA before advancing."
 
+Map the sign-off to the existing session vocabulary: APPROVED → PASS,
+APPROVED WITH CONDITIONS → CONCERNS, NOT APPROVED → FAIL. Orchestrator COMPLETE
+means only that the QA workflow finished; it never upgrades the sign-off result.
+
 This report path was included in the single Phase 3 changeset. Do not request a second write authorization here.
 
 ## Error Recovery Protocol
@@ -241,8 +244,13 @@ Verdict: **BLOCKED** — smoke check failed or critical blocker prevented cycle 
 
 ## Session State Update
 
-After the final phase completes (sign-off report written or BLOCKED verdict reached), silently append to `production/session-state/active.md`:
+After the final phase completes (sign-off report written or BLOCKED verdict reached), append to `production/session-state/active.md` only when this update was included in the authorized boundary:
 
 ```
 <!-- QA RUN: [date] | Sprint: [sprint identifier or "ad-hoc"] | Verdict: [PASS/FAIL/CONCERNS] | Report: production/qa/qa-[date].md -->
 ```
+
+This session-state path and intended append must have been included in the Phase 3
+changeset. If it was not authorized, do not write it and say so. When no sign-off
+report was produced, do not record the example report path; record no report path
+in the conversation/authorized state update instead.

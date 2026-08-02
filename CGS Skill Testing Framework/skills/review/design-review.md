@@ -205,3 +205,16 @@ one attempted specialist failing.
 - The skill's `context: fork` behavior (running as a subagent) is not tested
   at the spec level — this is a runtime behavior verified manually.
 - Performance and edge cases involving very large GDD files are not in scope.
+
+## P1 Regression Assertions
+
+- [ ] The complete root-to-target AGENTS chain is read and listed
+- [ ] Related reads are limited to explicit links, direct Dependencies, game concept, and explicitly associated narrative files
+- [ ] Dependencies distinguish existing, listed-not-authored, unknown, and explicitly broken links
+- [ ] Empty/placeholder headings fail completeness; formulas, edge cases, tuning knobs, and ACs satisfy content-level directory rules
+- [ ] Verdict mapping is deterministic: no blocker APPROVED, local blocker NEEDS REVISION, core contradiction/unresolved decision/3+ substantive omissions MAJOR REVISION NEEDED
+- [ ] No director overrides the mapping; primary reviewer merges specialist results by location+defect
+- [ ] Findings require evidence, impact, classification, and an actionable correction without quota-driven issue invention
+- [ ] Unconfigured engine skips engine review without guessing
+- [ ] lean/solo show no fabricated specialist/director output
+- [ ] Scope Signal uses mutually exclusive XL→L→M→S bands (7+, 5–6, 3–4, 0–2 dependencies)

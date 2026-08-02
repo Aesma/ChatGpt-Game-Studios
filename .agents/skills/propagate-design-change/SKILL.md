@@ -30,6 +30,8 @@ A GDD path argument is **required**. If missing, fail with:
 > "Usage: `$propagate-design-change design/gdd/[system].md`
 > Provide the path to the GDD that was changed."
 
+Normalize the argument to one project-relative Markdown path under `design/gdd/*.md`. Reject absolute/out-of-project paths, path traversal, multiple targets, non-Markdown files, and concept/index/review documents that are not a single system GDD. Stop before analysis or writes.
+
 Verify the file exists. If not, fail with:
 > "[path] not found. Check the path and try again."
 
@@ -47,7 +49,8 @@ Resolve the target project-relative path and inspect its Git status first.
 
 - If the working tree contains changes to the target, compare `HEAD:[path]` with the working-tree file.
 - If the target is clean and its change is already committed, find the most recent commit that modified that path and compare that commit's parent version with the version in that commit.
-- If two versions cannot be recovered, report **no comparison baseline** and stop change/impact classification. This is not NO IMPACT and must not be described as nothing to propagate.
+- For a newly added GDD with no old version, report `no old revision diff` but continue the current explicit-reference inventory in Phase 4. Keep the revision-impact result separate from reference impact.
+- For a non-Git workspace, repository without HEAD, shallow/missing history, rename whose predecessor cannot be resolved, or any Git error, report the specific cause. If two versions cannot be recovered for an existing file, report **no comparison baseline** and stop revision change/impact classification. This is not NO IMPACT and must not be described as nothing to propagate.
 
 With the two verified versions, do a conceptual diff:
 - Identify sections that changed (new rules, removed rules, modified formulas,
@@ -81,7 +84,7 @@ Read all ADRs in `docs/architecture/`:
 
 Read `docs/architecture/architecture-traceability.md` and any existing TR registry if present. Also scan existing epic and story files for explicit references to the exact GDD path or requirement IDs from that GDD. Do not use fuzzy semantic matching.
 
-Report counts by ADR, traceability/TR entry, epic, and story.
+Report counts by ADR, traceability/TR entry, epic, and story. If the complete explicit-reference scan finds zero references, output **NO IMPACT** and stop without the resolution/write phases or an authorization prompt. For a new GDD, this reference result is valid even though no old revision diff exists.
 
 ---
 
@@ -103,6 +106,8 @@ Classify each affected ADR as one of:
 | ✅ **Still Valid** | The GDD change doesn't affect what this ADR decided |
 | ⚠️ **Needs Review** | The GDD change may affect this ADR — human judgment needed |
 | 🔴 **Likely Superseded** | The GDD change directly contradicts what this ADR assumed |
+
+For every explicitly referenced story with `Status: In Progress`, add an elevated warning before changeset preview: name the file, state that someone may be implementing it, and require user coordination before including that story edit. The user may skip that story without blocking unrelated artifact decisions.
 
 For each affected ADR, produce an impact entry:
 
@@ -150,7 +155,7 @@ ADRs referencing this GDD: [M]
 
 ## 6b. Technical Review Boundary
 
-This workflow reads no review mode and invokes no director gate. The optional `technical-director` delegation named at the top may help perform the same analysis, but it supplies no gate ID or gate verdict.
+This workflow reads no review mode and invokes no director gate. The optional `technical-director` delegation named at the top may help perform the same analysis, but it supplies no gate ID or gate verdict. If that delegation reports a blocker, show the evidence and stop until the user corrects the input/decision and reruns; do not loop, reinterpret the blocker as approval, or invent a gate result.
 
 ---
 
@@ -162,7 +167,7 @@ Ask for each ADR in turn:
 > "ADR-NNNN ([title]) — [status]. What would you like to do?"
 > Options:
 > - "Plan a replacement ADR" — record in the impact report that the user chose supersede and that the replacement has not been created; do not edit the original ADR's Superseded-by field yet
-> - "Update in place (minor revision)" — opens the ADR for editing; note what to revise
+> - "Update in place (minor revision)" — limit the edit to current-impact status and requirements references. A material accepted decision change remains a replacement-ADR handoff; do not rewrite the whole Accepted ADR in place
 > - "Keep as-is (the change doesn't actually affect this decision)"
 > - "Skip for now (revisit later)"
 
@@ -173,7 +178,7 @@ For a supersede decision, do not pre-allocate an ADR number and do not create a 
 ## 8. Update Traceability Index
 
 If `docs/architecture/architecture-traceability.md` exists:
-- Add the changed GDD requirements to the "Superseded Requirements" table:
+- Add only requirements the user finally classified as superseded to the existing "Superseded Requirements" table. Still Valid, Needs Review, skipped, and unresolved requirements never enter that table:
 
 ```markdown
 ## Superseded Requirements
@@ -205,8 +210,7 @@ If user declined: Verdict: **BLOCKED** — user declined write.
 
 Based on the resolution decisions, suggest:
 
-- **ADRs marked Superseded**: "Run `$architecture-decision [title]` to write the
-  replacement ADR. Then re-run `$propagate-design-change` to verify coverage."
+- **ADRs marked Superseded**: "Run `$architecture-decision [title]` to write the replacement ADR, then run `$architecture-review` to verify overall consistency." Do not claim that rerunning this workflow with an unchanged GDD can validate replacement coverage.
 - **ADRs to update in place**: List the specific fields to update in each ADR
 - **If many ADRs affected**: "Run `$architecture-review` after all ADRs are updated
   to verify the full traceability matrix is still coherent."

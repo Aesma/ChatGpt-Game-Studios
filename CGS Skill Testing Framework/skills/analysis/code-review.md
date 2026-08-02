@@ -174,3 +174,14 @@ None. Code review is a read-only advisory skill; no gates are invoked.
   is assumed to apply the same checks file by file and aggregate the verdict.
 - Test coverage checks (verifying corresponding test files exist) are a stretch
   goal not tested here; that is primarily the domain of `$test-evidence-review`.
+
+## P1 Regression Assertions
+
+- [ ] Input accepts bounded project-local source targets plus an optional validated production story and rejects empty/external/binary/generated targets
+- [ ] Only cited applicable project rules or Accepted ADRs produce compliance failures; generic complexity/length/SOLID prompts are advisory when uncited
+- [ ] ADR lookup recognizes four-digit lowercase paths and distinguishes Accepted/Proposed/Superseded/missing/unreadable
+- [ ] Missing ADR is a concern only when an applicable standard requires one and is never called a violation of a nonexistent document
+- [ ] Specialists are deduplicated, capacity-bounded, and failures are explicit
+- [ ] qa-tester is skipped and Testability is NOT EVALUATED when valid story QA context is absent
+- [ ] Pattern comparison stays within the target module/direct dependencies and observations remain distinct from rules
+- [ ] CHANGES REQUIRED cannot hand off directly to story-done

@@ -71,7 +71,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ---
 
-### Case 4: No Argument Provided — Usage error
+### Case 4: No Argument Provided — asks for mode before reads/writes
 
 **Fixture:**
 - No argument provided with the skill invocation
@@ -80,13 +80,13 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Expected behavior:**
 1. Skill detects no screen name or argument provided
-2. Skill outputs a usage error: "Screen name required. Usage: `$ux-design [screen-name]`"
-3. Skill provides examples: `$ux-design hud`, `$ux-design main-menu`, `$ux-design inventory`
-4. No file is created; no "changeset authorization" is asked
+2. Skill asks once whether to design a named screen/flow, HUD, or pattern library.
+3. It does not read project context until the user resolves the mode/target.
+4. No file is created and no changeset authorization is asked before that choice.
 
 **Assertions:**
-- [ ] Usage error is clearly stated
-- [ ] Example invocations are provided
+- [ ] A single mode/target question is asked
+- [ ] Project reads wait until mode/target resolution
 - [ ] No file is created
 - [ ] Skill does not attempt to proceed without an argument
 
@@ -112,6 +112,17 @@ Verified automatically by `$skill-test static` — no fixture needed.
 ---
 
 ## Protocol Compliance
+
+### P1 Regression Matrix
+
+- [ ] Mode is resolved first; relevant context is read before design questions and missing input config is asked only after detection.
+- [ ] GDDs come from explicit links/index/direct UI references; ambiguous fuzzy matches require user choice (HUD reads all UI requirements).
+- [ ] Pattern catalog is read first and only a selected pattern's complete section is loaded.
+- [ ] Missing accessibility tier stays unknown/open and cannot be replaced by a WCAG label.
+- [ ] Events Fired contains linked existing game/analytics events or none/not specified; no telemetry contract is invented.
+- [ ] Acceptance criteria use existing budgets and actual behavior coverage, without invented Xms or a padded count.
+- [ ] Localization uses project locale/font/layout constraints; 40% is only a risk probe when no data exists.
+- [ ] Session updates preserve unrelated tasks and surface another active owner before a directed authorized update.
 
 - [ ] Creates skeleton file with all section headers before discussing content
 - [ ] Discusses and drafts one section at a time

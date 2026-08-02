@@ -95,6 +95,35 @@ ceiling.
 - [ ] Generating or writing the template does not set that future verdict
 - [ ] Instructions to file bugs apply only after a human completes the protocol and records issues
 
+### Case 7: Invalid and ambiguous arguments stop
+
+**Assertions:**
+- [ ] Unknown, duplicate, conflicting, or non-uniquely ordered duration/focus values show legal usage
+- [ ] Invalid input does not load context or write a protocol
+
+### Case 8: Focus controls the protocol sections
+
+**Assertions:**
+- [ ] `memory` includes memory checkpoints/analysis but omits stability and balance analysis
+- [ ] `stability` contains stability observations without requiring memory baseline/object counts
+- [ ] `balance` contains fatigue/content observations without engine memory metrics
+- [ ] `all` includes all existing categories
+
+### Case 9: Budget, engine, and OOM evidence are bounded
+
+**Assertions:**
+- [ ] A configured project budget overrides the fallback engine threshold and its source is named
+- [ ] Unknown engine uses OS/platform-neutral observations and defers engine metrics
+- [ ] OOM time is calculated only with a memory ceiling and at least three stable-growth checkpoints
+- [ ] Insufficient or non-linear samples say `not enough data`
+
+### Case 10: Context selection and reproducibility
+
+**Assertions:**
+- [ ] Prior playtest and QA-plan evidence must match the target/current sprint, not merely be newest
+- [ ] Missing related evidence is named instead of importing unrelated findings
+- [ ] Existing Pre-Session Notes capture platform/device/build, loop/scene, save/start state, and unknown values in free text
+
 ---
 
 ## Protocol Compliance

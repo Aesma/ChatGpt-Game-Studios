@@ -106,6 +106,18 @@ authorization, or preview and confirm it once before the first write.
 
 ---
 
+## P1 Regression Assertions
+
+- [ ] Input is one project-internal `design/gdd/*.md` system GDD; concept/index/review, non-Markdown, traversal, and multiple targets stop
+- [ ] Non-Git/no-HEAD/shallow/rename/history failures report the exact no-baseline cause and do not classify revision impact
+- [ ] A new GDD reports no old revision diff but still inventories current explicit references
+- [ ] A complete zero-reference inventory emits NO IMPACT with no resolution/write authorization
+- [ ] In Progress stories get an elevated coordination warning and can be skipped without blocking other artifacts
+- [ ] Only user-confirmed superseded requirements enter Superseded Requirements; Still Valid/Needs Review never do
+- [ ] Update-in-place changes only impact-related status/requirement references; material accepted-decision change is a replacement handoff
+- [ ] Delegation blockers stop with evidence and wait for corrected input/decision; no re-analysis loop or simulated approval
+- [ ] Replacement follow-up uses architecture-review and does not claim an unchanged rerun verifies coverage
+
 ## Protocol Compliance
 
 - [ ] Reads revised GDD and all potentially affected artifacts before producing impact report

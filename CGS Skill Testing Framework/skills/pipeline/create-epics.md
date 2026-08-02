@@ -85,6 +85,26 @@ complete inline drafts and planned paths before any write.
 
 ---
 
+### Case 6: Dependency, argument, status, and risk validation
+
+**Assertions:**
+- [ ] Dependency topology, not layer assumptions, controls order; cycles block affected epics
+- [ ] Empty/unknown/conflicting layer modes stop
+- [ ] Systems-index and GDD Status must agree or that system stops
+- [ ] Missing/invalid risk becomes UNKNOWN and is not called verified
+
+---
+
+### Case 7: Existing EPIC/index and UNREALISTIC outcome
+
+**Assertions:**
+- [ ] Existing EPIC shows a scoped diff and requires update/skip
+- [ ] Index updates one unique slug/module row and preserves unrelated rows
+- [ ] Duplicate index matches stop instead of rebuilding the table
+- [ ] UNREALISTIC offers revise or stop; revise shows changes and re-runs once selected
+
+---
+
 ## Protocol Compliance
 
 - [ ] systems-index mapping and GDD status determine scope

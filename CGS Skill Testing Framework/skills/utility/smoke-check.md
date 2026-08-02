@@ -3,7 +3,8 @@
 ## Skill Summary
 
 `$smoke-check` is the gate between implementation and QA hand-off. It detects the
-test environment, runs the automated test suite (via Bash), scans test coverage
+test environment, runs the automated test suite through the supported configured
+shell, scans test coverage
 against sprint stories, and uses `user-input request` to batch-verify manual smoke
 checks with the developer. It writes a report to `production/qa/smoke-[date].md`
 after explicit user approval.
@@ -29,7 +30,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 10. Delivers verdict: PASS
 
 **Assertions:**
-- [ ] Automated test runner is invoked via Bash
+- [ ] Automated test runner is invoked through the supported configured shell
 - [ ] `user-input request` is used for manual smoke check batches
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Report is written to `production/qa/smoke-[date].md`
@@ -48,7 +49,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Input:** `$smoke-check`
 
 **Expected behavior:**
-1. Skill runs automated tests via Bash
+1. Skill runs automated tests through the supported configured shell
 2. Parses output — 2 failures detected
 3. Records failing test names
 4. Proceeds through manual smoke check batches
@@ -140,7 +141,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 ## Protocol Compliance
 
 - [ ] Uses `user-input request` for all manual smoke check batches (Batch 1, Batch 2, Batch 3)
-- [ ] Runs automated tests via Bash before asking any manual questions
+- [ ] Runs automated tests through the supported configured shell before asking any manual questions
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Verdict vocabulary is strictly PASS / PASS WITH WARNINGS / FAIL — no other verdicts
 - [ ] NOT RUN is explicitly confirmed as CONFIRMED PASS, CONFIRMED FAIL, or UNCONFIRMED before verdict assignment
@@ -182,6 +183,44 @@ executed manual checks pass.
 - [ ] The skill reports the legal `sprint|quick` and `--platform` syntax
 - [ ] No project checks, questions, or report write occur
 - [ ] The skill does not interpret `combat` as a targeted mode
+
+### Case 9: Invalid argument combinations stop before project access
+
+**Assertions:**
+- [ ] Duplicate base modes, unknown flags, missing `--platform` values, and illegal platform values show legal usage
+- [ ] Invalid input causes no project reads, user questions, or report write
+
+### Case 10: Quick coverage is unknown, not clean
+
+**Input:** `$smoke-check quick`
+
+**Assertions:**
+- [ ] Coverage is recorded as `NOT CHECKED`, not as zero MISSING entries
+- [ ] With no failures, the highest possible verdict is PASS WITH WARNINGS
+
+### Case 11: Exact evidence and sprint matching
+
+**Assertions:**
+- [ ] The target sprint comes from matching sprint-status YAML, with highest-number fallback reported
+- [ ] Only a QA plan whose filename or Sprint field exactly matches is accepted
+- [ ] A story's exact Test Evidence path and assertions are checked first
+- [ ] Same-system filename/term matches are unverified candidates and cannot produce COVERED
+
+### Case 12: Artifact validity and bounded manual interaction
+
+**Assertions:**
+- [ ] Unity/Unreal artifact path and modification time are reported
+- [ ] An artifact not proven current and complete becomes NOT RUN, not PASS
+- [ ] `--platform all` uses no more than three total structured confirmation calls
+- [ ] Reports distinguish structured selections from user-supplied verbatim failure descriptions
+
+### Case 13: Existing daily report requires authorized update
+
+**Fixture:** `production/qa/smoke-[date].md` already exists.
+
+**Assertions:**
+- [ ] The exact overwrite/update is included in the one changeset preview
+- [ ] Declined authorization leaves the existing report unchanged
 
 ---
 

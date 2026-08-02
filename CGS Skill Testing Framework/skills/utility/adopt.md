@@ -77,6 +77,16 @@ Verified automatically by `$skill-test static` — no fixture needed.
   each follows the same pattern as the full audit but limited to that artifact type.
   Not separately fixture-tested here.
 - The systems-index.md parenthetical status value check (BLOCKING) is a special case
-  that triggers an immediate fix offer before applying a not-yet-authorized changeset the plan; not separately tested.
+  that records exact replacements in the plan and recommends a separate edit; `$adopt` does not apply it.
 - When `production/review-mode.txt` is missing, its exact value and the adoption
   plan are shown together in the one complete changeset preview before either write.
+
+## P1 Regression Assertions
+
+- [ ] `full`, `gdds`, `adrs`, `stories`, and `infra` execute only their declared audit subsections; excluded types are reported as `Not in this focus`
+- [ ] Invalid or contradictory `production/stage.txt` content falls back to artifact inference
+- [ ] Fresh-project non-standard-location guidance ends the run and does not imply automatic continuation
+- [ ] Existing infrastructure never appears as a bootstrap action
+- [ ] Phase 7 is advisory and cannot edit systems-index, ADR, GDD, or story files
+- [ ] Story compatibility claims are limited to consumers actually inspected
+- [ ] Review mode uses `production/review-mode.txt`

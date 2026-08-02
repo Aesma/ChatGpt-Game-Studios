@@ -9,30 +9,18 @@ Invoke this workflow as `$team-narrative`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[narrative content description] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[narrative content description]`. Reject unknown flags or extra control arguments with the usage message and exit without spawning agents.
 
 If no argument is provided, output usage guidance and exit without spawning any agents:
 > Usage: `$team-narrative [narrative content description]` — describe the story content, scene, or narrative area to work on (e.g., `boss encounter cutscene`, `faction intro dialogue`, `tutorial narrative`). Do not ask the user directly here; output the guidance directly.
 
 When this skill is invoked with an argument, orchestrate the narrative team through a structured pipeline.
 
-**Decision Points:** At each phase transition, ask the user directly to present
-the user with the subagent's proposals as selectable options. Write the agent's
-full analysis in conversation, then capture the decision with concise labels.
-The user must approve before moving to the next phase.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
+**Decision Points:** Ask the user only when a phase presents a meaningful narrative
+choice. Present the subagent's proposals as selectable options, write the full
+analysis in conversation, and capture the decision with concise labels. A phase
+confirmation is a product decision, not another file-write authorization; a pure
+status transition does not require a redundant approval.
 
 ## Team Composition
 - **narrative-director** — Story arcs, character design, dialogue strategy, narrative vision
@@ -59,6 +47,12 @@ Before delegation, assign each writable file to exactly one subagent. Lore, voic
 ## Pipeline
 
 ### Phase 1: Narrative Direction
+Before delegation, parse the request into a content type, target entity, and the
+existing authoritative narrative documents that may own it. Search the relevant
+lore/character/dialogue locations and list candidate targets. If the request does
+not resolve to exactly one target, present the candidates and wait for the user to
+choose; do not start a writing agent while the destination is ambiguous.
+
 Delegate to **narrative-director**:
 - Define the narrative purpose of this content: what story beat does it serve?
 - Identify characters involved, their motivations, and how this fits the overall arc
@@ -72,7 +66,7 @@ After the brief is approved, resolve the concrete target paths for the brief, lo
 
 Give the **world-builder**, **writer**, and **art-director** the same approved Phase 1 canon inputs and existing lore as read-only context. Independent work may start in parallel, but canon-dependent dialogue remains provisional until the world-builder completes the contradiction check:
 
-- **world-builder**: Create or update lore entries for factions, locations, and history relevant to this content. Cross-reference against existing lore for contradictions and propose canon levels for user confirmation.
+- **world-builder**: Create or update lore entries for factions, locations, and history relevant to this content. Cross-reference against existing lore for contradictions and propose canon levels with their downstream impact. The narrative-director checks consistency and the user confirms the canon-level decision at the existing Phase 2 decision point; no agent may silently finalize it.
 - **writer**: Draft character dialogue using voice profiles. Dialogue that depends on canon introduced or changed by the brief must be marked provisional. It may be finalized only after the world-builder's check has resolved that canon. Respect the project's dialogue-box and localization constraints; if they are absent, treat 120 characters only as a risk signal.
 - **art-director**: Define character visual design direction for key characters appearing in this content (silhouette, visual archetype, distinguishing features). Specify environmental visual storytelling elements for each key space (prop composition, lighting notes, spatial arrangement). Define tone palette and cinematic direction for any cutscenes or scripted sequences.
 
@@ -107,10 +101,15 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip advisory work and note the gap in the partial report
+   - Skip only work that is advisory to the final narrative verdict and note the gap in the partial report
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
+
+A missing canon check, required voice profile, required localization check, or
+other dependency of the final candidate cannot be skipped into COMPLETE. Stop
+dependent phases and return BLOCKED/partial. Already-running agents may return
+their results, but may not write a shared or unassigned path.
 
 Common blockers:
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it

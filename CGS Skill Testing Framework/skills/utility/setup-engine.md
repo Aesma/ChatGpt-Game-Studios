@@ -121,3 +121,19 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Upgrade changes the version pin only after the actual project version is
   confirmed, then updates AGENTS, project technical preferences, and VERSION
   together or writes none. Documentation edits never claim a binary migration.
+
+## P1 Contract Coverage
+
+- [ ] Exactly five invocation forms are documented and unknown engines,
+  subcommands, and version shapes stop.
+- [ ] Provided and discovered versions are verified against official sources;
+  unverified values are not written.
+- [ ] Licensing/platform facts are refreshed from official sources; unavailable
+  facts remain unknown and no hardcoded amount/threshold is repeated.
+- [ ] Prior experience informs but does not bypass platform/project constraints.
+- [ ] Unreal asks for C++, Blueprint, or hybrid and records the user's choice.
+- [ ] Godot project build uses the export pipeline, C# does not automatically
+  add C++/GDExtension, existing CI keeps GdUnit4 unless the user changes it,
+  and UMG routing uses Widget Blueprint assets rather than a `.umg` extension.
+- [ ] Refresh edits only existing previewed files; missing official sources or
+  files produce a partial result without a fabricated verification date.

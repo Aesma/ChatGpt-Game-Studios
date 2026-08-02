@@ -11,9 +11,9 @@ stages: Concept, Systems Design, Technical Setup, Pre-Production, Production,
 Polish, or Release.
 
 The skill is advisory — it never writes `stage.txt`. That file is only updated
-when `$gate-check` passes and the user confirms advancement. The skill reports
-its confidence level (HIGH if stage.txt was read directly, MEDIUM if inferred
-from artifacts, LOW if conflicting signals were found).
+when `$gate-check` passes and the user confirms advancement. The report uses `.codex/docs/templates/project-stage-report.md` as its only
+structure. Evidence limits and conflicting signals are explained in that
+template's existing narrative sections; there is no separate confidence field.
 
 ---
 
@@ -52,12 +52,12 @@ gates apply.
 1. Skill reads `production/stage.txt` — detects stage `Production`
 2. Skill cross-checks artifacts: GDDs present, source code present, sprint present
 3. Artifacts are consistent with Production stage
-4. Skill reports: Stage = Production, Confidence = HIGH (from stage.txt, confirmed by artifacts)
+4. Skill reports Stage = Production and cites the confirming artifact evidence in the template rationale
 5. Next step: continue with `$sprint-plan` or `$dev-story`
 
 **Assertions:**
 - [ ] Detected stage is Production
-- [ ] Confidence is reported as HIGH when stage.txt is present
+- [ ] The template rationale cites both stage.txt and the confirming artifact evidence
 - [ ] Cross-check result (consistent vs. discrepant) is noted
 - [ ] No files are written
 - [ ] Verdict clearly states the detected stage
@@ -80,12 +80,12 @@ gates apply.
 2. Skill finds GDDs (Systems Design complete), epics (Pre-Production complete),
    source code and sprints (Production active)
 3. Skill infers: Stage = Production
-4. Confidence is MEDIUM (inferred from artifacts, not from stage.txt)
+4. The rationale states that the result is inferred from the listed artifacts
 5. Skill recommends running `$gate-check` to formalize and write stage.txt
 
 **Assertions:**
 - [ ] Inferred stage is Production
-- [ ] Confidence is MEDIUM (not HIGH, since stage.txt is absent)
+- [ ] The rationale identifies that stage.txt was absent and lists the inference evidence
 - [ ] Recommendation to run `$gate-check` is present
 - [ ] No stage.txt is written by this skill
 
@@ -105,7 +105,7 @@ gates apply.
 1. Skill finds no stage.txt
 2. Artifact scan: no GDDs, no source, no epics, no sprints, engine unconfigured
 3. Skill infers: Stage = Concept
-4. Confidence is MEDIUM
+4. The rationale lists the missing artifacts supporting Concept
 5. Skill suggests `$start` to begin the onboarding workflow
 
 **Assertions:**
@@ -131,12 +131,12 @@ gates apply.
 2. Cross-check finds: no source code, no sprints — inconsistent with Production
 3. Skill flags discrepancy: "stage.txt says Production but no source code or sprints found"
 4. Skill reports detected stage as Production (honoring stage.txt) but
-   confidence drops to LOW due to artifact mismatch
+   the existing rationale/summary records the unresolved contradiction
 5. Skill suggests reviewing stage.txt manually or running `$gate-check`
 
 **Assertions:**
 - [ ] Discrepancy is flagged explicitly in the output
-- [ ] Confidence is LOW when artifacts contradict stage.txt
+- [ ] The contradiction is recorded in the template's existing narrative sections without a confidence field
 - [ ] stage.txt value is not silently overridden
 - [ ] User is advised to verify the discrepancy manually
 
@@ -166,7 +166,7 @@ gates apply.
 ## Protocol Compliance
 
 - [ ] Reads stage.txt if present; falls back to artifact inference if absent
-- [ ] Always reports a confidence level (HIGH / MEDIUM / LOW)
+- [ ] Uses the direct project-stage report template as the single structure; no HIGH/MEDIUM/LOW or PASS/CONCERNS/FAIL confidence field is required
 - [ ] Cross-checks stage.txt against artifacts and flags discrepancies
 - [ ] Does not write stage.txt (that is `$gate-check`'s responsibility)
 - [ ] Ends with a next-step recommendation appropriate to the detected stage
@@ -175,6 +175,13 @@ gates apply.
 - [ ] Production requires aligned implementation code plus active sprint/epic signals; conflicting signals retain the lower fully evidenced stage
 - [ ] Completion percentages require an explicit plan denominator and test coverage requires an actual coverage report; otherwise counts/present/missing/unknown are used
 - [ ] No project-stage report file is written and no changeset authorization is requested
+- [ ] Inference checks Release→Concept and stops at the first fully satisfied stage; a valid explicit stage.txt is handled separately and cross-checked
+- [ ] Engine counts as configured only when Engine, Language, and Target Platform are non-placeholder and consistent
+- [ ] Production-source counts exclude generated/vendor/tests and remain weak signals, never sole stage evidence
+- [ ] Systems-index completion uses explicit Status values and records unparseable rows as unknown
+- [ ] Preliminary findings and material gap questions precede the final report; unanswered questions remain unresolved
+- [ ] Role filters accept only programmer/designer/producer/general and show the actual scope after clarification/fallback
+- [ ] Prototype activity/documentation comes from README/status content, not directory or file existence alone
 
 ---
 
@@ -185,4 +192,4 @@ gates apply.
   as Cases 2 and 3 and are not separately fixture-tested.
 - The Polish and Release stages are not fixture-tested here; they follow the
   same high-confidence (stage.txt present) or inference logic.
-- Confidence levels are advisory — the skill does not gate any actions on them.
+- Evidence limitations are advisory narrative and do not gate any actions.

@@ -23,19 +23,33 @@ Determine the mode from the argument:
 
 If no subcommand is provided, output usage and stop. Verdict: **FAIL** — missing required subcommand.
 
+If the argument is not exactly one of `scan`, `add`, `prioritize`, or `report`,
+output the same usage and stop with **FAIL**. Do not treat unknown or extra
+arguments as scan/report. All four modes use only `docs/tech-debt-register.md`.
+If it is absent, scan/add may propose creating that existing register format in
+their changeset; prioritize/report stop with a clear missing-register error and
+do not output COMPLETE.
+
 ---
 
 ## Phase 2A: Scan Mode
 
-Search the codebase for debt indicators:
+Search only project-owned source, configuration, and test files. Exclude vendored
+dependencies, generated files, build/cache/output directories, and this workflow's
+own documentation. Search for debt indicators:
 
 - `TODO` comments (count and categorize)
-- `FIXME` comments (these are bugs disguised as debt)
+- `FIXME` comments (candidates that may be bugs rather than accepted debt)
 - `HACK` comments (workarounds that need proper solutions)
 - `@deprecated` markers
 - Duplicated code blocks (similar patterns in multiple files)
-- Files over 500 lines (potential god objects)
-- Functions over 50 lines (potential complexity)
+- Files over 500 lines (candidate only)
+- Functions over 50 lines (candidate only)
+
+Length, duplication, and marker matches are discovery signals, not automatic debt.
+Before registration, state the concrete impact. A FIXME enters the register only
+when the user confirms it is consciously deferred/accepted work and supplies WHY;
+otherwise leave it as an unregistered bug/candidate.
 
 Categorize each finding:
 
@@ -60,7 +74,9 @@ If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** —
 
 ## Phase 2B: Add Mode
 
-Ask the user for the description, affected files, and impact if left unfixed (plain text prompts).
+Ask the user for the description, affected files, impact if left unfixed, and WHY
+the debt is consciously accepted (deadline, prototype, missing information, or
+another explicit reason). Normalize Impact to exactly Low, Med, High, or Critical.
 
 Then ask the user directly to collect the **category**:
 - Prompt: "What category does this tech debt belong to?"
@@ -80,7 +96,11 @@ Then ask the user directly to collect the **estimated fix effort**:
   - `[C] L — Large (3–7 days)`
   - `[D] XL — Extra Large (over 1 week)`
 
-Present the complete new entry to the user.
+Derive the next unused ID from the current register, use the current date, set the
+existing Sprint column to Backlog unless the user provides an existing sprint, and
+calculate Priority by the Phase 2C Impact/Effort/ID rule. Present the complete new
+entry to the user. Immediately before append, re-read the table; if the candidate
+ID is now occupied, select the next unused ID rather than overwriting a row.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
@@ -96,7 +116,7 @@ Read the debt register at `docs/tech-debt-register.md`.
 
 Use only the fields already present in the register. Sort deterministically by Impact (`Critical` > `High` > `Med` > `Low`), then by lower Effort (`S` < `M` < `L` < `XL`), then by ID ascending. Update the existing Priority cells to reflect that ordering; do not invent frequency values, numeric mappings, or new fields.
 
-Re-sort only the existing table rows by this rule and recommend which items to include in the next sprint.
+Re-sort only the existing table rows by this rule and recommend which items to include in the next sprint. Preserve every non-table paragraph, heading, comment, unknown column, and hand-written note except the existing header statistics that this mode explicitly updates.
 
 Present the re-prioritized register to the user.
 
@@ -134,7 +154,7 @@ Output the report to the user. This mode is read-only — no files are written. 
 ```markdown
 ## Technical Debt Register
 Last updated: [Date]
-Total items: [N] | Estimated total effort: [T-shirt sizes summed]
+Total items: [N] | Effort distribution: S [N] / M [N] / L [N] / XL [N]
 
 | ID | Category | Description | Files | Effort | Impact | Priority | Added | Sprint |
 |----|----------|-------------|-------|--------|--------|----------|-------|--------|
@@ -145,4 +165,4 @@ Total items: [N] | Estimated total effort: [T-shirt sizes summed]
 - Tech debt is not inherently bad — it is a tool. The register tracks conscious decisions.
 - Every debt entry must explain WHY it was accepted (deadline, prototype, missing info)
 - "Scan" should run at least once per sprint to catch new debt
-- Items older than 3 sprints without action should either be fixed or consciously accepted with a documented reason
+- Only rows with an existing, directly comparable sprint number can receive an "older than 3 sprints" hint. For date-only/Backlog/ambiguous values, report `age unknown` rather than guessing.

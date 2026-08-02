@@ -31,11 +31,18 @@ Check:
   Record missing, empty, or unrecognized content separately.
 - **Review mode configured?** Read `production/review-mode.txt`; valid values are
   `full`, `lean`, and `solo`.
-- **Engine configured?** Read `docs/technical-preferences.md`. If the Engine field contains `[TO BE CONFIGURED]`, the engine is not set.
+- **Engine configured?** Read every existing Markdown field matching
+  `- **Engine**:` (or `**Engine**:`). The engine is configured only when there
+  is exactly one consistent, non-empty value and it contains no
+  `TO BE CONFIGURED` placeholder text. Missing, blank, conflicting, or any
+  placeholder form means unconfigured.
 - **Game concept exists?** Check for `design/gdd/game-concept.md`.
 - **Source code exists?** Search `src/` for files ending in `.gd`, `.cs`, `.cpp`, `.h`, `.rs`, `.py`, `.js`, or `.ts`.
-- **Prototypes exist?** Check for subdirectories in `prototypes/`.
-- **Design docs exist?** Count markdown files in `design/gdd/`.
+- **Prototypes exist?** Count only prototype subdirectories containing at least
+  one project file; empty directories and templates are not work evidence.
+- **Design docs exist?** Count `game-concept.md` and substantive system GDDs in
+  `design/gdd/`; exclude systems indexes, templates, audit/review reports, and
+  navigation-only documents.
 - **Production artifacts?** Check for files in `production/sprints/` or `production/milestones/`.
 
 Store these findings internally to validate the user's self-assessment and tailor recommendations.
@@ -92,7 +99,7 @@ The user needs creative exploration before anything else.
    **Pre-Production phase:**
    - `$ux-design` — author UX specs for key screens (main menu, HUD, core interactions)
    - `$vertical-slice` — production-quality end-to-end build to validate the full game loop
-   - `$playtest-report (×1+)` — document each vertical slice playtest session
+   - `$playtest-report analyze [path-to-completed-session-notes] (×1+)` — document each completed vertical-slice playtest; blank `new` templates do not count
    - `$create-epics` — map systems to epics
    - `$create-stories` — break epics into implementable stories
    - `$sprint-plan` — plan the first sprint
@@ -121,7 +128,7 @@ The user needs creative exploration before anything else.
    **Pre-Production phase:**
    - `$ux-design` — author UX specs for key screens (main menu, HUD, core interactions)
    - `$vertical-slice` — production-quality end-to-end build to validate the full game loop
-   - `$playtest-report (×1+)` — document each vertical slice playtest session
+   - `$playtest-report analyze [path-to-completed-session-notes] (×1+)` — document each completed vertical-slice playtest; blank `new` templates do not count
    - `$create-epics` — map systems to epics
    - `$create-stories` — break epics into implementable stories
    - `$sprint-plan` — plan the first sprint
@@ -135,6 +142,9 @@ The user needs creative exploration before anything else.
    - **Options**:
      - `Formalize it first` — Run `$brainstorm [concept]` to structure it into a proper game concept document
      - `Jump straight in` — Go to `$setup-engine` now and write the GDD manually afterward
+       (this does not create the concept document; the user must provide and save
+       `design/gdd/game-concept.md` before art-bible, system mapping, or any
+       other step that depends on it)
 3. Show the recommended path:
    **Concept phase:**
    - `$brainstorm` or `$setup-engine` — (their pick from step 2)
@@ -153,7 +163,7 @@ The user needs creative exploration before anything else.
    **Pre-Production phase:**
    - `$ux-design` — author UX specs for key screens (main menu, HUD, core interactions)
    - `$vertical-slice` — production-quality end-to-end build to validate the full game loop
-   - `$playtest-report (×1+)` — document each vertical slice playtest session
+   - `$playtest-report analyze [path-to-completed-session-notes] (×1+)` — document each completed vertical-slice playtest; blank `new` templates do not count
    - `$create-epics` — map systems to epics
    - `$create-stories` — break epics into implementable stories
    - `$sprint-plan` — plan the first sprint
@@ -221,7 +231,12 @@ Check if `production/review-mode.txt` already exists.
 **If it exists and contains `full`, `lean`, or `solo`**: Read it and show the
 current mode. Keep it unchanged, then continue to Phase 3c.
 
-**If it does not exist**: Ask the user directly:
+**If it exists but is empty or invalid**: show the original value and ask the
+same existing three-choice question below. Put a replacement in the pending
+changeset only after the user selects `full`, `lean`, or `solo`; never pass
+an invalid value into later gates.
+
+**If it does not exist, or an invalid value needs replacement**: Ask the user directly:
 
 - **Prompt**: "One setup choice: how much design review would you want as you work through the workflow?"
 - **Options**:
@@ -249,7 +264,9 @@ Present one complete changeset preview:
 
 If neither file is pending, do not request changeset approval and do not write.
 
-Obtain one explicit approval. On approval, write the complete changeset without further prompts. If declined, leave both files unchanged and continue with guidance only.
+Obtain one explicit approval. On approval, write the complete changeset without further prompts. If declined, leave both files unchanged and continue with guidance only. The
+final result must say `Onboarding guidance complete; configuration unchanged`;
+COMPLETE describes orientation, not a claim that configuration was saved.
 
 ---
 
@@ -266,9 +283,18 @@ After presenting the recommended path, ask the user directly which step they'd l
 
 ## Phase 5: Hand Off
 
-When the user confirms their next step, respond with a single short line: "Type `[skill command]` to begin." Nothing else. Do not re-explain the skill or add encouragement. The `$start` skill's job is done.
+When the user confirms the recommended next step, respond with a single short
+line: "Type `[skill command]` to begin." Nothing else. Do not re-explain the
+skill or add encouragement.
 
-Verdict: **COMPLETE** — user oriented and handed off to next step.
+If the user selects "I'd like to do something else first", ask what outcome they
+want, map that outcome to an existing command, and confirm it. Use the one-line
+handoff only after that confirmation; do not fabricate a command or force the
+original recommendation.
+
+Verdict: **COMPLETE** — user oriented and handed off to a confirmed next step.
+If configuration authorization was declined, append:
+`Onboarding guidance complete; configuration unchanged.`
 
 ---
 

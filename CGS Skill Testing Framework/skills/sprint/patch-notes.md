@@ -106,14 +106,15 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Expected behavior:**
 1. Skill compiles patch notes in full mode
-2. No director gate is invoked (community review is a separate, manual step)
+2. No director gate is invoked; an available community-manager performs read-only tone review of the in-memory draft, with current-agent fallback
 3. Skill inherits the parent Codex model and reasoning settings
 4. Skill notes in output: "Consider sharing draft with community manager before publishing"
 5. Skill asks user for approval and writes on confirmation
 
 **Assertions:**
 - [ ] No director gate is invoked regardless of review mode
-- [ ] Output suggests (but does not require) community manager review
+- [ ] Community-manager review, when available, is read-only and cannot write or bypass user authorization
+- [ ] When unavailable, the current agent performs the same tone review and reports the fallback
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Verdict is COMPLETE
 
@@ -131,6 +132,13 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Internal technical changes are never translated into player benefits without explicit changelog/bug/test evidence
 - [ ] Full-style developer commentary is omitted or left for user input when no attributed source exists
 - [ ] Both output copies are previewed together, saved with identical content, and verified; either-path failure is BLOCKED
+- [ ] Version is one safe identifier; missing/invalid/multiple values are BLOCKED before path construction
+- [ ] Release changelog is primary, docs supplement it, and git is fallback; duplicate entries are merged and source conflicts are shown
+- [ ] Known Issues and workarounds come only from release/open-bug evidence
+- [ ] Balance before/after values appear only when both are sourced; missing values are not inferred
+- [ ] A zero-player-facing-change run offers stop or a short factual notice without fabricated content
+- [ ] User refusal reports `draft generated, not saved` and BLOCKED, never COMPLETE
+- [ ] Project template controls structure while the tone guide controls wording; unsupported template data is omitted or marked missing
 
 ---
 

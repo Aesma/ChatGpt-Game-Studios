@@ -190,3 +190,18 @@ equality checks above.
   apply an undefined stale-age policy.
 - [ ] `static`, `spec`, `category`, and `audit` all produce zero file writes and
   never change catalog dates/results.
+
+## P1 Contract Coverage
+
+- [ ] The installed quick validator runs only when discoverable; absence is INFO
+  and does not skip any of the seven project checks.
+- [ ] Only unresolved migration placeholders in executable instructions fail;
+  example/template placeholders remain valid.
+- [ ] Legacy residue requires an explicit existing migration authority and
+  cited rule; unknown vocabulary is not invented.
+- [ ] Short-description length uses Unicode characters and truncated semantics
+  still warn/fail even within 25–64 characters.
+- [ ] Audit discovers only role TOML files, normalizes skills by frontmatter
+  name, roles by TOML name, specs by catalog mapping, and reports duplicates.
+- [ ] Missing catalog/spec is NON-COMPLIANT for one target; all/audit continue
+  and count it as FAIL without hiding the partial result.

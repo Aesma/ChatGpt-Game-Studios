@@ -39,13 +39,23 @@ remediation plan.
 - `network` — network/multiplayer only
 - `save` — save file and serialization only
 - `input` — input validation and injection only
-- `quick` — high-severity checks only (fastest, for iterative use)
+- `quick` — only the following checks that can produce CRITICAL/HIGH findings:
+  unsafe dynamic execution/deserialization or path use; hardcoded credentials;
+  network authority/authentication/input-validation bypasses; privileged
+  entitlement, currency, score, or progression trust violations; and an
+  exact-version dependency match to a CRITICAL/HIGH official advisory
 - No argument — run `full`
 
-Read `docs/technical-preferences.md` to determine:
-- Engine and language (affects which patterns to search for)
-- Target platforms (affects which attack surfaces apply)
-- Whether multiplayer/networking is in scope
+Read `docs/technical-preferences.md` to determine engine/language, target
+platforms, and whether networking is in scope. If any scope field is
+unconfigured, inspect existing source/config directory names and explicit APIs
+only to build candidate scope, show the evidence, and ask the user to confirm.
+Do not default the project to single-player or multiplayer.
+
+Build a manifest of all existing project source and configuration directories
+applicable to the selected mode. If none contains an auditable text file, stop
+with "No auditable source or configuration files found for [scope]", write no
+report, and issue no security verdict.
 
 ---
 
@@ -61,7 +71,11 @@ partial coverage and do not produce CLEAR TO SHIP.
 
 ## Phase 3: Audit Categories
 
-The security-engineer evaluates each of the following. Skip categories not applicable to the project scope.
+The security-engineer evaluates each of the following. Skip categories not
+applicable to the confirmed project scope. Every search pattern below identifies
+a candidate only. Inspect the call-site data flow, trust boundary, and applicable
+release/debug build condition before creating a finding; a keyword hit by itself
+is not evidence of a vulnerability.
 
 ### Category 1: Save File and Serialization Security
 - Are save files validated before loading? (no blind deserialization)
@@ -71,9 +85,11 @@ The security-engineer evaluates each of the following. Skip categories not appli
   applicable authoritative trust boundary?
 - Are there any eval() or dynamic code execution calls near save loading?
 
-Content search patterns: `File.open`, `load`, `deserialize`, `JSON.parse`, `from_json`, `read_file` — check each for validation.
+Candidate search patterns: `File.open`, `load`, `deserialize`, `JSON.parse`,
+`from_json`, `read_file`. Trace the selected overload and the data reaching it
+before classifying it.
 
-### Category 2: Network and Multiplayer Security (skip if single-player only)
+### Category 2: Network and Multiplayer Security (skip if confirmed out of scope)
 - Is game state authoritative on the server, or does the client dictate outcomes?
 - Are incoming network packets validated for size, type, and value range?
 - Are player positions and state changes validated server-side?
@@ -81,7 +97,8 @@ Content search patterns: `File.open`, `load`, `deserialize`, `JSON.parse`, `from
 - Are authentication tokens handled correctly (never sent in plaintext)?
 - Does the game expose any debug endpoints in release builds?
 
-Search file contents for: `recv`, `receive`, `PacketPeer`, `socket`, `NetworkedMultiplayerPeer`, `rpc`, `rpc_id` — check each call site for validation.
+Candidate search patterns: `recv`, `receive`, `PacketPeer`, `socket`,
+`NetworkedMultiplayerPeer`, `rpc`, `rpc_id`. Confirm each call-site flow.
 
 ### Category 3: Input Validation
 - Are any player-supplied strings used in file paths? (path traversal)
@@ -89,7 +106,8 @@ Search file contents for: `recv`, `receive`, `PacketPeer`, `socket`, `NetworkedM
 - Are numeric inputs (e.g., item quantities, character stats) bounds-checked before use?
 - Are achievement/stat values checked before being written to any backend?
 
-Search file contents for: `get_input`, `Input.get_`, `input_map`, user-facing text fields — check validation.
+Candidate search patterns: `get_input`, `Input.get_`, `input_map`, and
+user-facing text fields. Confirm whether the data reaches a sensitive sink.
 
 ### Category 4: Data Exposure
 - Are any API keys, credentials, or secrets hardcoded in `src/` or `assets/`?
@@ -101,7 +119,9 @@ Search file contents for candidate identifiers such as `api_key`, `secret`,
 `password`, `token`, and `private_key`, plus release-facing debug/logging calls.
 Obey denied-path rules, including never reading forbidden environment files.
 For a suspected secret, report only file, line, and identifier type with the
-value redacted; never echo it in conversation, delegation, or a report.
+value redacted; never echo it in conversation, delegation, or a report. Generic
+`DEBUG`, `print(`, or logging hits require a confirmed release path and sensitive
+data flow before becoming a finding.
 
 ### Category 5: Cheat and Anti-Tamper Vectors
 - Are external data-driven gameplay values validated for type/range at their
@@ -118,15 +138,19 @@ Note: Client-side anti-cheat is largely unenforceable. Focus on server-side vali
 - Do any plugins have known CVEs in the version being used?
 - Are plugin sources verified (official marketplace, reviewed repository)?
 
-Inspect `addons/`, `plugins/`, `third_party/`, and `vendor/` when present, and list all external dependencies.
+Inspect `addons/`, `plugins/`, `third_party/`, and `vendor/` when present, and
+list external dependencies with their exact recorded versions. A CVE conclusion
+requires an exact version and an authoritative vendor/government advisory. If
+the version is absent, official advisory access is unavailable, or the match is
+ambiguous, mark the dependency `Not Assessed`; never write `none` by inference.
 
 ---
 
 ## Phase 4: Classify Findings
 
-For each finding, assign:
+For each finding, assign severity from evidence of exploitability and impact,
+not project type alone:
 
-**Severity:**
 | Level | Definition |
 |-------|-----------|
 | **CRITICAL** | Remote code execution, data breach, or trivially-exploitable cheat that breaks multiplayer integrity |
@@ -134,7 +158,11 @@ For each finding, assign:
 | **MEDIUM** | Client-side cheat enablement, information disclosure, or input validation gap with limited impact |
 | **LOW** | Defence-in-depth improvement — hardening that reduces attack surface but no direct exploit exists |
 
-**Status:** Open / Accepted Risk / Out of Scope
+Every new finding starts `Open`. Use `Accepted Risk` only when an existing
+artifact or the user explicitly supplies the acceptance decision and rationale;
+the auditor cannot accept risk on the team's behalf. Use `Out of Scope` only
+when the confirmed scope supports it. Do not mechanically promote every HIGH
+finding to CRITICAL merely because multiplayer exists.
 
 ---
 
@@ -146,7 +174,7 @@ For each finding, assign:
 **Date**: [date]
 **Scope**: [full | network | save | input | quick]
 **Engine**: [engine + version]
-**Audited by**: security-engineer via $security-audit
+**Audited by**: [actual executor]
 **Files scanned**: [N source files, N config files]
 
 ---
@@ -178,6 +206,7 @@ For each finding, assign:
 **Attack scenario**: [How a malicious user would exploit it]
 **Remediation**: [Specific code change or pattern to apply]
 **Effort**: [Low / Medium / High]
+**Status**: Open
 
 [repeat per finding]
 
@@ -203,15 +232,22 @@ For each finding, assign:
 
 ## Accepted Risk
 
-[Any findings explicitly accepted by the team with rationale]
+[Only existing user/team decisions, with source and rationale; otherwise None]
 
 ---
 
 ## Dependency Inventory
 
-| Plugin / Library | Version | Source | Known CVEs |
-|-----------------|---------|--------|------------|
-| [name] | [version] | [source] | [none / CVE-XXXX-NNNN] |
+| Plugin / Library | Version | Source | Advisory Assessment |
+|-----------------|---------|--------|---------------------|
+| [name] | [exact version or unknown] | [source] | [advisory ID / none found / Not Assessed] |
+
+---
+
+## Data Limitations
+
+[Unconfigured scope, missing versions, unavailable official advisory checks,
+partial delegation, or unreadable sources]
 
 ---
 
@@ -234,9 +270,10 @@ The Polish → Release gate requires this report with no open CRITICAL or HIGH i
 
 Present the report summary (executive summary + CRITICAL/HIGH findings only) in conversation.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Write only after the single changeset approval, without re-prompting within its boundary.
+Resolve `production/security/security-audit-[date].md` and read it if it already
+exists. Offer a targeted update or stop; do not overwrite it or invent a new
+version name. Show the complete report and exact create/update in the complete
+changeset preview, then write only after the single changeset approval.
 
 ---
 
@@ -259,7 +296,10 @@ missing coverage instead of a shipping clearance.
 
 ## Collaborative Protocol
 
-- **Never assume a pattern is safe** — flag it and let the user decide
-- **Accepted risk is a valid outcome** — some LOW findings are acceptable trade-offs for a solo team; document the decision
-- **Multiplayer games have a higher bar** — any HIGH finding in a multiplayer context should be treated as CRITICAL
+- **Never assume a pattern is safe or unsafe from a keyword** — inspect the
+  call-site data flow and build condition before classifying it
+- **Accepted risk requires a team decision** — record only an explicit existing
+  decision; do not create one during the audit
+- **Use evidence-based severity** — multiplayer changes the threat model but
+  does not automatically change every HIGH finding to CRITICAL
 - **This is not a penetration test** — this audit covers common patterns; a real pentest by a human security professional is recommended before any competitive or monetised multiplayer launch

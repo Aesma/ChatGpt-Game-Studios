@@ -27,7 +27,9 @@ path. With no argument, read existing active milestone/sprint references and
 resolve the current sprint against that milestone. If there are multiple
 candidates or no unique baseline, list the candidates and stop rather than guess.
 
-- Feature: use an explicitly referenced or uniquely matching design/plan artifact.
+- Feature: first try an exact slug and an explicit epic/story/GDD reference,
+  then a unique title match. If more than one candidate remains, list each path
+  and ask the user to select one.
 - Sprint: use its exact sprint plan as the baseline.
 - Milestone: use its exact milestone goals/deliverables.
 - Story path: read the story and its explicitly referenced parent epic as baseline.
@@ -46,6 +48,14 @@ current set from existing artifacts at the same level. Use related source files,
 commits, and TODO/FIXME references only as evidence that a particular item exists
 or changed; never count them as additional scope items.
 
+Read Git history only when the baseline has an explicit start date or audit
+period, and constrain the query to that period. If no period exists, skip the
+history query and state that commit evidence is unavailable.
+
+A TODO/FIXME/HACK is supporting evidence only when the comment explicitly
+references the selected story, feature, goal, or deliverable. An unlinked debt
+marker is never an addition.
+
 ---
 
 ## Phase 3: Compare Item by Item
@@ -55,9 +65,13 @@ comparable cut or an explicit timeline extension. Report additions, removals,
 and their mappings separately. Do not let the number of small removals cancel a
 larger addition.
 
+Classify justification as `Documented`, `Undocumented`, or `Unclear` and cite
+only an existing artifact. Do not infer who requested or approved an addition.
+
 If comparable effort exists, report the evidence-backed effort delta. If it does
 not, omit a percentage and state that item counts cannot establish bloat because
-the items may differ in size.
+the items may differ in size. Removed or descoped items always remain separate
+from additions and cannot create a negative-growth PASS.
 
 ```markdown
 ## Scope Check: [Target]
@@ -70,9 +84,9 @@ the items may differ in size.
 | [story/goal/deliverable] | [yes/no] | [yes/no] | [artifact path] |
 
 ### Additions
-| Addition | Matching Cut / Timeline Extension | Evidence | Status |
-|----------|-----------------------------------|----------|--------|
-| [item] | [mapped item/extension or none] | [path] | [accounted/unmapped] |
+| Addition | Matching Cut / Timeline Extension | Evidence | Documentation |
+|----------|-----------------------------------|----------|---------------|
+| [item] | [mapped item/extension or none] | [path] | [Documented/Undocumented/Unclear] |
 
 ### Removals
 | Removal | Evidence |
@@ -85,6 +99,10 @@ the items may differ in size.
 ### Risks and Recommendations
 [Evidence-backed schedule, quality, and integration risks; user decision points]
 ```
+
+Recommendations may rank a cut only when the selected baseline explicitly marks
+priority or core experience. Otherwise list the tradeoff as a user decision and
+do not claim which item should be cut.
 
 ---
 

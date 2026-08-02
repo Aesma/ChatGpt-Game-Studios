@@ -96,6 +96,8 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Output names the expected file path in the error message
 - [ ] Output suggests checking `production/milestones/` for valid milestone names
 - [ ] Verdict is BLOCKED (cannot review a non-existent milestone)
+- [ ] Missing, duplicate, or unknown milestone targets are rejected before any PR-MILESTONE gate or write preview
+- [ ] Available milestone filenames are listed for recovery
 
 ---
 
@@ -133,6 +135,12 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Completion, bug, coverage, performance, debt, and velocity values cite milestone-attributable evidence; missing evidence is `unknown`
 - [ ] The evidence draft is compiled before PR-MILESTONE, but the final Go/No-Go recommendation is generated only after the gate/user risk decision
 - [ ] Report save approval or refusal does not change the evidence-based MILESTONE COMPLETE/INCOMPLETE verdict
+- [ ] Sprint evidence is included only through an explicit milestone reference or a sprint header naming that milestone
+- [ ] TODO/FIXME/HACK counts scan only production source/build configuration and report their path scope
+- [ ] OFF TRACK maps only to NO-GO or user-accepted CONDITIONAL GO, never unconditional GO
+- [ ] AT RISK user acceptance preserves the producer verdict and the specific accepted risks in Conditions/Rationale
+- [ ] The save path is `production/milestones/review-[milestone].md`; an existing path is previewed as an update
+- [ ] A missing/timed-out/incomplete PR-MILESTONE result in full mode stops recommendation and writing; lean/solo explicitly records no producer verdict
 
 ---
 

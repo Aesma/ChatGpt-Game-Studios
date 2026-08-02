@@ -6,8 +6,8 @@ Orchestrates the narrative team through a five-phase pipeline: narrative directi
 (narrative-director) → world foundation + dialogue drafting (world-builder and writer
 in parallel) → level narrative integration (level-designer) → consistency review
 (narrative-director) → polish + localization compliance (writer, localization-lead,
-and world-builder in parallel). Uses `user-input request` at each phase transition to
-present proposals as selectable options. Produces a narrative summary report and
+and world-builder in parallel). Uses `user-input request` for meaningful narrative
+decisions rather than pure status transitions. Produces a narrative summary report and
 delivers narrative documents through subagents working inside one approved changeset with non-overlapping file ownership. Verdict is COMPLETE when all phases succeed and the final candidate has no blocker, or BLOCKED when a dependency
 is unresolved.
 
@@ -23,10 +23,15 @@ is unresolved.
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Has a next-step handoff at the end (references `$localize extract` and `$dev-story`, not the system-GDD-only `$design-review`)
 - [ ] Error Recovery Protocol section is present
-- [ ] `user-input request` is used at phase transitions before proceeding
+- [ ] `user-input request` is used for meaningful narrative choices; pure status transitions do not re-approve writes
 - [ ] Phase 2 permits independent drafting in parallel but prevents canon-dependent writer output from becoming final before the world-builder's check
 - [ ] Phase 5 explicitly spawns writer, localization-lead, and world-builder in parallel
 - [ ] Phase 5 checks are read-only; any resulting edit is followed by the existing narrative-director consistency re-review
+- [ ] No unused review mode is parsed; unknown flags fail before delegation
+- [ ] The request resolves content type, target entity, and one authoritative target before writers start
+- [ ] Phase confirmations are product decisions, not repeated file authorization prompts
+- [ ] Canon levels include impact, director consistency review, and explicit user confirmation
+- [ ] Required canon/voice/localization work cannot be skipped into COMPLETE
 
 ---
 
@@ -183,7 +188,7 @@ is unresolved.
 
 ## Protocol Compliance
 
-- [ ] `user-input request` is used after every phase output before the next phase launches
+- [ ] `user-input request` captures each meaningful product decision before dependent work; status-only transitions do not prompt
 - [ ] Parallel spawning: Phase 2 (world-builder + writer) and Phase 5 (writer + localization-lead + world-builder) issue all Codex subagent delegations before waiting for results
 - [ ] No files are written by the orchestrator directly — all writes are delegated to sub-agents
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
@@ -195,6 +200,16 @@ is unresolved.
 ---
 
 ## Coverage Notes
+
+### P1 Regression Matrix
+
+- [ ] Ambiguous lore/dialogue targets are listed for user selection; no writer starts first.
+- [ ] A request containing an unknown flag exits with usage and performs no write.
+- [ ] A phase with no narrative choice does not request a redundant transition approval.
+- [ ] The world-builder may recommend a canon level but cannot finalize it without director review and the user's decision.
+- [ ] Project UX/localization limits override the 120-character risk heuristic; absent limits do not become a fabricated blocker.
+- [ ] A failed required agent stops dependent phases, preserves completed output, and leaves the verdict BLOCKED rather than using Skip to reach COMPLETE.
+- [ ] Parallel agents have mutually exclusive writable paths and shared canon sources remain read-only.
 
 - Phase 3 (level-designer) and Phase 4 (narrative-director review) happy-path behavior are
   validated implicitly by Case 1. Separate edge cases are not needed for these phases as

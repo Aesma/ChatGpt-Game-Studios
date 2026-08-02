@@ -37,6 +37,20 @@ wrong internal format.
 - **`stories`**: Story format compliance only
 - **`infra`**: Infrastructure artifact gaps only (registry, manifest, sprint-status, stage.txt)
 
+The selected focus is a hard execution boundary:
+
+| Focus | Phase 2 work included |
+|---|---|
+| `full` | 2a through 2f |
+| `gdds` | 2a only |
+| `adrs` | 2b only |
+| `stories` | 2d only |
+| `infra` | 2c, 2e, and 2f only |
+
+Skip every other Phase 2 subsection. Phase 3 classifications, Phase 4 plan
+items, and Phase 5 summary fields must be derived only from the included work.
+For an excluded artifact type, write `Not in this focus` instead of a count.
+
 ---
 
 ## Phase 1: Detect Project State
@@ -91,6 +105,8 @@ the file exists but that it contains the internal structure the template require
 
 ### 2a: GDD Format Audit
 
+Run only for `full` or `gdds`.
+
 For each GDD file found, check for the 8 required sections by scanning headings:
 
 | Required Section | Heading pattern to look for |
@@ -115,6 +131,8 @@ Valid values: `In Design`, `Designed`, `In Review`, `Approved`, `Needs Revision`
 
 ### 2b: ADR Format Audit
 
+Run only for `full` or `adrs`.
+
 For each ADR file found, check every section required by `docs/AGENTS.md`:
 
 | Section | Impact if missing |
@@ -133,6 +151,8 @@ if the Status section exists.
 
 ### 2c: systems-index.md Format Audit
 
+Run only for `full` or `infra`.
+
 If `design/gdd/systems-index.md` exists:
 
 1. **Parenthetical status values** — Search file contents for any Status cell containing
@@ -149,6 +169,8 @@ If `design/gdd/systems-index.md` exists:
 
 ### 2d: Story Format Audit
 
+Run only for `full` or `stories`.
+
 For each story file found:
 
 - **`Manifest Version:` field** — present in story header? (LOW — auto-passes if absent)
@@ -158,6 +180,8 @@ For each story file found:
 - **Acceptance criteria** — does the story have a checkbox list (`- [ ]`)?
 
 ### 2e: Infrastructure Audit
+
+Run only for `full` or `infra`.
 
 | Artifact | Path | Impact if missing |
 |---|---|---|
@@ -170,6 +194,8 @@ For each story file found:
 | Architecture traceability | `docs/architecture/architecture-traceability.md` | MEDIUM — no persistent matrix |
 
 ### 2f: Technical Preferences Audit
+
+Run only for `full` or `infra`.
 
 Read `docs/technical-preferences.md`. Check each field for `[TO BE CONFIGURED]`:
 - Engine, Language, Rendering, Physics → HIGH if unconfigured (ADR skills fail)
@@ -221,7 +247,8 @@ For each gap, produce a plan entry with:
 
 **Special case — systems-index parenthetical status values:**
 This is always the first item if present. Show the exact values that need changing
-and the exact replacement text. Offer to fix this immediately before writing the plan.
+and the exact replacement text in the plan. Do not edit the systems index during
+this run.
 
 **Special case — ADRs missing Status field:**
 For each affected ADR, the fix is:
@@ -232,7 +259,8 @@ List each ADR as a separate checkable item.
 For each affected GDD, list which sections are missing and the fix:
 `$design-system retrofit design/gdd/[filename].md`
 
-**Infrastructure bootstrap ordering** — always present in this sequence:
+**Infrastructure bootstrap ordering** — include only missing in-scope artifacts,
+in this relative sequence:
 1. Fix ADR formats first (registry depends on reading ADR Status fields)
 2. Run `$architecture-review` → bootstraps `tr-registry.yaml`
 3. Run `$create-control-manifest` → creates manifest with version stamp
@@ -240,10 +268,11 @@ For each affected GDD, list which sections are missing and the fix:
 5. Run `$gate-check [phase]` → writes `stage.txt` authoritatively
 
 **Existing stories** — note explicitly:
-> "Existing stories continue to work with all template skills — all new format
-> checks auto-pass when the fields are absent. They won't benefit from TR-ID
-> staleness tracking or manifest version checks until they're regenerated. This
-> is intentional: do not regenerate stories that are already in progress."
+> "Stories checked in this run retain their current readable fields. Missing
+> optional tracking fields reduce TR-ID or manifest-version coverage. Consumers
+> not inspected by this audit are not guaranteed to accept those omissions; do
+> not regenerate in-progress stories solely on an unverified compatibility
+> assumption."
 
 ---
 
@@ -267,6 +296,10 @@ Gap counts:
 
 Estimated remediation: [X blocking items × ~Y min each = roughly Z hours]
 ```
+
+Replace each audit line whose type is outside the chosen focus with
+`[Type]: Not in this focus`; never report a zero or a repository-wide count for
+work that was skipped.
 
 Before asking to write, show a **Gap Preview**:
 - List every BLOCKING gap as a one-line bullet describing the actual problem
@@ -365,10 +398,10 @@ Run `$gate-check [current-phase]`
 
 ## What to Expect from Existing Stories
 
-Existing stories continue to work with all template skills. New format checks
-(TR-ID validation, manifest version staleness) auto-pass when the fields are
-absent — so nothing breaks. They won't benefit from staleness tracking until
-regenerated. Do not regenerate stories that are in progress or done.
+The stories actually checked retained their readable fields. Missing TR-ID or
+manifest-version data reduces tracking coverage. This audit does not guarantee
+behavior for consumers it did not inspect. Do not regenerate stories that are
+in progress or done solely on an unverified compatibility claim.
 
 ---
 
@@ -408,37 +441,39 @@ Create the `production/` directory if it does not exist.
 
 ---
 
-## Phase 7: Offer First Action
+## Phase 7: Recommend First Action
 
-After writing the plan, don't stop there. Pick the single highest-priority gap
-and offer to handle it immediately by asking the user directly. Choose the first
-branch that applies:
+After writing the plan, identify the single highest-priority gap and recommend
+the existing command or manual edit recorded in the plan. This phase is advisory:
+do not edit a GDD, ADR, systems index, or other audited artifact during `$adopt`.
+Choose the first branch that applies:
 
 **If there are parenthetical status values in systems-index.md:**
 Ask the user directly:
 - "The most urgent fix is `systems-index.md` — [N] rows have parenthetical status
   values (e.g. `Needs Revision (see notes)`) that break $gate-check,
-  $create-stories, and $architecture-review right now. I can fix these in-place."
-  - "Fix it now — edit systems-index.md"
-  - "I'll fix it myself"
+  $create-stories, and $architecture-review right now. Use the exact replacement
+  text recorded in the adoption plan."
+  - "Show the affected rows from the plan"
+  - "I'll make the edit separately"
   - "Done — leave me with the plan"
 
 **If ADRs are missing `## Status` (and no parenthetical issue):**
 Ask the user directly:
 - "The most urgent fix is adding `## Status` to [N] ADR(s): [list filenames].
-  Without it, $story-readiness silently passes all ADR checks. Start with
-  [first affected filename]?"
-  - "Yes — retrofit [first affected filename] now"
-  - "Retrofit all [N] ADRs one by one"
+  Without it, $story-readiness silently passes all ADR checks. The first follow-up
+  is `$architecture-decision retrofit [first affected filename]` in a separate run."
+  - "Show the retrofit command from the plan"
+  - "I'll run the retrofit separately"
   - "I'll handle ADRs myself"
 
 **If GDDs are missing Acceptance Criteria (and no blocking issues above):**
 Ask the user directly:
 - "The most urgent gap is missing Acceptance Criteria in [N] GDD(s):
   [list filenames]. Without them, $create-stories can't generate stories.
-  Start with [highest-priority GDD filename]?"
-  - "Yes — add Acceptance Criteria to [GDD filename] now"
-  - "Do all [N] GDDs one by one"
+  The first follow-up is `$design-system retrofit [GDD filename]` in a separate run."
+  - "Show the retrofit command from the plan"
+  - "I'll run the retrofit separately"
   - "I'll handle GDDs myself"
 
 **If no BLOCKING or HIGH gaps exist:**

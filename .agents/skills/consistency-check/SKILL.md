@@ -43,6 +43,12 @@ the complete changeset preview.
 - `entity:<name>` — check one specific entity across all GDDs
 - `item:<name>` — check one specific item across all GDDs
 
+Validate exactly one mode or selector before loading the registry. `entity:` and
+`item:` require a non-empty name and cannot be combined with another mode.
+Resolve selector names under the project's existing case rules; empty,
+malformed, unknown, or ambiguous selectors stop with candidate evidence and no
+verdict.
+
 **Load the registry:**
 
 ```
@@ -60,10 +66,16 @@ Build four lookup tables from the registry:
 - **formula_map**: `{ name → { source, variables, output_range } }`
 - **constant_map**: `{ name → { source, value, unit } }`
 
+Parse YAML strictly. Duplicate keys, malformed records, or non-mapping entries
+are reported with their location and stop registry-backed comparison; never
+silently discard an entry or build partial lookup tables. A selector that needs
+an invalid registry stops without a verdict. A full scan may continue its
+cross-GDD checks only while clearly marking registry comparison unavailable.
+
 Count total registered entries. Report:
 ```
 Registry loaded: [N] entities, [N] items, [N] formulas, [N] constants
-Scope: [full | since-last-review | entity:name]
+Scope: [full | since-last-review | entity:name | item:name]
 ```
 
 ---
@@ -109,12 +121,18 @@ table headers, units, formulas, and values remain together; three context lines
 are not sufficient evidence. Expand beyond these sections only when a possible
 conflict needs investigation.
 
+Treat registry names as escaped literal text, never as regular expressions.
+Require token/Markdown boundaries under the project's existing case rules.
+Substring-only hits and names that cannot be located uniquely are
+**UNVERIFIABLE**, not comparable values.
+
 ### 3a: Entity Scan
 
 For each entity in entity_map:
 
 ```
-Search files matching `design/gdd/*.md` for `[entity_name]` and include 3 surrounding lines of context.
+Search files matching `design/gdd/*.md` for the literal bounded
+`[entity_name]`, then read the complete containing Markdown section.
 ```
 
 For each GDD hit, extract the values mentioned near the entity name:
@@ -158,6 +176,14 @@ For each constant in constant_map, search all GDDs for the constant name. Extrac
 Compare against registry value:
 - Different number → **CONFLICT**
 
+### 3e: Dependency Scan
+
+Read every in-scope `Dependencies` section. Resolve each explicit target via
+`systems-index.md`, or through a unique GDD filename/title when the index is
+unavailable. A target with no corresponding GDD is a **Dependency Gap** finding
+that names the source GDD and missing target with MEDIUM severity. Ambiguous
+targets are UNVERIFIABLE and list all candidates; never guess.
+
 ---
 
 ## Phase 4: Deep Investigation (Conflicts Only)
@@ -171,11 +197,12 @@ Read the complete conflicting section in `design/gdd/[conflicting_gdd].md`.
 (Or search with wider context if the file is large)
 
 Confirm the conflict with full context. Determine:
-1. **Which GDD is correct?** Check the `source:` field in the registry — the
-   source GDD is the authoritative owner. Any other GDD that contradicts it
-   is the one that needs updating.
-2. **Is the registry itself out of date?** If the source GDD was updated after
-   the registry entry was written (check git log), the registry may be stale.
+1. Compare the registry `source:` GDD's current text, the registry value, and
+   relevant Git changes. `source:` is ownership evidence, not unconditional
+   proof that its current value is correct.
+2. When source text and registry disagree, show both with available history. If
+   evidence cannot establish intent, report the conflict and ask the user to
+   decide; never choose a winner automatically.
 3. **Is this a genuine design change?** If the conflict represents an intentional
    design decision, the resolution is: update the source GDD, update the registry,
    then fix all other GDDs.
@@ -225,18 +252,29 @@ GDDs scanned: [N] ([list names])
 
 ---
 
+### Dependency Gaps
+
+| Source GDD | Missing Target | Severity | Evidence |
+|------------|----------------|----------|----------|
+| [gdd] | [system] | MEDIUM | [Dependencies entry] |
+
 ### Clean Entries (no issues found)
 
 ✅ [N] registry entries verified across all GDDs with no conflicts.
 
 ---
 
-Verdict: PASS | CONFLICTS FOUND
+Verdict: CONSISTENT | CONFLICTS FOUND | DEPENDENCY GAP
 ```
 
-**Verdict:**
-- **PASS** — no conflicts. Registry and GDDs agree on all checked values.
-- **CONFLICTS FOUND** — one or more conflicts detected. List resolution steps.
+**Verdict (exactly one):**
+- **CONFLICTS FOUND** — value, formula, or ownership conflict exists. This takes
+  precedence when conflicts and dependency gaps coexist.
+- **DEPENDENCY GAP** — no conflict exists, but an explicit dependency target has
+  no corresponding GDD.
+- **CONSISTENT** — registry values (when available), formulas, ownership, and
+  dependencies were all checked with no issue. Required UNVERIFIABLE evidence
+  prevents CONSISTENT; explain incompleteness without inventing another status.
 
 ---
 
@@ -271,8 +309,9 @@ Never end the skill with plain text. Always close with this structured prompt.
 
 ## Recovery / Reference
 
-- **If PASS**: Run `$review-all-gdds` for holistic design-theory review, or
+- **If CONSISTENT**: Run `$review-all-gdds` for holistic design-theory review, or
   `$create-architecture` if all MVP GDDs are complete.
+- **If DEPENDENCY GAP**: Run `$design-system [missing-system]`, then re-run.
 - **If CONFLICTS FOUND**: Fix the flagged GDDs, then re-run
   `$consistency-check` to confirm resolution.
 - **If STALE REGISTRY**: Use the report's proposed correction in a separate

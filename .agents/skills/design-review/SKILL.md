@@ -35,11 +35,21 @@ Extract `--depth [full|lean|solo]` if present. Default is `full` when no flag is
 
 ## Phase 1: Load Documents
 
-Read the target design document in full. Read AGENTS.md to understand project context and standards. Read related design documents referenced or implied by the target doc (check `design/gdd/` for related systems).
+Read the target design document in full. Read every applicable `AGENTS.md` from
+the repository root through the target's parent, with the closest rule taking
+precedence, and list the files used in the report. Read only the game concept,
+documents explicitly linked by the target, GDDs directly named in Dependencies,
+and narrative files explicitly associated with this system. Do not expand
+`implied` context into a directory-wide read.
 
-**Dependency graph validation:** For every system listed in the Dependencies section, search matching files to check whether its GDD file exists in `design/gdd/`. Flag any that don't exist yet — these are broken references that downstream authors will hit.
+**Dependency graph validation:** For every system listed in Dependencies, compare
+the explicit link and systems-index entry. Report one of: `GDD exists`, `listed
+but not authored` (including Not Started/In Design), `not listed/unknown`, or
+`explicit link broken`. Only the latter two are broken references; an indexed
+system awaiting a GDD is not broken.
 
-**Lore/narrative alignment:** If `design/gdd/game-concept.md` or any file in `design/narrative/` exists, read it. Note any mechanical choices in this GDD that contradict established world rules, tone, or design pillars. Pass this context to `game-designer` in Phase 3b.
+**Lore/narrative alignment:** Read `design/gdd/game-concept.md` and only narrative
+files explicitly linked to this system, when they exist. Note any mechanical choices in this GDD that contradict established world rules, tone, or design pillars. Pass this context to `game-designer` in Phase 3b.
 
 **Prior review check:** Check whether `design/gdd/reviews/[doc-name]-review-log.md` exists. If it does, read the most recent entry — note what verdict was given and what blocking items were listed. This session is a re-review; track whether prior items were addressed.
 
@@ -57,6 +67,13 @@ Evaluate against the Design Document Standard checklist:
 - [ ] Has Dependencies section (other systems listed)
 - [ ] Has Tuning Knobs section (configurable values identified)
 - [ ] Has Acceptance Criteria section (testable success conditions)
+
+A heading is complete only when it has substantive, non-placeholder content.
+Within these same eight checks, require Formulas to define variables, ranges, and
+an example when math applies; Edge Cases to name concrete conditions and outcomes;
+Tuning Knobs to give safe ranges and effects; and Acceptance Criteria to be
+independently testable. Phrases such as `gracefully`, `feels good`, or `works
+correctly` without observable criteria are blockers, not completed sections.
 
 ---
 
@@ -86,7 +103,7 @@ Evaluate against the Design Document Standard checklist:
 **This phase is MANDATORY in full mode.** Do not skip it.
 
 **Before spawning any agents**, print this notice:
-> "Full review: spawning specialist agents in parallel. This typically takes 8–15 minutes. Use `--review lean` for faster single-session analysis."
+> "Full review: spawning relevant specialist agents. Duration depends on the selected roles and available capacity. Use `--depth lean` for single-session analysis."
 
 ### Step 1 — Identify all domains the GDD touches
 
@@ -105,7 +122,7 @@ Read the GDD and identify every domain present. A GDD can touch multiple domains
 | Multiplayer, sync, replication | `network-programmer` |
 | Audio cues, music triggers | `audio-director` |
 | Performance, draw calls, memory | `performance-analyst` |
-| Engine-specific patterns or APIs | Primary engine specialist (from `docs/technical-preferences.md`) |
+| Engine-specific patterns or APIs | Primary engine specialist only when it is configured in `docs/technical-preferences.md`; otherwise skip and report `engine-specific review not run` |
 | Acceptance criteria, test coverage | `qa-lead` |
 | Data schema, resource structure | `systems-designer` |
 | Any gameplay system | `game-designer` (always) |
@@ -127,22 +144,22 @@ space for the primary task. Start only the roles that fit; run the remainder in
 bounded batches as slots become available. Never fabricate a role result that
 was not actually returned.
 
-**Prompt each specialist adversarially:**
+**Prompt each specialist for evidence:**
 > "Here is the GDD for [system] and the main review's structural findings so far.
-> Your job is NOT to validate this design — your job is to find problems.
-> Challenge the design choices from your domain expertise. What is wrong,
-> underspecified, likely to cause problems, or missing entirely?
-> Be specific and critical. Disagreement with the main review is welcome."
+> Verify the design from your domain. For each issue, cite the document location,
+> explain its impact, classify it as blocking/recommended/nice-to-have, and give
+> an actionable correction. Do not manufacture findings when a requirement is
+> already satisfied. Disagreement with the main review is welcome when supported."
 
 **Additional instructions per agent type:**
 
-- **`game-designer`**: Anchor your review to the Player Fantasy stated in Section B of this GDD. Does this design actually deliver that fantasy? Would a player feel the intended experience? Flag any rules that serve implementability but undermine the stated feeling.
+- **`game-designer`**: Anchor your review to the `Player Fantasy` heading of this GDD. Does this design actually deliver that fantasy? Would a player feel the intended experience? Flag any rules that serve implementability but undermine the stated feeling.
 
 - **`systems-designer`**: For every formula in the GDD, plug in boundary values (minimum and maximum plausible inputs). Report whether any outputs go degenerate — negative values, division by zero, infinity, or nonsensical results at the extremes.
 
 - **`qa-lead`**: Review every acceptance criterion. Flag any that are not independently testable — phrases like "feels balanced", "works correctly", "performs well" are not ACs. Suggest concrete rewrites for any that fail this test.
 
-### Step 3 — Senior lead review
+### Step 3 — Complete and merge specialist results
 
 After all attempted specialist batches settle, list any role that did not
 complete and the reason. Use completed findings to produce NEEDS REVISION or
@@ -151,11 +168,10 @@ If missing reviews are necessary to establish a clean result, state that the
 full review is incomplete and do not issue a verdict. If no required specialist
 succeeds, stop with a clear error and no verdict.
 
-Then spawn `creative-director` as the **senior reviewer** only if the preceding
-full review has enough real completed results:
-- Provide: the GDD, all specialist findings, any disagreements between them
-- Ask: "Synthesise these findings. What are the most important issues? Do you agree with the specialists? What is your overall verdict on this design?"
-- The creative-director's synthesis becomes the **final verdict** in Phase 4.
+Merge findings that cite the same document location and defect, preserving every
+source on the merged item. The primary reviewer performs the final synthesis;
+do not spawn a director or let any single specialist override the deterministic
+Phase 4 mapping.
 
 ### Step 4 — Surface disagreements
 
@@ -193,20 +209,31 @@ Present both sides — do not silently resolve.]
 ### Nice-to-Have
 [Minor improvements, low priority.]
 
-### Senior Verdict [creative-director]
-[Creative director's synthesis and overall assessment.]
+For `lean` and `solo`, write `Specialists consulted: none`; use `primary review`
+as the finding source and omit specialist disagreements or any senior/director
+verdict. For `full`, list only roles that actually returned.
 
 ### Scope Signal
 Estimate implementation scope based on: dependency count, formula count,
 systems touched, and whether new ADRs are required.
-- **S** — single system, no formulas, no new ADRs, <3 dependencies
-- **M** — moderate complexity, 1-2 formulas, 3-6 dependencies
-- **L** — multi-system integration, 3+ formulas, may require new ADR
-- **XL** — cross-cutting concern, 5+ dependencies, multiple new ADRs likely
-Label clearly: "Rough scope signal: M (producer should verify before sprint planning)"
+Evaluate in order XL → L → M → S and stop at the first match:
+- **XL** — cross-cutting concern or 7+ dependencies; multiple new ADRs likely
+- **L** — multi-system integration, 3+ formulas, or 5–6 dependencies
+- **M** — moderate complexity, 1–2 formulas, 3–4 dependencies
+- **S** — single system, no formulas, no new ADRs, 0–2 dependencies
+A formula or ADR condition may raise the result only to the explicitly matching
+higher band. Label clearly: "Rough scope signal: M (producer should verify before sprint planning)"
 
 ### Verdict: [APPROVED / NEEDS REVISION / MAJOR REVISION NEEDED]
 ```
+
+Apply this mapping consistently:
+- `APPROVED`: no blocking issue; recommended and nice-to-have items may remain.
+- `NEEDS REVISION`: at least one local, repairable blocker.
+- `MAJOR REVISION NEEDED`: core rules contradict each other, a core product
+  decision is unresolved, or at least three required sections lack substantive
+  content.
+No specialist synthesis may downgrade an existing blocker.
 
 This entire skill is read-only — no files are written in any phase.
 

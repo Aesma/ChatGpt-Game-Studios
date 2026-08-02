@@ -160,6 +160,25 @@ None. Estimation is an advisory informational skill; no gates are invoked.
 
 ---
 
+### Case 7: Evidence boundaries and arithmetic
+
+**Assertions:**
+- [ ] Applicable nested AGENTS rules are read from root to candidate parent
+- [ ] Candidate files come from explicit links/paths/references; unknown boundaries lower confidence
+- [ ] LOC/dependency/cyclomatic values appear only when measured; otherwise complexity is qualitative
+- [ ] Optimistic ≤ Expected ≤ Pessimistic and expected breakdown sums to recommended budget
+
+---
+
+### Case 8: Low-confidence and split guidance
+
+**Assertions:**
+- [ ] `$prototype` is recommended only for a core gameplay/fun hypothesis
+- [ ] Architecture uncertainty points to an ADR; unclear requirements request clarification
+- [ ] The >10-day split decision uses and cites Expected, not Pessimistic
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads story file before estimating

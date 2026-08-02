@@ -9,7 +9,9 @@ Invoke this workflow as `$team-combat`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[combat feature description] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[combat feature description]`. The description is required. This
+team workflow has no director-gate review flag; every core role runs when its
+feature responsibility applies.
 
 **Argument check:** If no combat feature description is provided, output:
 > "Usage: `$team-combat [combat feature description]` — Provide a description of the combat feature to design and implement (e.g., `melee parry system`, `ranged weapon spread`)."
@@ -17,23 +19,11 @@ Then stop immediately without spawning any subagents or reading any files.
 
 When this skill is invoked with a valid argument, orchestrate the combat team through a structured pipeline.
 
-**Decision Points:** At each phase transition, ask the user directly to present
-the user with the subagent's proposals as selectable options. Write the agent's
-full analysis in conversation, then capture the decision with concise labels.
-The user must approve before moving to the next phase.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
+**Decision Points:** Use approve / revise / stop choices at Design →
+Architecture, the existing Architecture → Implementation gate, Implementation →
+Integration, and Integration → QA. A stop produces a partial BLOCKED report; a
+revision re-runs only the affected phase. These are substantive phase decisions,
+not repeated file approvals.
 
 ## Team Composition
 - **game-designer** — Design the mechanic, define formulas and edge cases
@@ -60,9 +50,23 @@ Always provide full context in each agent's prompt (design doc path, relevant co
 ## Pipeline
 
 ### Phase 1: Design
-Delegate to **game-designer** as analysis-only. It returns a complete GDD draft
+Normalize the feature name to a lowercase alphanumeric/hyphen slug, rejecting
+path separators/traversal and an empty result. Resolve one exact
+`design/gdd/[slug].md` path and include the corresponding existing
+`design/gdd/systems-index.md` update in the later changeset. A collision is an
+explicit update choice, never overwrite-by-name.
+
+If that GDD exists, game-designer first checks all eight required sections under
+`design/AGENTS.md`; missing decisions must be revised before Architecture.
+For a new or validated existing GDD, delegate to **game-designer** as
+analysis-only. It returns a complete GDD draft
 in conversation and must not create/update files yet. The draft covers: mechanic overview, player fantasy, detailed rules, formulas with variable definitions, edge cases, dependencies, tuning knobs with safe ranges, and acceptance criteria
+- Decide and record whether AI behavior is part of the feature. That decision
+  controls both Architecture and Implementation; when false, ai-programmer is
+  N/A in both phases and in the summary.
 - Output: completed design-document draft
+
+Present approve / revise / stop before Architecture.
 
 ### Phase 2: Architecture
 Delegate to **gameplay-programmer** (with **ai-programmer** if AI is involved)
@@ -77,7 +81,12 @@ specialist are configured, do not spawn a placeholder. Keep the architecture
 engine-agnostic, report **BLOCKED** for implementation, recommend `$setup-engine`,
 and stop before Phase 3.
 
-When configured, spawn the **primary engine specialist** to validate the proposed architecture:
+When configured, read the matching existing
+`docs/engine-reference/[engine]/VERSION.md` and pass its pinned version to the
+**primary engine specialist** with the architecture and GDD path. If the version
+reference is missing, mark version validation unavailable and stop making
+specific API/deprecation claims until it is supplied. Spawn the specialist to
+validate the proposed architecture:
 - Is the class/node/component structure idiomatic for the pinned engine? (e.g., Godot node hierarchy, Unity MonoBehaviour vs DOTS, Unreal Actor/Component design)
 - Are there engine-native systems that should be used instead of custom implementations?
 - Any proposed APIs that are deprecated or changed in the pinned engine version?
@@ -112,6 +121,10 @@ Phase 2:
 No Phase 3 agent may edit a shared integration path. If a new path is required,
 stop and use the existing scope-expansion reauthorization rule.
 
+After all applicable Phase 3 agents return, present their results with
+approve / revise / stop before Integration. An AI-free feature has no AI spawn
+and reports that role N/A.
+
 ### Phase 4: Integration
 Delegate the existing **gameplay-programmer** as the single integration owner.
 It receives all Phase 3 results and may edit only the shared integration paths
@@ -122,12 +135,16 @@ reserved and approved in Phase 2:
 
 Other Phase 3 agents may review their interfaces but must not write shared files.
 
+Present the integrated result with approve / revise / stop before QA.
+
 ### Phase 5: Validation
 Delegate to **qa-tester**:
 - Write test cases from the acceptance criteria
 - Test all edge cases documented in the design
 - Verify performance impact is within budget
-- File bug reports for any issues found
+- List discovered bugs in the validation result. Write a bug file only when its
+  exact path was already included in the approved Phase 2 changeset; otherwise
+  keep the finding in conversation/summary and do not create an unapproved file.
 
 ### Phase 6: Sign-off
 - Collect results from all team members
@@ -147,7 +164,8 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip this agent and note the gap in the partial report (a skipped required
+     role remains unresolved and forces final BLOCKED)
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.

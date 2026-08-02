@@ -48,8 +48,8 @@ Collect these for the output in Step 7 — show them as a footer block:
 
 ```
 ### Also installed (not in workflow)
-- `/skill-name` — [description from SKILL.md frontmatter]
-- `/skill-name` — [description]
+- `$skill-name` — [description from SKILL.md frontmatter]
+- `$skill-name` — [description]
 ```
 
 Only show this block if at least one uncataloged skill exists. Limit to the 10
@@ -77,7 +77,8 @@ Check in this order:
 
 2. **If stage.txt is missing**, infer phase from artifacts (most-advanced match wins):
    - `src/` has 10+ source files → `production`
-   - `production/stories/*.md` exists → `pre-production`
+   - real story files matching `production/epics/**/story-*.md` exist (exclude
+     `EPIC.md` and any index) → `pre-production`
    - `docs/architecture/adr-*.md` exists → `technical-setup`
    - `design/gdd/systems-index.md` exists → `systems-design`
    - `design/gdd/game-concept.md` exists → `concept`
@@ -110,9 +111,11 @@ For each step in the current phase (from the catalog):
 
 If the step has `artifact.glob`:
 - Search matching files to check if files matching the pattern exist
-- If `min_count` is specified, verify at least that many files match
-- If `artifact.pattern` is specified, search to verify the pattern exists in the matched file
-- **Complete** = artifact condition is met
+- If `min_count` is specified, require that many matching files
+- If `artifact.pattern` is specified, evaluate the pattern against the matched
+  files according to that step's existing condition; `min_count` and pattern
+  must both hold. A match in one file cannot stand in for every required file.
+- **Complete** = every declared artifact condition is met
 - **Incomplete** = artifact is missing or pattern not found
 
 If the step has `artifact.note` (no file pattern):
@@ -124,7 +127,10 @@ If the step has no `artifact` field:
 ### Special case: production phase — read `sprint-status.yaml`
 
 When the current phase is `production`, check for `production/sprint-status.yaml`
-before doing any pattern-based story checks. If it exists, read it directly:
+before doing any pattern-based story checks. If it exists, read it directly. If
+it is absent, use the already discovered latest sprint Markdown as a read-only
+fallback and report its sprint number plus resolvable active/ready/done/blocked
+story counts:
 
 - Canonical `status: in_progress` → surface as "currently active"
 - Canonical `status: ready` → surface as "next up"
@@ -148,9 +154,11 @@ Label these differently — show what's been detected, then note it may be ongoi
 
 From the completion data, determine:
 
-1. **Last confirmed complete step** — the furthest completed required step
-2. **Current blocker** — the first incomplete *required* step (this is what the
-   user must do next)
+1. Walk required steps in catalog order and stop progression at the first
+   incomplete required step. This is the **Current blocker**.
+2. The **Last confirmed complete step** is the last contiguous required step
+   before that blocker. Later artifacts may be shown as `present but blocked by
+   earlier step`; they never move the workflow position past the blocker.
 3. **Optional opportunities** — incomplete *optional* steps that can be done
    before or alongside the blocker
 4. **Upcoming required steps** — required steps after the current blocker
@@ -196,11 +204,11 @@ Command: `[$command]`
 
 ### ~ Also available (OPTIONAL)
 - **[Step name]** — [description] → `$command`
-- **[Step name]** — [description] → `/command`
+- **[Step name]** — [description] → `$command`
 
 ### Coming up after that
 - [Next required step name] (`$command`)
-- [Next required step name] (`/command`)
+- [Next required step name] (`$command`)
 
 ---
 Approaching **[next phase]** gate → run `$gate-check` when ready.
@@ -212,9 +220,15 @@ Approaching **[next phase]** gate → run `$gate-check` when ready.
 - `~` for optional steps available now
 - Show commands inline as backtick code
 - If a step has no command (e.g. "Implement Stories"), explain what to do instead of inventing a command
-- For MANUAL steps, ask the user: "I can't tell if [step] is done — has it been completed?"
+- For a MANUAL step that affects the first blocker, ask: "I can't tell if [step]
+is done — has it been completed?" Until answered, present guidance as
+provisional and do not emit a completion verdict.
 
-Verdict: **COMPLETE** — next steps identified.
+Limit next-skill recommendations to one primary and at most two secondary
+choices. The uncataloged footer and coming-up context are not additional
+recommendations.
+
+Verdict: **HELP COMPLETE** — next steps identified.
 
 ---
 

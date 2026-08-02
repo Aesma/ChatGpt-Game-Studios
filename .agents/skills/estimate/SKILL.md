@@ -20,7 +20,9 @@ A nonexistent path, directory, project-external path, or non-Markdown file is a
 clear error rather than a task description. If natural language is too vague,
 ask for clarification before proceeding.
 
-Read AGENTS.md for project context: tech stack, coding standards, architectural patterns, and any estimation guidelines.
+Read the applicable `AGENTS.md` chain from repository root through each known
+candidate file's parent directory; the nearest rule wins. If candidate files are
+not yet known, read root guidance now and complete the chain after Phase 2.
 
 Read relevant design documents from `design/gdd/` if the task relates to a documented feature or system.
 
@@ -28,9 +30,13 @@ Read relevant design documents from `design/gdd/` if the task relates to a docum
 
 ## Phase 2: Scan Affected Code
 
-Identify files and modules that would need to change:
+Identify files/modules from explicit story/epic links, named paths, and existing
+code references. If that evidence cannot identify a boundary, mark file count
+and affected modules `Unknown` and lower confidence; do not guess paths.
 
-- Assess complexity (size, dependency count, cyclomatic complexity)
+- Assess complexity using only evidence actually available. Report LOC,
+  dependency counts, or cyclomatic complexity only when directly measured;
+  otherwise use qualitative Low/Medium/High and state what was unavailable.
 - Identify integration points with other systems
 - Check for existing test coverage in the affected areas
 - Read past sprint data from `production/sprints/` for similar completed tasks and historical velocity
@@ -48,6 +54,10 @@ L = 3–7 days, XL = 7+ days. Do not invent a point-to-day conversion.
 For a sprint input, reuse this calibrated single-story method for every resolved
 story. List unresolved story paths as unestimated and exclude them from numeric
 totals.
+
+Every estimate must satisfy Optimistic ≤ Expected ≤ Pessimistic. The expected
+sub-task values in Suggested Breakdown must add to Recommended budget; state
+which work can overlap instead of subtracting parallel work invisibly.
 
 
 
@@ -147,8 +157,12 @@ This skill is read-only — no files are written. Verdict: **COMPLETE** — esti
 
 ## Phase 5: Next Steps
 
-- If confidence is Low: recommend a time-boxed spike (`$prototype`) before committing.
-- If the task is > 10 days: recommend breaking it into smaller stories via `$create-stories`.
+- If confidence is Low because the task tests a core gameplay/fun hypothesis,
+  recommend a time-boxed `$prototype [spike-question] --spike`; this is not a
+  concept-phase gate verdict. For architectural uncertainty, recommend
+  the existing ADR path; for unclear requirements, ask for clarification.
+- If the **Expected** estimate is >10 days, cite that value and recommend
+  breaking it into smaller stories via `$create-stories`.
 - To schedule the task: run `$sprint-plan update` to add it to the next sprint.
 
 ### Guidelines

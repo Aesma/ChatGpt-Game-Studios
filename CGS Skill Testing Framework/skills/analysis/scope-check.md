@@ -178,3 +178,16 @@ None. Scope check is a read-only advisory skill; no gates are invoked.
 - [ ] When comparable effort data is absent, no bloat percentage is emitted.
 - [ ] A current GDD is labeled as the selected baseline at audit time and is not
   presented as proof of original historical scope.
+
+## P1 Contract Coverage
+
+- [ ] Feature resolution tries exact slug/reference/unique title and asks when
+  multiple design artifacts remain.
+- [ ] Git evidence is queried only for an explicit baseline period.
+- [ ] TODO/FIXME is evidence only when it explicitly references the selected target.
+- [ ] Addition documentation is Documented/Undocumented/Unclear with artifact
+  evidence; no requester or responsible person is guessed.
+- [ ] Removed/descoped items stay separate and cannot mask additions or produce
+  a negative-growth pass.
+- [ ] Cut ranking uses only baseline-declared core/priority; otherwise options
+  remain user decisions.

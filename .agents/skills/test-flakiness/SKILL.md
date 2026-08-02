@@ -33,8 +33,7 @@ explains likely causes, and recommends whether to quarantine or fix each one.
 
 **Modes:**
 - `$test-flakiness [ci-log-path]` — analyse a specific CI run log file
-- `$test-flakiness scan` — scan all available CI logs in `.github/` or
-  standard log output directories
+- `$test-flakiness scan` — use workflow definitions only to identify the test framework, then scan actual result files in `test-results/` or `Saved/Logs/`
 - `$test-flakiness registry` — read existing regression-suite.md quarantine
   section and provide remediation guidance for already-known flaky tests
 - No argument — auto-detect: run `scan` if CI logs are accessible, else
@@ -80,9 +79,11 @@ Stop and ask the user which option to pursue.
 For each CI log or result file found, parse:
 
 **JUnit XML format** (GdUnit4 / Unity):
-- Search file contents for `<testcase name=` to get test names
-- Search file contents for `<failure` or `<error` to identify failures
-- Parse `classname` and `name` attributes for full test identifiers
+- Parse XML elements by hierarchy. For each `testcase`, use `classname` + `name`
+  as the full ID and inspect only its child `failure`/`error`/`skipped` elements.
+  Suite-level failures remain suite errors; do not assign them to an arbitrary
+  testcase. Decode XML attributes rather than string-matching escaped text.
+- Treat skipped/not-run as neither PASS nor FAIL.
 
 **Plain text logs**:
 - Search file contents for pass/fail patterns:
@@ -90,7 +91,11 @@ For each CI log or result file found, parse:
   - Unreal: `Result: Success` / `Result: Fail`
   - Unity: `Test passed` / `Test failed`
 
-Build a table: `test_id → [run1_result, run2_result, run3_result, ...]`
+Each result file, or each explicit run section within a combined log, is one run.
+Build a table: `test_id → [run1_result, run2_result, run3_result, ...]`. A missing
+test in a run is `not observed`, not PASS/FAIL. The fail-rate denominator includes
+only runs where that test has an actual PASS or FAIL, and every rate is shown as
+`failures/observed runs (N/M)`.
 
 Also capture any build/version identity already present in each input run. Do not create a hash/SHA mechanism. Runs are equivalent-code evidence only when their own logs explicitly identify the same build/version; otherwise record `code equivalence unknown`.
 
@@ -100,6 +105,10 @@ Also capture any build/version identity already present in each input run. Do no
 
 A test is **flaky** if it appears in the result history with both PASS and
 FAIL outcomes across comparable runs. CONFIRMED FLAKY requires multiple runs, mixed outcomes, and explicit same-build/version evidence. Mixed outcomes with unknown code equivalence remain SUSPECT because they may represent an ordinary regression/fix sequence.
+
+Apply sample sufficiency before percentage thresholds. Fewer than 3 comparable
+observed runs is always SUSPECT/insufficient; do not assign High/Moderate/Low.
+At 3 or more comparable runs, report N/M and then apply:
 
 Flakiness thresholds:
 - **High flakiness**: Fails in >25% of comparable runs — prioritize a fix and treat the suite as unreliable/blocking
@@ -121,8 +130,9 @@ For each flaky test, classify the likely cause:
 | **Floating point** | Fails on comparisons like `== 0.5` | Use epsilon comparison (`is_equal_approx`, `Assert.AreApproximately`) |
 | **Scene/prefab load race** | Fails when scenes are not yet ready | Await one frame after instantiation; use `await get_tree().process_frame` |
 
-Search to check the test file for timing calls, randf, global state access,
-or equality comparisons on floats to narrow down the cause.
+Search the test source for timing calls, RNG, global state, or float equality only
+to form a **likely cause/hypothesis** tied to cited source evidence. Without a
+specific signal, use UNKNOWN. Never present this heuristic as a confirmed root cause.
 
 ---
 
@@ -175,11 +185,20 @@ For each flaky test:
 
 ## 7. Update Regression Suite + Optional Report File
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+First verify that `tests/regression-suite.md` and its existing Quarantined Tests
+section are present. If either is absent, report that no existing registry is
+available and keep the analysis in conversation; do not create a new registry
+structure. Before any allowed append, compare Test File + Function with existing
+rows and never add a duplicate.
+
+Only after presenting the in-conversation analysis, ask whether the user wants the
+optional persistent report. If yes, add that existing report path and any eligible
+registry edit to the complete changeset preview; if no, perform no write. "Optional"
+does not mean automatically preselected.
 
 This workflow never modifies test files or applies skip annotations. Append to the existing Quarantined Tests table only when the test is already actually isolated by a separate, explicitly authorized user action. Otherwise keep the result as an in-conversation recommendation and do not claim quarantine has occurred. Never remove existing entries.
 
-Add the optional report file to the same complete changeset preview; do not request a separate approval.
+Add the explicitly requested optional report file to the same complete changeset preview; do not request a separate approval.
 
 The full report includes per-test analysis with cause details and
 engine-specific fix snippets.

@@ -11,6 +11,9 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `[force]`. Treat bracketed values as optional unless the workflow says otherwise.
 
+Accept no argument or exactly `force`. Unknown/multiple arguments output usage and
+stop without reading further or writing.
+
 
 # Test Setup
 
@@ -35,9 +38,8 @@ A test framework installed at sprint four costs 3 sprints.
      "Engine not configured. Run `$setup-engine` first, then re-run `$test-setup`."
 
 2. **Check for existing test infrastructure**:
-   - Find files matching `tests/` — does the directory exist?
-   - Find files matching `tests/unit/` and `tests/integration/` — do subdirectories exist?
-   - Find files matching `.github/workflows/` — does a CI workflow file exist?
+   - Check each exact target promised by this workflow: README/placeholder files for unit, integration, performance, playtest, the existing smoke seed, the exact `.github/workflows/tests.yml`, and engine-specific files.
+   - An unrelated workflow does not satisfy `tests.yml`; a bare directory is not a versioned artifact.
    - Find files matching `tests/gdunit4_runner.gd` (Godot) or `tests/EditMode/` (Unity) or
      `Source/Tests/` (Unreal) for engine-specific artifacts.
 
@@ -45,7 +47,7 @@ A test framework installed at sprint four costs 3 sprints.
    - "Engine: [engine]. Test directory: [found / not found]. CI workflow: [found / not found]."
    - If everything already exists AND `force` argument was not passed:
      "Test infrastructure appears to be in place. Re-run with `$test-setup force`
-     to regenerate. Proceeding will not overwrite existing test files."
+     to create any missing targets. Proceeding will not overwrite existing test files."
 
 If the `force` argument is passed, skip the "already exists" early-exit and
 proceed — but still do not overwrite files that already exist at a given path.
@@ -56,6 +58,10 @@ Only create files that are missing.
 ## Phase 2: Present Plan
 
 Based on the engine detected and the existing state, present a plan:
+
+Resolve engine family together with configured language/framework (including
+versioned values such as Godot 4.x or Unreal Engine 5.x). Unknown or unsupported
+combinations stop; do not choose a template from a loose string match.
 
 ```
 ## Test Setup Plan — [Engine]
@@ -85,7 +91,17 @@ Treat the answer as a scope choice, then obtain the one complete changeset autho
 
 ## Phase 3: Create Directory Structure
 
-After the complete changeset authorization, create the following files:
+After the complete changeset authorization, create the following files. Every
+standard directory must contain its listed README/placeholder so it is an actual
+versioned changeset item; summaries list files, never claim that empty directories
+were committed.
+
+- `tests/unit/README.md` — unit-test scope and naming (unless an existing engine-specific placeholder already versions this directory)
+- `tests/integration/README.md` — integration-test scope and naming (same preservation rule)
+- `tests/performance/README.md` — performance/budget evidence scope
+- `tests/playtest/README.md` — documented playtest protocol/result scope
+
+Never overwrite an existing file; preview only the missing targets.
 
 ### `tests/README.md`
 
@@ -131,7 +147,8 @@ tests/
 ## CI
 
 Tests run automatically on every push to `main` and on every pull request.
-A failed test suite blocks merging.
+The workflow reports a failed test suite. Repository branch-protection settings,
+if separately configured, determine whether that result blocks merging.
 ````
 
 ### Engine-specific files
@@ -235,8 +252,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: reports/
+          path: [actual artifact path produced by the verified existing action/runner]
 ```
+
+Do not emit the upload step unless that actual path is already confirmed from the
+project's action/runner contract; the report name alone is not proof of `reports/`.
 
 ### Unity
 
@@ -296,7 +316,12 @@ Create `.github/workflows/tests.yml` only after reading a unique existing `.upro
 
 ## Phase 5: Create Smoke Test Seed
 
-Create `tests/smoke/critical-paths.md`:
+Create `tests/smoke/critical-paths.md` from the existing game concept and technical
+preferences. Include only implemented/applicable core paths and configured budgets;
+unknown items stay visibly `TO BE DEFINED` and make this seed incomplete evidence.
+Do not assume a main menu, save/load, 60fps, or five-minute memory window.
+
+Template shape:
 
 ```markdown
 # Smoke Test: Critical Paths
@@ -307,9 +332,7 @@ Create `tests/smoke/critical-paths.md`:
 
 ## Core Stability (always run)
 
-1. Game launches to main menu without crash
-2. New game / session can be started from the main menu
-3. Main menu responds to all inputs without freezing
+1. [Applicable launch/entry path from the game concept — or TO BE DEFINED]
 
 ## Core Mechanic (update per sprint)
 
@@ -319,13 +342,11 @@ Create `tests/smoke/critical-paths.md`:
 
 ## Data Integrity
 
-5. Save game completes without error (once save system is implemented)
-6. Load game restores correct state (once load system is implemented)
+5. [Applicable data-integrity path — or N/A / TO BE DEFINED]
 
 ## Performance
 
-7. No visible frame rate drops on target hardware (60fps target)
-8. No memory growth over 5 minutes of play (once core loop is implemented)
+7. [Configured performance budget on target hardware — or TO BE DEFINED]
 ```
 
 ---
@@ -339,10 +360,7 @@ Test infrastructure created for [engine].
 
 Files created:
 - tests/README.md
-- tests/unit/ (directory)
-- tests/integration/ (directory)
-- tests/performance/ (directory)
-- tests/playtest/ (directory)
+- [actual placeholder/README files created under tests/unit, integration, performance, playtest]
 - tests/smoke/critical-paths.md
 [engine-specific files]
 - .github/workflows/tests.yml
@@ -373,5 +391,5 @@ Verdict: **COMPLETE** — only when the selected engine's required scaffold and 
   stop and redirect to `$setup-engine`. Do not guess.
 - **`force` flag skips the "already exists" early-exit but never overwrites.**
   It means "create any missing files even if the directory already exists."
-- For Unity CI, note that the `UNITY_LICENSE` secret must be configured
-  manually. Do not attempt to automate license management.
+- Unity CI is omitted when its existing runner/license prerequisite is absent;
+  do not recommend creating a new secret as part of this workflow.

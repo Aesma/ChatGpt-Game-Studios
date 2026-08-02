@@ -91,6 +91,11 @@ Ask the user directly with two question groups:
 - Question group **"References"** — "Do you have reference games, films, or art that define the visual direction?"
   (Free text — let the user type specific titles. Do NOT preset options here.)
 
+For a fresh file, remove `Asset standards only` from the available scope choices;
+sections 1–4 must be authored first. For retrofit, offer `Asset standards only`
+only when sections 1–4 are all complete and non-placeholder. Otherwise explain
+the dependency and require foundation work first.
+
 If the game-concept.md has a Visual Identity Anchor section, note it:
 > "Found a visual identity anchor from brainstorm: '[anchor name] — [one-line rule]'. I'll use this as the foundation for the art bible."
 
@@ -218,7 +223,11 @@ Write the approved section to file.
 - `lean` → skip (not a PHASE-GATE). Note: "AD-ART-BIBLE skipped — Lean mode." Proceed to Phase 6.
 - `full` → spawn as normal.
 
-After all sections are complete (or the scoped set from Phase 1 is complete), spawn `art-director` through Codex subagent delegation using gate **AD-ART-BIBLE** (`.codex/docs/director-gates.md`).
+Run AD-ART-BIBLE only when all nine canonical sections contain substantive
+content. Then spawn `art-director` through Codex subagent delegation using gate
+**AD-ART-BIBLE** (`.codex/docs/director-gates.md`). A partial-scope run ends as an
+ordinary draft edit: do not record a production-ready sign-off or recommend asset
+production.
 
 Pass: art bible file path, game pillars, visual identity anchor.
 
@@ -232,7 +241,9 @@ Handle verdict per standard rules in `director-gates.md`. Record the verdict in 
 Before presenting next steps, check project state:
 - Does `design/gdd/systems-index.md` exist? → map-systems is done, skip that option
 - Does `docs/technical-preferences.md` contain a configured engine (not `[TO BE CONFIGURED]`)? → setup-engine is done, skip that option
-- Does `design/gdd/` contain any `*.md` files? → design-system has been run, skip that option
+- Does `design/gdd/` contain a system GDD other than `game-concept.md`,
+  `systems-index.md`, or files under `design/gdd/reviews/`? → design-system has
+  been run, skip that option
 - Does `design/gdd/gdd-cross-review-*.md` exist? → review-all-gdds is done
 - Do GDDs exist (check above)? → include $consistency-check option
 
@@ -251,6 +262,17 @@ Ask the user directly for next steps. Only include options that are genuinely ne
 Assign letters A, B, C… only to the options actually included. Mark the most logical pipeline-advancing option as `(recommended)`.
 
 > **Always include** `$create-architecture` and Stop here as options — these are always valid next steps once the art bible is complete.
+
+---
+
+## Agent Failure Handling
+
+At every mandatory delegation point, if an agent is unavailable, BLOCKED, times
+out, or otherwise fails, do not write that section as though the result existed.
+For a parallel pair, identify the missing constraints and ask the user whether to
+wait, retry, or stop; a one-sided response is not a complete section review. Keep
+already approved earlier sections intact and never invent the missing specialist's
+position.
 
 ---
 

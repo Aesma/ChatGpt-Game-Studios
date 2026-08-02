@@ -74,6 +74,16 @@ The TR registry remains required. A missing registry or any ADR validation
 failure is reported read-only; do not change session/story status merely to
 record the failure.
 
+Validate the story Status before continuing. Only `Ready` or `In Progress` may
+proceed. `Blocked` stops with its recorded reason. `Done`/`Complete` requires an
+explicit user decision to reopen and the exact status edit must enter the later
+changeset; never reopen automatically. Unknown status is BLOCKED.
+
+Inspect every Acceptance Criterion for `TBD`, placeholders, subjective-only
+wording, or an outcome that cannot be tested. Before planning/authorization,
+ask the user for measurable replacement text and include any accepted story edit
+in the single changeset. Do not brief a writer with ambiguous AC.
+
 
 Read all of the following simultaneously — these are independent reads. Do not start implementation until all context is loaded:
 
@@ -161,7 +171,7 @@ preview.
 
 Then update these status fields within the authorized boundary:
 
-1. **`production/sprint-status.yaml`** (if it exists): find the entry matching this story's file path and set the canonical `status: in-progress`. Update the top-level `updated` field to today's date. If the file does not exist, skip silently.
+1. **`production/sprint-status.yaml`** (if it exists): find the entry matching this story's file path and set the canonical `status: in_progress`. Update the top-level `updated` field to today's date. If the file does not exist, skip silently.
 
 2. **The story file itself**: set its existing `Status:` field to `In Progress`
    and edit `Last Updated:` to today's date (`YYYY-MM-DD`). If Last Updated is
@@ -181,6 +191,11 @@ current-agent direct-write exception.
 
 ### Primary agent routing table
 
+Apply routing in this order so overlaps cannot create two writers: story Type
+`UI`, then `Visual/Feel`, then explicit AI/networking domain, then layer default,
+then Config/Data directory ownership. Select exactly one primary and show which
+rule won.
+
 | Story context | Primary agent |
 |---|---|
 | Foundation layer — any type | `engine-programmer` |
@@ -192,6 +207,11 @@ current-agent direct-write exception.
 | Config/Data — no code | Existing programmer role matching the owned data directory |
 
 ### Engine specialist — read-only secondary review for code stories
+
+If engine or language remains unconfigured/placeholder, block engine-specific
+code stories before spawning. A pure Config/Data story may continue with the
+single data writer, but the summary must state that engine validation was not
+performed.
 
 Read the `Engine Specialists` section of `docs/technical-preferences.md`
 to get the configured primary specialist. The primary programmer exclusively owns
@@ -261,12 +281,12 @@ Complete.
 | Story Type | Required Evidence | Notes |
 |---|---|---|
 | **Logic** | Automated unit test at path from story's Test Evidence section | BLOCKING — included in Phase 4 agent brief |
-| **Integration** | Integration test OR documented playtest record | BLOCKING — included in Phase 4 agent brief |
+| **Integration** | The one test or reasoned playtest path declared by the story | BLOCKING — do not choose a different alternative during implementation |
 | **Visual/Feel** | Evidence doc at `production/qa/evidence/[slug]-evidence.md` | ADVISORY — note in Phase 6 summary |
 | **UI** | Manual walkthrough doc or interaction test | ADVISORY — note in Phase 6 summary |
 | **Config/Data** | None — smoke check serves as evidence | N/A |
 
-For Visual/Feel and UI stories, include in the Phase 6 summary: "Manual evidence required at `production/qa/evidence/[slug]-evidence.md` before this story can be fully closed."
+For Visual/Feel and UI stories, include in the Phase 6 summary: "Manual evidence required at `production/qa/evidence/[slug]-evidence.md` before this story can be fully closed." This evidence is blocking for `$story-done` even though this implementation workflow does not create it; never summarize all AC as complete while it is absent.
 
 ---
 
@@ -309,7 +329,9 @@ Ready for: `$code-review [file1] [file2]` then `$story-done [story-path]`
 
 ## Phase 7: Update Session State
 
-Silently append to `production/session-state/active.md`:
+Within the already-authorized operation, update the existing current-task/STATUS
+block in `production/session-state/active.md` and preserve unrelated content.
+Do not append a second stale active-story block on every run:
 
 ```
 ## Session Extract — $dev-story [date]
@@ -331,10 +353,12 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
-   - Retry with narrower scope
-   - Stop here and resolve the blocker first
-4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
+   - Keep the completed partial work and stop
+   - Retry with narrower scope inside the authorized boundary
+   - Stop and resolve the blocker first
+4. **Always produce a partial report** — output whatever was completed. A
+   blocked primary writer can never be skipped into a ready-for-review or
+   complete summary; dependent work stops and affected AC remain unchecked.
 
 Common blockers:
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it

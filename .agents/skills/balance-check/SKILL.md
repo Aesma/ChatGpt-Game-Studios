@@ -11,7 +11,9 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `[system-name|path-to-data-file]`. Treat bracketed values as optional unless the workflow says otherwise.
 
-Delegate substantive work to the `economy-designer` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+Delegate to `economy-designer` only for Economy or Loot. Combat, Progression,
+and any other resolved system stay with the current reviewer unless their actual
+data includes an economy/loot subdomain.
 
 
 ## Phase 1: Identify Balance Domain
@@ -22,27 +24,46 @@ Determine the balance domain from the first provided argument:
 - **Economy** → resource faucets/sinks, acquisition rates, item pricing
 - **Progression** → XP/power curves, dead zones, power spikes
 - **Loot** → rarity distribution, pity timers, inventory pressure
-- **File path given** → load that file directly and infer domain from content
+- **File path given** → accept exactly one existing project-local supported text
+  data file, not a directory, generated/binary file, or external path; otherwise
+  stop without a verdict
+- **Other system name** → resolve it against `systems-index.md` and existing GDD
+  names. If zero or multiple systems match, ask the user to select rather than
+  guessing a domain.
 
-If no argument, ask the user which system to check.
+If no argument, ask the user which system to check. Reject unknown flags and
+ambiguous multi-target inputs.
 
 ---
 
 ## Phase 2: Read Data Files
 
-Read relevant files from `assets/data/` and `design/balance/` for the identified domain.
-Note every file read — they will appear in the Data Sources section of the report.
+Start from the resolved target GDD. Read only data files it explicitly references,
+existing same-system data/balance files, and their direct declared dependencies.
+Do not expand `relevant files` to unrelated domain data. List every selected file
+and the reason it is in scope in Data Sources. Missing, empty, unreadable, or
+malformed inputs remain explicit evidence gaps.
 
 ---
 
 ## Phase 3: Read Design Document
 
-Read the GDD for the system from `design/gdd/` to understand intended design targets,
-tuning knobs, and expected value ranges. This is the baseline for "correct" behaviour.
+Read the resolved GDD to obtain formulas, variable definitions, units, intended
+ranges, and tuning knobs. If any required baseline is absent, mark the affected
+check `NOT EVALUATED` with the missing source; do not invent a generic threshold.
+A run containing an unevaluated applicable check cannot receive BALANCED.
 
 ---
 
 ## Phase 4: Perform Analysis
+
+Before each calculation, validate the input domain: denominators must be nonzero;
+probabilities must be within range and use an explicitly stated normalization;
+units and time bases must agree; values requiring nonnegative inputs must reject
+negative values; cyclic formula dependencies must be reported; stochastic claims
+must include a sufficient stated distribution/sample basis. For invalid inputs,
+name the exact file/field, mark only that calculation `NOT EVALUATED`, and continue
+independent checks.
 
 Run domain-specific checks:
 
@@ -92,6 +113,9 @@ Run domain-specific checks:
 ### Findings
 | Value | Formula or Source | Expected | Actual | Deviation | Severity |
 |-------|-------------------|----------|--------|-----------|----------|
+
+For `NOT EVALUATED`, put the missing/invalid baseline reason in Formula or Source
+and do not fabricate Expected, Actual, or Deviation values.
 
 ### Degenerate Strategies Found
 - [Strategy description and why it is problematic]

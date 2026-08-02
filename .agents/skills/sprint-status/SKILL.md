@@ -48,14 +48,12 @@ Read the sprint file in full. Extract:
 
 ## 2. Calculate Days Remaining
 
-Using today's date and the sprint end date from the sprint file, calculate:
-- Total sprint days (end minus start)
-- Days elapsed
-- Days remaining
-- Percentage of time consumed
-
-If the sprint file does not include explicit dates, note "Sprint dates not
-found — burndown assessment skipped."
+Using today's date and valid sprint start/end dates, calculate calendar-day
+differences consistently. Clamp elapsed days and time consumed to 0–100% for a
+sprint that has not started or has already ended; days remaining cannot become
+negative. If start equals end, either date is invalid, or an explicit date is
+missing, report the affected values as `unknown`, skip percentage division, and
+note "Sprint dates invalid or not found — burndown assessment skipped."
 
 ---
 
@@ -63,29 +61,33 @@ found — burndown assessment skipped."
 
 **First: check for `production/sprint-status.yaml`.**
 
-Parse it only if its `sprint` value equals the target sprint number. When it
-matches, it is authoritative: extract each story's status plus `goal`, `start`,
-and `end`. When it belongs to another sprint, state that fact and ignore it for
+Parse it only when it is valid YAML, has a sprint identifier, and has
+`stories` as a list. If parsing fails or these required shapes are missing,
+label the YAML `unusable` with the reason and use the existing markdown
+fallback without guessing. When valid and its `sprint` value equals the target
+sprint number, it is authoritative: extract each story's status plus `goal`,
+`start`, and `end`. When it belongs to another sprint, state that fact and ignore it for
 the requested target; use the markdown/story fallback below. This prevents an
 explicit historical request from being replaced by current singleton state.
 
 Map existing YAML values to report labels as follows:
-- `backlog` and `ready-for-dev` → `NOT STARTED`
-- `in-progress` and historical `in_progress` → `IN PROGRESS`
+- `backlog` and `ready` → `NOT STARTED`
+- `in_progress` → `IN PROGRESS`
 - `review` → `IN REVIEW`
 - `done` → `DONE`
 - `blocked` → `BLOCKED`
-Any future writer must use canonical `in-progress`; the underscore spelling is
-read compatibility only.
+For read compatibility, accept legacy `ready-for-dev` and `in-progress`, but
+all future writers use canonical `ready` and `in_progress`; never rewrite legacy
+values during this read-only workflow.
 
 **If `sprint-status.yaml` is missing or belongs to another sprint** (legacy or
 historical sprint), fall back to markdown scanning:
 
-1. If the entry references a story file path, check if the file exists.
-   Read the file and scan for status markers: DONE, COMPLETE, IN PROGRESS,
-   BLOCKED, NOT STARTED (case-insensitive).
-2. If the entry has no file path (inline task in the sprint plan), scan the
-   sprint plan itself for status markers next to that entry.
+1. If the entry references a story file path, check if the file exists. Read
+   only its header/frontmatter `Status:` field; words such as "complete" or
+   "blocked" in acceptance criteria or prose never determine status.
+2. If the entry has no file path (inline task in the sprint plan), parse only
+   the status column/value on that same task-table row.
 3. If no status marker is found, classify as NOT STARTED.
 4. If a file is referenced but does not exist, classify as MISSING and note it.
 
@@ -93,8 +95,9 @@ When using the fallback, add a note at the bottom of the output:
 "⚠ No `sprint-status.yaml` found — status inferred from markdown. Run `$sprint-plan update` to generate one."
 
 Optionally (fast check only — do not do a deep scan): search `src/` for a
-directory or file name that matches the story's system slug to check for
-implementation evidence. This is a hint only, not a definitive status.
+directory or file name that matches the story's system slug. Report any result
+only as an `unverified implementation hint`; it never changes story status,
+completion percentage, or sprint health.
 
 ### Stale Story Detection
 
@@ -127,14 +130,18 @@ Calculate:
 - Tasks complete (DONE or COMPLETE)
 - Tasks in progress (IN PROGRESS)
 - Tasks blocked (BLOCKED)
-- Tasks not started (NOT STARTED or MISSING)
-- Completion percentage: (complete / total) * 100
+- Tasks not started (NOT STARTED)
+- Missing referenced tasks (MISSING), retained as a distinct data-quality label
+- Completion percentage: (complete / total) * 100, with MISSING still included
+  in the denominator but never described as normal not-started work
 
 Assess burndown by comparing completion percentage to time consumed percentage:
 
-- **ON TRACK**: completion % is within 10 points of time consumed % or ahead
-- **AT RISK**: completion % is 10-25 points behind time consumed %
-- **BEHIND**: completion % is more than 25 points behind time consumed %
+- **ON TRACK**: completion is ahead or no more than 10 percentage points behind
+  time consumed (`gap <= 10`)
+- **AT RISK**: the gap is greater than 10 and at most 25 points
+  (`10 < gap <= 25`)
+- **BEHIND**: the gap is greater than 25 points
 
 These are the only sprint-health verdicts. A story-level `BLOCKED` status is a
 risk reason, never a sprint-health verdict. If all Must Haves are done, health is

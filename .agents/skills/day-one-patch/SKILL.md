@@ -37,14 +37,23 @@ ships. It is a mini-sprint — not a hotfix, not a full sprint.
 
 ## Phase 1: Load Release Context
 
-Read:
+Resolve `scope:` first. With no argument use `all`; otherwise require exactly one
+non-empty value from `known-bugs`, `cert-feedback`, or `all`. Unknown, missing,
+or conflicting values stop without scanning unrelated sources.
+
+Read only the sources selected by the resolved scope:
 - `production/stage.txt` — confirm project is in Release or Polish
 - Existing release/launch checklist and QA sign-off artifacts that cover the
   current build, when present; do not require a `production/gate-checks/`
   report because the gate workflow does not create one
 - `production/qa/bugs/*.md` — load all bugs with Status: Open or Fixed — Pending Verification
-- `production/sprints/` most recent — understand what shipped
-- `production/security/security-audit-*.md` most recent — check for any open security items
+- `production/sprints/` most recent — understand what shipped, including Done
+  stories whose Acceptance Criteria explicitly remain deferred; include only
+  still-open deferred AC relevant to the selected scope
+- `production/security/security-audit-*.md` most recent — check for open items
+- For `cert-feedback`/`all`, use only cert feedback text or an existing file the
+  user explicitly supplies. If cert feedback is selected but absent, stop that
+  scope instead of guessing an artifact path.
 
 If `production/stage.txt` is missing, invalid, or not `Release`/`Polish`,
 display the current evidence and stop immediately. Do not spawn any role, write
@@ -54,7 +63,18 @@ any file, or emit "patch complete".
 
 ## Phase 2: Scope the Patch
 
-### Step 2a — Classify open bugs for patch inclusion
+### Step 2a — Classify open bugs, deferred AC, and security findings
+
+Filter candidates to the selected scope before classification. Open CRITICAL or
+HIGH security findings block ordinary day-one completion and require the
+existing remediation/hotfix path; lower findings remain visible in the scope
+table with their disposition.
+
+Effort under four hours must come from the read-only lead-programmer location
+assessment in Phase 3 or comparable recorded evidence. Until then mark effort
+`Unknown`; unknown effort defaults to defer, never to a guessed quick fix.
+
+For each candidate:
 
 For each open bug, evaluate:
 
@@ -72,7 +92,8 @@ For each open bug, evaluate:
 ### Step 2b — Exclude emergency issues
 
 If any candidate is P0/CRITICAL, exclude it from ordinary day-one scope and stop
-execution with an explicit handoff to the existing `$hotfix` workflow. Do not
+execution with an explicit handoff to the existing `$hotfix [BUG-ID]` workflow,
+passing the uniquely identified emergency bug. Do not
 treat it as a four-hour patch item.
 
 ### Step 2c — Present patch scope to user
@@ -83,7 +104,9 @@ Ask the user directly:
 - Show: table of deferred bugs (ID, severity, reason deferred)
 - Options: `[A] Approve this scope` / `[B] Adjust — I want to add or remove items` / `[C] No day-one patch needed`
 
-If [C]: output "No day-one patch required. Proceed to `$launch-checklist`." Stop.
+If [C], or if the selected sources contain no eligible issue, output
+"No day-one patch required. Proceed to `$launch-checklist [launch-date]` using
+the explicit target date" and stop without creating an empty rollback plan or patch record.
 
 ### Step 2d — Check total scope
 
@@ -115,8 +138,13 @@ authorization.
 
 ## Phase 4: Implement Fixes
 
+Order fixes by explicit dependencies and approved scope order. Implement and run
+targeted verification one fix at a time using only Phase 3 ownership. If a fix
+is BLOCKED, stop its dependent fixes and report a partial patch; do not silently
+continue to unrelated completion claims.
+
 For each bug in the approved and authorized scope, run the focused
-implementation loop using only the files owned in Phase 3:
+implementation loop:
 
 1. Spawn `lead-programmer` through Codex subagent delegation with:
    - The bug report (exact reproduction steps and root cause if known)
@@ -142,9 +170,16 @@ Spawn `qa-lead` through Codex subagent delegation with:
 
 Ask qa-lead to determine: **Is a targeted smoke check sufficient, or do any fixes touch systems that require a broader regression?**
 
-Run the required QA scope:
-- **Targeted smoke check** — run `$smoke-check quick` and pass the affected systems as hand-off context, not as a positional mode
-- **Broader regression** — run targeted tests in `tests/unit/` and `tests/integration/` for affected systems
+Run the required QA scope directly in this phase using the project's existing
+configured commands:
+- **Targeted scope** — run affected smoke/targeted checks already identified in
+  Phase 3
+- **Broader regression** — run affected tests in `tests/unit/` and
+  `tests/integration/`
+
+If a separate complete `$smoke-check` workflow is required, stop and ask the
+user to invoke it explicitly, then resume with its result. Do not auto-invoke or
+fabricate another interactive workflow's verdict.
 
 QA verdict must be PASS or PASS WITH WARNINGS before proceeding. On FAIL, stop
 and list the failing fix plus every file it changed. Ask the user whether to fix
@@ -225,7 +260,7 @@ Phase 3. Do not request a second changeset authorization.
 
 After the patch record is written:
 
-1. Run `$patch-notes` to generate the player-facing version of the patch notes
+1. Run `$patch-notes [version]` with the patch's explicit release version to generate the player-facing version of the patch notes
 2. Run `$bug-report verify [BUG-ID]` for each fixed bug after the patch is live
 3. Run `$bug-report close [BUG-ID]` for each verified fix
 4. Schedule a post-launch review 48–72 hours after launch using `$retrospective launch`
@@ -236,7 +271,7 @@ After the patch record is written:
 Ask the user directly:
 - Prompt: "Day-one patch complete. What's next?"
 - Options:
-  - `[A] Run $patch-notes — generate player-facing patch notes`
+  - `[A] Run $patch-notes [version] — generate player-facing patch notes for this explicit release`
   - `[B] Run $bug-report to log any issues found post-deploy`
   - `[C] Stop here`
 

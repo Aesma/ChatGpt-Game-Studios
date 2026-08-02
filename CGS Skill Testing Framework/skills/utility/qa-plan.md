@@ -115,3 +115,17 @@ Verified automatically by `$skill-test static` — no fixture needed.
   ordinary plan notes or subsection text without adding a schema column.
 - [ ] The complete changeset lists every plan/story target. The workflow never
   creates or appends `production/session-state/active.md`.
+
+## P1 Contract Coverage
+
+- [ ] Current sprint uses only a validated active/status reference; feature
+  matching uses explicit epic/story/GDD fields and asks on multiple candidates.
+- [ ] Missing story paths and uncovered counts appear in the plan summary; zero
+  valid stories stop without a write.
+- [ ] The five story types preserve the Testing Standards evidence alternatives:
+  UI interaction tests are optional, Visual/UI evidence uses
+  `production/qa/evidence/`, and only real playtests use session logs.
+- [ ] Per-story evidence follows that story's Type/DoD. Integration accepts an
+  integration test or documented playtest rather than a universal test-file gate.
+- [ ] An existing same-target plan is read and target-updated while unrelated
+  entries are preserved; it is never silently overwritten.

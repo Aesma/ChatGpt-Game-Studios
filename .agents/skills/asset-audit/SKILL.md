@@ -7,7 +7,9 @@ description: "Audits game assets for compliance with naming conventions, file si
 
 Invoke this workflow as `$asset-audit`.
 
-Arguments: `[category|all]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[all|art|audio|vfx|shaders|data]`. Empty input defaults to `all`.
+Normalize the category to lowercase. On any other value, stop before scanning
+and list the accepted values.
 
 
 ## Phase 1: Read Standards
@@ -27,13 +29,19 @@ bible, or technical preferences.
 
 ## Phase 2: Scan Asset Directories
 
-Scan the target asset directory using a file search:
+For `all`, recursively scan every existing file under `assets/`, including
+root-level files and existing categories not in the common list. For a named
+category, scan only its corresponding existing directory:
 
-- `assets/art/**/*` for art assets
-- `assets/audio/**/*` for audio assets
-- `assets/vfx/**/*` for VFX assets
-- `assets/shaders/**/*` for shaders
-- `assets/data/**/*` for data files
+- `art` → `assets/art/**/*`
+- `audio` → `assets/audio/**/*`
+- `vfx` → `assets/vfx/**/*`
+- `shaders` → `assets/shaders/**/*`
+- `data` → `assets/data/**/*`
+
+Do not create a missing directory. Record missing directories, unreadable paths,
+unsupported files, and an empty result as distinct scope outcomes. Zero assets
+or a scan error is not a successful compliance result.
 
 ---
 
@@ -54,9 +62,17 @@ infer that the asset passed.
 - Audio: Correct sample rate, format (OGG for SFX, OGG/MP3 for music), within duration limits
 - Data: Valid JSON/YAML, schema-compliant
 
-**Orphaned assets:** Search code for references to each asset file. Flag any with no references.
+**Unresolved-reference candidates:** Search existing source code, scenes,
+prefabs/resources, data files, manifests, and asset specs for each asset's project
+path, engine URI, and stable resource identifier. If no direct reference is found,
+report `NO REFERENCE FOUND`; do not call the asset deletable because dynamic or
+editor-bound references may not be searchable.
 
-**Missing assets:** Search code for asset references and verify the files exist.
+**Missing assets:** Extract references from the same repositories and normalize
+engine URIs, project-relative paths, separators, and case rules to a project path
+before testing existence. Ignore known imported/derived paths. Put references
+that cannot be resolved in `NOT CHECKED` rather than reporting them as missing;
+never report one normalized path as both missing and unreferenced.
 
 ---
 
@@ -72,7 +88,10 @@ infer that the asset passed.
 - **Format violations**: [N]
 - **Orphaned assets**: [N]
 - **Missing assets**: [N]
-- **Overall health**: [CLEAN / MINOR ISSUES / NEEDS ATTENTION]
+
+## Check Evidence
+| File | Check | Expected | Actual | Result |
+|------|-------|----------|--------|--------|
 
 ## Naming Violations
 | File | Expected Pattern | Issue |
@@ -86,13 +105,17 @@ infer that the asset passed.
 | File | Expected Format | Actual Format |
 |------|----------------|---------------|
 
-## Orphaned Assets (no code references found)
-| File | Last Modified | Size | Recommendation |
-|------|-------------|------|---------------|
+## Assets With No Reference Found
+| File | Evidence Searched | Result | Recommendation |
+|------|-------------------|--------|----------------|
 
-## Missing Assets (referenced but not found)
-| Reference Location | Expected Path |
-|-------------------|---------------|
+## Missing Assets (normalized reference points to absent file)
+| Reference Location | Expected Path | Normalization Evidence | Result |
+|-------------------|---------------|------------------------|--------|
+
+## Unverified References
+| Reference Location | Original Reference | Reason |
+|-------------------|--------------------|--------|
 
 ## Recommendations
 [Prioritized list of fixes]
@@ -101,8 +124,10 @@ infer that the asset passed.
 ```
 
 `COMPLIANT` is allowed only when every applicable check was actually performed
-and passed. Any `NOT CHECKED` result forces at least `WARNINGS`; a failed blocking
-format or reference check produces `NON-COMPLIANT`.
+and passed. Any `NOT CHECKED`, empty scan, unsupported file, or recoverable scan
+error forces at least `WARNINGS`; a failed blocking format or normalized missing
+reference produces `NON-COMPLIANT`. These three verdicts are the only overall
+health classification; do not emit a second CLEAN/MINOR/NEEDS enum.
 
 This skill is read-only — it produces a report but does not write files.
 

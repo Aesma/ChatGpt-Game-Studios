@@ -235,28 +235,18 @@ After completing the review and writing approved files, present:
 
 1. **Immediate actions**: List the top 3 ADRs to create (highest-impact gaps first,
    Foundation layer before Feature layer)
-2. **Pre-gate checklist**: Check whether these exist by searching matching files and mark each ✅ or ❌:
-   - `tests/unit/` and `tests/integration/` directories — if ❌: run `$test-setup`
-   - `.github/workflows/tests.yml` — if ❌: run `$test-setup`
-   - `design/accessibility-requirements.md` — if ❌: run `$ux-design`
-   - `design/ux/interaction-patterns.md` — if ❌: run `$ux-design`
-   Present ❌ items as required steps before gate-check. Do not offer `$gate-check`
-   as an option if any item is ❌ — offer the missing skill to run instead.
+2. **Pre-gate evidence note**: report only architecture findings established by
+   this review. Do not invent a generic test/UX gate or block `$gate-check` merely
+   because unrelated artifacts are absent. If an actual in-scope ADR explicitly
+   depends on the accessibility requirements, use the existing path
+   `design/ux/accessibility-requirements.md` and describe that concrete dependency.
 3. **Rerun trigger**: "Re-run `$architecture-review` after each new ADR is written
    to verify coverage improves"
 
-Then close by asking the user directly tailored to the pre-gate checklist state:
-- If ADR gaps remain or any pre-gate item is ❌:
-  - "Architecture review complete. What would you like to do next?"
-    - [A] Write a missing ADR — open a fresh session and run `$architecture-decision [system]`
-    - [B] Run `$test-setup` — required before gate-check (only show if test infrastructure is ❌)
-    - [C] Run `$ux-design` — required before gate-check (only show if UX/accessibility files are ❌)
-    - [D] Stop here for this session
-- If all pre-gate checklist items are ✅ and no blocking ADR gaps remain:
-  - "Architecture review complete. All pre-gate items confirmed. What would you like to do next?"
-    - [A] Run `$gate-check pre-production`
-    - [B] Write a missing ADR — open a fresh session and run `$architecture-decision [system]`
-    - [C] Stop here for this session
+Then close based on actual review findings:
+- If ADR gaps remain, offer writing a missing ADR in a fresh session or Stop.
+- If no blocking architecture gap remains, offer `$gate-check pre-production`
+  or Stop. Do not condition either branch on unrelated test/UX file existence.
 
 ---
 
@@ -270,7 +260,7 @@ If any spawned agent returns BLOCKED, errors, or fails to complete:
    - Skip this agent and note the gap in the final report
    - Retry with narrower scope (fewer GDDs, single-system focus)
    - Stop here and resolve the blocker first
-4. **Always produce a partial report** — output whatever was completed so work is not lost
+4. **Always produce a partial report** — output whatever was completed so work is not lost. Mark every omitted scope. A partial `full` review cannot receive PASS; it may still receive FAIL when completed static evidence independently establishes a blocking failure.
 
 ---
 

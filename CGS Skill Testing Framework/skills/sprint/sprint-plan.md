@@ -115,7 +115,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Input:** `$sprint-plan`
 
 **Expected behavior:**
-1. Skill reads sprint-002 and detects 2 open (in-progress) stories
+1. Skill reads sprint-002 and detects 2 open (`in_progress`) stories
 2. Skill flags: "Sprint 002 has 2 open stories — confirm carry-over before planning sprint 003"
 3. Skill presents user with choice: carry stories over, defer them, or cancel
 4. User confirms carry-over; carried stories are prepended to new sprint with `[CARRY]` tag
@@ -181,8 +181,33 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Assertions:**
 - [ ] Pending YAML is reconstructed from markdown and story header statuses
-- [ ] Confirmed in-progress and done states are preserved
+- [ ] Confirmed `in_progress` and `done` states are preserved
 - [ ] Unknown states are surfaced before authorization and are not guessed
+
+### Case 10: Milestone, sprint history, and carryover are deterministic
+
+**Assertions:**
+- [ ] Current milestone and previous sprint use highest valid identifiers, not modification time
+- [ ] Duplicate/conflicting identifiers block planning and missing milestone returns BLOCKED
+- [ ] Open previous-sprint stories require carry/defer/cancel decisions before the draft
+- [ ] A latest valid retrospective is read as context without accepting an extra argument
+
+### Case 11: UNREALISTIC and gate failure never rewrite scope silently
+
+**Assertions:**
+- [ ] UNREALISTIC lists producer-recommended defer candidates and capacity impact
+- [ ] The user chooses the actual deferrals; no choice means BLOCKED and no writes
+- [ ] A missing/error/invalid PR-SPRINT result in full mode stops the run
+- [ ] The current run never silently falls back to lean/solo
+
+### Case 12: QA identity and atomic correspondence
+
+**Assertions:**
+- [ ] QA plan matches only by canonical filename or exact Sprint field
+- [ ] Bare occurrences of the sprint number do not qualify
+- [ ] Markdown and YAML require unique non-empty story IDs and project-relative paths
+- [ ] Duplicate/missing mappings or a preparation/write failure cannot leave a partial plan
+- [ ] Update removal is limited to `backlog`/`ready`; `in_progress`/`done` remain unless explicitly corrected
 
 ---
 

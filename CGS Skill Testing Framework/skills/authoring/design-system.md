@@ -85,6 +85,28 @@ GDD; lean and solo skip those per-skill delegations.
 
 ---
 
+### Case 7: Target/index/context/domain validation
+
+**Assertions:**
+- [ ] Only unique project-local `design/gdd/*.md` targets are accepted
+- [ ] Off-index add includes a complete row edit; off-index design requires missing context and does not edit the index
+- [ ] Related GDD reads are limited to explicit links/dependencies
+- [ ] Composite categories list all domains; unknown category does not guess a module doc
+
+---
+
+### Case 8: Fallback, pre-write conflict, and bounded side effects
+
+**Assertions:**
+- [ ] Unavailable specialist uses disclosed current-agent fallback; failed feedback leaves section unapproved
+- [ ] Registry conflict is resolved before Section C/D write
+- [ ] Purely local one-GDD facts are not added to the registry
+- [ ] Skipped optional sections are explicit N/A/Deferred or reported incomplete
+- [ ] Reverse dependency correction is reported, not applied outside scope
+- [ ] Active-state update targets one current-task block and preserves unrelated content
+
+---
+
 ## Protocol Compliance
 
 - [ ] Incremental section writes stay within one authorized file set

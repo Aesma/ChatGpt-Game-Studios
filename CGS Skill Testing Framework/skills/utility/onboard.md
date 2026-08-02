@@ -159,11 +159,30 @@ None. `$onboard` is a read-only orientation skill. No director gates apply.
 
 ---
 
+### Case 6: Unknown Role and No-Git Fallback
+
+**Fixture:**
+- The argument matches neither an existing agent role nor a top-level area
+- Git history is unavailable
+
+**Input:** `$onboard unknown-role`
+
+**Assertions:**
+- [ ] The skill asks what the argument means and does not guess an agent file or directory
+- [ ] With a valid argument on the same no-Git fixture, output states `Recent activity unavailable` and continues from file state
+- [ ] No reporting line is inferred unless an agent definition or project document explicitly supplies it
+- [ ] First Tasks cite an active sprint, open issue, or evidenced gap; otherwise they contain only orientation reading/questions
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads all source files before generating output (no hallucinated project state)
 - [ ] Adapts output to project stage (Production ≠ Concept)
 - [ ] Respects role argument when provided
+- [ ] No argument uses General scope; unknown roles/areas are clarified rather than guessed
+- [ ] Key Files use the applicable root-to-nearest `AGENTS.md` chain, with rule sources named
+- [ ] Non-Git/no-commit/git-error states report `Recent activity unavailable` without blocking orientation
 - [ ] Does not write any files
 - [ ] Ends with ONBOARDING COMPLETE only after a complete evidence-based orientation; blocking input errors do not use the success verdict
 

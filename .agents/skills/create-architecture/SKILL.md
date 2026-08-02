@@ -56,11 +56,17 @@ handoff.
 
 ## Phase 0: Load All Context
 
-Before anything else, load the full project context in this order:
+Before anything else, detect whether `docs/architecture/architecture.md` already
+exists. Read it before proposing writes. Ask whether to run `full` or one of the
+existing focus modes; in a focus run replace only the chosen existing section
+and preserve every other byte. If the user does not choose a scope, stop rather
+than defaulting to a full rewrite.
+
+Then load project context in this order:
 
 ### 0a. Engine Context (Critical)
 
-Read the engine reference library completely:
+Read the available engine reference library:
 
 1. `docs/engine-reference/[engine]/VERSION.md`
    → Extract: engine name, version, LLM cutoff, post-cutoff risk levels
@@ -73,25 +79,38 @@ Read the engine reference library completely:
 5. All files in `docs/engine-reference/[engine]/modules/`
    → Extract: current API patterns per domain
 
+`VERSION.md` is required. If it is missing or unreadable, stop. Missing
+`breaking-changes.md`, `deprecated-apis.md`, `current-best-practices.md`, or a
+relevant module file is a named knowledge gap; continue only without claiming
+that the reference was completely loaded.
+
 If no engine is configured, stop and prompt:
 > "No engine is configured. Run `$setup-engine` first. Architecture cannot be
 > written without knowing which engine and version you are targeting."
 
 ### 0b. Design Context + Technical Requirements Extraction
 
-Read all approved design documents and extract technical requirements from each:
+Read all approved design documents and extract technical requirements from each.
+`game-concept.md`, `systems-index.md`, and at least one eligible system GDD are
+required; if any required input is absent/unreadable, stop before skeleton
+creation. `docs/technical-preferences.md` must also be readable. Optional ADR
+absence is reported and does not itself block architecture authoring:
 
 1. `design/gdd/game-concept.md` — game pillars, genre, core loop
 2. `design/gdd/systems-index.md` — all systems, dependencies, priority tiers
 3. `docs/technical-preferences.md` — naming conventions, performance budgets,
    allowed libraries, forbidden patterns
 4. **Every GDD in `design/gdd/`** — for each, extract technical requirements:
-   - Data structures implied by the game rules
-   - Performance constraints stated or implied
-   - Engine capabilities the system requires
-   - Cross-system communication patterns (what talks to what, how)
-   - State that must persist (save/load implications)
-   - Threading or timing requirements
+   - Data structures explicitly required by the game rules
+   - Explicit performance constraints
+   - Explicitly required engine capabilities
+   - Cross-system communication stated by the GDD
+   - State explicitly identified for persistence
+   - Explicit threading or timing requirements
+
+Do not assign a TR-ID to an inferred requirement. Put reasonable technical
+inferences in the existing Open Questions section with their source and the
+confirmation needed.
 
 Build a **Technical Requirements Baseline** — a flat list of all extracted
 requirements across all GDDs, numbered `TR-[gdd-slug]-[NNN]`. This is the
@@ -113,7 +132,9 @@ left without an architectural decision to support it by the end of this session.
 
 ### 0c. Existing Architecture Decisions
 
-Read all files in `docs/architecture/` to understand what has already been decided.
+Read only `docs/architecture/adr-*.md` for decisions. Read the current
+`architecture.md` only for the retrofit/focus behavior above. Exclude review,
+report, registry, traceability, and control-manifest files from the ADR set.
 List any ADRs found and their domains.
 
 ### 0d. Generate Knowledge Gap Inventory

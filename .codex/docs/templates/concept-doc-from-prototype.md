@@ -4,8 +4,8 @@
 **Status**: Reverse-Documented from Prototype
 **Prototype Path**: `prototypes/[name]/`
 **Date**: [YYYY-MM-DD]
-**Creator**: [User name]
-**Outcome**: [Success | Partial Success | Failed | Needs More Testing]
+**Creator**: [Explicitly provided name or "unknown — not recorded"]
+**Outcome**: [Evidence-backed outcome or "N/A — source unavailable"]
 ---
 
 > **⚠️ Reverse-Documentation Notice**
@@ -21,6 +21,7 @@
 - **Observed implementation:** Record only behavior, structure, and constraints directly evidenced by source code, assets, configuration, build output, or test results.
 - **User-stated intent:** Label goals or intended behavior supplied by the user separately; intent is not evidence that a feature is implemented.
 - **Gap:** Mark missing, contradictory, or unverified behavior explicitly instead of inferring it.
+- **Prototype evidence:** Outcome, effort/duration, reuse percentages, tester counts, feedback, and quotes require an existing record or explicit user input. Otherwise write `N/A — source unavailable` and do not estimate.
 
 Acceptance criteria may be marked implemented or passing only when supported by code, build, or test evidence.
 
@@ -29,43 +30,40 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 ## 1. Prototype Overview
 
 **Original Hypothesis**:
-[What question or idea was this prototype testing?]
+[Existing record/user statement, or N/A — source unavailable]
 
 **Approach**:
-[How was the prototype built? Quick and dirty? Focused on one mechanic?]
+[Observed implementation approach]
 
 **Duration**:
-- Time spent: [X hours/days]
-- Complexity: [Throwaway | Could be production-ready | Needs full rewrite]
+- Time spent: [Existing record/user value, or N/A — source unavailable]
+- Complexity: [Evidence-backed assessment, or N/A — source unavailable]
 
-**Outcome** (clarified):
-- ✅ **Validated**: [What worked and should move forward]
-- ⚠️ **Needs Work**: [What showed promise but needs refinement]
-- ❌ **Invalidated**: [What didn't work and should be abandoned]
+**Outcome**:
+- **Validated**: [Evidence-backed result, or N/A]
+- **Needs Work**: [Evidence-backed result, or N/A]
+- **Invalidated**: [Evidence-backed result, or N/A]
 
 ---
 
 ## 2. Core Mechanic
 
 **What the Prototype Does**:
-[Describe the mechanic or system that was prototyped]
+[Observed mechanic/system]
 
-**How It Feels** (user feedback):
-- [Feeling 1 — e.g., "Satisfying", "Clunky", "Too complex"]
-- [Feeling 2 — e.g., "Intuitive", "Confusing", "Needs tutorial"]
-- [Feeling 3 — e.g., "Fun", "Boring", "Has potential"]
+**How It Feels**:
+- [Existing playtest/user feedback with source, or N/A — source unavailable]
 
 **Player Fantasy**:
-[What fantasy or experience does this mechanic create?]
+[User-stated intent or N/A — not supplied]
 
-**Core Loop** (if applicable):
+**Core Loop** (if evidenced):
 ```
-[Action 1] → [Result 1] → [Action 2] → [Result 2] → [Repeat or Conclude]
+[Action 1] → [Result 1] → [Action 2] → [Result 2]
 ```
 
-**Emergent Behaviors** (unintended but interesting):
-- [Behavior 1]: [What players did that wasn't planned]
-- [Behavior 2]: [Unexpected strategy or interaction]
+**Emergent Behaviors**:
+- [Observed/test-record behavior, or N/A]
 
 ---
 
@@ -73,22 +71,15 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 ### Mechanic Successes
 
-✅ **[Success 1]**: [What worked well]
-- **Why**: [What made this successful]
-- **Keep for Production**: [Should this be preserved?]
-
-✅ **[Success 2]**: [What worked well]
-- **Why**: [What made this successful]
-- **Keep for Production**: [Should this be preserved?]
+**[Success 1]**: [Evidence-backed result or N/A]
+- **Why**: [Existing evidence/user reflection or unknown]
+- **Keep for Production**: [Explicit decision or Not decided]
 
 ### Technical Successes
 
-✅ **[Technical win 1]**: [What technical approach worked]
-- **Lesson**: [What we learned]
-- **Reusable**: [Can this code/approach be used in production?]
-
-✅ **[Technical win 2]**: [What worked]
-- **Lesson**: [What we learned]
+**[Technical win 1]**: [Observed result]
+- **Lesson**: [User reflection/evidence or unknown]
+- **Reusable**: [Measured/confirmed value or Not assessed]
 
 ---
 
@@ -96,35 +87,23 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 ### Mechanic Failures
 
-❌ **[Failure 1]**: [What didn't work]
-- **Why**: [Root cause]
-- **Could It Be Fixed**: [Is it salvageable or fundamentally flawed?]
-
-❌ **[Failure 2]**: [What didn't work]
-- **Why**: [Root cause]
-- **Could It Be Fixed**: [Yes/No + how]
+**[Failure 1]**: [Evidence-backed result or N/A]
+- **Why**: [Existing analysis/user reflection or unknown]
+- **Could It Be Fixed**: [Explicit assessment or Not assessed]
 
 ### Technical Failures
 
-❌ **[Technical issue 1]**: [What caused problems]
-- **Lesson**: [What to avoid in production]
-
-❌ **[Technical issue 2]**: [What caused problems]
-- **Lesson**: [What to avoid]
+**[Technical issue 1]**: [Observed issue or N/A]
+- **Lesson**: [Existing/user-provided lesson or unknown]
 
 ---
 
 ## 5. What Needs Refinement
 
-⚠️ **[Element 1]**: [What showed promise but needs work]
-- **Issue**: [What's wrong with it currently]
-- **Path Forward**: [How to improve it]
-- **Effort**: [Small | Medium | Large refactor]
-
-⚠️ **[Element 2]**: [What needs refinement]
-- **Issue**: [Current problem]
-- **Path Forward**: [Improvement approach]
-- **Effort**: [Estimate]
+**[Element 1]**: [Evidence-backed gap]
+- **Issue**: [Observed problem]
+- **Path Forward**: [User-stated intent or Not decided]
+- **Effort**: [Existing estimate/user input or N/A — source unavailable]
 
 ---
 
@@ -132,151 +111,130 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 ### Design Insights
 
-💡 **[Insight 1]**: [What we learned about game design]
-- **Implication**: [How this affects future work]
-
-💡 **[Insight 2]**: [Design learning]
-- **Implication**: [Impact on GDD or other systems]
+**[Insight 1]**: [Existing record/user reflection or N/A]
+- **Implication**: [Confirmed implication or Not decided]
 
 ### Technical Insights
 
-💡 **[Insight 3]**: [Technical learning]
-- **Implication**: [Architecture or implementation guidance]
-
-💡 **[Insight 4]**: [Technical learning]
-- **Implication**: [Future technical decisions]
+**[Insight 2]**: [Evidence-backed insight]
+- **Implication**: [Confirmed implication or Not decided]
 
 ### Player Psychology Insights
 
-💡 **[Insight 5]**: [What we learned about player behavior]
-- **Implication**: [How this affects design philosophy]
+**[Insight 3]**: [Playtest evidence/user reflection or N/A]
+- **Implication**: [Confirmed implication or Not decided]
 
 ---
 
 ## 7. Production Readiness Assessment
 
-**Should This Become a Full Feature?**: [Yes | No | Needs More Testing | Pivot to Different Approach]
+**Should This Become a Full Feature?**: [Explicit decision or Not decided]
 
 **If Yes — Production Requirements**:
-- [ ] [Requirement 1 — e.g., "Rewrite for performance"]
-- [ ] [Requirement 2 — e.g., "Add proper UI"]
-- [ ] [Requirement 3 — e.g., "Design 10 more variations"]
-- [ ] [Requirement 4 — e.g., "Integrate with progression system"]
+- [ ] [Requirement 1]
+- [ ] [Requirement 2]
+- [ ] [Requirement 3]
 
-**Estimated Production Effort**: [Small | Medium | Large]
-- Prototype reusability: [X%] of code can be kept
-- From-scratch effort: [X hours/days to production-ready]
+**Estimated Production Effort**: [Existing estimate/user input or N/A — source unavailable]
+- Prototype reusability: [Measured/confirmed percentage or N/A — source unavailable]
+- From-scratch effort: [Existing estimate/user input or N/A — source unavailable]
 
 **If No — Why Not?**:
-- [Reason 1 — e.g., "Fun but doesn't fit game pillars"]
-- [Reason 2 — e.g., "Too complex for target audience"]
-- [Reason 3 — e.g., "Technically infeasible at scale"]
+- [Explicit reason or N/A]
 
 **If Pivot — Suggested Direction**:
-- [Alternative approach 1]
-- [Alternative approach 2]
+- [Explicit/user-provided direction or Not decided]
 
 ---
 
 ## 8. Design Pillars Alignment
 
-**How This Relates to Game Pillars** (if game pillars are defined):
-
 | Pillar | Alignment | Notes |
 |--------|-----------|-------|
-| [Pillar 1] | ✅ Strong / ⚠️ Weak / ❌ Conflicts | [Explanation] |
-| [Pillar 2] | ✅ Strong / ⚠️ Weak / ❌ Conflicts | [Explanation] |
-| [Pillar 3] | ✅ Strong / ⚠️ Weak / ❌ Conflicts | [Explanation] |
+| [Existing pillar] | [Evidence/user assessment or Not assessed] | [Source] |
 
-**Overall Pillar Fit**: [Does this belong in the game?]
+**Overall Pillar Fit**: [Explicit assessment or Not assessed]
 
 ---
 
 ## 9. Next Steps
 
 ### Immediate (If Moving Forward)
-1. **[Task 1]**: [e.g., "Create full design doc for this system"]
-2. **[Task 2]**: [e.g., "Write ADR for technical approach"]
-3. **[Task 3]**: [e.g., "Add to backlog for Sprint X"]
+1. **[Task 1]**: [description]
+2. **[Task 2]**: [description]
 
 ### Before Production (If Needs More Work)
-1. **[Task 1]**: [e.g., "Build second prototype testing X variation"]
-2. **[Task 2]**: [e.g., "Playtest with 5+ people"]
-3. **[Task 3]**: [e.g., "Investigate technical feasibility of Y"]
+1. **[Task 1]**: [description]
+2. **[Task 2]**: [description]
 
 ### If Abandoning
-1. **[Task 1]**: [e.g., "Archive prototype with this document"]
-2. **[Task 2]**: [e.g., "Extract reusable code/learnings"]
-3. **[Task 3]**: [e.g., "Update game pillars if this changed thinking"]
+1. **[Task 1]**: [description]
+2. **[Task 2]**: [description]
 
 ---
 
 ## 10. Technical Notes
 
 **Prototype Implementation**:
-- Language/Engine: [What was used]
-- Architecture: [How it was structured]
-- Shortcuts taken: [What was hacky or throwaway]
+- Language/Engine: [Observed]
+- Architecture: [Observed]
+- Shortcuts taken: [Observed or unknown]
 
-**Reusable Code** (if any):
-- `[file/path 1]`: [What it does, reusability]
-- `[file/path 2]`: [What it does, reusability]
+**Reusable Code**:
+- `[file/path 1]`: [Observed function; reusability Not assessed unless evidenced]
 
-**Technical Debt** (if moving to production):
-- [Debt 1]: [What needs rewriting]
-- [Debt 2]: [What needs proper implementation]
+**Technical Debt**:
+- [Observed debt]
 
 ---
 
 ## 11. Playtest Feedback
 
-*(If prototype was playtested)*
+Populate this section only from an existing playtest/session record or explicit
+user-provided feedback. Cite the source. If neither exists, write:
 
-**Testers**: [N people, [internal/external]]
+`N/A — no playtest record or user-provided feedback available.`
+
+**Testers**: [Recorded count/type or N/A — source unavailable]
 
 **Positive Feedback**:
-- "[Quote 1]" — [Tester name/role]
-- "[Quote 2]" — [Tester name/role]
+- [Exact existing quote within applicable quotation limits + source, or N/A]
 
 **Negative Feedback**:
-- "[Quote 1]" — [Tester name/role]
-- "[Quote 2]" — [Tester name/role]
+- [Exact existing quote within applicable quotation limits + source, or N/A]
 
 **Suggestions**:
-- "[Suggestion 1]" — [Tester name]
-- "[Suggestion 2]" — [Tester name]
+- [Recorded suggestion + source, or N/A]
 
 **Themes**:
-- [Theme 1]: [What multiple testers agreed on]
-- [Theme 2]: [Common feedback]
+- [Evidence-backed repeated theme, or N/A]
+
+Never synthesize a quote, tester identity, tester count, or consensus theme.
 
 ---
 
 ## 12. Related Work
 
-**Inspired By** (games/mechanics this was influenced by):
-- [Game 1]: [What mechanic or feeling]
-- [Game 2]: [What was borrowed or adapted]
+**Inspired By**:
+- [User-provided/existing record, or N/A]
 
-**Differs From** (how this is unique or different):
-- [Difference 1]
-- [Difference 2]
+**Differs From**:
+- [Evidence/user-provided difference, or N/A]
 
-**Integrates With** (existing game systems):
-- [System 1]: [How they would connect]
-- [System 2]: [How they would connect]
+**Integrates With**:
+- [Observed or intended system connection, labeled]
 
 ---
 
 ## 13. Open Questions
 
 **Design Questions**:
-1. **[Question 1]**: [What's still undecided about the design?]
-2. **[Question 2]**: [What needs playtesting or iteration?]
+1. [Undecided design question]
+2. [Question requiring playtest/iteration]
 
 **Technical Questions**:
-3. **[Question 3]**: [What technical unknowns remain?]
-4. **[Question 4]**: [What needs feasibility testing?]
+3. [Technical unknown]
+4. [Feasibility question]
 
 ---
 
@@ -284,11 +242,11 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 **Code**:
 - Location: `prototypes/[name]/src/`
-- Status: [Archival | Partial reuse | Full reuse]
+- Status: [Observed status or Not assessed]
 
-**Art/Audio** (if any):
+**Art/Audio**:
 - Location: `prototypes/[name]/assets/`
-- Status: [Placeholder | Production-ready | Needs replacement]
+- Status: [Observed status or Not assessed]
 
 **Documentation**:
 - README: [Exists | Missing]
@@ -301,13 +259,13 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 | Date | Author | Changes |
 |------|--------|---------|
 | [Date] | Codex (reverse-doc) | Initial concept doc from prototype analysis |
-| [Date] | [User] | Clarified outcomes, added playtest feedback |
+| [Date] | [Explicit author or unknown] | Clarified outcomes or added sourced playtest feedback |
 
 ---
 
-**Final Recommendation**: [GO | NO-GO | PIVOT]
+**Final Recommendation**: [Explicit evidence-backed GO/NO-GO/PIVOT decision or Not decided]
 
-**Rationale**: [1-2 sentence summary of why]
+**Rationale**: [Existing evidence/user rationale or N/A — source unavailable]
 
 ---
 

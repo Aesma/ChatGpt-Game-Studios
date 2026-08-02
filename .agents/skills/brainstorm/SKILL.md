@@ -228,7 +228,11 @@ Collect both verdicts, then present them together using a two-part a direct ques
 
 The user's selected visual anchor (the named direction or their custom description) is stored as the **Visual Identity Anchor** — it will be written into the game-concept document and becomes the foundation of the art bible.
 
-If the creative-director returns CONCERNS or REJECT on pillars, resolve pillar issues before asking for the visual anchor selection — visual direction should flow from confirmed pillars.
+Handle gate outcomes explicitly. CD-PILLARS REJECT blocks writing and returns to
+pillar revision; after revision run the gate again, with no override-to-write
+option. For CD-PILLARS or AD-CONCEPT-VISUAL CONCERNS, show every concern and let
+the user accept the stated risk, revise and re-review, or stop before selecting
+a final anchor. Unresolved blockers never enter the concept changeset.
 
 ---
 
@@ -242,8 +246,9 @@ who this game is actually for:
 - **Secondary appeal**: Who else might enjoy it?
 - **Who is this NOT for**: Being clear about who won't like this game is as
   important as knowing who will
-- **Market validation**: Are there successful games that serve a similar
-  player type? What can we learn from their audience size?
+- **Market hypothesis**: Treat comparable titles and audience fit as hypotheses
+  to validate. Without an explicit source supplied in the conversation or existing
+  project docs, do not state audience size or commercial performance as fact.
 
 ---
 
@@ -253,8 +258,8 @@ Ground the concept in reality:
 
 - **Target platform**: Ask the user directly — "What platforms are you targeting for this game?"
   Options: `PC (Steam / Epic)` / `Mobile (iOS / Android)` / `Console` / `Web / Browser` / `Multiple platforms`
-  Record the answer — it directly shapes the engine recommendation and will be passed to `$setup-engine`.
-  Note platform implications if relevant (e.g., mobile means Unity is strongly preferred; console means Godot has limitations; web means Godot exports cleanly).
+  Record the answer as a requirement to pass to `$setup-engine`. Do not map a
+  platform to an engine or make version-sensitive platform-support claims here.
 
 - **Engine experience**: Ask the user directly — "Do you already have an engine you work in?"
   Options: `Godot` / `Unity` / `Unreal Engine 5` / `No preference — help me decide`
@@ -276,7 +281,10 @@ Ground the concept in reality:
 
 Pass: core loop description, platform target, engine choice (or "undecided"), list of identified technical risks.
 
-Present the assessment to the user. If HIGH RISK, offer to revisit scope before finalising. If CONCERNS, note them and continue.
+Present the assessment to the user. A blocking or HIGH RISK result must be
+resolved by revising scope and running TD-FEASIBILITY again, or stopping. For
+CONCERNS, show each concern and let the user accept the documented risk, revise
+and re-review, or stop; do not silently continue.
 
 **Review mode check** — apply before spawning PR-SCOPE:
 - `solo` → skip. Note: "PR-SCOPE skipped — Solo mode." Proceed to document generation.
@@ -287,7 +295,15 @@ Present the assessment to the user. If HIGH RISK, offer to revisit scope before 
 
 Pass: full vision scope, MVP definition, timeline estimate, team size.
 
-Present the assessment to the user. If UNREALISTIC, offer to adjust the MVP definition or scope tiers before writing the document.
+Present the assessment to the user. If UNREALISTIC, adjust the MVP/scope and run
+PR-SCOPE again or stop. For OPTIMISTIC/CONCERNS, show the basis and let the user
+accept the documented risk, revise and re-review, or stop before writing.
+
+Before document generation, collect any template decisions not already answered:
+player count, session length, monetization, target age/experience, time
+availability, current games, team size, art/audio pipeline, networking, content
+volume, and procedural-system expectations. Ask only for missing items. When the
+user cannot decide, write `Unknown` or `Open Question`; never infer an answer.
 
 ---
 
@@ -342,7 +358,8 @@ Once the complete changeset is authorized, generate the document using the templ
    5. "After full design and architecture, build the `$vertical-slice` to validate production readiness before committing to sprints"
 
 7. **Output a summary** with the chosen concept's elevator pitch, pillars,
-   primary player type, engine recommendation, biggest risk, and file path.
+   primary player type, engine status (`[preference]` or `Undecided`), biggest risk,
+and file path. Never turn `No preference` into a recommendation.
 
 Verdict: **COMPLETE** — game concept created and handed off for next steps.
 

@@ -91,6 +91,35 @@ review-mode.txt contains `lean`.
 - [ ] It does not invoke `$setup-engine [engine]`; it only recommends a next command
 - [ ] The final handoff asks which existing next step the user wants and never auto-runs it
 
+### Case 7: Engine and content evidence reject false positives
+
+**Assertions:**
+- [ ] Missing, blank, conflicting, or any placeholder Engine field is unconfigured
+- [ ] Empty prototype directories do not count as prototypes
+- [ ] Index, template, audit, and review markdown do not count as system GDDs
+
+### Case 8: Clear-concept jump preserves prerequisites
+
+**Assertions:**
+- [ ] Jump straight in states that setup-engine does not create a concept document
+- [ ] The user must provide/save game-concept.md before art-bible or map-systems
+- [ ] No system-GDD-only design-review call is made for game-concept.md
+
+### Case 9: Invalid review mode and declined configuration
+
+**Assertions:**
+- [ ] An empty/invalid review-mode value is shown and never consumed by gates
+- [ ] Replacement uses only full/lean/solo and is included in the one changeset
+- [ ] Declined authorization leaves both files unchanged
+- [ ] The ending says onboarding guidance is complete and configuration unchanged
+
+### Case 10: Alternate goal receives a real handoff
+
+**Assertions:**
+- [ ] Choosing "something else" asks for the desired outcome
+- [ ] The workflow maps only to an existing command and confirms it
+- [ ] The one-line handoff is used only after a command is confirmed
+
 ---
 
 ## Protocol Compliance

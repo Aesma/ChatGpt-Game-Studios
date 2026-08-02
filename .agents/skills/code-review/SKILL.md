@@ -7,7 +7,12 @@ description: "Performs an architectural and quality code review on a specified f
 
 Invoke this workflow as `$code-review`.
 
-Arguments: `[path-to-file-or-directory]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[one-or-more-source-paths] [optional-story-path]`. At least one target
+is required. Accept only existing project-local text source files, or a bounded
+project-local directory after confirming its recursive file set is manageable.
+Reject empty/missing/external/binary/generated targets. A final Markdown path is
+a story only when it is under the existing production epic/story hierarchy and
+contains the expected story identity; otherwise treat it as invalid input.
 
 Delegate substantive work to the `lead-programmer` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
@@ -43,11 +48,23 @@ Search for ADR references in, in priority order:
 2. Header comments at the top of the implementation files
 3. Commit messages referencing these files (`git log --oneline -- [file]`)
 
-Look for patterns like `ADR-NNN` or `docs/architecture/ADR-`.
+Recognize the repository's actual four-digit IDs and case-insensitive paths,
+including `ADR-0001` and `docs/architecture/adr-0001-*.md`.
 
-If no ADR references found, note: "No ADR references found — ADR compliance check skipped. For full ADR compliance review, provide the story path: `$code-review [files] [story-path]`."
+If no ADR references are found, determine whether the targets introduce or
+implement a project system governed by the existing coding standards. For a new
+system that requires an ADR, report a missing-required-ADR architecture concern.
+For an ordinary local file without that evidence, state `No ADR reference found`
+without inventing a violation.
 
-For each referenced ADR: read the file, extract the **Decision** and **Consequences** sections, then classify any deviation:
+For each referenced ADR, require the file to exist and be readable, then extract
+Status, Decision, and Consequences. Distinguish Accepted, Proposed, Superseded,
+missing, and unreadable references in ADR Compliance. Proposed/missing/unreadable
+is an architecture concern whose verdict severity follows the actual project
+rule and implementation risk; only contradiction of an Accepted decision is an
+architectural violation.
+
+Then classify any deviation:
 
 - **ARCHITECTURAL VIOLATION** (BLOCKING): Uses a pattern explicitly rejected in the ADR
 - **ADR DRIFT** (WARNING): Meaningfully diverges from the chosen approach without using a forbidden pattern
@@ -57,14 +74,13 @@ For each referenced ADR: read the file, extract the **Decision** and **Consequen
 
 ## Phase 4: Standards Compliance
 
-Identify the system category (engine, gameplay, AI, networking, UI, tools) and evaluate:
-
-- [ ] Public methods and classes have doc comments
-- [ ] Cyclomatic complexity under 10 per method
-- [ ] No method exceeds 40 lines (excluding data declarations)
-- [ ] Dependencies are injected (no static singletons for game state)
-- [ ] Configuration values loaded from data files
-- [ ] Systems expose interfaces (not concrete class dependencies)
+Identify the system category (engine, gameplay, AI, networking, UI, tools).
+Compliance findings may come only from the applicable AGENTS chain, coding
+standards, technical preferences, or an Accepted ADR. Evaluate documented rules.
+The following are review prompts, not automatic blockers unless an applicable
+project source states them: complexity under 10, method length under 40, universal
+interfaces, dependency injection, data-driven configuration, and SOLID. Cite the
+source beside every required compliance finding; otherwise place it in Suggestions.
 
 ---
 
@@ -75,7 +91,9 @@ Identify the system category (engine, gameplay, AI, networking, UI, tools) and e
 - [ ] No circular dependencies between modules
 - [ ] Proper layer separation (UI does not own game state)
 - [ ] Events/signals used for cross-system communication
-- [ ] Consistent with established patterns in the codebase
+- [ ] Consistent with formal rules and with observed patterns in the target's own
+      module/direct dependencies. Keep observations separate from requirements;
+      do not scan the entire repository or promote a small sample into a standard.
 
 **SOLID:**
 - [ ] Single Responsibility: Each class has one reason to change
@@ -98,7 +116,10 @@ Identify the system category (engine, gameplay, AI, networking, UI, tools) and e
 
 ## Phase 7: Specialist Reviews (Parallel)
 
-Spawn all applicable specialists simultaneously through Codex subagent delegation — do not wait for one before starting the next.
+Deduplicate applicable roles, rank them by target risk, and run them in bounded
+parallel batches that respect current subagent capacity and leave space for the
+primary task. If a role fails, times out, or is unavailable, list it and the reason;
+do not fabricate its result or imply the review was complete.
 
 ### Engine Specialists
 
@@ -113,7 +134,8 @@ Also spawn the **Primary Specialist** for any file touching engine architecture 
 
 ### QA Testability Review
 
-For Logic and Integration stories, also spawn `qa-tester` through Codex subagent delegation in parallel with the engine specialists. Pass:
+Only when a supplied story is valid and contains readable `## QA Test Cases` and
+`## Acceptance Criteria`, spawn `qa-tester` through Codex subagent delegation in parallel with the engine specialists. Pass:
 - The implementation files being reviewed
 - The story's `## QA Test Cases` section (the pre-written test specs from qa-lead)
 - The story's `## Acceptance Criteria`
@@ -124,6 +146,10 @@ Ask the qa-tester to evaluate:
 - [ ] Are any acceptance criteria untestable as implemented (e.g., hardcoded values, no seam for injection)?
 - [ ] Does the implementation introduce any new edge cases not covered by the existing QA test cases?
 - [ ] Are there any observable side effects that should have a test but don't?
+
+If no valid story or either required QA section is missing, skip qa-tester and
+mark Testability `NOT EVALUATED — story QA context unavailable`; do not pass empty
+context.
 
 For Visual/Feel and UI stories: qa-tester reviews whether the manual verification steps in `## QA Test Cases` are achievable with the implementation as written — e.g., "is the state the manual checker needs to reach actually reachable?"
 
@@ -143,8 +169,8 @@ Collect all specialist findings before producing output.
 [qa-tester findings: test hooks, coverage gaps, untestable paths, new edge cases]
 [If BLOCKING: implementation must expose [X] before tests in ## QA Test Cases can run]
 
-### ADR Compliance: [NO ADRS FOUND / COMPLIANT / DRIFT / VIOLATION]
-[List each ADR checked, result, and any deviations with severity]
+### ADR Compliance: [NO ADR FOUND / ACCEPTED / PROPOSED / SUPERSEDED / MISSING / UNREADABLE / DRIFT / VIOLATION]
+[List each ADR checked, status/result, and any deviations with evidence and severity]
 
 ### Standards Compliance: [X/6 passing]
 [List failures with line references]
@@ -190,9 +216,13 @@ Ask the user directly:
     - `[B] Stop here`
   - If CHANGES REQUIRED:
     - `[A] Fix the issues and re-run $code-review`
-    - `[B] Run $story-done anyway with noted exceptions`
-    - `[C] Stop here`
+    - `[B] Stop here`
+  - If APPROVED WITH SUGGESTIONS:
+    - `[A] Review the suggestions`
+    - `[B] Stop here`
 
 If an ARCHITECTURAL VIOLATION is found:
 - If the violation contradicts an **existing ADR**: fix the implementation to comply with `docs/architecture/[adr-file].md`. If the design has legitimately changed, run `$architecture-decision` to formally *revise* the existing ADR — do not create a competing one.
-- If **no ADR exists** for the pattern that was violated: run `$architecture-decision` to document the correct approach before fixing the code.
+- If a required ADR is missing, call it a missing decision or architecture concern,
+  not a violation of a document that does not exist. Run `$architecture-decision`
+  only when the applicable project standard actually requires that decision.

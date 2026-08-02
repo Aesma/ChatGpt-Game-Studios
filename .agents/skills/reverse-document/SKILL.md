@@ -14,12 +14,9 @@ Arguments: `<type> <path> (e.g., 'design src/gameplay/combat' or 'architecture s
 
 # Reverse Documentation
 
-This skill analyzes existing implementation (code, prototypes, systems) and generates
-appropriate design or architecture documentation. Use this when:
-- You built a feature without writing a design doc first
-- You inherited a codebase without documentation
-- You prototyped a mechanic and need to formalize it
-- You need to document "why" behind existing code
+This skill analyzes existing implementation and generates appropriate design or
+architecture documentation. Use it for an undocumented feature, inherited
+codebase, prototype formalization, or the rationale behind existing code.
 
 ---
 
@@ -27,17 +24,16 @@ appropriate design or architecture documentation. Use this when:
 
 ## Phase 1: Parse Arguments
 
-**Format**: `$reverse-document <type> <path>`
+**Required format**: `$reverse-document <type> <single-path>`
 
 **Type options**:
-- `design` → Generate a game design document (GDD section)
+- `design` → Generate a complete reverse-documented system GDD
 - `architecture` → Generate an Architecture Decision Record (ADR)
-- `concept` → Generate a concept document from prototype
+- `concept` → Generate a concept document from a prototype
 
-**Path**: Directory or file to analyze
-- `src/gameplay/combat/` → All combat-related code
-- `src/core/event-system.cpp` → Specific file
-- `prototypes/stealth-mech/` → Prototype directory
+Reject a missing/unknown type, missing path, or more than one path with the
+usage string above. One directory path may contain multiple relevant files; do
+not accept multiple positional paths.
 
 The resolved input must be one existing file or directory contained within the
 project. Reject project-external paths. Within a directory, read only text source
@@ -54,82 +50,98 @@ $reverse-document concept prototypes/vehicle-combat
 
 ## Phase 2: Analyze Implementation
 
-**Read and understand the code/prototype**:
-
 **For design docs (GDD):**
-- Identify mechanics, rules, formulas
-- Extract gameplay values (damage, cooldowns, ranges)
-- Find state machines, ability systems, progression
-- Detect edge cases handled in code
-- Map dependencies (what systems interact?)
+- Identify mechanics, rules, formulas, values, states, dependencies, and handled edge cases.
+
+Detailed extraction:
+- Identify mechanics, rules, and formulas.
+- Extract gameplay values such as damage, cooldowns, and ranges.
+- Find state machines, ability systems, and progression.
+- Detect edge cases handled in code.
+- Map dependencies and system interactions.
 
 **For architecture docs (ADR):**
-- Identify patterns (ECS, singleton, observer, etc.)
-- Understand technical decisions (threading, serialization, etc.)
-- Map dependencies and coupling
-- Assess performance characteristics
-- Find constraints and trade-offs
+- Identify implemented patterns, technical constraints, dependencies, coupling,
+  trade-offs, and performance characteristics.
+- Do not turn a plausible alternative into decision history. Alternatives not
+  evidenced by a contemporaneous artifact or explicitly confirmed by the user
+  are labeled `Unknown` or `Possible alternative`; `why not chosen` remains
+  `Unknown — not recorded`.
+
+Detailed extraction:
+- Identify patterns such as ECS, singleton, observer, or service locator.
+- Map technical decisions in threading and serialization.
+- Map dependencies and coupling.
+- Assess evidenced performance characteristics.
+- Record constraints and observed trade-offs.
 
 **For concept docs (prototype analysis):**
-- Identify core mechanic
-- Extract emergent gameplay patterns
-- Note what worked vs what didn't
-- Find technical feasibility insights
-- Document player fantasy / feel
+- Identify the implemented core mechanic and technical feasibility evidence.
+- Load prototype outcome, effort/duration, reuse percentage, tester feedback,
+  and quotes only from an existing record or explicit user input. Otherwise use
+  `N/A — source unavailable`; never invent a quote, tester count, percentage,
+  outcome, or effort estimate.
+
+Detailed extraction:
+- Identify the core mechanic and emergent gameplay patterns.
+- Note what existing records say worked or did not work.
+- Capture technical feasibility evidence.
+- Separate observed feel from intended player fantasy.
 
 ## Phase 3: Ask Clarifying Questions
 
-**DO NOT** just describe the code. **ASK** about intent:
+Do not merely describe code; ask about intent. Clarifications are recorded as
+user-stated intent and do not replace observed behavior.
 
-**Design questions**:
-- "I see a [resource] system that depletes during [activity]. Was this for:
-  - Pacing (prevent spam)?
-  - Resource management (strategic depth)?
-  - Or something else?"
-- "The [mechanic] seems central. Is this a core pillar, or supporting feature?"
-- "[Value] scales exponentially with [factor]. Intentional design, or needs rebalancing?"
+**Design questions** may ask whether a resource supports pacing, whether a
+mechanic is core, or whether discovered scaling is intentional.
 
-**Architecture questions**:
-- "You're using a service locator pattern. Was this chosen for:
-  - Testability (mock dependencies)?
-  - Decoupling (reduce hard references)?
-  - Or inherited from existing code?"
-- "I see manual memory management instead of smart pointers. Performance requirement, or legacy?"
+Example prompts:
+- "I see a resource that depletes during this activity. Is the intent pacing,
+  strategic resource management, or something else?"
+- "The mechanic appears central in code. Is it a core pillar or supporting feature?"
+- "This value scales exponentially. Is that intentional, or a gap to a desired curve?"
 
-**Concept questions**:
+**Architecture questions** may ask why an observed pattern was chosen, but do
+not present unrecorded alternatives as choices previously considered.
+
+Example prompts:
+- "The implementation uses a service locator. What rationale, if any, was
+  recorded for that choice?"
+- "Manual memory management appears here. Is there a confirmed performance
+  constraint, or is the rationale unknown?"
+
+**Concept questions** may ask about intended pillars, emergent behavior, or
+whether existing playtest/effort records exist.
+
+Example prompts:
 - "The prototype emphasizes stealth over combat. Is that the intended pillar?"
-- "Players seem to exploit the grappling hook for speed. Feature or bug?"
+- "Is there an existing playtest or time-tracking record I should use, or
+  should those fields remain N/A?"
 
 ## Phase 4: Present Findings
 
-Before drafting, show what you discovered:
+Before drafting, show discovered mechanics, formulas, architecture, prototype
+evidence, and unclear intent areas with source paths. Wait for clarification.
 
-```
-I've analyzed [path]/. Here's what I found:
+Use a findings presentation such as:
+
+```text
+I've analyzed [path].
 
 MECHANICS IMPLEMENTED:
-- [mechanic-a] with [property] (e.g. timing windows, cooldowns)
-- [mechanic-b] (e.g. interaction between two states)
-- [resource] system (depletes on [action], regens on [condition])
-- [state] system (builds up, triggers [effect])
+- [mechanic] with [evidenced property]
 
 FORMULAS DISCOVERED:
-- [Output] = [formula using discovered variables]
-- [Secondary output] = [formula]
+- [output] = [formula]
 
 UNCLEAR INTENT AREAS:
-1. [Resource] system — pacing or resource management?
-2. [Mechanic] — core pillar or supporting feature?
-3. [Value] scaling — intentional design or needs tuning?
-
-Before I draft the design doc, could you clarify these points?
+1. [resource/system question]
+2. [pillar question]
+3. [observed-versus-intended value question]
 ```
 
-Wait for user to clarify intent before drafting.
-
 ## Phase 5: Draft Document Using Template
-
-Based on type, use appropriate template:
 
 | Type | Template | Output Path |
 |------|----------|-------------|
@@ -139,56 +151,48 @@ Based on type, use appropriate template:
 
 If the selected template is absent, stop; do not invent a replacement structure.
 
-**Draft structure**:
+Draft rules:
+
 - Put code/test-backed facts under **Observed implementation**.
 - Put clarified future or desired behavior under **User-stated intent**.
-- Put every difference under **Gap**; intent never rewrites the observed state.
+- Put every difference under **Gap**; intent never rewrites observed state.
 - Mark an Acceptance Criterion implemented only when code/test evidence proves it.
-- Flag **follow-up work** (balance tuning, missing features).
+- When the user has not supplied `Verified By`, `Decision Makers`, `Creator`,
+  or author identity, keep the template's `pending review` / `unknown` value.
+- In an ADR, unconfirmed alternatives and rejection rationales remain possible
+  or unknown rather than historical facts.
+- In a concept document, unavailable outcome, effort, reuse, and playtest fields
+  are `N/A — source unavailable`.
+
+Flag follow-up work such as balance tuning or missing features, but keep it
+outside observed implementation and do not apply it during this workflow.
 
 ## Phase 6: Show Draft and Request Approval
 
-**Collaborative protocol**:
-```
-I've drafted the [system-name] design doc based on your code and clarifications.
+Show the entire proposed document, including metadata, appendices, incomplete
+fields, and every section that will be written. Do not abbreviate the preview to
+key sections. For a new design GDD, also show the complete proposed systems-index
+row update. Let the user request draft changes before the one complete changeset
+authorization.
 
-[Show key sections: Overview, Mechanics, Formulas, Design Intent]
-
-ADDITIONS I MADE:
-- Documented [mechanic] as "[intent]" per your clarification
-- Added edge cases not in code (e.g., what if [resource] hits 0 mid-[action]?)
-- Flagged balance concern: [scaling type] scaling at [boundary condition]
-
-SECTIONS MARKED AS INCOMPLETE:
-- "[System] interaction with [other-system]" (not fully implemented yet)
-- "[Variant or feature]" (only [subset] implemented so far)
-
-Should the proposed changeset include this draft at `design/gdd/[system-name].md`?
-```
-
-Treat the response as a draft-scope decision. The user may request changes before the complete changeset is presented for its one authorization.
+Identify additions made from user clarification and sections marked incomplete,
+but this summary supplements rather than replaces the full draft.
 
 ## Phase 7: Write Document with Metadata
 
 Before requesting write authorization, resolve the exact output target and check
 whether it exists. If it exists, read it and offer a targeted update or stop;
-never overwrite it silently. When approved, write the file with special markers:
+never overwrite it silently.
+
+Use metadata without guessing identity:
 
 ```markdown
 ---
 status: reverse-documented
 source: [path/]
 date: [today]
-verified-by: [User name]
+verified-by: [explicit user-provided identity or pending review]
 ---
-
-# [System Name] Design
-
-> **Note**: This document was reverse-engineered from the existing implementation.
-> It captures current behavior and clarified design intent. Some sections may be
-> incomplete where implementation is partial or intent was unclear.
-
-[Rest of document...]
 ```
 
 For a new design GDD, also update the existing
@@ -197,22 +201,25 @@ unique existing system row can be identified, stop and ask the user to select
 an existing system rather than inventing a new system decision. Preview the
 new/updated document and index edit together.
 
+The written file retains the template's reverse-documentation notice and
+evidence-boundary sections.
+
 ## Phase 8: Flag Follow-Up Work
 
-After writing, suggest next steps:
+After writing, list evidence gaps, document gaps, and relevant existing commands
+such as `$balance-check`, `$architecture-decision`, or `$code-review`. End the
+workflow after that list. Do not ask to tackle a follow-up immediately and do
+not edit code, another GDD, or an ADR under this workflow's authorization.
 
-```
-✅ Written to design/gdd/combat-system.md
+Example handoff list:
 
-FOLLOW-UP RECOMMENDED:
-1. Run $balance-check on combat formulas (exponential scaling concern)
-2. Create ADR for stamina system architecture decision
-3. Implement missing edge cases:
-   - Stamina depletion mid-combo behavior
-   - Stagger state during dodge
-4. Extend design doc when weapon variety is implemented
+```text
+Written to: [resolved output path]
 
-Would you like me to tackle any of these now?
+FOLLOW-UP RECOMMENDED (not executed):
+1. $balance-check [document] — validate discovered formulas
+2. $architecture-decision — document a still-unrecorded decision
+3. Implement the listed observed-versus-intended gaps
 ```
 
 ---
@@ -231,55 +238,38 @@ Would you like me to tackle any of these now?
 
 ## Example Session: Reverse-Document a System
 
-```
+```text
 User: $reverse-document design src/gameplay/[system]
 
-Agent: I'll analyze your [system] implementation to create a design doc.
-       [Reads code, discovers mechanics, formulas]
+Agent: [Analyzes implementation and shows observed mechanics/formulas.]
+       [Asks what the resource, mechanic, and discovered scaling were intended to do.]
 
-Agent: I've analyzed src/gameplay/[system]/. Here's what I found:
-       [Shows mechanics, formulas, unclear areas]
+User: The implemented exponential scaling should become linear.
 
-       Before drafting, could you clarify:
-       1. [Resource] system intent?
-       2. Is [mechanic] a core pillar?
-       3. [Value] scaling — intentional or needs tuning?
+Agent: [Shows the complete draft. The exponential rule remains Observed
+       implementation, linear scaling is User-stated intent, and their
+       difference is a Gap.]
 
-User: 1. [Resource] is for pacing, prevent [unwanted behavior]
-      2. [Mechanic] is core — I want [design intent]
-      3. Yeah, exponential is too much, should be linear
+User: Approves the complete changeset.
 
-Agent: Perfect, that clarifies the vision. Let me draft the design doc.
-       [Shows draft with clarified intent]
-
-       Should the proposed changeset include this draft at design/gdd/[system-name].md?
-
-User: Yes, write it.
-
-Agent: ✅ Written to design/gdd/[system-name].md
-       ✅ Marked as [REVERSE-DOCUMENTED]
-       ✅ Recorded observed [value] scaling separately from the intended linear rule
-       ✅ Flagged the implementation/intent difference as a Gap
-
-       Next steps:
-       - Implement and verify the documented formula gap before marking it current
-       - Run $balance-check to validate [curve]
-       - Document [mechanic] as core pillar in game-pillars.md
+Agent: Writes the previewed document and lists later commands; no follow-up
+       workflow runs automatically.
 ```
 
 ---
 
 ## Collaborative Protocol
 
-This skill follows the collaborative design principle:
+1. **Analyze First**: Read code and understand implementation.
+2. **Question Intent**: Ask about why, not only what.
+3. **Present Findings**: Show discoveries and unclear areas.
+4. **User Clarifies**: Separate intent from accidents.
+5. **Draft Document**: Preserve reality, intent, and gaps separately.
+6. **Show Full Draft**: Display all content that will be written.
+7. **Get Approval**: Preview the complete files once, then write only the
+   authorized changeset. Return **COMPLETE** after writing or **BLOCKED — user
+   declined write** on decline.
+8. **Flag Follow-Up**: Suggest related commands, do not auto-execute them.
 
-1. **Analyze First**: Read code, understand implementation
-2. **Question Intent**: Ask about "why", not just "what"
-3. **Present Findings**: Show discoveries, highlight unclear areas
-4. **User Clarifies**: Separate intent from accidents
-5. **Draft Document**: Create doc based on reality + intent
-6. **Show Draft**: Display key sections, explain additions
-7. **Get Approval**: Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized. Once the complete changeset is authorized, generate the document and return Verdict: **COMPLETE**. On decline: Verdict: **BLOCKED** — user declined write.
-8. **Flag Follow-Up**: Suggest related work, don't auto-execute
-
-**Never assume intent. Always ask before documenting "why".**
+**Never assume intent or identity. Never fabricate prototype evidence or
+decision history.**

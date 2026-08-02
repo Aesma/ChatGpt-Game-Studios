@@ -75,10 +75,18 @@ Before running anything, understand the environment:
    Phase 4. If neither exists, smoke tests will be drawn from the current QA
    plan (Phase 4 fallback).
 
-5. **QA plan check**: find files matching `production/qa/qa-plan-*.md` and take the most
-   recently modified file. If found, note the path — it will be used in
-   Phase 3 and Phase 4. If not found, note: "No QA plan found. Run
-   `$qa-plan sprint` before smoke-checking for best results."
+5. **Resolve the target sprint**: for `sprint` mode, first parse the `sprint`
+   value from `production/sprint-status.yaml` and locate that numbered sprint
+   file. If the YAML is absent or unusable, fall back to the highest valid
+   numbered `production/sprints/sprint-[NNN].md` file (never modification time)
+   and record the fallback reason. `quick` mode may use the same target only as
+   context; it does not run coverage.
+
+6. **QA plan check**: accept only a file whose filename or explicit `Sprint:`
+   field identifies the resolved sprint exactly. Do not choose a QA plan merely
+   because it is newest or mentions the same number elsewhere. If no matching
+   plan exists, note: "No QA plan for sprint [N] found. Run `$qa-plan sprint`
+   before smoke-checking for best results."
 
 Report findings before proceeding: "Environment: [engine]. Test directory:
 [found / not found]. CI configured: [yes / no]. QA plan: [path / not found]."
@@ -105,14 +113,20 @@ path for your test framework."
 Unity tests require the editor and cannot be run headlessly via shell in most
 environments. List `test-results/` read-only, sort entries by modification time,
 and inspect the five newest artifacts.
-If test result files exist (XML or JSON), read the most recent one and parse
-PASS/FAIL counts. If no artifacts exist: "Unity tests must be run from the
+If test result files exist (XML or JSON), report the selected artifact's exact
+path and modification time. Treat it as current only when its metadata or
+surrounding run context proves it belongs to this check's branch/build and was
+completed for the current run. Otherwise record `NOT RUN` rather than reusing a
+possibly stale result. Parse PASS/FAIL counts only from a proven-current,
+complete artifact. If no valid artifact exists: "Unity tests must be run from the
 editor or CI pipeline. Please confirm test status manually before proceeding."
 
 **Unreal Engine:**
 List `Saved/Logs/` read-only, filter names containing `test` or `automation`,
-sort by modification time, and inspect the five newest matching logs.
-If no matching log found: "UE automation tests must be run via the Session
+sort by modification time, and inspect the five newest matching logs. Report
+the selected log path and time, and accept it only when it identifies the
+current branch/build/run and contains a complete result. Otherwise record
+`NOT RUN`; recency alone is not proof. If no valid matching log is found: "UE automation tests must be run via the Session
 Frontend or CI pipeline. Please confirm test status manually."
 
 **Unknown engine / not configured:**
@@ -142,22 +156,24 @@ Parse runner output and extract:
 ## Phase 3: Check Test Coverage
 
 Draw the story list from, in priority order:
-1. The QA plan found in Phase 1 (its Test Summary table lists expected test
-   file paths per story)
-2. The current sprint plan from `production/sprints/` (most recently modified
-   file)
-3. If the `quick` argument was passed, skip this phase entirely and note:
-   "Coverage scan skipped — run `$smoke-check sprint` for full coverage
-   analysis."
+1. The QA plan that explicitly matches the resolved target sprint (its Test
+   Summary table lists expected test file paths per story)
+2. The resolved target sprint file from Phase 1
+3. If the `quick` argument was passed, skip this phase entirely and record the
+   coverage status as `NOT CHECKED` (not zero MISSING): "Coverage scan skipped —
+   run `$smoke-check sprint` for full coverage analysis." A quick run can never
+   receive a clean PASS; its highest verdict is PASS WITH WARNINGS.
 
 For each story in scope:
 
-1. Extract the system slug from the story's file path
-   (e.g., `production/epics/combat/story-001.md` → `combat`)
-2. Find files matching `tests/unit/[system]/` and `tests/integration/[system]/` for files
-   whose name contains the story slug or a closely related term
-3. Check the story file itself for a `Test file:` header field or a
-   "Test Evidence" section
+1. Read the story's `Test file:` field or `Test Evidence` section and resolve
+   every declared project-relative evidence path exactly.
+2. Verify that the exact file exists and that its assertions directly cover
+   the story/criterion before assigning COVERED or MANUAL.
+3. Only when the story declares no exact path, list same-system files under
+   `tests/unit/[system]/` or `tests/integration/[system]/` as **unverified
+   candidates**. Name/slug/"closely related" matching never proves COVERED and
+   candidates remain MISSING or UNKNOWN as appropriate.
 
 Assign a coverage status to each story:
 
@@ -187,7 +203,17 @@ Tailor batches 2 and 3 to the actual systems identified from the sprint or QA
 plan. Replace bracketed placeholders with real mechanic names from the current
 sprint's stories.
 
-Ask the user directly to batch-verify. Keep to at most 3 calls.
+Ask the user directly to batch-verify. Keep the entire Phase 4 interaction to
+at most 3 calls, including `--platform all`:
+
+1. automated-test confirmation (when needed) plus Batch 1;
+2. Batch 2 plus Batch 3 when applicable;
+3. every requested platform section together, plus failure descriptions for
+   all selected failures that were not captured inline.
+
+The PC, console, and mobile lists below are sections of that third structured
+confirmation, not separate calls. If a base-batch failure needs prose, collect
+all such descriptions together rather than asking once per batch.
 
 If Phase 2 recorded automated tests as `NOT RUN`, include a one-time automated
 test confirmation in the existing manual confirmation interaction and save the
@@ -235,7 +261,9 @@ options:
 
 For any FAILED item selected, ask the user to describe what broke before generating the report.
 
-Record each response verbatim for the Phase 5 report.
+Record selected structured results exactly as selections and store only text
+the user actually supplied as verbatim failure descriptions. Do not invent a
+PASS sentence or label an unselected option as a verbatim user response.
 
 **Platform Batches** *(run only if `--platform` argument was provided)*:
 
@@ -315,7 +343,8 @@ UNCONFIRMED | N/A]
 | [title] | Logic | — | MISSING ⚠ |
 | [title] | Config/Data | — | EXPECTED |
 
-**Summary**: [N] covered, [N] manual, [N] missing, [N] expected.
+**Summary**: [N] covered, [N] manual, [N] missing, [N] expected, or
+`NOT CHECKED — quick mode`.
 
 ---
 
@@ -370,6 +399,7 @@ Any platform with one or more FAIL checks contributes to the overall FAIL verdic
 - Automated tests are NOT RUN and remain `UNCONFIRMED`
 - One or more Logic/Integration stories have MISSING test evidence
 - Performance was not checked this session
+- Coverage is `NOT CHECKED` because quick mode was used
 
 **PASS** if ALL of:
 - Automated tests PASS, or NOT RUN with `CONFIRMED PASS`
@@ -386,7 +416,14 @@ to exactly one verdict.
 
 ## Phase 6: Write and Gate
 
-Present the full report in conversation, then add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Present the full report in conversation. Before the preview, check whether
+`production/qa/smoke-[date].md` already exists. If so, label the operation as an
+update, describe exactly which content will be replaced, and include that
+overwrite in the same complete changeset. Without explicit authorization to
+update that path, leave the existing report unchanged. Do not invent a second
+filename.
+
+Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
 Write only after the single changeset approval, without re-prompting within its boundary.
 

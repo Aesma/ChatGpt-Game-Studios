@@ -30,11 +30,19 @@ status. Re-run whenever new ADRs are accepted or existing ADRs are revised.
 
 ## 1. Load All Inputs
 
+First check whether `docs/architecture/control-manifest.md` exists and read it
+in full. With no `update` argument, ask whether to update or stop; `update`
+enters replacement preview directly but never bypasses the one changeset
+authorization. Preserve the current integer Manifest Version for comparison.
+
 ### ADRs
 - Find files matching `docs/architecture/adr-*.md` and read every file
-- Filter to only Accepted ADRs (Status: Accepted) — skip Proposed, Deprecated,
-  Superseded
+- Read the existing ADR `Status` field exactly (case-normalized value from the
+  unique status field). Include only `Accepted`; exclude and report Proposed,
+  Deprecated, Superseded, missing, duplicate, or ambiguous status fields.
 - Note the ADR number and title for every rule sourced
+- If zero Accepted ADRs remain, report that count and stop without creating or
+  overwriting the manifest
 
 ### Technical Preferences
 - Read `docs/technical-preferences.md`
@@ -42,7 +50,9 @@ status. Re-run whenever new ADRs are accepted or existing ADRs are revised.
   forbidden patterns
 
 ### Engine Reference
-- Read `docs/engine-reference/[engine]/VERSION.md` for engine + version
+- Read `docs/engine-reference/[engine]/VERSION.md` for engine + version. A
+  configured engine and readable VERSION are required; if missing, stop before
+  any write. Missing optional best-practices is reported but does not block.
 - Read `docs/engine-reference/[engine]/deprecated-apis.md` — these become
   forbidden API entries
 - Read `docs/engine-reference/[engine]/current-best-practices.md` if it exists
@@ -107,6 +117,21 @@ Combine rules that apply to all layers:
 
 ### From technical-preferences.md forbidden patterns:
 - Copy any "Forbidden Patterns" entries directly
+
+---
+
+## 3b. Reconcile Duplicate and Conflicting Rules
+
+Before presenting the summary, merge textually identical rules while retaining
+all real sources. Compare rules from Accepted ADRs, technical preferences, and
+engine references. If two sources conflict in modality, scope, required pattern,
+or budget, show both exact statements and paths and stop the write; the user must
+resolve the source documents first. Do not choose one rule or silently duplicate
+both.
+
+For every source citation use the actual existing path (ADR, technical
+preferences, or engine reference). Never manufacture an ADR number for a global
+rule.
 
 ---
 
@@ -180,14 +205,15 @@ Format:
 
 > **Engine**: [name + version]
 > **Last Updated**: [date]
-> **Manifest Version**: [date]
+> **Manifest Version**: [positive integer]
 > **ADRs Covered**: [ADR-NNNN, ADR-MMMM, ...]
 > **Status**: [Active — regenerate with `$create-control-manifest update` when ADRs change]
 
-`Manifest Version` is the date this manifest was generated. Story files embed
-this date when created. `$story-readiness` compares a story's embedded version
-to this field to detect stories written against stale rules. Always matches
-`Last Updated` — they are the same date, serving different consumers.
+`Last Updated` remains the generation date. `Manifest Version` is the existing
+positive integer field: use `1` for a new manifest and increment it by exactly
+one for each authorized regeneration, including same-day updates. Story files
+embed this integer; consumers compare that field exactly. Do not add another
+version field or derive freshness from the date.
 
 This manifest is a programmer's quick-reference extracted from all Accepted ADRs,
 technical preferences, and engine reference docs. For the reasoning behind each

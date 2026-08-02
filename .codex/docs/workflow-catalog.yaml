@@ -205,8 +205,8 @@ phases:
         required: true
         repeatable: true
         artifact:
-          glob: "production/epics/**/*.md"
-          min_count: 2
+          glob: "production/epics/**/story-*.md"
+          min_count: 1
         description: "Break each epic into implementable story files. Run per epic: $create-stories [epic-slug]"
 
       - id: test-setup

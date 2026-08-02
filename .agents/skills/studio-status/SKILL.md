@@ -17,8 +17,10 @@ Use the current workspace root. Normalize path separators only for display. Trea
 
 ## Determine the stage
 
-1. Read the first line of `production/stage.txt` when present. A non-empty
-   explicit value remains the Stage field exactly as stored.
+1. Read `production/stage.txt` when present. Trim the first line only to
+   determine emptiness; when non-empty, display that first line's effective
+   text rather than any later content. If any later line is non-empty, report the file as malformed;
+   never concatenate it into Stage.
 2. Regardless of whether an explicit value exists, inspect the following
    evidence to calculate an inference for Evidence/Warning only:
    - `design/gdd/game-concept.md`
@@ -26,7 +28,10 @@ Use the current workspace root. Normalize path separators only for display. Trea
    - `docs/technical-preferences.md`
    - `docs/architecture/adr-*.md`
    - source files under `src/` with extensions `.gd`, `.cs`, `.cpp`, `.h`, `.py`, `.rs`, `.lua`, `.tscn`, or `.tres`
-3. For technical preferences, consider the engine configured only when the first `**Engine**:` or `- **Engine**:` entry exists and does not contain `TO BE CONFIGURED`.
+3. For technical preferences, read every `**Engine**:` or
+   `- **Engine**:` entry. Ignore blank/placeholder values. Exactly one
+   consistent non-placeholder value is configured; multiple distinct values are
+   contradictory evidence and no value is chosen for inference.
 4. Infer the most advanced supported stage in this order:
    - At least 10 recognized source files: `Production`
    - At least one ADR: `Pre-Production`
@@ -35,8 +40,10 @@ Use the current workspace root. Normalize path separators only for display. Trea
    - Game concept present: `Concept`
    - No evidence: `Concept`
 
-Only an explicit `production/stage.txt` may select later stages such as `Polish` or `Release`.
-If the explicit value is missing/empty, use the inference as Stage. If it is
+The complete legal set is exactly `Concept`, `Systems Design`,
+`Technical Setup`, `Pre-Production`, `Production`, `Polish`, and
+`Release`. Only an explicit `production/stage.txt` may select `Polish` or
+`Release`. If the explicit value is missing/empty, use the inference as Stage. If it is
 non-empty, never replace it with the inference; report contradictory evidence
 as a warning. Also warn when the explicit value is outside Concept, Systems
 Design, Technical Setup, Pre-Production, Production, Polish, or Release.
@@ -55,8 +62,11 @@ For a valid `Production`, `Polish`, or `Release` stage and valid paired markers:
 3. Join non-empty values in that order with ` > `.
 4. If the block or all values are absent, report that no active focus is recorded.
 
-For earlier or unrecognized stages, omit the breadcrumb unless the user
-explicitly asks to see it. Never extract focus from unbounded/malformed text.
+For a valid earlier stage, keep the required field and report
+`Focus: not applicable`. For a valid late stage with no bounded breadcrumb,
+report `Focus: none recorded`. For an unrecognized stage, use
+`Focus: not applicable` unless the user explicitly asks for bounded raw
+details. Never extract focus from unbounded/malformed text.
 
 ## Report
 
@@ -66,7 +76,9 @@ Return a compact status report:
 Stage: <stage>
 Focus: <Epic > Feature > Task | none recorded>
 Evidence: <explicit stage file or the artifacts used for inference>
-Recovery: <active.md path when present | none>
+Recovery: <active.md path when valid | active.md path — malformed STATUS block | none>
 ```
 
-Call out contradictory evidence, an unrecognized explicit stage, or malformed status markers without changing the files.
+Call out contradictory evidence, an unrecognized/extra-line stage file, or
+malformed status markers without changing files. A malformed active.md path may
+be shown for diagnosis but is not described as a usable recovery breadcrumb.

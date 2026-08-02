@@ -42,6 +42,10 @@ and systems — so every developer writes less boilerplate and more assertions.
 
 ## 2. Detect Engine and Language
 
+Before generation, confirm the repository already has the configured test
+infrastructure and framework (including the engine's existing test root). If not,
+stop BLOCKED, create no helper path, and point to `$test-setup`.
+
 Read `docs/technical-preferences.md` and extract:
 - `Engine:` value
 - `Language:` value
@@ -61,7 +65,9 @@ Scan the test directory for patterns already in use:
 Search for files matching `tests/**/*_test.*`. (all test files)
 ```
 
-For a representative sample (up to 5 files), read the test files and extract:
+Choose a representative sample deterministically: prefer files for the requested
+system, then take stable path order, up to 5 files. List every sampled path in the
+summary. Read those files and extract:
 - Setup patterns (how `before_each` / `setUp` / fixtures are written)
 - Common assertion patterns (what is being asserted most often)
 - Object creation patterns (how game objects or scenes are instantiated in tests)
@@ -70,10 +76,16 @@ For a representative sample (up to 5 files), read the test files and extract:
 This ensures generated helpers match the project's existing style, not a
 generic template.
 
-Also read:
+Context requirements depend on mode. `scaffold` requires only configured
+engine/language/framework and existing tests. For `system`/`all`, also read:
 - `design/gdd/systems-index.md` — to know which systems exist
 - In-scope GDD(s) — to understand what data types and values need testing
 - `docs/architecture/tr-registry.yaml` — to map requirements to tested systems
+
+If a system cannot be mapped to a GDD or real production type, skip that system
+and return BLOCKED/partial rather than inventing defaults. In `all`, map from the
+existing test-directory system segment and the systems index Design Doc reference;
+ambiguous files are reported but do not produce a helper.
 
 ---
 
@@ -130,11 +142,17 @@ extends GdUnitTestSuite
 
 ## Load a scene and wait one frame for _ready() to complete.
 func load_scene_and_wait(scene_path: String) -> Node:
-    var scene = load(scene_path).instantiate()
+    var packed := load(scene_path) as PackedScene
+    assert(packed != null, "Scene could not be loaded: %s" % scene_path)
+    var scene := packed.instantiate()
+    assert(scene != null, "Scene could not be instantiated: %s" % scene_path)
     add_child(scene)
     await get_tree().process_frame
     return scene
 ```
+
+Generate this scene helper only when the project already uses a compatible pattern.
+Document that the calling test owns the returned node and must free it in teardown.
 
 ---
 
@@ -284,6 +302,12 @@ Never emit placeholder attacker/target `Node` metadata factories. Derive constru
 
 ## 6. Write Output
 
+Before proposing names, search existing production/tests for `GameAssertions`,
+`GameFactory`, `SceneRunnerHelper`, the Unity namespace/assembly convention, and
+the Unreal helper namespace/include convention. If a proposed global symbol
+conflicts, skip it and report the collision; do not overwrite it or invent another
+global name.
+
 Present a summary of what will be created:
 
 ```
@@ -308,7 +332,10 @@ regenerated."
 
 At the existing Write Output completion point, report validation truthfully. If this step already ran the project's configured test command, only a successful actual result may be called `validated`; a failure uses the existing BLOCKED path. If no command ran, label the generated files `not verified` and do not claim compile/load/runner success. Do not add a new post-write phase or validation mechanism.
 
-After writing: Verdict: **COMPLETE** — helper files created (validated only when supported by the actual result above; otherwise not verified).
+After writing, list created and skipped paths separately. Verdict: **COMPLETE** —
+helper files created (validated only when supported by the actual result above;
+otherwise not verified). If created count is zero, do not claim helper files were
+created; report that every target was skipped/blocked.
 
 "Helper files created. To use them in a test:
 - Godot: `class_name` is auto-imported — no explicit import needed

@@ -184,6 +184,25 @@ with some legacy hyphenated or title-case fixtures.
 
 ---
 
+### Case 9: Artifact ordering and sprint fallback
+
+**Assertions:**
+- [ ] Story inference uses `production/epics/**/story-*.md` and excludes EPIC/index
+- [ ] Missing sprint-status.yaml falls back to latest sprint Markdown with number/counts
+- [ ] `min_count` and pattern conditions both hold; one file cannot satisfy all-file requirements
+- [ ] Later artifacts are shown present-but-blocked and never leapfrog the first required blocker
+
+---
+
+### Case 10: Manual timing, commands, and recommendation count
+
+**Assertions:**
+- [ ] Blocking MANUAL question is answered before HELP COMPLETE; otherwise guidance is provisional
+- [ ] Commands consistently use `$skill`, never `/skill`
+- [ ] Output has one primary and at most two secondary next-skill recommendations
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads stage, sprint, and session state before generating suggestions

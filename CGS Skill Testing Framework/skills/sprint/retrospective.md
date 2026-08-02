@@ -110,3 +110,17 @@ Verified automatically by `$skill-test static` — no fixture needed.
   in one changeset and rechecks the baseline before moving anything.
 - [ ] Completion provides `$sprint-plan` / `$gate-check` only as later handoff
   commands and never invokes either workflow automatically.
+
+## P1 Contract Coverage
+
+- [ ] Missing arguments list sprint/milestone candidates; unknown, ambiguous,
+  missing, or empty targets stop or use explicitly supplied user data.
+- [ ] Git metrics use the target's explicit period; no recent-20 fallback exists.
+- [ ] TODO/FIXME/HACK trends compare the same directories/exclusions; otherwise
+  only the current count is reported.
+- [ ] Missing velocity periods show N/A, and a trend requires at least two
+  comparable periods.
+- [ ] Artifact-backed observations, user reflections, and unknown causes are
+  labeled separately.
+- [ ] Missing action owners/deadlines remain Unassigned/Not set, and the draft
+  commitments are confirmed before save.

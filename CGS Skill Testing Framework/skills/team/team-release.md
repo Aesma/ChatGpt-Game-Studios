@@ -58,6 +58,16 @@ NO-GO. Closes with a post-release monitoring plan.
 
 ## Coverage Notes
 
+### P1 Regression Matrix
+
+- [ ] `next` and omitted versions use explicit milestone targets; multiple candidates require user selection and malformed versions fail.
+- [ ] Phase 1 confirms scope, source commit text, target platforms, version, and date before branch creation.
+- [ ] No unused review mode can skip a production or sign-off role.
+- [ ] Localization/performance applicability follows confirmed scope and budgets; applicable missing evidence is BLOCKED.
+- [ ] No-telemetry scope is N/A; scoped but inaccessible telemetry is UNKNOWN/BLOCKED, never healthy by assumption.
+- [ ] Required QA/devops/security/network/checklist work cannot use Skip to reach GO.
+- [ ] COMPLETE covers deployed release and immediate actions only; the 48-hour human monitor remains a pending work item.
+
 - Phase 7 post-release actions (release report, milestone tracking, community publishing, dashboard monitoring) are validated implicitly by Case 1. No separate edge case is required as Phase 7 is non-gated and does not have a blocking failure mode.
 - The "devops-engineer build fails" path is not separately tested — it would surface as a BLOCKED result in Phase 3 and follow the standard error recovery protocol (surface → assess → user-input request options). This is validated structurally by the Static Assertions error recovery check.
 - The parallel Phase 4 path (localization + performance + analytics simultaneously with Phase 3) is a documented option in the skill ("can run in parallel with Phase 3 if resources available"). Case 4 tests Phase 4 as a sequential gate; the parallel variant is left to the skill's implementation judgment.

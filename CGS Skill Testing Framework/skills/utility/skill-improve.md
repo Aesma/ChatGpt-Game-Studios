@@ -150,3 +150,14 @@ Verified automatically by `$skill-test static` — no fixture needed.
   that targets still equal this run's result. Concurrent edits are never overwritten.
 - [ ] If a previously successful validation cannot be re-run, the result is
   unverified and the conditional restore runs; a restore conflict reports BLOCKED.
+
+## P1 Contract Coverage
+
+- [ ] Required argument text appears once and accepts only a single lowercase,
+  digit, hyphen directory name; separators, dot paths, and missing files stop.
+- [ ] Missing catalog/spec remains FAIL/NON-COMPLIANT while other checks run;
+  IMPROVED is impossible until that existing artifact is restored.
+- [ ] NO CHANGE requires zero FAIL and zero WARN; warnings may be narrowly fixed.
+- [ ] The changeset lists only files that actually require an edit and their purpose.
+- [ ] Targeting skill-improve itself produces diagnosis and an approved draft
+  only; the current run never changes its own governing instructions.

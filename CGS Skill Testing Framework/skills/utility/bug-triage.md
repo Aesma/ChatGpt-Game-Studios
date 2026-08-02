@@ -83,3 +83,14 @@ are three P1 bugs.
 - [ ] Triage output and optional report contain the same findings
 - [ ] Capacity rules apply to sprint and full modes
 - [ ] The workflow adds no new directory, status layer, or schema
+
+## P1 Regression Assertions
+
+- [ ] Report rows are proposed placements; source bugs and sprint plans remain unchanged
+- [ ] Active sprint comes from an explicit status/marker, never file modification time
+- [ ] Only Open bugs are processed; Closed/Verified Fixed are excluded and malformed status is flagged
+- [ ] Capacity and effort must use comparable known units before any placement proposal
+- [ ] P4 remains a candidate until the user chooses Deferred or Won't Fix
+- [ ] Missing trend dates/links are Unknown and excluded from numeric claims
+- [ ] Empty repro, possible duplicate, and unknown severity/status appear as data-quality flags
+- [ ] Trend mode omits placement recommendations but may save its report

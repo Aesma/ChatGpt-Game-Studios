@@ -1,6 +1,6 @@
 ---
 name: bug-triage
-description: "Read all open bugs in production/qa/bugs/, re-evaluate priority vs. severity, assign to sprints, surface systemic trends, and produce a triage report. Run at sprint start or when the bug count grows enough to need re-prioritization."
+description: "Read all open bugs in production/qa/bugs/, re-evaluate priority vs. severity, propose sprint placement, surface systemic trends, and produce a triage report. Run at sprint start or when the bug count grows enough to need re-prioritization."
 ---
 
 ## Invocation and execution
@@ -14,15 +14,16 @@ Arguments: `[sprint | full | trend]`. Treat bracketed values as optional unless 
 
 # Bug Triage
 
-This skill processes the open bug backlog into a prioritised, sprint-assigned
-action list. It distinguishes between **severity** (how bad is the impact?) and
+This skill processes the open bug backlog into a prioritised action list with
+proposed sprint placement. It does not update a bug or sprint plan, so a report
+entry is never a persisted assignment. It distinguishes between **severity** (how bad is the impact?) and
 **priority** (how urgently must we fix it?), detects systemic trends, and
 ensures no critical bug is lost between sprints.
 
 **Output:** `production/qa/bug-triage-[date].md`
 
 **When to run:**
-- Sprint start — assign open bugs to the new sprint or backlog
+- Sprint start — propose placement of open bugs for the new sprint or backlog
 - After `$team-qa` completes and new bugs have been filed
 - When the bug count crosses 10+ open items
 
@@ -31,10 +32,11 @@ ensures no critical bug is lost between sprints.
 ## 1. Parse Arguments
 
 **Modes:**
-- `$bug-triage sprint` — triage against the current sprint; assign fixable bugs
-  to the sprint backlog; defer the rest
+- `$bug-triage sprint` — triage against the current sprint; propose fixable bugs
+  for the sprint backlog and recommend backlog disposition for the rest
 - `$bug-triage full` — full triage of all bugs regardless of sprint scope
-- `$bug-triage trend` — trend analysis only (no assignment); read-only report
+- `$bug-triage trend` — trend analysis only (no assignment recommendations);
+  it may still save the same report in Step 6 when authorized
 - No argument — run sprint mode if a current sprint exists, else full mode
 
 ---
@@ -57,12 +59,15 @@ Stop and report. Do not proceed if no bugs exist.
 
 ### Step 2b — Load sprint context
 
-Read the most recently modified file in `production/sprints/` to understand:
+Read existing sprint status/content and select a sprint only when its own
+active/current marker uniquely identifies it. Do not infer the active sprint from
+file modification time. If no sprint is uniquely active, triage to backlog only.
+From the active sprint, understand:
 - Current sprint number / name
 - Stories in scope (for assignment target)
 - Sprint capacity constraints (if noted)
 
-If no sprint file exists: note "No sprint plan found — assigning to backlog only."
+If no sprint file exists: note "No sprint plan found — backlog recommendations only."
 
 ### Step 2c — Load severity reference
 
@@ -73,7 +78,13 @@ exist. If they do not exist, use the standard definitions in Step 3.
 
 ## 3. Classify Each Bug
 
-For each bug, extract or infer:
+For each bug, first parse the top-level Status. Include only `Open` in the open
+backlog. Exclude `Verified Fixed` and `Closed`. Put a missing/unknown Status in a
+malformed section with its file evidence rather than treating it as open. Also
+flag empty reproduction steps and possible duplicates based on same-system
+symptoms/title; do not merge, close, or delete them.
+
+Then extract or infer:
 
 ### Severity (impact of the bug)
 
@@ -91,20 +102,23 @@ For each bug, extract or infer:
 | **P1 — Immediate** | Blocks QA, blocks release, or is regression from last sprint |
 | **P2 — Next Sprint** | Should be resolved before the next major milestone |
 | **P3 — Backlog** | Would be good to fix, but no active blocking impact |
-| **P4 — Wishlist** | Accepted risk or out of scope for current product scope |
+| **P4 — Wishlist** | Candidate for deferral or possible out-of-scope disposition; user decision required |
 
-### Assignment
+### Proposed Assignment
 
 For each P1/P2 bug in `sprint` mode:
 - Identify which story or epic the fix belongs to
-- Check whether the current sprint has remaining capacity
-- If capacity exists: assign to sprint (`Sprint: [current]`)
-- If capacity is full: flag as `Priority overflow — consider pulling from sprint`
+- Compare remaining capacity and bug effort only when both use the same existing
+  unit and every proposed item has an estimate in that unit
+- If comparable capacity exists: record a proposed placement (`Proposed Sprint: [current]`)
+- If capacity is full or unknown/incomparable: keep it unassigned and flag
+  `Priority overflow` or `Capacity unknown`
 
-For `full` mode, apply the same capacity rule as sprint mode. Propose P1 for
-the current sprint only while comparable remaining capacity exists; overflow stays
-unassigned in the report. Propose P2 for the next sprint only when its capacity is
-known. Never auto-assign merely because the mode is `full`.
+For `full` mode, apply the same comparable-capacity rule as sprint mode. Propose
+P1 for the current sprint only while remaining capacity exists; overflow stays
+unassigned. Propose P2 for the next sprint only when its active plan and comparable
+capacity are known. Trend mode skips this entire Assignment subsection. Never
+auto-assign merely because the mode is `full`.
 
 ### Deviation check
 
@@ -120,7 +134,9 @@ Flag bugs that suggest **systematic problems**:
 
 ## 4. Trend Analysis
 
-After classifying all bugs, generate trend metrics:
+After classifying all bugs, generate trend metrics. A missing filed/closed date,
+sprint link, or story link is `Unknown / insufficient data`, not zero, and is
+excluded from derived counts, ages, ratios, and hotspot claims:
 
 ### Volume trends
 - Total open bugs: [N]
@@ -159,10 +175,10 @@ After classifying all bugs, generate trend metrics:
 
 | Priority | Count | Notes |
 |----------|-------|-------|
-| P1 — Immediate | [N] | [N] assigned to sprint, [N] overflow |
-| P2 — Next Sprint | [N] | Scheduled for next sprint |
+| P1 — Immediate | [N] | [N] proposed for sprint, [N] overflow |
+| P2 — Next Sprint | [N] | [N] proposed for next sprint when capacity is known |
 | P3 — Backlog | [N] | Deferred |
-| P4 — Wishlist | [N] | Accepted risk |
+| P4 — Wishlist | [N] | User disposition pending |
 
 **Critical (S1/S2) unfixed count**: [N]
 
@@ -170,8 +186,8 @@ After classifying all bugs, generate trend metrics:
 
 ## P1 Bugs — Immediate
 
-| ID | System | Severity | Summary | Assigned to | Story |
-|----|--------|----------|---------|-------------|-------|
+| ID | System | Severity | Summary | Proposed placement | Story |
+|----|--------|----------|---------|--------------------|-------|
 | BUG-NNN | [system] | S[1-4] | [one-line description] | [sprint] | [story path] |
 
 ---
@@ -184,7 +200,7 @@ After classifying all bugs, generate trend metrics:
 
 ---
 
-## P3/P4 Bugs — Backlog / Wishlist
+## P3/P4 Bugs — Backlog / Wishlist Candidates
 
 | ID | System | Severity | Summary | Disposition |
 |----|--------|----------|---------|-------------|
@@ -196,18 +212,23 @@ After classifying all bugs, generate trend metrics:
 
 [List any patterns from Step 3 deviation check, or "None identified."]
 
+## Data Quality Flags
+
+[List malformed status/severity, empty reproduction, and possible duplicate
+reports with file evidence. These flags never modify source bug files.]
+
 ---
 
 ## Trend Analysis
 
-**Volume**: [N] open / [+N] net change this sprint
-**Hot spot**: [system with most bugs]
-**Regressions**: [N] bugs against completed stories
-**Aged bugs (>2 sprints old)**: [N]
+**Volume**: [N] open / [net change or `Unknown — insufficient dates`]
+**Hot spot**: [system with most bugs, or `Unknown — insufficient classification`]
+**Regressions**: [N, or `Unknown — missing story links/status`]
+**Aged bugs (>2 sprints old)**: [N, or `Unknown — insufficient dates`]
 
 [If N aged S1/S2 bugs > 0:]
 > ⚠️ [N] high-severity bugs have been open for more than 2 sprints without
-> assignment. These represent accepted risk that should be explicitly reviewed.
+> assignment proposal. These represent unresolved risk that should be explicitly reviewed.
 
 ---
 
@@ -227,8 +248,9 @@ Present the report in conversation, then add this proposed file or edit to the c
 Write only after the single changeset approval, without re-prompting within its boundary.
 
 After writing:
-- If any S1 bugs are unassigned: "S1 bugs must be assigned before the sprint
-  can be considered healthy. Run `$sprint-status` to see current capacity."
+- If any S1 bugs have no accepted placement: "S1 bugs need an explicit sprint
+  decision before the sprint can be considered healthy. Run `$sprint-status`
+  to see current capacity."
 - If regression bugs exist: "Regressions found — consider re-opening the
   affected stories in sprint tracking and running `$smoke-check` to re-gate."
 - If no P1 bugs exist: "No P1 bugs — build is in good shape for QA hand-off." Verdict: **COMPLETE** — triage report written.
@@ -241,7 +263,7 @@ If user declined write: Verdict: **BLOCKED** — user declined write.
 
 - **Never close or mark bugs Won't Fix without user approval** — surface them
   as P4 candidates and ask: "Are these acceptable as Won't Fix?"
-- **Never auto-assign to a sprint at capacity** — flag overflow and let the
+- **Never claim a report proposal changed sprint state** — flag overflow and let the
   sprint owner decide what to pull
 - **Severity is objective; priority is a team decision** — present severity
   classifications as recommendations, not mandates

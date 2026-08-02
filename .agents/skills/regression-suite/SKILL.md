@@ -35,8 +35,9 @@ and known failure points. This skill maintains that list.
 ## 1. Parse Arguments
 
 **Modes:**
-- `$regression-suite update` — scan new bug fixes this sprint and check
-  for regression test presence; add new tests to the suite manifest
+- `$regression-suite update` — scan new bug fixes this sprint, register existing
+  matching tests in the manifest, and record missing-test gaps; it does not
+  create test files
 - `$regression-suite audit` — full audit of all GDD critical paths vs.
   existing test coverage; flag paths with no regression test
 - `$regression-suite report` — read-only status report (no writes); suitable
@@ -44,9 +45,11 @@ and known failure points. This skill maintains that list.
 - No argument — if a sprint is clearly active (sprint plan exists with in-progress stories), run `update`. If ambiguous or no active sprint is detected, ask the user directly:
   - Prompt: "No subcommand specified. Which mode do you want to run?"
   - Options:
-    - `[A] update — scan new bug fixes this sprint and add missing regression tests`
+    - `[A] update — register existing tests for this sprint and record missing-test gaps`
     - `[B] audit — full audit of all GDD critical paths vs. existing test coverage`
     - `[C] report — read-only status report (no writes)`
+
+Reject any other mode. Resolve the current sprint explicitly for `update`.
 
 ---
 
@@ -72,9 +75,11 @@ tests/integration/**/*_test.*
 tests/regression/**/*
 ```
 
-For each file, note the system (from directory path) and file name. A name match
-only identifies a candidate; read each relevant candidate test function and its
-assertions before assigning coverage.
+For each file, note the system and filename. A name match only identifies a
+candidate; read each relevant test function and its assertions before assigning
+coverage. Compare every existing manifest entry to the inventory. If its file
+or function is missing or renamed without an unambiguous replacement, retain
+the row but mark it `STALE`; exclude it from valid coverage totals.
 
 ### Step 2c — Load GDD critical paths
 
@@ -90,9 +95,22 @@ and story files to find stories with Status: Complete this sprint.
 ### Step 2d — Load closed bugs
 
 Find files matching `production/qa/bugs/*.md` and filter for bugs with a `Status: Closed`
-or `Status: Fixed` field. Note:
-- Which story or system the bug was in
-- Whether a regression test was mentioned in the fix description
+or `Status: Fixed` field. Note the system and whether the fix cites a regression test.
+
+### Step 2e — Load project test command
+
+Read `docs/technical-preferences.md` and existing project CI configuration for
+the selected engine/framework command. If no command is configured, write
+`Unavailable — project test command not configured`; do not guess one.
+
+### Step 2f — Validate auditable scope
+
+Report missing input collections separately. If the selected mode has no test
+inventory and no applicable GDD criteria, completed stories, or closed bugs,
+there is no auditable scope: report the gaps, do not calculate a percentage,
+and do not create an empty manifest. An empty test inventory alongside real
+criteria/bugs is still auditable and yields MISSING coverage rather than a fake
+zero-input percentage.
 
 ---
 
@@ -112,10 +130,14 @@ For each GDD acceptance criterion, determine whether a test exists:
 | **COVERED** | A relevant assertion verifies the criterion's scenario and expected result |
 | **PARTIAL** | A candidate exists but lacks the matching assertion or covers only part of the scenario |
 | **MISSING** | No test found for this critical path |
-| **EXEMPT** | Visual/Feel or UI criterion — not automatable by design |
+| **EXEMPT** | The criterion is explicitly non-automatable under the Testing Standards |
 
-3. Elevate MISSING items that correspond to formulas or state machines to
-   **HIGH PRIORITY** gap — these are the most likely regression sources.
+Do not exempt all UI criteria. A UI criterion with an existing interaction test
+is mapped like any other automated criterion. Visual/Feel or UI is EXEMPT only
+when its specific observable outcome cannot be automated under the standards.
+
+Elevate MISSING items that correspond to formulas or state machines to
+**HIGH PRIORITY** gap.
 
 ---
 
@@ -123,31 +145,31 @@ For each GDD acceptance criterion, determine whether a test exists:
 
 For each closed bug:
 
-1. Extract the system slug from the bug's metadata
-2. Search `tests/unit/[system]/` and `tests/integration/[system]/` for a test
-   that references the bug ID or the specific failure scenario
-3. Assign:
-   - **HAS REGRESSION TEST** — a test was found that would catch this bug
-   - **MISSING REGRESSION TEST** — bug was fixed but no test guards against recurrence
+1. Extract the system slug from the bug's metadata.
+2. Search unit/integration tests for a test that references the bug ID or its
+   specific failure scenario, then verify the matching assertion.
+3. Assign `HAS REGRESSION TEST` or `MISSING REGRESSION TEST`.
 
-For MISSING REGRESSION TEST items:
-- Flag them as regression gaps
-- Suggest the test file path: `tests/unit/[system]/[bug-slug]_regression_test.[ext]`
-- Note: "Without this test, this bug can silently return in a future sprint."
+For a missing test, record the gap and suggested file path. Do not create the
+test or claim update mode adds it.
 
 ---
 
 ## 5. Detect Coverage Drift
 
-Coverage drift occurs when the game grows but the regression suite doesn't.
+Use only current sprint artifacts that explicitly list changed/completed stories
+and systems, plus existing sprint/retrospective identifiers that establish a
+comparable prior suite update. Evaluate:
 
-Check for drift indicators:
-- Stories completed this sprint with no corresponding test files in `tests/`
-- New systems added to `systems-index.md` since the last regression-suite update
-- GDD sections added or revised since the regression suite was last updated
-  (search on GDD file modification hints if available, or ask the user)
-- `tests/regression-suite.md` last-updated date vs. current date — if gap >
-  2 sprints, flag as likely stale
+- current sprint completed stories with no corresponding test assertions;
+- systems explicitly added by a current sprint change record;
+- GDD sections explicitly listed as revised in a current change record;
+- a suite update tied to an earlier named sprint/retrospective.
+
+Do not infer drift from filesystem modification times, an arbitrary date gap,
+or a vague "more than two sprints" estimate. If current/prior sprint evidence
+cannot be established, write `Coverage drift: Not assessed — comparable sprint
+evidence unavailable`.
 
 ---
 
@@ -167,52 +189,44 @@ Check for drift indicators:
 |--------|-----------|---------|---------|---------|--------|
 | [name] | [N] | [N] | [N] | [N] | [N] |
 
-**Coverage rate (non-exempt)**: [N]%
+**Coverage rate (non-exempt, excluding STALE rows)**: [N]% / Not calculated
 
 ### Bug Regression Coverage
 | Bug ID | System | Severity | Has Regression Test? |
 |--------|--------|----------|----------------------|
-| BUG-NNN | [system] | S[N] | YES / NO ⚠ |
-
-**Bugs without regression tests**: [N]
+| BUG-NNN | [system] | S[N] | YES / NO |
 
 ### Coverage Drift Indicators
-[List new systems or stories with no test coverage, or "None detected."]
+[Evidence-backed indicators, None detected, or Not assessed.]
 
 ### Recommended New Regression Tests
 | Priority | System | Suggested Test File | Covers |
 |----------|--------|---------------------|--------|
 | HIGH | [system] | `tests/unit/[system]/[slug]_regression_test.[ext]` | BUG-NNN / AC-[N] |
-| MEDIUM | [system] | `tests/unit/[system]/[slug]_test.[ext]` | [criterion] |
 ```
 
 ### Suite manifest format (`tests/regression-suite.md`)
-
-The manifest is a curated index — not the tests themselves, but a registry
-of which tests should always pass before a release:
 
 ```markdown
 # Regression Suite Manifest
 
 > Last Updated: [date]
-> Total registered tests: [N]
-> Coverage: [N]% of GDD critical paths
+> Total valid registered tests: [N; excludes STALE]
+> Coverage: [N]% of GDD critical paths / Not calculated
 
 ## How to run
 
-[Engine-specific command to run all regression tests]
+[Configured engine/project command, or Unavailable — project test command not configured]
 
 ## Registered Regression Tests
 
 ### [System Name]
 
-| Test File | Test Function (if known) | Covers | Added |
-|-----------|--------------------------|--------|-------|
-| `tests/unit/[system]/[file]_test.[ext]` | `test_[scenario]` | AC-N / BUG-NNN | [date] |
+| Test File | Test Function (if known) | Covers | Added / Status |
+|-----------|--------------------------|--------|----------------|
+| `tests/unit/[system]/[file]_test.[ext]` | `test_[scenario]` | AC-N / BUG-NNN | [date or STALE] |
 
 ## Known Gaps
-
-Tests that should exist but don't yet:
 
 | Priority | System | Suggested Path | Covers | Reason Not Yet Written |
 |----------|--------|----------------|--------|------------------------|
@@ -231,38 +245,29 @@ Tests suspected or confirmed flaky; they remain enabled in CI while awaiting a f
 
 ## 7. Write Output
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Add the manifest create/edit to the complete changeset preview; do not write it
+until authorized.
 
-For `update` mode: append new entries; never remove existing entries
-(use targeted insertions without replacing unrelated content).
-For `audit` mode: rewrite the full manifest with updated coverage data.
-For `report` mode: do not write anything.
+- `update`: add registrations for existing verified tests, record gaps, and
+  target-update rows that became STALE. Preserve all unrelated entries.
+- `audit`: regenerate current coverage while retaining any missing/renamed
+  historical entry as STALE rather than deleting it. STALE rows never count as
+  valid coverage.
+- `report`: write nothing.
 
-After writing the authorized changeset:
-
-- For each HIGH priority gap: "Consider creating the missing regression test
-  before the next sprint. Run `$test-helpers` to scaffold the test file."
-- If bug regression gaps > 0: "These bugs can silently return without regression
-  tests. The next sprint should include a story to write the missing tests."
-- If coverage drift detected: "Regression suite may be drifting. Consider
-  running `$regression-suite audit` at the next sprint boundary."
-
-For `report`, finish with **COMPLETE** — read-only status reported, regardless of
-whether a manifest exists. For `update` or `audit`, say the suite was updated
-only after the authorized manifest write. If the user chooses not to write,
-report **COMPLETE — analysis finished; manifest not written** rather than
-misrepresenting that choice as a runtime blocker.
+For `report`, finish with **COMPLETE** — read-only status reported. For `update`
+or `audit`, say the suite was updated only after the authorized manifest write.
+If the user chooses not to write, report **COMPLETE — analysis finished;
+manifest not written**.
 
 ---
 
 ## Collaborative Protocol
 
-- **Never remove existing regression tests from the manifest** without
-  explicit user approval — removing a test that was deliberately written is a
-  regression risk itself
+- **Never remove existing regression tests from the manifest** without explicit
+  user approval; missing entries are marked STALE
 - **Gaps are advisory, not blocking** — surface them clearly but do not prevent
-  other work from proceeding (except at release gate where regression suite is required)
+  other work from proceeding (except at a separate release gate)
 - **Quarantine is not disabling** — suspected or confirmed flaky tests remain
-  in CI, are noted in the existing table, and should be fixed by
-  `$test-flakiness`; never add skip/disable instructions to make CI pass
+  in CI and should be fixed by `$test-flakiness`; never add skip/disable instructions
 - **Single changeset approval** — include the manifest in the complete preview before creating or updating it

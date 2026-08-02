@@ -57,6 +57,12 @@ focus token as the target.
 - `balance` — focus on fun fatigue, content exhaustion, difficulty perception
 - `all` — all of the above
 
+Validate the complete argument list before loading context. A duration or focus
+token may appear at most once and must be one of the values above; every other
+non-flag token belongs to the target. Duplicate/conflicting values or an order
+that cannot be parsed uniquely must show the legal invocation and stop without
+writing. Never silently replace an invalid value with a default.
+
 ---
 
 ## 2. Load Context
@@ -66,15 +72,23 @@ Read:
   monitoring guidance), performance budgets (memory ceiling, target FPS)
 - `design/gdd/game-concept.md` — intended session length (for comparison against
   soak duration), core loop description
-- Most recent file in `production/playtests/` — prior playtest findings
-  (to avoid re-documenting known issues)
-- Most recent file in `production/qa/qa-plan-*.md` — current sprint test coverage
-  (to understand what has been formally tested vs. what the soak covers)
+- A prior playtest that explicitly names the target, or a target-related
+  finding in the current sprint. If none matches, write "No related prior
+  playtest found" rather than selecting an unrelated newest file.
+- A QA plan that explicitly matches the target or current sprint. If none
+  matches, write "No related QA plan found"; modification time alone is not
+  evidence of relevance.
 
 Note any performance budget targets from technical-preferences.md:
 - Memory ceiling: [N MB, or "not set"]
 - Target FPS: [N, or "not set"]
 - Frame budget: [N ms, or "not set"]
+
+Configured project budgets always override the engine defaults below. Use an
+engine default only when the corresponding project value is absent, and label
+the chosen threshold's source in the protocol. If the engine is missing,
+unknown, or still a placeholder, do not guess it: use OS/platform-neutral
+observations and label engine metrics as deferred.
 
 ---
 
@@ -94,12 +108,17 @@ Phase 4.
 
 ## 4. Generate the Soak Test Protocol
 
-### Memory / Stability observation items (if focus = memory or all)
+Generate only the checkpoint tables and post-session analysis sections selected
+by `focus`: memory omits stability/balance analysis; stability omits memory
+trend and balance analysis; balance omits engine memory and stability metrics;
+all includes every section. Shared free-text setup/notes remain in every mode.
+
+### Memory observation items (if focus = memory or all)
 
 Engine-specific monitoring guidance:
 
 **Godot 4:**
-- Open Debugger → Monitors question group; track `Memory → Static Memory` and
+- Open Debugger → Monitors; track `Memory → Static Memory` and
   `Object Count → Objects` across checkpoints
 - Record: Static Memory (KB), Object Count, Orphan Nodes count
 - Alert threshold: Memory growth > 20% from T+0 after the first 15 minutes
@@ -116,6 +135,11 @@ Engine-specific monitoring guidance:
 - Use `stat memory` console command at each checkpoint
 - Record: Physical Memory Used (MB), Physical Memory Available
 - Alert threshold: Physical Memory Used growth > 50MB over the full soak
+
+**Unknown or unconfigured engine:**
+- Record OS-reported process memory and visible frame-rate/performance symptoms
+- Do not name engine profilers or claim engine-specific metrics were collected
+- Mark engine-specific monitoring and thresholds as deferred
 
 ### Stability observation items (if focus = stability or all)
 
@@ -157,10 +181,15 @@ Before starting the soak:
 
 - [ ] Game is running from a **fresh launch** (not resumed from a prior session)
 - [ ] All background applications closed (minimise OS memory interference)
-- [ ] Performance monitoring tool open and recording:
-  - **Godot**: Debugger → Monitors question group → Memory section visible
+- [ ] Performance monitoring tool open and recording when selected by focus:
+  - **Godot**: Debugger → Monitors → Memory section visible
   - **Unity**: Memory Profiler window open
   - **Unreal**: `stat memory` ready in console
+  - **Unknown engine**: OS/process monitor chosen; engine metrics deferred
+- [ ] In the existing Notes/free-text area, describe the actual platform/device
+      and build, the repeated scene/gameplay loop, save/start state, and any
+      other starting conditions. Use `unknown` for details that cannot be
+      established; do not add structured schema fields.
 - [ ] Soak target confirmed: [session design intent from game concept]
 - [ ] Prior known issues to watch for: [from most recent playtest / qa-plan]
 - [ ] Early-stop rules reviewed: stop immediately on crash/hang, data corruption,
@@ -229,7 +258,10 @@ occurrence time. Do not continue to the next checkpoint.
 | [T+N] | | |
 
 **Leak detected?** Y / N
-**Estimated time to OOM at current rate**: [N hours / not applicable]
+**Estimated time to OOM at current rate**: [N hours / not enough data]. Calculate
+only when a recorded memory ceiling exists and at least three checkpoints show
+a stable growth trend; short, unstable, or non-linear samples remain
+`not enough data`.
 
 ### Stability Summary
 
@@ -288,8 +320,9 @@ unexecuted protocol as PASS, FAIL, or COMPLETE.
 1. Open the file and follow the Pre-Session Setup checklist
 2. Record each checkpoint as you play
 3. Complete the Post-Session Analysis section when done
-4. File bugs from 'Issues Found' to `production/qa/bugs/`
-5. Run `$bug-triage sprint` after the session to integrate any S1/S2 issues
+4. After a human completes the session, file bugs from 'Issues Found' only when
+   that table is non-empty
+5. Then run `$bug-triage sprint` if recorded S1/S2 issues need integration
 
 If the verdict is FAIL, run `$smoke-check` again after fixing the issues."
 

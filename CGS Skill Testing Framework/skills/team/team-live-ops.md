@@ -25,7 +25,7 @@ season plan requiring user approval before handoff to production.
 - [ ] Three output documents written to `design/live-ops/seasons/` with correct naming convention
 - [ ] File writes are delegated to sub-agents — orchestrator does not write directly
 - [ ] Verdict: COMPLETE appears in final output
-- [ ] Next steps reference `$design-review`, `$sprint-plan`, and `$team-release`
+- [ ] Next steps reference `$sprint-plan` and `$team-release` and do not call the system-GDD-only `$design-review`
 - [ ] Arguments expose no `--review`; all six core roles always run
 - [ ] Phases 1–6 are analysis-only and write no output documents
 
@@ -138,7 +138,7 @@ season plan requiring user approval before handoff to production.
 - [ ] Error recovery: any BLOCKED agent is surfaced immediately with user-input request options (skip / retry / stop)
 - [ ] Partial reports are produced if any phase blocks — work is never discarded
 - [ ] Verdict: COMPLETE only after user approves the consolidated season plan; BLOCKED if any unresolved ethics violation exists
-- [ ] Next steps always include `$design-review`, `$sprint-plan`, and `$team-release`
+- [ ] Next steps include `$sprint-plan` and `$team-release`; no incompatible `$design-review` call appears
 - [ ] Phase 7 ethics clearance happens before the only changeset authorization and all writes
 - [ ] Unresolved policy violation means BLOCKED and zero output files
 - [ ] Season number comes from explicit `Season N` or max existing valid N + 1
@@ -165,6 +165,30 @@ season plan requiring user approval before handoff to production.
 - [ ] No output document exists before Phase 7 ethics clearance and final approval
 - [ ] A violation followed by cancel yields BLOCKED and zero written files
 - [ ] A revision must pass the same ethics check before the changeset can be authorized
+
+### Case 8: Economy and analytics parallel drafts reconcile
+
+**Assertions:**
+- [ ] Phases 3 and 4 always launch together after Phase 2, never parallel with Phase 2
+- [ ] After reward choice, analytics is checked against every final reward, price, currency, cadence, and random/pity event
+- [ ] Missing instrumentation is an unresolved analytics gap
+
+### Case 9: Missing policy/rules do not manufacture conclusions
+
+**Assertions:**
+- [ ] Missing economy-rules offers stop or a non-pricing provisional outline
+- [ ] Provisional output never claims economy health was checked
+- [ ] Missing ethics policy says not reviewed for economy and communications, not fair/non-predatory
+- [ ] Production is called blocked only when an existing project rule says so
+- [ ] Existing policy review includes urgency/FOMO communication copy
+
+### Case 10: Required outputs and approvals remain distinct
+
+**Assertions:**
+- [ ] Phase 5 approved content/copy is included in the season document, with no fourth file
+- [ ] Skipped/unresolved required season/economy/analytics/content/comms work yields partial BLOCKED and zero formal writes
+- [ ] Product/content approval occurs before and is distinct from changeset authorization
+- [ ] Existing matching documents are read and previewed as updates; a different-season collision stops
 
 ---
 

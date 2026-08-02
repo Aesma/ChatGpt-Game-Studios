@@ -76,6 +76,27 @@ planning utility.
 
 ---
 
+### Case 6: Scope sources and no-issue behavior
+
+**Assertions:**
+- [ ] `known-bugs`, `cert-feedback`, and `all` filter the actual inputs
+- [ ] Unknown/empty/conflicting scope stops; no argument defaults to all
+- [ ] Cert feedback requires user-supplied existing text/file
+- [ ] No eligible issue produces no empty rollback/patch record
+- [ ] Open deferred AC from Done stories is included only when relevant and still open
+
+---
+
+### Case 7: Security, effort, ordering, and verification boundary
+
+**Assertions:**
+- [ ] Open critical/high security blocks ordinary completion; lower findings remain visible
+- [ ] Unknown effort defaults to defer until read-only lead-programmer evidence exists
+- [ ] Fixes run in dependency/approved order and a blocked fix stops dependents
+- [ ] Targeted checks run directly; a full `$smoke-check` requires explicit separate invocation
+
+---
+
 ## Protocol Compliance
 
 - [ ] Uses canonical `production/qa/bugs/`

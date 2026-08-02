@@ -111,8 +111,8 @@ Verified automatically by `$skill-test static` — no fixture needed.
 ### Case 4: Edge Case — Stale manifest version
 
 **Fixture:**
-- Story file has `Manifest Version: 2026-01-15` in its header
-- `docs/architecture/control-manifest.md` has `Manifest Version: 2026-03-10`
+- Story file has `Manifest Version: 4` in its header
+- `docs/architecture/control-manifest.md` has `Manifest Version: 5`
 - Versions do not match (story was created before manifest was updated)
 
 **Input:** `$story-readiness production/epics/core/story-mirror-rotation.md`
@@ -219,6 +219,38 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] A gate failure/no verdict prevents that story from READY
 - [ ] Aggregate counts are calculated after all completed gate results and list incomplete items
 - [ ] No singular result is copied across the scope
+
+### Case 9: Arguments and story-file scope are validated
+
+**Assertions:**
+- [ ] Invocation documents and validates `--review full|lean|solo`
+- [ ] Duplicate scopes, unknown flags, and invalid review values stop before reads
+- [ ] Outside paths, directories, indexes, README/notes, and non-story Markdown are rejected or skipped with a report
+
+### Case 10: GDD, systems index, and gate context are verifiable
+
+**Assertions:**
+- [ ] The referenced GDD/quick-spec file and exact section/requirement are read
+- [ ] A claimed approved system with no systems-index evidence is NEEDS WORK
+- [ ] Missing manifest skips only manifest-specific checks and is not reported as verified
+- [ ] QL-STORY-READY receives story path/type, AC, TR-ID plus registry text, and dependencies
+
+### Case 11: Dependencies, markers, and assets avoid false blockers
+
+**Assertions:**
+- [ ] Dependency path is preferred; otherwise ID must match exactly one story header
+- [ ] Zero/multiple dependency matches are BLOCKED
+- [ ] Bare question marks and answered FAQs are not unresolved markers
+- [ ] Only explicit UNRESOLVED/TBD/TODO/Open Question/placeholders count
+- [ ] Future Files-to-Create outputs need not exist; missing prerequisite assets are NEEDS WORK
+
+### Case 12: Handoff remains read-only and candidate-accurate
+
+**Assertions:**
+- [ ] Fix guidance/drafts stay in conversation and no Update-story option appears
+- [ ] Matching YAML `ready`/`backlog` entries are preferred over markdown fallback
+- [ ] The heading says Other Candidate Stories and explicitly requires readiness validation
+- [ ] Missing story redirects directly to create-stories when its epic already exists
 
 ---
 

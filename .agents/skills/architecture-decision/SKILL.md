@@ -26,6 +26,11 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 **If the argument starts with `retrofit` followed by a file path**
 (e.g., `$architecture-decision retrofit docs/architecture/adr-0001-event-system.md`):
 
+Before entering retrofit mode, require exactly one normalized path to an existing
+project-local Markdown file matching `docs/architecture/adr-*.md`. Reject missing,
+multiple, directory, non-Markdown, project-external, and non-ADR paths without
+writing or producing a retrofit draft.
+
 Enter **retrofit mode**:
 
 1. Read the existing ADR file and `.codex/docs/templates/architecture-decision-record.md` completely.
@@ -118,14 +123,24 @@ Before doing anything else, establish the engine environment:
    Proceed with verified information only — do NOT rely solely on training data.
    ```
 
-   If no engine has been configured yet, prompt: "No engine is configured.
-   Run `$setup-engine` first, or tell me which engine you are using."
+   If no engine has been configured yet, stop this run with: "No engine is
+   configured. Run `$setup-engine` first, or provide the engine and confirm that
+   its existing `docs/engine-reference/[engine]/VERSION.md` can be located."
+   Continue only after that existing reference is readable; never label
+   unverified compatibility information as verified.
 
 ---
 
 ## 2. Determine the next ADR number
 
-Scan `docs/architecture/` for existing ADRs to find the next number.
+Before allocating a number, scan existing ADR titles, domains, Summary sections,
+and related-decision links for the same decision. If a likely duplicate exists,
+show it and let the user update that ADR or explicitly supersede it; do not
+silently allocate a second ADR for the same decision.
+
+If a new ADR is still required, scan `docs/architecture/` for existing ADRs to
+find the next number. Treat this as a provisional filename until the write-time
+recheck in Step 6.
 
 ---
 
@@ -135,8 +150,14 @@ Read related code, existing ADRs, and relevant GDDs from `design/gdd/`.
 
 ### 3a: Architecture Registry Check (BLOCKING gate)
 
-Read `docs/registry/architecture.yaml`. Extract entries relevant to this ADR's
-domain and decision (search by system name, domain keyword, or state being touched).
+Read `docs/registry/architecture.yaml`. If it is missing, unreadable YAML, or
+lacks the expected existing sections, stop this blocking check and explain the
+exact problem. If the user explicitly skips the registry check, continue only
+with a visible `Registry constraints not checked` limitation and never call the
+blocking check passed.
+
+Extract entries relevant to this ADR's domain and decision (search by system
+name, domain keyword, or state being touched).
 
 Present any relevant stances to the user **before** the collaborative design
 begins, as locked constraints:
@@ -350,8 +371,9 @@ to implement it.]
      1. Confirm the proposed approach is idiomatic for the pinned engine version
      2. Flag any APIs or patterns that are deprecated or changed post-training-cutoff
      3. Identify engine-specific risks or gotchas not captured in the current ADR draft
-   - If the specialist identifies a **blocking issue** (wrong API, deprecated approach, engine version incompatibility): revise the Decision and Engine Compatibility sections accordingly, then confirm the changes with the user before proceeding
-   - If the specialist finds **minor notes** only: incorporate them into the ADR's Risks subsection
+   - If the specialist identifies a **blocking issue** (wrong API, deprecated approach, engine version incompatibility): place the proposed Decision and Engine Compatibility changes in the visible draft, then confirm them with the user before proceeding
+   - If the specialist finds **minor notes** only: place the proposed Risks text in the same visible draft and obtain the same user confirmation before treating it as accepted content
+   - No specialist result, regardless of severity, may silently change a user-confirmed decision
 
 **Review mode check** — apply before spawning TD-ADR:
 - `solo` → skip. Note: "TD-ADR skipped — Solo mode." Proceed to Step 5.7 (GDD sync check).
@@ -368,8 +390,10 @@ to implement it.]
 5.7. **GDD Sync Check** — Before presenting the single changeset approval, scan all GDDs
 referenced in the "GDD Requirements Addressed" section for naming inconsistencies
 with the ADR's Key Interfaces and Decision sections (renamed signals, API methods,
-or data types). If any are found, surface them as a **prominent warning block**
-immediately before the single changeset approval — not as a footnote:
+or data types). If any are found, surface them as a **prominent warning block** and show, for
+each GDD, the current text and exact proposed replacement text immediately before
+the single changeset approval — not as a footnote. If exact edits cannot be
+shown, the selectable changeset may include the ADR only, not a GDD edit:
 
 ```
 ⚠️ GDD SYNC REQUIRED
@@ -422,13 +446,20 @@ Before approval, scan for stories whose top-level Status is `Blocked` specifical
 because of this ADR. Show each exact proposed `Blocked` → `Ready` edit and let the
 user include or exclude it; never change unrelated blocked stories.
 
+Immediately before presenting the complete changeset, re-scan
+`docs/architecture/adr-*.md`. If the provisional number or filename is now occupied,
+recalculate it, update every affected draft/reference, and re-present the changed
+filename and content; never overwrite the occupied file.
+
 Now present one complete changeset containing the full ADR draft and every selected
 GDD, registry, and story edit. List every target file and exact modification. Obtain
 one explicit approval, then apply all selected writes continuously. If approval is
 withheld, none of these files changes.
 
-If the registry update is included in the authorized changeset, append new entries. Never modify existing entries — if a stance is
-changing, set the old entry to `status: superseded_by: ADR-[NNNN]` and add the new entry.
+If the registry update is included in the authorized changeset, append new entries.
+When a stance changes, update the old entry to the existing single-value form
+`status: superseded` and add the replacement as a new entry whose `adr` points to
+ADR-[NNNN]. Do not emit the ambiguous YAML value `status: superseded_by: ...`.
 
 ---
 

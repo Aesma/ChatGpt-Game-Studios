@@ -25,6 +25,7 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 - [ ] Phase 3 is explicitly marked as parallel (gameplay-programmer, ai-programmer, technical-artist, sound-designer)
 - [ ] Phase 2 includes spawning the primary engine specialist (read from `docs/technical-preferences.md`)
 - [ ] Team Composition lists all seven roles (game-designer, gameplay-programmer, ai-programmer, technical-artist, sound-designer, engine specialist, qa-tester)
+- [ ] Arguments do not expose `--review`; the workflow has no invented director gate
 
 ---
 
@@ -199,6 +200,30 @@ with verdict COMPLETE / NEEDS WORK / BLOCKED and handoffs to `$code-review`,
 - [ ] All required tests and acceptance criteria pass → COMPLETE
 - [ ] Only fixable non-blocking defects remain → NEEDS WORK
 - [ ] Required phase failure, unresolved engine/ADR, critical tests not run, or failed required AC/test → BLOCKED
+
+### Case 9: Consequential transitions and AI applicability
+
+**Assertions:**
+- [ ] Design→Architecture, Architecture→Implementation, Implementation→Integration, and Integration→QA offer approve/revise/stop
+- [ ] Stop produces partial BLOCKED; revise re-runs the affected phase
+- [ ] Phase 1 decides AI involvement once
+- [ ] AI-free features spawn no ai-programmer in Phases 2/3 and report N/A
+
+### Case 10: GDD identity and existing design are safe
+
+**Assertions:**
+- [ ] Feature slug is lowercase alphanumeric/hyphen and rejects traversal/empty results
+- [ ] The exact GDD and systems-index edit are in the one changeset
+- [ ] Existing GDD is checked against all eight required sections before Architecture
+- [ ] A collision is an explicit update decision and is never silently overwritten
+
+### Case 11: Version evidence, required roles, and bugs are bounded
+
+**Assertions:**
+- [ ] Engine specialist receives the matching VERSION.md path/content
+- [ ] Missing version evidence prevents specific API/deprecation claims
+- [ ] Skipping a required unresolved role leaves the final verdict BLOCKED
+- [ ] QA bugs stay in conversation unless an exact bug path was in the approved changeset
 
 ---
 

@@ -16,11 +16,18 @@ Arguments: `[release or milestone identifier]`. Treat bracketed values as option
 
 ## Phase 1: Resolve Internal Release Scope
 
-Resolve the requested release or milestone from an explicit argument or an existing
-active release/milestone reference. This workflow covers internal readiness only:
-release-scope stories, bugs, QA/build evidence, and changelog status. Platform
-certification, store metadata, distribution, and launch operations belong to the
-existing `$launch-checklist` workflow and are not duplicated here.
+Resolve the requested release or milestone from an explicit argument or one
+validated active release/milestone reference. Prefer the explicit argument. If
+multiple active candidates exist, list them and ask the user to select one; do
+not choose by filename or modification time.
+
+Read the version from the resolved milestone or an existing release artifact.
+If no version is recorded, ask the user for it and do not invent one.
+
+This workflow covers internal readiness only: release-scope stories, bugs,
+QA/build evidence, and changelog status. Platform certification, store metadata,
+distribution, and launch operations belong to the existing `$launch-checklist`
+workflow and are not parameters or branches of this workflow.
 
 ---
 
@@ -32,10 +39,28 @@ Read the current release or milestone artifact and load:
 - open bug reports from the project's existing QA bug location, including severity;
 - the latest QA plan/sign-off, smoke or regression evidence, and applicable test results;
 - existing build/CI evidence for the release scope;
-- the changelog entry for the target release.
+- the changelog entry for the target release;
+- the most recent existing checklist with a different date, when present.
+
+For each test/build result, capture its recorded result, timestamp, and covered
+release scope. If one of those fields is absent, show it as `NOT VERIFIED`; a
+file's existence alone is not a pass.
+
+If the project already scans TODO/FIXME/HACK markers, limit that scan to project
+source and content files and list their locations separately. Markers do not
+inherit bug severity and are never promoted to CRITICAL/HIGH without a bug
+artifact that says so.
+
+Treat zero-warning builds, soak duration, target package size, and similar
+thresholds as gates only when an existing project configuration or release plan
+explicitly requires them. Otherwise label them `not configured` or `manual`.
 
 Do not infer PASS from an empty checkbox or a missing artifact. Record every missing,
 out-of-scope, or unreadable source as **NOT VERIFIED** and cite the expected path.
+
+If a previous checklist exists, compare only like-for-like fields and report
+resolved, newly introduced, and unchanged items. If none exists, label this run
+as the first baseline. The current evidence, not the delta, determines verdict.
 
 ---
 
@@ -77,16 +102,20 @@ Use this structure:
 
 ## QA and Build Evidence
 
-| Check | Evidence | Result |
-|-------|----------|--------|
-| QA sign-off | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
-| Build/CI | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
+| Check | Result / Timestamp / Scope | Evidence | Assessment |
+|-------|----------------------------|----------|------------|
+| QA sign-off | [status, time, scope] | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
+| Build/CI | [status, time, scope] | [path or NOT VERIFIED] | [PASS/FAIL/NOT VERIFIED] |
 
 ## Changelog
 
 | Target | Evidence | Result |
 |--------|----------|--------|
 | [version] | [path or NOT VERIFIED] | [PASS/NOT VERIFIED] |
+
+## Delta From Previous Checklist
+
+[Resolved/new/unchanged like-for-like items, or "First checklist baseline"]
 
 ## Verdict: [RELEASE READY / CONCERNS / RELEASE BLOCKED]
 

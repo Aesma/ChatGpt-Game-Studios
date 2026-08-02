@@ -4,8 +4,8 @@
 
 `$tech-debt` tracks, categorizes, and prioritizes technical debt across the
 codebase. It reads `docs/tech-debt-register.md` for the existing debt register
-and scans source files in `src/` for inline `TODO` and `FIXME` comments. It
-merges and sorts items by severity. No director gates are invoked. The skill
+and scans project-owned source/config/test files for debt candidates while excluding
+dependencies, generated data, and caches. No director gates are invoked. The skill
 asks "May I apply the proposed changeset?" before updating. Verdicts:
 REGISTER UPDATED or NO NEW DEBT FOUND.
 
@@ -44,6 +44,17 @@ Verified automatically by `$skill-test static` — no fixture needed.
 ---
 
 ## Protocol Compliance
+
+### P1 Regression Matrix
+
+- [ ] Missing/unknown/multiple subcommands FAIL without writes; all modes use only `docs/tech-debt-register.md`.
+- [ ] Missing register may be proposed by scan/add, while prioritize/report fail without inventing output.
+- [ ] Scan excludes vendor/generated/cache/output and never registers size/duplication without a concrete impact.
+- [ ] FIXME requires user confirmation as accepted debt plus WHY; otherwise it remains a bug/candidate.
+- [ ] Add collects WHY, normalizes Impact, derives unique ID/date/Backlog, and computes Priority from existing fields.
+- [ ] Effort is reported as S/M/L/XL counts, never a sum.
+- [ ] Ambiguous age is `age unknown`; only comparable sprint numbers support an age hint.
+- [ ] Prioritize preserves all non-table content and unknown columns while sorting only table rows.
 
 - [ ] Reads `docs/tech-debt-register.md` and scans `src/` before compiling
 - [ ] Deduplicates inline comments against existing register items

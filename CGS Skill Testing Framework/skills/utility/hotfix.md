@@ -83,6 +83,17 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ---
 
+## P1 Regression Assertions
+
+- [ ] Phase 1 requires a unique readable bug ID, or impact + reproduction steps + affected system; incomplete input performs no Git/write action
+- [ ] Description mode never claims to update an original bug; zero/multiple ID matches skip that write with a reason
+- [ ] The hotfix record has one deterministic path in the complete changeset
+- [ ] Phase 3 shows current branch, worktree status, verified base, and same-name branch status; ambiguity/failure stops branch creation
+- [ ] Read-only investigation completes before the one code/test/record/bug changeset preview
+- [ ] Missing/timed-out/partial required reviews are HOTFIX BLOCKED and are listed by reason
+- [ ] Smoke, targeted QA, and full QA each name their continuing verdicts; all other/missing results are HOTFIX BLOCKED
+- [ ] An uncommitted fix records branch + `uncommitted`; only repository-visible commit data may be cited
+
 ## Protocol Compliance
 
 - [ ] Creates hotfix branch before making any code changes

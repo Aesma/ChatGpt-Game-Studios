@@ -92,7 +92,7 @@ with verdict COMPLETE / BLOCKED and handoffs to `$dev-story` and `$qa-plan`.
 
 **Fixture:**
 - Steps 1–3 complete successfully
-- `design/accessibility-requirements.md` committed tier: Enhanced
+- `design/ux/accessibility-requirements.md` committed tier: Enhanced
 - accessibility-specialist (Step 4, parallel) flags a BLOCKING concern: the critical path through the forest dungeon requires players to distinguish between two environmental hazards (toxic pools vs. shallow water) using color alone — no shape, icon, or audio cue differentiates them
 
 **Input:** `$team-level forest dungeon`
@@ -183,3 +183,28 @@ with verdict COMPLETE / BLOCKED and handoffs to `$dev-story` and `$qa-plan`.
 - The level doc slug convention (argument → filename) is implicitly tested by Case 1
   (`forest dungeon` → `forest-dungeon.md`); multi-word slugification edge cases (special
   characters, very long names) are not covered.
+
+### Case 6: Target identity and context boundaries are deterministic
+
+**Assertions:**
+- [ ] Slug uses lowercase alphanumeric/hyphen and rejects traversal/empty results
+- [ ] Existing exact target is previewed as an update and never silently overwritten
+- [ ] Missing game concept is BLOCKED before spawning
+- [ ] Only explicitly related level/narrative/world documents are read
+- [ ] Missing pillars/region docs require stop or provisional continuation choice
+
+### Case 7: Direction conflicts and adjacent areas are resolved explicitly
+
+**Assertions:**
+- [ ] Step 1 conflicts in landmarks/theme/world rules are listed for a user decision
+- [ ] Unresolved conflict never reaches Step 2
+- [ ] Adjacent names use safe slug plus exact filename/header matching
+- [ ] Multiple matches require choice and zero matches remain unresolved
+
+### Case 8: Final merge and required roles cannot fake completion
+
+**Assertions:**
+- [ ] QA cases/checklist are merged into the final QA/Acceptance section, not a new file
+- [ ] Raw outputs are evidence; final text follows confirmed decisions and resolves duplicates
+- [ ] Remaining Open Questions force BLOCKED
+- [ ] A skipped required role can produce a partial document but final verdict remains BLOCKED

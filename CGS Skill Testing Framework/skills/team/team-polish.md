@@ -29,6 +29,11 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 - [ ] Phase 6 sign-off compares metrics against budgets before issuing verdict
 - [ ] Parallel agents have mutually exclusive file ownership; overlap becomes advisory work
 - [ ] Phase 5 records executed PASS/FAIL or not run with reason, and release-critical not-run evidence prevents READY FOR RELEASE
+- [ ] The target resolves to one feature, build entry, asset set, and budget source before profiling
+- [ ] Exactly one profiling execution entry produces the baseline
+- [ ] Missing configured budgets yield NEEDS MORE WORK without invented targets
+- [ ] tools-programmer is dispatched only for identified content/editor-tool files
+- [ ] Critical-agent failure cannot be skipped into READY FOR RELEASE
 
 ---
 
@@ -206,6 +211,15 @@ identifies engine-level root causes. Verdict is READY FOR RELEASE or NEEDS MORE 
 ---
 
 ## Coverage Notes
+
+### P1 Regression Matrix
+
+- [ ] Unknown flags and ambiguous targets exit or request a target choice before delegation.
+- [ ] Missing performance budgets remain an explicit missing criterion, not a fabricated 60fps/memory target.
+- [ ] `$perf-profile` and performance-analyst do not duplicate the same profile or baseline.
+- [ ] Content-tool scope dispatches tools-programmer with exclusive files; non-tool scope does not list a phantom dispatch.
+- [ ] READY requires budget compliance, resolved visual/audio findings, successful required QA evidence, and no failed required agent.
+- [ ] A required baseline, regression, stress, or blocker-owner failure produces NEEDS MORE WORK/partial and cannot use Skip.
 
 - The tools-programmer optional agent (for content pipeline tool verification) is not
   separately tested — it follows the same conditional spawn pattern as engine-programmer

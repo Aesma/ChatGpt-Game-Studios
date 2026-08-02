@@ -96,6 +96,19 @@ truth. Files are written after a "May I apply the proposed changeset?"
 
 ---
 
+## P1 Regression Assertions
+
+- [ ] Extract scans hardcoded player-visible text plus localized references and excludes logs/tests/editor-only copy
+- [ ] New-entry context contains only confirmed UI/call-site facts; unknown limits/gender are explicit TODO/unknown and prevent COMPLETE
+- [ ] Any source/locale/manifest parse error reports file/location, blocks diff/write, and preserves the original
+- [ ] Cultural review requires locales; optional saved output uses one deterministic `production/localization/cultural-review-...` path
+- [ ] VO manifests/scripts use deterministic `production/localization/` paths; validate/integrate stop on missing locale/directory/manifest
+- [ ] VO Recorded requires a readable non-empty key/locale-matching file and never implies recording quality
+- [ ] RTL check runs only for explicit RTL locales and one configured engine; unconfigured engine reports limited coverage
+- [ ] Status counts freeze violations only from parseable Post-Freeze Changes entries, otherwise unknown
+- [ ] Translation files are not auto-translated/overwritten; authorized empty keys, obsolete markers, and source updates are allowed
+- [ ] At most one localization-lead delegation path is used per run; fallback cannot fabricate human QA/reviewer/sign-off
+
 ## Protocol Compliance
 
 - [ ] Extracts strings from source before operating on locale files

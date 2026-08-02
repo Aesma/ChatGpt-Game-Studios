@@ -60,7 +60,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Fixture:**
 - Architecture doc is fully drafted (all sections)
-- `production/session-state/review-mode.txt` contains `full`
+- `production/review-mode.txt` contains `full`
 - TD-ARCHITECTURE gate returns MAJOR REVISION: "[specific structural issue]"
 
 **Input:** `$create-architecture`
@@ -85,7 +85,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Fixture:**
 - No existing architecture doc
-- `production/session-state/review-mode.txt` contains `lean`
+- `production/review-mode.txt` contains `lean`
 
 **Input:** `$create-architecture`
 
@@ -131,7 +131,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Fixture:**
 - Architecture doc is being authored
 - One section references or depends on an ADR that has `Status: Proposed`
-- `production/session-state/review-mode.txt` contains `full`
+- `production/review-mode.txt` contains `full`
 
 **Input:** `$create-architecture`
 
@@ -168,6 +168,26 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] The author does not self-sign for the missing technical-director
 - [ ] No fabricated verdict is recorded
 - [ ] Sign-off remains blocked and the architecture stays `In Design`
+
+---
+
+### Case 8: Required inputs and bounded architecture context
+
+**Assertions:**
+- [ ] Missing concept, systems index, eligible GDD, technical preferences, or VERSION stops before skeleton creation
+- [ ] Missing optional ADR/best-practices/module docs are named knowledge gaps, not fabricated as loaded
+- [ ] Only `adr-*.md` files enter the ADR set; reports/registries/manifests are excluded
+- [ ] Only explicit GDD requirements receive TR-IDs; inferred needs remain Open Questions
+
+---
+
+### Case 9: Existing architecture chooses bounded retrofit
+
+**Assertions:**
+- [ ] Existing architecture is read before the user chooses full or a focus mode
+- [ ] An unselected section remains byte-for-byte unchanged
+- [ ] Real TD and LP vocabularies are recorded without invented status labels
+- [ ] Active-state and final-status operations remain inside the initial changeset
 
 ---
 

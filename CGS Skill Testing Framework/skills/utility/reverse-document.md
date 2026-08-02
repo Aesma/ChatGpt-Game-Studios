@@ -138,3 +138,17 @@ Verified automatically by `$skill-test static` — no fixture needed.
   intended behavior is never marked implemented without code/test evidence.
 - [ ] A newly created design GDD updates the uniquely matching systems-index row
   in the same changeset, and an existing output target is never overwritten silently.
+
+## P1 Contract Coverage
+
+- [ ] Invocation requires one explicit type and one file/directory path; a
+  directory may contain multiple files, but multiple positional paths fail usage.
+- [ ] `design` produces a complete reverse-documented system GDD.
+- [ ] Missing Verified By, Creator, Decision Makers, or author identity remains
+  pending/unknown instead of being invented.
+- [ ] Unconfirmed ADR alternatives are possible/unknown and never presented as
+  historical decisions or reasons not chosen.
+- [ ] Prototype outcome, effort, reuse, tester feedback, and quotes require an
+  existing record or explicit user input; otherwise they are N/A.
+- [ ] The entire output file is previewed before authorization.
+- [ ] Follow-up commands are listed after write and never executed in this workflow.

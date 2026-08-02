@@ -15,7 +15,8 @@ The status lifecycle is `Proposed` → `Accepted` → `Superseded`. Never skip
 
 ## TR Registry (`docs/architecture/tr-registry.yaml`)
 
-- Stable requirement IDs such as `TR-MOV-001` link GDD requirements to stories.
+- Stable requirement IDs use lowercase system slugs, for example `TR-mov-001`,
+  and link GDD requirements to stories.
 - Never renumber existing IDs; append new IDs only.
 - `$architecture-review` updates the registry during its traceability phase.
 

@@ -11,12 +11,12 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `[version] [--style brief|detailed|full]`. Treat bracketed values as optional unless the workflow says otherwise.
 
-Delegate substantive work to the `community-manager` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+Use the `community-manager` Codex subagent role, when available, only for a read-only tone review of the in-memory draft. It has no write permission and is not a director gate. If unavailable, the current agent performs the same tone review and reports the fallback. User authorization still controls the final two-file write.
 
 
 ## Phase 1: Parse Arguments
 
-- `version`: the release version to generate notes for (e.g., `1.2.0`)
+- `version`: exactly one release version identifier (e.g., `1.2.0`). Reject path separators, traversal segments, whitespace-separated extra targets, and unknown flags with **BLOCKED** before constructing any path
 - `--style`: output style — `brief` (bullet points), `detailed` (with context), `full` (with developer commentary). Default: `detailed`.
 
 If no version is provided, ask the user before proceeding. Resolve exactly one release target for that version. Use a Git range only when both that target and its immediately preceding release ref are unique. If the target tag does not exist, label the result throughout as an **unreleased draft at current HEAD**. If the preceding ref is ambiguous, ask the user; never guess the range.
@@ -25,12 +25,17 @@ If no version is provided, ask the user before proceeding. Resolve exactly one r
 
 ## Phase 2: Gather Change Data
 
-- Read the internal changelog at `production/releases/[version]/changelog.md` if it exists
-- Also check `docs/CHANGELOG.md` for the relevant version entry
-- As a fallback only, run `git log` over the uniquely resolved immediately-previous-release ref through the uniquely resolved target; current HEAD is permitted only for an explicitly labelled unreleased draft
+- Use `production/releases/[version]/changelog.md` as the primary source when it exists
+- Use the matching `docs/CHANGELOG.md` version entry only to supplement missing details
+- Use `git log` only as a fallback over the uniquely resolved immediately-previous-release ref through the uniquely resolved target; current HEAD is permitted only for an explicitly labelled unreleased draft
 - Read sprint retrospectives in `production/sprints/` for context
 - Read any balance change documents in `design/balance/`
 - Read bug fix records from QA if available
+
+Deduplicate the collected entries by an explicit issue/change ID when available,
+otherwise by the same normalized description. When sources disagree on scope,
+values, or release status, show the conflict to the user and do not silently pick
+one source. Primary-source precedence does not authorize concealing a conflict.
 
 **If no changelog data is available** (neither `production/releases/[version]/changelog.md`
 nor a `docs/CHANGELOG.md` entry for this version exists, and git log is empty or unavailable):
@@ -60,8 +65,10 @@ Verdict: **BLOCKED** — stop here without generating notes.
 
 1. Check for a project-provided `docs/patch-notes-template.md`.
 2. If found, read it and use it as the output structure for Phase 4
-   instead of the built-in style templates (Brief / Detailed / Full). Fill in the
-   template's sections with the categorized data.
+   instead of the built-in style templates (Brief / Detailed / Full). The template
+   controls structure; the detected tone guide controls wording. Fill only sections
+   supported by source data. Omit or leave clearly empty any unsupported template
+   request and explain the gap rather than inventing content.
 3. If not found, use the built-in style templates as defined in Phase 4.
 
 ---
@@ -75,14 +82,14 @@ Categorize all changes into player-facing categories:
 - **Quality of Life**: UI improvements, convenience features, accessibility
 - **Bug Fixes**: grouped by system (combat, UI, networking, etc.)
 - **Performance**: optimization improvements players might notice
-- **Known Issues**: transparency about unresolved problems
+- **Known Issues**: include only issues explicitly listed for this release or supported by an existing open bug record. Include a workaround only when that source provides one; otherwise omit it
 
 Translate developer language to player language without inventing effects:
 
 - Use a player-observable result only when changelog, bug, or test evidence explicitly states it.
 - Pure refactors, allocation changes, and other internal work are excluded by default.
 - If an internal change may affect players but the evidence does not say how, list it under excluded/needs clarification for the user; do not supply a benefit.
-- Preserve specific numbers for balance changes only when the source provides them.
+- Preserve before/after balance values only when the source provides both. When one side is absent, use only the verifiable description and mark the missing side for confirmation; never calculate it.
 
 ---
 
@@ -169,6 +176,12 @@ Check the generated notes for:
 
 Present the completed patch notes to the user along with: a count of changes by category, and any internal changes that were excluded (for review).
 
+If every collected entry is internal/non-player-facing, state clearly that there
+are zero verified player-facing changes and ask the user to stop or save a short
+factual notice. Do not populate sections with invented player value.
+
+If the user refuses the changeset, state `draft generated, not saved`, output **BLOCKED**, and stop without either file.
+
 The complete changeset must list both `docs/patch-notes/[version].md` and `production/releases/[version]/patch-notes.md`, with identical content. Do not write either until the two-file changeset is authorized. Attempt the two writes as one bounded save operation and verify both contents. If either write fails or differs, report the exact path and output **BLOCKED**; one successful copy is not completion.
 
 ---
@@ -178,4 +191,4 @@ The complete changeset must list both `docs/patch-notes/[version].md` and `produ
 Verdict: **COMPLETE** only after both copies are saved and verified identical. Otherwise the verdict is **BLOCKED**.
 
 - Run `$release-checklist` to verify all other release gates are met before publishing.
-- Share the patch notes draft with the community-manager for tone review before posting publicly.
+- If the in-workflow community-manager tone review was unavailable, note that a manual review may still be useful before publishing; do not imply another workflow write or bypass user authorization.

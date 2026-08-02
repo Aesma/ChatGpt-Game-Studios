@@ -137,6 +137,19 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ---
 
+## P1 Regression Assertions
+
+- [ ] Start output names the actual isolated-worktree path/current branch; worktree failure offers current workspace or stop, and all run artifacts stay in the stated workspace
+- [ ] Concept name becomes one safe slug; separators/traversal are rejected and existing target directories never silently overwrite
+- [ ] Existing target offers extend/replace/archive/stop; replace/archive require separate confirmation and verified targets
+- [ ] A valid explicit `--path` is used without a duplicate choice; hypothesis mismatch asks only confirm-or-stop
+- [ ] No fixed reliability percentage is used for path selection or verdict
+- [ ] Time limits use user-reported elapsed checkpoints; the workflow never claims automatic timing
+- [ ] KILL conditions are checked only from REPORT/index evidence; insufficient evidence recommends more testing/PIVOT
+- [ ] PIVOT chains read only report/index-linked or explicitly related notes, never every note under prototypes
+- [ ] Spike Batch 1 covers its build; Batch 2 covers SPIKE-NOTE plus session-state restoration; build/write failure does not clear active sprint state
+- [ ] REPORT and template contain no `$design-review game-concept.md` handoff; existing gate-check/map-systems/design-system handoffs remain
+
 ## Protocol Compliance
 
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts

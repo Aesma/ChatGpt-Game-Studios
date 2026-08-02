@@ -16,13 +16,16 @@ Arguments: `[launch-date or 'dry-run']`. Treat bracketed values as optional unle
 
 ## Phase 1: Parse Arguments
 
-Read the argument for the launch date or `dry-run` mode. Dry-run mode generates the checklist without creating sign-off entries or writing files.
+Require exactly one argument: `dry-run` or a valid explicit calendar date in `YYYY-MM-DD`. If missing, ask for it. Reject invalid dates and dates earlier than today, report the reason, and stop without guessing or writing.
+
+Dry-run generates the full evidence-annotated preview and canonical verdict but creates no sign-off, never requests changeset authorization, and skips Phase 5 writing. Its output must say `not persisted — not valid sign-off evidence`.
 
 ---
 
 ## Phase 2: Gather Project Context
 
-- Read `AGENTS.md` for tech stack, target platforms, and team structure
+- Read `AGENTS.md` and existing engine/build configuration for tech stack, target platforms, and team structure
+- Resolve configured target platforms and whether online/multiplayer capability is enabled. Evaluate only applicable checkbox items. Append `not applicable because ...` or `manual confirmation required — configuration undecided` on the existing checkbox line or in existing ordinary explanatory areas; add no applicability field or column
 - Read the latest milestone in `production/milestones/`
 - Read the most recent earlier-dated launch checklist matching `production/launch/launch-checklist-[date].md`, if one exists
 - Read any existing release checklist in `production/releases/`
@@ -35,16 +38,18 @@ A missing repository artifact proves only that repository evidence is unavailabl
 
 ## Phase 3: Scan Codebase Health
 
-- Count `TODO`, `FIXME`, `HACK` comments and their locations
+- Count `TODO`, `FIXME`, `HACK` comments only in production source and build configuration. Exclude documentation, test fixtures, templates, generated/vendor files, and the checklist itself; list the matched paths and accept exceptions only from existing documentation
 - Check for any `console.log`, `print()`, or debug output left in production code
 - Check for placeholder assets (search for `placeholder`, `temp_`, `WIP_`)
-- Check for hardcoded test/dev values (localhost, test credentials, debug flags)
+- Check for hardcoded test/dev values (localhost, suspected credentials, debug flags), but report only the file path and safe category such as `suspected development value/credential`. Never copy a credential or secret value into the conversation or checklist
 
 ---
 
 ## Phase 4: Generate the Launch Checklist
 
-Preserve the checklist structure below. For each existing checkbox, append only a short ordinary-text note such as `— evidenced by [existing path]`, `— manual confirmation required`, or `— not applicable because [reason]`. Do not add fields, columns, tables, or sections. If a claim cannot be represented accurately in the existing checkbox text, ordinary explanations, Blocking Items, or Conditional Items, remove the unsupported claim. Never check an item solely because no contrary evidence was found.
+Preserve the checklist structure below. Mark compiler warnings, tests, leak/soak status, and similar execution claims only from checks executed in this run or a recent existing evidence artifact that directly records the result. An absent/empty file is not a pass; append `manual confirmation required` or use existing Conditional Items when no evidence exists.
+
+For each existing checkbox, append only a short ordinary-text note such as `— evidenced by [existing path]`, `— manual confirmation required`, or `— not applicable because [reason]`. Do not add fields, columns, tables, or sections. If a claim cannot be represented accurately in the existing checkbox text, ordinary explanations, Blocking Items, or Conditional Items, remove the unsupported claim. Never check an item solely because no contrary evidence was found.
 
 ```markdown
 # Launch Checklist: [Game Title]
@@ -246,11 +251,15 @@ Map the final result deterministically:
 
 Use the same canonical value in Overall Status and the terminal verdict. Present the completed checklist and summary to the user (total items, blocking items count, conditional items count, departments with incomplete sections).
 
+If in dry-run mode, stop after presenting the preview/verdict and the `not persisted — not valid sign-off evidence` warning. Do not preview a write, ask for authorization, or hand the result off as sign-off.
+
 If not in dry-run mode, use the single path `production/launch/launch-checklist-[date].md`. If that date already exists, preview it as an update rather than silently overwriting it. Add that exact file to the complete changeset preview; do not write it until authorized. Once authorized, write it and report the same canonical verdict.
 
 ---
 
 ## Phase 6: Next Steps
 
-- Run `$gate-check` to get a formal PASS/CONCERNS/FAIL verdict before launch.
-- Coordinate sign-offs via `$team-release`.
+For a successfully persisted non-dry-run report, output the exact `production/launch/launch-checklist-[date].md` path, its canonical verdict, and summaries from the existing Blocking Items and Conditional Items. A dry-run has no qualifying handoff.
+
+- Pass that exact persisted path and verdict to `$gate-check` for a formal launch assessment.
+- Pass that exact persisted path and verdict to `$team-release`; only persisted **LAUNCH READY** can serve as sign-off. **CONCERNS** remains NO-GO until issues are resolved and a new persisted report says LAUNCH READY; **LAUNCH BLOCKED** stops immediately.

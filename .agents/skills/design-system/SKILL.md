@@ -35,6 +35,12 @@ A system name or retrofit path is **required**. If missing:
    > Or to fill gaps in an existing GDD: `$design-system retrofit design/gdd/[system-name].md`
    > No systems index found. Run `$map-systems` first to map your systems and get the design order."
 
+**Validate and resolve the target:**
+A path argument must normalize inside the project-local `design/gdd/` directory,
+end in `.md`, contain no traversal, and resolve to one target. A system name
+normalizes to one kebab-case filename. Reject project-external paths, directory
+arguments, non-Markdown targets, and filename/slug collisions before any write.
+
 **Detect retrofit/resume mode:**
 Resolve the target `design/gdd/[system-name].md` before choosing a write path.
 If that target already exists for any invocation form, including a plain system
@@ -92,6 +98,11 @@ primary advantage over ad-hoc design — it arrives informed.
 - **Target system**: Find the system in the index. If not listed, warn:
   > "[system-name] is not in the systems index. Would you like to add it, or
   > design it as an off-index system?"
+  - `add`: collect the existing index row fields from the user and include the
+    exact new row plus tracker update in the initial changeset.
+  - `off-index`: do not edit the index. Require the user to provide the missing
+    layer, category, priority, and dependency context for this run; label the
+    design off-index in the summary.
 - **Entity registry**: Read `design/registry/entities.yaml` if it exists.
   Extract all entries referenced by or relevant to this system (search
   `referenced_by.*[system-name]` and `source.*[system-name]`). Hold these
@@ -122,9 +133,10 @@ For each dependency GDD that exists, extract and hold in context:
 - **Game pillars**: Read `design/gdd/game-pillars.md` if it exists
 - **Existing GDD**: Read `design/gdd/[system-name].md` if it exists (resume, don't
   restart from scratch)
-- **Related GDDs**: Find files matching `design/gdd/*.md` and read any that are thematically related
-  (e.g., if designing a system that overlaps with another in scope, read the related GDD
-  even if it's not a formal dependency)
+- **Related GDDs**: read only GDDs linked by the systems index as a dependency or
+  dependent, or explicitly linked from the target GDD. Expand beyond those only
+  when the user names the relationship; do not scan/read every GDD based on a
+  subjective thematic guess.
 
 ### 2d: Present Context Summary
 
@@ -157,7 +169,9 @@ Before asking the user to begin designing, load engine context and surface any
 constraints or knowledge gaps that will shape the design.
 
 **Step 1 — Determine the engine domain for this system:**
-Map the system's category (from systems-index.md) to an engine domain:
+Map every component of a composite system category (from systems-index.md) to
+an engine domain. List all matched domains. If none matches, report `Unknown`
+and do not load a guessed module reference:
 
 | System Category | Engine Domain |
 |----------------|--------------|

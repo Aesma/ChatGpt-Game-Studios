@@ -9,11 +9,11 @@ Invoke this workflow as `$team-release`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[version number or 'next'] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[version number or 'next']`. Reject malformed version strings, unknown flags, and extra arguments before delegation.
 
 **Argument check:** If no version number is provided:
-1. Read `production/session-state/active.md` and the most recent file in `production/milestones/` (if they exist) to infer the target version.
-2. If a version is found: report "No version argument provided — inferred [version] from milestone data. Proceeding." Then confirm by asking the user directly: "Releasing [version]. Is this correct?"
+1. Read `production/session-state/active.md` and milestone targets (if they exist) to find explicit version candidates. Do not use modification time as authority.
+2. If exactly one version is found: report "No version argument provided — inferred [version] from milestone data." Then confirm by asking the user directly: "Releasing [version]. Is this correct?" If `next` or the available sources yield multiple candidates, list them and wait for the user to choose.
 3. If no version is discoverable: ask the user directly to ask "What version number should be released? (e.g., v1.0.0)" and wait for user input before proceeding. Do NOT default to a hardcoded version string.
 
 When this skill is invoked, orchestrate the release team through a structured pipeline.
@@ -22,19 +22,6 @@ When this skill is invoked, orchestrate the release team through a structured pi
 the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next phase.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
 
 ## Team Composition
 - **release-manager** — Release branch, versioning, changelog, deployment
@@ -68,6 +55,10 @@ Delegate to **producer**:
 - Set the target release date and communicate to team
 - Output: release authorization with scope confirmation
 
+The Phase 1 plan must explicitly show the release scope, source commit identifier
+as text, target platforms, target version, and date for user confirmation. If any
+item is missing or ambiguous, remain in planning and do not create a branch.
+
 ### Phase 2: Release Candidate
 Delegate to **release-manager**:
 - Present the exact release branch and version-file changes at the existing Phase 2 decision point; obtain explicit authorization for branch creation and version changes. File changeset approval alone does not authorize Git operations.
@@ -90,6 +81,13 @@ Delegate (can run in parallel with Phase 3 if resources available):
 - Run performance benchmarks against targets (delegate to **performance-analyst** if available)
 - **analytics-engineer**: Verify all telemetry events fire correctly on release build. Confirm dashboards are receiving data. Check that critical funnels (onboarding, progression, monetization if applicable) are instrumented.
 - Output: localization, performance, and analytics sign-off
+
+Determine applicability from the confirmed Phase 1 platform/localization scope and
+existing technical budgets. An applicable localization or performance check whose
+role/evidence is unavailable is BLOCKED, not silently omitted. For analytics, a
+release with no telemetry scope records N/A. With telemetry scope, inspect only the
+authorized environment and existing configuration; inaccessible dashboards/events
+are UNKNOWN/BLOCKED and may not be described as healthy.
 
 ### Phase 5: Go/No-Go
 Delegate to **producer**:
@@ -143,10 +141,14 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip only an optional item and note the risk in the release decision
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
+
+Required QA, build/deploy, security/privacy, network, checklist, localization, or
+performance sign-off cannot be skipped into GO. Retry, correct the evidence, or
+stop with BLOCKED.
 
 Common blockers:
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it
@@ -165,7 +167,7 @@ This file authorization never authorizes branch creation, tagging, staging/produ
 
 A summary report covering: release version, scope, quality gate results, go/no-go decision, deployment status, and monitoring plan.
 
-Verdict: **COMPLETE** — release executed and deployed.
+Verdict: **COMPLETE** — the authorized deployment succeeded and immediate Phase 7 actions completed. The separate 48-hour human monitoring item remains pending and must not be reported as already observed.
 Verdict: **BLOCKED** — release halted; go/no-go was NO or a hard blocker is unresolved.
 
 ## Next Steps

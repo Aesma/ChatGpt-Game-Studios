@@ -9,7 +9,9 @@ Invoke this workflow as `$bug-report`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[description] | analyze [path-to-file]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[description] | analyze [project-path] | verify [BUG-NNNN] | close [BUG-NNNN]`.
+Treat bracketed values as optional unless the workflow says otherwise. Reject an
+unknown mode; verify/close require exactly one syntactically valid BUG ID.
 
 
 ## Phase 1: Parse Arguments
@@ -27,11 +29,25 @@ If no argument is provided, ask the user for a bug description before proceeding
 
 ## Phase 2A: Description Mode
 
-1. **Parse the description** for key information: what broke, when, how to reproduce it, and what the expected behavior is.
+1. **Parse the description** for key information: what broke, when, how to
+reproduce it, expected/actual result, Reporter, Build, Platform, Frequency, and
+Environment. Ask only for required facts that are missing. If the user does not
+know one, record `Unknown`; never infer a reporter, build, platform, or repro step.
 
 2. **Search the codebase** by file name and contents to add context (affected system, likely files).
 
-3. **Draft the bug report**:
+3. **Check duplicates before drafting**: scan `production/qa/bugs/` for similar
+symptoms in the same system or title. Show likely matches and let the user add a
+related note to one existing report or continue with a new report. Include any
+selected existing-file edit in the same complete changeset; never silently file
+a duplicate.
+
+4. **Allocate an ID provisionally** by scanning existing BUG-NNNN filenames and
+choosing the next sequence. Re-scan immediately before the first write; if the
+ID is now occupied, update the filename, report ID, and preview rather than
+overwriting.
+
+5. **Draft the bug report**:
 
 ```markdown
 # Bug Report
@@ -87,11 +103,17 @@ If no argument is provided, ask the user for a bug description before proceeding
 
 ## Phase 2B: Analyze Mode
 
-1. **Read the target file(s)** specified in the argument.
+1. **Validate and read the target**: accept one existing project-local text source
+file or a bounded project-local directory. Reject missing, external, binary,
+generated, ambiguous multi-target, or unreadable inputs before analysis.
 
-2. **Identify potential bugs**: null references, off-by-one errors, race conditions, unhandled edge cases, resource leaks, incorrect state transitions.
+2. **Identify potential bugs**: null references, off-by-one errors, race conditions, unhandled edge cases, resource leaks, incorrect state transitions. Every finding
+must cite file/line evidence, explain a reachable trigger, and state uncertainty.
 
-3. **For each potential bug**, generate a bug report using the template above, with the likely trigger scenario and recommended fix filled in.
+3. **Select filings with the user**: findings whose reachability or reproduction
+is not supported remain conversational `Potential` items. Show the evidence and
+ask which items should be filed. Only confirmed selections become reports; do not
+automatically turn every static suspicion into a full reproducible bug.
 
 ---
 
@@ -154,7 +176,10 @@ After closing, check `production/qa/bug-triage-*.md` — if the bug appears in a
 Verify and Close modes have already ended and must never enter this phase.
 
 Present the completed bug report(s) to the user and show the exact target path:
-`production/qa/bugs/BUG-[NNNN]-[slug].md`.
+`production/qa/bugs/BUG-NNNN-[slug].md`. The canonical literals are exactly
+S1-Critical/S2-Major/S3-Minor/S4-Trivial and
+P1-Immediate/P2-Next Sprint/P3-Backlog/P4-Wishlist; do not introduce another
+severity or priority vocabulary.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 

@@ -41,7 +41,7 @@ Treat the complete described file set as one bounded changeset: use existing tas
 
 ---
 
-### Case 3: Helper Already Exists — Offers to extend rather than replace
+### Case 3: Helper Already Exists — never overwritten or extended
 
 **Fixture:**
 - `tests/helpers/player_factory.gd` already exists with a `create_player()` function
@@ -52,15 +52,12 @@ Treat the complete described file set as one bounded changeset: use existing tas
 **Expected behavior:**
 1. Skill finds an existing `player_factory.gd` and checks if it's the right file
    to extend (or if a separate `enemy_factory.gd` should be created)
-2. Skill presents options: add `create_enemy()` to existing factory or create
-   `tests/helpers/enemy_factory.gd`
-3. User selects extend; skill drafts the `create_enemy()` function
-4. Skill asks "May I apply the proposed changeset?"
-5. Function is added on approval; verdict is COMPLETE
+2. Skill reports the existing handwritten helper as skipped and does not edit it.
+3. A distinct new helper may be proposed only when it has a non-conflicting scope/name.
 
 **Assertions:**
 - [ ] Existing helper is detected and surfaced
-- [ ] User is given extend vs. new file choice
+- [ ] Existing helper content is not overwritten or extended
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] Only Godot+GDScript+GdUnit4, Unity+C#+NUnit, and Unreal+C+++Automation combinations are generated; unsupported combinations BLOCK
 - [ ] Godot generic signal wrappers with assumed arity are not generated without a project-proven GdUnit4 pattern
@@ -97,6 +94,17 @@ Treat the complete described file set as one bounded changeset: use existing tas
 ---
 
 ## Protocol Compliance
+
+### P1 Regression Matrix
+
+- [ ] Missing test root/framework stops before helper creation and points to `$test-setup`.
+- [ ] Samples prefer the requested system, use stable path order, cap at five, and list actual files.
+- [ ] Scaffold needs only engine/framework/tests; system/all missing GDD or production type yields skipped system plus BLOCKED/partial.
+- [ ] `all` maps test directory segments through systems-index Design Doc; ambiguity produces no helper.
+- [ ] Existing helpers are never overwritten or extended.
+- [ ] Godot scene helper handles load/instantiate failure and documents caller teardown ownership.
+- [ ] Global symbol/namespace collisions skip creation rather than overwrite or invent another global name.
+- [ ] Created/skipped counts are explicit; created=0 never claims helper files created.
 
 - [ ] Reads engine before generating any helper (helpers are engine-specific)
 - [ ] Reads GDD for default values when available

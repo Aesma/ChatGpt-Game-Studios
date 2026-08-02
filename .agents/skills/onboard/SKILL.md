@@ -11,6 +11,11 @@ This workflow is read-only. It produces the onboarding document in the conversat
 
 Arguments: `[role|area]`. Treat bracketed values as optional unless the workflow says otherwise.
 
+With no argument, use **General** scope. With one argument, first match it to an
+existing `.codex/agents/` role or an existing top-level project area. If it
+matches neither, ask the user what they meant and stop; do not guess a role,
+agent file, or directory.
+
 
 ## Phase 1: Load Project Context
 
@@ -19,6 +24,10 @@ Read root `AGENTS.md` for project overview and standards. If it is missing, stop
 Read `docs/technical-preferences.md`, `production/stage.txt` when present, the uniquely referenced active sprint (from existing session/stage/sprint state), and the relevant architecture overview. If no unique active sprint exists, report it as unknown rather than choosing the most recently modified file.
 
 Read the relevant agent definition from `.codex/agents/` if a specific role is specified.
+Use that definition's stated responsibilities and file ownership to select
+relevant existing directories for any discipline, including art and audio. If
+the definition supplies no reliable mapping, use General scope rather than
+inventing a reporting line or directory.
 
 ---
 
@@ -29,8 +38,18 @@ Read the relevant agent definition from `.codex/agents/` if a specific role is s
 - For narrative: scan `design/narrative/` for world-building and story docs
 - For QA: scan `tests/` for existing test coverage
 - For production: scan `production/` for current sprint and milestone
+- For any other matched role: scan only existing directories named by its agent
+  responsibilities or file ownership; if none are named, retain General scope
 
-Read recent changes (git log if available) to understand current momentum.
+For every target listed in `Key Files`, read the applicable `AGENTS.md` chain
+from the repository root down to that file's directory. Cite the contributing
+rule file paths in `Current Standards and Conventions`; root rules alone are not
+enough when a nearer override applies.
+
+Read recent changes (git log if available) to understand current momentum. In a
+non-Git workspace, a repository with no commits, or when the command fails,
+write `Recent activity unavailable` and continue from file state. Never invent
+momentum.
 
 ---
 
@@ -43,7 +62,9 @@ Read recent changes (git log if available) to understand current momentum.
 [2-3 sentence summary of what this game is and its current state]
 
 ## Your Role
-[What this role does on this project, key responsibilities, who you report to]
+[What this role does on this project and key responsibilities. State who this
+role reports to only when an agent definition or project document explicitly
+configures it; otherwise write `Reporting line: not configured`. ]
 
 ## Project Architecture
 [Relevant architectural overview for this role]
@@ -72,7 +93,10 @@ Read recent changes (git log if available) to understand current momentum.
 [Things that trip up new contributors in this area]
 
 ## First Tasks
-[Suggested first tasks to get oriented and productive]
+[Suggested first tasks to get oriented and productive. Recommend implementation
+work only when it already exists in the active sprint, an open issue, or a
+clearly evidenced project gap. With no such source, recommend reading and asking
+the listed questions instead of creating new backlog work.]
 
 1. [Read these documents first]
 2. [Review this code/content]

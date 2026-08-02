@@ -1,6 +1,6 @@
 ---
 name: quick-design
-description: "Lightweight design spec for small changes — tuning adjustments, minor mechanics, balance tweaks. Skips full GDD authoring when a system GDD already exists or the change is too small to warrant one. Produces a Quick Design Spec that embeds directly into story files."
+description: "Create an independent lightweight design spec for a small tuning change, minor mechanic, or tightly scoped addition."
 ---
 
 ## Invocation and execution
@@ -49,7 +49,8 @@ Before drafting, redirect to `$design-system` if the change is likely to exceed
 approximately 4 hours of implementation, introduces a significant cross-system
 contract, changes core system rules, or adds a system that belongs in
 `design/gdd/systems-index.md`. These are hard scope boundaries regardless of the
-selected category.
+selected category. Determine the systems-index requirement during this phase,
+not after drafting.
 
 If there is no argument, ask the user to describe the change (plain text prompt), then classify it using the criteria above.
 
@@ -71,21 +72,29 @@ proceed with the selected type.
 
 ## 2. Context Scan
 
-Before drafting anything, read the relevant context:
+Before drafting anything:
 
-- Search `design/gdd/` for the GDD most relevant to this change. Read the
-  sections that this change would affect.
+- Search `design/gdd/` by explicit system reference, exact slug, and title.
+  List candidate paths. Read the uniquely relevant GDD sections; if more than
+  one candidate remains, ask the user to select one rather than choosing by
+  filename similarity.
 - Check whether `design/gdd/systems-index.md` exists. If it does, read it to
   understand where this system sits in the dependency graph and what tier it
   belongs to. If it does not exist, note "No systems index found — skipping
   dependency tier check." and continue.
-- Check `design/quick-specs/` for any prior quick specs that touched this
-  system — avoid contradicting them.
-- If this is a Tuning change, also check `assets/data/` for the data file that
-  holds the relevant values.
+- Read `docs/technical-preferences.md` and
+  `docs/architecture/control-manifest.md` when present to determine the project's
+  selected data/config format and constraints. If no format is configured and
+  existing data files do not establish one, record the format as "TBD — user
+  decision" instead of choosing JSON.
+- Check `design/quick-specs/` for prior specs that touched this system. List the
+  candidates and compare their relevant rules. If an unresolved contradiction
+  remains, surface it and do not claim `COMPLETE` until the user resolves it.
+- If this is a Tuning change, also check `assets/data/` for the existing data
+  file and format that hold the relevant values.
 
-Report what was found: "Found GDD at [path]. Relevant section: [section name].
-No conflicting quick specs found." (or note any conflicts found.)
+Report the selected GDD and section, the data format source, prior specs checked,
+and any unresolved conflicts.
 
 ---
 
@@ -119,7 +128,7 @@ New value is [within / at the edge of / outside] the documented range.
 
 ## Acceptance Criteria
 
-- [ ] [Parameter] reads [new value] from `assets/data/[file]`
+- [ ] [Parameter] reads [new value] from `[existing project data path]`
 - [ ] Behavior difference is observable in [specific context]
 - [ ] No regression in [related behavior]
 ```
@@ -209,7 +218,9 @@ implement without asking questions.]
 |------|---------|-------|----------|-----------|
 | [name] | [value] | [min–max] | [feel/curve/gate] | [why this default] |
 
-All values must live in `assets/data/[appropriate-file].json`, not hardcoded.
+Store values in the existing project-selected data/config format and path. If
+the project has not selected a format, write `TBD — user decision`; do not
+default to JSON or hardcode values.
 
 ## Acceptance Criteria
 
@@ -220,10 +231,8 @@ All values must live in `assets/data/[appropriate-file].json`, not hardcoded.
 
 ## Systems Index
 
-This system is not currently in `design/gdd/systems-index.md`.
-[If it should be added: suggest which layer and priority tier.]
-[If it is too small to track: state "This system is below systems-index
-tracking threshold — quick spec is sufficient."]
+This system is below the existing systems-index tracking threshold; otherwise
+the workflow would have redirected in Phase 1.
 ```
 
 ---
@@ -260,21 +269,30 @@ rules or a cross-system contract, return to the Phase 1 boundary and end as
 
 ## 5. Handoff
 
-After writing the file, output:
+After writing the file, search existing story metadata and references for a
+story that already cites the new spec.
+
+- If exactly one story references it, report that path and offer
+  `$story-readiness [story-path]` and then `$dev-story [story-path]` as later
+  commands.
+- If no story references it, report only the spec path and state that a story
+  must cite it before story-readiness or implementation.
+- If multiple stories reference it, list them and let the user choose later;
+  do not assume an implementation target.
+
+Always output:
 
 ```
 Quick Design Spec written to: design/quick-specs/[filename].md
 Type: [Tuning / Tweak / Addition / New Small System]
 System: [system name]
 GDD update: [Required — not applied by this workflow / Not required]
-
-Next step: This spec is ready for `$story-readiness` validation before
-implementation. Reference this spec in the story's GDD Reference field.
+Story handoff: [existing story path / no referencing story found / candidates]
 ```
 
 ### Pipeline Notes
 
-Verdict: **COMPLETE** — quick design spec written and ready for implementation.
+Verdict: **COMPLETE** — quick design spec written.
 
 Quick Design Specs **bypass** `$design-review` and `$review-all-gdds` by
 design. They are for small, low-risk, well-scoped changes where the cost of
@@ -295,6 +313,9 @@ using `$design-system` to author a full GDD for this."
 
 ## Recommended Next Steps
 
-- Run `$story-readiness [story-path]` to validate the story before implementation begins — reference this spec in the story's GDD Reference field
-- Run `$dev-story [story-path]` to implement once the story passes readiness checks
-- If the change is larger than expected, run `$design-system [system-name]` to author a full GDD instead
+- When an existing story references this spec, run `$story-readiness [story-path]`
+  before implementation, followed by `$dev-story [story-path]` after readiness passes.
+- If no story references the spec, report the spec path; do not claim it is
+  implementation-ready.
+- If the change is larger than expected, run `$design-system [system-name]` to
+  author a full GDD instead.

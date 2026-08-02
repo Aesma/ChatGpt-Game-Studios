@@ -55,3 +55,15 @@ optional authorized review report is writable.
 - [ ] Generic names, timing dependence, live external calls, and unexplained magic data are evaluated inside Automated Test Quality
 - [ ] The review never modifies test or evidence files
 - [ ] Optional report writing uses the single authorized changeset only when requested
+
+## P1 Regression Matrix
+
+- [ ] Current sprint selection uses explicit active identity; disagreement/multiple matches requires user choice and never mtime.
+- [ ] System scope follows explicit sprint/epic story paths before fallback globbing.
+- [ ] Assertion analysis ignores comments/helpers, accepts expected-exception equivalents, and treats 1–2 assertions as advisory only.
+- [ ] Edge keywords never prove a criterion without a local value/condition mapping.
+- [ ] Integration playtest evidence is reviewed by criterion/date/observation, not automated assertion metrics.
+- [ ] Visual/Feel requires screenshots plus applicable lead sign-off; UI requires walkthrough or interaction evidence, without universal three-signature rules.
+- [ ] Missing Last Updated evidence yields freshness unknown; sprint start/mtime is not substituted.
+- [ ] Formula checks read only the story-linked GDD; absent linkage yields traceability unknown.
+- [ ] COMPLETE means review execution; any MISSING/blocker is summarized as CONCERNS while the evidence verdict remains ADEQUATE/INCOMPLETE/MISSING.

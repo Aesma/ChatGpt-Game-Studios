@@ -39,7 +39,7 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 - `design/gdd/game-concept.md` exists with platform targets and intended audience
 - `design/player-journey.md` exists
 - `design/ux/interaction-patterns.md` exists with relevant patterns
-- `design/accessibility-requirements.md` exists with committed tier (e.g., Enhanced)
+- `design/accessibility-requirements.md` exists with a committed tier (Basic, Standard, Comprehensive, or Exemplary)
 - Engine UI specialist configured in `docs/technical-preferences.md`
 
 **Input:** `$team-ui inventory screen`
@@ -123,7 +123,7 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 - `design/ux/inventory-screen.md` exists (APPROVED)
 - Visual design spec complete
 - Implementation complete
-- `design/accessibility-requirements.md` committed tier: Enhanced
+- `design/accessibility-requirements.md` committed tier: Standard
 
 **Input:** `$team-ui inventory screen` (resuming from Phase 3 complete)
 
@@ -133,7 +133,7 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 3. Each stream operates independently:
    - ux-designer: verifies implementation matches wireframes, tests keyboard-only and gamepad-only navigation, checks accessibility features function
    - art-director: verifies visual consistency with art bible at minimum and maximum supported resolutions
-   - accessibility-specialist: audits against the Enhanced accessibility tier in `design/accessibility-requirements.md`; any violation flagged as a blocker
+   - accessibility-specialist: audits against the Standard accessibility tier in `design/accessibility-requirements.md`; any violation flagged as a blocker
 4. Skill waits for all three results before proceeding to Phase 5
 5. `user-input request` presents all three review results before Phase 5 begins
 
@@ -192,6 +192,17 @@ with verdict COMPLETE / BLOCKED and handoffs to `$ux-review`, `$code-review`,
 ---
 
 ## Coverage Notes
+
+### P1 Regression Matrix
+
+- [ ] No argument exits with usage before reads/spawns/writes; unknown flags and invalid review values fail.
+- [ ] `$ux-design` is the deterministic default authoring route; fallback uses the same full template/path and is identified.
+- [ ] All authoring reads the exact `.codex/docs/templates/` source, not a filename-only or shortened contract.
+- [ ] Accessibility tiers are only Basic/Standard/Comprehensive/Exemplary; legacy names are gaps, never guessed mappings.
+- [ ] Implementation covers only configured target inputs and BLOCKS when they are unconfigured.
+- [ ] Review mode cannot skip art-director's required Phase 2/4 production responsibility.
+- [ ] HUD visual-budget checks run only for HUD; normal screens/flows use their own spec constraints.
+- [ ] Every Phase 5 edit has one file owner and returns to its original reviewer for a targeted re-check.
 
 - The HUD-specific path (`$ux-design hud` + `hud-design.md` template + visual budget check in Phase 5)
   is not separately tested here; it shares the same phase structure but uses different templates.

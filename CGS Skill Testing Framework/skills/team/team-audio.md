@@ -168,7 +168,7 @@ engine is configured.
 2. Steps 1–2 proceed normally (audio-director, sound-designer, accessibility-specialist)
 3. Step 3: technical-artist is spawned normally; engine specialist spawn is SKIPPED
 4. Orchestrator notes in conversation: "Engine specialist not spawned — no engine configured in technical-preferences.md. Engine integration validation will be deferred until an engine is selected."
-5. Step 4: gameplay-programmer proceeds with a note that engine-specific audio integration patterns could not be validated
+5. Step 4: gameplay-programmer returns implementation tasks in conversation and writes no engine-specific source/test files
 6. The engine specialist gap is included in the audio design document under "Deferred Validation"
 7. Verdict: COMPLETE (skip is graceful, not a blocker)
 
@@ -177,7 +177,7 @@ engine is configured.
 - [ ] Skill does NOT error out due to the missing engine configuration
 - [ ] The skip is explicitly noted in conversation — not silently omitted
 - [ ] technical-artist is still spawned in Step 3 (skip applies only to the engine specialist)
-- [ ] gameplay-programmer proceeds in Step 4 with the deferred validation noted
+- [ ] gameplay-programmer produces deferred implementation tasks but no engine-specific source/test writes
 - [ ] Deferred engine validation is recorded in the audio design document
 - [ ] Verdict is COMPLETE (engine not configured is a known graceful case)
 
@@ -213,3 +213,27 @@ engine is configured.
 - Engine specialist validation logic (idiomatic integration, version-specific changes) is
   tested only for the configured and unconfigured states. The specific content of the
   engine specialist's output is out of scope for this behavioral spec.
+
+### Case 6: Target, context, and existing output are deterministic
+
+**Assertions:**
+- [ ] Filename slug uses only lowercase alphanumeric/hyphen and rejects traversal/empty results
+- [ ] Exact feature reference/slug selects the GDD; multiple matches require user choice
+- [ ] No GDD yields provisional direction rather than importing an unrelated document
+- [ ] Existing audio document is previewed as an explicit update and never silently overwritten
+
+### Case 7: Step decisions and role boundaries are executable
+
+**Assertions:**
+- [ ] Steps 1–3 each offer approve/revise/stop on their substantive output
+- [ ] Stop returns partial BLOCKED and does not start a dependent step
+- [ ] accessibility-specialist performs a final check of the actual sound-designer event list
+- [ ] technical-artist owns bus/budget/VFX constraints, engine specialist validates patterns, gameplay-programmer owns integration
+
+### Case 8: Completion and test status are evidence-based
+
+**Assertions:**
+- [ ] COMPLETE requires all required design outputs, no accessibility blocker, and successful document write
+- [ ] Configured-engine implementation runs affected tests when available and reports the actual result
+- [ ] Runner unavailable is recorded deferred/not run, never PASS
+- [ ] Required step/write failure yields BLOCKED with partial results

@@ -186,6 +186,26 @@ required as part of the scan itself.
 
 ---
 
+### Case 8: Selector and registry validation failures
+
+**Assertions:**
+- [ ] Empty, unknown, ambiguous, malformed, or multiple selectors stop with no verdict
+- [ ] Item and entity selectors resolve exactly one literal entry
+- [ ] Duplicate YAML keys and malformed records are reported, never discarded
+- [ ] Substring/regex-like names cannot create false matches
+
+---
+
+### Case 9: Full-section comparison and authority uncertainty
+
+**Assertions:**
+- [ ] A hit is compared using its complete Markdown section, including units/header
+- [ ] Ambiguous locations are UNVERIFIABLE rather than guessed
+- [ ] Registry source, current source GDD, and Git evidence are compared
+- [ ] `source:` alone does not automatically select the correct value
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads every in-scope GDD's Summary/Overview, Dependencies, Formulas, and ownership sections before producing the findings table

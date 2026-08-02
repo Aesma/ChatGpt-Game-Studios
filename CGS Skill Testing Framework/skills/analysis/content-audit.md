@@ -173,6 +173,28 @@ None. Content audit is a read-only analysis skill; no gates are invoked.
 
 ---
 
+### Case 8: Numeric boundaries and deterministic verdict
+
+**Assertions:**
+- [ ] UNSPECIFIED rows are non-numeric and excluded from totals
+- [ ] Zero total Specified reports not computable without division
+- [ ] Found greater than Specified produces Gap 0 and an excess note
+- [ ] Any ordinary gap/format issue yields GAPS FOUND; explicit critical/MVP blocker yields MISSING CRITICAL CONTENT
+- [ ] COMPLETE requires no missing, format, or unspecified finding
+
+---
+
+### Case 9: Argument, priority, and delegation failure
+
+**Assertions:**
+- [ ] A single-system name resolves exactly one systems-index/GDD mapping
+- [ ] Unknown or ambiguous systems stop without saving a report
+- [ ] HIGH PRIORITY applies only to a real gap plus MVP/VS/downstream criteria
+- [ ] Producer returns analysis only and cannot write
+- [ ] Producer failure yields an explicitly partial report from scanned evidence
+
+---
+
 ## Protocol Compliance
 
 - [ ] Reads GDDs and asset directory before producing gap table

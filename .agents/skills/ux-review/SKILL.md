@@ -42,6 +42,12 @@ the `$team-ui` pipeline.
 - **`patterns`**: validate `design/ux/interaction-patterns.md` specifically
 - **No argument**: ask the user which spec to validate
 
+For a specific path, require an existing project-local regular Markdown file
+directly under `design/ux/`. Reject missing paths, directories, non-Markdown files,
+path traversal, and project-external paths; echo the rejected path and stop without
+running a checklist or issuing a verdict. `hud`/`patterns` resolve only to their
+fixed paths.
+
 Route each file before review. The two reserved paths are `design/ux/hud.md` (HUD) and `design/ux/interaction-patterns.md` (pattern library). Any other candidate must match the header contract of `.codex/docs/templates/ux-spec.md`; otherwise report it as unsupported and issue no verdict. `all` reviews and summarizes only these three supported types, with unsupported Markdown listed separately.
 
 ---
@@ -55,11 +61,17 @@ Then load:
 1. **Input & Platform config**: Read `docs/technical-preferences.md` and
    extract `## Input & Platform`. This is the authoritative source for which input
    methods the game supports — use it to drive the Input Method Coverage checks in
-   Phase 3A, not the spec's own header. If unconfigured, fall back to the spec header.
+   Phase 3A, not the spec's own header. If unconfigured, review only the spec's
+   internal consistency and report `authoritative input unknown`; the reviewed
+   document cannot prove the project's supported inputs. Never infer inputs from
+   PC/console/mobile platform labels.
 2. The accessibility tier committed to in `design/accessibility-requirements.md`. This central document is the only tier authority. If it is missing or still placeholder, report `tier unknown` and do not claim COMPLIANT. If the spec header differs from its committed tier, record a blocker. Use only Basic / Standard / Comprehensive / Exemplary; never guess a mapping for legacy names.
 3. The interaction pattern library at `design/ux/interaction-patterns.md` (if
    it exists)
-4. The GDDs referenced in the spec's header (read their UI Requirements sections)
+4. The GDDs referenced in the spec's header (read their UI Requirements sections),
+   plus explicit references to the screen/HUD identity found in existing GDD UI
+   Requirements. If this cannot establish a complete set, state the coverage scope
+   limitation rather than claiming no requirements are missing.
 5. The player journey map at `design/player-journey.md` (if it exists) for
    context-arrival validation
 
@@ -70,8 +82,10 @@ Then load:
 For each supported file, compare it against the current authoritative template selected in Phase 1. Check every required heading and substantive placeholder, then apply the quality rules described by that same template.
 
 - **UX spec**: validate purpose/player need, arrival context, navigation and entry/exit, layout/component inventory, applicable states, interactions for configured inputs, data ownership, accessibility, localization, and acceptance criteria.
-- **HUD**: validate the HUD template's information architecture, applicable gameplay contexts, layout zones, element specs, feedback, visual budget, platform adaptation, tuning knobs, accessibility, and acceptance criteria.
-- **Pattern library**: validate the pattern template's catalog and entries, standard controls actually used by the project, navigation/loading/error patterns, animation/sound standards, accessibility, and internal consistency.
+- Loading state is required only when the screen has async data or a user-visible delay; a purely synchronous screen records N/A without losing completeness.
+- Basic navigation, feedback, error, and accessibility controls may be justified by UX requirements even when a GDD does not list them. Flag only UI that invents or changes unauthorized gameplay state.
+- **HUD**: derive applicable gameplay contexts from the game concept/GDD, then validate the HUD template's information architecture, those contexts, layout zones, element specs, feedback, visual budget, platform adaptation, tuning knobs, accessibility, and acceptance criteria. Nonexistent contexts are N/A.
+- **Pattern library**: validate the pattern template's catalog and entries (including the existing `Tab Bar` name), only controls/patterns actually used by current specs/platforms, navigation/loading/error patterns, animation/sound standards, accessibility, and internal consistency. Unused pattern types are N/A. For every pattern named by the current spec, locate a complete persisted entry in `design/ux/interaction-patterns.md` and compare behavior; conversation-only approval, failed/unwritten edits, or placeholders are blockers. Remain read-only and never promote a draft.
 
 Count a template heading as present only when it contains substantive non-placeholder content. An unsupported document receives an error but no completeness denominator or verdict.
 ## Phase 4: Output the Verdict
@@ -140,6 +154,7 @@ After delivering the verdict:
 - For **MAJOR REVISION NEEDED**: suggest returning to `$ux-design` with the
   specific sections to rework
 
-Never block the user from proceeding — the verdict is advisory. Document risks,
-present findings, let the user decide whether to proceed despite concerns. A user
-who chooses to proceed with a NEEDS REVISION spec takes on the documented risk.
+The review remains read-only and the user may end it and make a separate product
+decision, but NEEDS REVISION/MAJOR REVISION NEEDED is never relabeled APPROVED or
+described as implementation-ready. Downstream `$team-ui` must preserve the verdict
+and require its existing APPROVED gate.

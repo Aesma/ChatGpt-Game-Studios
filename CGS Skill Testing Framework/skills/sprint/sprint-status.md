@@ -156,7 +156,7 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 - [ ] Does not pin model or reasoning settings; inherits the parent Codex session
 - [ ] Blank invocation resolves active.md, then matching YAML, then highest numbered sprint
 - [ ] Explicit historical sprint ignores singleton YAML for another sprint
-- [ ] `in-progress` and historical `in_progress` both report IN PROGRESS
+- [ ] Canonical `in_progress` and legacy `in-progress` both report IN PROGRESS; read-only status never rewrites the legacy value
 - [ ] Story BLOCKED is a risk reason, never a sprint-health verdict
 - [ ] Staleness uses the story file and a >4 day threshold; active.md is same-story fallback only
 
@@ -181,6 +181,29 @@ the newest modification time.
 - [ ] If active.md is invalid, matching YAML is tried next
 - [ ] Only when both are unusable is the highest numbered sprint selected
 - [ ] Modification time alone never selects the current sprint
+
+### Case 8: Malformed YAML degrades read-only
+
+**Assertions:**
+- [ ] Parse failure, missing sprint ID, or non-list stories marks YAML unusable
+- [ ] Markdown/story fallback runs without crashing or guessing
+- [ ] The workflow remains read-only
+
+### Case 9: Date boundaries and health intervals are total
+
+**Assertions:**
+- [ ] Pre-start and post-end elapsed/time values are clamped to 0–100%
+- [ ] Same-day or invalid dates report unknown and never divide by zero
+- [ ] A 10-point gap is ON TRACK; greater than 10 through 25 is AT RISK; greater than 25 is BEHIND
+
+### Case 10: Fallback evidence cannot manufacture status
+
+**Assertions:**
+- [ ] Story status comes from the header/frontmatter Status field
+- [ ] Ordinary status words in story prose do not change classification
+- [ ] Inline tasks use the status value on the same table row
+- [ ] Missing files remain MISSING in the table/risk output while staying in the completion denominator
+- [ ] Source-name matches are labeled unverified hints and never affect status, completion, or health
 
 ---
 

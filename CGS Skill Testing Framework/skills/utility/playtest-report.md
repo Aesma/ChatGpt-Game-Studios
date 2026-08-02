@@ -30,6 +30,15 @@ Reports are written to `production/qa/playtest-[date].md` after a "May I apply t
 - [ ] Full analyze runs CD-PLAYTEST, lean/solo analyze skips it, and new mode never runs it
 - [ ] Design feedback first identifies a proposed GDD edit; `$propagate-design-change` is suggested only after that GDD is actually revised
 
+## P1 Regression Assertions
+
+- [ ] Missing/unknown mode, analyze without one readable project-internal text path, and missing files are BLOCKED before gate/write
+- [ ] Output uses `production/qa/playtest-[date].md`; same-day sessions require a session/build identifier or user choice and never silently overwrite
+- [ ] Multi-tester analysis preserves each tester/session, reports explicit counts, and retains minority observations
+- [ ] Existing bugs are linked only by a unique ID/description match; ambiguous matches remain candidates and non-reproducible findings remain observations
+- [ ] Design cross-reference is limited to explicitly named systems/features/paths and their direct GDDs; unmapped intent is `unknown`
+- [ ] Refused authorization reports `report not saved`; only a successfully written analyze report is COMPLETE, while new reports template generated/saved
+
 ## Coverage Notes
 
 - CD-PLAYTEST is part of full analyze mode only; new mode and lean/solo analyze do

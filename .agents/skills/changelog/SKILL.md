@@ -11,17 +11,20 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `[version|sprint-number]`. Treat bracketed values as optional unless the workflow says otherwise.
 
-Before starting, gather initial context read-only:
-
-1. Run `git log --oneline -30`; if Git history is unavailable, continue with an empty history and say so.
-2. Run `git tag --list --sort=-v:refname` and retain the first five results.
+Before any Git history read, run `git rev-parse --is-inside-work-tree`. If this
+fails or is false, stop; do not continue with invented or empty Git history. Only
+then run `git log --oneline -30` and
+`git tag --list --sort=-v:refname` (retain the first five results).
 
 
 ## Phase 1: Parse Arguments
 
-Read the argument for the target version or sprint number. If a version is given, use the corresponding git tag. If a sprint number is given, use the sprint date range.
-
-Verify the repository is initialized: run `git rev-parse --is-inside-work-tree` to confirm git is available. If not a git repo, inform the user and abort gracefully.
+Accept no argument, exactly one existing release version/tag, or exactly one
+sprint identifier. With no argument, target current unreleased changes and derive
+a display version only from existing project data; if none exists, ask rather
+than guessing. Reject ambiguous version-versus-sprint text, unknown flags,
+missing tags, missing sprint files, or sprint files without usable boundaries.
+Repository validation has already completed before this phase.
 
 ---
 
@@ -47,7 +50,13 @@ If no tags exist, read the full log or a reasonable recent range (last 100 commi
 
 Read sprint reports from `production/sprints/` for the relevant period to understand planned work and context behind changes.
 
-Read completed design documents from `design/gdd/` for any new features implemented during this period.
+Read a GDD only to explain a change already evidenced by an in-range commit or
+closed story. A completed design document alone is never evidence that a feature
+shipped and must not create a changelog item.
+
+Read `production/qa/bugs/` and include Known Issues only from reports whose
+current top-level Status is Open and whose relevance to this release/sprint is
+supported. If no bug source is available, omit Known Issues rather than guessing.
 
 ---
 
@@ -97,7 +106,9 @@ Commits: [Count]
 - [Change that didn't fit other categories, or vague commit message]
 
 ## Known Issues
-- [Issue description] -- [Severity] -- [ETA for fix if known]
+- [Open bug description] -- [recorded severity] -- [ETA only if explicitly known]
+
+[Omit this section when no relevant Open bug report was read.]
 
 ## Metrics
 - Total commits: [N]
@@ -130,12 +141,14 @@ Commits: [Count]
   players needed more recovery options in late-game encounters."]
 
 ## Known Issues
-- We are aware of [issue description in player terms] and are working on a
-  fix. [Workaround if one exists.]
+- We are aware of [issue from a relevant Open bug report, in player terms].
+  [Include a workaround only when the bug report provides one.]
+
+[Omit this section when no relevant Open bug report was read.]
 
 ---
 Thank you for playing! Your feedback helps us make the game better.
-Report issues at [link].
+[Include a feedback line only when an existing configured issue-report link was read.]
 ```
 
 ---
@@ -156,8 +169,12 @@ After presenting the changelogs, ask the user:
 
 - Check whether `docs/CHANGELOG.md` exists and read its current contents before
   asking so the preview proves that prior entries are preserved.
-- If the user selects [A]: prepend the new internal changelog entry (newest first)
-  while leaving every existing entry unchanged.
+- Detect the target version heading before proposing a write. If it exists,
+  preview replacement of that section only and preserve every other historical
+  byte; do not prepend a duplicate version. If the generated content is unchanged,
+  do not write.
+- If the target version is new and the user selects [A], prepend the new internal
+  entry (newest first) while leaving every existing entry unchanged.
 - If the user selects [B]: stop here without writing.
 
 After a successful write: Verdict: **CHANGELOG WRITTEN** — changelog saved to `docs/CHANGELOG.md`.

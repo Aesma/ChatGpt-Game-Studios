@@ -32,14 +32,14 @@ Analyze project structure and content:
 **Design Documentation** (`design/`):
 - Count GDD files in `design/gdd/*.md`
 - Check for game-concept.md, game-pillars.md, systems-index.md
-- If systems-index.md exists, count total systems vs. designed systems
+- If systems-index.md exists, count total systems and designed systems only from explicit values in its existing `Status` column. Record unparseable rows as `unknown`; a GDD file's existence alone does not imply Approved
 - Analyze completeness (Overview, Detailed Design, Edge Cases, etc.)
 - Count narrative docs in `design/narrative/`
 - Count level designs in `design/levels/`
 
 **Source Code** (`src/`):
-- Count source files (language-agnostic)
-- Identify major systems (directories with 5+ files)
+- Count only configured production-language source extensions, excluding generated, vendor, and test trees
+- Identify major systems from production-source directories; file-count thresholds are weak supporting signals only and never determine a stage
 - Check for core/, gameplay/, ai/, networking/, ui/ directories
 - Estimate lines of code (rough scale)
 
@@ -50,8 +50,8 @@ Analyze project structure and content:
 
 **Prototypes** (`prototypes/`):
 - Count prototype directories
-- Check for READMEs (documented vs undocumented)
-- Assess if prototypes are archived or active
+- Read README/status content rather than treating file existence as documentation
+- Report a prototype active/archived only from explicit content; without a marker, record `unknown`
 
 **Architecture Docs** (`docs/architecture/`):
 - Count ADRs (Architecture Decision Records)
@@ -63,7 +63,7 @@ Analyze project structure and content:
 
 ### 2. Classify Project Stage
 
-Based on scanned artifacts, determine stage. Check `production/stage.txt` first. Accept only the seven exact stage values below, then still cross-check all artifact signals. For an invalid value, report it as unusable and infer without modifying the file. For a valid but materially contradictory value, report the conflict and limits in the existing rationale/summary text rather than silently treating it as proven. Otherwise auto-detect from the most advanced stage backward, requiring its own indicators and all preceding-stage artifact signals:
+Based on scanned artifacts, determine stage. Check `production/stage.txt` first. Accept only the seven exact stage values below, then still cross-check all artifact signals. For an invalid value, report it as unusable and infer without modifying the file. For a valid but materially contradictory value, report the conflict and limits in the existing rationale/summary text rather than silently treating it as proven. Otherwise auto-detect explicitly in **Release → Polish → Production → Pre-Production → Technical Setup → Systems Design → Concept** order. Stop at the first stage whose own indicators and all preceding-stage artifact signals are satisfied:
 
 | Stage | Indicators |
 |-------|-----------|
@@ -74,6 +74,8 @@ Based on scanned artifacts, determine stage. Check `production/stage.txt` first.
 | **Production** | Production implementation code aligns with an active sprint and epic, with preceding design/setup evidence present |
 | **Polish** | Explicit only (set by `$gate-check` Production → Polish gate) |
 | **Release** | Explicit only (set by `$gate-check` Polish → Release gate) |
+
+`Engine configured` means Engine, Language, and Target Platform are all non-placeholder values and mutually consistent in existing configuration. Missing, placeholder, or contradictory values are not configured.
 
 Engine configuration or a source-file count is only a supporting signal and can never advance a project by itself. When signals conflict, retain the lower stage that is fully evidenced and explain the missing prerequisite.
 
@@ -89,34 +91,15 @@ Engine configuration or a source-file count is only a supporting signal and can 
 
 ### 4. Generate Stage Report
 
-Use template: `.codex/docs/templates/project-stage-report.md`
+Use `.codex/docs/templates/project-stage-report.md` as the single structural authority. Do not reproduce or add a competing embedded template, confidence field, or PASS/CONCERNS/FAIL classification here. Put evidence limits and conflicting signals in the template's existing `Executive Summary` or `Stage Classification Rationale` prose, and use counts/present/missing/unknown unless an explicit denominator exists.
 
-**Report structure**:
-```markdown
-# Project Stage Analysis
-
-**Date**: [date]
-**Stage**: [Concept/Systems Design/Technical Setup/Pre-Production/Production/Polish/Release]
-**Stage Confidence**: [PASS — clearly detected / CONCERNS — ambiguous signals / FAIL — critical gaps block progress]
-
-## Completeness Overview
-- Design: [counts/present/missing/unknown; percentage only with an explicit plan denominator]
-- Code: [counts/present/missing/unknown; percentage only with an explicit plan denominator]
-- Architecture: [counts/present/missing/unknown; percentage only with an explicit plan denominator]
-- Production: [status and evidence paths]
-- Tests: [test counts and actual coverage report value, or coverage unknown]
-
-## Gaps Identified
-1. [Gap description + clarifying question]
-2. [Gap description + clarifying question]
-
-## Recommended Next Steps
-[Priority-ordered list based on stage and role]
-```
+Before generating the final report, present the preliminary artifact findings and ask only the gap questions whose answers can materially change classification or recommendation. Wait for the answers; unanswered questions remain `unresolved` and are never assumed.
 
 ### 5. Role-Filtered Recommendations (Optional)
 
-If user provided a role argument (e.g., `$project-stage-detect programmer`):
+If the user provided a role argument, accept only `programmer`, `designer`, `producer`, or `general`. For any other value, ask for clarification or explicitly fall back to General and show the actual scope used; do not silently apply a guessed filter.
+
+If user provided a valid role argument (e.g., `$project-stage-detect programmer`):
 
 **Programmer**:
 - Focus on architecture docs, test coverage, missing ADRs
@@ -164,7 +147,7 @@ After generating the report, suggest relevant next steps:
 - **Missing architecture docs?** → `$architecture-decision` or `$reverse-document architecture`
 - **Prototypes need documentation?** → `$reverse-document concept prototypes/[name]`
 - **No sprint plan?** → `$sprint-plan`
-- **Approaching milestone?** → `$milestone-review`
+- **Approaching milestone?** → `$milestone-review [milestone-name]` (or `current` only when existing state resolves it uniquely)
 
 ---
 

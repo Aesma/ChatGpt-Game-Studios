@@ -16,19 +16,25 @@ When this skill is invoked:
 
 ## Parse Arguments
 
-Two modes:
+Exactly three mutually exclusive modes:
 
-- **No argument**: `$map-systems` — Run the full decomposition workflow (Phases 1-5)
-  to create or update the systems index.
-- **`next`**: `$map-systems next` — Pick the highest-priority undesigned system
-  from the index and hand off to `$design-system` (Phase 6).
+- **No argument**: `$map-systems` — Run the decomposition workflow (Phases 1-5) to create or update the systems index.
+- **`next`**: `$map-systems next` — Require one readable `design/gdd/systems-index.md`, then enter Phase 6.
+- **System name**: `$map-systems [system-name]` — Require that same unique readable index and an exact system entry, then enter Phase 6.
+
+Reject unknown flags, multiple mode arguments, and invalid `--review` values with **BLOCKED**. `next`/system-name never falls back to decomposition or invokes `$design-system` when the index is absent, duplicated, or unparseable; report the problem and suggest the existing no-argument mode.
 
 Also resolve the review mode (once, store for all gate spawns this run):
 1. If `--review [full|lean|solo]` was passed → use that
-2. Else read `production/review-mode.txt` → use that value
+2. Else read `production/review-mode.txt` → use a valid `full|lean|solo` value;
+   if its contents are invalid, report the value before falling back to `lean`
 3. Else → default to `lean`
 
 See `.codex/docs/director-gates.md` for the full check pattern.
+
+In full mode, keep the shared trigger order: TD-SYSTEM-BOUNDARY follows approved
+dependency mapping, PR-SCOPE follows approved priorities, and CD-SYSTEMS follows
+the written index draft. Do not run TD/CD in parallel merely to reduce latency.
 
 ---
 
@@ -54,7 +60,8 @@ for systems decomposition.
   "The systems index already exists with [N] systems ([M] designed, [K] not started).
   What would you like to do?"
   - Options: "Update the index with new systems", "Design the next undesigned system",
-    "Review and revise priorities"
+    "Review and revise priorities", or cancel
+  - Route **Update** to Phase 2, **Review and revise priorities** to Phase 4, and **Design next** to Phase 6. Cancel or an unrecognized answer stops without changes
 
 ---
 
@@ -159,7 +166,7 @@ dependencies I'm missing or that should be removed?"
 
 Pass: the dependency map summary, layer assignments, bottleneck systems list, any circular dependency resolutions.
 
-Present the assessment. If REJECT, revise the system boundaries with the user before moving to priority assignment. If CONCERNS, note them inline in the systems index and continue.
+Present the assessment. If the required full-mode delegation is unavailable, times out, errors, or lacks a verdict, list the failure and stop before priority/write; never simulate approval. If REJECT, revise the system boundaries with the user before moving to priority assignment. If CONCERNS, note them inline in the systems index and continue.
 
 ---
 
@@ -201,7 +208,9 @@ Pure technical necessity ("X depends on Y") is insufficient alone when the syste
 
 **After priorities are approved, spawn `producer` through Codex subagent delegation using gate PR-SCOPE (`.codex/docs/director-gates.md`) before writing the index.**
 
-Pass: total system count per milestone tier, estimated implementation volume per tier (system count × average complexity), team size, stated project timeline.
+Pass: total system count per milestone tier, available implementation-volume evidence, team size, and stated project timeline. Missing timeline/team-size/complexity data is passed explicitly as `unknown`; never manufacture `system count × average complexity`. If the missing inputs prevent a meaningful gate decision, ask the user before invoking it.
+
+If the required full-mode producer delegation is unavailable, times out, errors, or lacks a verdict, list the failure and stop before writing; never simulate approval.
 
 Apply the exact PR-SCOPE contract: **REALISTIC** continues; **OPTIMISTIC** shows the specific schedule/scope adjustments and asks the user to revise or explicitly accept them; **UNREALISTIC** does not write and requires scope revision or stop. Do not handle a nonexistent CONCERNS result.
 
@@ -228,7 +237,7 @@ systems index with all data from Phases 2-4:
 - Fill the dependency map
 - Fill the recommended design order
 - Fill the high-risk systems
-- Fill progress tracker (all systems "Not Started" initially, unless GDDs already exist)
+- Fill the progress tracker. When updating an existing index, preserve every existing system's status, design-doc link, and manual notes; only genuinely new systems start as `Not Started`. A deletion or merge occurs only after the user's Phase 2 decision
 
 ### Step 5b: Approval
 
@@ -248,6 +257,8 @@ The complete changeset preview must show both the concrete `design/gdd/systems-i
 **After the systems index is written, spawn `creative-director` through Codex subagent delegation using gate CD-SYSTEMS (`.codex/docs/director-gates.md`).**
 
 Pass: systems index path, game pillars and core fantasy (from `design/gdd/game-concept.md`), MVP priority tier system list.
+
+If the required full-mode creative-director delegation is unavailable, times out, errors, or lacks a verdict, list the failure, retain any written index only as a draft, and stop without COMPLETE/session approval status. Never simulate approval.
 
 Present the assessment. If REJECT, keep any already-written index only as a draft, do not update session state to created/COMPLETE, show the blocker, and stop until the user authorizes a revision and CD-SYSTEMS is run again. If CONCERNS, ask the user whether to revise or explicitly accept them. Any resulting index note or system-set change was not in the initial content preview, so show the revised same-file changeset and obtain a new authorization before writing it.
 
@@ -284,7 +295,7 @@ system, or stop here?"
 
 ### Step 6b: Hand Off to $design-system
 
-Once a system is selected, invoke the `$design-system [system-name]` skill.
+First finish `$map-systems` with its own **COMPLETE** handoff, naming the selected system but performing no further write. Only if the user then explicitly starts that separate task should `$design-system [system-name]` run under its own workflow/write boundary. Do not nest it into the already-authorized map-systems changeset.
 
 The `$design-system` skill handles the full GDD authoring process:
 - Gathers context from game concept, systems index, and dependency GDDs
@@ -301,12 +312,7 @@ The `$design-system` skill handles the full GDD authoring process:
 
 ### Step 6c: Loop or Stop
 
-After `$design-system` completes, ask the user directly:
-- "Continue to the next system ([next system name])?"
-- "Pick a different system?"
-- "Stop here for this session?"
-
-If continuing, return to Step 6a.
+Do not loop inside this invocation. After the separate `$design-system` task completes, a later explicit `$map-systems next` invocation may select another system.
 
 ---
 

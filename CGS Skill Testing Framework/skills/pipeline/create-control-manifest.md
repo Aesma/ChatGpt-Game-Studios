@@ -101,6 +101,26 @@ gate skip.
 
 ---
 
+### Case 6: Empty/invalid inputs cannot overwrite a manifest
+
+**Assertions:**
+- [ ] Zero Accepted ADRs stops and preserves an existing manifest
+- [ ] Missing engine configuration or VERSION stops before preview/write
+- [ ] ADR Status is read from one normalized status field; ambiguous/missing status is excluded and reported
+
+---
+
+### Case 7: Duplicate/conflicting sources and version updates
+
+**Assertions:**
+- [ ] Identical rules merge while preserving all real source paths
+- [ ] Conflicting ADR/preference/engine rules block the write with both statements
+- [ ] Global sources never receive fabricated ADR IDs
+- [ ] New manifest version is 1; each authorized update increments the integer once, including same-day updates
+- [ ] Default existing-file mode asks update/stop; `update` still requires authorization
+
+---
+
 ## Protocol Compliance
 
 - [ ] Accepted ADR language is not semantically strengthened

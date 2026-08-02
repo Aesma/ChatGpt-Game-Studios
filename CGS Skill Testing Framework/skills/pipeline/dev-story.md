@@ -107,6 +107,27 @@ primaries; missing Status.
 
 ---
 
+### Case 9: Status, AC, routing, and engine configuration
+
+**Assertions:**
+- [ ] Only Ready/In Progress proceeds; Blocked/unknown stops and Done requires explicit reopen
+- [ ] TBD/subjective AC is clarified before authorization/spawn
+- [ ] Routing precedence selects exactly one primary writer for overlapping contexts
+- [ ] Unconfigured engine blocks engine-specific code; pure data may proceed with a warning
+- [ ] Sprint YAML uses canonical `in_progress` consistently
+
+---
+
+### Case 10: Evidence, blocked writer, and active state
+
+**Assertions:**
+- [ ] Integration uses the single evidence alternative declared by the story
+- [ ] Missing Visual/UI evidence remains blocking for story closure
+- [ ] A blocked writer can only produce Partial/Blocked with affected AC unchecked
+- [ ] active.md updates one current-task/STATUS block without appending stale duplicates
+
+---
+
 ## Protocol Compliance
 
 - [ ] Unlisted files pause the run for expanded authorization

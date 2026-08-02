@@ -4,7 +4,7 @@
 **Status**: Reverse-Documented
 **Source**: `[path to implementation code]`
 **Date**: [YYYY-MM-DD]
-**Decision Makers**: [User name or "inferred from code"]
+**Decision Makers**: [Explicitly provided names or "unknown — not recorded"]
 **Implementation Status**: [Deployed | Partial | Planned]
 ---
 
@@ -22,6 +22,7 @@
 - **Observed implementation:** Record only behavior, structure, and constraints directly evidenced by source code, assets, configuration, build output, or test results.
 - **User-stated intent:** Label goals or intended behavior supplied by the user separately; intent is not evidence that a feature is implemented.
 - **Gap:** Mark missing, contradictory, or unverified behavior explicitly instead of inferring it.
+- **Decision history:** Record an alternative, decision maker, or rejection rationale as historical fact only when an existing artifact or the user explicitly confirms it. Otherwise label it `possible` or `unknown — not recorded`.
 
 Acceptance criteria may be marked implemented or passing only when supported by code, build, or test evidence.
 
@@ -31,16 +32,15 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 **Problem Statement**: [What problem did this implementation solve?]
 
-**Background** (inferred from code):
-- [Context 1 — why this problem needed solving]
-- [Context 2 — constraints at the time]
-- [Context 3 — alternatives that were likely considered]
+**Background**:
+- [Evidence-backed context, or unknown — not recorded]
+- [Confirmed constraint, or possible constraint]
+- [Do not list alternatives here unless their historical consideration is evidenced]
 
 **System Scope**: [What parts of the codebase does this affect?]
 
 **Stakeholders**:
-- [Role 1]: [Their concern or requirement]
-- [Role 2]: [Their concern or requirement]
+- [Explicitly identified role/name, or unknown]: [Concern if evidenced]
 
 ---
 
@@ -55,10 +55,8 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 - [Detail 2]: [Pattern or structure used]
 - [Detail 3]: [Notable design choice]
 
-**Clarified Rationale** (from user):
-- [Reason 1 — why this approach was chosen]
-- [Reason 2 — what problem it solves]
-- [Reason 3 — what benefit it provides]
+**Clarified Rationale** (from user or existing artifact):
+- [Confirmed reason, or unknown — not recorded]
 
 **Code Locations**:
 - `[file/path 1]`: [What's there]
@@ -68,41 +66,50 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 ## Alternatives Considered
 
-*(These may be inferred or clarified with user)*
+Only use **Considered** when an existing decision artifact or the user confirms
+that history. Otherwise title this subsection **Possible Alternatives (not
+confirmed as considered)**. Pros/cons may describe current analysis, but why an
+alternative was not chosen remains `Unknown — not recorded` without evidence.
 
 ### Alternative 1: [Approach Name]
 
-**Description**: [What this alternative would have been]
+**Historical status**: [Confirmed considered, source: path/user | Possible only]
+
+**Description**: [What this alternative would be]
 
 **Pros**:
-- ✅ [Advantage 1]
-- ✅ [Advantage 2]
+- [Advantage 1]
+- [Advantage 2]
 
 **Cons**:
-- ❌ [Disadvantage 1]
-- ❌ [Disadvantage 2]
+- [Disadvantage 1]
+- [Disadvantage 2]
 
-**Why Not Chosen**: [Reason — from user clarification or inference]
+**Why Not Chosen**: [Confirmed reason and source | Unknown — not recorded]
 
 ### Alternative 2: [Approach Name]
 
-**Description**: [What this alternative would have been]
+**Historical status**: [Confirmed considered, source: path/user | Possible only]
+
+**Description**: [What this alternative would be]
 
 **Pros**:
-- ✅ [Advantage 1]
-- ✅ [Advantage 2]
+- [Advantage 1]
+- [Advantage 2]
 
 **Cons**:
-- ❌ [Disadvantage 1]
-- ❌ [Disadvantage 2]
+- [Disadvantage 1]
+- [Disadvantage 2]
 
-**Why Not Chosen**: [Reason]
+**Why Not Chosen**: [Confirmed reason and source | Unknown — not recorded]
 
 ### Alternative 3: [Status Quo / No Change]
 
-**Description**: [What "doing nothing" would mean]
+**Historical status**: [Confirmed considered, source: path/user | Possible only]
 
-**Why Not Acceptable**: [Why the problem needed solving]
+**Description**: [What doing nothing would mean]
+
+**Why Not Chosen / Acceptable**: [Confirmed reason and source | Unknown — not recorded]
 
 ---
 
@@ -110,66 +117,58 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 ### Positive Consequences (Benefits Realized)
 
-✅ **[Benefit 1]**: [How the implementation provides this]
+**[Benefit 1]**: [Observed or measured benefit]
 
-✅ **[Benefit 2]**: [Impact]
+**[Benefit 2]**: [Impact]
 
-✅ **[Benefit 3]**: [Impact]
+### Negative Consequences (Trade-offs Observed)
 
-### Negative Consequences (Trade-offs Accepted)
+**[Trade-off 1]**: [Observed limitation or cost]
 
-⚠️ **[Trade-off 1]**: [What was sacrificed or made harder]
-
-⚠️ **[Trade-off 2]**: [Limitation or cost]
-
-⚠️ **[Trade-off 3]**: [Complexity or maintenance burden]
+**[Trade-off 2]**: [Impact]
 
 ### Neutral Consequences (Observations)
 
-ℹ️ **[Observation 1]**: [Emergent property or side effect]
-
-ℹ️ **[Observation 2]**: [Unexpected outcome]
+**[Observation 1]**: [Emergent property or side effect]
 
 ---
 
 ## Implementation Notes
 
 **Patterns Used**:
-- [Pattern 1]: [Where and why]
-- [Pattern 2]: [Where and why]
+- [Pattern 1]: [Where and how]
+- [Pattern 2]: [Where and how]
 
 **Dependencies Introduced**:
-- [Dependency 1]: [Why needed]
-- [Dependency 2]: [Why needed]
+- [Dependency 1]: [Observed use]
+- [Dependency 2]: [Observed use]
 
 **Performance Characteristics**:
-- Time complexity: [O(n), etc.]
-- Space complexity: [Memory usage]
-- Bottlenecks: [Known performance concerns]
+- Time complexity: [Measured/derived value or unknown]
+- Space complexity: [Measured/derived value or unknown]
+- Bottlenecks: [Evidence-backed concern or unknown]
 
 **Thread Safety**:
-- [Thread safety approach — single-threaded, mutex-protected, lock-free, etc.]
+- [Observed approach or unknown]
 
 **Testing Strategy**:
-- [How this is tested — unit tests, integration tests, etc.]
-- Coverage: [Estimated or measured]
+- [Existing tests and paths]
+- Coverage: [Measured value or unknown — not estimated]
 
 ---
 
 ## Validation
 
 **How We Know This Works**:
-- ✅ [Evidence 1 — e.g., "6 months in production without issues"]
-- ✅ [Evidence 2 — e.g., "handles 10k entities at 60 FPS"]
-- ⚠️ [Evidence 3 — e.g., "works but needs monitoring"]
+- [Existing build/test/runtime evidence and source]
+- [Unknown where evidence is absent]
 
 **Known Issues** (discovered during analysis):
-- ⚠️ [Issue 1]: [Problem and potential fix]
-- ⚠️ [Issue 2]: [Problem and potential fix]
+- [Issue 1]: [Problem and evidence]
 
 **Risks**:
-- [Risk 1]: [Potential problem if X happens]
-- [Risk 2]: [Scalability concern]
+- [Risk 1]: [Evidence-backed risk]
+- [Unknown inputs]
 
 ---
 
@@ -177,7 +176,7 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 
 **Unresolved During Reverse-Documentation**:
 1. **[Question 1]**: [What's unclear about the decision or implementation?]
-   - Needs clarification from: [Who]
+   - Needs clarification from: [Explicit role/name or unknown]
    - Impact if unresolved: [Consequence]
 
 2. **[Question 2]**: [What needs to be decided for future work?]
@@ -187,31 +186,31 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 ## Follow-Up Work
 
 **Immediate**:
-- [ ] [Task 1 — e.g., "Add missing unit tests"]
-- [ ] [Task 2 — e.g., "Document edge case handling"]
+- [ ] [Task 1]
+- [ ] [Task 2]
 
 **Short-Term**:
-- [ ] [Task 3 — e.g., "Refactor X for clarity"]
-- [ ] [Task 4 — e.g., "Add performance monitoring"]
+- [ ] [Task 3]
+- [ ] [Task 4]
 
 **Long-Term**:
-- [ ] [Task 5 — e.g., "Revisit decision when Y is available"]
+- [ ] [Task 5]
 
 ---
 
 ## Related Decisions
 
-**Depends On** (ADRs this builds upon):
+**Depends On**:
 - [ADR-XXX]: [Related decision]
 
-**Influences** (ADRs affected by this):
+**Influences**:
 - [ADR-YYY]: [How this impacts it]
 
 **Supersedes**:
-- [ADR-ZZZ]: [Old decision this replaces, if any]
+- [ADR-ZZZ]: [Old decision this replaces, if evidenced]
 
 **Superseded By**:
-- [None yet | ADR-WWW if this decision is later replaced]
+- [None yet | ADR-WWW]
 
 ---
 
@@ -222,8 +221,7 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 - `[path/file 2]`: [Related code]
 
 **External Resources**:
-- [Article/Book]: [Relevant pattern or technique reference]
-- [Documentation]: [Engine or library docs consulted]
+- [Documentation actually consulted]
 
 **Design Documents**:
 - [GDD Section]: [If this implements a design]
@@ -235,7 +233,7 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 | Date | Author | Changes |
 |------|--------|---------|
 | [Date] | Codex (reverse-doc) | Initial reverse-documentation from `[source path]` |
-| [Date] | [User] | Clarified rationale for [X] |
+| [Date] | [Explicit author or unknown] | Clarified rationale for [X] |
 
 ---
 
@@ -265,12 +263,12 @@ Acceptance criteria may be marked implemented or passing only when supported by 
 [Code snippet showing the core pattern or decision]
 ```
 
-**Rationale**: [Why this code structure embodies the decision]
+**Rationale**: [Confirmed rationale and source | Unknown — not recorded]
 
-**Alternative Approach** (not chosen):
+**Possible Alternative Approach** (not confirmed as historically considered):
 
 ```[language]
 [Code snippet showing what the alternative would look like]
 ```
 
-**Why Not**: [Why the implemented approach was preferred]
+**Why Not**: [Confirmed reason and source | Unknown — not recorded]

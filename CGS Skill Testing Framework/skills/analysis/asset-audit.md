@@ -49,3 +49,12 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - The interaction between `$asset-audit` and `$content-audit` (both check GDD
   references vs. assets) is intentional overlap; `$asset-audit` focuses on
   compliance while `$content-audit` focuses on completeness.
+
+## P1 Regression Assertions
+
+- [ ] Empty input defaults to `all`; accepted categories are all/art/audio/vfx/shaders/data and unknown values stop
+- [ ] `all` recursively scans existing `assets/`, while category mode stays in its mapped existing directory
+- [ ] Reference search includes code, scenes/resources, data, manifests, and specs; absence is `NO REFERENCE FOUND`, not permission to delete
+- [ ] Engine URIs and relative paths are normalized before missing checks; unresolved references are NOT CHECKED
+- [ ] COMPLIANT/WARNINGS/NON-COMPLIANT is the only overall enum
+- [ ] Empty scopes, unreadable paths, corrupt/unsupported files, and clean passes remain distinguishable

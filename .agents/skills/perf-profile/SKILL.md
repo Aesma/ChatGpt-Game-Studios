@@ -16,8 +16,8 @@ Delegate substantive work to the `performance-analyst` Codex subagent role when 
 
 Read the argument:
 
-- System name → perform a static candidate scan for that specific system
-- `full` → perform a static candidate scan across all systems
+- System name → resolve it to an existing code/scene scope, then perform a static candidate scan for that scope. If it cannot be resolved uniquely, stop and ask; do not scan a guessed system.
+- `full` → perform a static candidate scan across all systems and state the platforms and scenes actually covered. Unknown coverage remains an explicit limitation.
 - Existing profiler/benchmark path → parse that file and perform measured budget analysis
 
 With no argument, look only for an explicitly identified existing profiler data artifact. If none is available, output the target-engine/platform data-capture checklist and stop without a budget verdict. If a supplied data file cannot be parsed, report the file/error and stop; never fall back to estimated measurements.
@@ -25,6 +25,10 @@ With no argument, look only for an explicitly identified existing profiler data 
 ---
 
 ## Phase 2: Load Performance Budgets
+
+Read the configured engine, target platform, and language first. Apply only the matching engine's hot-path patterns. If the engine is unconfigured, use language-independent patterns and state that engine-specific coverage is unavailable; never combine Godot, Unity, and Unreal APIs in one assumed scan.
+
+For measured runs, look for the nearest prior performance report only when it records the same target platform, scene/scenario, and metric definitions. Show deltas only for comparable metrics; otherwise state `historical comparison unavailable` and do not compare unlike runs.
 
 Check for existing performance targets in design docs or AGENTS.md:
 
@@ -89,6 +93,8 @@ Generated: [Date]
 | # | Location | Issue | Estimated Impact | Fix Effort |
 |---|----------|-------|------------------|------------|
 
+`Fix Effort` is a relative implementation estimate: **S** = localized change, **M** = multi-file or system adjustment, **L** = architectural/cross-system work. It is not a schedule commitment.
+
 ### Optimization Recommendations (Priority Order)
 1. **[Title]** — [Description]
    - Location: [file:line]
@@ -97,7 +103,7 @@ Generated: [Date]
    - Approach: [How to implement]
 
 ### Quick Wins (< 1 hour each)
-- [Simple optimization 1]
+- [Candidate optimization 1 — describe only the expected direction until the same scenario is benchmarked after implementation; do not claim a numeric gain without that measurement]
 
 ### Requires Investigation
 - [Area that needs actual runtime profiling to confirm impact]

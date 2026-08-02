@@ -45,10 +45,14 @@ Based on the argument:
 **Single story**: Read the story file directly. Extract: Story Type, Test
 Evidence section, story slug, system name.
 
-**Sprint**: Read the most recently modified file in `production/sprints/`.
-Extract the list of story file paths from the sprint plan. Read each story file.
+**Sprint**: Resolve the current sprint from an explicit active-state/sprint-status
+identifier. If sources disagree or multiple sprint files match, list candidates
+and ask the user; never select by modification time. Extract the story paths
+explicitly listed by the chosen sprint plan and read each story file.
 
-**System**: Find files matching `production/epics/[system-name]/story-*.md`. Read each.
+**System**: Prefer story paths explicitly listed by the relevant sprint/epic
+documents. Use `production/epics/[system-name]/story-*.md` only as a fallback and
+retain every unambiguous match rather than choosing one.
 
 For each story, collect:
 - `Type:` field (Logic / Integration / Visual/Feel / UI / Config/Data)
@@ -88,14 +92,14 @@ Also inspect the current scope's existing execution result. ADEQUATE requires an
 
 ### Assertion coverage
 
-Count the number of distinct assertions (lines containing assert, expect,
-check, verify, or engine-specific assertion patterns). Low assertion count is
-a quality signal — a test that makes only 1 assertion per test function may
-not cover the range of expected behaviour.
+Identify framework assertions inside actual test-function bodies; do not count
+comments, helper definitions, or unrelated text containing assert/expect/check.
+Recognize expected-exception and equivalent verification patterns as assertions.
+Assertion count is secondary to acceptance-criterion coverage.
 
 Thresholds:
-- **3+ assertions per test function** → normal
-- **1-2 assertions per test function** → note as potentially thin
+- **3+ assertions per test function** → normal count signal
+- **1-2 assertions per test function** → advisory only; one precise assertion may fully prove the criterion
 - **0 assertions** (test exists but no asserts) → flag as BLOCKING — the
   test passes vacuously and proves nothing
 
@@ -105,11 +109,13 @@ For each acceptance criterion in the story that contains a number, threshold,
 or "when X happens" conditional: check whether a test function name or
 test body references that specific case.
 
-Heuristics:
-- Search test file for "zero", "max", "null", "empty", "min", "invalid",
-  "boundary", "edge" — presence of any is a positive signal
-- If the story has a Formulas section with specific bounds: check whether
-  tests exercise at minimum/maximum values
+Map each criterion's concrete values, thresholds, and conditions to a local test
+case/assertion. Keywords such as zero/max/null/empty/min/invalid only help locate
+candidates and cannot by themselves prove coverage.
+
+For formula traceability, read only the GDD directly linked by the story and its
+relevant Formulas/acceptance-criteria section. If the story has no direct GDD link,
+record `formula traceability unknown`; do not scan all GDDs or invent a source.
 
 ### Naming quality
 
@@ -144,13 +150,10 @@ Missing criteria mean a criterion was never verified.
 
 ### Sign-off completeness
 
-Check for three sign-off lines (or equivalent fields):
-- Developer sign-off
-- Designer / art-lead sign-off (for Visual/Feel)
-- QA lead sign-off
-
-If any are missing or blank: flag as INCOMPLETE — the story cannot be fully
-closed without all required sign-offs.
+Apply the existing story-type contract rather than requiring three universal
+signatures. Visual/Feel requires screenshot evidence plus the applicable lead
+sign-off. UI requires a documented walkthrough or interaction test. Check only
+roles required by that evidence type; a non-applicable signature is N/A.
 
 ### Screenshot / artefact completeness
 
@@ -162,10 +165,14 @@ log) is present.
 
 ### Date coverage
 
-Evidence doc should have a date. If the date is earlier than the story's
-last major change (heuristic: compare against sprint start date from the sprint
-plan), flag as POTENTIALLY STALE — the evidence may not cover the final
-implementation.
+Evidence doc should have a date. Compare freshness only with an existing story or
+evidence `Last Updated` value that directly represents the last major change. If
+that value is absent, report `freshness unknown`; do not substitute sprint start,
+file mtime, or another inferred date.
+
+For an Integration story whose declared evidence is a documented playtest, review
+criterion linkage, date, and concrete observations. Assertion-count/naming rules
+are N/A for that evidence and must not be forced onto it.
 
 ---
 
@@ -179,7 +186,10 @@ For each story, assign a verdict:
 | **INCOMPLETE** | Test/evidence exists but has quality gaps (thin assertions, missing sign-offs) |
 | **MISSING** | No test or evidence found for a story type that requires it |
 
-The overall sprint/system verdict is the worst story verdict present.
+The overall sprint/system verdict is the worst story verdict present. COMPLETE
+means only that the review ran. If any story is MISSING or has a genuine BLOCKING
+gap, keep the three-level overall verdict and describe workflow status as
+CONCERNS; do not introduce a fourth evidence verdict.
 
 ```markdown
 ## Test Evidence Review

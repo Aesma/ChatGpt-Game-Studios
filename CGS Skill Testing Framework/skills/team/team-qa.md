@@ -180,6 +180,17 @@ independent stories.
 
 ## Coverage Notes
 
+### P1 Regression Matrix
+
+- [ ] qa-lead delegation uses role-available spawn or current-agent fallback consistently and reports the actual executor.
+- [ ] Explicit scope wins; multiple sprint matches or disagreeing state sources are listed for user selection, never selected by mtime.
+- [ ] Smoke evidence is matched to the current sprint/build and rejects quick mode or unchecked coverage.
+- [ ] In-progress implementation is BLOCKED/not ready, not an entry-ready Must Have.
+- [ ] Manual PASS includes an actual observed result in existing Result/Notes; a user who did not run the build gets BLOCKED/not run.
+- [ ] The orchestrator reserves unique next-unused BUG IDs before parallel writers begin.
+- [ ] APPROVED maps to PASS, APPROVED WITH CONDITIONS to CONCERNS, and NOT APPROVED to FAIL; workflow COMPLETE is independent.
+- [ ] Session state is written only inside the authorized boundary and never cites a sign-off report that was not produced.
+
 - The "APPROVED WITH CONDITIONS" verdict path (S3/S4 bugs, PASS WITH NOTES) is covered implicitly by Case 5's PASS WITH NOTES story (Story B) — if no S1/S2 bugs existed, that case would produce APPROVED WITH CONDITIONS. A dedicated case is not required as the verdict logic is table-driven.
 - The `feature: [system-name]` argument form is not separately tested — it follows the same Phase 1 logic as the sprint form, using glob instead of directory read. The no-argument inference path (Case 4) provides sufficient coverage of the detection logic.
 - Logic stories with passing automated tests do not need manual QA — this is validated implicitly by Case 5 (Story A) where the Logic story receives no manual QA phase.

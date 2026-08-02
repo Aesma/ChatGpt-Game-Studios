@@ -43,13 +43,26 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 
 ## Phase 1: Gather Context
 
-1. **Read the current milestone** from `production/milestones/`.
+1. **Read the current milestone** from `production/milestones/`. Parse valid
+   milestone numbers and explicit dates, select the highest active/current valid
+   identifier, and echo the chosen path. Conflicting equal identifiers are
+   BLOCKED; if no milestone exists, return BLOCKED rather than guessing.
 
-2. **Read the previous sprint** (if any) from `production/sprints/` to
-   understand velocity and carryover.
+2. **Read the previous sprint** (if any) from `production/sprints/` by highest
+   valid sprint number, not modification time, and echo the chosen path.
+   Conflicting files for the same number are BLOCKED. No prior sprint is a valid
+   first-sprint state and is reported as no history.
 
-3. **Read the story backlog** from `production/epics/**/*.md`, excluding epic
-   indexes. Candidates are stories whose status is not started/backlog/ready-for-dev
+   If the previous sprint contains open stories, show each one and obtain a
+   carry-over decision before drafting: carry into the new sprint, defer to the
+   backlog, or cancel planning. Never copy or discard open work silently.
+
+   Also read the latest numbered/date-valid retrospective, when present, for
+   velocity and action-item context. It is an input discovered here; the
+   retrospective workflow passes no extra positional parameter.
+
+3. **Read the story backlog** from `production/epics/**/*.md`, excluding `EPIC.md`
+   and index files. Candidates are stories whose status is Not Started/backlog/ready
    and whose declared dependencies are complete or are ordered earlier in the
    proposed sprint. If there are no eligible stories, return **BLOCKED**, recommend
    `$create-stories`, and do not invoke a gate or write files.
@@ -135,13 +148,13 @@ For `update`:
    `production/sprint-status.yaml`. If the YAML is missing, reconstruct pending
    YAML from the selected sprint markdown and each referenced story's `Status:`
    field. Show every status that cannot be determined; preserve confirmed
-   in-progress/done values and do not write until the final authorization.
+   in_progress/done values and do not write until the final authorization.
 3. Ask the user what to change: stories to add, remove, reprioritize, or re-estimate. Ask the user directly to gather changes.
 4. Apply the changes and re-present the full revised plan for review.
 5. Re-run the producer feasibility gate (Phase 4) on the revised plan.
 6. Write the updated markdown plan and yaml together (same approval as `new` mode).
 
-Note: `update` mode does not reset story statuses. Stories already marked `in-progress` or `done` keep their status. Only `backlog` and `ready-for-dev` stories can be removed or reprioritized freely.
+Note: `update` mode does not reset story statuses. Stories already marked `in_progress` or `done` keep their status. Only `backlog` and `ready` stories can be removed or reprioritized freely.
 
 For `status`:
 
@@ -201,8 +214,8 @@ Format:
 #
 # Status value mapping (yaml ↔ story file Status field):
 #   backlog        ↔  Not Started
-#   ready-for-dev  ↔  Ready
-#   in-progress    ↔  In Progress
+#   ready          ↔  Ready
+#   in_progress    ↔  In Progress
 #   review         ↔  In Review
 #   done           ↔  Complete
 #   blocked        ↔  Blocked
@@ -217,9 +230,9 @@ updated: "[YYYY-MM-DD]"
 stories:
   - id: "[epic-story, e.g. 1-1]"
     name: "[story name]"
-    file: "[production/stories/path.md]"
+    file: "[production/epics/[epic-slug]/story-NNN-[slug].md]"
     priority: must-have        # must-have | should-have | nice-to-have
-    status: ready-for-dev      # backlog | ready-for-dev | in-progress | review | done | blocked
+    status: ready              # backlog | ready | in_progress | review | done | blocked
     owner: ""
     estimate_days: 0
     blocker: ""
@@ -227,12 +240,16 @@ stories:
 ```
 
 Initialize each story from the sprint plan's task tables:
-- Must Have tasks → `priority: must-have`, `status: ready-for-dev`
+- Must Have tasks → `priority: must-have`, `status: ready`
 - Should Have tasks → `priority: should-have`, `status: backlog`
 - Nice to Have tasks → `priority: nice-to-have`, `status: backlog`
 
 For `update`: read the existing `sprint-status.yaml`, carry over statuses for
-stories that haven't changed, add new stories, remove dropped ones.
+stories that haven't changed, and add new stories. Only `backlog` and
+`ready` entries selected by the user may be removed. Preserve
+`in_progress` and `done` entries even when absent from a proposed scope change,
+unless the user explicitly corrects their status in a separate decision; never
+interpret "remove dropped ones" as deleting protected progress.
 
 ---
 
@@ -247,9 +264,17 @@ Before finalising the sprint plan, spawn `producer` through Codex subagent deleg
 
 Pass: proposed story list (titles, estimates, dependencies), total team capacity in hours/days, any carryover from the previous sprint, milestone constraints and deadline.
 
-Present the producer's assessment.
+Present the producer's assessment. If the subagent is unavailable, errors, or
+returns no usable PR-SPRINT verdict in full mode, state that the gate is
+incomplete, stop, and write nothing. A different per-run review mode may be used
+only when the user explicitly invokes the workflow again with
+`--review lean|solo`; do not downgrade the current run automatically.
 
-If UNREALISTIC: revise the story selection (defer stories to Should Have or Nice to Have) and re-present the updated plan, then proceed to Phase 5.
+If UNREALISTIC: present the producer's specific candidate stories to defer and
+their capacity impact. The user chooses which candidates move to Should Have or
+Nice to Have. Until that scope decision is made, return BLOCKED and write
+nothing; never revise scope on the user's behalf. Re-present the user-approved
+plan, then proceed to Phase 5.
 
 If CONCERNS, ask the user directly:
 - Prompt: "Producer flagged concerns with this sprint plan. How do you want to proceed?"
@@ -272,7 +297,9 @@ write or announce COMPLETE yet.
 
 Before closing the sprint plan, check whether a QA plan exists for this sprint.
 
-Search for `production/qa/qa-plan-sprint-[N].md` or any file in `production/qa/` referencing this sprint number.
+Search for `production/qa/qa-plan-sprint-[N].md`, or a file whose explicit
+`Sprint:` field equals N. A bare occurrence of the same number elsewhere in
+the filename/body is not a match.
 
 **If a QA plan is found**: note it in the sprint plan output — "QA Plan: `[path]`" — and proceed.
 
@@ -300,9 +327,14 @@ If [B]: add this warning block to the pending sprint plan before any write:
 
 After the QA choice is resolved, present the one complete changeset with exact
 paths: `production/sprints/sprint-[NNN].md`, `production/sprint-status.yaml`, and
-`production/review-mode.txt` only when a new value is pending. Verify that the
-markdown and YAML story IDs, paths, and statuses correspond one-to-one. Obtain
-one authorization, then write all pending files together. On success, verdict
+`production/review-mode.txt` only when a new value is pending. Verify that each
+story ID and project-relative file path is non-empty and unique, every markdown
+task maps to exactly one YAML entry, and every YAML entry maps back to the same
+markdown task/status. Duplicate IDs, duplicate paths, missing paths, or any
+preparation failure stops before writing. Prepare every pending file first;
+only then obtain one authorization and write the set together. If any member
+cannot be prepared or written as the authorized set, do not proceed with a
+partial plan and report BLOCKED. On success, verdict
 **COMPLETE**. If authorization is declined or any pending file cannot be prepared,
 write none and return **BLOCKED**.
 

@@ -104,6 +104,9 @@ After writing, tell the user:
 > - Run `$asset-spec entity:[name]` to spec each visual entity
 > - Or run `$asset-spec` again to work through the inventory one item at a time"
 
+Then end this run. The inventory branch never falls through to target parsing or
+spec generation with an empty target.
+
 ---
 
 ## Phase 0: Parse Arguments
@@ -111,10 +114,14 @@ After writing, tell the user:
 Extract:
 - **Target type**: `system`, `level`, `character`, or `entity`
 - **Target name**: the name after the colon (normalize to kebab-case)
-- **Review mode**: `--review [full|lean|solo]` if present
+- **Review mode**: `--review [full|lean|solo]` if present; otherwise read
+  `production/review-mode.txt`, falling back to `lean` only when it is absent
+
+Reject an unknown type, empty name, extra target, invalid review value, or a name
+that normalizes to empty. Every resolved source path must remain project-local.
 
 **Mode behavior:**
-- `full` (default): spawn both `art-director` and `technical-artist` in parallel
+- `full`: spawn both `art-director` and `technical-artist` in parallel
 - `lean`: spawn `art-director` only — faster, skips technical constraint pass
 - `solo`: no agent spawning — main session writes specs from art bible rules alone. Use for simple asset categories or when speed matters more than depth.
 
@@ -132,6 +139,11 @@ Read all source material **before** asking the user anything.
 - **Technical preferences**: Read `docs/technical-preferences.md` — extract performance budgets and naming conventions.
 
 ### Source doc reads (by target type):
+Resolve exactly one existing project-local source before reading. For `system` or
+`level`, a missing file, directory, non-Markdown file, or multiple normalized
+candidate matches stops the run unless the user explicitly supplies a description
+as the source. Do not perform a bare read of an unresolved path.
+
 - **system**: Read `design/gdd/[target-name].md`. Extract the **Visual/Audio Requirements** section. If it doesn't exist or reads `[To be designed]`:
   > "The Visual/Audio section of `design/gdd/[target-name].md` is empty. Either run `$design-system [target-name]` to complete the GDD, or describe the visual needs manually."
   Ask the user directly: `[A] Describe needs manually` / `[B] Stop — complete the GDD first`
@@ -142,9 +154,21 @@ Read all source material **before** asking the user anything.
     - Options: `[A] Describe it now` / `[B] Skip this entity` / `[C] Stop here`
     - If [A]: the user's description becomes the source. Brief answers produce concise specs; detailed answers produce detailed specs. Accept whatever level of detail the user provides and work from it.
 
+### Approval status check
+
+Read the source document's existing Status field. If it is absent, unreadable, or
+not Approved, show that fact and stop before producing a production-ready spec.
+A user-provided description may support a clearly partial draft, but it cannot be
+called approved or production-ready.
+
 ### Optional reads:
-- **Existing manifest**: Read `design/assets/asset-manifest.md` if it exists — extract already-specced assets for this target to avoid duplicates.
+- **Existing manifest**: Read `design/assets/asset-manifest.md` if it exists — locate the exact existing context block and IDs for this target.
+- **Current target spec**: Read `design/assets/specs/[target]-assets.md` if it exists and map its asset blocks by stable name/ID.
 - **Related specs**: Find files matching `design/assets/specs/*.md` — scan for assets that could be shared (e.g., a common UI element specced for one system might apply here too).
+
+On rerun, compute a before/after diff and update the existing target block in
+place. Unchanged assets keep their IDs and content; do not append a duplicate
+context block or allocate an ID when there is no change.
 
 ### Present context summary:
 > **Asset Spec: [Target Type] — [Target Name]**
@@ -220,6 +244,11 @@ Combine the agent outputs into a draft spec per asset. Present all specs in conv
 | Polycount | [if 3D — e.g. <800 tris] |
 | Texture Res | [e.g. 512px — matches Art Bible §8 Tier 2] |
 
+Use only these existing fields. For animation, record required states in Visual
+Description. Put applicable file-size/export limits into Format, dimensions or
+frame layout into Dimensions, mesh limits into Polycount, and texture limits into
+Texture Res. Mark non-applicable cells `N/A`; do not invent another field.
+
 **Visual Description:**
 [2–3 sentences. Specific enough for two artists to produce consistent results.]
 
@@ -281,7 +310,9 @@ not exist, prepare this initial content, but do not create it yet:
 | ASSET-001 | [name] | [category] | Needed | design/assets/specs/[target]-assets.md |
 ```
 
-If the manifest already exists, append the new context block and update the Progress Summary counts.
+If the manifest already exists, update the target's existing context block in
+place, or append one only when that target has no block. Preserve existing IDs
+and update Progress Summary counts without duplicating rows.
 
 Present both the complete spec file and the exact manifest create/edit together
 in one changeset preview, listing both paths. Obtain one explicit authorization,
@@ -312,7 +343,10 @@ Asset IDs are assigned sequentially across the entire project — not per-contex
 Search `design/assets/asset-manifest.md` for `ASSET-`.
 ```
 
-Start new assets from `ASSET-[highest + 1]`. This ensures IDs are stable and unique across the whole project.
+Start new assets provisionally from `ASSET-[highest + 1]`. Immediately before
+the first write, re-read the manifest and shared mappings. If the highest ID or
+reusable assets changed, recalculate IDs and re-present every affected spec and
+manifest line; never overwrite or duplicate an ID.
 
 If no manifest exists yet, start from `ASSET-001`.
 
@@ -337,9 +371,9 @@ If a match is found: reference the existing ASSET-ID rather than creating a dupl
 If any spawned agent returns BLOCKED or cannot complete:
 
 1. Surface immediately: "[AgentName]: BLOCKED — [reason]"
-2. In `lean` mode or if `technical-artist` blocks: proceed with art-director output only — note that technical constraints were not validated
-3. In `solo` mode or if `art-director` blocks: derive descriptions from art bible rules — flag as "Art director not consulted — verify against art bible before production"
-4. Always produce a partial spec — never discard work because one agent blocked
+2. In `lean` mode or if `technical-artist` blocks: a partial draft may use art-director output only, but its existing Status/summary must say technical constraints are unverified
+3. In `solo` mode or if `art-director` blocks: a partial draft may derive descriptions from explicit art-bible rules only, and its existing Status/summary must say art direction was not reviewed
+4. If required visual or technical constraints are missing, do not offer `Approve all` or label the result production-ready; preserve the partial work as visibly unverified
 
 ---
 

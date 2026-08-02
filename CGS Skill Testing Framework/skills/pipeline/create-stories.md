@@ -104,6 +104,26 @@ primary, except for the narrowly valid Config/Data N/A form.
 
 ---
 
+### Case 8: Evidence, numbering, and integration alternative
+
+**Assertions:**
+- [ ] Existing story numbers are preserved and new stories take the next available number
+- [ ] Duplicate title/TR-ID requires update or skip
+- [ ] Each story stores exactly one type-appropriate evidence path/alternative
+- [ ] Integration defaults to an automated test; manual playtest requires a GDD-AC reason
+
+---
+
+### Case 9: Input/index/gate gaps and mixed type
+
+**Assertions:**
+- [ ] Missing EPIC, GDD, manifest, or TR registry stops before any Ready story
+- [ ] Mixed unsplittable type uses Integration > Logic > UI > Visual/Feel > Config/Data with reason
+- [ ] GAPS may be revised or accepted only as non-Ready; INADEQUATE cannot proceed
+- [ ] Missing/ambiguous EPIC or index target is reported as partial, never silently skipped
+
+---
+
 ## Protocol Compliance
 
 - [ ] Existing story field set is consistent with consumers

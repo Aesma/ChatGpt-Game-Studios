@@ -9,7 +9,10 @@ section is conditional on the resolved review mode actually requiring that
 spawn. Full mode delegates as described. Lean and solo skip per-skill
 specialists/gates, use the current agent for the same drafting responsibility,
 and display the existing skip note; a section's claimed risk must not override
-the shared mode.
+the shared mode. In full mode, if a requested specialist is unavailable, the
+current agent may perform that named responsibility and must disclose the
+fallback. If delegation fails, keep the section unapproved and report the
+missing feedback; never fabricate specialist findings.
 
 Walk through each section in order. For **each section**, follow this cycle:
 
@@ -44,30 +47,22 @@ Context  ->  Questions  ->  Options  ->  Decision  ->  Draft  ->  Approval  ->  
    If the draft appears without the structured prompt, the user is left at a blank prompt
    with no path forward — this is a protocol violation.**
 
-7. **Write**: Use the targeted file edit to replace the placeholder with the approved content.
-   **CRITICAL**: Always include the section heading in the `old_string` to ensure
-   uniqueness — never match `[To be designed]` alone, as multiple sections use the
-   same placeholder and the targeted file edit requires a unique match. Use this pattern:
-   ```
-   old_string: "## [Section Name]\n\n[To be designed]"
-   new_string: "## [Section Name]\n\n[approved content]"
-   ```
-   Confirm the write.
+7. **Registry conflict check before write** (Sections C and D only):
+   scan the approved draft for entity, item, formula, and numeric-constant names
+   in the registry. Compare each value before editing the GDD. If values differ,
+   show the registered source/value and draft value, then pause for a user
+   decision. An unresolved conflict means the section is not written. New names
+   are only Phase 5 candidates; their absence does not authorize registration.
 
-8. **Registry conflict check** (Sections C and D only — Detailed Design and Formulas):
-   After writing, scan the section content for entity names, item names, formula
-   names, and numeric constants that appear in the registry. For each match:
-   - Compare the value just written against the registry entry.
-   - If they differ: **surface the conflict immediately** before starting the next
-     section. Do not continue silently.
-     > "Registry conflict: [name] is registered in [source GDD] as [registry_value].
-     > This section just wrote [new_value]. Which is correct?"
-   - If new (not in registry): flag it as a candidate for registry registration
-     (will be handled in Phase 5).
+8. **Write**: After the pre-write check passes, use a targeted section-body edit
+   to replace the placeholder or selected retrofit body. Always include the
+   unique section heading and exact old body; never match `[To be designed]`
+   alone. Confirm the write.
 
-After writing each section, update `production/session-state/active.md` with the
-completed section name. Search matching files to check if the file exists — use Write to create
-it if absent, Edit to update it if present.
+After writing each section, update only the current-task/current-section block in
+`production/session-state/active.md`, preserving all unrelated session content.
+Create the file only if its conditional operation was in the initial authorized
+changeset; do not require a particular tool name.
 
 ### Section-Specific Guidance
 
@@ -284,7 +279,9 @@ known dependencies from the systems index and ask:
 
 **Cross-reference**: This section must be bidirectionally consistent. If this system
 lists "depends on Combat", then the Combat GDD should list "depended on by [this
-system]". Flag any one-directional dependencies for correction.
+system]". Flag any one-directional dependencies for correction. The other GDD is outside
+this single-GDD changeset: report its required follow-up edit, but do not modify
+it unless it was separately listed and authorized.
 
 ---
 
@@ -352,7 +349,12 @@ These sections are included in the template. Visual/Audio is **REQUIRED** for vi
 
 For required systems: **spawn `art-director` through Codex subagent delegation** before drafting this section. Provide: system name, game concept, game pillars, art bible sections 1–4 if they exist. Ask them to specify: (1) VFX and visual feedback requirements for this system's events, (2) any animation or visual style constraints, (3) which art bible principles most directly apply to this system. Present their output; do NOT leave this section as `[To be designed]` for visual systems.
 
-For **all other system categories** (Foundation/Infrastructure, Economy, AI/pathfinding, Camera/input), offer the optional sections after the required sections:
+For **all other system categories** (Foundation/Infrastructure, Economy,
+AI/pathfinding, Camera/input), offer the optional sections after the required
+sections. When the user skips one, replace its placeholder with an approved
+`Not applicable — [reason]` or `Deferred — [owner/condition]` body, or leave it
+explicitly incomplete in the completion summary. Never retain a placeholder
+while claiming the complete GDD has no incomplete sections:
 
 Ask the user directly:
 - "The 8 required sections are complete. Do you want to also define Visual/Audio
@@ -413,11 +415,15 @@ Handle verdict per the standard rules in `director-gates.md`. After resolution, 
 
 ### 5b: Update Entity Registry
 
-Scan the completed GDD for cross-system facts that should be registered:
-- Named entities (enemies, NPCs, bosses) with stats or drops
-- Named items with values, weights, or categories
-- Named formulas with defined variables and output ranges
-- Named constants referenced by value in more than one place
+Scan the completed GDD for facts already referenced across systems or explicitly
+owned here as an existing registry type:
+- Named entities with stats/drops that another GDD references
+- Named items with values/categories that another GDD references
+- Named formulas with defined variables/output ranges used across systems
+- Named constants referenced by value in more than one GDD
+
+Purely local facts that appear only in this GDD remain in the GDD and are not
+registry candidates.
 
 For each candidate, check if it already exists in `design/registry/entities.yaml`:
 ```

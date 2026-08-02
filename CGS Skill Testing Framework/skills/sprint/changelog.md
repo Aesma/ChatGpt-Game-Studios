@@ -73,9 +73,19 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ## Coverage Notes
 
-- The case where git is not initialized in the repository is not tested;
-  behavior would depend on git command failure handling.
+- Git-not-initialized behavior is covered by the P1 regression assertions: the
+  workflow stops before reading history.
 - Merge commits vs. squash commits are not explicitly differentiated in
   these tests; implementation detail of the git log parsing phase.
 - The `$patch-notes` skill should be run after `$changelog` for player-facing
   output; that handoff is verified in the patch-notes spec.
+
+## P1 Regression Assertions
+
+- [ ] Git repository validity is checked before any log/tag command; invalid repositories stop
+- [ ] No-argument, tag, and sprint inputs have deterministic validation and ambiguous/missing targets stop
+- [ ] A GDD can explain a commit/closed story but never independently creates a shipped item
+- [ ] Known Issues come only from relevant Open bug reports and are omitted when no source was read
+- [ ] Existing CHANGELOG content is read before preview; an existing version section is replaced in place without duplication
+- [ ] An unchanged same-version rerun performs no write
+- [ ] Player output omits the feedback placeholder when no configured link exists

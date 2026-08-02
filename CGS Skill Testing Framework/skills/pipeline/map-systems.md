@@ -10,9 +10,9 @@ Alpha / Full Vision), and organizes systems into a layered design order
 `design/gdd/systems-index.md` after user approval.
 
 This skill is required between game concept approval and per-system GDD creation
-— it is a mandatory gate in the pipeline. In `full` review mode, CD-SYSTEMS
-(creative-director) and TD-SYSTEM-BOUNDARY (technical-director) spawn in parallel
-after the decomposition is drafted. In `lean` or `solo` mode, both gates are
+— it is a mandatory gate in the pipeline. In `full` review mode, TD-SYSTEM-BOUNDARY runs after dependency approval, PR-SCOPE after priority
+approval, and CD-SYSTEMS after the authorized index draft, following their shared
+gate trigger order. In `lean` or `solo` mode, both gates are
 skipped. The skill writes to `design/gdd/systems-index.md`.
 
 ---
@@ -30,7 +30,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Assertions:**
 - [ ] Between 5 and 8 systems are identified (not fewer, not more without explanation)
-- [ ] CD-SYSTEMS and TD-SYSTEM-BOUNDARY spawn in parallel (not sequentially)
+- [ ] Full-mode gates follow their shared trigger order; no TD/CD parallel assertion is made
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 - [ ] systems-index.md is NOT written outside the authorized changeset
 - [ ] Session state is updated after writing
@@ -67,7 +67,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Fixture:**
 - Game concept exists
-- `production/session-state/review-mode.txt` contains `full`
+- `production/review-mode.txt` contains `full`
 - CD-SYSTEMS gate returns CONCERNS: "The [core-system] is implied by the concept but not identified"
 
 **Input:** `$map-systems`
@@ -94,7 +94,7 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 **Fixture (lean mode):**
 - Game concept exists
-- `production/session-state/review-mode.txt` contains `lean`
+- `production/review-mode.txt` contains `lean`
 
 **Lean mode expected behavior:**
 1. Systems are decomposed and drafted
@@ -102,11 +102,22 @@ Verified automatically by `$skill-test static` — no fixture needed.
 3. Output notes: "CD-SYSTEMS skipped — lean mode" and "TD-SYSTEM-BOUNDARY skipped — lean mode"
 4. "May I apply the proposed changeset?" asked before applying a not-yet-authorized changeset
 - [ ] systems-index.md is NOT written outside the authorized changeset
-- [ ] CD-SYSTEMS and TD-SYSTEM-BOUNDARY spawn in parallel in full mode
+- [ ] Full-mode TD-SYSTEM-BOUNDARY, PR-SCOPE, and CD-SYSTEMS follow their shared trigger order
 - [ ] Skipped gates noted by name and mode in lean/solo output
 - [ ] Ends with next-step handoff: `$design-system [next-system]`
 
 ---
+
+## P1 Regression Assertions
+
+- [ ] No-arg, next, and system-name are mutually exclusive; unknown flags/invalid review values are BLOCKED
+- [ ] next/system-name requires one parseable canonical index and an exact system; failure never invokes design-system
+- [ ] Existing-index choices route Update→Phase 2, Priorities→Phase 4, Design next→Phase 6; cancel/unknown stops
+- [ ] Required full-mode gate timeout/unavailable/partial result stops downstream writing and never simulates a verdict
+- [ ] PR-SCOPE receives unknown for missing timeline/team-size/complexity; no count×average estimate is invented
+- [ ] Existing progress, design links, and manual notes survive index update; only new systems become Not Started
+- [ ] map-systems reaches COMPLETE before any separately authorized design-system task and does not loop within one invocation
+- [ ] Review mode fixture path is `production/review-mode.txt`; invalid values are reported before fallback
 
 ## Coverage Notes
 

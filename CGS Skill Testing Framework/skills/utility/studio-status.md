@@ -19,7 +19,7 @@ installing a status line or modifying project state.
 - [ ] The documented invocation is `$studio-status`
 - [ ] Explicitly states that the workflow is read-only
 - [ ] Does not install, emulate, or configure a terminal status line
-- [ ] Uses `.codex/docs/` and `AGENTS.md` paths only
+- [ ] Reads only the project evidence paths explicitly documented by the workflow
 - [ ] Defines deterministic stage precedence and a stable report format
 
 ---
@@ -131,7 +131,7 @@ advance the production stage.
 
 **Expected behavior:**
 1. Treat every missing optional path as absent evidence rather than an exception.
-2. Report `Concept` with `Focus: none recorded` and `Recovery: none`.
+2. Report `Concept` with `Focus: not applicable` and `Recovery: none`.
 3. Avoid subagent delegation and all writes.
 
 **Assertions:**
@@ -163,3 +163,18 @@ Later stages such as Polish and Release are reachable only from an explicit stag
 file and are covered by the same precedence rule as Case 1. The coverage audit
 must locate this spec recursively and compare it with the actual
 `.agents/skills/studio-status/SKILL.md` file.
+
+### Case 6: Stage and engine metadata anomalies remain bounded
+
+**Assertions:**
+- [ ] Whitespace-only first line counts as empty
+- [ ] Additional non-empty stage lines are reported malformed and never concatenated
+- [ ] All seven legal stage values are listed exactly
+- [ ] Distinct non-placeholder Engine fields are contradictory evidence and no one value is chosen
+
+### Case 7: Focus and recovery wording reflect usability
+
+**Assertions:**
+- [ ] Earlier valid stages always output `Focus: not applicable`
+- [ ] Late stages without a valid breadcrumb output `Focus: none recorded`
+- [ ] Malformed active.md appears as `malformed STATUS block`, not a usable recovery source

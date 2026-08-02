@@ -96,3 +96,14 @@ executed during the review.
 - [ ] Report-only has no session-state or logging side effect
 - [ ] File existence is reported as evidence only, never as a passing test
 - [ ] The workflow does not create an additional mode, phase, schema, or verdict
+
+## P1 Regression Assertions
+
+- [ ] Missing/invalid `single-gdd` paths and unknown modes stop without a verdict
+- [ ] Single-GDD ADR selection scans Summary and `GDD Requirements Addressed`, not titles alone
+- [ ] Implicit decision-text matches are Partial, never Covered
+- [ ] TR reuse requires same-system semantic evidence and the registry is re-read before assigning new lowercase-slug IDs
+- [ ] Only `rtm` reads stories/tests or writes the RTM; `full` does not expand based on repository state
+- [ ] Engine reads are limited to domains named by in-scope ADRs
+- [ ] A partial full review cannot PASS, and failed specialist scope is visible
+- [ ] Handoff reports actual architecture evidence and does not invent unrelated test/UX gate prerequisites

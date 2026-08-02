@@ -78,6 +78,27 @@ PASS or explicitly accepted non-blocking CONCERNS may advance
 
 ---
 
+### Case 6: Detection, freshness, tests, and applicability
+
+**Assertions:**
+- [ ] Missing/invalid stage uses existing artifact heuristics; conflicting signals require confirmation
+- [ ] Report scope/date/build/system linkage must cover the current gate
+- [ ] Missing configured test command is MANUAL/CONCERNS; an actual failed run is FAIL
+- [ ] Polish-to-Release N/A requires platform/language/store evidence and is not counted missing/passing
+- [ ] Vertical Slice artifact and quality are counted once
+
+---
+
+### Case 7: Partial panel and manual challenge timing
+
+**Assertions:**
+- [ ] Failed/timed-out director is named and never fabricated as READY
+- [ ] A required incomplete panel cannot PASS
+- [ ] Chain challenge reuses collected manual answers
+- [ ] A newly discovered blocking manual question is asked before final verdict; unanswered cannot PASS
+
+---
+
 ## Protocol Compliance
 
 - [ ] Complete checklist evidence precedes the verdict

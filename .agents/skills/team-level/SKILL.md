@@ -23,14 +23,20 @@ blocking-accessibility revision choice. Within an accepted direction, routine
 dependent steps continue without transition re-prompts.
 
 1. **Read the argument** for the target level or area (e.g., `tutorial`,
-   `forest dungeon`, `hub town`, `final boss arena`).
+   `forest dungeon`, `hub town`, `final boss arena`). Preserve the display
+   name and derive a filename only from a lowercase alphanumeric/hyphen slug.
+   Reject path separators/traversal and an empty slug. If the exact target
+   exists, present an explicit update in the changeset rather than overwriting.
 
 2. **Gather context**:
-   - Read the game concept at `design/gdd/game-concept.md`
-   - Read game pillars at `design/gdd/game-pillars.md`
-   - Read existing level docs in `design/levels/`
-   - Read relevant narrative docs in `design/narrative/`
-   - Read world-building docs for the area's region/faction
+   - Read `design/gdd/game-concept.md`; if missing, return BLOCKED before
+     spawning because the area cannot be anchored to the game.
+   - Read `design/gdd/game-pillars.md` when present.
+   - Read only level, narrative, and world documents explicitly matching the
+     target slug, a referenced adjacent area, region, or faction; do not import
+     whole directories.
+   - If pillars or relevant region documents are missing, state the limitation
+     and ask the user to stop or continue with a clearly provisional direction.
 
 ## How to Delegate
 
@@ -74,9 +80,10 @@ Spawn the `art-director` agent to:
 
 **The art-director's visual targets from Step 1 must be passed to the level-designer in Step 2** as explicit constraints. Layout decisions happen within the visual direction, not before it.
 
-**Direction decision**: Present the three Step 1 outputs together. Ask only
-when they offer materially different narrative/visual directions; record the
-selected direction before Step 2. If no meaningful alternative exists, continue.
+**Direction decision**: Present the three Step 1 outputs together. Explicitly
+list any conflicts in landmarks, theme, world rules, or narrative purpose and
+ask the user to choose one unified direction. Do not pass unresolved conflicts
+to Step 2. If there is one coherent direction with no material choice, continue.
 
 ### Step 2: Layout and Encounter Design (level-designer)
 Spawn the `level-designer` agent with the full Step 1 output as context:
@@ -92,7 +99,11 @@ The level-designer should:
 - Define points of interest and landmarks for wayfinding — these must match the visual landmarks the art-director specified
 - Specify entry/exit points and connections to adjacent areas
 
-**Adjacent area dependency check**: After the layout is produced, check `design/levels/` for each adjacent area referenced by the level-designer. If any referenced area's `.md` file does not exist, surface the gap:
+**Adjacent area dependency check**: Normalize each referenced adjacent name to
+the same safe slug, then match it against exact filename and declared
+level-name/header values in `design/levels/`. Multiple matches require user
+selection; zero matches are missing and must not be guessed. If a referenced
+area cannot be resolved, surface the gap:
 > "Level references [area-name] as an adjacent area but `design/levels/[area-name].md` does not exist."
 
 Ask the user directly with options:
@@ -149,6 +160,9 @@ Spawn the `qa-tester` agent to:
 - Create a playtest checklist for the area
 - Define acceptance criteria for level completion
 
+These results belong in the final document's existing QA/Acceptance section;
+they never create a separate test file.
+
 4. **Compile the level design document** combining all team outputs into the
    level design template format.
 
@@ -156,9 +170,14 @@ After all analysis outputs are collected and no accessibility blocker remains,
 present one changeset containing the exact final path
 `design/levels/[level-name-slug].md` and the intended compiled sections. Obtain
 one authorization, then spawn `level-designer` as the sole writer:
-- Pass all subagent outputs, the level brief, game pillars, and relevant GDD sections
-- Compile Step 5 test cases/checklist and narrative/world/art material into the
-  one level document; do not create separate narrative or test-checklist files
+- Pass all subagent raw outputs as evidence, plus the user-confirmed direction,
+  level brief, game pillars, and relevant GDD sections
+- Resolve repetition/conflict in favor of the recorded user decision rather
+  than copying outputs verbatim. Any still-unresolved conflict is listed under
+  Open Questions and forces BLOCKED.
+- Compile Step 5 test cases/checklist into the existing QA/Acceptance section and
+  narrative/world/art material into the one level document; do not create
+  separate narrative or test-checklist files
 - Write only the approved final path and request no separate approval
 - The orchestrator does not write files directly
 
@@ -194,7 +213,8 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
    - Skip this agent and note the gap in the partial report (not available for a
-     BLOCKING accessibility finding)
+     BLOCKING accessibility finding; any skipped required role remains
+     unresolved and forces final BLOCKED)
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.

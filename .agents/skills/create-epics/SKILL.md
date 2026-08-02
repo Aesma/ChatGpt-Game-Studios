@@ -50,6 +50,11 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 - `$create-epics [system-name]` — one specific system
 - No argument — ask: "Which layer or system would you like to create epics for?"
 
+Normalize the existing layer syntax as `layer:<value>` while tolerating
+whitespace after the colon during parsing. The value must be exactly one of
+foundation/core/feature/presentation. Empty values, unknown layers, or multiple
+conflicting scope modes stop before input loading.
+
 ---
 
 ## 2. Load Inputs
@@ -57,7 +62,10 @@ See `.codex/docs/director-gates.md` for the full check pattern.
 ### Step 2a — Determine scope from the systems index
 
 Read `design/gdd/systems-index.md` first. Use its system-to-file mapping, layer,
-and status as the source of scope. A `## Summary` search may accelerate
+and status as the source of scope. Only `Approved` or `Designed` index rows are
+eligible. Read each mapped GDD's own Status header and cross-check it; a missing
+or contradictory status stops that system with evidence rather than choosing
+one source. A `## Summary` search may accelerate
 summarization, but a missing Summary never excludes a mapped GDD; read its
 Overview instead.
 
@@ -82,13 +90,12 @@ Report: "Loaded [N] GDDs, [M] ADRs, engine: [name + version]."
 
 ## 3. Processing Order
 
-Process in dependency-safe layer order:
-1. **Foundation** (no dependencies)
-2. **Core** (depends on Foundation)
-3. **Feature** (depends on Core)
-4. **Presentation** (depends on Feature + Core)
-
-Within each layer, use the order from `systems-index.md`.
+Build the dependency graph from the actual dependencies in `systems-index.md`
+and process it topologically. Layer order (Foundation, Core, Feature,
+Presentation) is only a secondary tie-breaker for nodes that are otherwise
+ready; do not assume every Foundation node is dependency-free. Detect and show
+cycles. Every epic containing a cyclic requirement is Blocked and is not passed
+off as dependency-safe until the cycle is resolved.
 
 ---
 
@@ -113,10 +120,14 @@ Present to user before writing anything:
 **Systems/GDDs**: [system → design/gdd/filename.md, ...]
 **Architecture Module**: [module name from architecture.md]
 **Governing ADRs**: [ADR-NNNN, ADR-MMMM]
-**Engine Risk**: [LOW / MEDIUM / HIGH — highest risk among governing ADRs]
+**Engine Risk**: [LOW / MEDIUM / HIGH / UNKNOWN — highest valid risk among governing ADRs]
 **GDD Requirements Covered by ADRs**: [N / total]
 **Untraced Requirements**: [list TR-IDs with no ADR, or "None"]
 ```
+
+Accept only existing LOW/MEDIUM/HIGH risk values. A missing ADR, absent risk
+field, or illegal value yields UNKNOWN and prevents the affected requirement
+from being described as engine-validated.
 
 If there are untraced requirements, report them without creating placeholders.
 An epic containing any untraced Foundation/Core requirement uses the existing
@@ -149,7 +160,9 @@ skeleton or temporary epic before the gate.
 
 Present the producer's assessment.
 
-If UNREALISTIC: offer to revise epic boundaries (split overscoped or merge underscoped epics). Revise and re-run the gate before writing.
+If UNREALISTIC, ask the user to choose `Revise boundaries` or `Stop`. Show the
+exact proposed split/merge before revising and re-run the gate only after the
+user selects revise. A stop ends BLOCKED; never loop automatically.
 
 If CONCERNS, ask the user directly:
 - Prompt: "Producer raised concerns about the epic structure. How do you want to proceed?"
@@ -167,6 +180,14 @@ Do not write epic files until the producer gate resolves.
 ---
 
 ## 5. Write Epic Files
+
+Before the preview, inspect every planned EPIC path and the index. For an
+existing EPIC, show its scoped diff and ask `update` or `skip`; never overwrite
+silently. A skipped epic is omitted from the write set.
+
+For the index, match by unique epic slug/module. Update exactly one matching row
+or append one new row, retain every out-of-scope row unchanged, and report an
+error on duplicate matches rather than rebuilding the table.
 
 Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 

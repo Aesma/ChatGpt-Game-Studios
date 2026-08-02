@@ -9,15 +9,27 @@ description: "Improve a Codex skill with a validate-diagnose-patch-revalidate lo
 
 Invoke this workflow as `$skill-improve [skill-name]`.
 
-Arguments: `[skill-name]` is required and must match a folder under `.agents/skills/`.
-
-Arguments: `[skill-name]` is required and must match a folder under `.agents/skills/`.
+Arguments: `[skill-name]` is required. Accept only one lowercase-letter,
+digit, or hyphen directory name (`^[a-z0-9]+(?:-[a-z0-9]+)*$`). Reject path
+separators, `.`, `..`, absolute paths, and names that would resolve outside
+`.agents/skills/`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
 ## Phase 1: Locate the skill
 
-Require one skill name and verify `.agents/skills/[name]/SKILL.md` and `agents/openai.yaml` exist. Read the skill, its catalog entry, and any registered spec before diagnosing it.
+Require one valid skill name and verify `.agents/skills/[name]/SKILL.md` and
+`agents/openai.yaml` exist. If the name is invalid, the directory is absent, or
+either required file is missing, stop without guessing another path.
+
+Read the skill and its catalog entry. If a registered spec exists, read it. A
+missing catalog entry or registered spec is a retained `FAIL / NON-COMPLIANT`
+finding, not `N/A`: continue every other available static check, but do not
+claim the skill is improved until the missing existing artifact is restored.
+
+If `[skill-name]` is `skill-improve`, complete diagnosis and prepare a proposed
+patch only. Do not apply changes to the instructions that govern the current
+run; hand the approved draft to a later independent invocation.
 
 ## Phase 2: Establish a baseline
 
@@ -26,7 +38,8 @@ Run `$skill-test static [name]`. If the catalog assigns a category, also run
 spec exists. Record every existing check/assertion by stable identity, status,
 and file-and-line evidence. Counts are summary only.
 
-If all applicable checks pass, report that no improvement is needed and stop.
+Stop with `NO CHANGE` only when every applicable check is `PASS` and there are
+zero `WARN` results. A warning remains eligible for a narrow repair.
 
 ## Phase 3: Diagnose narrowly
 
@@ -44,12 +57,14 @@ Include category or spec failures separately. Do not rewrite passing sections me
 
 ## Phase 4: Preview one changeset
 
-Show concise before/after excerpts and list only the files actually required.
-Default edits are the target `SKILL.md` and metadata. A directly affected spec
-or catalog entry may change only when independent static evidence shows it is
-stale relative to an existing authoritative project contract; never remove a
-target behavior, delete an assertion, lower its severity, or change category to
-manufacture a pass. Obtain one approval for the complete changeset.
+Show concise before/after excerpts and list only the existing files actually
+required for the diagnosed repair, with the exact purpose of each edit. Default
+edits are the target `SKILL.md` and metadata, but do not list either unless it
+actually changes. A directly affected spec or catalog entry may change only
+when independent static evidence shows it is stale relative to an existing
+authoritative project contract; never remove a target behavior, delete an
+assertion, lower its severity, or change category to manufacture a pass. Obtain
+one approval for the complete changeset.
 
 ## Phase 5: Apply and revalidate
 

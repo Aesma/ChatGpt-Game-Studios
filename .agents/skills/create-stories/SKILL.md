@@ -53,8 +53,14 @@ Read in full:
 - `production/epics/[epic-slug]/EPIC.md` — epic overview, governing ADRs, GDD requirements table
 - The epic's GDD (`design/gdd/[filename].md`) — read all 8 sections, especially Acceptance Criteria, Formulas, and Edge Cases
 - All governing ADRs listed in the epic — read the Decision, Implementation Guidelines, Engine Compatibility, and Engine Notes sections
-- `docs/architecture/control-manifest.md` — extract rules for this epic's layer; note the Manifest Version date from the header
+- `docs/architecture/control-manifest.md` — extract rules for this epic's layer;
+  require the positive integer Manifest Version from the header
 - `docs/architecture/tr-registry.yaml` — load all TR-IDs for this system
+
+Validate each required input separately before decomposition: the EPIC, every
+mapped GDD, control manifest, and TR registry must exist and be readable. Report
+all missing inputs with the existing upstream workflow that produces them and
+stop before producing any Ready story.
 
 **ADR existence validation**: After reading the governing ADRs list from the epic, confirm each ADR file exists on disk. If any ADR file cannot be found, **stop immediately** before decomposing any story:
 
@@ -80,8 +86,11 @@ Report: "Loaded epic [name], GDD [filename], [N] governing ADRs (all confirmed p
 | **UI** | Menus, HUD elements, buttons, screens, dialogue boxes, tooltips |
 | **Config/Data** | Balance tuning values, data file changes only — no new code logic |
 
-Mixed stories: assign the type that carries the highest implementation risk.
-The type determines what test evidence is required before `$story-done` can close the story.
+Mixed stories: first split independently verifiable criteria when that produces
+coherent stories. If criteria cannot be split, use this fixed risk precedence:
+Integration > Logic > UI > Visual/Feel > Config/Data. Show the chosen type and
+reason in the preview. The type determines the one evidence requirement used by
+`$story-done`.
 
 ---
 
@@ -130,7 +139,11 @@ list with explicit primary, QA cases, and evidence path. Also pass the epic GDD
 criteria. The planned path is not an existing file; no story may be written
 before this gate returns a per-story verdict.
 
-Present the QA lead's assessment. For each story flagged as GAPS or INADEQUATE, revise the acceptance criteria before proceeding — stories with untestable criteria cannot be implemented correctly. Once all stories reach ADEQUATE, proceed.
+Present the QA lead's assessment per story. `INADEQUATE` blocks Ready and must be
+revised or left out. For `GAPS`, let the user choose: revise and re-review, or
+accept the gap and write that story with its existing Blocked/Needs Work status.
+A GAPS story may never be written Ready. Proceed when each story is ADEQUATE or
+has an explicitly accepted non-Ready gap.
 
 **Before generating test specs**: Find files matching `production/qa/qa-plan-*.md` for the most recently modified file. If found, read it and check whether it contains test case specifications for the stories in this epic (look for story titles or slugs in the plan's Automated Tests Required section). If matching specs exist:
 - Ask the user directly:
@@ -171,6 +184,11 @@ These test case specs are embedded directly into each story's `## QA Test Cases`
 
 ## 5. Present Stories for Review
 
+Before writing any files, scan the target epic directory. Preserve existing
+stories and allocate each new story the next available numeric identifier.
+When an existing title or TR-ID matches a proposed story, show its scoped diff
+and ask `update` or `skip`; never overwrite it as a new 001 sequence.
+
 Before writing any files, present the full story list:
 
 ```
@@ -209,7 +227,7 @@ For each story, write `production/epics/[epic-slug]/story-[NNN]-[slug].md`:
 > **Layer**: [Foundation / Core / Feature / Presentation]
 > **Type**: [Logic | Integration | Visual/Feel | UI | Config/Data]
 > **Estimate**: [hours or t-shirt size — fill before sprint planning]
-> **Manifest Version**: [date from control-manifest.md header]
+> **Manifest Version**: [positive integer from control-manifest.md header]
 > **Last Updated**: [set by $dev-story when implementation begins]
 
 ## Context
@@ -287,12 +305,17 @@ change meaning. This is what the programmer reads instead of the ADR.]
 ## Test Evidence
 
 **Story Type**: [type]
-**Required evidence**:
-- Logic: `tests/unit/[system]/[story-slug]_test.[ext]` — must exist and pass
-- Integration: `tests/integration/[system]/[story-slug]_test.[ext]` OR playtest doc
-- Visual/Feel: `production/qa/evidence/[story-slug]-evidence.md` + sign-off
-- UI: `production/qa/evidence/[story-slug]-evidence.md` or interaction test
-- Config/Data: smoke check pass (`production/qa/smoke-*.md`)
+**Required evidence**: [exactly one line selected from the story type]
+- Logic → `tests/unit/[system]/[story-slug]_test.[ext]` — must exist and pass
+- Integration → `tests/integration/[system]/[story-slug]_test.[ext]` by default;
+  use one documented playtest path only when a GDD AC is inherently end-to-end
+  manual, and record that reason
+- Visual/Feel → `production/qa/evidence/[story-slug]-evidence.md` + sign-off
+- UI → one manual evidence path or interaction test chosen in the draft
+- Config/Data → one applicable smoke-check result path
+
+Delete the unused type examples from the final story. A consumer must see one
+unambiguous path/alternative, not all five.
 
 **Status**: [ ] Not yet created
 
@@ -306,7 +329,12 @@ change meaning. This is what the programmer reads instead of the ADR.]
 
 ### Also update `production/epics/[epic-slug]/EPIC.md`
 
-Replace the "Stories: Not yet created" line with a populated table:
+Locate exactly one existing `> **Stories**: Not yet created` metadata field (or
+its already-populated Stories section for an update) and replace only that
+field/section. If no unique target exists, stop this EPIC edit and report the
+partial result; do not rewrite the whole EPIC.
+
+Replace the field with a populated table:
 
 ```markdown
 ## Stories
@@ -319,7 +347,12 @@ Replace the "Stories: Not yet created" line with a populated table:
 
 ### Also update `production/epics/index.md`
 
-Find the row in the index table matching this epic (by epic name or slug). Update its `Stories` column from `Not yet created` to `[N] stories` (where N is the count just written). If the index file does not exist, skip silently.
+Find the unique row in the index table matching this epic (by epic name or
+slug). Update its `Stories` column from `Not yet created` to `[N] stories`
+(where N is the total preserved plus newly written). If the index is missing or
+has zero/multiple matching rows, report that synchronization did not occur and
+call the story files/EPIC edit a partial result; never skip silently or rebuild
+unrelated rows.
 
 ---
 

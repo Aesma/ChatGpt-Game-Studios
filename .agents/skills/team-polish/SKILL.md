@@ -9,7 +9,7 @@ Invoke this workflow as `$team-polish`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[feature or area to polish] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[feature or area to polish]`. Reject unknown flags and extra control arguments with usage and exit before delegation.
 
 If no argument is provided, output usage guidance and exit without spawning any agents:
 > Usage: `$team-polish [feature or area]` — specify the feature or area to polish (e.g., `combat`, `main menu`, `inventory system`, `level-1`). Do not ask the user directly here; output the guidance directly.
@@ -20,21 +20,6 @@ When this skill is invoked with an argument, orchestrate the polish team through
 the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next phase.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
-
-**Director gate skip rule**: Before spawning any Tier 1 director or lead for review (outside of PHASE-GATE triggers), apply the resolved mode: skip if solo mode; skip if lean mode and this is not a PHASE-GATE.
 
 ## Team Composition
 - **performance-analyst** — Profiling, optimization, memory analysis, frame budget
@@ -61,13 +46,36 @@ Before parallel delegation, assign every candidate file to one writer. If perfor
 ## Pipeline
 
 ### Phase 1: Assessment
+Resolve the argument to one concrete feature/area, its runnable build entry, related
+assets/configuration, and the applicable performance-budget source. If multiple
+features share the name or more than one build entry is plausible, list candidates
+and wait for the user to choose; do not profile or write against an assumed target.
+
+Choose one profiling execution entry for this run. The orchestrator may run the
+existing `$perf-profile` workflow and hand its result to the performance-analyst,
+or the performance-analyst may perform the same checks directly; never run both
+and create competing baselines.
+
 Delegate to **performance-analyst**:
-- Profile the target feature/area using `$perf-profile`
-- Identify performance bottlenecks and frame budget violations
+- Profile the uniquely resolved target through `$perf-profile [existing-profiler-data-path]`
+  when claiming runtime budget results. A system/full static scan supplies
+  candidates only and cannot prove a frame/memory budget.
+- Identify performance bottlenecks and frame budget violations only from actual
+  comparable measurements and configured budgets
 - Measure memory usage and check for leaks
 - Benchmark against target hardware specs
 - Identify the concrete code, shader, VFX, audio, configuration, test-result, and report files that the pass may change; assign each to one owner
 - Output: performance report with prioritized optimization list and candidate-file ownership map
+
+During Assessment, determine whether the resolved target includes content-authoring
+or editor-tool files. If so, assign those already identified files to
+**tools-programmer** for stability/automation checks; otherwise omit that role from
+this run. Do not list a conditional role that the pipeline can never dispatch.
+
+Read performance targets only from the existing technical preferences/budget
+documents. If no applicable budget is configured, report the missing criterion
+and end with NEEDS MORE WORK; do not invent 60fps, memory, platform, or hardware
+targets.
 
 After Phase 1, present those concrete files and intended changes as the single changeset and obtain approval before Phases 2–4 write anything. All before metrics must describe the same approved baseline. A newly discovered bug report or unlisted repair path is a material scope expansion and must be added through the existing revised-changeset rule.
 
@@ -129,10 +137,15 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip only advisory work that cannot affect release readiness and note the gap in the final report
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
+
+Performance baseline/combined-candidate measurement, final regression/stress
+evidence, and the owner of any identified blocker are required. If one fails,
+stop dependent work and return NEEDS MORE WORK with a partial report; Skip cannot
+turn missing critical evidence into READY FOR RELEASE.
 
 Common blockers:
 - Input file missing (story not found, GDD absent) → redirect to the skill that creates it

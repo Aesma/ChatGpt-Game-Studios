@@ -42,7 +42,10 @@ This file contains required phases of `$gate-check`. Read it in full when the ma
 
 ## 5a. Chain-of-Verification
 
-After drafting the verdict in Phase 5, challenge it before finalising.
+After drafting the verdict in Phase 5, challenge it before finalising. Reuse
+manual answers already collected in Phase 4; do not ask the same question twice.
+If the challenge discovers a new blocking manual question, ask it before the
+final verdict. Until answered, the result cannot be PASS.
 
 **Step 1 — Generate 5 challenge questions** designed to disprove the verdict:
 
@@ -70,7 +73,9 @@ For a **FAIL** draft:
 - "Is the fail condition resolvable, or does it indicate a deeper design problem?"
 
 **Step 2 — Answer each question** independently.
-Do NOT reference the draft verdict text — re-check specific files or ask the user.
+Do NOT reference the draft verdict text — re-check specific files or use already
+collected user evidence. Newly required manual evidence is gathered before the
+verdict is finalized; unanswered items remain explicitly pending.
 
 **Step 3 — Revise if needed:**
 - If any answer reveals a missed blocker → upgrade verdict (PASS→CONCERNS or CONCERNS→FAIL)
@@ -126,7 +131,7 @@ Gate passed. What would you like to do next?
 >
 > 1. `$create-control-manifest` — extract technical rules from Accepted ADRs (required before epics)
 > 2. `$vertical-slice` — build the Vertical Slice **FIRST**, before writing epics or stories
-> 3. Playtest → `$playtest-report` — at least 1 session required to pass the Pre-Production gate; 3+ recommended before committing the full team
+> 3. Playtest → `$playtest-report analyze [path-to-completed-session-notes]` — at least 1 completed analyze report required to pass the Pre-Production gate; 3+ recommended before committing the full team
 > 4. `$ux-design [screen]` — UX specs for main menu, core HUD, pause menu (if not done)
 > 5. `$create-epics layer:foundation` then `$create-epics layer:core` — plan after fun is validated
 > 6. `$create-stories [epic-slug]` for each epic
@@ -167,14 +172,14 @@ Based on the verdict, suggest specific next steps:
 - **Missing stories for an epic?** → `$create-stories [epic-slug]` (run after each epic is created)
 - **Stories not implementation-ready?** → `$story-readiness` to validate stories before developers pick them up
 - **Tests failing?** → delegate to `lead-programmer` or `qa-tester`
-- **No playtest data?** → `$playtest-report`
-- **No playtest sessions beyond the minimum?** → Additional sessions give more reliable signal. 3+ total is recommended before committing the full team. Use `$playtest-report` to structure findings.
+- **No playtest data?** → `$playtest-report new` to create a template, then `$playtest-report analyze [path-to-completed-session-notes]` after the session
+- **No playtest sessions beyond the minimum?** → Additional sessions give more reliable signal. 3+ total is recommended before committing the full team. Use `$playtest-report analyze [path-to-completed-session-notes]` to structure completed findings.
 - **No Difficulty Curve doc?** → Create `design/difficulty-curve.md` from the template at `.codex/docs/templates/difficulty-curve.md` — or use `$quick-design "difficulty curve"` for a guided session.
 - **No player journey map?** → Create `design/player-journey.md` from the template at `.codex/docs/templates/player-journey.md` — or author it collaboratively using `$ux-design` Phase 2b.
 - **Need a quick sprint check?** → `$sprint-status` for current sprint progress snapshot
 - **Performance unknown?** → `$perf-profile`
 - **Not localized?** → `$localize scan` first; use the explicit locale-taking mode required by the resulting work
-- **Ready for release?** → `$launch-checklist`
+- **Ready for release?** → `$launch-checklist [YYYY-MM-DD]`; pass its exact persisted report path and canonical verdict back to this gate
 
 ---
 

@@ -168,6 +168,17 @@ and routes the result through the configured review mode.
 
 ## Coverage Notes
 
+### P1 Regression Matrix
+
+- [ ] One authorization precedes session checkpoint, prototype root, REPORT/index, and conditional existing pivot/graveyard targets.
+- [ ] 3–5 minutes and 1–3 weeks are defaults; the user confirms concept/team-specific experience length and build timebox.
+- [ ] Day number and velocity come only from dated checkpoint entries with actual completed work/user time; absent data is unknown.
+- [ ] Wizard-of-Oz evidence supports experience only and cannot pass technical/production feasibility.
+- [ ] Fallback/template verdict vocabulary is PROCEED/PIVOT/KILL and contains no malformed fence.
+- [ ] Full mode never appends index before CD-PLAYTEST; final REPORT and the single index row agree.
+- [ ] PIVOT-NOTE is stored/read only inside the current concept root, never selected globally/by mtime.
+- [ ] Insufficient sample/attempt evidence is unknown; KILL requires failed pre-confirmed criteria plus explicit user abandonment, not a mechanical box count.
+
 ### P0 Contract Coverage
 
 - [ ] Missing/placeholder game concept, systems index, key GDD, architecture, or control manifest returns BLOCKED with no prototype/session write and no PROCEED

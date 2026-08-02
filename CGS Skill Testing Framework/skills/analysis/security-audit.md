@@ -179,3 +179,19 @@ None. Security audit is a read-only advisory skill; no gates are invoked.
   partial delegation marks incomplete coverage and cannot yield CLEAR TO SHIP.
 - [ ] CRITICAL/HIGH means DO NOT SHIP; CLEAR TO SHIP requires complete evidence
   for every selected category; otherwise the result is ASSESSMENT INCOMPLETE.
+
+## P1 Contract Coverage
+
+- [ ] Unconfigured platform/network scope is proposed from code evidence and
+  confirmed; the auditor does not default to single-player or multiplayer.
+- [ ] Quick mode lists the exact checks capable of CRITICAL/HIGH results.
+- [ ] Search keywords produce candidates only; a finding requires call-site
+  data flow, trust-boundary, and relevant build-condition evidence.
+- [ ] CVE results require exact versions and authoritative advisories; missing
+  version/network yields Not Assessed rather than `none`.
+- [ ] New findings start Open. Accepted Risk requires an explicit existing user/team decision.
+- [ ] Severity follows exploitability and impact; multiplayer does not
+  mechanically promote every HIGH finding to CRITICAL.
+- [ ] No auditable source/config file means no report and no security verdict.
+- [ ] An existing same-day report is read and target-updated or the run stops;
+  it is never silently overwritten.

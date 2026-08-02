@@ -21,12 +21,16 @@ Resolve the review mode (once, store for all gate spawns this run):
 
 See `.codex/docs/director-gates.md` for the full check pattern.
 
+Require exactly one valid mode. `new` accepts no notes path; `analyze` requires exactly one readable project-internal text path. Reject missing mode, unknown mode/flags, multiple paths, path traversal/out-of-project paths, and missing/unreadable files with **BLOCKED** before any gate or write.
+
 Determine the mode:
 
 - `new` → generate/save a blank playtest report template, label it `not a completed session`, then stop without Phase 3 findings, CD-PLAYTEST, or a playtest COMPLETE verdict
 - `analyze [path]` → read raw notes and fill in the template with structured findings; only this mode continues through Phases 3–5
 
 ---
+
+Resolve the output as `production/qa/playtest-[date].md`. If more than one session shares the date, use an explicit session or build identifier from the input to form one deterministic filename; if none is available, ask the user. Existing files are previewed as updates and are never silently overwritten.
 
 ## Phase 2A: New Template Mode
 
@@ -100,7 +104,9 @@ State the session hypothesis and expected observable signal here. For analyze mo
 
 ## Phase 2B: Analyze Mode
 
-Read the raw notes at the provided path. Cross-reference with existing design documents. Fill in the template above with structured findings. Flag any playtest observations that conflict with design intent.
+Read the raw notes at the provided path. Identify each tester and session separately, preserve their original observations, and compute only explicit counts (for example, `3/5 testers`). Majority findings must retain minority observations; never rewrite a majority as unanimous.
+
+Cross-reference only systems, features, or project paths explicitly named in the notes and their directly associated GDDs. When no direct mapping exists, label the design intent `unknown`; do not scan unrelated design documents. Fill in the template above with structured findings and flag evidenced conflicts.
 
 ---
 
@@ -117,7 +123,7 @@ Present the categorized list, then route:
 
 - **Design changes:** list the affected GDD and the proposed design edit first. Only after the user actually revises that GDD should the handoff suggest `$propagate-design-change [path]`; observations alone are not a completed design change and cannot claim downstream impact.
 - **Balance adjustments:** "Run `$balance-check [system]` to verify the full balance picture before tuning values."
-- **Bugs:** "Use `$bug-report` to formally track these."
+- **Bugs:** search existing `production/qa/bugs/` records by supplied ID or a verifiable matching description. Link only a unique match; list candidates when ambiguous and do not create or modify a bug here. Findings without reproducible evidence remain observations. For a new uniquely evidenced defect, suggest `$bug-report`.
 - **Polish items:** "Add to the polish backlog in `production/` when the team reaches that phase."
 
 ---
@@ -139,9 +145,9 @@ Present the creative director's assessment before saving the report. If CONCERNS
 
 ## Phase 4: Save Report
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Add the deterministic `production/qa/playtest-[date-or-session].md` file or edit to the complete changeset preview; do not write it until that changeset is authorized.
 
-Once the complete changeset is authorized, write the file, creating the directory if needed.
+If the user declines authorization, state `report not saved` and stop without **COMPLETE**. Once the complete changeset is authorized, write the file, creating the directory if needed. Only a successful analyze-mode report write may reach **COMPLETE**; new mode reports only `template generated/saved`.
 
 ---
 

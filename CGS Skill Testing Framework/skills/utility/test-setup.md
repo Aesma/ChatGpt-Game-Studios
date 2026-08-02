@@ -96,6 +96,17 @@ Treat the complete described file set as one bounded changeset: use existing tas
 
 ## Protocol Compliance
 
+### P1 Regression Matrix
+
+- [ ] Existing-state checks every promised exact path; another workflow never satisfies `.github/workflows/tests.yml`.
+- [ ] `force` means continue/create missing targets and never regenerate or overwrite.
+- [ ] Versioned engine family is parsed with language/framework; unknown combinations stop.
+- [ ] Every standard directory has a versioned README/placeholder and summaries list actual files, not empty directories.
+- [ ] README says workflow reports failure and never claims branch protection is configured.
+- [ ] Smoke seed uses applicable game-concept paths and configured budgets; unknown placeholders are not PASS evidence.
+- [ ] Godot upload path is generated only from a verified runner/action artifact contract.
+- [ ] COMPLETE requires created files to satisfy current static contracts and any claimed tool load to have actually succeeded; otherwise BLOCKED/partial.
+
 - [ ] Reads engine from `technical-preferences.md` before generating any scaffold
 - [ ] Generates engine-appropriate test runner config (not generic)
 - [ ] Creates all 4 subdirectories from coding-standards.md

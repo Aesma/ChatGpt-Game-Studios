@@ -11,7 +11,7 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `scan | extract | validate | status | brief <locale> | cultural-review <locale...> | vo-pipeline <scan|script|validate|integrate> [locale] | rtl-check <locale...> | freeze [call|lift] | qa <locale...>`. Exactly one mode is required. Reject missing required locale/subcommand, unknown values, and repeated/conflicting arguments with **FAIL** and no writes.
 
-Delegate substantive work to the `localization-lead` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
+Choose at most one localization-lead delegation path for the run. When the `localization-lead` Codex subagent role is available, delegate the mode's substantive read-only analysis once; do not spawn it again inside a later phase. If unavailable, the current agent performs the same analysis and reports the fallback. Any conclusion requiring real human linguistic/playthrough QA remains unresolved; never fabricate a reviewer or sign-off.
 
 
 # Localization Pipeline
@@ -37,6 +37,8 @@ RTL layout testing, and localization QA sign-off.
 If no subcommand is provided, output usage and stop. Verdict: **FAIL** — missing required subcommand.
 
 Before any mode reads tables, resolve exactly one existing project source table and its format. If multiple candidates exist, ask the user to choose and stop until one is selected. If none exists, use the already-defined default `assets/data/strings/strings-en.json`. Every locale table in the run must use that same location/format; never maintain a parallel CSV/JSON source of truth or introduce conversion.
+
+Before diffing or writing in any mode, parse every required source/locale/manifest file. On any parse error, report the exact file and best available line/location, stop that mode's diff/write, and leave the original untouched.
 
 For any write-capable mode, compute every affected file before writing, including the primary table/output and any active-freeze update. Present all paths and exact modifications in one complete changeset. A freeze checklist/content decision does not authorize writes. If another affected file is discovered after preview, stop and re-preview the expanded set.
 
@@ -66,16 +68,18 @@ Report all findings with file paths and line numbers. This mode is read-only —
 
 ## Phase 2B: Extract Mode
 
-- Scan all source files for localized string references
-- Compare against the uniquely resolved source table
+- Reuse Scan Mode's player-visible source scope to find both hardcoded source text and localized string references. Exclude logs, test code/fixtures, and editor-only copy.
+- Compare the discovered text/references against the uniquely resolved source table
 - Generate new entries for strings not yet keyed
 - Suggest key names following the convention: `[category].[subcategory].[description]`
   - Example: `ui.hud.health_label`, `dialogue.npc.merchant.greeting`, `menu.main.play_button`
-- Each new entry must include a `context` field — a translator comment explaining:
+- Each new entry must include a `context` field — a translator comment explaining only facts verified from the UI/call site:
   - Where it appears (which screen, which scene)
   - Maximum character length
   - Any placeholder meaning (`{playerName}` = the player's chosen display name)
   - Gender/plurality context if applicable
+
+For any context property that cannot be confirmed (such as maximum length or gender), write an explicit `TODO/unknown` note. Do not guess, and do not claim COMPLETE while required context remains unknown.
 
 Output a diff of new strings to add to the source table. If string freeze is ACTIVE, compute the corresponding `production/localization/freeze-status.md` Post-Freeze Changes edit now and include both files in the same preview.
 
@@ -124,7 +128,7 @@ String freeze: [Active / Not yet called / Lifted]
 - [N] strings exceeding character limits
 - [N] placeholder mismatches
 - [N] orphaned keys
-- [N] strings added after freeze was called (freeze violations)
+- [N or unknown] strings added after freeze was called (freeze violations; count only parseable entries in the existing `production/localization/freeze-status.md` Post-Freeze Changes section, otherwise `unknown`)
 ```
 
 This mode is read-only — no files are written.
@@ -192,7 +196,7 @@ Add this proposed file or edit to the complete changeset preview; do not write i
 
 ## Phase 2F: Cultural Review Mode
 
-Spawn `localization-lead` through Codex subagent delegation. Ask them to audit the following for cultural sensitivity across the target locales (read from `assets/data/strings/` and `assets/`):
+Require at least one explicit target locale; missing locales stop for user input. Use the run's single localization-lead delegation path described above rather than spawning a second reviewer. Ask them to audit the following for cultural sensitivity across the target locales (read from `assets/data/strings/` and `assets/`):
 
 ### Content Areas to Review
 
@@ -229,13 +233,13 @@ Present findings as a table:
 
 BLOCKING = must fix before shipping that locale. ADVISORY = recommend change. NOTE = informational only.
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
+Keep findings conversational by default. If the user chooses to save them, use exactly `production/localization/cultural-review-[locale-set]-[date].md` and include that path in the run's complete changeset preview; do not write it until authorized.
 
 ---
 
 ## Phase 2G: VO Pipeline Mode
 
-Manage the voice-over localization process. Determine the sub-task from the argument:
+Manage the voice-over localization process. Determine the sub-task from the argument. Saved manifests and recording scripts use `production/localization/vo-manifest-[locale-or-source]-[date].md` and `production/localization/vo-script-[locale-or-source]-[date].md` respectively, and join the same complete changeset. For validate/integrate, if the required locale, VO directory, or manifest does not exist, report the missing input and stop that sub-task:
 
 - `vo-pipeline scan` — identify all dialogue lines that require VO recording
 - `vo-pipeline script` — generate recording scripts with director notes
@@ -246,7 +250,7 @@ Manage the voice-over localization process. Determine the sub-task from the argu
 
 Read the uniquely resolved string tables and `design/narrative/`. Identify:
 - All dialogue lines (keys matching `dialogue.*`) with source text
-- Lines already recorded (audio file exists in `assets/audio/vo/`)
+- Lines with a readable, non-empty audio file whose path/name matches the expected key and locale under `assets/audio/vo/`. File existence alone does not prove recorded status or quality
 - Lines not yet recorded
 
 Output a recording manifest:
@@ -273,14 +277,14 @@ Add this proposed file or edit to the complete changeset preview; do not write i
 
 ### VO Pipeline: Validate
 
-Find files matching `assets/audio/vo/[locale]/` for all `.wav`/`.ogg` files. Cross-reference against the VO manifest. Report:
+Require the explicit locale, recording manifest, and `assets/audio/vo/[locale]/` directory before validation. Find readable `.wav`/`.ogg` files there. Cross-reference against the VO manifest. Report:
 - Missing files (line in script, no audio file)
 - Extra files (audio file exists, no matching string key)
 - Naming convention violations
 
 ### VO Pipeline: Integrate
 
-Search `src/` for VO audio references. Verify each referenced path exists in `assets/audio/vo/[locale]/`. Report broken references.
+Require the explicit locale and existing `assets/audio/vo/[locale]/` directory before integration. Search `src/` for VO audio references. Verify each referenced path exists in `assets/audio/vo/[locale]/`. Report broken references.
 
 ---
 
@@ -289,7 +293,7 @@ Search `src/` for VO audio references. Verify each referenced path exists in `as
 Right-to-left languages (Arabic, Hebrew, Persian, Urdu) require layout mirroring beyond
 just translating text. This mode validates the implementation.
 
-Read `docs/technical-preferences.md` to determine the engine. Then check:
+Require explicit target locales and run this mode only for those that are RTL. Read `docs/technical-preferences.md` to determine one configured engine. If no engine is configured, report that engine-specific checks cannot run and limit the result to engine-independent findings; never guess or combine all three engines. Then check:
 
 **Layout mirroring**
 - Is RTL layout enabled in the engine? (Godot: `Control.layout_direction`, Unity: `RTL Support` package, Unreal: text direction flags)
@@ -379,7 +383,7 @@ Localization QA is a dedicated pass that runs after translations are delivered b
 before any locale ships. This is not the same as `/validate` (which checks completeness)
 — this is a structured playthrough-based quality check.
 
-Spawn `localization-lead` through Codex subagent delegation with:
+Use the run's single localization-lead delegation path described above with:
 - The target locale(s) to QA
 - The list of all screens/flows in the game (from `design/gdd/` or `$content-audit` output)
 - The current `$localize validate` report
@@ -428,7 +432,7 @@ Add this proposed file or edit to the complete changeset preview; do not write i
 ### Rules
 - English (en) is always the source locale
 - Every string table entry must include a `context` field with translator notes, character limits, and placeholder meaning
-- Never modify translation files directly — generate diffs for review
+- Never auto-translate or overwrite existing translated values. After complete changeset authorization, translation tables may receive empty new keys, obsolete markers, or source-table updates; always generate the diff for review first
 - Character limits must be defined per-UI-element and enforced in validate mode
 - String freeze must be called before sending strings to translators — never translate a moving target
 - RTL support must be designed in from the start — retrofitting RTL layout is expensive

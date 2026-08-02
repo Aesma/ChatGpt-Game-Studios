@@ -116,6 +116,16 @@ after a "May I apply the proposed changeset?"
 
 ---
 
+## P1 Regression Assertions
+
+- [ ] Missing, invalid, or past launch dates stop without guessing or writing
+- [ ] `dry-run` requests no write authorization, writes nothing, and is labelled not persisted/not sign-off evidence
+- [ ] Target platforms and online capability come from existing configuration; only applicable checkbox items are evaluated
+- [ ] Credential scans report only paths and safe categories, never the value
+- [ ] TODO/FIXME/HACK counts include only production source/build config and list paths
+- [ ] Compiler/test/leak claims require current or recent direct evidence; missing/empty evidence becomes manual confirmation, not PASS
+- [ ] A persisted run returns its exact path, canonical verdict, and existing Blocking/Conditional summaries for consumers
+
 ## Protocol Compliance
 
 - [ ] Checks all required categories (legal, platform, store, build, analytics, UX)

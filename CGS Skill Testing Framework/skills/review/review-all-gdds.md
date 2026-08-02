@@ -189,3 +189,19 @@ review; delegating to a director gate would create a circular dependency.
   blockers; FAIL means at least one blocker. INFO does not change the verdict.
 - [ ] Declining the optional report causes zero file changes. The workflow never
   writes session state or changes systems-index statuses.
+
+## P1 Contract Coverage
+
+- [ ] Missing Summary falls back to title plus Overview without a defect.
+- [ ] Since-last-review resolves the latest existing report, falls back to full
+  when absent, and follows only standard Dependencies/index fields.
+- [ ] Registry entries are candidate indexes; conflict findings cite source GDD text.
+- [ ] Full mode uses at most one subtask per phase, falls back to sequential work
+  when capacity is unavailable, and marks failures as partial coverage.
+- [ ] Progression-loop and 3–4 attention limits are contextual heuristics; absent
+  target-player/gameplay context produces a validation risk, not a blocker.
+- [ ] Formula/economy conclusions require ranges, units, frequency, and duration;
+  missing values remain undefined inputs.
+- [ ] Unspecified combined behavior is a warning; only explicit contradiction or
+  documented broken behavior is a blocker.
+- [ ] Handoff lists commands only and never applies an inline quick fix.

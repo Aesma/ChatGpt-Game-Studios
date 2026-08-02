@@ -19,7 +19,7 @@ Before parsing arguments, read `references/continued-workflow.md` in full, inclu
 
 Delegate substantive work to the `prototyper` Codex subagent role when it is available. If that role is unavailable, follow the same responsibilities in the current agent.
 
-Run implementation in an isolated Git worktree. If an isolated worktree is not available, ask the user before modifying the current workspace.
+Run implementation in an isolated Git worktree. At the start, display the actual worktree path and current branch and state that session-state, build files, and report files will all be written there. If the isolated worktree cannot be created or used, show the reason and ask the user to continue in the current workspace or stop. If they decline current-workspace use, stop without writes.
 
 
 ## Purpose
@@ -82,7 +82,9 @@ who rate and review early builds, and a deadline that prevents scope creep by de
 Many shipped games (Celeste, VVVVVV) began as jam prototypes. Not required — but
 worth considering if the timing is right.
 
-Read the concept description from the argument. Before building anything, define
+Read the concept description from the argument and derive exactly one safe directory slug. Reject path separators, traversal, absolute paths, and empty/ambiguous slugs. The target is `prototypes/[slug]-concept/` (or the existing spike suffix in Spike Mode).
+
+Before building anything, define
 the **falsifiable hypothesis** this prototype must answer:
 
 > *"If the player [does X], they will feel [Y] — we will know this is true if [measurable signal Z]."*
@@ -113,7 +115,7 @@ language in use.
 
 ## Phase 3: Choose the Prototype Path
 
-Select the prototype path. If `--path [html|engine|paper]` was passed, use that.
+Select the prototype path. If one valid `--path [html|engine|paper]` was passed, use it directly and explain why; do not ask the user to choose it again. If it conflicts with the hypothesis (for example HTML for timing-sensitive feel), show the risk and ask only whether to confirm that supplied path or stop.
 Otherwise, use this quick-reference first, then read the full path details below:
 
 | Genre | Recommended path | Key reason |
@@ -138,7 +140,7 @@ Otherwise, use this quick-reference first, then read the full path details below
 **Best for:** Puzzle games, card games, turn-based strategy, word games, idle games,
 top-down logic games. Anything where timing precision doesn't matter.
 
-**Reliability:** ~85–90% one-shot. The agent writes a single self-contained HTML
+**Tradeoff:** fastest distribution and setup for logic-focused tests, but it cannot establish native timing/feel. The agent writes a single self-contained HTML
 file the user opens in a browser — no install required.
 
 **Limitation — browser latency lies about game feel.** Browsers introduce
@@ -175,7 +177,7 @@ build can reach real players globally in minutes. Use this actively:
 moment-to-moment feel IS the hypothesis. Use this when HTML latency would lie about
 the result.
 
-**Reliability:** ~50–60% one-shot. Expect 2–4 rounds of iteration — this is
+**Tradeoff:** best fidelity for feel, with more setup and likely iterative debugging. Expect multiple rounds of iteration — this is
 normal, not a failure.
 
 **Limitation — requires engine installed and running.** This path is a
@@ -185,8 +187,8 @@ multi-turn collaborative loop:
 3. User reports errors or observations
 4. Agent fixes and iterates
 
-**Sunk cost rule:** If the user has been iterating for more than 2 hours without
-reaching a playable state, stop. The scope is too large or the question is wrong.
+**Sunk cost rule:** Ask the user for elapsed time at iteration checkpoints. If they report more than 2 hours without
+reaching a playable state, stop. If elapsed time is unavailable, ask; never claim to have measured it automatically. The scope is too large or the question is wrong.
 Reframe the hypothesis and simplify aggressively, or switch to Paper path.
 
 **Output:** A minimal runnable engine project in `prototypes/[name]-concept/`.
@@ -240,8 +242,8 @@ recommendation pre-stated:
 
 - **Prompt**: "Which prototype path would you like to use? (Based on your concept, I'd recommend [path] — [one sentence reason].)"
 - **Options**:
-  - `HTML — browser prototype` — puzzle, card, turn-based, strategy, idle. Opens by double-clicking, no install. 85–90% reliable. **Not suitable for action games** — browser latency lies about feel.
-  - `Engine — native prototype` — action, platformer, physics, or anything where feel IS the hypothesis. 50–60% one-shot; 2–4 iteration rounds are normal. Requires engine installed.
+  - `HTML — browser prototype` — puzzle, card, turn-based, strategy, idle. Opens by double-clicking, no install. **Not suitable for action games** — browser latency lies about feel.
+  - `Engine — native prototype` — action, platformer, physics, or anything where feel IS the hypothesis. Higher setup cost and iterative debugging are normal. Requires engine installed.
   - `Paper — rules document + play log` — strategy, economy, logic, board-game-style mechanics. A simulated run checks rule executability only; real testers are required for experience conclusions.
 
 ---
@@ -258,7 +260,13 @@ Define in 3–5 bullet points the minimum viable prototype:
 **Scope constraint:** A concept prototype tests ONE mechanic — not the whole game.
 If scope covers more than one mechanic, cut it down. When in doubt, cut more.
 
+Before presenting the plan, inspect the exact target directory. If it already exists, offer exactly: **extend** the related prototype, **replace in place**, or **archive then start fresh** (plus stop). Replace and archive are destructive/move operations that require separate explicit confirmation and verified source/destination paths; never silently overwrite. If the existing directory is unrelated to the same concept, stop for a new safe slug rather than treating it as a continuation.
+
 Present this plan to the user before building. Get confirmation before proceeding.
+
+At concept-prototype timebox checkpoints, ask the user for elapsed time. Apply
+the existing one-day limit only to the user-reported elapsed value; if it is
+unknown, ask rather than claiming to measure it automatically.
 
 Once confirmed, draft (but do not write) the session checkpoint for `production/session-state/active.md`. Include concept name, hypothesis, path, scope, and current phase. The initial-build changeset in Phase 5 must preview this checkpoint together with every initial file for the selected path before either is written.
 

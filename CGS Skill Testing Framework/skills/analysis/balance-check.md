@@ -35,6 +35,14 @@ a balance report but asks "May I apply the proposed changeset?"
 
 - The case where `assets/data/` is entirely empty is not tested; behavior
   follows the CONCERNS pattern with a message that no data files were found.
-- Tolerance thresholds (±10%, ±20%) are implementation details of the skill;
-  the tests verify that deviations are detected and classified, not the
-  exact threshold values.
+- Deviation thresholds must come from the target GDD/data source. The tests do
+  not permit undeclared generic tolerance bands to substitute for a missing baseline.
+
+## P1 Regression Assertions
+
+- [ ] General system names resolve through systems-index/GDDs; ambiguous names are not guessed
+- [ ] File input accepts one existing project-local supported text data file only
+- [ ] Data Sources contain only explicit GDD references, same-system files, and direct dependencies with reasons
+- [ ] Missing formula/range/unit/data produces NOT EVALUATED and prevents BALANCED
+- [ ] Divide-by-zero, invalid probabilities, incompatible units, negative domains, cycles, and insufficient stochastic evidence skip only affected calculations
+- [ ] Economy-designer runs only for Economy or Loot

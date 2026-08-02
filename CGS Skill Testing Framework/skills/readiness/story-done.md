@@ -110,13 +110,13 @@ Verified automatically by `$skill-test static` — no fixture needed.
 1. Skill reads review mode — determines `full`
 2. After implementation verification, skill invokes LP-CODE-REVIEW gate
 3. Lead programmer reviews the implementation
-4. If LP verdict is NEEDS CHANGES → story cannot be marked Complete
-5. If LP verdict is APPROVED → skill proceeds to mark story Complete
+4. If LP verdict is REJECT → story cannot be marked Complete
+5. If LP verdict is APPROVE → skill proceeds; CONCERNS can only produce notes
 
 **Assertions (5a):**
 - [ ] Skill reads review mode before deciding whether to invoke LP-CODE-REVIEW
 - [ ] LP-CODE-REVIEW gate is invoked in full mode after implementation check
-- [ ] An LP NEEDS CHANGES verdict prevents story from being marked Complete
+- [ ] An LP REJECT verdict prevents story from being marked Complete
 - [ ] Gate result is noted in output: "Gate: LP-CODE-REVIEW — [result]"
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 
@@ -185,6 +185,33 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Preview lists active.md creation/append
 - [ ] Tech-debt register is listed only when that option was selected
 - [ ] Declined authorization performs zero writes
+
+### Case 10: Input and complete ADR validation
+
+**Assertions:**
+- [ ] Only existing project-local Markdown story files under production/epics are accepted
+- [ ] Directories, indexes, unknown flags, and outside paths stop before tests/writes
+- [ ] Every governing ADR is read and must be Accepted
+- [ ] Multiple ADRs require exactly one explicit primary marker; order never implies primary
+- [ ] ADR N/A is valid only for Config/Data with a non-empty reason
+
+### Case 11: Evidence candidates cannot prove completion
+
+**Assertions:**
+- [ ] Registry/GDD conflict or unverifiable source text is BLOCKING and both sources are shown
+- [ ] Name/literal searches are labeled evidence candidates
+- [ ] Exact Test Evidence paths and actual assertions are required for COVERED
+- [ ] QL-TEST-COVERAGE receives a one-story list plus governing GDD AC and edge cases
+
+### Case 12: Active selection, next candidate, and idempotent notes
+
+**Assertions:**
+- [ ] No-arg ignores completed active.md history and requires an explicit In Progress story
+- [ ] Matching YAML `in_progress` entries precede sprint/header fallback
+- [ ] Next candidate is calculated before active.md enters the changeset
+- [ ] Matching YAML is authoritative for `ready`/`backlog` candidates
+- [ ] Candidates are labeled readiness-not-yet-verified
+- [ ] Re-running updates one Completion Notes section rather than appending duplicates
 
 ---
 

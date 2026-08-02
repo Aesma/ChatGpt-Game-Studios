@@ -50,6 +50,17 @@ NEEDS REVISION, or MAJOR REVISION NEEDED.
 
 ## Protocol Compliance
 
+## P1 Regression Matrix
+
+- [ ] Specific inputs must be existing project-local `design/ux/*.md` regular files; invalid path/directory/non-Markdown/external inputs get no checklist or verdict.
+- [ ] GDD coverage reads header links plus explicit screen/HUD references and states limitations when completeness is unknown.
+- [ ] Loading is required only for async/visible delay; synchronous screens record N/A.
+- [ ] Unconfigured input stays authoritative unknown; the spec header/platform is never used as authority and PC never implies keyboard-only.
+- [ ] UX navigation/feedback/accessibility controls are allowed without inventing gameplay state.
+- [ ] HUD contexts derive from game concept/GDD and non-applicable contexts are N/A.
+- [ ] Pattern checks use `Tab Bar`, require only used patterns, and verify every current-spec pattern is a complete persisted library entry.
+- [ ] NEEDS/MAJOR remains the downstream verdict and is never called implementation-ready despite a separate user risk decision.
+
 - [ ] `all` never applies one checklist to every Markdown file
 - [ ] Completeness headings come from current templates, not a copied 4-section/5-state schema
 - [ ] Unsupported files receive no verdict

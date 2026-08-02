@@ -14,7 +14,16 @@ Arguments: `[sprint-N|milestone-name]`. Treat bracketed values as optional unles
 
 ## Phase 1: Parse Arguments
 
-Determine whether this is a sprint retrospective (`sprint-N`) or a milestone retrospective (`milestone-name`). Resolve one exact existing target and retain its identifier for every later data-source check. Do not allow a current status file to substitute for a different or historical target.
+Determine whether this is a sprint retrospective (`sprint-N`) or a milestone
+retrospective (`milestone-name`). With no argument, list the exact existing
+sprint and milestone candidates and ask the user to choose one. Reject unknown
+argument forms. If a name matches multiple artifacts, list their paths and ask;
+do not pick by filename or modification time.
+
+Resolve one non-empty existing target and retain its identifier for every later
+data-source check. If the selected file is empty, stop or accept user-provided
+data explicitly. Do not allow a current status file to substitute for a
+different or historical target.
 
 ---
 
@@ -48,74 +57,64 @@ Read the sprint or milestone plan from the appropriate location:
 - Sprint plans: `production/sprints/`
 - Milestone definitions: `production/milestones/`
 
-**Also check for `production/sprint-status.yaml`**: use it only when its sprint
-identifier matches the exact retrospective target. For a matching sprint it is
-the primary source for actual story completion status; otherwise report it as
-unrelated and do not use it. A milestone retrospective aggregates only the
+Use `production/sprint-status.yaml` only when its sprint identifier matches the
+exact retrospective target. A milestone retrospective aggregates only the
 sprints/goals explicitly included by the milestone artifact and never imports
 an unrelated current sprint status. Note discrepancies between matching status
 and plan sources.
 
-**If the file does not exist or is empty**, output:
+If the target file does not exist or is empty, offer the user two options:
 
-> "No sprint data found for [sprint/milestone]. Run `$sprint-status` to generate
-> sprint data first, or provide the sprint details manually."
+- provide tasks, dates, and outcomes manually as an explicitly identified source;
+- stop with **BLOCKED — no sprint or milestone data available**.
 
-Then ask the user directly to present two options:
-
-- **[A] Provide data manually** — ask the user to paste or describe the sprint
-  tasks, dates, and outcomes; use that as the source of truth for the retrospective.
-- **[B] Stop** — abort the skill. Verdict: **BLOCKED** — no sprint data available.
-
-If the user chooses [A], collect the data and continue to Phase 3 using what they provide.
-If the user chooses [B], stop here.
-
-Extract: planned tasks, estimated effort, owners, and goals.
-
+Extract planned tasks, estimated effort, owners, goals, and an explicit period.
 Actual effort, bug counts, estimation accuracy, and historical velocity may be
-calculated only when existing sprint/status/bug/retrospective artifacts explicitly
-provide the required values. Missing inputs must be written as
-`N/A — source unavailable`; do not infer time spent from commits or completion dates.
+calculated only when existing artifacts explicitly provide the values. Missing
+inputs are `N/A — source unavailable`; do not infer time spent from commits or
+completion dates.
 
-Run Git history read-only for the sprint period to understand what was actually committed and when:
-
-```
-git log --oneline --since="4 weeks ago"
-```
-
-Adjust the `--since` date to match the sprint duration if known from the sprint plan. If the dated query fails or returns no usable history, fall back to `git log --oneline -20`.
+Read Git history only when the selected artifact provides a clear start/end
+period, and constrain the query to it. If the period is absent or the dated
+query fails, mark the commit metric unavailable. Do not substitute the most
+recent 20 commits or another arbitrary window.
 
 ---
 
 ## Phase 3: Analyze Completion and Trends
 
-Scan for completed and incomplete tasks by comparing the plan against actual deliverables. Check for:
+Compare the plan against actual deliverables and identify:
 
-- Tasks completed as planned
-- Tasks completed but modified from the plan
-- Tasks carried over (not completed)
-- Tasks added mid-sprint (unplanned work)
-- Tasks removed or descoped
+- tasks completed as planned;
+- tasks completed but modified from the plan;
+- tasks carried over;
+- tasks added mid-period;
+- tasks removed or descoped.
 
-Scan the codebase for TODO/FIXME trends:
+For TODO/FIXME/HACK reporting, use the same existing project source/content
+directories and exclusions for the current and historical counts. State the
+scope. If a prior retrospective did not use the same method, report current
+counts only and do not claim a growing/shrinking trend.
 
-- Count current TODO/FIXME/HACK comments
-- Compare to previous sprint counts if available (check previous retrospectives)
-- Note whether technical debt is growing or shrinking
+Read previous retrospectives to check earlier action items and velocity. In the
+three-period table, display `N/A` for every unavailable period. Describe a trend
+only when at least two periods have comparable definitions and data.
 
-Read previous retrospectives (if any) from `production/retrospectives/` to check:
+Separate evidence types throughout the analysis:
 
-- Were previous action items addressed?
-- Are the same problems recurring?
-- How has velocity trended?
+- **Artifact-backed observation**: cite the plan, status, bug, Git-period, or
+  retrospective source.
+- **User-provided reflection**: label it as the user's/team's reflection.
+- **Unknown cause or sentiment**: write `Unknown — team reflection not supplied`.
+
+Do not infer what went well/poorly or a likely cause solely from commit volume
+or status changes.
 
 ---
 
 ## Phase 4: Generate the Retrospective
 
-Keep every metric source-traceable. Use `N/A — source unavailable` for any
-actual effort, bug count, estimation accuracy, or velocity input not explicitly
-present in an existing artifact.
+Keep every metric source-traceable. Use `N/A — source unavailable` where needed.
 
 ```markdown
 ## Retrospective: [Sprint N / Milestone Name]
@@ -128,110 +127,103 @@ Generated: [Date]
 |--------|---------|--------|-------|
 | Tasks | [X] | [Y] | [+/- Z] |
 | Completion Rate | -- | [Z%] | -- |
-| Story Points / Effort Days | [X] | [Y] | [+/- Z] |
-| Bugs Found | -- | [N] | -- |
-| Bugs Fixed | -- | [N] | -- |
+| Story Points / Effort Days | [X] | [Y or N/A] | [delta or N/A] |
+| Bugs Found | -- | [N or N/A] | -- |
+| Bugs Fixed | -- | [N or N/A] | -- |
 | Unplanned Tasks Added | -- | [N] | -- |
-| Commits | -- | [N] | -- |
+| Commits | -- | [N or N/A] | -- |
+
+[Cite the existing source path beside each populated metric; use N/A when unavailable.]
 
 ### Velocity Trend
 
 | Sprint | Planned | Completed | Rate |
 |--------|---------|-----------|------|
-| [N-2] | [X] | [Y] | [Z%] |
-| [N-1] | [X] | [Y] | [Z%] |
-| [N] (current) | [X] | [Y] | [Z%] |
+| [N-2] | [X/N/A] | [Y/N/A] | [Z%/N/A] |
+| [N-1] | [X/N/A] | [Y/N/A] | [Z%/N/A] |
+| [N] | [X/N/A] | [Y/N/A] | [Z%/N/A] |
 
-**Trend**: [Increasing / Stable / Decreasing]
-[One sentence explaining the trend]
+**Trend**: [Increasing / Stable / Decreasing / N/A]
+[Only compare at least two like-for-like periods.]
 
 ### What Went Well
-- [Observation backed by specific data or examples]
-- [Another positive observation]
-- [Recognize specific contributions or decisions that paid off]
+- [Artifact-backed observation with source]
+- [User-provided reflection, labeled]
+- [Unknown if no evidence/reflection exists]
 
 ### What Went Poorly
-- [Specific issue with measurable impact -- e.g., "Feature X took 5 days
-  instead of estimated 2, blocking tasks Y and Z"]
-- [Another issue with impact]
-- [Do not assign blame -- focus on systemic causes]
+- [Artifact-backed observation with impact]
+- [User-provided reflection, labeled]
+- [Do not infer team sentiment or blame]
 
 ### Blockers Encountered
 
 | Blocker | Duration | Resolution | Prevention |
 |---------|----------|------------|------------|
-| [What blocked progress] | [How long] | [How it was resolved] | [How to prevent recurrence] |
+| [blocker] | [value/N/A] | [value/N/A] | [reflection/Not supplied] |
 
 ### Estimation Accuracy
 
 | Task | Estimated | Actual | Variance | Likely Cause |
 |------|-----------|--------|----------|--------------|
-| [Most overestimated task] | [X] | [Y] | [+Z] | [Why] |
-| [Most underestimated task] | [X] | [Y] | [-Z] | [Why] |
+| [task] | [X] | [Y/N/A] | [Z/N/A] | [user-provided/Unknown] |
 
-**Overall estimation accuracy**: [X%] of tasks within +/- 20% of estimate
-
-[Analysis: Are we consistently over- or under-estimating? For which types of
-tasks? What adjustment should we apply?]
+**Overall estimation accuracy**: [evidence-backed percentage or N/A]
 
 ### Carryover Analysis
 
 | Task | Original Sprint | Times Carried | Reason | Action |
 |------|----------------|---------------|--------|--------|
-| [Task that was not completed] | [Sprint N-X] | [N] | [Why] | [Complete / Descope / Redesign] |
+| [task] | [sprint] | [N/N/A] | [artifact/user/Unknown] | [decision/Not set] |
 
 ### Technical Debt Status
-- Current TODO count: [N] (previous: [N])
-- Current FIXME count: [N] (previous: [N])
-- Current HACK count: [N] (previous: [N])
-- Trend: [Growing / Stable / Shrinking]
-- [Note any areas of concern]
+- Measurement scope: [directories/exclusions]
+- Current TODO/FIXME/HACK counts: [N]
+- Comparable previous counts: [N or N/A]
+- Trend: [Growing/Stable/Shrinking/N/A]
 
 ### Previous Action Items Follow-Up
 
-| Action Item (from Sprint N-1) | Status | Notes |
-|-------------------------------|--------|-------|
-| [Previous action] | [Done / In Progress / Not Started] | [Context] |
+| Action Item | Status | Notes |
+|-------------|--------|-------|
+| [previous action] | [Done/In Progress/Not Started] | [source] |
 
 ### Action Items for Next Iteration
 
 | # | Action | Owner | Priority | Deadline |
 |---|--------|-------|----------|----------|
-| 1 | [Specific, measurable action] | [Who] | [High/Med/Low] | [When] |
-| 2 | [Another action] | [Who] | [Priority] | [When] |
+| 1 | [action] | [provided owner or Unassigned] | [High/Med/Low] | [provided date or Not set] |
 
 ### Process Improvements
-- [Specific change to how we work, with expected benefit]
-- [Another improvement -- keep it to 2-3 actionable items, not a wish list]
+- [Specific evidence-backed or user-provided proposal]
 
 ### Summary
-[2-3 sentence overall assessment: Was this a good sprint/milestone? What is
-the single most important thing to change going forward?]
+[2-3 sentences distinguishing observations from reflection.]
 ```
+
+Before saving, explicitly ask the user to confirm the action-item draft,
+including every owner and deadline. Do not assign commitments on the user's or
+another person's behalf; absent values remain `Unassigned` and `Not set`.
 
 ---
 
 ## Phase 5: Save Retrospective
 
-Present the retrospective and top findings to the user (completion rate, velocity trend, top blocker, most important action item).
-
-Add this proposed file or edit to the complete changeset preview; do not write
-it until that changeset is authorized. Use
+Present the complete retrospective and top findings. Add the proposed create,
+targeted update, and any archive move to one complete changeset preview. Use
 `production/retrospectives/retro-[sprint-slug]-[date].md` for a sprint or
 `production/retrospectives/retro-[milestone-name]-[date].md` for a milestone.
-If Start fresh was selected, the archive move and new file are part of this
-same changeset.
 
-Once the complete changeset is authorized, write the file, creating the `production/retrospectives/` directory if needed. Verdict: **COMPLETE** — retrospective saved.
-
-If the complete changeset is not authorized, stop here. Verdict: **BLOCKED** — changeset not authorized.
+Once authorized, write the file and perform only the previewed archive move.
+Verdict: **COMPLETE — retrospective saved**. If authorization is declined,
+report **BLOCKED — changeset not authorized**.
 
 ---
 
 ## Phase 6: Next Steps
 
-End after saving or declining the retrospective. Provide the generated file
-path and relevant existing commands as optional handoffs:
+End after saving or declining. Provide the generated file path and existing
+commands as optional later handoffs:
 
 - `$sprint-plan new` may consume the retrospective when the user invokes it later.
 - For a milestone, `$gate-check` may be run later as a separate explicit workflow.
@@ -240,7 +232,7 @@ Do not invoke either workflow from this retrospective run.
 
 ### Guidelines
 
-- Be honest and specific. Vague retrospectives produce vague improvements.
+- Be honest and specific; distinguish facts from team reflection.
 - Focus on systemic issues, not individual blame.
 - Limit action items to 3-5.
 - Do not assign an owner, deadline, or cause unless an artifact or the user supplies it.

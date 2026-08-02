@@ -82,3 +82,13 @@ changeset authorization.
   via Case 4 but not all link types are individually verified.
 - Registry and story candidates are discovered before the single changeset
   approval; no post-write prompt or unconditional story update is permitted.
+
+## P1 Regression Assertions
+
+- [ ] Retrofit accepts exactly one existing project-local `docs/architecture/adr-*.md` file
+- [ ] Missing engine reference and unreadable registry stop with explicit limitations and no verified claim
+- [ ] Existing decisions are checked for duplicate title/domain/summary before allocating a number
+- [ ] The ADR directory is re-read before writing and an occupied number is never overwritten
+- [ ] GDD synchronization is selectable only when current and proposed text are both shown
+- [ ] Specialist notes never alter user-confirmed content without returning to the visible draft
+- [ ] Superseded registry entries use the parseable single value `status: superseded`

@@ -9,7 +9,10 @@ Invoke this workflow as `$team-ui`.
 
 Before the first file change, present the complete proposed changeset, listing every file and intended modification, and obtain one explicit approval. After approval, make all changes within that boundary continuously without asking again file by file. If the scope expands materially, stop, present the revised changeset, and obtain one new approval.
 
-Arguments: `[UI feature description] [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
+Arguments: `[UI feature description]`. Reject unknown flags or extra control arguments before project reads.
+
+If no UI feature description is provided, output usage with an example and exit
+without reading project files, spawning agents, or writing.
 
 When this skill is invoked, orchestrate the UI team through a structured pipeline.
 
@@ -17,21 +20,6 @@ When this skill is invoked, orchestrate the UI team through a structured pipelin
 the user with the subagent's proposals as selectable options. Write the agent's
 full analysis in conversation, then capture the decision with concise labels.
 The user must approve before moving to the next phase.
-
-## Phase 0: Resolve Review Mode
-
-1. If `--review [mode]` was passed as an argument, use that mode.
-2. Else read `production/review-mode.txt` — use whatever is written there.
-3. Else default to `lean`.
-
-Modes:
-- `full` — spawn all director and lead gates as described
-- `lean` — skip director gates unless they are PHASE-GATE type (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE)
-- `solo` — skip all director gate spawning entirely; run the skill without any agent gates
-
-Store the resolved mode for use in all subsequent phases.
-
-**Director gate skip rule**: Before spawning creative-director, art-director, or any other Tier 1/2 director for review (outside of PHASE-GATE triggers), apply the resolved mode: skip if solo mode; skip if lean mode and this is not a PHASE-GATE.
 
 ## Team Composition
 - **ux-designer** — User flows, wireframes, accessibility, input handling
@@ -41,10 +29,10 @@ Store the resolved mode for use in all subsequent phases.
 - **accessibility-specialist** — Audits accessibility compliance at Phase 4
 
 **Templates used by this pipeline:**
-- `ux-spec.md` — Standard screen/flow UX specification
-- `hud-design.md` — HUD-specific UX specification
-- `interaction-pattern-library.md` — Reusable interaction patterns
-- `accessibility-requirements.md` — Committed accessibility tier and requirements
+- `.codex/docs/templates/ux-spec.md` — Standard screen/flow UX specification
+- `.codex/docs/templates/hud-design.md` — HUD-specific UX specification
+- `.codex/docs/templates/interaction-pattern-library.md` — Reusable interaction patterns
+- `.codex/docs/templates/accessibility-requirements.md` — Template whose committed instance supplies the accessibility tier
 
 ## How to Delegate
 
@@ -66,7 +54,7 @@ Before designing anything, read and synthesize:
 - `design/player-journey.md` — player's state and context when they reach this screen
 - All GDD UI Requirements sections relevant to this feature
 - `design/ux/interaction-patterns.md` — existing patterns to reuse (not reinvent)
-- `design/accessibility-requirements.md` — committed accessibility tier (e.g., Basic, Enhanced, Full)
+- `design/accessibility-requirements.md` — committed accessibility tier: Basic, Standard, Comprehensive, or Exemplary
 
 **If `design/ux/interaction-patterns.md` does not exist**, surface the gap immediately:
 > "interaction-patterns.md does not exist — no existing patterns to reuse."
@@ -81,7 +69,9 @@ Summarize the context in a brief for the ux-designer: what the player is doing, 
 
 Choose one authoring route before work starts: use `$ux-design [feature name]`, or use ux-designer only when that entry is unavailable, with the same template and path contract. Do not switch routes mid-run.
 
-If designing the HUD, use the `hud-design.md` template instead of `ux-spec.md`.
+If designing the HUD, use `.codex/docs/templates/hud-design.md`; otherwise use
+`.codex/docs/templates/ux-spec.md`. The fallback ux-designer must read and preserve
+the complete same template and output-path contract.
 
 > **Notes on special cases:**
 > - For HUD design specifically, invoke `$ux-design` with `argument: hud` (e.g., `$ux-design hud`).
@@ -122,7 +112,7 @@ Delegate to **ui-programmer**:
 - **Use patterns from `design/ux/interaction-patterns.md`** — do not reinvent patterns that are already specified. If a pattern almost fits but needs modification, note the deviation and flag it for ux-designer review.
 - **UI NEVER owns or modifies game state** — display only; emit events for all player actions
 - All text through the localization system — no hardcoded player-facing strings
-- Support both input methods (keyboard/mouse AND gamepad)
+- Support exactly the target inputs configured in `.codex/docs/technical-preferences.md`; do not infer keyboard/gamepad from platform. If target inputs are unconfigured, stop BLOCKED before implementation.
 - Implement accessibility features per the committed tier in `design/accessibility-requirements.md`
 - Wire up data binding to game state
 - Do not create an authoritative pattern during implementation. A newly discovered pattern requirement returns to Phase 1's user decision, single pattern-library writer, authorized edit, and review before implementation resumes.
@@ -144,7 +134,7 @@ All three review streams must report before proceeding to Phase 5.
 - Confirm UI sounds trigger through the audio event system (no direct audio calls)
 - Test at all supported resolutions and aspect ratios
 - **Verify `design/ux/interaction-patterns.md` is up to date** — if any new patterns were introduced during this feature's implementation, confirm they have been added to the library
-- **Confirm all HUD elements respect the visual budget** defined in `design/ux/hud.md` (element count, screen region allocations, maximum opacity values)
+- **For HUD mode only**, confirm all HUD elements respect the visual budget defined in `design/ux/hud.md` (element count, screen region allocations, maximum opacity values). Screen/flow modes use their own approved spec constraints and do not require `hud.md`.
 
 After each fix, return the affected file to the same Phase 4 reviewer that raised the finding for a targeted re-check. COMPLETE requires all blockers to be closed, all three required reviewers to have confirmed their findings, and no change to reviewed content after the last re-check.
 

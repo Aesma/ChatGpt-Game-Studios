@@ -86,3 +86,16 @@ of a lightweight design tool. The skill asks "May I apply the proposed changeset
   no significant cross-system contract, core-rule rewrite, or systems-index entry.
 - [ ] The workflow writes only the quick spec. Required GDD changes are recorded
   as not applied; a core/contract change redirects before drafting.
+
+## P1 Contract Coverage
+
+- [ ] The package description and result identify an independent file under
+  `design/quick-specs/`; no story embedding is claimed.
+- [ ] Systems-index registration is decided before drafting and redirects when required.
+- [ ] Data format comes from project technical preferences, control manifest,
+  or existing data files; an unconfigured format remains `TBD`, never default JSON.
+- [ ] GDD/prior-spec candidates are listed; ambiguous matches or unresolved
+  conflicts cannot produce COMPLETE.
+- [ ] A required GDD change is reported as not applied by this workflow.
+- [ ] Story-readiness/dev-story handoff is offered only for an existing story
+  that already references the spec; otherwise only the spec path is reported.

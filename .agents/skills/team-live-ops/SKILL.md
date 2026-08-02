@@ -68,7 +68,16 @@ Delegate to **narrative-director**:
 - Identify which existing lore threads this season can advance
 - Output: narrative framing document (theme, story hook, lore connections)
 
-### Phase 3: Economy Design (parallel with Phase 2 if theme is clear)
+### Phases 3 and 4: Economy and Analytics (parallel after Phase 2)
+After Phase 2 completes, issue the economy-designer and analytics-engineer
+delegations before waiting for either result. They both use the approved season
+brief and narrative framing; neither depends on the other's initial draft.
+
+For Phase 3, first check `design/live-ops/economy-rules.md`. If it is missing,
+state that economy health cannot be validated and ask the user to stop or
+continue with a non-pricing outline only. A provisional outline must not claim
+pricing/currency health was checked.
+
 Delegate to **economy-designer**:
 - Read the season brief and existing economy rules from `design/live-ops/economy-rules.md`
 - Design the reward track: free tier progression, premium tier value proposition
@@ -80,13 +89,18 @@ Delegate to **economy-designer**:
 Present material reward/economy alternatives and obtain the Phase 3 product
 decision before dependent content is finalized.
 
-### Phase 4: Analytics and Success Metrics (parallel with Phase 3)
+### Phase 4: Analytics and Success Metrics (parallel with Phase 3 after Phase 2)
 Delegate to **analytics-engineer**:
 - Read the season brief
 - Define success metrics: participation rate target, retention lift target, battle pass completion rate
 - Design any A/B tests to run during the season (e.g., different reward cadences)
 - Specify new telemetry events needed for this season's content
 - Output: analytics plan with success criteria and instrumentation requirements
+
+After both parallel drafts return and the economy/reward choice is finalized,
+Phase 7 must reconcile them: every final reward, price, currency flow, cadence,
+and random/pity event must have corresponding instrumentation or be listed as
+an unresolved analytics gap.
 
 ### Phase 5: Content Writing (parallel)
 Delegate in parallel:
@@ -108,15 +122,24 @@ Collect outputs from all phases and present a consolidated season plan:
 - Narrative framing (Phase 2)
 - Economy design and reward tables (Phase 3)
 - Analytics plan and success metrics (Phase 4)
-- Written content inventory (Phase 5)
+- Written content inventory and approved player-facing copy (Phase 5), which
+  must be incorporated into the existing season document rather than a fourth file
 - Communication calendar (Phase 6)
 
 Present a summary to the user with:
 - **Content scope**: what is being created
 - **Economy health check**: does the reward track feel fair and non-predatory?
 - **Analytics readiness**: are success criteria defined and instrumented?
-- **Ethics review**: check the Phase 3 economy design against `design/live-ops/ethics-policy.md`
-  - If the file does not exist: flag "ETHICS REVIEW SKIPPED: `design/live-ops/ethics-policy.md` not found. Economy design was not reviewed against an ethics policy. Recommend creating one before production begins." Include this flag in the season design output document. Add to next steps: create `design/live-ops/ethics-policy.md`.
+- **Ethics review**: check both the Phase 3 economy design and Phase 6
+  communication copy (including urgency/FOMO pressure) against
+  `design/live-ops/ethics-policy.md`
+  - If the file does not exist: flag "ETHICS REVIEW NOT PERFORMED:
+    `design/live-ops/ethics-policy.md` not found. Economy and communication
+    drafts were not reviewed against an ethics policy." Do not describe them as
+    fair, healthy, transparent, or non-predatory. Include the gap in the season
+    document and recommend creating the policy. Say production is blocked only
+    when an existing project rule explicitly makes that gap blocking; do not
+    invent such a rule.
   - If the file exists and a violation is found: flag "ETHICS FLAG: [element] in Phase 3 economy design violates [policy rule]. Approval is blocked until this is resolved." Do NOT issue a COMPLETE verdict or write output documents. Ask the user directly to revise economy design or cancel. If the user revises, re-spawn economy-designer and repeat Phase 7 ethics review. Cancel ends BLOCKED. An explicit policy violation cannot be overridden or waived.
 - **Open questions**: decisions still needed before production begins
 
@@ -136,17 +159,20 @@ Before Phase 7 approval, resolve `[N]` and `[name]`. If the input explicitly
 contains `Season N`, use N. Otherwise scan existing files under
 `design/live-ops/seasons/`, take one greater than the highest valid season
 number, and show that proposed number to the user. Normalize the name to a
-filesystem-safe lowercase hyphenated slug. If any target path already exists,
-stop and ask whether the user intends an explicit update; never overwrite it
-silently.
+filesystem-safe lowercase hyphenated slug. If any target path already exists, read it and show the precise update/merge
+for that same season. If the number/slug belongs to a different season or update
+intent is not explicit, stop; never overwrite it silently.
 
 All documents save to `design/live-ops/` with these exact resolved paths:
 - `seasons/S[N]_[slug].md` — Season design document (from Phase 1-3)
 - `seasons/S[N]_[slug]_analytics.md` — Analytics plan (from Phase 4)
 - `seasons/S[N]_[slug]_comms.md` — Communication calendar (from Phase 6)
 
-After ethics clearance and final plan approval, list these three paths and exact
-intended contents in the one changeset. Then delegate non-overlapping ownership:
+After ethics clearance, first obtain the Phase 7 **product/content approval**.
+Then separately present the three paths and exact intended modifications as the
+single **changeset authorization**. Product approval is not file-write
+authorization; existing bounded write authorization is reused without an
+unnecessary repeat. Then delegate non-overlapping ownership:
 - `live-ops-designer` alone writes the season document
 - `analytics-engineer` alone writes the analytics document
 - `community-manager` alone writes the communications document
@@ -161,7 +187,9 @@ If any spawned agent (through Codex subagent delegation) returns BLOCKED, errors
 1. **Surface immediately**: Report "[AgentName]: BLOCKED — [reason]" to the user before continuing to dependent phases
 2. **Assess dependencies**: Check whether the blocked agent's output is required by subsequent phases. If yes, do not proceed past that dependency point without user input.
 3. **Offer options** by asking the user directly with choices:
-   - Skip this agent and note the gap in the final report
+   - Skip this agent and note the gap in a partial report; any unresolved
+     required season/economy/analytics/content/comms role forces final BLOCKED
+     and prevents all three formal output writes
    - Retry with narrower scope
    - Stop here and resolve the blocker first
 4. **Always produce a partial report** — output whatever was completed. Never discard work because one agent blocked.
@@ -180,7 +208,13 @@ orchestrator does not write files directly.
 
 A summary covering: season theme and scope, economy design highlights, success metrics, content list, communication plan, and any open decisions needing user input before production.
 
-Verdict: **COMPLETE** — season plan produced and handed off for production.
+Verdict: **COMPLETE** — season plan produced and handed off for production only
+after every required team section is resolved, economy-to-analytics reconciliation
+passes, product approval and changeset authorization are distinct and complete,
+and all three writes succeed. A missing ethics-policy file is the documented
+unreviewed gap above and does not by itself block COMPLETE unless an existing
+project rule says it does. Otherwise return **BLOCKED** with a partial
+conversational report and no formal output documents.
 
 ## Next Steps
 

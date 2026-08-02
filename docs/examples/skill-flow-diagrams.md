@@ -105,8 +105,8 @@ PHASE 6: POLISH
         │
         ▼
 PHASE 7: RELEASE
-  $launch-checklist ───────────────────────────────────────────► launch readiness report
-  $release-checklist ──────────────────────────────────────────► platform-specific checklist
+  $launch-checklist ───────────────────────────────────────────► platform/store/launch readiness report
+  $release-checklist ──────────────────────────────────────────► internal stories/bugs/QA/build/changelog readiness
   $changelog ──────────────────────────────────────────────────► CHANGELOG.md
   $patch-notes ────────────────────────────────────────────────► player-facing notes
   $team-release ───────────────────────────────────────────────► release pipeline orchestrated

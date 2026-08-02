@@ -99,10 +99,11 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Delta comparison is shown (prior vs. current for key metrics)
 - [ ] Verdict is WITHIN BUDGET when current metrics are within budget
 - [ ] Improvement trend is noted positively in the report
+- [ ] A prior report is compared only when platform, scene/scenario, and metric definitions match; otherwise the report states that no comparison is valid
 
 ---
 
-### Case 5: Gate Compliance — No gate; performance-analyst separate
+### Case 5: Gate Compliance — No gate; performance-analyst delegation with fallback
 
 **Fixture:**
 - Profiler data shows CONCERNS-level findings (some spikes)
@@ -113,12 +114,14 @@ Verified automatically by `$skill-test static` — no fixture needed.
 **Expected behavior:**
 1. Skill analyzes profiler data; verdict is CONCERNS
 2. No director gate is invoked regardless of review mode
-3. Output notes: "For in-depth analysis, consider running `$perf-profile` with the performance-analyst agent"
-4. Skill returns the measured analysis in the conversation and writes nothing
+3. If the performance-analyst role is available, it performs the same read-only analysis; otherwise the current agent performs it and reports the fallback
+4. Skill never suggests re-running itself merely to obtain the role
+5. Skill returns the measured analysis in the conversation and writes nothing
 
 **Assertions:**
 - [ ] No director gate is invoked in any review mode
-- [ ] Performance-analyst consultation is suggested (not mandated)
+- [ ] Performance-analyst delegation is used when available, with an explicit current-agent fallback when unavailable
+- [ ] Output does not suggest re-running `$perf-profile` to obtain that agent
 - [ ] No authorization prompt appears and no file is written
 - [ ] Verdict is CONCERNS for spike-based findings
 
@@ -129,6 +132,9 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] Reads profiler data when provided; outputs checklist when not
 - [ ] Reads `technical-preferences.md` for target platform frame budget
 - [ ] Checks for prior perf reports to enable delta comparison
+- [ ] System scope resolves to existing code/scenes; full scope names covered platform/scenes and limitations
+- [ ] Only the configured engine's patterns are applied; an unconfigured engine uses language-independent scanning
+- [ ] Fix Effort is defined as relative S/M/L, and unmeasured Quick Wins never claim numeric gains
 - [ ] Remains read-only in static and measured modes
 - [ ] No director gates are invoked
 - [ ] Verdict is one of: WITHIN BUDGET, CONCERNS, OVER BUDGET

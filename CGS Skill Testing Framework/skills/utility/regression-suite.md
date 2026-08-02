@@ -124,3 +124,17 @@ The skill may write a coverage report to `production/qa/` after a "May I apply t
   update/audit only claim an update after an authorized write.
 - [ ] Flaky entries remain enabled in CI; the manifest and recommendations do
   not instruct users to skip or disable failing tests.
+
+## P1 Contract Coverage
+
+- [ ] Update mode registers existing tests and records gaps; it never claims to
+  create missing test files.
+- [ ] UI criteria with interaction tests are mapped normally; EXEMPT is limited
+  to a specifically non-automatable criterion.
+- [ ] Drift uses explicit current/prior sprint artifacts. Without comparable
+  evidence it is `Not assessed`, not inferred from dates or file hints.
+- [ ] Missing/renamed manifest entries remain marked STALE and do not count as coverage.
+- [ ] The run command comes from project technical preferences/CI; an
+  unconfigured command is unavailable rather than guessed.
+- [ ] Unknown modes stop. A truly empty auditable scope produces no percentage
+  and no empty manifest, while real criteria with zero tests remain MISSING.

@@ -77,14 +77,14 @@ Both parts matter: player experience AND build feasibility.
 **Scope discipline:**
 - Include ALL core loop systems (minimum). If a system is required to complete one
   [start → challenge → resolution] cycle, it must be in the slice.
-- **Target scope: 3–5 minutes of polished, continuous gameplay.** This is the
-  industry-standard vertical slice length — long enough to demonstrate mechanics
-  and tone, short enough to build at representative quality. If your slice would
-  take longer than 5 minutes to play through, cut content, not quality.
+- **Default planning suggestion: 3–5 minutes of polished, continuous gameplay.**
+  Present it as a starting point, then have the user confirm an experience length
+  appropriate to the game concept. Use that confirmed value in the criteria.
 - **Cut scope before cutting quality.** A low-quality slice that looks nothing like
   the intended game cannot validate production feasibility.
-- If the scope feels too large to build in 1–3 weeks, the slice scope is wrong —
-  not too big to build, but the slice is trying to prove too much at once.
+- **Default build suggestion: 1–3 weeks.** Confirm the actual build timebox from
+  the concept and team capacity; use the confirmed value rather than treating the
+  default as a universal gate.
 
 **Scope creep warning:** The vertical slice is the highest-risk moment for scope
 creep in the pre-production phase. Features feel "almost there" and it's tempting
@@ -107,20 +107,27 @@ Define in bullet points:
 
 Ask the user to confirm scope before building.
 
-Once confirmed, write a session checkpoint to `production/session-state/active.md`
+Once scope is confirmed, preview the session-state update, the prototype root and
+its implementation files, `REPORT.md`, `prototypes/index.md`, and the conditional
+current-root `PIVOT-NOTE.md` / existing `prototypes/GRAVEYARD.md` targets as one
+complete changeset. Obtain the single boundary authorization before the checkpoint
+or any prototype write.
+
+Once authorized, write a session checkpoint to `production/session-state/active.md`
 (create `production/session-state/` if it does not exist). Include: concept name,
 validation question, systems in scope, art quality level, and current phase ("Phase
 4 — Implement"). Update this file at the end of each build day with what was
 completed. This is the primary recovery mechanism if the session ends mid-slice —
-multi-week Engine builds will span many sessions.
+multi-week Engine builds will span many sessions. Append each actual workday's
+date, completed items, and user-provided elapsed time to this same checkpoint.
+On resume, derive current day/elapsed time only from those entries; without them,
+report elapsed/velocity unknown and never simulate waiting or claim "day 3".
 
 ---
 
 ## Phase 4: Implement
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, create only the Phase 2 slice root. Add a "VERTICAL SLICE - NOT FOR PRODUCTION" header only to text source formats that support comments, using that language's existing legal comment syntax. Never inject `//` into GDScript, YAML, Markdown, JSON, Godot scene/resource files, or binary assets. Put the validation question and date in the existing `REPORT.md` rather than corrupting resource formats.
+Within the already authorized boundary, create only the Phase 2 slice root. Add a "VERTICAL SLICE - NOT FOR PRODUCTION" header only to text source formats that support comments, using that language's existing legal comment syntax. Never inject `//` into GDScript, YAML, Markdown, JSON, Godot scene/resource files, or binary assets. Put the validation question and date in the existing `REPORT.md` rather than corrupting resource formats.
 
 **Quality standards** — higher than concept prototype, not full production:
 - Follow architecture layers from `docs/architecture/control-manifest.md`
@@ -173,6 +180,11 @@ This validates the *design intent* of an AI or economy system before the impleme
 is complete — and reveals exactly what behaviors the system must produce to feel correct.
 Particularly useful for vertical slices where an AI system is in scope but not yet
 polished enough for unguided testing.
+
+Wizard-of-Oz observations support only the experience hypothesis. Mark them as
+excluded from implementation, architecture, execution-feasibility, and production-
+velocity pass evidence; a WoZ-dependent system cannot satisfy the feasibility part
+of PROCEED.
 
 ---
 
@@ -234,7 +246,7 @@ skip it. It feeds directly into sprint planning.
 Read `.codex/docs/templates/vertical-slice-report.md` to get the report structure.
 If the template file is not found, use this fallback structure:
 - `## Vertical Slice Report — [Game Title] — [Date]`
-- `### Executive Summary` (PROCEED / PIVOT / STOP verdict + 2-sentence rationale)
+- `### Executive Summary` (PROCEED / PIVOT / KILL verdict + 2-sentence rationale)
 - `### Core Loop Validation` (what was tested, what passed, what failed)
 - `### Feel Assessment` (animation, controls, feedback — subjective notes)
 - `### Technical Findings` (performance, engine issues, architectural risks)
@@ -243,22 +255,22 @@ If the template file is not found, use this fallback structure:
 
 Fill in every section based on what was observed and built during this session.
 Compare each pre-confirmed experience, time, quality, and production-feasibility criterion with the observed result and use that comparison—not a user-provided label—to derive the report recommendation.
-The velocity log must reflect actual day-by-day progress, not estimates — this is
+The velocity log must reflect the dated, user-provided checkpoint entries, not estimates — this is
 the most honest production rate data you will ever have. Replace all placeholder
-text with real observations.
+text with real observations. If those entries are absent, write velocity unknown.
 
 ### Lessons Learned
 - What assumptions were broken by actually building to near-production quality?
 - What surprised us about the pipeline or architecture?
 - What would we change about the slice scope if we ran this again?
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file. Then update `prototypes/index.md` (create if it does not
-exist) — append one row to the vertical slice table: concept name, date, verdict,
-and a link to the REPORT.md. Note whether this was a first-run slice or a re-run
-after a PIVOT. The velocity log in this report is some of the most valuable data in
-the project — cross-reference it with sprint estimates.
+In lean/solo mode, use the already authorized paths to write the final REPORT and index row together after the metrics
+recommendation is final. In full mode, first generate the complete REPORT candidate
+in conversation. Persist the candidate at the already authorized REPORT path only
+when the existing CD-PLAYTEST path contract requires it, but do not append the
+index yet. After the gate, update that same REPORT if needed and append exactly one
+index row with the final recommendation in the same authorized boundary. The index
+must never retain an earlier verdict.
 
 ---
 
@@ -301,13 +313,11 @@ two questions (plain text, one at a time):
 1. "What systems or mechanics worked at this quality level and should be preserved in the revised design?"
 2. "What specifically failed — the core loop, the architecture, the pipeline, or the fun?"
 
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized.
-
-Once the complete changeset is authorized, write the file with: what worked, what failed, the specific systems or
+Within the already authorized conditional target, write
+`prototypes/[concept-slug]-vertical-slice/PIVOT-NOTE.md` with: what worked, what failed, the specific systems or
 architecture decisions that need revision, and what the next slice should prove
-differently. When `$vertical-slice` is next run after a PIVOT, check the
-`prototypes/` directory for a `PIVOT-NOTE.md` — use it to frame the new validation
-question and inform scope decisions.
+differently. On the next run, read only that same concept root's note; never scan
+all prototypes or choose a PIVOT-NOTE by modification time.
 
 - Revise affected GDDs with `$design-system [mechanic]`
 - Address architecture issues via `$architecture-decision`
@@ -315,7 +325,9 @@ question and inform scope decisions.
 
 **If KILL:**
 
-Before abandoning the concept, confirm the verdict is sound:
+Before abandoning the concept, compare only pre-confirmed criteria with actual
+evidence and then ask the user to confirm abandoning the concept. Insufficient
+tester counts/attempts are unknown and do not count as failed boxes:
 
 - [ ] Full game loop takes >5 minutes even for an experienced player?
 - [ ] No emotional high point (delight, surprise, satisfaction) observed in any playtest session?
@@ -323,10 +335,12 @@ Before abandoning the concept, confirm the verdict is sound:
 - [ ] Architecture issues would require rebuilding more than 50% of what was built?
 - [ ] This is the 3rd vertical slice attempt on the same concept?
 
-If 2+ boxes apply → KILL verdict is sound. If 0–1 apply → one targeted PIVOT may recover the concept.
+KILL is available only when one or more pre-confirmed decisive criteria actually
+failed and the user confirms abandonment. Do not mechanically convert "2+ boxes"
+to KILL; otherwise recommend a targeted PIVOT or more evidence.
 
-**Document the kill in `prototypes/GRAVEYARD.md`** (create if it doesn't exist).
-Add this proposed file or edit to the complete changeset preview; do not write it until that changeset is authorized. Once the complete changeset is authorized, add one entry:
+**Document the kill in the existing authorized `prototypes/GRAVEYARD.md` target**
+(create it only if that conditional target was part of the Phase 3 boundary). Add one entry:
 
 ```
 ## [Concept Name] Vertical Slice — YYYY-MM-DD

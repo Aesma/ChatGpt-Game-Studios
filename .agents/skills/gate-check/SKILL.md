@@ -56,13 +56,19 @@ Also resolve the review mode (once, store for all gate spawns this run):
 2. Else read `production/review-mode.txt` → use that value
 3. Else → default to `lean`
 
-Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE, PR-PHASE-GATE, AD-PHASE-GATE) are skipped — gate-check becomes artifact-existence checks only. In `lean` mode, all four directors still run (phase gates are the purpose of lean mode).
+Note: in `solo` mode, director spawns (CD-PHASE-GATE, TD-PHASE-GATE,
+PR-PHASE-GATE, AD-PHASE-GATE) are skipped. All automatically verifiable
+artifact and quality checks still run; solo is not existence-only. In `lean` mode, all four directors still run (phase gates are the purpose of lean mode).
 
 - **With argument**: `$gate-check pre-production` — validate the
   Pre-Production to Production transition, after confirming the current stage is
   Pre-Production
-- **No argument**: Auto-detect current stage using the same heuristics as
-  `$project-stage-detect`, then **confirm with the user before running**:
+- **No argument**: Auto-detect current stage using the existing
+  `$project-stage-detect` artifact heuristics. Missing/invalid `stage.txt` with
+  one unambiguous inferred stage may proceed to confirmation. If artifact
+  signals conflict across stages, show them and ask the user to resolve the
+  current stage; do not select the most advanced signal automatically. Then
+  **confirm with the user before running**:
 
   Ask the user directly:
   - Prompt: "Detected stage: **[current stage]**. Running gate for [Current] → [Next] transition. Is this correct?"
@@ -178,8 +184,10 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] All key screen UX specs have passed `$ux-review` with verdict APPROVED; NEEDS REVISION cannot be accepted as implementation-ready
 
 **Recommended (not blocking; missing items produce CONCERNS):**
-- [ ] Vertical slice exists and is playable, with REPORT.md
-- [ ] Vertical slice has at least one documented playtest session/report
+- [ ] Vertical slice artifact exists and is playable, with REPORT.md; if built,
+      its quality checks below cover playable-build validation without counting
+      the artifact a second time
+- [ ] At least one documented playtest session/report exists
 - [ ] Entity inventory exists at `design/assets/entity-inventory.md`
 
 **Quality Checks:**
@@ -256,7 +264,7 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] Smoke check passes cleanly (PASS verdict) on the release candidate build
 - [ ] No test regressions from previous sprint (test suite passes fully)
 - [ ] Balance data has been reviewed (`$balance-check` run)
-- [ ] Latest `production/launch/launch-checklist-[date].md` exists and records canonical verdict `LAUNCH READY`; `LAUNCH BLOCKED` is FAIL and `CONCERNS` remains a gate concern
+- [ ] Consume the exact persisted `production/launch/launch-checklist-[date].md` path supplied by the launch-checklist run (or ask the user for the exact path); its body records canonical verdict `LAUNCH READY`. Never select by modification time. `LAUNCH BLOCKED` is FAIL, `CONCERNS` remains a gate concern, and dry-run/session-only output is not sign-off evidence
 - [ ] Store metadata prepared (if applicable)
 - [ ] Changelog / patch notes drafted
 
@@ -281,15 +289,22 @@ if checking Technical Setup → Pre-Production, pull entries in Architecture, En
 Carry these as context — recurring conflict patterns in the target domain warrant
 increased scrutiny on those specific checks.
 
-For each item in the target gate:
+For each item in the target gate, evaluate applicability first. At the
+Polish-to-Release gate, use existing target-platform, target-language, store,
+and release-method evidence. Mark a check N/A only with that evidence and do not
+count it missing or passing.
 
 ### Artifact Checks
 - Search for matching files and read them to verify files exist and have meaningful content
+- For reports/reviews, verify their existing scope, date/build/system linkage,
+  and verdict cover this gate. A stale or unrelated file does not satisfy the
+  artifact merely because its name matches.
 - Don't just check existence — verify the file has real content (not just a template header)
 - For code checks, verify directory structure and file counts
 
 **Systems Design → Technical Setup gate — cross-GDD review check**:
-Use `search for files matching `design/gdd/gdd-cross-review-*.md`` to find the `$review-all-gdds` report.
+Search files matching `design/gdd/gdd-cross-review-*.md` to find the
+`$review-all-gdds` report.
 If no file matches, mark the "cross-GDD review report exists" artifact as **FAIL** and
 surface it prominently: "No `$review-all-gdds` report found in `design/gdd/`. Run
 `$review-all-gdds` before advancing to Technical Setup."
@@ -297,7 +312,9 @@ If a file is found, read it and check the verdict line: a FAIL verdict means the
 cross-GDD consistency check failed and must be resolved before advancing.
 
 ### Quality Checks
-- For test checks: Run the test suite through the configured shell if a test runner is configured
+- For test checks: run the suite only when an explicit configured test command
+  exists. No configured command is MANUAL/CONCERNS and cannot be inferred as a
+  pass; an actual non-zero/failing run is FAIL.
 - For design review checks: read the GDD and check for the 8 required sections
 - For performance checks: read `docs/technical-preferences.md` and require both
   explicit configured budgets and actual profiler measurements in `tests/performance/`
@@ -344,7 +361,12 @@ Before generating the final verdict, spawn all four directors as **parallel suba
 
 Pass to each: target phase name, list of artifacts present, and the context fields listed in that gate's definition.
 
-**Collect all four responses, then present the Director Panel summary:**
+**Collect all four responses, then present the Director Panel summary.** If any
+required director fails, times out, or returns no valid verdict, list that gate
+as unavailable. Do not fabricate READY. Use completed evidence to produce at
+most CONCERNS when the missing panel result is non-blocking for the resolved
+mode, or FAIL when readiness cannot be established; never PASS with an
+incomplete required panel:
 
 ```
 ## Director Panel Assessment

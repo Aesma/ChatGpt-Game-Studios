@@ -34,13 +34,20 @@ Resolve the review mode (once, store for all gate spawns this run):
 See `.codex/docs/director-gates.md` for the full check pattern.
 
 **If a file path is provided** (e.g., `$story-done production/epics/core/story-damage-calculator.md`):
-read that file directly.
+normalize it and require an existing regular Markdown story file inside
+`production/epics/`. It must contain a story ID/title and Status header.
+Reject directories, non-Markdown files, paths outside the project/story tree,
+unknown flags, and non-story indexes before running tests or preparing writes.
 
 **If no argument is provided:**
 
-1. Check `production/session-state/active.md` for the currently active story.
-2. If not found there, read the most recent file in `production/sprints/` and
-   look for stories marked IN PROGRESS.
+1. Check `production/session-state/active.md` for the latest explicit story
+   reference whose referenced story header is still `Status: In Progress`.
+   A completed Session Extract is history and must not be selected again.
+2. If no valid active reference exists, read matching
+   `production/sprint-status.yaml` and select canonical `in-progress` (or
+   historical `in_progress`) entries. If YAML is unavailable, use the highest
+   numbered sprint file and referenced story headers, never modification time.
 3. If multiple in-progress stories are found, ask the user directly:
    - "Which story are we completing?"
    - Options: list the in-progress story file names.
@@ -54,8 +61,8 @@ Read the full story file. Extract and hold in context:
 
 - **Story name and ID**
 - **GDD Requirement TR-ID(s)** referenced (e.g., `TR-combat-001`)
-- **Manifest Version** embedded in the story header (e.g., `2026-03-10`)
-- **ADR reference(s)** referenced
+- **Manifest Version** positive integer embedded in the story header
+- **ADR references / Governing ADRs** complete list
 - **Acceptance Criteria** — the complete list (every checkbox item)
 - **Implementation files** — files listed under "files to create/modify"
 - **Story Type** — the `Type:` field from the story header (Logic / Integration / Visual/Feel / UI / Config/Data)
@@ -75,9 +82,15 @@ Also read:
   that may be quoted inline in the story (it may be stale).
 - The referenced GDD section — just the acceptance criteria and key rules, not
   the full document. Use this to cross-check the registry text is still accurate.
-- The referenced ADR(s) — just the Decision and Consequences sections
-- `docs/architecture/control-manifest.md` header — extract the current
-  `Manifest Version:` date (used in Phase 4 staleness check)
+- The complete ordered `Governing ADRs` list. Require exactly one real ADR item
+  explicitly marked `primary`, including when only one real ADR is listed;
+  neither the first item nor list order implies primary. Resolve and read every ADR and require each
+  `Status: Accepted`. Missing, Proposed, other non-Accepted, duplicate, zero or
+  multiple primary markers are BLOCKING. Only a `Type: Config/Data` story may
+  use exactly `ADR: N/A — [non-empty non-placeholder reason]`; every other
+  missing/empty/N/A form is BLOCKING.
+- `docs/architecture/control-manifest.md` header — extract the current positive
+  integer `Manifest Version:` (used in Phase 4 staleness check)
 
 ---
 
@@ -134,9 +147,12 @@ For each acceptance criterion in the story:
 
 1. Ask: is there a test — unit, integration, or confirmed manual playtest — that
    directly verifies this criterion?
-   - **Unit test**: check `tests/unit/` for a test file or function name that
-     matches the criterion's subject (search file names and contents)
-   - **Integration test**: check `tests/integration/` similarly
+   - **Unit test**: begin with the exact file/test name in the story's Test
+     Evidence and inspect the actual assertion for direct coverage
+   - **Integration test**: use the exact declared integration path/name and
+     inspect its assertion or documented playtest step
+   - Filename/subject similarity elsewhere may be listed only as an unverified
+     candidate; it never changes UNTESTED to COVERED
    - **Manual confirmation**: if the criterion was verified by asking the user directly
      above with a "Yes — passes" answer, count that as a manual test
 
@@ -172,8 +188,8 @@ Based on the Story Type extracted in Phase 2, check for required evidence:
 |---|---|---|
 | **Logic** | Automated unit test in `tests/unit/[system]/` — must exist and pass | BLOCKING |
 | **Integration** | Integration test in `tests/integration/[system]/` OR playtest doc | BLOCKING |
-| **Visual/Feel** | Screenshot + sign-off in `production/qa/evidence/` | ADVISORY |
-| **UI** | Manual walkthrough doc OR interaction test in `production/qa/evidence/` | ADVISORY |
+| **Visual/Feel** | Exact evidence path declared by story + completed sign-off | BLOCKING |
+| **UI** | Exact walkthrough/interaction evidence declared by story + completed sign-off | BLOCKING |
 | **Config/Data** | Relevant smoke check report with PASS or policy-accepted PASS WITH WARNINGS | BLOCKING |
 
 **For Logic stories**: first read the story's **Test Evidence** section to extract the
@@ -192,9 +208,9 @@ If none found: flag as **BLOCKING** (same rule as Logic).
 
 **For Visual/Feel and UI stories**: find files matching `production/qa/evidence/` for a file
 referencing this story.
-- If none: flag as **ADVISORY** — "No manual test evidence found. Create `production/qa/evidence/[story-slug]-evidence.md` using the test-evidence template and obtain sign-off before final closure."
-- If found: read the file and check the sign-off table for unchecked boxes. Search file contents for lines matching `| .* | .* | .* | \[ \] Approved` (a sign-off row with an unchecked checkbox). If any unchecked sign-off rows are found: flag as **ADVISORY** — "Evidence file found at `[path]` but [N] sign-off(s) are still pending (shown as `[ ] Approved` in the sign-off table). Obtain required sign-offs before final closure. Note: for solo developers, all roles may be signed off by the same person."
-- If all sign-off rows show `[x] Approved` or equivalent: note "Evidence file found and all sign-offs complete — ADVISORY passed."
+- If none: flag as **BLOCKING** — "No manual test evidence found. Create `production/qa/evidence/[story-slug]-evidence.md` using the test-evidence template and obtain sign-off before final closure."
+- If found: read the file and check the sign-off table for unchecked boxes. Search file contents for lines matching `| .* | .* | .* | \[ \] Approved` (a sign-off row with an unchecked checkbox). If any unchecked sign-off rows are found: flag as **BLOCKING** — "Evidence file found at `[path]` but [N] sign-off(s) are still pending (shown as `[ ] Approved` in the sign-off table). Obtain required sign-offs before final closure. Note: for solo developers, all roles may be signed off by the same person."
+- If all sign-off rows show `[x] Approved` or equivalent: note "Evidence file found and all sign-offs complete — evidence passed."
 
 **For Config/Data stories**: select the newest existing smoke report that
 explicitly names the current sprint or story/system scope. Read its verdict.
@@ -216,24 +232,27 @@ Compare the implementation against the design documents.
 
 Run these checks automatically:
 
-1. **GDD rules check**: Using the current requirement text from `tr-registry.yaml`
-   (looked up by the story's TR-ID), check that the implementation reflects what
-   the GDD actually requires now — not what it required when the story was written.
-   `Search` the implemented files for key function names, data structures, or class
-   names mentioned in the current GDD section.
+1. **GDD rules check**: Using the current requirement text from
+   `tr-registry.yaml` (looked up by the story's TR-ID), compare it with the
+   referenced GDD section before checking implementation. If registry and GDD
+   conflict or either cannot be verified, record BLOCKING and show both texts;
+   never choose one silently. Searches for function/class names or literals are
+   evidence candidates only. A criterion passes only through a relevant test,
+   readable implementation logic, or user-supplied runtime evidence.
 
-2. **Manifest version staleness check**: Compare the `Manifest Version:` date
-   embedded in the story header against the `Manifest Version:` date in the
+2. **Manifest version staleness check**: Compare the positive integer
+   `Manifest Version:` embedded in the story header against the integer in the
    current `docs/architecture/control-manifest.md` header.
    - If they match → pass silently.
-   - If the story's version is older → flag as ADVISORY:
-     `ADVISORY: Story was written against manifest v[story-date]; current manifest
-     is v[current-date]. New rules may apply. Run $story-readiness to check.`
+   - If the versions differ → flag as ADVISORY:
+     `ADVISORY: Story was written against manifest v[story-version]; current
+     manifest is v[current-version]. New rules may apply. Run $story-readiness to check.`
    - If control-manifest.md does not exist → skip this check.
 
-3. **ADR constraints check**: Read the referenced ADR's Decision section. Check
-   for forbidden patterns from `docs/architecture/control-manifest.md` (if it
-   exists). `Search` for patterns explicitly forbidden in the ADR.
+3. **ADR constraints check**: Apply the primary Decision and every secondary
+   ADR constraint from the validated list. Check forbidden patterns from
+   `docs/architecture/control-manifest.md` (if it exists). Search hits are
+   candidates to inspect, not automatic proof of compliance or deviation.
 
 4. **Hardcoded values check**: `Search` the implemented files for numeric literals
    in gameplay logic that should be in data files.
@@ -264,7 +283,9 @@ After completing the deviation checks in Phase 4, spawn `qa-lead` through Codex 
 Pass:
 - The story file path and story type
 - Test file paths found during Phase 3 (exact paths, or "none found")
+- The story as a one-item story list, including its path and type
 - The story's `## QA Test Cases` section (the pre-written test specs from story creation)
+- The governing GDD acceptance criteria and edge cases for this story
 - The story's `## Acceptance Criteria` list
 
 The qa-lead reviews whether the tests actually cover what was specified — not just whether files exist.
@@ -293,7 +314,9 @@ Skip this phase for Config/Data stories (no code tests required).
 
 Spawn `lead-programmer` through Codex subagent delegation using gate **LP-CODE-REVIEW** (`.codex/docs/director-gates.md`).
 
-Pass: implementation file paths, story file path, relevant GDD section, governing ADR.
+Pass: implementation file paths, story file path, relevant GDD section, and
+the complete validated governing ADR list with its explicit primary plus every
+secondary constraint.
 
 Present the verdict to the user. If CONCERNS, surface them by asking the user directly:
 - Options: `Revise flagged issues` / `Accept and proceed` / `Discuss further`
@@ -387,7 +410,8 @@ approval, apply all listed edits continuously; if not approved, write none.
 
 1. Update the status field: `Status: Complete`
 2. Update the `Last Updated:` field in the story header to today's date (format: `YYYY-MM-DD`). If the field does not exist, add it after the `Status:` line.
-3. Add a `## Completion Notes` section at the bottom:
+3. Add or update exactly one `## Completion Notes` section. If it already
+exists, replace its fields in place; never append a duplicate section:
 
 ```markdown
 ## Completion Notes
@@ -422,8 +446,12 @@ Before suggesting the commit, explicitly verify design-document references and s
 
 ### Session State Update
 
-After updating the story file, silently append to
-`production/session-state/active.md`:
+Before any write, perform Phase 8's read-only next-candidate calculation so the
+exact `Next recommended` value is part of the pending active.md edit and the
+single changeset preview. Do not write a placeholder and calculate it later.
+
+After updating the story file, update the existing current-task/STATUS block in
+`production/session-state/active.md` while preserving unrelated content:
 
     ## Session Extract — $story-done [date]
     - Verdict: [COMPLETE / COMPLETE WITH NOTES / BLOCKED]
@@ -440,17 +468,19 @@ Confirm in conversation: "Session state updated."
 
 After completion, help the developer keep momentum:
 
-1. Read the current sprint plan from `production/sprints/`.
-2. Find stories that are:
-   - Status: READY or NOT STARTED
-   - Not blocked by other incomplete stories
-   - In the Must Have or Should Have tier
+1. If `production/sprint-status.yaml` exists for the current sprint, treat its
+   story entries as authoritative; otherwise use the highest numbered sprint
+   file and each referenced story's header.
+2. Find candidates whose canonical status is `ready` or `backlog`
+   (header fallback: Ready or Not Started), are not blocked by incomplete
+   dependencies, and are Must Have or Should Have. Label every result
+   **candidate — readiness not yet verified**, never already ready.
 
 Present:
 
 ```
 ### Next Up
-The following stories are ready to pick up:
+The following candidate stories can be checked next (readiness not yet verified):
 1. [Story name] — [1-line description] — Est: [X hrs]
 2. [Story name] — [1-line description] — Est: [X hrs]
 

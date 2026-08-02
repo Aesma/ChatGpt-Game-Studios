@@ -21,12 +21,23 @@ Parse the argument:
 - `[system-name]` → audit that single system only
 - `--summary` → summary table only, no file write
 
+For a system argument, resolve the name through `systems-index.md` and the
+mapped GDD path. Exactly one match is required. Missing or ambiguous matches
+stop with the candidate list and no report write.
+
+If `producer` is available, it may return an analysis draft only and must not
+write files. If it is unavailable, continue in the current agent. If delegation
+fails after scanning, produce a partial report from the collected evidence and
+name the missing analysis; never fabricate the omitted results.
+
 ---
 
 ## Phase 1 — Context Gathering
 
 1. **Read `design/gdd/systems-index.md`** for the full list of systems, their
-   categories, and MVP/priority tier.
+   categories, and MVP/priority tier. Also read existing explicit asset-format
+   requirements from the in-scope GDDs and `.codex/docs/technical-preferences.md`
+   so implementation format can be compared without inventing a new standard.
 
 2. **L0 pre-scan**: Search all GDD files for `## Summary`/`## Overview`
    and common content-count phrases only to prioritize reading order. A missed
@@ -113,26 +124,40 @@ without names, and label that row `Approximate`.
 Produce the gap table:
 
 ```
-| System | Content Type | Specified | Found | Gap | Status |
-|--------|-------------|-----------|-------|-----|--------|
+| System | Content Type | Specified | Found | Gap | Status | Notes |
+|--------|-------------|-----------|-------|-----|--------|-------|
 ```
 
-**Status categories:**
+For each identity that exists in the wrong explicit format, keep it in Found but
+add `FORMAT ISSUE` to Notes with expected and actual formats. Format issues are
+completeness gaps for the final verdict, distinct from missing names.
+
+**Status categories (numeric rows only):**
 - `COMPLETE` — Found ≥ Specified (100%+)
 - `IN PROGRESS` — Found is 50–99% of Specified
 - `EARLY` — Found is 1–49% of Specified
 - `NOT STARTED` — Found is 0
+- `UNSPECIFIED` — design names a content area but provides no count/list; this
+  row is not assigned a numeric completion status and does not enter totals
 
 **Priority flags:**
-Flag a system as `HIGH PRIORITY` in the report if:
-- Status is `NOT STARTED` or `EARLY`, AND
-- The system is tagged MVP or Vertical Slice in the systems index, OR
-- The systems index shows the system is blocking downstream systems
+Flag a row as `HIGH PRIORITY` only when it has a real gap and:
+- Status is `NOT STARTED` or `EARLY`; AND
+- either the system is tagged MVP/Vertical Slice in the systems index, or the
+  systems index shows the system blocks downstream systems.
+
+A COMPLETE or UNSPECIFIED row is never HIGH PRIORITY merely because its system
+has dependents.
 
 **Summary line:**
-- Total content items specified (sum of all Specified column values)
-- Total content items found (sum of all Found column values)
-- Overall gap percentage: `(Specified - Found) / Specified * 100`
+- Exclude UNSPECIFIED rows from numeric sums.
+- Total content items specified (sum of numeric Specified values)
+- Total content items found (cap each row's contribution at its Specified value;
+  report excess identities separately in Notes)
+- Each numeric Gap is `max(0, Specified - Found)`.
+- If total Specified is zero, output `Overall gap: not computable — no numeric
+  specifications`; never divide by zero. Otherwise compute
+  `sum(row gaps) / total Specified * 100`.
 
 ---
 
@@ -183,7 +208,8 @@ Focus implementation effort on:
 
 ## Unspecified Content Counts
 
-The following GDDs describe content without giving explicit counts.
+The following GDDs describe content without giving explicit counts. These rows
+remain auditable as qualitative design gaps but receive no numeric status.
 Consider adding counts to improve auditability:
 [List of GDDs and content types with "Unspecified"]
 ```
@@ -207,11 +233,20 @@ End with: "You can choose to save the full report to
 
 After the audit, recommend the highest-value follow-up actions:
 
-- If any system is `NOT STARTED` and MVP-tagged → "Run `$design-system [name]` to
-  add missing content counts to the GDD before implementation begins."
+- If a content area is `UNSPECIFIED` → run `$design-system [name]` to define a
+  count/list.
+- If a numeric row is `NOT STARTED` and its specification already exists → point
+  to the existing stories/planning path; do not ask design-system to add a count
+  that is already present.
 - If total gap is >50% → "Run `$sprint-plan` to allocate content work across upcoming sprints."
 - If backlog stories are needed → "Run `$create-stories [epic-slug]` for each HIGH PRIORITY gap."
 - If `--summary` was used → "Choose whether to save the full report to
   `docs/content-audit-[date].md`."
 
-Verdict: **COMPLETE** — content audit finished.
+**Verdict (exactly one):**
+- **MISSING CRITICAL CONTENT** — a missing/format-invalid item is explicitly
+  critical in the GDD or blocks an MVP/Vertical Slice path.
+- **GAPS FOUND** — any non-critical missing name, numeric gap, format issue, or
+  UNSPECIFIED design gap exists.
+- **COMPLETE** — every auditable named/numeric item is present in the required
+  format and no UNSPECIFIED row remains.

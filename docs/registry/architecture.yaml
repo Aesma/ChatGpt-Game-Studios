@@ -8,7 +8,8 @@
 #   - Register a stance when it constrains how OTHER systems must be built.
 #     An internal implementation detail that affects only one ADR does not need
 #     to be registered.
-#   - Never delete entries — set status: superseded_by: ADR-NNNN instead.
+#   - Never delete entries — set `status: superseded` and add the replacement as a
+#     new entry whose `adr` identifies the replacement ADR.
 #   - When a stance changes: update the entry, set revised: to today's date,
 #     add a comment with the old value, and run $architecture-review to check
 #     what ADRs are now invalidated.
@@ -49,7 +50,7 @@ state_ownership: []
 #
 # state_ownership:
 #   - state: player_health
-#     status: active           # active | superseded_by: ADR-NNNN
+#     status: active           # active | superseded
 #     owner_system: health-system
 #     adr: docs/architecture/adr-0001-health-system.md
 #     interface: "HealthComponent.current_health (read-only float, range 0–max_health)"

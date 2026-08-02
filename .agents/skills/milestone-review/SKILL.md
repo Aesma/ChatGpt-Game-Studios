@@ -14,7 +14,9 @@ Arguments: `[milestone-name|current] [--review full|lean|solo]`. Treat bracketed
 
 ## Phase 0: Parse Arguments
 
-Extract the milestone name (`current` or a specific name) and resolve the review mode (once, store for all gate spawns this run):
+Require exactly one milestone target: `current` or one specific milestone name. Reject unknown flags, multiple targets, or missing targets before reading review mode. Resolve the target to exactly one file under `production/milestones/`; when a named file is absent or ambiguous, list available milestone files, output **BLOCKED**, and do not run a gate or prepare a write.
+
+Resolve the review mode once and store it for all gate spawns this run:
 1. If `--review [full|lean|solo]` was passed → use that
 2. Else read `production/review-mode.txt` → use that value
 3. Else → default to `lean`
@@ -33,7 +35,7 @@ Read only sprint reports explicitly referenced by that milestone or whose header
 
 ## Phase 2: Scan Codebase Health
 
-- Scan for `TODO`, `FIXME`, `HACK` markers that indicate incomplete work
+- Scan for `TODO`, `FIXME`, `HACK` markers only in production source and build configuration. Exclude documentation, templates, generated/vendor content, and test fixtures; report the scanned paths/scope with every count
 - Check the risk register at `production/risk-register/` and the milestone-linked bug, test, performance, and technical-debt evidence loaded above
 - For every metric in the report, retain its source path; where no valid numerator/denominator or measurement exists, write `unknown` rather than inventing a value
 
@@ -122,7 +124,7 @@ Compile the complete evidence draft first, but leave the final Go/No-Go Recommen
 - `lean` → skip (not a PHASE-GATE). Note: "PR-MILESTONE skipped — Lean mode." Present the Go/No-Go section without a producer verdict.
 - `full` → spawn as normal.
 
-Before generating the Go/No-Go recommendation, spawn `producer` through Codex subagent delegation using gate **PR-MILESTONE** (`.codex/docs/director-gates.md`).
+Before generating the Go/No-Go recommendation, spawn `producer` through Codex subagent delegation using gate **PR-MILESTONE** (`.codex/docs/director-gates.md`). In full mode, if the gate or agent is unavailable, times out, or returns no complete verdict, report the missing assessment and stop before final recommendation or write; never simulate a producer verdict.
 
 Pass: milestone name and target date, current completion percentage, blocked story count, velocity data from sprint reports (if available), list of cut candidates.
 
@@ -142,11 +144,15 @@ If AT RISK, ask the user directly:
   - `[B] NO-GO — conditions cannot be met in time`
   - `[C] GO — I accept the risk and want to proceed`
 
-Do not issue a GO against an OFF TRACK verdict unless the user explicitly selects [B] above.
+An OFF TRACK result may produce only **NO-GO**, or **CONDITIONAL GO** when the user explicitly selects [B] and supplies accepted risks/conditions. It can never produce an unconditional GO.
+
+For AT RISK option [C], retain the producer verdict and record the user's specific accepted risks in the existing `Conditions` and `Rationale` sections; do not hide the assessment. Lean/solo reports explicitly state that no producer verdict was obtained.
 
 ---
 
 ## Phase 4: Save Review
+
+Use `production/milestones/review-[milestone].md`, where `[milestone]` is the uniquely resolved target name. If the file already exists, present it as an update in the changeset preview; never silently overwrite it.
 
 Present the review to the user.
 

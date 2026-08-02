@@ -37,13 +37,13 @@ has none). In `solo` mode, all gates are skipped. The skill asks "May I apply th
 1. CD-PILLARS gate returns REJECT with specific feedback
 2. Skill surfaces the rejection to the user
 3. Concept is NOT written to file
-4. User is asked: rethink the concept direction, or override the rejection
+4. User is asked to rethink the concept direction or stop; no override-to-write is offered
 5. If rethinking: skill returns to the concept options phase
 
 **Assertions:**
 - [ ] Concept is NOT written when CD-PILLARS returns REJECT
 - [ ] Rejection feedback is shown to the user verbatim
-- [ ] User is given the option to rethink or override
+- [ ] User is given revision or stop options, never an override-to-write option
 - [ ] Skill returns to concept ideation phase if user chooses to rethink
 
 ---
@@ -115,3 +115,13 @@ has none). In `solo` mode, all gates are skipped. The skill asks "May I apply th
   the option selection phase.
 - The game-concept.md document structure (required sections) is defined in the
   skill body and not re-enumerated in test assertions.
+
+## P1 Regression Assertions
+
+- [ ] CD REJECT has no override-to-write path; revised pillars are re-reviewed
+- [ ] CONCERNS/HIGH RISK/UNREALISTIC/OPTIMISTIC results require accept-risk, revise-and-re-review, or stop handling as applicable
+- [ ] Every populated template field is sourced from the user/existing docs; unknown decisions are `Unknown` or `Open Question`
+- [ ] No engine preference produces `Undecided`, never a recommendation
+- [ ] Platform requirements are passed to setup-engine without hard-coded platform-to-engine claims
+- [ ] Comparable titles and audience fit are labeled hypotheses unless a source was supplied
+- [ ] Game concept is never sent to the system-GDD design-review workflow

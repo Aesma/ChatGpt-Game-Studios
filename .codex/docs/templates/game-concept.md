@@ -23,9 +23,9 @@
 | **Genre** | [Primary genre + subgenre(s)] |
 | **Platform** | [PC / Console / Mobile / Cross-platform] |
 | **Target Audience** | [See Player Profile section below] |
-| **Player Count** | [Single-player / Co-op / Multiplayer / MMO] |
+| **Player Count** | [Single-player / Co-op / Multiplayer / MMO / Unknown] |
 | **Session Length** | [Typical play session: 10 min / 30 min / 1 hr / 2+ hr] |
-| **Monetization** | [Premium / F2P / Subscription / none yet] |
+| **Monetization** | [Premium / F2P / Subscription / None / Unknown] |
 | **Estimated Scope** | [Small (1-3 months) / Medium (3-9 months) / Large (9+ months)] |
 | **Comparable Titles** | [2-3 existing games in the same space] |
 
@@ -222,11 +222,11 @@ the medium.]
 
 | Attribute | Detail |
 | ---- | ---- |
-| **Age range** | [e.g., 18-35] |
+| **Age range** | [e.g., 18-35, or Unknown] |
 | **Gaming experience** | [Casual / Mid-core / Hardcore] |
 | **Time availability** | [e.g., "30-minute sessions on weeknights, longer on weekends"] |
 | **Platform preference** | [Where they play most] |
-| **Current games they play** | [2-3 specific titles] |
+| **Current games they play** | [2-3 user-provided titles, or Unknown] |
 | **What they're looking for** | [The unmet need this game fills] |
 | **What would turn them away** | [Dealbreakers for this audience] |
 
@@ -236,7 +236,7 @@ the medium.]
 
 | Consideration | Assessment |
 | ---- | ---- |
-| **Recommended Engine** | [Godot / Unity / Unreal and why — consider scope, team expertise, platform targets] |
+| **Engine Preference** | [Godot / Unity / Unreal / Undecided — `$setup-engine` owns any later recommendation] |
 | **Key Technical Challenges** | [What's technically hard about this game?] |
 | **Art Style** | [Pixel / 2D / 2.5D / 3D stylized / 3D realistic] |
 | **Art Pipeline Complexity** | [Low (asset store + modifications) / Medium (custom 2D) / High (custom 3D)] |

@@ -9,7 +9,8 @@ Direction, Asset Standards, and Reference Direction. Fresh authoring previews
 that exact skeleton and target path before the first write.
 
 In `full` review mode, the AD-ART-BIBLE director gate (art director) runs after
-the draft is complete and before any section is written. In `lean` and `solo`
+all nine sections have been authored into the draft and before asset production.
+It does not run for a partial-scope edit. In `lean` and `solo`
 modes, AD-ART-BIBLE is skipped and only user approval is required. The verdict
 is COMPLETE when all sections are written.
 
@@ -33,15 +34,15 @@ Verified automatically by `$skill-test static` — no fixture needed.
 - [ ] AD-ART-BIBLE is executed by `art-director`, never `creative-director`
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts
 3. User selects Character Design Rules
-4. Skill drafts updated content; in full mode, AD-ART-BIBLE is invoked for the
-   revised section before applying a not-yet-authorized changeset
+4. Skill drafts updated content; because this is a partial-scope edit, it does
+   not run the production-ready AD-ART-BIBLE sign-off
 5. Skill asks "May I apply the proposed changeset?"
 6. Only that section is updated; other sections preserved; verdict is COMPLETE
 
 **Assertions:**
 - [ ] Existing art bible is detected and retrofit is offered
 - [ ] Only the selected section is updated
-- [ ] In full mode: AD-ART-BIBLE gate runs even for single-section retrofit
+- [ ] A single-section retrofit does not receive global production-ready sign-off
 - [ ] Other sections are preserved
 - [ ] Verdict is COMPLETE
 
@@ -91,3 +92,11 @@ Verified automatically by `$skill-test static` — no fixture needed.
   tenth section.
 - The art bible feeds into `$asset-spec` — this relationship is noted in the
   handoff but not tested as part of this skill's spec.
+
+## P1 Regression Assertions
+
+- [ ] AD-ART-BIBLE runs only after all nine sections have substantive content; partial scope never receives production-ready sign-off
+- [ ] Fresh authoring cannot choose section 8 alone, and retrofit can do so only when sections 1–4 are complete
+- [ ] File authorization and per-section product approval are distinct
+- [ ] A failed mandatory specialist prevents that section from being written as complete; parallel partial failure is surfaced
+- [ ] The design-system state check excludes game-concept, systems-index, and review reports

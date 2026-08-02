@@ -146,3 +146,17 @@ after a "May I apply the proposed changeset?"
   CONCERNS; RELEASE READY requires evidence for every blocking item.
 - [ ] The target is `production/releases/release-checklist-[date].md`; an
   existing target is read and updated deliberately, never overwritten silently.
+
+## P1 Contract Coverage
+
+- [ ] Version and current milestone/release resolve from exact existing
+  artifacts; missing or ambiguous values are requested rather than guessed.
+- [ ] Platform/store parameters are absent and remain a `$launch-checklist` handoff.
+- [ ] TODO/FIXME/HACK scanning, when configured, is limited to source/content
+  paths and never assigns bug severity from a marker.
+- [ ] Test/build evidence records result, timestamp, scope, and source; missing
+  fields remain NOT VERIFIED.
+- [ ] Zero-warning, soak-duration, and package-size thresholds gate only when an
+  existing project configuration or release plan requires them.
+- [ ] The most recent different-date checklist is compared field-for-field; if
+  absent the run is labeled the first baseline, and current state drives verdict.

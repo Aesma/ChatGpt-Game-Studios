@@ -16,7 +16,14 @@ Arguments: `[bug-id or description]`. Treat bracketed values as optional unless 
 
 ## Phase 1: Assess Severity
 
-Read the bug description or ID. Assess severity using these criteria:
+Read the bug description or ID. Before assessing severity, require either:
+
+- a bug ID that resolves to exactly one readable existing bug file; or
+- a description containing player/system impact, reproduction steps, and the affected system.
+
+If the input is incomplete, ask specifically for the missing information and stop before any file write or Git operation. For an ID with zero or multiple matches, report the candidates/problem and do not plan a bug-file update. Description mode has no `original bug` and must not claim to update one.
+
+Assess severity using these criteria:
 
 - **S1 (Critical)**: Game unplayable, data loss, security vulnerability
 - **S2 (Major)**: Significant feature broken, workaround exists
@@ -65,6 +72,8 @@ Status: IN PROGRESS
 [How to revert if the fix causes new issues]
 ```
 
+Resolve the record path while keeping it in memory: update the uniquely resolved bug record when the project already uses it as the hotfix record; otherwise use the deterministic existing production location `production/qa/hotfix-[date]-[short-name].md` and show that exact path in the later preview. Do not search among or write to multiple guessed locations at runtime.
+
 Keep this record in memory. Do not create or update any workspace file in this phase. The record joins the complete changeset only after Phase 3 has established the confirmed hotfix branch (or the user has explicitly accepted a non-Git current workspace) and Phase 4 has identified every code, test, record, and bug-file edit.
 
 ---
@@ -77,7 +86,9 @@ Run `git rev-parse --is-inside-work-tree` as a read-only repository check. Do no
 
 If this is not a Git repository, state: "Not a Git repository; the hotfix can only be implemented in the current workspace." Ask the user to confirm current-workspace implementation before continuing. If they decline, output **HOTFIX BLOCKED** and stop.
 
-If the check passes, ask the user directly before creating the branch:
+If the check passes, first show the current branch, dirty/clean working-tree status, the resolved candidate base ref, and whether `hotfix/[short-name]` already exists. Resolve the base only from verified repository refs. Dirty work, an existing same-name branch, an ambiguous/missing base, or any read-only Git check failure stops branch creation and asks the user to choose how to proceed; never concatenate or execute an unverified ref.
+
+If those checks are unambiguous, ask the user directly before creating the branch:
 - Prompt: "Ready to create hotfix branch 'hotfix/[short-name]' from [base-ref]?"
 - Options:
   - `[A] Yes — create branch`
@@ -106,7 +117,7 @@ Use the Codex subagent delegation to request sign-off in parallel:
 
 - `subagent_type: lead-programmer` — Review the fix for correctness and side effects
 - `subagent_type: qa-tester` — Run targeted regression tests on the affected system
-Both reviews must return APPROVE before proceeding. If either returns CONCERNS or REJECT, output **HOTFIX BLOCKED** and do not deploy. Consult `producer` only when deployment timing requires a product decision and the user authorizes that consultation; it is not a fixed code-correctness gate. Do not invoke a director gate or automatically escalate to `technical-director` inside this time-sensitive workflow.
+Both reviews must return APPROVE before proceeding. List every incomplete review and its timeout, unavailability, error, or partial-result reason. If either is missing, CONCERNS, or REJECT, output **HOTFIX BLOCKED** and do not deploy. Consult `producer` only when deployment timing requires a product decision and the user authorizes that consultation; it is not a fixed code-correctness gate. Do not invoke a director gate or automatically escalate to `technical-director` inside this time-sensitive workflow.
 
 ---
 
@@ -120,9 +131,11 @@ After approvals, determine the QA scope required before deploying the hotfix. Sp
 Ask qa-lead: **Is a full smoke check sufficient, or does this fix require a targeted team-qa pass?**
 
 Apply the verdict:
-- **Smoke check sufficient** — run `$smoke-check` against the hotfix build. If PASS, proceed to Phase 6.
-- **Targeted QA pass required** — run `$team-qa [affected-system]` scoped to the changed system only. If QA returns APPROVED or APPROVED WITH CONDITIONS, proceed to Phase 6.
-- **Full QA required** — S1 fixes that touch core systems may require a full `$team-qa sprint`. This delays deployment but prevents a bad patch.
+- **Smoke check sufficient** — run `$smoke-check` against the hotfix build. Only PASS proceeds to Phase 6; every other result is **HOTFIX BLOCKED**.
+- **Targeted QA pass required** — run `$team-qa [affected-system]` scoped to the changed system only. Only APPROVED or APPROVED WITH CONDITIONS proceeds to Phase 6; every other result is **HOTFIX BLOCKED**.
+- **Full QA required** — run `$team-qa sprint`. Only APPROVED or APPROVED WITH CONDITIONS proceeds to Phase 6; every other result is **HOTFIX BLOCKED**. This delays deployment but prevents a bad patch.
+
+A missing, timed-out, unavailable, or unparsable qa-lead result is also **HOTFIX BLOCKED**. Never fall through to Phase 6 without one of the explicit continuing verdicts above.
 
 Do not skip this gate. A hotfix that breaks something else is worse than the original bug.
 
@@ -130,16 +143,16 @@ Do not skip this gate. A hotfix that breaks something else is worse than the ori
 
 ## Phase 6: Update Bug Status and Deploy
 
-Update the original bug file if one exists:
+Update only the uniquely resolved bug file from Phase 1. If the run used description mode, or the ID had no unique file, skip this edit and state why; never claim that an `original bug` was updated.
 
 ```markdown
 ## Fix Record
-**Fixed in**: hotfix/[branch-name] — [commit hash or description]
+**Fixed in**: hotfix/[branch-name] — [actual repository-visible commit, or `uncommitted`]
 **Fixed date**: [date]
 **Status**: Fixed — Pending Verification
 ```
 
-Set `**Status**: Fixed — Pending Verification` in the bug file header.
+Set `**Status**: Fixed — Pending Verification` in the bug file header only when that unique file exists. If the workflow did not create a commit, record the branch and `uncommitted`; never invent a hash or commit-like description. If the user separately committed, cite only repository-visible information.
 
 Resolve and show the actual release and development branch targets. After verification, report **ready for merge**, not deployed or complete. Merging is an external side effect and requires explicit user authorization. Merge the hotfix into both targets; if either target is missing, skipped, conflicts, or the command fails, output **HOTFIX BLOCKED** and do not claim that backporting finished.
 
@@ -184,5 +197,5 @@ Ask the user directly:
 - Prompt: "Hotfix complete. What's the next step?"
 - Options:
   - `[A] Run $smoke-check to verify the fix`
-  - `[B] Run $patch-notes to document this hotfix`
+  - `[B] After the hotfix is actually released, run $patch-notes [release-version] to document it`
   - `[C] Stop here`

@@ -171,10 +171,12 @@ an existing UX spec or note it as a spec dependency.
 
 #### Section E2: Events Fired
 
-For every player action in the Interaction Map, document the corresponding event the game or analytics system should fire — or explicitly note "no event" if none applies.
+For every player action in the Interaction Map, document only an event already
+required by a linked GDD/architecture contract, or explicitly note `none/not
+specified`. This UX workflow does not create a telemetry contract.
 
 **Questions to ask**:
-- "For each action, should the game fire an analytics event, trigger a game-state change, or both?"
+- "Which existing GDD/architecture event, if any, corresponds to this action?"
 - "Are there any actions that should NOT fire an event — and is that a deliberate choice?"
 
 Present as a table alongside the Interaction Map:
@@ -239,8 +241,8 @@ Walk through the ux-designer agent's standard checklist for this screen:
 - Any motion or animation that needs a reduced-motion alternative
 
 If no accessibility tier has been defined for this project, note the gap in the UX spec's Open Questions section:
-> "Accessibility tier not yet defined — consider WCAG-AA as a baseline. Run `$gate-check` to see whether this blocks any phase gates."
-Then continue to the next section without stopping.
+> "Accessibility tier not yet defined — authoritative tier is unknown. Existing project baseline constraints still apply, but this spec cannot claim a tier. Resolve this gap before implementation handoff."
+Do not use a WCAG label as a substitute project tier.
 
 ---
 
@@ -253,18 +255,22 @@ Document constraints that affect how this screen behaves when text is translated
 - "Are there any elements where text length is layout-critical — e.g., a button label that must stay on one line?"
 - "Are there any elements that display numbers, dates, or currencies that need locale-specific formatting?"
 
-Note: aim to flag any element where a 40% text expansion (common in translations from English to German or French) would break the layout. Mark those as HIGH PRIORITY for the localization engineer.
+Use existing locale/font/layout expansion constraints when present. If none exist,
+40% may be mentioned only as a generic risk probe; it is not project evidence or
+a pass threshold.
 
 ---
 
 #### Section I: Acceptance Criteria
 
-Write at least 5 specific, testable criteria that a QA tester can verify without reading any other design document. These become the pass/fail conditions for `$story-done`.
+Write enough specific, testable criteria to cover the actual behavior; do not pad
+the list to a fixed count. A QA tester must be able to verify them without reading
+another design document.
 
 **Format**: Use checkboxes. Each criterion must be verifiable by a human tester:
 
 ```
-- [ ] Screen opens within [X]ms from [trigger]
+- [ ] Screen meets [existing configured load/open budget] from [trigger]
 - [ ] [Element] displays correctly at [minimum] and [maximum] values
 - [ ] [Navigation action] correctly routes to [destination screen]
 - [ ] Error state appears when [condition] and shows [specific message or icon]
@@ -272,8 +278,8 @@ Write at least 5 specific, testable criteria that a QA tester can verify without
 - [ ] [Accessibility requirement] is met — e.g., "all interactive elements have focus indicators"
 ```
 
-**Minimum required**:
-- 1 performance criterion (load/open time)
+**Minimum required when applicable**:
+- 1 performance criterion only when an existing budget is available; otherwise record the budget as an open question and do not invent Xms
 - 1 navigation criterion (at least one entry or exit path verified)
 - 1 error/empty state criterion
 - 1 accessibility criterion (per committed tier)
@@ -478,7 +484,9 @@ When all sections are approved and written:
 
 ### 6a: Update Session State
 
-Update `production/session-state/active.md` with:
+Update only this task's fields/section in `production/session-state/active.md`,
+preserving unrelated tasks. If another active task owns the state, surface the
+conflict and use the already confirmed changeset boundary before updating. Record:
 - Task: [screen-name] UX spec
 - Status: Complete (or In Review)
 - File: design/ux/[filename].md
@@ -528,7 +536,8 @@ disruption.
 
 ## 8. Specialist Agent Routing
 
-This skill uses `ux-designer` as the primary agent (set in frontmatter). For
+This skill uses `ux-designer` as the primary role through the main SKILL's
+role-available fallback rule. For
 specific sub-topics, additional context or coordination may be needed:
 
 | Topic | Coordinate with |

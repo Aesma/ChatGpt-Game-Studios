@@ -17,381 +17,212 @@ Arguments: `[focus: full | consistency | design-theory | since-last-review]`. Tr
 This skill reads every system GDD simultaneously and performs two complementary
 reviews that cannot be done per-GDD in isolation:
 
-1. **Cross-GDD Consistency** — contradictions, stale references, and ownership
-   conflicts between documents
-2. **Game Design Holism** — issues that only emerge when you see all systems
-   together: dominant strategies, broken economies, cognitive overload, pillar
-   drift, competing progression loops
+1. **Cross-GDD Consistency** — contradictions, stale references, and ownership conflicts
+2. **Game Design Holism** — issues that only emerge when you see all systems together
 
 **This is distinct from `$design-review`**, which reviews one GDD for internal
-completeness. This skill reviews the *relationships* between all GDDs.
+completeness. This skill reviews the relationships between all GDDs.
 
 **When to run:**
 - After all MVP-tier GDDs are individually approved
 - After any GDD is significantly revised mid-production
-- Before `$create-architecture` begins (architecture built on inconsistent GDDs
-  inherits those inconsistencies)
+- Before `$create-architecture` begins
 
-**Argument modes:**
+**Focus modes:**
 
-**Focus:** the first provided argument (blank = `full`)
-
-- **No argument / `full`**: Both consistency and design theory passes
-- **`consistency`**: Cross-GDD consistency checks only (faster)
-- **`design-theory`**: Game design holism checks only
-- **`since-last-review`**: Only GDDs modified since the last review report (git-based)
+- no argument / `full`: both consistency and design-theory passes
+- `consistency`: consistency only
+- `design-theory`: design theory only
+- `since-last-review`: full check over the GDDs selected since the last report
 
 ---
 
 ## Phase 1: Load Everything
 
-### Phase 1a — L0: Summary Scan (fast, low tokens)
+### Phase 1a — L0: Summary Scan
 
 Read `design/gdd/systems-index.md` first. Build the system-GDD manifest only
-from its explicit Design Doc paths whose files exist. `game-concept.md`,
-`game-pillars.md`, and `systems-index.md` are context rather than system GDDs;
-exclude all `gdd-cross-review-*` reports. Extract a `## Summary` when present,
-otherwise summarize from the title and `## Overview` without treating the
-missing Summary as a defect.
+from explicit Design Doc paths whose files exist. Treat concept, pillars, and
+index files as context; exclude prior `gdd-cross-review-*` reports. Extract a
+`## Summary` when present, otherwise summarize from the title and `## Overview`
+without treating the absent Summary as a defect.
 
-Display a manifest to the user:
-```
-Found [N] GDDs. Summaries:
-  • combat.md — [summary text]
-  • inventory.md — [summary text]
-  ...
-```
+For `since-last-review`, locate the most recent existing
+`design/gdd/gdd-cross-review-*.md` by its recorded report date, using the path
+only as a deterministic tie-breaker. If no report exists, say so and fall back
+to `full`. Use Git to select system GDDs changed after that report. Expand the
+selection only through standard `Dependencies` / `Depends On` entries and the
+systems-index dependency field; do not use a non-standard "Key deps" field.
 
-For `since-last-review` mode: run `git log --name-only` to identify GDDs
-modified since the last review report file was written. Show the user which
-GDDs are in scope based on summaries before doing any full reads. Only
-proceed to L1 for those GDDs plus any GDDs listed in their "Key deps".
+Display the manifest and selected scope before full reads.
 
-### Phase 1b — Registry Pre-Load (fast baseline)
+### Phase 1b — Registry Pre-Load
 
-Before full-reading any GDD, check for the entity registry:
-
-```
-Read `design/registry/entities.yaml` in full.
-```
-
-If the registry exists and has entries, use it as a **pre-built conflict
-baseline**: known entities, items, formulas, and constants with their
-authoritative values and source GDDs. In Phase 2, search GDDs for registered
-names first — this is faster than reading all GDDs in full before knowing
-what to look for.
-
-If the registry is empty or absent: proceed without it. Note in the report:
-"Entity registry is empty — consistency checks rely on full GDD reads only.
-Run `$consistency-check` after this review to populate the registry."
+Read `design/registry/entities.yaml` when it exists. Treat it as a candidate
+name/source index that accelerates searches, not as authoritative truth. Every
+conflict conclusion must cite the current source GDD text. If the registry is
+empty, continue with full reads and note the limitation.
 
 ### Phase 1c — L1/L2: Full Document Load
 
-Full-read the in-scope documents:
+Read in full:
 
-1. `design/gdd/game-concept.md` — game vision, core loop, MVP definition
-2. `design/gdd/game-pillars.md` if it exists — design pillars and anti-pillars
-3. `design/gdd/systems-index.md` — authoritative system list, layers, dependencies, status
-4. **Every in-scope system GDD explicitly listed by systems-index** — read each
-   existing path completely. Do not absorb other Markdown files or prior review
-   reports into the system set.
+1. `design/gdd/game-concept.md`;
+2. `design/gdd/game-pillars.md` when present;
+3. `design/gdd/systems-index.md`;
+4. every selected system GDD listed by systems-index.
 
-Report: "Loaded [N] system GDDs covering [M] systems. Pillars: [list]. Anti-pillars: [list]."
-
-If fewer than 2 system GDDs exist, stop:
-> "Cross-GDD review requires at least 2 system GDDs. Write more GDDs first,
-> then re-run `$review-all-gdds`."
-
----
+Report the loaded systems, pillars, and anti-pillars. If fewer than two system
+GDDs exist, stop and explain that a cross-GDD review requires at least two.
 
 ### Parallel Execution
 
-Respect the selected focus. In `full` mode, Phase 2 (Consistency) and Phase 3
-(Design Theory) are independent and may run in parallel; in `consistency` or
-`design-theory` mode, run only the selected phase. `since-last-review` applies a
-full check to its selected GDD set. Collect every started phase before writing
-the combined report.
+Respect focus mode. In `full`, Phase 2 and Phase 3 are independent. Before
+delegating, check available capacity. Start at most one bounded subtask for each
+phase (two total). If capacity is unavailable, run the phases sequentially in
+the current agent. Single-focus modes run only their selected phase;
+`since-last-review` runs both over its selected set.
 
-**When spawning parallel Codex subagents for Phase 2 and Phase 3, always pass:**
-- The complete list of GDD file paths loaded in Phase 1 (explicit paths, not just counts)
-- The full TR registry contents if loaded in Phase 1b (paste the registry text, not just a file path)
-- The specific checklist items assigned to that agent's phase (Phase 2 gets 2a–2f; Phase 3 gets 3a–3g)
-- The engine name and version from `docs/technical-preferences.md` and `docs/engine-reference/[engine]/VERSION.md`
-
-Do not rely on the subagent to re-read these files — it has its own context window and cannot access Phase 1 results unless they are explicitly passed in the delegation prompt.
+Pass each delegated subtask the explicit GDD paths, registry text as candidate
+index, assigned checklist, and engine/version context. Collect every started
+subtask. A failure produces the continuation's partial-coverage handling and
+cannot be hidden inside a complete verdict.
 
 ---
 
 ## Phase 2: Cross-GDD Consistency
 
-Work through every pair and group of GDDs to find contradictions and gaps.
-
 ### 2a: Dependency References
 
-For every GDD's standard `Dependencies` / `Depends On` entries:
+For every standard `Dependencies` / `Depends On` entry, verify the target
+exists, the forward dependency agrees with systems-index, and any explicitly
+stated reverse relationship is not contradictory. Do not require reciprocal
+dependents lists.
 
-- verify each referenced target exists;
-- verify the source GDD's forward dependency agrees with systems-index;
-- if a document explicitly states a reverse relationship, verify that claim is
-  not contradictory.
-
-Do not require the depended-on GDD to maintain a reciprocal `dependents` list;
-the current GDD and systems-index schemas define forward dependencies only.
 ### 2b: Rule Contradictions
 
-For each game rule, mechanic, or constraint defined in any GDD, check whether
-any other GDD defines a contradicting rule for the same situation:
+Check whether two documents define incompatible rules for the same situation,
+including floor/ceiling rules, shared resource ownership, state transitions,
+timing, and stacking. Every conclusion cites both GDDs and their exact sections.
 
-Categories to scan:
-- **Floor/ceiling rules**: Does any GDD define a minimum value for an output? Does any other say a different system can bypass that floor? These contradict.
-- **Resource ownership**: If two GDDs both define how a shared resource accumulates or depletes, do they agree?
-- **State transitions**: If GDD-A describes what happens when a character dies,
-  does GDD-B's description of the same event agree?
-- **Timing**: If GDD-A says "X happens on the same frame", does GDD-B assume
-  it happens asynchronously?
-- **Stacking rules**: If GDD-A says status effects stack, does GDD-B assume
-  they don't?
+Scan specifically for:
+- a minimum/maximum in one GDD that another mechanic bypasses;
+- two owners changing the same shared resource;
+- incompatible descriptions of death, completion, or another shared event;
+- synchronous versus asynchronous assumptions;
+- incompatible stacking behavior.
 
-```
-🔴 Rule Contradiction
-[system-a].md: "Minimum [output] after reduction is [floor_value]"
-[system-b].md: "[mechanic] bypasses [system-a]'s rules and can reduce [output] to 0"
-→ These rules directly contradict. Which GDD is authoritative?
-```
+Report the two statements and ask which existing GDD should become
+authoritative; do not decide it in the review.
 
 ### 2c: Stale References
 
-For every cross-document reference (GDD-A mentions a mechanic, value, or
-system name from GDD-B), verify the referenced element still exists in GDD-B
-with the same name and behaviour:
+Verify that every cross-document mechanic, value, system, and formula reference
+still exists with the stated behavior.
 
-- If GDD-A says "combo multiplier from the combat system feeds into score", check
-  that the combat GDD actually defines a combo multiplier that outputs to score
-- If GDD-A references "the progression curve defined in [system].md", check that
-  [system].md actually has that curve, not a different progression model
-- If GDD-A was written before GDD-B and assumed a mechanic that GDD-B later
-  designed differently, flag GDD-A as containing a stale reference
-
-```
-⚠️  Stale Reference
-inventory.md (written first): "Item weight uses the encumbrance formula
-  from movement.md"
-movement.md (written later): Defines no encumbrance formula — uses a flat
-  carry limit instead
-→ inventory.md references a formula that doesn't exist
-```
+Examples include a referenced combo multiplier that no longer exists, a named
+progression curve whose model changed, or an encumbrance formula replaced by a
+flat limit. Cite the referencing and target sections.
 
 ### 2d: Data and Tuning Knob Ownership Conflicts
 
-Two GDDs should not both claim to own the same data or tuning knob. Scan all
-Tuning Knobs sections across all GDDs and flag duplicates:
+Scan Tuning Knobs sections for duplicate ownership claims over the same value or output.
 
-```
-⚠️  Ownership Conflict
-[system-a].md Tuning Knobs: "[multiplier_name] — controls [output] scaling"
-[system-b].md Tuning Knobs: "[multiplier_name] — scales [output] with [factor]"
-→ Two GDDs define multipliers on the same output. Which owns the final value?
-  This will produce either a double-application bug or a design conflict.
-```
+Explain the concrete double-application or conflicting-authority risk rather
+than flagging two similarly named but unrelated knobs.
 
 ### 2e: Formula Compatibility
 
-For GDDs whose formulas are connected (output of one feeds input of another),
-check that the output range of the upstream formula is within the expected
-input range of the downstream formula:
+For connected formulas, compare documented output/input ranges, units, event
+frequency, and the time horizon over which they interact. If any required
+range, frequency, unit, or duration is absent, report the undefined input and
+do not infer a single-event outcome, surplus, deficit, or severity conclusion.
 
-- If [system-a].md outputs values between [min]–[max], and [system-b].md is
-  designed to receive values between [min2]–[max2], is the mismatch intentional?
-- If an economy GDD expects resource acquisition in range X, and the
-  progression GDD generates it at range Y, the economy will be trivial or
-  inaccessible — is that intended?
-
-Flag incompatibilities as CONCERNS (design judgment needed, not necessarily wrong):
-
-```
-⚠️  Formula Range Mismatch
-[system-a].md: Max [output] = [value_a] (at max [condition])
-[system-b].md: Base [input] = [value_b], max [input] = [value_c]
-→ Late-[stage] [scenario] can resolve in a single [event].
-  Is this intentional? If not, either [system-a]'s ceiling or [system-b]'s ceiling needs adjustment.
-```
+When evidence is complete, report the upstream range, downstream expected
+range, relevant frequency/horizon, and the exact mismatch. Treat compatibility
+questions as design judgment unless they create an explicit contradiction.
 
 ### 2f: Acceptance Criteria Cross-Check
 
-Scan Acceptance Criteria sections across all GDDs for contradictions:
+Flag acceptance criteria that cannot both pass in the same documented scenario.
 
-- GDD-A criteria: "Player cannot die from a single hit"
-- GDD-B criteria: "Boss attack deals 150% of player max health"
-These acceptance criteria cannot both pass simultaneously.
+Name the shared scenario and show why the two criteria are mutually exclusive.
 
 ---
 
 ## Phase 3: Game Design Holism
 
-Review all GDDs together through the lens of game design theory and player
-psychology. These are issues that individual GDD reviews cannot catch because
-they require seeing all systems at once.
+The checks in this phase are contextual heuristics, not universal laws. When
+target-player, genre, session structure, or core-loop context is missing, report
+the hypothesis as a risk to validate rather than a blocker.
 
 ### 3a: Progression Loop Competition
 
-A game should have one dominant progression loop that players feel is "the
-point" of the game, with supporting loops that feed into it. When multiple
-systems compete equally as the primary progression driver, players don't know
-what the game is about.
+Map systems that award primary progression resources or claim to be core/main.
+Multiple deep loops may be intentional; do not require exactly one dominant
+loop. Flag only evidence-backed competition for the same player goal/resource,
+and label uncertain cases as validation risks.
 
-Scan all GDDs for systems that:
-- Award the player's primary resource (XP, levels, prestige, unlocks)
-- Define themselves as the "core" or "main" loop
-- Have comparable depth and time investment to other systems doing the same
-
-```
-⚠️  Competing Progression Loops
-combat.md: Awards XP, unlocks abilities, is described as "the core loop"
-crafting.md: Awards XP, unlocks recipes, is described as "the primary activity"
-exploration.md: Awards XP, unlocks map areas, described as "the main driver"
-→ Three systems all claim to be the primary progression loop and all award
-  the same primary currency. Players will optimise one and ignore the others.
-  Consider: one primary loop with the others as support systems.
-```
+Consider award type, unlock depth, time investment, and how supporting loops
+feed a larger goal. Genre conventions and intentionally plural progression are
+valid contextual counter-evidence.
 
 ### 3b: Player Attention Budget
 
-Count how many systems require active player attention simultaneously during
-a typical session. Each actively-managed system costs attention:
+Count simultaneously active decisions in a specific documented gameplay moment.
+The common 3–4 item range is a heuristic, not a hard limit. Without target-player
+or moment-specific evidence, report "attention-load hypothesis — validate" and
+never make the count alone a blocker.
 
-- Active = player must make decisions about this system regularly during play
-- Passive = system runs automatically, player sees results but doesn't manage it
-
-More than 3-4 simultaneously active systems creates cognitive overload for most
-players. Present the count and flag if it exceeds 4 concurrent active systems:
-
-```
-⚠️  Cognitive Load Risk
-Simultaneously active systems during [core loop moment]:
-  1. [system-a].md — [decision type] (active)
-  2. [system-b].md — [resource management] (active)
-  3. [system-c].md — [tracking] (active)
-  4. [system-d].md — [item/action use] (active)
-  5. [system-e].md — [cooldown/timer management] (active)
-  6. [system-f].md — [coordination decisions] (active)
-→ 6 simultaneously active systems during the core loop.
-  Research suggests 3-4 is the comfortable limit for most players.
-  Consider: which of these can be made passive or simplified?
-```
+Distinguish active decisions from passive state displays. List the selected
+moment and each active system so the heuristic is auditable.
 
 ### 3c: Dominant Strategy Detection
 
-A dominant strategy makes other strategies irrelevant — players discover it,
-use it exclusively, and find the rest of the game boring. Look for:
+Look for resource monopolies, risk-free power, missing trade-offs, and clearly
+superior paths. Require comparable quantitative/contextual evidence; otherwise
+state which values are undefined.
 
-- **Resource monopolies**: One strategy generates a resource significantly
-  faster than all others
-- **Risk-free power**: A strategy that is both high-reward and low-risk
-  (if high-risk strategies exist, they need proportionally higher reward)
-- **No trade-offs**: An option that is superior in all dimensions to all others
-- **Obvious optimal path**: If any progression choice is "clearly correct",
-  the others aren't real choices
-
-```
-⚠️  Potential Dominant Strategy
-combat.md: Ranged attacks deal 80% of melee damage with no risk
-combat.md: Melee attacks deal 100% damage but require close range
-→ Unless melee has a significant compensating advantage (AOE, stagger,
-  resource regeneration), ranged is dominant — higher safety, only 20% less
-  damage. Consider what melee offers that ranged cannot.
-```
+Compare reward, risk, opportunity cost, and applicability in the same scenario;
+a qualitative label such as "safe" is not sufficient without supporting rules.
 
 ### 3d: Economic Loop Analysis
 
-Identify all resources across all GDDs (gold, XP, crafting materials, stamina,
-health, mana, etc.). For each resource, map its **sources** (how players gain
-it) and **sinks** (how players spend it).
+Map sources and sinks for each resource. Do not conclude source >> sink, sink >>
+source, unbounded accumulation, or positive feedback without documented amount,
+frequency, caps, and relevant duration. Missing inputs are data gaps, not
+economic verdicts.
 
-Flag dangerous economic conditions:
-
-| Condition | Sign | Risk |
-|-----------|------|------|
-| **Infinite source, no sink** | Resource accumulates indefinitely | Late game becomes trivially easy |
-| **Sink, no source** | Resource drains to zero | System becomes unavailable |
-| **Source >> Sink** | Surplus accumulates | Resource becomes meaningless |
-| **Sink >> Source** | Constant scarcity | Frustration and gatekeeping |
-| **Positive feedback loop** | More resource → easier to earn more | Runaway leader, snowball |
-| **No catch-up** | Falling behind accelerates deficit | Unrecoverable states |
-
-```
-🔴 Economic Imbalance: Unbounded Positive Feedback
-gold economy:
-  Sources: monster drops (scales with player power), merchant selling (unlimited)
-  Sinks: equipment purchase (one-time), ability upgrades (finite count)
-→ After equipment and abilities are purchased, gold has no sink.
-  Infinite surplus. Gold becomes meaningless mid-game.
-  Add ongoing gold sinks (upkeep, consumables, cosmetics, gambling).
-```
+Potential conditions to examine once evidence exists include infinite source
+with no ongoing sink, sink with no source, surplus/scarcity, positive feedback,
+and absence of catch-up. Record caps and one-time versus repeatable flows.
 
 ### 3e: Difficulty Curve Consistency
 
-When multiple systems scale with player progression, they must scale in
-compatible directions and at compatible rates. Mismatched scaling curves
-create unintended difficulty spikes or trivialisations.
+Compare only curves with defined variables, units, ranges, and progression
+horizons. Missing numeric evidence is reported rather than filled in.
 
-For each system that scales over time, extract:
-- What scales (enemy health, player damage, resource cost, area size)
-- How it scales (linear, exponential, stepped)
-- When it scales (level, time, area)
-
-Compare all scaling curves. Flag mismatches:
-
-```
-⚠️  Difficulty Curve Mismatch
-combat.md: Enemy health scales exponentially with area (×2 per area)
-progression.md: Player damage scales linearly with level (+10% per level)
-→ By area 5, enemies have 32× base health; player deals ~1.5× base damage.
-  The gap widens indefinitely. Late areas will become inaccessibly difficult
-  unless the curves are reconciled.
-```
+Extract what scales, the mathematical/step model, and the trigger (level, time,
+area, etc.) before comparing curves.
 
 ### 3f: Pillar Alignment
 
-Every system should clearly serve at least one design pillar. A system that
-serves no pillar is "scope creep by design" — it's in the game but not in
-service of what the game is trying to be.
+Check Player Fantasy sections against pillars and anti-pillars. A direct
+anti-pillar contradiction is stronger evidence than an absent mapping; do not
+invent alignment requirements for an undocumented pillar set.
 
-For each GDD system, check its Player Fantasy section against the design pillars.
-Flag any system whose stated fantasy doesn't map to any pillar:
-
-```
-⚠️  Pillar Drift
-fishing-system.md: Player Fantasy — "peaceful, meditative activity"
-Pillars: "Brutal Combat", "Tense Survival", "Emergent Stories"
-→ The fishing system serves none of the three pillars. Either add a pillar
-  that covers it, redesign it to serve an existing pillar, or cut it.
-```
-
-Also check anti-pillars — flag any system that does what an anti-pillar
-explicitly says the game will NOT do:
-
-```
-🔴 Anti-Pillar Violation
-Anti-Pillar: "We will NOT have linear story progression — player defines their path"
-main-quest.md: Defines a 12-chapter linear story with mandatory sequence
-→ This system directly violates the defined anti-pillar.
-```
+For a flagged system, cite the fantasy and pillar/anti-pillar text and explain
+the relationship. Absence of a mapping is a warning or unassessed gap, not an
+automatic scope-creep verdict.
 
 ### 3g: Player Fantasy Coherence
 
-The player fantasies across all systems should be compatible — they should
-reinforce a consistent identity for what the player IS in this game. Conflicting
-player fantasies create identity confusion.
+Compare fantasies in their documented player roles and contexts. Different
+fantasies are not automatically incompatible; cite the concrete identity or
+choice conflict.
 
-```
-⚠️  Player Fantasy Conflict
-combat.md: "You are a ruthless, precise warrior — every kill is earned"
-dialogue.md: "You are a charismatic diplomat — violence is always avoidable"
-exploration.md: "You are a reckless adventurer — diving in without a plan"
-→ Three systems present incompatible identities. Players will feel the game
-  doesn't know what it wants them to be. Consider: do these fantasies serve
-  the same core identity from different angles, or do they genuinely conflict?
-```
+Ask whether apparently different fantasies reinforce a broader identity from
+different angles before calling them incoherent.
 
 ---
 
