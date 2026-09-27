@@ -136,6 +136,20 @@ Verified automatically by `$skill-test static` — no fixture needed.
 
 ---
 
+### Case 13: Branch completion is not combined-version verification
+
+**Fixture:** Story checks pass on a task branch; another branch changes a consumed
+interface. No combined integration check has run.
+
+**Assertions:**
+- [ ] Existing story completion rules can update this branch's story and matching sprint YAML
+- [ ] Completion evidence identifies the current checkout/revision and relevant uncommitted changes
+- [ ] Output never treats Complete/done as target-branch or combined-version verification
+- [ ] Handover retains exact test outcomes, deferred criteria, dependencies, and fixed or pending delivery
+- [ ] Next-story suggestion is derived from this branch, not a shared cross-worktree task database
+
+---
+
 ## Protocol Compliance
 
 - [ ] Uses existing bounded task authorization, or previews and confirms the complete changeset once before the first write; no per-file or per-section re-prompts

@@ -107,6 +107,21 @@ GDD; lean and solo skip those per-skill delegations.
 
 ---
 
+### Case 9: Parallel GDD authoring preserves local scope
+
+**Fixture:** Combat and inventory run in separate worktrees and both update the
+systems index and entity registry.
+
+**Assertions:**
+- [ ] Each task updates its own GDD, registry, and systems-index copies under its authorized boundary
+- [ ] No central writer or cross-worktree file editing is introduced
+- [ ] Designed and review results are scoped to the current branch/revision
+- [ ] Handover identifies fixed delivery, shared entries, user decisions, and cross-system contracts
+- [ ] Fresh independent review and combined consistency are required at integration; authoring does not imply integrated approval
+- [ ] Existing serial invocation does not automatically create a worktree or task branch
+
+---
+
 ## Protocol Compliance
 
 - [ ] Incremental section writes stay within one authorized file set

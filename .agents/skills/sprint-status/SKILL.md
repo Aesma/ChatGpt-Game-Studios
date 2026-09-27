@@ -20,6 +20,11 @@ concise snapshot in under 30 lines. For detailed sprint management, use
 **This skill is read-only.** It never proposes changes, never asks to write
 files, and makes at most one concrete recommendation.
 
+Follow `.codex/docs/worktree-workflow.md`. Include the actual checkout's
+`Scope: <branch> @ <full HEAD>; clean | uncommitted changes` (or unknown) in the
+snapshot. DONE is this branch's business status, not a claim
+of integration or live progress in another chat.
+
 ---
 
 ## 1. Find the Sprint

@@ -147,6 +147,20 @@ None. `$sprint-status` is a read-only reporting skill; no gates are invoked.
 
 ---
 
+### Case 11: Sprint counts belong to this checkout
+
+**Fixture:** Worktree A marks one story done, B marks another done. Their
+sprint-status copies differ.
+
+**Assertions:**
+- [ ] Report identifies checkout, branch/detached state, and current revision
+- [ ] Counts and health come only from this checkout's resolved sprint data
+- [ ] B's completed story is not imported into A's counts
+- [ ] Complete/done is not described as integrated or target-branch verified
+- [ ] Report remains read-only and does not create a handover journal
+
+---
+
 ## Protocol Compliance
 
 - [ ] Does NOT use file-editing operations (read-only skill)

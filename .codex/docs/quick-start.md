@@ -276,7 +276,7 @@ AGENTS.md                          -- Master config (read this first, ~60 lines)
 docs/
   technical-preferences.md         -- Project-specific standards (populated by $setup-engine)
 .agents/
-  skills/                          -- 74 `$skill` workflows in SKILL.md files
+  skills/                          -- 75 `$skill` workflows in SKILL.md files
 .codex/
   config.toml                      -- Runtime defaults, permissions, and global agent limits
   hooks.json                       -- Lifecycle hook registration
