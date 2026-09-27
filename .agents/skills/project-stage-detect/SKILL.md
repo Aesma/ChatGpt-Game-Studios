@@ -9,6 +9,11 @@ Invoke this workflow as `$project-stage-detect`.
 
 This workflow is read-only and advisory. It always returns the stage report in the conversation, never writes `production/stage.txt` or a project-stage report, and never asks for changeset authorization.
 
+Follow `.codex/docs/worktree-workflow.md`. Scope the report to the actual Git
+top level, branch, full HEAD and dirty state (unknown if unavailable).
+A checkout snapshot does not establish live progress in another
+chat or validation of the combined target branch.
+
 Arguments: `[optional: role filter like 'programmer' or 'designer']`. Treat bracketed values as optional unless the workflow says otherwise.
 
 

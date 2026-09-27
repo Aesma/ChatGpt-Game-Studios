@@ -1,6 +1,6 @@
 # Available Skills (Skills)
 
-74 skills organized by phase. Invoke any skill with `$skill-name` in Codex.
+75 skills organized by phase. Invoke any skill with `$skill-name` in Codex.
 
 ## Onboarding & Navigation
 
@@ -12,6 +12,16 @@
 | `$studio-status` | Read-only stage, active Epic/Feature/Task breadcrumb, evidence, and recovery summary |
 | `$setup-engine` | Configure engine + version, detect knowledge gaps, populate version-aware reference docs |
 | `$adopt` | Brownfield format audit — checks internal structure of existing GDDs/ADRs/stories, produces migration plan |
+
+## Cross-Phase Collaboration
+
+| Command | Purpose |
+|---------|---------|
+| `$integrate-worktrees <source-ref...> --into <target-branch> [--check-only]` | Inspect pinned handoffs; merge and validate in a dedicated integration worktree before fast-forwarding the target. `--check-only` writes nothing. |
+
+Use existing skills in user-created worktree chats. See
+[Worktree Collaboration](worktree-workflow.md) for branch-local shared files,
+handoff, and integration rules.
 
 ## Game Design
 

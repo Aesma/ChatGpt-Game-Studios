@@ -3,7 +3,7 @@
 > **How to go from zero to a shipped game using the Agent Architecture.**
 >
 > This guide walks you through every phase of game development using the
-> 49-subagent system, 74 skills, and 12 registered hook handlers across 8 events. It assumes you
+> 49-subagent system, 75 skills, and 12 registered hook handlers across 8 events. It assumes you
 > have Codex installed and are working from the project root.
 >
 > The pipeline has 7 phases. Each phase has a formal gate (`$gate-check`)
@@ -38,7 +38,7 @@ Before you start, make sure you have:
 - **Codex** installed and working
 - **Git** with Git Bash (Windows) or standard terminal (Mac/Linux)
 - **jq** (optional but recommended -- hooks fall back to `grep` if missing)
-- **Python 3** (optional -- some hooks use it for JSON validation)
+- **Python 3** (required for the worktree integration inspector; optional for hook JSON validation)
 
 ### Step 1: Clone and Open
 
@@ -1147,6 +1147,43 @@ Ask Codex to create a post-mortem using the template at
 
 ## Cross-Cutting Concerns
 
+### Parallel Worktrees and Integration
+
+For independent tasks, the user starts separate Codex chats in Worktree mode
+and chooses a starting branch. Each task uses its original skill entrypoint;
+there is no `--parallel` flag and no extra preparation skill. Ordinary local
+tasks do not automatically create worktrees or chats.
+
+Each checkout may update its own project-wide files:
+`design/gdd/systems-index.md`, `design/registry/entities.yaml`, and
+`production/sprint-status.yaml`. These separate files are reconciled during
+integration. Subagents in the same checkout still use explicit file ownership.
+
+The authoring chat supplies a concise handoff: branch/worktree, fixed base SHA,
+delivery SHA (or `PENDING COMMIT`), changed files, accepted decisions, dependency
+contracts, actual validation and open issues. Commit only under the user's Git
+instruction. Bring committed handoffs to an independent integration chat:
+
+```text
+$integrate-worktrees codex/task-a codex/task-b --into main --check-only
+$integrate-worktrees codex/task-a codex/task-b --into main
+```
+
+Check-only inspects without writes. An authorized integration creates or reuses
+a dedicated candidate worktree/branch, serially merges pinned deliveries,
+reconciles shared records and validates all affected domains. GDDs receive
+independent design review and cross-system checks; implementation receives the
+required tests, code review and acceptance checks. The verified candidate then
+fast-forwards a clean, idle target. Target advancement triggers candidate
+refresh and revalidation. A failed check leaves the target unchanged.
+
+Existing story/design states remain branch-local; Complete is not integration
+verification. Status, reviews and gates name the checkout revision they checked.
+Integration journals are stored in the ignored `production/integration-runs/`
+directory. See the full
+[worktree protocol](../.codex/docs/worktree-workflow.md) and
+[upgrade guidance](../UPGRADING.md#worktree-workflow).
+
 These topics apply across all phases.
 
 ### Director Review Modes
@@ -1425,7 +1462,7 @@ conflicts go to `producer`.
 
 ## Appendix B: Skill Quick-Reference
 
-### All 74 Skills by Category
+### All 75 Skills by Category
 
 #### Onboarding and Navigation (7)
 
@@ -1438,6 +1475,12 @@ conflicts go to `producer`.
 | `$setup-engine` | Configure engine, pin version, set preferences | 1 |
 | `$adopt` | Brownfield audit and migration plan | Any (existing projects) |
 | `$skill-improve` | Improve a skill via test-fix-retest loop | Any |
+
+#### Cross-Phase Collaboration (1)
+
+| Command | Purpose | Phase |
+|---------|---------|-------|
+| `$integrate-worktrees` | Inspect fixed handoffs; merge and verify a candidate before target promotion | Any |
 
 #### Game Design (6)
 
