@@ -3,14 +3,14 @@
   <p align="center">
     Turn a single Codex task into a full game development studio.
     <br />
-    49 Codex subagents. 75 skills. One coordinated game-development studio.
+    49 Codex subagents. 74 skills. One coordinated game-development studio.
   </p>
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
   <a href=".codex/agents"><img src="https://img.shields.io/badge/subagents-49-blueviolet" alt="49 Codex Subagents"></a>
-  <a href=".agents/skills"><img src="https://img.shields.io/badge/skills-75-green" alt="75 Skills"></a>
+  <a href=".agents/skills"><img src="https://img.shields.io/badge/skills-74-green" alt="74 Skills"></a>
   <a href=".codex/hooks.json"><img src="https://img.shields.io/badge/hook%20handlers-12-orange" alt="12 Registered Hook Handlers"></a>
   <a href=".codex/docs/rules-reference.md"><img src="https://img.shields.io/badge/scoped%20rules-11-red" alt="11 Path-Scoped Rule Sets"></a>
   <a href="https://learn.chatgpt.com/docs/codex"><img src="https://img.shields.io/badge/built%20for-Codex-111111?logo=openai" alt="Built for Codex"></a>
@@ -42,7 +42,6 @@ The result: you still make every decision, but now you have a team that asks the
 - [Upgrading](#upgrading)
 - [Project Structure](#project-structure)
 - [How It Works](#how-it-works)
-- [Parallel Work with Git Worktrees](#parallel-work-with-git-worktrees)
 - [Design Philosophy](#design-philosophy)
 - [Customization](#customization)
 - [Platform Support](#platform-support)
@@ -56,7 +55,7 @@ The result: you still make every decision, but now you have a team that asks the
 | Category | Count | Description |
 |----------|-------|-------------|
 | **Codex subagents** | 49 | Specialized roles across design, programming, art, audio, narrative, QA, and production |
-| **Skills** | 75 | `$skill` workflows for every production phase, including `$studio-status` and `$vertical-slice` |
+| **Skills** | 74 | `$skill` workflows for every production phase, including `$studio-status` and `$vertical-slice` |
 | **Hook handlers** | 12 | 11 source mappings plus one supplemental command-safety handler across 8 events; `hook-lib.sh` is an unregistered helper |
 | **Rules** | 11 | Path-scoped coding standards enforced when editing gameplay, engine, AI, UI, network code, and more |
 | **Templates** | 40 | Recursively discovered templates for GDDs, UX specs, ADRs, sprint plans, HUD design, accessibility, and more |
@@ -100,7 +99,7 @@ The template includes agent sets for all three major engines. Use the set that m
 
 ## Skills
 
-Invoke any of the 75 skills with `$skill-name` in Codex:
+Invoke any of the 74 skills with `$skill-name` in Codex:
 
 **Onboarding & Navigation**
 `$start` `$help` `$project-stage-detect` `$studio-status` `$setup-engine` `$adopt`
@@ -119,9 +118,6 @@ Invoke any of the 75 skills with `$skill-name` in Codex:
 
 **Stories & Sprints**
 `$create-epics` `$create-stories` `$dev-story` `$sprint-plan` `$sprint-status` `$story-readiness` `$story-done` `$estimate`
-
-**Cross-Phase Collaboration**
-`$integrate-worktrees`
 
 **Reviews & Analysis**
 `$design-review` `$code-review` `$balance-check` `$content-audit` `$scope-check` `$perf-profile` `$tech-debt` `$gate-check` `$consistency-check` `$security-audit`
@@ -187,7 +183,7 @@ versions, and which files are safe to overwrite vs. which need a manual merge.
 ```
 AGENTS.md                           # Master configuration
 .agents/
-  skills/                           # 75 reusable SKILL.md workflows
+  skills/                           # 74 reusable SKILL.md workflows
 .codex/
   config.toml                       # Runtime defaults, permissions, and agent limits
   hooks.json                        # 12 handlers across 8 lifecycle/validation events
@@ -285,38 +281,6 @@ Coding standards are automatically enforced based on file location:
 | `assets/shaders/**` | Naming, performance budgets, variants, and portability |
 | `tests/**` | Test naming, coverage requirements, fixture patterns |
 | `prototypes/**` | Relaxed standards, README required, hypothesis documented |
-
-## Parallel Work with Git Worktrees
-
-Parallel work is optional and applies to both design and implementation. When
-starting independent tasks in Codex, select **Worktree** in the new-chat
-interface and choose the starting branch. The app prepares each checkout;
-existing local chats do not automatically switch modes. Give each task its own
-branch before committed delivery, including when its worktree starts detached.
-
-1. Continue using the usual skills, such as `$design-system combat` or
-   `$dev-story <story>`, in each worktree chat.
-2. Each task updates its own files, including its copies of shared project
-   documents. `systems-index.md` tracks systems and dependencies,
-   `entities.yaml` holds cross-system facts, and `sprint-status.yaml` tracks
-   story progress. Their full paths and rules are in the
-   [worktree protocol](.codex/docs/worktree-workflow.md).
-3. Finish the original reviews, then provide a handoff containing the branch,
-   fixed base and delivery SHAs, files, decisions, dependency assumptions,
-   actual checks and unresolved issues. Committing requires your instruction;
-   uncommitted results are labelled `PENDING COMMIT`.
-4. Carry these summaries to an independent integration chat and invoke
-   `$integrate-worktrees codex/task-a codex/task-b --into main`. Add
-   `--check-only` to inspect without changing anything.
-5. After Git operation authorization, integration merges the pinned deliveries
-   serially on a dedicated integration branch, reconciles shared documents,
-   and validates the combined result. Only a verified candidate can fast-forward
-   the clean, idle target. Failures preserve the candidate for correction.
-
-Task completion and integration verification are separate results. No automatic
-push, publication, branch deletion or worktree cleanup follows integration.
-Integration progress and verification evidence are recorded in the ignored
-`production/integration-runs/` directory.
 
 ## Design Philosophy
 

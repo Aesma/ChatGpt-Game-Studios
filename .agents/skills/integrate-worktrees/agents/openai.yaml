@@ -1,4 +1,0 @@
-interface:
-  display_name: "Integrate Worktrees"
-  short_description: "Merge worktree deliveries and verify the combined result"
-  default_prompt: "Use $integrate-worktrees to inspect delivered branches, reconcile their changes, and verify the result before promoting the target."

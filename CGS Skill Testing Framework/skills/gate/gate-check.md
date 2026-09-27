@@ -99,20 +99,6 @@ PASS or explicitly accepted non-blocking CONCERNS may advance
 
 ---
 
-### Case 8: Gate evidence is tied to the checked revision
-
-**Fixture:** Each source branch has a passing gate report, but the integration
-candidate combines changes that have not been validated together.
-
-**Assertions:**
-- [ ] Gate output identifies current checkout/branch/revision and evidence scope
-- [ ] Source-branch PASS or completed statuses cannot substitute for required combined-version evidence
-- [ ] Missing or failed combined checks retain the existing CONCERNS/FAIL rules; they cannot yield PASS
-- [ ] Git merge success does not automatically approve documents or advance the stage
-- [ ] Authorized stage changes affect only the current branch; they do not update another checkout
-
----
-
 ## Protocol Compliance
 
 - [ ] Complete checklist evidence precedes the verdict

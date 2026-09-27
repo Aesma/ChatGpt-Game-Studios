@@ -27,14 +27,9 @@ when its subject applies:
 - [Coordination rules](.codex/docs/coordination-rules.md)
 - [Coding standards](.codex/docs/coding-standards.md)
 - [Context management](.codex/docs/context-management.md)
-- [Worktree collaboration](.codex/docs/worktree-workflow.md) — read when working in a linked worktree, handing off branch results, or integrating parallel work.
 
 Nested `AGENTS.md` files add more specific requirements for their directory
 trees. The closest applicable file takes precedence when guidance differs.
-
-Linked-worktree workflows keep their normal skill entrypoints and apply the
-shared worktree protocol to scope and handoff; ordinary local tasks do not
-automatically create worktrees.
 
 ## Collaboration Protocol
 
@@ -47,6 +42,5 @@ perform destructive cleanup without the user's instruction.
 See [Collaborative Design Principle](docs/COLLABORATIVE-DESIGN-PRINCIPLE.md) for
 the full protocol and examples.
 
-When starting a game project with no configured engine and no game concept,
-invoke `$start` for guided onboarding. Framework maintenance is not game
-onboarding.
+If the project has no configured engine and no game concept, invoke `$start` for
+guided onboarding.

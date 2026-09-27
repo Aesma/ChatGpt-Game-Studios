@@ -4,7 +4,7 @@ Quality-assurance infrastructure for **ChatGPT Game Studios**. It tests the
 repository's reusable skills and Codex subagent definitions, not games created
 with the framework.
 
-The framework currently covers **75 skills** and **49 Codex subagents**. These
+The framework currently covers **74 skills** and **49 Codex subagents**. These
 totals are verification results, not constants: every audit must recompute them
 recursively from the implementation directories and compare them with the catalog
 and spec directories.
@@ -15,9 +15,9 @@ An audit is complete only when all four sets agree by unique name:
 
 | Surface | Recursive source | Expected now |
 |---------|------------------|--------------|
-| Skill implementations | `.agents/skills/**/SKILL.md` | 75 |
-| Skill catalog entries | `catalog.yaml` under `skills:` | 75 |
-| Skill behavioral specs | `skills/**/*.md` | 75 |
+| Skill implementations | `.agents/skills/**/SKILL.md` | 74 |
+| Skill catalog entries | `catalog.yaml` under `skills:` | 74 |
+| Skill behavioral specs | `skills/**/*.md` | 74 |
 | Codex subagent definitions | `.codex/agents/**/*.toml`, excluding generators | 49 |
 | Subagent catalog entries | `catalog.yaml` under `agents:` | 49 |
 | Subagent behavioral specs | `agents/**/*.md` | 49 |
@@ -69,27 +69,6 @@ Important coverage additions in this migration:
   `$vertical-slice` behavior.
 - `skills/utility/studio-status.md` covers `$studio-status`, the read-only Codex
   replacement for the unsupported live terminal status line.
-- `skills/pipeline/integrate-worktrees.md` covers fixed deliveries, isolated
-  integration, shared-file reconciliation, revision-scoped validation, and
-  fast-forward promotion after checks pass.
-
-### Worktree executable checks
-
-From the repository root, run:
-
-```text
-python -m unittest discover -s tests -p test_worktree_preflight.py -v
-```
-
-These tests execute the real read-only preflight helper against temporary Git
-repositories. Separate fixture sequences exercise merges, combined-check failure,
-target advancement, and fast-forward promotion. They create no commits or
-worktrees in the development repository. Set `CGS_FRAMEWORK_ROOT` to a staged
-framework directory when validating an unapplied implementation.
-
-Report this as helper and Git-fixture evidence. It is not a live end-to-end skill
-run and does not prove conversational design-conflict detection, independent
-review, or downstream engine tests. Those remain explicit behavioral-spec cases.
 
 ## Codex Structural Baseline
 

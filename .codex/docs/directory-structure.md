@@ -4,7 +4,7 @@
 /
 ├── AGENTS.md                    # Repository-wide Codex guidance
 ├── .agents/
-│   └── skills/                  # 75 reusable `$skill` workflows
+│   └── skills/                  # 74 reusable `$skill` workflows
 ├── .codex/
 │   ├── config.toml              # Runtime defaults, permissions, and global agent limits
 │   ├── hooks.json               # Codex lifecycle hook registration
@@ -21,7 +21,7 @@
 ├── tests/                       # Unit, integration, performance, and playtest suites
 ├── tools/                       # Build and pipeline tools
 ├── prototypes/                  # Throwaway prototypes isolated from src/
-├── CGS Skill Testing Framework/ # Behavioral specs for 75 skills and 49 subagents
+├── CGS Skill Testing Framework/ # Behavioral specs for 74 skills and 49 subagents
 └── production/                  # Sprints, milestones, releases, and recovery state
     ├── session-state/           # Active recovery checkpoint
     └── session-logs/            # Optional session audit trail

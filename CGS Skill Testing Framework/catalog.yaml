@@ -69,17 +69,6 @@ skills:
     category: review
 
   # High — pipeline-critical skills
-  - name: integrate-worktrees
-    spec: CGS Skill Testing Framework/skills/pipeline/integrate-worktrees.md
-    last_static: ""
-    last_static_result: ""
-    last_spec: ""
-    last_spec_result: ""
-    last_category: ""
-    last_category_result: ""
-    priority: high
-    category: pipeline
-
   - name: create-epics
     spec: CGS Skill Testing Framework/skills/pipeline/create-epics.md
     last_static: ""

@@ -17,14 +17,6 @@ Arguments: `[source-phase: concept | systems-design | technical-setup | pre-prod
 This skill validates whether the project is ready to advance to the next development
 phase. It checks for required artifacts, quality standards, and blockers.
 
-Apply `.codex/docs/worktree-workflow.md`: include the actual checkout's branch,
-full HEAD and dirty state in every verdict and report. A PASS or authorized
-`production/stage.txt` update applies
-only to this checkout; it neither proves a combined target passes nor advances
-another branch. During integration, verify the candidate using the appropriate
-checks without rerunning a stage transition that was already completed, unless
-the user has also authorized that transition.
-
 **Distinct from `$project-stage-detect`**: That skill is diagnostic ("where are we?").
 This skill is prescriptive ("are we ready to advance?" with a formal verdict).
 

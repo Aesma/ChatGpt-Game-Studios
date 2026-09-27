@@ -14,15 +14,6 @@
 # Phase gates ($gate-check): FAIL / NOT READY blocks stage advancement until its
 # blockers are resolved. CONCERNS requires an explicit user risk decision; PASS may advance.
 
-# Optional capabilities usable across phases; never phase-progression blockers.
-cross_phase:
-  - id: integrate-worktrees
-    name: "Integrate Worktrees"
-    command: $integrate-worktrees
-    required: false
-    repeatable: true
-    description: "Inspect pinned handoffs, merge in a dedicated integration worktree, validate the combined result, then fast-forward the target. --check-only is read-only."
-
 phases:
 
   concept:

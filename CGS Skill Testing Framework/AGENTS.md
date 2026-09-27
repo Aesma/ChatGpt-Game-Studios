@@ -19,7 +19,7 @@ The catalog's `spec:` field is authoritative. Do not infer a path when a catalog
 entry exists. Coverage totals must be computed recursively from the actual
 `.agents/skills/**/SKILL.md`, `.codex/agents/**/*.toml` (excluding generators),
 and spec files rather than copied from prose. The current verified baseline is
-75 skills and 49 Codex subagents; compare unique names, not only totals.
+74 skills and 49 Codex subagents; compare unique names, not only totals.
 
 ## Testing a Skill
 

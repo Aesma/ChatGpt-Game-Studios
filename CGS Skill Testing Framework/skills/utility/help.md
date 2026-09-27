@@ -203,20 +203,6 @@ with some legacy hyphenated or title-case fixtures.
 
 ---
 
-### Case 11: Parallel workflow guidance is optional and read-only
-
-**Fixture:** User asks `$help worktree`; current checkout is a task worktree with
-local progress, while another branch reports a different stage.
-
-**Assertions:**
-- [ ] Guidance explains user-selected separate chats/worktrees, original skill calls, committed handover, and dedicated integration before target promotion
-- [ ] `$integrate-worktrees` is discoverable for combining committed deliveries
-- [ ] Current progress and suggested next steps are labeled with this branch/revision
-- [ ] Help neither creates nor switches worktrees, messages other chats, commits, or merges
-- [ ] Ordinary serial help remains usable without opting into parallel work
-
----
-
 ## Protocol Compliance
 
 - [ ] Reads stage, sprint, and session state before generating suggestions

@@ -27,16 +27,6 @@ legacy provider-specific commands are intentionally not duplicated here.
 
 Codex loads project config and hooks only for a trusted repository.
 
-## Worktree Workflow
-
-The optional `$integrate-worktrees` workflow combines committed results from
-independent worktree chats in a dedicated integration branch. Existing skills
-keep their normal entrypoints. Ordinary local tasks do not automatically create
-worktrees. See [Worktree Collaboration](.codex/docs/worktree-workflow.md).
-
-Integration journals live at `production/integration-runs/` and are ignored by
-Git. Existing session recovery files and workflows remain unchanged.
-
 ## Migrating from the Upstream Claude Version
 
 This repository is a Codex adaptation of the upstream **Claude Code Game
@@ -107,8 +97,8 @@ Verify active surfaces recursively rather than trusting documented constants:
 (Get-ChildItem 'CGS Skill Testing Framework\agents' -Recurse -Filter *.md).Count
 ```
 
-The current release should report 75 skill implementations, 49 subagent TOML
-definitions, 75 skill specs, and 49 subagent specs. Also verify:
+The current release should report 74 skill implementations, 49 subagent TOML
+definitions, 74 skill specs, and 49 subagent specs. Also verify:
 
 1. Every catalog name is unique and maps to an implementation and spec.
 2. `.codex/hooks.json` parses and every registered script exists.

@@ -30,15 +30,7 @@ gap analysis, use `$project-stage-detect`.
 
 Read `.codex/docs/workflow-catalog.yaml`. This is the authoritative list of all
 phases, their steps (in order), whether each step is required or optional, and
-the artifact globs that indicate completion. Also read `cross_phase` for
-optional capabilities available in every phase; these are not phase blockers.
-When the user asks to combine worktree results, or supplies committed handoffs,
-recommend `$integrate-worktrees <source-ref...> --into <target-branch>` in an
-independent chat. Explain `--check-only` when only an inspection is requested.
-Do not create chats/worktrees or infer that uncommitted results are delivered.
-
-This report describes the current checkout only. Show branch, HEAD and whether
-uncommitted changes exist when Git is available.
+the artifact globs that indicate completion.
 
 ---
 

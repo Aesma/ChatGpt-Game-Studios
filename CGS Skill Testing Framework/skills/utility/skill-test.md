@@ -138,8 +138,8 @@ the workflow does not persist a result or update catalog fields.
 
 **Fixture:** The migrated repository currently contains:
 
-- 75 `.agents/skills/*/SKILL.md` implementations
-- 75 unique skill catalog entries and 75 registered skill specs
+- 74 `.agents/skills/*/SKILL.md` implementations
+- 74 unique skill catalog entries and 74 registered skill specs
 - 49 `.codex/agents/**/*.toml` role definitions, excluding generator helpers
 - 49 unique agent catalog entries and 49 registered agent specs
 
@@ -156,7 +156,7 @@ the workflow does not persist a result or update catalog fields.
 
 **Assertions:**
 
-- [ ] Coverage is exactly 75 skills and 49 Codex roles for this baseline
+- [ ] Coverage is exactly 74 skills and 49 Codex roles for this baseline
 - [ ] Skill implementation, catalog, and spec name sets are equal
 - [ ] Agent TOML, catalog, and spec name sets are equal
 - [ ] Duplicate names fail even when aggregate totals match

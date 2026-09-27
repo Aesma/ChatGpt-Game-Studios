@@ -11,16 +11,6 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `[story-path]`. Treat bracketed values as optional unless the workflow says otherwise.
 
-In a linked worktree, apply `.codex/docs/worktree-workflow.md`. Resolve the
-actual checkout, branch, task base and working-tree state before selecting a
-story.
-Keep the normal writes to this branch's story and sprint files. Record any
-accepted incomplete-dependency risk, provisional interface, or dependency-status
-correction in the handoff; another branch's status is not available evidence.
-Append the common handoff record to the result, with the delivery SHA or
-PENDING COMMIT. Implementation alone does not authorize Git commits or prove
-the integrated target works. This skill still leaves the story In Progress.
-
 
 # Dev Story
 

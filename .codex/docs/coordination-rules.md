@@ -21,7 +21,7 @@ per-role reasoning overrides.
 
 ## Codex Subagents
 
-Codex subagents are the supported delegation model within a chat.
+Codex subagents are the single supported delegation model for this repository.
 Roles are auto-discovered from `.codex/agents/**/*.toml`; `.codex/config.toml`
 sets global agent limits rather than registering individual roles. Skills may ask the current agent to delegate to a
 named role; if that role is unavailable, the current agent follows the same role
@@ -31,14 +31,6 @@ Use parallel subagents when workstreams are independent and have non-overlapping
 write ownership. Use sequential delegation when one result is an input to another.
 Subagents inherit the parent task's effective sandbox and permission context.
 See the [official subagents documentation](https://learn.chatgpt.com/docs/agent-configuration/subagents).
-
-Users may also run independent chats in separate Git worktrees. Those chats
-follow [Worktree collaboration](worktree-workflow.md); each may still delegate
-to domain subagents. Non-overlapping write ownership applies to concurrent
-writers in the **same checkout**. Independent worktrees may edit the same
-business files and reconcile them during integration. Worktrees isolate file
-copies, not filesystem access permissions. Never write into another task's
-checkout without explicit assignment.
 
 ## Parallel Task Protocol
 

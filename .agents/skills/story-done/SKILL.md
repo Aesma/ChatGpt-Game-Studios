@@ -14,18 +14,6 @@ Arguments: `[story-file-path] [--review full|lean|solo]`. Treat bracketed values
 
 # Story Done
 
-Apply `.codex/docs/worktree-workflow.md` in linked worktrees. Normal closure updates
-this branch's story and sprint records only. Append the shared handoff summary
-to the completion result; COMPLETE is scoped to the version and evidence
-actually checked, with integration verification still PENDING.
-
-During integration, a previously Complete story does not need to be reopened
-merely to recheck its acceptance criteria. Reuse this workflow's read-only
-context/evidence checks against the combined version without repeating closure,
-adding duplicate notes, or selecting the next story. If revalidation fails,
-report the blocker and apply any actual reopen/status change only within the
-authorized integration changeset and existing user decision rules.
-
 This skill closes the loop between design and implementation. Run it at the end
 of implementing any story. It ensures every acceptance criterion is verified
 before the story is marked done, GDD and ADR deviations are explicitly

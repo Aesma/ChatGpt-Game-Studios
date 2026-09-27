@@ -88,7 +88,7 @@ multi-dimensional verdicts and integrate correctly with director gate mode.
 
 ### `pipeline`
 
-**Skills**: create-epics, create-stories, dev-story, create-control-manifest, propagate-design-change, map-systems, vertical-slice, integrate-worktrees
+**Skills**: create-epics, create-stories, dev-story, create-control-manifest, propagate-design-change, map-systems, vertical-slice
 
 Pipeline skills produce artifacts that other skills consume. They must write files
 with correct schema, respect layer/priority ordering, and gate before applying a not-yet-authorized changeset.
@@ -100,14 +100,6 @@ with correct schema, respect layer/priority ordering, and gate before applying a
 | **P3 — Bounded changeset authorization** | A multi-file output is previewed and authorized once as one bounded changeset; the skill does not re-prompt per file or section unless scope materially expands |
 | **P4 — Director gate at correct tier** | In-scope gates (PR-EPIC, QL-STORY-READY, LP-CODE-REVIEW, etc.) run in `full`, skip in `lean`/`solo` with noted skip |
 | **P5 — Reads before writes** | Skill reads the relevant GDD/ADR/manifest before producing artifacts to ensure alignment |
-
-For `integrate-worktrees`, P1 requires merged artifacts to preserve their original
-templates and the handover/integration journal to follow the referenced worktree
-protocol; it does not require generating a new epic or story. P2's epic/story
-generation ordering is not applicable; integration still respects declared source
-dependencies. P4 introduces no integration-specific director gate: the existing
-validation skills retain their review modes, and integration does not advance a
-production phase. Explain these applicability results explicitly.
 
 ---
 

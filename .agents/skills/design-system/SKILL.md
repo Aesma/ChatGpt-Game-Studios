@@ -11,13 +11,6 @@ Before the first file change, present the complete proposed changeset, listing e
 
 Arguments: `<system-name> [--review full|lean|solo]`. Treat bracketed values as optional unless the workflow says otherwise.
 
-In a linked worktree, apply `.codex/docs/worktree-workflow.md` without changing
-this skill's section approvals or branch-local registry/index updates. On completion append
-the shared handoff summary, distinguishing the written GDD and review evidence
-from integration verification. Never run `$design-review` in this authoring
-chat; an independent integration chat can perform that review on the delivered
-and subsequently combined revision.
-
 
 When this skill is invoked:
 

@@ -13,10 +13,7 @@ Do not install or emulate a terminal status line. Do not create or modify files.
 
 ## Resolve the project root
 
-Resolve the actual Git top level from the current working directory, including
-linked worktrees and subdirectories. Treat missing optional files and directories
-as absent evidence, not errors. Follow `.codex/docs/worktree-workflow.md`.
-Report only this checkout's evidence, not live progress in other chats.
+Use the current workspace root. Normalize path separators only for display. Treat missing optional files and directories as absent evidence, not errors.
 
 ## Determine the stage
 
@@ -76,7 +73,6 @@ details. Never extract focus from unbounded/malformed text.
 Return a compact status report:
 
 ```text
-Scope: <branch> @ <full HEAD>; clean | uncommitted changes | unknown
 Stage: <stage>
 Focus: <Epic > Feature > Task | none recorded>
 Evidence: <explicit stage file or the artifacts used for inference>

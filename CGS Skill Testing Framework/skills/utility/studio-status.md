@@ -144,18 +144,6 @@ advance the production stage.
 
 ---
 
-### Case 8: Worktree context and branch-scoped evidence
-
-**Fixture:** Linked worktree uses a `.git` file and is queried from a nested
-directory containing spaces. Another branch has different project progress.
-
-**Assertions:**
-- [ ] Report identifies the actual checkout root, branch/detached state, and revision
-- [ ] Stage/status evidence is labeled branch-local, not proof that a target or combined build passed
-- [ ] No branch or file modification is performed by the status skill
-
----
-
 ## Protocol Compliance
 
 - [ ] Remains read-only in every branch

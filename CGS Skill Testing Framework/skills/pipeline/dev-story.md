@@ -128,20 +128,6 @@ primaries; missing Status.
 
 ---
 
-### Case 11: Worktree-scoped implementation and handover
-
-**Fixture:** Two worktrees have different story and sprint snapshots. A
-dependency is Complete only on the other branch.
-
-**Assertions:**
-- [ ] Dependency status is validated in the current checkout; another branch's completion does not unblock it
-- [ ] Delegation includes the actual worktree path, branch/detached state, baseline, and file ownership
-- [ ] Story and sprint remain In Progress in this branch; passing tests name the tested revision and dirty state
-- [ ] Final handover gives source branch, start/delivery SHA, shared-file changes, decisions, dependencies, checks, and unresolved items
-- [ ] Uncommitted work is pending delivery; the skill neither commits nor starts integration without Git authorization
-
----
-
 ## Protocol Compliance
 
 - [ ] Unlisted files pause the run for expanded authorization
