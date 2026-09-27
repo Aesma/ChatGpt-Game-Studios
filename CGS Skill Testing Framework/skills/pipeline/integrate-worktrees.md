@@ -102,7 +102,8 @@ table, including overlapping counts and separate new entities.
 same cross-system concept. Git can merge without textual conflict.
 
 **Assertions:**
-- [ ] Design review and full consistency checks inspect the combined result
+- [ ] Independent review of delivered GDDs and shared-record reconciliation inspect the combined result, including the conflicting units or values
+- [ ] Not running the optional consistency check does not waive a known design conflict
 - [ ] User sees competing decisions and impact before a meaning-changing resolution
 - [ ] Missing user decisions keep promotion pending; no timeout implies consent
 - [ ] Downstream architecture/story impact is inspected where present
@@ -175,7 +176,7 @@ merge. A variant crashes after a merge commit but before the journal update.
 ### Case 12: Stage-specific evidence and serial compatibility
 
 **Assertions:**
-- [ ] GDD delivery runs independent design review, full consistency, applicable cross-GDD review, and downstream-impact checks
+- [ ] GDD delivery retains independent design review, shared-record reconciliation and applicable downstream-impact checks; consistency-check stays optional and cross-GDD review waits until all MVP GDDs are authored and individually approved
 - [ ] Code delivery runs affected/integration tests and existing review/story checks; sprint completion retains smoke/QA gates
 - [ ] Other artifact types use their originating workflow's required checks; unknown requirements stay unverified
 - [ ] Normal task skills retain their arguments and do not automatically create or switch worktrees
@@ -196,6 +197,24 @@ authorize a combined phase gate, or advance the target during integration.
 - [ ] A changed candidate stage requires separate combined-phase-gate authorization and evidence satisfying the existing gate rules
 - [ ] Ordinary integration verification or a source-only gate PASS cannot substitute for that authorization and evidence
 - [ ] Target drift triggers a fresh stage comparison and corresponding candidate correction/gate checks before promotion
+
+### Case 14: GDD batches retain the original review milestones
+
+**Fixture:** Integrate one completed, independently reviewed GDD. The candidate
+contains two individually approved MVP GDDs, while a third MVP GDD is unfinished.
+Variants complete and individually approve the final MVP GDD, omit the optional
+consistency check with all applicable required checks passing, or expose a known
+design conflict as in Case 6.
+
+**Assertions:**
+- [ ] Readiness comes from the candidate's actual MVP GDDs and systems index, not the number of existing GDDs or completion of the delivered batch
+- [ ] While any MVP GDD remains unfinished or lacks individual approval, review-all-gdds is not run and is reported as not yet due, not missing required batch evidence
+- [ ] A completed single-GDD delivery may be verified and promoted after its applicable required checks pass even while other MVP GDDs remain unfinished
+- [ ] Once all MVP GDDs are authored and individually approved, review-all-gdds full is required under its normal prerequisites before advancing to Technical Setup; unrelated unfinished non-MVP work does not postpone this milestone
+- [ ] At that milestone, missing required cross-review evidence or a FAIL verdict prevents verified promotion; unmet skill prerequisites never become an invented PASS
+- [ ] Not running consistency-check alone does not produce NOT VERIFIED or BLOCKED, or prevent promotion
+- [ ] Known design conflicts, missing applicable required evidence and unresolved decisions still prevent verified promotion even when consistency-check is omitted
+- [ ] Deferred review is reported separately from batch verification; integration does not approve unfinished GDDs, claim a project-wide review passed, or advance the project stage
 
 ## Protocol Compliance
 

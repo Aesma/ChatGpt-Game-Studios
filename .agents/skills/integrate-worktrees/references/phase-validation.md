@@ -34,12 +34,21 @@ unrun requirement is NOT VERIFIED.
    missing evidence is NOT VERIFIED. A fresh independent integration chat may
    review. Do not simulate a review or substitute a subagent inheriting the
    full author conversation.
-4. Run `$consistency-check full`: registry values, formulas, ownership and
-   dependencies. Resolve conflicts and rerun. Required unverifiable evidence
-   and stale registry entries cannot be silently suppressed.
-5. With two or more system GDDs, run `$review-all-gdds full` on the actual
-   index-listed set for rules, formula interfaces, shared resources, AC and
-   player scenarios. Fewer than two is explicitly not applicable, not PASS.
+4. Recommend `$consistency-check` for registry values, formulas, ownership and
+   dependencies, retaining its optional status in the original workflow. Not
+   running it is not missing required integration evidence. Known conflicts,
+   stale registry entries and missing evidence for applicable required checks
+   still need resolution; an optional check does not waive known issues.
+5. Keep `$review-all-gdds` at the original milestone: all MVP system GDDs are
+   authored and individually approved, before advancing to Technical Setup.
+   Determine readiness from the combined candidate's systems index and actual
+   GDDs, not the number of existing documents or completion of this batch.
+   Until that milestone, report the cross-GDD review as not yet due; do not run
+   it or treat its absence as missing required evidence for this batch. At the
+   milestone, run `$review-all-gdds full` on the actual index-listed set for
+   rules, formula interfaces, shared resources, AC and player scenarios, subject
+   to that skill's normal prerequisites. Do not invent PASS when a prerequisite
+   is unmet, and keep phase advancement under the existing `$gate-check` rules.
 6. If changed GDDs have downstream ADR/TR/Epic/Story references, use
    `$propagate-design-change` per changed GDD. Its normal comparison may show
    only the last path-changing commit: also inspect the cumulative target-base
@@ -50,9 +59,13 @@ unrun requirement is NOT VERIFIED.
 Design-review blockers, consistency conflicts/missing required evidence and
 cross-review FAIL prevent VERIFIED. CONCERNS needs visible warnings and all
 required user decisions satisfied; never relabel it PASS. Expert review approval
-is not user approval of a new product decision. Intentionally incomplete design
-retains its draft/designed status and remains integration NOT VERIFIED until
-applicable checks can complete.
+is not user approval of a new product decision. A completed GDD may integrate
+once this batch's applicable required checks pass even while other MVP GDDs
+remain unfinished. Record the deferred project-wide review separately; a
+verified batch does not mean all GDDs or the Systems Design gate have passed.
+An intentionally incomplete GDD included in this delivery retains its
+draft/designed status and remains integration NOT VERIFIED until its applicable
+checks can complete.
 
 Two branches may have approved incompatible rules. Present both source sections,
 shared baseline and downstream effects. Let the user choose retained rules or
